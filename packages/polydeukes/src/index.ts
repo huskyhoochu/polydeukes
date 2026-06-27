@@ -6,4 +6,4 @@
  * See https://github.com/huskyhoochu/polydeukes
  */
 
-export const version = '0.0.0';
+export const version = '0.0.1';
