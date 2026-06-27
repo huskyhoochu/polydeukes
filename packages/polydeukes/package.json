@@ -1,0 +1,52 @@
+{
+  "name": "polydeukes",
+  "version": "0.0.0",
+  "description": "A harness framework for developing alongside an AI coding partner — deterministic guards, verifiable work ledger, local knowledge graph, and adversarial verification. Pre-alpha; design stage.",
+  "keywords": [
+    "harness",
+    "ai",
+    "agent",
+    "dev-tool",
+    "guard",
+    "ledger",
+    "verification"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/huskyhoochu/polydeukes#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huskyhoochu/polydeukes.git",
+    "directory": "packages/polydeukes"
+  },
+  "bugs": {
+    "url": "https://github.com/huskyhoochu/polydeukes/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,16 @@
+# biome는 node_modules/.bin/biome로 직접 호출한다.
+# `pnpm exec biome`는 일부 환경에서 네이티브 바이너리 spawn에 실패하며
+# "possibly out of memory"로 오보한다(실제 OOM 아님). .bin 직접 호출은 정상.
+pre-commit:
+  commands:
+    check:
+      run: ./node_modules/.bin/biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    format:
+      run: ./node_modules/.bin/biome format --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
