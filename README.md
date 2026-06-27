@@ -15,7 +15,7 @@ Polydeukes externalizes the discipline a developer applies to themselves — tes
 
 The framing is partnership, not control. A guard is not a fence that cages the AI; it is a shared promise that applies equally to the human and the AI. The origin of the name and the philosophy behind it are in [`STORY.md`](./STORY.md).
 
-The design starts from an AI development harness embedded in a real production monorepo, and from an analysis of whether that harness can be extracted into a general framework. That analysis lives in [`docs/research/`](./docs/research/).
+The design starts from an AI development harness embedded in a real production monorepo, and from an analysis of whether that harness can be extracted into a general framework.
 
 ## Structure — a thin core plus independent packages
 
@@ -55,15 +55,13 @@ Three separations:
 - **Essential vs incidental** — "verification is decided by exit code" is essential; "that command happens to be vitest" is incidental (config). "Knowledge is a local SQLite file" is essential; "that file happens to live on S3" is incidental (a sync adapter).
 - **Measurement as a first-class citizen** — collect guard-ROI and knowledge-search telemetry, then feed it back in a closed loop. Prove "it produces safer code" with data.
 
-Three verified gaps to close before extraction: the Bash bypass route around self-protection, the `status` leak in completion judgment, and the dormant measurement infrastructure. The full reasoning, grades, and roadmap are in [`docs/research/harness-engineering-assessment-extraction.md`](./docs/research/harness-engineering-assessment-extraction.md).
+Three verified gaps to close before extraction: the Bash bypass route around self-protection, the `status` leak in completion judgment, and the dormant measurement infrastructure.
 
 ## Documents
 
 | Document | Contents |
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
-| [`docs/research/harness-engineering-assessment-extraction.md`](./docs/research/harness-engineering-assessment-extraction.md) | Harness quality assessment + the strategy and roadmap for extracting a general framework |
-| [`docs/research/NAMING.md`](./docs/research/NAMING.md) | The naming candidate search, its verification, and the final decision |
 
 ## CLI (planned)
 

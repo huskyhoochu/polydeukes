@@ -138,3 +138,9 @@ Temporary Items
 # Harness telemetry / logs (see assessment doc §3-D)
 .hook-roi.log
 .docs-search.log
+
+# ─────────────────────────────────────────────────────────────
+# Private development docs (kept local, never pushed to public remote)
+# Public-facing docs go in docs/ instead.
+# ─────────────────────────────────────────────────────────────
+_docs/
