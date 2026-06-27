@@ -65,16 +65,28 @@ The point is that Polydeukes' splitting of his immortality was a **choice, not a
 
 ## 3. How it differs from Google's Gemini
 
-As it happens, Google too drew the name of its AI from the same constellation. **Gemini** is the Latin name for the Twins — a figure for two distinct research lineages merged into a single model.
+As it happens, Google too drew the name of its AI from the same constellation. And the reason it did is worth telling in full, because it is a different scene of the same myth.
 
-We set out from the same constellation, but we take a **different scene** from the myth.
+**Gemini** is the Latin word for "twins," and Google has confirmed the name carries a double meaning. The first is organizational: in April 2023, Google folded its two separate AI research labs — **DeepMind** (the London outfit behind AlphaGo and AlphaFold) and **Google Brain** (the team that produced TensorFlow and much of the Transformer work) — into a single org, Google DeepMind. The flagship model born of that union was named "Gemini" because it was, quite literally, the offspring of two lineages joined into one. Twins.
 
-- **Google took the birth** — the story of integration and fusion: "two lineages born as one set of twins, joined together."
-- **We take the climax** — the story of gift and transmission: "one side splits its own immortality to make the other its equal."
+The second meaning is an homage. Google has said the name also nods to **NASA's Project Gemini** — and that reference deepens the picture. NASA's Gemini program (1961–66) was the one that flew **two-person** capsules, where Mercury before it had flown only one; the spacecraft carried a crew of two, so NASA named it after the zodiac's twins. More than the crew count, though, Project Gemini was the **bridge**: the program that practiced the spacewalks, rendezvous, and docking that Mercury never attempted and Apollo would need to reach the Moon. It existed to carry one era across to the next.
 
-Google holds the *name* of the constellation; we hold *why it was set in the sky*. If Gemini is "two becoming one," Polydeukes is "I divide what I have so that you become as I am." The former is integration; the latter is a giving — a bestowal.
+So the chain runs deep. Google's Gemini → NASA's Gemini → the constellation of the Twins → and, at the bottom of it all, **Kastor and Polydeukes themselves**. We are not reaching for the same myth by coincidence; we are reaching one level further down the same chain Google stopped partway along.
 
-So while we cannot use the word `Gemini` — it has already become the name of one tech giant — we instead **fully claim a deeper, lesser-known scene of the same myth**: a name that speaks of sharing rather than control, of a gift rather than a merger.
+Because here is the thing: every link in that chain takes the *birth* — the moment two become one.
+
+- **Google took the union** — two research lineages merged into a single model. Two labs, one org. Integration.
+- **NASA took the pairing and the bridge** — two seats, and a program built to carry one era to the next.
+- **We take the climax** — the scene neither of them reached for: one twin splitting his own immortality to make the other his equal. Not a merger, not a crew of two, but a **gift**.
+
+Google holds the *name* of the constellation; we hold *why it was set in the sky in the first place*. If Gemini is "two becoming one," Polydeukes is "I divide what I have so that you become as I am." The former is integration; the latter is a bestowal — a giving.
+
+So while we cannot use the word `Gemini` — it has already become the name of one tech giant — we instead **claim the deeper, lesser-known scene of the same myth that they walked past**: a name that speaks of sharing rather than fusing, of a gift rather than a merger. The Dioskouroi were always more than a pair of twins. The whole point of their story is what one of them *did* with being a twin.
+
+> *Sources:*
+> - *Google, ["How Google's AI model Gemini got its name"](https://blog.google/innovation-and-ai/products/google-gemini-ai-name-meaning/) (May 2024) — the official name story.*
+> - *Google, ["Announcing Google DeepMind"](https://deepmind.google/blog/announcing-google-deepmind) (April 2023) — the merger of DeepMind and Google Brain.*
+> - *NASA, [Project Gemini](https://www.nasa.gov/specials/gemini_gallery) (1961–66) — the two-person program that bridged Mercury and Apollo.*
 
 ---
 
