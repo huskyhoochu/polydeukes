@@ -122,9 +122,10 @@ Temporary Items
 
 # ─────────────────────────────────────────────────────────────
 # Claude Code  (.claude/)
-# Commit: settings.json, CLAUDE.md, rules/, skills/, agents/  (team-shared)
-# Ignore: local/personal config and ephemeral artifacts
+# Commit: CLAUDE.md, settings.json, rules/, skills/, agents/  (team-shared)
+# Ignore: local/personal config, personal context, ephemeral artifacts
 # ─────────────────────────────────────────────────────────────
+CLAUDE.local.md
 .claude/settings.local.json
 .claude/*.local.json
 
