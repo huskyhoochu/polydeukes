@@ -7,6 +7,7 @@ packages:
 # line on GA/patch and every package follows.
 catalog:
   typescript: 7.0.1-rc
+  vitest: ^4.1.0
 
 onlyBuiltDependencies:
   - lefthook
