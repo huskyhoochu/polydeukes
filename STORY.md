@@ -4,7 +4,7 @@
 
 > The discipline a person has long imposed on themselves, now offered as a gift to the AI they work alongside.
 
-**Polydeukes** is a harness framework for developing alongside an AI coding partner. It puts deterministic guards, a verifiable work ledger, a local knowledge graph, and adversarial verification on a single thin core.
+**Polydeukes** is a development *discipline* framework for working alongside an AI coding partner. It puts deterministic covenants, a verifiable work ledger, a local memory graph, and adversarial verification on a single thin core.
 
 But this document is not a feature spec. It is the story of **why this tool exists**, and of why it bears the name of a twin from Greek myth — one who split his own immortality in half and gave it to his dead brother.
 
@@ -22,9 +22,9 @@ But here is something worth retracing. **Who were `harness` and `guard` original
 
 A good developer disciplines themselves without being told to — writes the test first, verifies before committing, leaves a record of yesterday's decision, sets rules so as not to repeat the same mistake twice. All of this self-discipline *was* the original harness. Not a bit that yanks at a horse, but **the restraint with which a craftsman governs their own hands**.
 
-If so, the answer becomes clear. The principles I have spent a lifetime honing to make good work — I can give them to my AI partner not as a **chain that binds**, but as a **gift to use together**. Then a guard is no longer a fence that cages the AI, but a promise — the discipline I apply to myself, now shared between the two of us.
+If so, the answer becomes clear. The principles I have spent a lifetime honing to make good work — I can give them to my AI partner not as a **chain that binds**, but as a **gift to use together**. Then the thing once called a guard is no longer a fence that cages the AI, but a promise — the discipline I apply to myself, now shared between the two of us. That is the word Polydeukes uses instead: a **covenant**, not a guard.
 
-This philosophy is not a slogan; it is embedded as a design decision in the code. This framework's meta-guard (`harness-self-mod-guard`) keeps the AI from weakening the guards — and **that block applies to me exactly as much.** Any attempt to disable a guard, whether the hand is human or AI, trips itself first. Before the rules, the two are equals — this is not a structure where one watches over the other.
+This philosophy is not a slogan; it is embedded as a design decision in the code. The framework's meta-covenant keeps the AI from weakening the covenants — and **that block applies to me exactly as much.** Any attempt to disable a covenant, whether the hand is human or AI, trips itself first. Before the rules, the two are equals — this is not a structure where one watches over the other.
 
 ---
 
@@ -59,7 +59,7 @@ And so the two — neither wholly a god nor wholly a man — became, each fillin
 | "An eternity without my brother is a punishment" | The ethic of refusing to treat the AI as a tool rather than an equal companion |
 | Alternating between life and death, together forever | A permanent interdependence in which neither side is one-sided |
 
-The point is that Polydeukes' splitting of his immortality was a **choice, not a sacrifice**. He did not take a loss; he actively chose "an imperfect journey of two over a perfect solitude of one." This, precisely, is the mythic definition of partnership — one side sharing its own privilege so that the two become equals — the opposite of control, where one owns the other. That is why this tool calls the guards and the verification a "gift" it offers to the AI.
+The point is that Polydeukes' splitting of his immortality was a **choice, not a sacrifice**. He did not take a loss; he actively chose "an imperfect journey of two over a perfect solitude of one." This, precisely, is the mythic definition of partnership — one side sharing its own privilege so that the two become equals — the opposite of control, where one owns the other. That is why this tool calls the covenants and the verification a "gift" it offers to the AI.
 
 ---
 
@@ -104,9 +104,9 @@ So the name of this tool comes from two truths at once. One, that I am a Gemini;
 
 A philosophy is hollow if it isn't proven in code. Polydeukes does the following.
 
-- **guard** — externalizes the discipline I apply to myself into deterministic hooks. Instead of asking, in a prompt, "please don't do that," it nails the promise into code — and that promise applies to the human and the AI alike.
+- **covenant** — externalizes the discipline I apply to myself into deterministic hooks. Instead of asking, in a prompt, "please don't do that," it nails the promise into code — and that promise applies to the human and the AI alike.
 - **ledger** — moves the authority over completion from "I say I'm done" to "the verification passed." No one's self-report is taken as grounds for trust.
-- **kb** — leaves yesterday's decisions and dead ends as searchable memory, supplementing a person's easily-fading recall with a record that persists.
+- **memory** — leaves yesterday's decisions and dead ends as searchable memory, supplementing a person's easily-fading recall with a record that persists.
 - **verify** — does not take a single judgment at its word; it has them verify one another adversarially. As twins reflect each other.
 
 These four are not devices for one side to watch over the other. They are **a promise the two have agreed to share, in order to build something better together.**
