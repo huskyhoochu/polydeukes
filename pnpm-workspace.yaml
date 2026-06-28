@@ -2,5 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Shared dependency versions — defined once here, referenced as `catalog:` in
+# each package.json. TypeScript 7.0 RC (the native Go compiler). Bump this one
+# line on GA/patch and every package follows.
+catalog:
+  typescript: 7.0.1-rc
+
 onlyBuiltDependencies:
   - lefthook

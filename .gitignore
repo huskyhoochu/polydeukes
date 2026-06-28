@@ -55,6 +55,7 @@ dist
 out
 .cache
 .parcel-cache
+.turbo
 .next
 .nuxt
 .output

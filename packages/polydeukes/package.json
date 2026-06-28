@@ -1,13 +1,15 @@
 {
   "name": "polydeukes",
   "version": "0.0.1",
-  "description": "A harness framework for developing alongside an AI coding partner — deterministic guards, verifiable work ledger, local knowledge graph, and adversarial verification. Pre-alpha; design stage.",
+  "description": "A development discipline framework for building alongside an AI coding partner — deterministic covenants, a verifiable work ledger, local memory, and adversarial verification. Pre-alpha; design stage.",
   "keywords": [
     "harness",
+    "guard",
+    "discipline",
+    "covenant",
     "ai",
     "agent",
     "dev-tool",
-    "guard",
     "ledger",
     "verification"
   ],
@@ -47,6 +49,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "typescript": "catalog:"
   }
 }
