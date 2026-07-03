@@ -21,7 +21,8 @@ docs; the rule itself is non-negotiable.
 - `pnpm check` — Biome lint + format with `--write` (the canonical "fix everything" command)
 - `pnpm format` — Biome format only
 - `pnpm build` / `pnpm dev` — Turbo-orchestrated across packages
-- Per-package build is `tsc -p tsconfig.json`; typecheck is `tsc --noEmit`
+- Per-package build is `tsc -p tsconfig.build.json`; typecheck is `tsc --noEmit` (the package's
+  `tsconfig.json` is the editor/typecheck project and also covers `__tests__/`)
 
 Runtime is pinned: **Node ≥24, pnpm@10.32.1** (`.nvmrc` = 24). Use pnpm, never npm/yarn.
 
@@ -38,6 +39,9 @@ Runtime is pinned: **Node ≥24, pnpm@10.32.1** (`.nvmrc` = 24). Use pnpm, never
 
 ## How this project is developed
 
-Development follows a roadmap → PRD → TDD loop. Once the minimal core exists, Polydeukes is meant to
-develop *itself* (self-dogfooding): its own covenants protect its source, its ledger measures the
-work. Unit tasks must be small enough to fit one PRD and verifiable by a command or test.
+Development follows a roadmap → PRD → TDD loop, codified as skills: `/ticket <ID>` runs the full
+unit-task loop (PRD → branch → `/tdd` cycle → `/post-task` checks → PR + code review → squash merge
+→ archive), and `/post-task` alone closes out substantial non-ticket chores before they commit.
+Once the minimal core exists, Polydeukes is meant to develop *itself* (self-dogfooding): its own
+covenants protect its source, its ledger measures the work. Unit tasks must be small enough to fit
+one PRD and verifiable by a command or test.
