@@ -56,8 +56,17 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Commit with a Conventional Commit message (`feat(<pkg>): … (<ID>)`), push the branch, and
   open a PR against `main` with `gh pr create`.
-- Run the `/code-review` skill on the PR. Triage its findings the project's way: reviewer
-  confidence is hypothesis strength, not a verdict — judge each finding against the PRD text.
+- Review with the **built-in `/code-review`** (target the PR number, or the local diff right
+  before opening the PR for a cleaner first push). Findings land in-session; triage them the
+  project's way: reviewer confidence is hypothesis strength, not a verdict — judge each
+  finding against the PRD text.
+- Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run
+  the `code-review:code-review` plugin (5-perspective review posted as a GitHub comment).
+  Know its shape: findings scoring below its confidence cut are silently dropped, so it
+  supplements the in-session pass, never replaces it.
+- `/code-review ultra` (cloud multi-agent review, separately billed) is **user-triggered
+  only** — suggest it at milestone gates (e.g. closing v0.1), never launch it on the user's
+  behalf.
 - Apply accepted fixes as follow-up commits on the same branch (each passing VALIDATE), push.
 
 ### 6. MERGE — user's call
