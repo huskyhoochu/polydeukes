@@ -2,7 +2,7 @@
 name: tdd-test-auditor
 description: Audit test files and classify each test as P0/P1/DELETE by reasoning about what production bug each would actually catch. Use when the user says "test audit", "prune tests", "요식행위 테스트", "낮은 가치 테스트", "test 가치 평가", or when starting a refactor that touches tested code. Read-only — never deletes files; emits a stdout Markdown report for human review.
 tools: Read, Glob, Grep
-model: inherit
+model: sonnet
 ---
 
 # Role
