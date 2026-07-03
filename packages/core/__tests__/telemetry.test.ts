@@ -39,8 +39,8 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('§5.1 기록 (record)', () => {
-  it('appendRecord() 1회 호출 → 로그 파일에 정확히 1줄, 탭 구분 4필드, 개행 종결', () => {
+describe('§5.1 record', () => {
+  it('a single appendRecord() call writes exactly one tab-separated 4-field line ending in a newline', () => {
     // Mutation caught: appendRecord that writes without a trailing newline, drops a
     // field, or joins fields with something other than a tab.
     const result = appendRecord(logPath, baseRecord);
@@ -58,7 +58,7 @@ describe('§5.1 기록 (record)', () => {
     expect(lines[0].split('\t')).toEqual(['2026-07-03T12:00:00Z', 'passed', 'self-mod', 'a.ts']);
   });
 
-  it('formatRecordLine() → parseRecordLine() 왕복 시 레코드 동치', () => {
+  it('formatRecordLine() → parseRecordLine() round-trip preserves the record', () => {
     // Catches a formatter/parser pair that silently drops or reorders a field —
     // round-trip identity is the contract, not just "doesn't throw".
     const line = formatRecordLine(baseRecord);
@@ -67,7 +67,7 @@ describe('§5.1 기록 (record)', () => {
     expect(parsed).toEqual(baseRecord);
   });
 
-  it('subject가 "-"(부재)인 레코드도 왕복 보존된다', () => {
+  it('a record whose subject is the "-" (absent) sentinel survives the round-trip', () => {
     // Boundary: '-' is the documented sentinel for "no subject", not an error case.
     // Catches a parser that treats '-' specially (e.g. converts it to '' or undefined).
     const absentSubject: TelemetryRecord = { ...baseRecord, subject: '-' };
@@ -76,7 +76,7 @@ describe('§5.1 기록 (record)', () => {
     expect(parsed).toEqual(absentSubject);
   });
 
-  it('label/subject에 탭·개행이 섞인 입력도 한 줄로 기록되고 4필드 구조 유지 (새니타이즈)', () => {
+  it('labels/subjects containing tabs or newlines are sanitized into a single 4-field line', () => {
     // P1 line-integrity invariant: without sanitization, a tab/newline inside a field
     // would fabricate extra TSV fields or extra lines, corrupting every record after it.
     const dirty: TelemetryRecord = {
@@ -100,8 +100,8 @@ describe('§5.1 기록 (record)', () => {
   });
 });
 
-describe('§5.2 무결성 (integrity)', () => {
-  it('병렬 10회 append → 정확히 10줄, 각 줄이 parseRecordLine()으로 유효 복원 (인터리브 없음)', async () => {
+describe('§5.2 integrity', () => {
+  it('10 concurrent appends yield exactly 10 lines, each valid under parseRecordLine() (no interleaving)', async () => {
     // Atomicity mechanism under test: 1 record = 1 write call, relying on POSIX
     // O_APPEND single-write semantics to avoid line interleaving under concurrency
     // (PRD §4.2). Promise.all over microtasks is sufficient to exercise interleaving
@@ -125,7 +125,7 @@ describe('§5.2 무결성 (integrity)', () => {
     }
   });
 
-  it('존재하지 않는 디렉터리 경로로 appendRecord() 호출 시 throw 없이 { ok: false } 반환', () => {
+  it('appendRecord() into a nonexistent directory returns { ok: false } without throwing', () => {
     // P0 fail-open boundary (intentionally inverted from covenant fail-closed, PRD §4.3):
     // telemetry failure must never propagate as an exception. Mutation caught: try/catch
     // removed around the fs write, or the failure path returning { ok: true }.
@@ -139,7 +139,7 @@ describe('§5.2 무결성 (integrity)', () => {
     expect(result).toEqual({ ok: false });
   });
 
-  it('readRecords()는 부재 파일에 대해 throw 없이 { records: [], skipped: 0 } 반환', () => {
+  it('readRecords() on an absent file returns { records: [], skipped: 0 } without throwing', () => {
     // Mutation caught: readRecords that throws ENOENT instead of treating an absent
     // log as "nothing collected yet" — the fail-open counterpart on the read side.
     const missingPath = join(dir, 'never-written.log');
@@ -153,7 +153,7 @@ describe('§5.2 무결성 (integrity)', () => {
   });
 });
 
-describe('§5.3 집계 (gain)', () => {
+describe('§5.3 gain', () => {
   // Fixed, deterministic 3-label × 3-event distribution over 100 records so per-label
   // counts can be asserted exactly (not just "> 0"). label A: 20/10/5, label B: 15/10/5,
   // label C: 15/10/10 → passed 50 + blocked 30 + bypassed 20 = 100.
@@ -175,7 +175,7 @@ describe('§5.3 집계 (gain)', () => {
     return records;
   }
 
-  it('100회 시뮬(3 label × 3 event 고정 분포) → aggregateGain 총합 100, label별 카운트 정확 일치', () => {
+  it('a 100-record simulation (fixed 3-label × 3-event distribution) aggregates to total 100 with exact per-label counts', () => {
     // Mutation caught: total that sums only 2/3 events (e.g. forgets bypassed), or
     // per-label counters that share a single accumulator across labels.
     const records = buildDistributionRecords();
@@ -190,7 +190,7 @@ describe('§5.3 집계 (gain)', () => {
     expect(summary.counts).toEqual(distribution);
   });
 
-  it('runGain() 출력은 각 label을 언급하고 bypassed를 구분 표기한다', () => {
+  it('runGain() output mentions every label and marks bypassed distinctly', () => {
     // Business-meaningful substring checks only — exact formatting is GREEN's choice.
     // Mutation caught: runGain that omits a label entirely, or that folds bypassed
     // into passed/blocked without a distinguishable marker.
@@ -207,7 +207,7 @@ describe('§5.3 집계 (gain)', () => {
     expect(output).toMatch(/bypassed/i);
   });
 
-  it('손상 라인 1개 삽입 시 나머지 정상 집계 + skipped=1 보고, runGain도 정상 동작', () => {
+  it('one corrupt line is skipped and reported as skipped=1 while the rest aggregate normally', () => {
     // Mutation caught: a corrupt line that throws and aborts the whole scan, or that
     // gets silently parsed into a bogus record instead of being skipped-and-counted.
     appendRecord(logPath, baseRecord);
@@ -230,7 +230,7 @@ describe('§5.3 집계 (gain)', () => {
     expect(output).toMatch(/skipped[= ]1/);
   });
 
-  it('runGain()은 부재/빈 로그에 대해 "no telemetry collected"를 포함한 출력을 반환한다', () => {
+  it('runGain() reports "no telemetry collected" for an absent or empty log', () => {
     // Mutation caught: runGain that throws on a missing file instead of reporting the
     // documented "no telemetry collected" message, or that omits the exact phrase.
     const missingPath = join(dir, 'never-written.log');
@@ -242,7 +242,7 @@ describe('§5.3 집계 (gain)', () => {
     expect(runGain(logPath)).toContain('no telemetry collected');
   });
 
-  it('parseRecordLine()은 필드 개수 불일치·미지 event에 대해 null을 반환한다', () => {
+  it('parseRecordLine() returns null for wrong field counts and unknown events', () => {
     // Mutation caught: field-count / enum-membership checks removed, letting a
     // malformed line masquerade as a valid TelemetryRecord instead of being rejected.
     expect(parseRecordLine('2026-07-03T12:00:00Z\tpassed\tself-mod')).toBeNull(); // 3 fields

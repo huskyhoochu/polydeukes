@@ -38,8 +38,8 @@ const emptyCollectionsInput: CovenantInput = {
 // on failure it carries the blocking exit code (2). This shape is the GREEN contract.
 //   parseInput(json): { ok: true; value: CovenantInput } | { ok: false; exitCode: 2 }
 
-describe('§5.1 왕복 직렬화 (round-trip serialization)', () => {
-  it('유효한 stdin-JSON 문자열을 CovenantInput으로 역직렬화한다', () => {
+describe('§5.1 round-trip serialization', () => {
+  it('deserializes a valid stdin-JSON string into a CovenantInput', () => {
     // Mutation caught: parseInput that ignores its argument / returns a constant,
     // or that drops one of the three IR collections.
     const result = parseInput(JSON.stringify(fullInput));
@@ -50,7 +50,7 @@ describe('§5.1 왕복 직렬화 (round-trip serialization)', () => {
     }
   });
 
-  it('왕복 불변식: 빈 컬렉션만 가진 CovenantInput 도 왕복으로 보존된다', () => {
+  it('round-trip invariant: a CovenantInput with only empty collections is preserved', () => {
     // Catches a parser that "helpfully" defaults empty arrays to something else,
     // or that rejects empty-but-present collections (they are valid, not missing).
     const result = parseInput(JSON.stringify(emptyCollectionsInput));
@@ -72,17 +72,17 @@ describe('§5.1 왕복 직렬화 (round-trip serialization)', () => {
     expect(verdictToExitCode(upheld)).toBe(EXIT_UPHOLD);
   });
 
-  it('verdictToExitCode(broken) === 1 (break non-blocking — 본체는 1만, 2 번역은 래퍼 책임)', () => {
-    // P0-adjacent: the core body MUST NOT emit blocking-2 itself (PRD §4.1 책임 경계).
-    // Mutations caught: broken→0 (fail-open!), broken→2 (core overstepping into wrapper's
-    // exit-2 translation), or `upheld` flag ignored.
-    const broken: CovenantVerdict = { upheld: false, reason: '보호된 경로 편집 시도' };
+  it('verdictToExitCode(broken) === 1 (break non-blocking — the body emits only 1; translating to 2 is the wrapper responsibility)', () => {
+    // P0-adjacent: the core body MUST NOT emit blocking-2 itself (PRD §4.1 responsibility
+    // boundary). Mutations caught: broken→0 (fail-open!), broken→2 (core overstepping into
+    // wrapper's exit-2 translation), or `upheld` flag ignored.
+    const broken: CovenantVerdict = { upheld: false, reason: 'attempted edit of a protected path' };
 
     expect(verdictToExitCode(broken)).toBe(1);
     expect(verdictToExitCode(broken)).toBe(EXIT_BREAK_NON_BLOCKING);
   });
 
-  it('exit-code 의미론: uphold/non-blocking/blocking 세 코드가 0/1/2 로 구분된다', () => {
+  it('exit-code semantics: uphold/non-blocking/blocking are distinct as 0/1/2', () => {
     // Business invariant: the three exit codes must be distinct and ordered by severity.
     // Catches a mutation that collapses two codes to the same value (e.g. both 1),
     // which would erase the blocking/non-blocking distinction COVENANT-01 relies on.
@@ -93,13 +93,13 @@ describe('§5.1 왕복 직렬화 (round-trip serialization)', () => {
   });
 });
 
-describe('§5.2 fail-closed (보안 경계 P0 — 판정 불가 = 차단)', () => {
+describe('§5.2 fail-closed (security boundary P0 — cannot judge = block)', () => {
   // PRD §4.1 / §5.2: parsing failure, missing required fields, empty input are all
-  // "판정 불가" and MUST resolve to exit-2. The gate fails CLOSED — it returns 2,
+  // "cannot judge" and MUST resolve to exit-2. The gate fails CLOSED — it returns 2,
   // it does NOT throw (an unhandled throw could be caught upstream and treated as pass).
 
-  it('잘못된 JSON(파싱 불가)은 throw 하지 않고 fail-closed 로 exit-2 를 산출한다', () => {
-    // P0: a fail-OPEN here is the assessment §3-A 치명결함 (Bash-shaped bypass).
+  it('unparseable JSON yields fail-closed exit-2 without throwing', () => {
+    // P0: a fail-OPEN here is the assessment §3-A critical flaw (Bash-shaped bypass).
     // Mutation caught: try/catch removed (→ throw escapes), or catch path returns 0/1.
     let result: ReturnType<typeof parseInput> | undefined;
 
@@ -114,7 +114,7 @@ describe('§5.2 fail-closed (보안 경계 P0 — 판정 불가 = 차단)', () =
     }
   });
 
-  it('빈 문자열은 throw 하지 않고 fail-closed 로 exit-2 를 산출한다', () => {
+  it('an empty string yields fail-closed exit-2 without throwing', () => {
     // Boundary: empty stdin (no payload piped). JSON.parse('') throws — the gate must
     // swallow that and block. Catches a parser that special-cases '' into a pass.
     let result: ReturnType<typeof parseInput> | undefined;
@@ -129,7 +129,7 @@ describe('§5.2 fail-closed (보안 경계 P0 — 판정 불가 = 차단)', () =
     }
   });
 
-  it('필수 필드가 누락된 JSON(파싱은 되지만 스키마 위반)도 fail-closed 로 exit-2', () => {
+  it('JSON missing required fields (parses, but violates the schema) is fail-closed to exit-2', () => {
     // P0 boundary: valid JSON, invalid IR (missing required collections). A naive
     // JSON.parse-only parser would let this through as a malformed CovenantInput.
     // Catches a mutation that drops schema validation after JSON.parse succeeds.
@@ -143,7 +143,7 @@ describe('§5.2 fail-closed (보안 경계 P0 — 판정 불가 = 차단)', () =
     }
   });
 
-  it('JSON 이지만 객체가 아닌 입력(배열·null·원시값)도 fail-closed 로 exit-2', () => {
+  it('JSON that is not an object (array/null/primitive) is fail-closed to exit-2', () => {
     // Boundary across the "is it an object" check. `null`, `[]`, `42` all parse as
     // valid JSON but are not a CovenantInput. Catches a typeof check mutated to accept
     // any parsed value (a common fail-open hole).

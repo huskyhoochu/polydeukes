@@ -105,7 +105,7 @@ This catches the most common surviving mutant: operator boundary changes.
 - Import from `vitest`. Test files live in the package's `__tests__/` directory (outside `src/`),
   named `*.test.ts`.
 - tsconfig is `strict` + `verbatimModuleSyntax` — type-only imports MUST be `import type { … }`.
-- Test descriptions in Korean are fine (match existing tests).
+- Test descriptions (describe/it titles) and code comments MUST be in English.
 - Respect the ubiquitous language — `covenant`/`memory`/`ledger`, never `guard`/`kb`/`harness`.
 
 # Do Not Write — Low-Value Test Categories
