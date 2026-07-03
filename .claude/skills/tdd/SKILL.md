@@ -115,6 +115,9 @@ back to the phase that owns the failure (usually GREEN or REVIEW).
 > means the change must pass the project's own covenants and be measured in the ledger. A covenant
 > that blocks, or a missing measurement, is itself a regression signal.
 
+After VALIDATE passes, continue to the `/post-task` skill (TSDoc pass, docs-drift check, dev-log
+self-question) before creating a PR — the cycle is not closed until its block is emitted.
+
 ## Test runner
 
 Single runner, single language: **vitest** on Node ≥24, ESM, TypeScript 7 RC.
