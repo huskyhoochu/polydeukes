@@ -1,12 +1,25 @@
 /**
  * @polydeukes/core — the thin, domain- and agent-agnostic core.
  *
- * Pre-alpha. The covenant protocol (CORE-01) lands here first; the config
- * loader (CONFIG-01) follows. Pure types and functions only — no I/O.
+ * Pre-alpha. The covenant protocol (CORE-01) landed first, then the ROI telemetry
+ * collector (CORE-02); the config loader (CONFIG-01) follows. Pure types and functions,
+ * except telemetry's two confined I/O functions (appendRecord / readRecords).
  * See https://github.com/huskyhoochu/polydeukes
  */
 
 export const version = '0.0.1';
+
+export {
+  aggregateGain,
+  appendRecord,
+  formatRecordLine,
+  type GainSummary,
+  parseRecordLine,
+  readRecords,
+  runGain,
+  type TelemetryEvent,
+  type TelemetryRecord,
+} from './telemetry.js';
 
 /**
  * exit-code semantics of the covenant protocol (PRD §4.1).
