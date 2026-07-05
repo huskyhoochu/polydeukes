@@ -2,12 +2,22 @@
  * @polydeukes/core — the thin, domain- and agent-agnostic core.
  *
  * Pre-alpha. The covenant protocol (CORE-01) landed first, then the ROI telemetry
- * collector (CORE-02); the config loader (CONFIG-01) follows. Pure types and functions,
+ * collector (CORE-02) and the config loader (CONFIG-01). Pure types and functions,
  * except telemetry's two confined I/O functions (appendRecord / readRecords).
  * See https://github.com/huskyhoochu/polydeukes
  */
 
+/** Package version, mirrored from package.json until a build-time injection exists. */
 export const version = '0.0.1';
+
+export {
+  ConfigValidationError,
+  DEFAULT_TELEMETRY_LOG_PATH,
+  defineConfig,
+  type LanguageProfile,
+  type PolydeukesConfig,
+  type ResolvedConfig,
+} from './config.js';
 
 export {
   aggregateGain,
