@@ -3,10 +3,10 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is in the design stage (pre-alpha). No framework code exists yet** beyond a
-name-reserving stub in `packages/polydeukes`. The current work is the architecture blueprint and
-the reasoning behind it, not implementation. Treat the design docs as the source of truth, not the
-(near-empty) `src/`.
+**This repo is pre-alpha.** The first core units are landing in `packages/core` (covenant
+protocol, ROI telemetry, config loader); `packages/polydeukes` remains a name-reserving stub.
+The design docs are still the source of truth for everything not yet implemented — when a design
+doc and `packages/core` disagree, the code that shipped through a merged PRD wins.
 
 ## Vocabulary is binding
 
