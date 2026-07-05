@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-// CONFIG-01 RED phase. Import from the package entry point (src/index.ts) — the same
-// surface `@polydeukes/core` publishes. None of these symbols exist yet (only CORE-01's
-// covenant protocol + CORE-02's telemetry are exported), so this file is RED by
-// construction. The signatures asserted here become the GREEN-phase contract.
+// Import from the package entry point (src/index.ts) — the same surface
+// `@polydeukes/core` publishes.
 import {
   ConfigValidationError,
   defineConfig,
@@ -34,20 +32,16 @@ const validTwoLanguageConfig: PolydeukesConfig = {
   },
 };
 
-// Shared assertion for the invalid-path tests: `toThrow(ConfigValidationError)` alone
-// degrades to a generic "did it throw" check when the constructor itself is undefined
-// (e.g. before GREEN exports it), which would make these tests pass for the wrong
-// reason. This helper asserts the concrete instance instead, so it stays a true
-// negative until `ConfigValidationError` is both exported and actually thrown.
+// Shared assertion for the invalid-path tests: asserts the concrete error instance
+// (not just "did it throw") and returns it so callers can assert on the message.
 function expectConfigValidationError(invalidConfig: PolydeukesConfig): ConfigValidationError {
-  expect(() => defineConfig(invalidConfig)).toThrow();
   try {
     defineConfig(invalidConfig);
-    throw new Error('defineConfig should have thrown');
   } catch (error) {
     expect(error).toBeInstanceOf(ConfigValidationError);
     return error as ConfigValidationError;
   }
+  throw new Error('defineConfig should have thrown');
 }
 
 describe('§5.1 defineConfig valid path', () => {
@@ -171,6 +165,19 @@ describe('§5.2 defineConfig invalid path (throws ConfigValidationError)', () =>
     };
 
     expectConfigValidationError(invalidConfig);
+  });
+
+  it('throws when a language profile is not an object, naming the language key', () => {
+    // A null/primitive profile must surface as the promised ConfigValidationError with a
+    // field path — not escape as a raw TypeError from dereferencing the profile.
+    const invalidConfig = {
+      languages: { typescript: null },
+      // Deliberately invalid literal (profile is null) — route the cast through `unknown`
+      // because the shapes intentionally do not overlap.
+    } as unknown as PolydeukesConfig;
+
+    const error = expectConfigValidationError(invalidConfig);
+    expect(error.message).toContain('typescript');
   });
 
   it('throws when languages is missing', () => {

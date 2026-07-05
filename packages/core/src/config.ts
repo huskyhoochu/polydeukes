@@ -93,6 +93,9 @@ export function defineConfig(config: PolydeukesConfig): ResolvedConfig {
   }
 
   for (const [key, profile] of Object.entries(languages)) {
+    if (typeof profile !== 'object' || profile === null) {
+      throw new ConfigValidationError(`languages.${key} must be an object`);
+    }
     if (!isValidGlob(profile.productionGlob)) {
       throw new ConfigValidationError(
         `languages.${key}.productionGlob must be a non-empty string or non-empty array of non-empty strings`,

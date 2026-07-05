@@ -5,8 +5,9 @@ covenants, a verifiable ledger, local memory, and adversarial verification on on
 
 **This repo is pre-alpha.** The first core units are landing in `packages/core` (covenant
 protocol, ROI telemetry, config loader); `packages/polydeukes` remains a name-reserving stub.
-The design docs are still the source of truth for everything not yet implemented — when a design
-doc and `packages/core` disagree, the code that shipped through a merged PRD wins.
+The design docs are still the source of truth for everything not yet implemented. When a design
+doc and shipped code disagree, neither side wins by default — triage the discrepancy against the
+archived PRD (the merged contract): it may be a stale doc, or a code bug to fix.
 
 ## Vocabulary is binding
 
