@@ -3,8 +3,9 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is pre-alpha.** The first core units are landing in `packages/core` (covenant
-protocol, ROI telemetry, config loader); `packages/polydeukes` remains a name-reserving stub.
+**This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
+protocol, ROI telemetry, config loader) and `packages/covenant` (the run_covenant execution
+wrapper); `packages/polydeukes` remains a name-reserving stub.
 The design docs are still the source of truth for everything not yet implemented. When a design
 doc and shipped code disagree, neither side wins by default — triage the discrepancy against the
 archived PRD (the merged contract): it may be a stale doc, or a code bug to fix.
