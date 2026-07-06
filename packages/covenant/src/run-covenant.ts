@@ -8,10 +8,15 @@
  */
 
 import { spawn } from 'node:child_process';
-import { appendRecord, type TelemetryEvent } from '@polydeukes/core';
+import {
+  appendRecord,
+  EXIT_BREAK_BLOCKING,
+  EXIT_UPHOLD,
+  type TelemetryEvent,
+} from '@polydeukes/core';
 
 /** The wrapper's final verdict — `1` never escapes: a break becomes the blocking `2`. */
-type WrapperExitCode = 0 | 2;
+type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
 
 /**
  * `runCovenant` specification (PRD §4.1).
@@ -41,10 +46,10 @@ export function translateExitCode(bodyExitCode: number | null): {
   exitCode: WrapperExitCode;
   event: TelemetryEvent;
 } {
-  if (bodyExitCode === 0) {
-    return { exitCode: 0, event: 'passed' };
+  if (bodyExitCode === EXIT_UPHOLD) {
+    return { exitCode: EXIT_UPHOLD, event: 'passed' };
   }
-  return { exitCode: 2, event: 'blocked' };
+  return { exitCode: EXIT_BREAK_BLOCKING, event: 'blocked' };
 }
 
 /** Spawn the body, pipe the payload to its stdin, and resolve its exit code (or `null`). */

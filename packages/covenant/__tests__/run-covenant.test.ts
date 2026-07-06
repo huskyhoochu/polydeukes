@@ -19,11 +19,11 @@ function exitScript(code: number): string[] {
 }
 
 /**
- * A body that reads stdin to completion and writes it verbatim to the file path
- * given as argv[2] (i.e. args[1] after '-e'), then exits 0. Used to prove stdin
- * passthrough without the wrapper parsing anything.
+ * A body that reads stdin to completion and writes it verbatim to `outFile`
+ * (passed as the script's argv), then exits 0. Used to prove stdin passthrough
+ * without the wrapper parsing anything.
  */
-function echoToFileScript(): string[] {
+function echoToFileScript(outFile: string): string[] {
   const script = `
     const fs = require('node:fs');
     const chunks = [];
@@ -33,7 +33,14 @@ function echoToFileScript(): string[] {
       process.exit(0);
     });
   `;
-  return ['-e', script, 'PLACEHOLDER_OUTFILE'];
+  return ['-e', script, outFile];
+}
+
+/** Read the telemetry log and return its non-empty lines. */
+function readTelemetryLines(path: string): string[] {
+  return readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((l) => l.length > 0);
 }
 
 let dir: string;
@@ -128,13 +135,11 @@ describe('§5.2 stdin passthrough', () => {
     // piping it to the body's stdin. The payload is intentionally invalid JSON — the
     // wrapper must not choke on it, reject it, or "fix" it; it is opaque cargo.
     const outFile = join(dir, 'echoed-stdin.txt');
-    const args = echoToFileScript();
-    args[2] = outFile;
     const malformedPayload = '{"toolCalls": [}}} not valid json at all';
 
     const result = await runCovenant({
       command: process.execPath,
-      args,
+      args: echoToFileScript(outFile),
       stdinPayload: malformedPayload,
       label: 'test-covenant',
       telemetryPath,
@@ -158,9 +163,7 @@ describe('§5.3 per-call logging', () => {
       telemetryPath,
     });
 
-    const lines = readFileSync(telemetryPath, 'utf-8')
-      .split('\n')
-      .filter((l) => l.length > 0);
+    const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
     expect(record).not.toBeNull();
@@ -180,9 +183,7 @@ describe('§5.3 per-call logging', () => {
       telemetryPath,
     });
 
-    const lines = readFileSync(telemetryPath, 'utf-8')
-      .split('\n')
-      .filter((l) => l.length > 0);
+    const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     expect(parseRecordLine(lines[0])?.event).toBe('blocked');
   });
@@ -198,9 +199,7 @@ describe('§5.3 per-call logging', () => {
       telemetryPath,
     });
 
-    const lines = readFileSync(telemetryPath, 'utf-8')
-      .split('\n')
-      .filter((l) => l.length > 0);
+    const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     expect(parseRecordLine(lines[0])?.event).toBe('blocked');
   });
