@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseRecordLine } from '@polydeukes/core';
@@ -218,6 +218,57 @@ describe('§5.3 per-call logging', () => {
       stdinPayload: '{}',
       label: 'my-label',
       telemetryPath: missingDirTelemetryPath,
+    });
+
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+  });
+});
+
+describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
+  it('creates a missing nested parent directory and appends the record instead of dropping it', async () => {
+    // Core regression test: telemetry.ts's appendRecord is fail-open and does NOT create
+    // missing directories by design (core purity). The wrapper must ensure the parent
+    // directory exists before calling appendRecord, so a fresh checkout with no
+    // .polydeukes/ directory yet still gets its first telemetry line written instead of
+    // silently dropped. Mutation caught: removing/skipping the mkdir-p call, or calling
+    // it after appendRecord instead of before.
+    const nestedTelemetryPath = join(dir, 'nested', 'deep', 'roi.log');
+
+    const result = await runCovenant({
+      command: process.execPath,
+      args: exitScript(0),
+      stdinPayload: '{}',
+      label: 'my-label',
+      telemetryPath: nestedTelemetryPath,
+    });
+
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+    const lines = readTelemetryLines(nestedTelemetryPath);
+    expect(lines).toHaveLength(1);
+    const record = parseRecordLine(lines[0]);
+    expect(record).not.toBeNull();
+    expect(record?.event).toBe('passed');
+    expect(record?.label).toBe('my-label');
+  });
+
+  it('a directory that cannot be created (parent path is a file) still yields the correct verdict without throwing', async () => {
+    // P0 fail-open boundary: mkdir-p can itself fail (e.g. a path segment collides with an
+    // existing regular file, or permissions deny it). That failure must never propagate as
+    // a thrown error/rejection and must never alter the verdict computed from bodyExitCode.
+    // Mutation caught: an unguarded mkdirSync call whose ENOTDIR/EEXIST error is left to
+    // bubble up instead of being swallowed the same way appendRecord's own failures are.
+    const blockerFile = join(dir, 'not-a-directory');
+    writeFileSync(blockerFile, 'this is a file, not a directory');
+    const impossibleTelemetryPath = join(blockerFile, 'child', 'roi.log');
+
+    // Same rationale as the existing "unwritable telemetryPath" test above: a rejection
+    // would fail this await directly, no extra try/catch needed to detect a throw.
+    const result = await runCovenant({
+      command: process.execPath,
+      args: exitScript(0),
+      stdinPayload: '{}',
+      label: 'my-label',
+      telemetryPath: impossibleTelemetryPath,
     });
 
     expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
