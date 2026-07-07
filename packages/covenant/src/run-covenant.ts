@@ -8,6 +8,8 @@
  */
 
 import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import {
   appendRecord,
   EXIT_BREAK_BLOCKING,
@@ -76,8 +78,9 @@ function spawnBody(command: string, args: string[], stdinPayload: string): Promi
  *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the raw `bodyExitCode`
  * for observation (`null` when the body left no code). Logging is fail-open (PRD §4.3):
- * a telemetry failure — {@link appendRecord}'s `{ ok: false }` or any other problem —
- * never alters the verdict and never throws. The gate closes; the measurement stays open.
+ * a telemetry failure — the parent-directory `mkdirSync`, {@link appendRecord}'s
+ * `{ ok: false }`, or any other problem — never alters the verdict and never throws. The
+ * gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,
@@ -86,6 +89,7 @@ export async function runCovenant(
   const { exitCode, event } = translateExitCode(bodyExitCode);
 
   try {
+    mkdirSync(dirname(spec.telemetryPath), { recursive: true });
     appendRecord(spec.telemetryPath, {
       timestamp: new Date().toISOString(),
       event,
