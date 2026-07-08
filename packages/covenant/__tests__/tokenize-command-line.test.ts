@@ -132,6 +132,42 @@ describe('§5.1 redirect operator separation', () => {
       { operator: '&>', target: { text: 'all.log', opaque: false } },
     ]);
   });
+
+  it('recognizes the fd append form "2>>" as one operator, preserving append semantics', () => {
+    // Mutation caught: greedy 2-char matching that splits "2>>" into "2>" with an empty
+    // target plus a phantom ">" redirect, silently turning an append into a truncate.
+    const result = tokenizeCommandLine('cmd 2>> err.log');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands[0].redirects).toEqual([
+      { operator: '2>>', target: { text: 'err.log', opaque: false } },
+    ]);
+  });
+
+  it('recognizes the combined append form "&>>"', () => {
+    const result = tokenizeCommandLine('cmd &>> all.log');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands[0].redirects).toEqual([
+      { operator: '&>>', target: { text: 'all.log', opaque: false } },
+    ]);
+  });
+
+  it('recognizes fd duplication "1>&2" as one command, not a phantom background split', () => {
+    // Mutation caught: the "&" inside ">&" consumed as a control operator, splitting a
+    // bogus second command ["2"] off a plain stderr redirect.
+    const result = tokenizeCommandLine('cmd 1>&2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands).toHaveLength(1);
+    expect(result.commands[0].words).toEqual([{ text: 'cmd', opaque: false }]);
+    expect(result.commands[0].redirects).toEqual([
+      { operator: '1>&', target: { text: '2', opaque: false } },
+    ]);
+  });
 });
 
 describe('§5.1 opacity detection', () => {
@@ -207,6 +243,13 @@ describe('§5.1 tokenization failure (fail-closed)', () => {
   it('returns { ok: false } for an unclosed double quote instead of throwing', () => {
     expect(() => tokenizeCommandLine('echo "oops')).not.toThrow();
     const result = tokenizeCommandLine('echo "oops');
+    expect(result.ok).toBe(false);
+  });
+
+  it('returns { ok: false } for a redirect with no target (bash would syntax-error)', () => {
+    // Mutation caught: emitting a confident, non-opaque empty-string target — a clean-looking
+    // result for a line whose parse actually failed to find a target.
+    const result = tokenizeCommandLine('echo hi >');
     expect(result.ok).toBe(false);
   });
 });

@@ -169,14 +169,22 @@ function matchParen(line: string, open: number): number {
   return line.length;
 }
 
-/** Recognize a redirect operator at `i`; returns the operator text and its length, or null. */
+/**
+ * Recognize a redirect operator at `i`; returns the operator text and its length, or null.
+ * Longest forms first within each family, and a single-digit fd prefix is folded into the
+ * operator (`2>`, `2>>`, `2>&`) — it is only an fd when it starts a token, matching bash.
+ */
 function scanRedirect(line: string, i: number): { operator: string; length: number } | null {
-  const ch = line[i];
-  const two = line.slice(i, i + 2);
+  const three = line.slice(i, i + 3);
+  const two = three.slice(0, 2);
+  const ch = three[0];
 
-  if (two === '>>') return { operator: '>>', length: 2 };
-  if (two === '2>') return { operator: '2>', length: 2 };
-  if (two === '&>') return { operator: '&>', length: 2 };
+  if (ch !== undefined && ch >= '0' && ch <= '9' && three[1] === '>') {
+    if (three[2] === '>' || three[2] === '&') return { operator: three, length: 3 };
+    return { operator: two, length: 2 };
+  }
+  if (three === '&>>') return { operator: '&>>', length: 3 };
+  if (two === '>>' || two === '&>' || two === '>&') return { operator: two, length: 2 };
   if (ch === '>') return { operator: '>', length: 1 };
   if (ch === '<') return { operator: '<', length: 1 };
   return null;
@@ -216,6 +224,9 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       while (line[j] === ' ' || line[j] === '\t') j += 1;
       const scanned = scanWord(line, j);
       if (scanned === null) return { ok: false, reason: 'unclosed quote' };
+      // A redirect with no target is a bash syntax error — fail closed, never a confident
+      // empty-string target.
+      if (scanned.word.text === '') return { ok: false, reason: 'missing redirect target' };
       current.redirects.push({ operator: redirect.operator, target: scanned.word });
       i = scanned.next;
       continue;
@@ -266,9 +277,9 @@ export function extractMutations(line: string, rules: MutationRule[]): MutationA
       continue;
     }
 
-    // An opaque word (command substitution, parameter expansion, glob) has an unknowable
-    // value — honestly indeterminate rather than a confident pass.
-    if (command.words.some((w) => w.opaque)) {
+    // An opaque word or redirect target (command substitution, parameter expansion, glob)
+    // has an unknowable value — honestly indeterminate rather than a confident pass.
+    if (command.words.some((w) => w.opaque) || command.redirects.some((r) => r.target.opaque)) {
       indeterminate.push({ reason: 'opaque token' });
     }
 

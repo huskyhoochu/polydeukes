@@ -91,6 +91,16 @@ describe('§5.2 nested shell execution is indeterminate', () => {
 });
 
 describe('§5.2 opaque token in target position', () => {
+  it('an opaque redirect target is indeterminate even with zero rules', () => {
+    // Mutation caught: an opacity scan that inspects command.words only — an append-write
+    // to an unknowable path (`x >> $var`) would yield mutations:[] AND indeterminate:[],
+    // the forbidden confident pass (PRD §7 "모호하면 판정불가").
+    const result = extractMutations('x >> $var', []);
+
+    expect(result.mutations).toEqual([]);
+    expect(result.indeterminate.length).toBeGreaterThan(0);
+  });
+
   it('an opaque second argument to the dummy rule is indeterminate, not a mutation', () => {
     // Mutation caught: a rule seam that ignores opacity and reports the raw opaque
     // text as a concrete path, or one that silently drops the case (empty arrays).
