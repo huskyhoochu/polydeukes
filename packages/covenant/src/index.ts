@@ -1,9 +1,23 @@
 /**
- * @polydeukes/covenant — the run_covenant execution wrapper.
+ * @polydeukes/covenant — the run_covenant execution wrapper and the Bash analysis core.
  *
  * Pre-alpha. COVENANT-01 lands the wrapper: it spawns a covenant body,
  * pipes stdin-JSON, translates the body's exit code (1 → blocking 2),
  * and appends one ROI telemetry record per call via @polydeukes/core.
+ * COVENANT-04a lands the pure Bash command-line tokenizer + mutation-target
+ * extraction core that the path-shaped meta-covenant (04b–04d) builds on.
  */
 
+export {
+  extractMutations,
+  type Indeterminate,
+  type MutationAnalysis,
+  type MutationRule,
+  type MutationTarget,
+  type RedirectToken,
+  type SimpleCommand,
+  type TokenizeResult,
+  tokenizeCommandLine,
+  type WordToken,
+} from './bash-line.js';
 export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';
