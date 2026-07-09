@@ -5,7 +5,7 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 위에 올린 dev-tool.
 
-**상태: pre-alpha.** 첫 코어 유닛들이 `@polydeukes/core`에 구현되었습니다(약속(covenant) 프로토콜, ROI 텔레메트리, config 로더). 나머지는 아직 청사진 단계입니다. 이 저장소는 그 초기 코어와 아키텍처 청사진, 설계 근거를 담고 있습니다. 아래는 무엇을 만들려는지에 대한 안내입니다.
+**상태: pre-alpha.** 첫 유닛들이 `@polydeukes/core`(약속(covenant) 프로토콜, ROI 텔레메트리, config 로더), `@polydeukes/covenant`(run_covenant 래퍼, Bash 커맨드라인 분석), `@polydeukes/adapter-claude-code`(PreToolUse 페이로드 → 약속(covenant) 입력 IR 변환)에 구현되었습니다. 나머지는 아직 청사진 단계입니다. 이 저장소는 그 초기 코어와 아키텍처 청사진, 설계 근거를 담고 있습니다. 아래는 무엇을 만들려는지에 대한 안내입니다.
 
 ---
 

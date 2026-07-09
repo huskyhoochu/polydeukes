@@ -4,8 +4,9 @@ A development *discipline* framework for building alongside an AI coding partner
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
 **This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
-protocol, ROI telemetry, config loader) and `packages/covenant` (the run_covenant execution
-wrapper and the Bash command-line analysis core); `packages/polydeukes` remains a
+protocol, ROI telemetry, config loader), `packages/covenant` (the run_covenant execution
+wrapper and the Bash command-line analysis core), and `packages/adapter-claude-code`
+(PreToolUse payload → covenant input IR up-translation); `packages/polydeukes` remains a
 name-reserving stub.
 The design docs are still the source of truth for everything not yet implemented. When a design
 doc and shipped code disagree, neither side wins by default — triage the discrepancy against the
