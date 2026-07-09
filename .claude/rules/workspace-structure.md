@@ -20,7 +20,7 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
 - **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,
-  `verify`) depends only on `core` — never on each other. The umbrella `polydeukes` may
+  `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
   re-export them, but core must never depend on any sibling. Enforce this when adding packages.
 
 ## Shared dependency versions go through the pnpm catalog
