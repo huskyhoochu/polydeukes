@@ -1,0 +1,139 @@
+/**
+ * Path-routing dispatcher — the edit-time first-line layer (COVENANT-02).
+ *
+ * This dispatcher is layer 2 of the three-layer enforcement model: it routes hook
+ * input to the covenant bodies whose protected paths are mentioned. Permission-deny
+ * (layer 1) and the push gate (layer 3, the second-line regression defence) live
+ * outside this code and are neither assumed nor replicated here.
+ *
+ * Matching is a pure path-mention core (zero I/O); execution reuses {@link runCovenant}
+ * (the sole spawner) and {@link appendRecordFailOpen} (the sole log seam). The dispatcher
+ * parses the payload only to decide routing — it never mutates or re-serializes it, so
+ * the body receives the original raw stdin verbatim (opaque cargo).
+ */
+
+import { type CovenantInput, EXIT_BREAK_BLOCKING, EXIT_UPHOLD, parseInput } from '@polydeukes/core';
+import { runCovenant } from './run-covenant.js';
+import { appendRecordFailOpen } from './telemetry-fail-open.js';
+
+/**
+ * `CovenantRegistration` — one registered covenant (PRD §4.1).
+ *
+ * `protectedPaths` are literal path strings (the output shape of normalization, not
+ * globs); an empty array never matches, and empty-string entries are ignored (an
+ * unguarded `''` would substring-match every input). `body` is the CORE-01 protocol
+ * executable the dispatcher spawns via {@link runCovenant} when a protected path is
+ * mentioned.
+ */
+export type CovenantRegistration = {
+  label: string;
+  protectedPaths: string[];
+  body: { command: string; args?: string[] };
+};
+
+/**
+ * Recursively test whether any string value inside `value` contains `path` as a
+ * substring. Argument names are never inspected — only the string *values* are scanned,
+ * keeping the dispatcher agent-neutral.
+ */
+function mentionsPath(value: unknown, path: string): boolean {
+  if (typeof value === 'string') {
+    return value.includes(path);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => mentionsPath(item, path));
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value).some((item) => mentionsPath(item, path));
+  }
+  return false;
+}
+
+/**
+ * Match registrations against a {@link CovenantInput} by path mention (PRD §4.2, pure).
+ *
+ * A registration matches when any of its `protectedPaths` appears as a substring of any
+ * string value reachable at any depth inside `input.toolCalls[].args`; `subagentSpawns`
+ * and `userMessages` never participate. `mentionedPath` is the first protected path (in
+ * array order) that mentions. Result preserves registration order, at most one entry per
+ * registration.
+ */
+export function matchRegistrations(
+  input: CovenantInput,
+  registrations: CovenantRegistration[],
+): { registration: CovenantRegistration; mentionedPath: string }[] {
+  const argValues = input.toolCalls.map((call) => call.args);
+  const matches: { registration: CovenantRegistration; mentionedPath: string }[] = [];
+
+  for (const registration of registrations) {
+    const mentionedPath = registration.protectedPaths.find(
+      (path) => path !== '' && argValues.some((args) => mentionsPath(args, path)),
+    );
+    if (mentionedPath !== undefined) {
+      matches.push({ registration, mentionedPath });
+    }
+  }
+
+  return matches;
+}
+
+/**
+ * Dispatch covenants for a stdin payload (PRD §4.3).
+ *
+ * fail-closed: an unjudgeable payload — unparseable JSON (core `parseInput`) or a
+ * parseable one whose structure defeats the matching traversal (a null toolCalls
+ * element, adversarially deep nesting) — yields exitCode 2, spawns nothing, and appends
+ * exactly one `blocked` record for the dispatcher itself. "Cannot judge" means block;
+ * it never means throw, because an uncaught rejection exits the hook with a
+ * non-blocking code and becomes a bypass vector. On matches, every matched
+ * registration runs sequentially via {@link runCovenant} (run-all, no short-circuit)
+ * with the original raw payload forwarded verbatim; the verdict is `2` if any body
+ * blocks, else `0`. No matches passes vacuously with zero spawns and zero telemetry.
+ */
+export async function dispatchCovenants(spec: {
+  stdinPayload: string;
+  registrations: CovenantRegistration[];
+  telemetryPath: string;
+  dispatcherLabel?: string;
+}): Promise<{ exitCode: 0 | 2; results: { label: string; exitCode: 0 | 2 }[] }> {
+  const blockedByDispatcher = (): { exitCode: 2; results: [] } => {
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'blocked',
+      label: spec.dispatcherLabel ?? 'dispatcher',
+      subject: '-',
+    });
+    return { exitCode: EXIT_BREAK_BLOCKING, results: [] };
+  };
+
+  const parsed = parseInput(spec.stdinPayload);
+  if (!parsed.ok) {
+    return blockedByDispatcher();
+  }
+
+  let matches: ReturnType<typeof matchRegistrations>;
+  try {
+    matches = matchRegistrations(parsed.value, spec.registrations);
+  } catch {
+    // Structurally unjudgeable input (parseInput's element shapes are intentionally
+    // unvalidated — a CORE-01 boundary) — fail-closed, same as an unparseable payload.
+    return blockedByDispatcher();
+  }
+
+  const results: { label: string; exitCode: 0 | 2 }[] = [];
+  for (const { registration, mentionedPath } of matches) {
+    const { exitCode } = await runCovenant({
+      command: registration.body.command,
+      args: registration.body.args,
+      stdinPayload: spec.stdinPayload,
+      label: registration.label,
+      subject: mentionedPath,
+      telemetryPath: spec.telemetryPath,
+    });
+    results.push({ label: registration.label, exitCode });
+  }
+
+  const exitCode = results.some((result) => result.exitCode === EXIT_BREAK_BLOCKING)
+    ? EXIT_BREAK_BLOCKING
+    : EXIT_UPHOLD;
+  return { exitCode, results };
+}

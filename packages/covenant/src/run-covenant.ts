@@ -3,19 +3,14 @@
  *
  * Spawns a covenant body, pipes the opaque stdin payload verbatim, translates the
  * body's exit code by policy (1 → blocking 2), and appends exactly one ROI telemetry
- * record per call via {@link appendRecord} — the sole collector (no local logger).
- * Process I/O is confined to this file; {@link translateExitCode} is pure.
+ * record per call via {@link appendRecordFailOpen} (which wraps the core's sole
+ * collector — no local logger). Process spawning is confined to this file;
+ * {@link translateExitCode} is pure.
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import {
-  appendRecord,
-  EXIT_BREAK_BLOCKING,
-  EXIT_UPHOLD,
-  type TelemetryEvent,
-} from '@polydeukes/core';
+import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD, type TelemetryEvent } from '@polydeukes/core';
+import { appendRecordFailOpen } from './telemetry-fail-open.js';
 
 /** The wrapper's final verdict — `1` never escapes: a break becomes the blocking `2`. */
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
@@ -77,10 +72,9 @@ function spawnBody(command: string, args: string[], stdinPayload: string): Promi
  * Run a covenant body through the wrapper (PRD §4).
  *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the raw `bodyExitCode`
- * for observation (`null` when the body left no code). Logging is fail-open (PRD §4.3):
- * a telemetry failure — the parent-directory `mkdirSync`, {@link appendRecord}'s
- * `{ ok: false }`, or any other problem — never alters the verdict and never throws. The
- * gate closes; the measurement stays open.
+ * for observation (`null` when the body left no code). Logging is fail-open (PRD §4.3)
+ * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and
+ * never throws. The gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,
@@ -88,17 +82,11 @@ export async function runCovenant(
   const bodyExitCode = await spawnBody(spec.command, spec.args ?? [], spec.stdinPayload);
   const { exitCode, event } = translateExitCode(bodyExitCode);
 
-  try {
-    mkdirSync(dirname(spec.telemetryPath), { recursive: true });
-    appendRecord(spec.telemetryPath, {
-      timestamp: new Date().toISOString(),
-      event,
-      label: spec.label,
-      subject: spec.subject ?? '-',
-    });
-  } catch {
-    // fail-open: a logging problem must not alter the verdict or propagate.
-  }
+  appendRecordFailOpen(spec.telemetryPath, {
+    event,
+    label: spec.label,
+    subject: spec.subject ?? '-',
+  });
 
   return { exitCode, bodyExitCode };
 }
