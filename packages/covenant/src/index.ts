@@ -6,6 +6,8 @@
  * and appends one ROI telemetry record per call via @polydeukes/core.
  * COVENANT-04a lands the pure Bash command-line tokenizer + mutation-target
  * extraction core that the path-shaped meta-covenant (04b–04d) builds on.
+ * COVENANT-02 lands the path-routing dispatcher: the edit-time first-line layer
+ * that routes protected-path mentions to their registered covenant bodies.
  */
 
 export {
@@ -20,4 +22,5 @@ export {
   tokenizeCommandLine,
   type WordToken,
 } from './bash-line.js';
+export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
 export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';
