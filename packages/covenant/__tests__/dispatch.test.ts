@@ -101,6 +101,18 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
     expect(matches).toEqual([]);
   });
 
+  it('an empty-string protectedPaths entry never matches any input', () => {
+    // Mutation caught: `value.includes('')` is vacuously true for every string, so an
+    // unguarded empty entry would turn the registration into a match-everything rule
+    // (covenant spawned on every tool call, subject logged as '').
+    const input = inputWithArgs({ target: 'sub/unrelated/other.txt' });
+    const reg = registration('sample-covenant', ['']);
+
+    const matches = matchRegistrations(input, [reg]);
+
+    expect(matches).toEqual([]);
+  });
+
   it('does not match when the protected path string appears only in subagentSpawns or userMessages', () => {
     // PRD §4.2 non-participation rule. Mutation caught: a traversal that also walks
     // subagentSpawns[].kind or userMessages[].text into the scan, producing a false
@@ -166,12 +178,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     // Mutation caught: the shell re-serializing the parsed input before forwarding it
     // (opaque-cargo violation), or the wrapper verdict not being surfaced as-is.
     const outFile = join(dir, 'echoed-stdin.txt');
-    const input: CovenantInput = {
-      toolCalls: [{ name: 'some-tool', args: { target: 'sub/protected/file.txt' } }],
-      subagentSpawns: [],
-      userMessages: [],
-    };
-    const rawPayload = JSON.stringify(input);
+    const rawPayload = JSON.stringify(inputWithArgs({ target: 'sub/protected/file.txt' }));
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
@@ -192,11 +199,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     // Mutation caught: the dispatcher spawning every registration unconditionally
     // (ignoring matchRegistrations), or writing a telemetry record even absent a match.
     const outFile = join(dir, 'should-not-exist.txt');
-    const input: CovenantInput = {
-      toolCalls: [{ name: 'some-tool', args: { target: 'sub/unrelated/other.txt' } }],
-      subagentSpawns: [],
-      userMessages: [],
-    };
+    const input = inputWithArgs({ target: 'sub/unrelated/other.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
@@ -247,11 +250,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     // spawn and its telemetry record, or subject not threaded from mentionedPath.
     const outFileA = join(dir, 'body-a-ran.txt');
     const outFileB = join(dir, 'body-b-ran.txt');
-    const input: CovenantInput = {
-      toolCalls: [{ name: 'some-tool', args: { target: 'sub/protected/file.txt' } }],
-      subagentSpawns: [],
-      userMessages: [],
-    };
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const regA: CovenantRegistration = {
       label: 'covenant-a',
       protectedPaths: ['sub/protected/file.txt'],
@@ -279,14 +278,61 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     expect(records.every((r) => r?.subject === 'sub/protected/file.txt')).toBe(true);
   });
 
+  it('a parseable payload with a null toolCalls element yields exitCode 2, zero spawns, and one blocked record', async () => {
+    // fail-closed boundary: parseInput only validates that the three collections are
+    // arrays (an intended CORE-01 boundary), so a null element reaches the dispatcher's
+    // traversal. An uncaught TypeError would exit the hook with a non-blocking code —
+    // a bypass vector. Unjudgeable structure must block, not throw.
+    const outFile = join(dir, 'should-not-exist.txt');
+    const reg: CovenantRegistration = {
+      label: 'sample-covenant',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: echoToFileScript(outFile) },
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: '{"toolCalls":[null],"subagentSpawns":[],"userMessages":[]}',
+      registrations: [reg],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(existsSync(outFile)).toBe(false);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(1);
+    const record = parseRecordLine(lines[0]);
+    expect(record?.event).toBe('blocked');
+    expect(record?.label).toBe('dispatcher');
+  });
+
+  it('a pathologically deep args nesting yields exitCode 2 with one blocked record instead of an unhandled stack overflow', async () => {
+    // fail-closed boundary: recursion over an adversarially deep args tree can throw
+    // RangeError (stack overflow). Whether JSON.parse or the traversal gives out first,
+    // the dispatcher must resolve to a blocking 2 with its own record — never reject.
+    const depth = 200_000;
+    const payload = `{"toolCalls":[{"name":"some-tool","args":{"a":${'['.repeat(depth)}"x"${']'.repeat(depth)}}}],"subagentSpawns":[],"userMessages":[]}`;
+    const reg: CovenantRegistration = {
+      label: 'sample-covenant',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: ['-e', 'process.exit(0)'] },
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: payload,
+      registrations: [reg],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(2);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(1);
+    expect(parseRecordLine(lines[0])?.event).toBe('blocked');
+  });
+
   it('an empty registrations array yields exitCode 0 for any payload', async () => {
     // Mutation caught: an empty-array edge case that throws, hangs, or defaults to
     // exitCode 2 instead of the vacuous-pass 0.
-    const input: CovenantInput = {
-      toolCalls: [{ name: 'some-tool', args: { target: 'sub/protected/file.txt' } }],
-      subagentSpawns: [],
-      userMessages: [],
-    };
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
