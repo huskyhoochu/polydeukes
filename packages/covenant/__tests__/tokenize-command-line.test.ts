@@ -155,6 +155,30 @@ describe('§5.1 redirect operator separation', () => {
     ]);
   });
 
+  it('folds a multi-digit fd prefix into the redirect ("12> f" leaves no "12" word)', () => {
+    // Mutation caught: a single-digit-only fd scan leaves "12" behind as a command
+    // word — bash sends fd 12 to f, and the command receives no "12" operand.
+    const result = tokenizeCommandLine('tee 12> f');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands[0].words).toEqual([{ text: 'tee', opaque: false }]);
+    expect(result.commands[0].redirects).toEqual([
+      { operator: '12>', target: { text: 'f', opaque: false } },
+    ]);
+  });
+
+  it('marks a process-substitution redirect target ">(…)" opaque', () => {
+    // Mutation caught: the real write path lives inside the substitution; a confident
+    // mangled target like "(tee" would let the inner write escape without a signal.
+    const result = tokenizeCommandLine('cmd >(tee f)');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands[0].redirects[0].operator).toBe('>');
+    expect(result.commands[0].redirects[0].target.opaque).toBe(true);
+  });
+
   it('recognizes fd duplication "1>&2" as one command, not a phantom background split', () => {
     // Mutation caught: the "&" inside ">&" consumed as a control operator, splitting a
     // bogus second command ["2"] off a plain stderr redirect.

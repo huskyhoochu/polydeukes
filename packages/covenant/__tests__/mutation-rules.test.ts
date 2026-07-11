@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { extractMutations } from '../src/bash-line.js';
-// COVENANT-04b §4. The module does not exist yet (RED phase) — this import
-// must fail to resolve until mutation-rules.ts is implemented.
 import { redirectWriteRule, teeRule } from '../src/mutation-rules.js';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +71,23 @@ describe('§5.1 redirect-write rule', () => {
     const result = extractMutations('cmd >& file', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'file', rule: 'redirect-write' }]);
+  });
+
+  it('does not report a move-fd target (2>&1-)', () => {
+    // Mutation caught: bash's move-fd form targets "1-" (an fd reference), not a
+    // path — reporting it would carry a phantom mutation on a pure fd manipulation.
+    const result = extractMutations('cmd 2>&1-', [redirectWriteRule]);
+
+    expect(result.mutations).toEqual([]);
+  });
+
+  it('reports no mutation for a process-substitution target but keeps the core indeterminate', () => {
+    // Fail-closed: `>(…)` hides the real write path inside the substitution — the
+    // target is opaque, so no confident (mangled) path and the indeterminate survives.
+    const result = extractMutations('cmd >(tee f)', [redirectWriteRule, teeRule]);
+
+    expect(result.mutations).toEqual([]);
+    expect(result.indeterminate.length).toBeGreaterThanOrEqual(1);
   });
 
   it('does not report a >&- fd-close target', () => {
@@ -149,6 +164,22 @@ describe('§5.2 tee rule', () => {
     const result = extractMutations('tee -- -weird', [teeRule]);
 
     expect(result.mutations).toEqual([{ path: '-weird', rule: 'tee' }]);
+  });
+
+  it('reports a lone - operand as a path (GNU tee writes a literal "-" file)', () => {
+    // Mutation caught: skipping "-" as a flag — GNU tee treats a lone "-" as a file
+    // operand and creates/truncates a file named "-".
+    const result = extractMutations('tee -', [teeRule]);
+
+    expect(result.mutations).toEqual([{ path: '-', rule: 'tee' }]);
+  });
+
+  it('does not report a multi-digit fd prefix as a tee operand (tee 12> f)', () => {
+    // Mutation caught: bash folds "12>" into an fd redirect, so tee receives no "12"
+    // operand — only the redirect target f is a write.
+    const result = extractMutations('tee 12> f', [redirectWriteRule, teeRule]);
+
+    expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
   });
 
   it('does not fire on a wrapper command whose basename is not tee (sudo tee f)', () => {

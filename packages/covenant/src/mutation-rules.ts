@@ -10,9 +10,15 @@
 
 import type { MutationRule, MutationTarget } from './bash-line.js';
 
-/** True when a `>&`-family target is an fd reference (all digits, or `-` = close). */
+const REDIRECT_WRITE_RULE_NAME = 'redirect-write';
+const TEE_RULE_NAME = 'tee';
+
+/**
+ * True when a `>&`-family target is an fd reference: all digits, `-` (close), or the
+ * digits+`-` move-fd form (`2>&1-` moves fd 1, touching no file).
+ */
 function isFdReference(text: string): boolean {
-  return text === '-' || /^[0-9]+$/.test(text);
+  return text === '-' || /^[0-9]+-?$/.test(text);
 }
 
 /**
@@ -21,14 +27,14 @@ function isFdReference(text: string): boolean {
  * `>& file` whose target is not an fd reference is still a write.
  */
 export const redirectWriteRule: MutationRule = {
-  name: 'redirect-write',
+  name: REDIRECT_WRITE_RULE_NAME,
   detect(command): MutationTarget[] {
     const targets: MutationTarget[] = [];
     for (const redirect of command.redirects) {
       if (!redirect.operator.includes('>')) continue;
       if (redirect.operator.endsWith('>&') && isFdReference(redirect.target.text)) continue;
       if (redirect.target.opaque) continue;
-      targets.push({ path: redirect.target.text, rule: 'redirect-write' });
+      targets.push({ path: redirect.target.text, rule: REDIRECT_WRITE_RULE_NAME });
     }
     return targets;
   },
@@ -41,7 +47,7 @@ export const redirectWriteRule: MutationRule = {
  * the 04d path-mention policy covers them.
  */
 export const teeRule: MutationRule = {
-  name: 'tee',
+  name: TEE_RULE_NAME,
   detect(command): MutationTarget[] {
     const first = command.words[0];
     if (first === undefined || first.opaque) return [];
@@ -56,10 +62,11 @@ export const teeRule: MutationRule = {
           optionsEnded = true;
           continue;
         }
-        if (word.text.startsWith('-')) continue;
+        // A lone `-` is a file operand, not a flag — GNU tee writes a literal `-` file.
+        if (word.text.startsWith('-') && word.text !== '-') continue;
       }
       if (word.opaque) continue;
-      targets.push({ path: word.text, rule: 'tee' });
+      targets.push({ path: word.text, rule: TEE_RULE_NAME });
     }
     return targets;
   },

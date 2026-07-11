@@ -179,9 +179,14 @@ function scanRedirect(line: string, i: number): { operator: string; length: numb
   const two = three.slice(0, 2);
   const ch = three[0];
 
-  if (ch !== undefined && ch >= '0' && ch <= '9' && three[1] === '>') {
-    if (three[2] === '>' || three[2] === '&') return { operator: three, length: 3 };
-    return { operator: two, length: 2 };
+  // Fd prefix: bash folds ANY all-digit run immediately before `>` into the redirect
+  // (`12> f` sends fd 12 to f; tee receives no "12" operand), so the scan must too.
+  let digitEnd = i;
+  while (digitEnd < line.length && line[digitEnd] >= '0' && line[digitEnd] <= '9') digitEnd += 1;
+  if (digitEnd > i && line[digitEnd] === '>') {
+    const tail = line[digitEnd + 1];
+    const end = tail === '>' || tail === '&' ? digitEnd + 2 : digitEnd + 1;
+    return { operator: line.slice(i, end), length: end - i };
   }
   if (three === '&>>') return { operator: '&>>', length: 3 };
   if (two === '>>' || two === '&>' || two === '>&') return { operator: two, length: 2 };
@@ -227,7 +232,12 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       // A redirect with no target is a bash syntax error — fail closed, never a confident
       // empty-string target.
       if (scanned.word.text === '') return { ok: false, reason: 'missing redirect target' };
-      current.redirects.push({ operator: redirect.operator, target: scanned.word });
+      // Process substitution (`>(…)`/`<(…)`): the real path lives inside the substitution
+      // and is not statically knowable — an opaque target, never a confident path.
+      const target = scanned.word.text.startsWith('(')
+        ? { ...scanned.word, opaque: true }
+        : scanned.word;
+      current.redirects.push({ operator: redirect.operator, target });
       i = scanned.next;
       continue;
     }
