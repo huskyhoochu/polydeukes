@@ -405,7 +405,7 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
   });
 
   it('an escapeHatch predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
-    // P0 fail-open guard (PRD §4.3/§7: "hatch throw -> false, never bypass"). Mutation
+    // P0 fail-open invariant (PRD §4.3/§7: "hatch throw -> false, never bypass"). Mutation
     // caught: a try/catch around the predicate that resolves to true on error instead of
     // false, or an unhandled throw that escapes as a rejected dispatchCovenants promise
     // (asserted here by awaiting directly, per the async-not-toThrow discipline).

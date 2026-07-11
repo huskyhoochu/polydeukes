@@ -279,6 +279,40 @@ describe('self-mod-body CLI (PRD §5.2)', () => {
     expect(result.status).toBe(2);
   });
 
+  it('a flag token in a value position yields exit 2 (config fail-closed)', () => {
+    // Review finding (COVENANT-03): a dropped value shifts the pair grid so the next
+    // flag token is silently consumed as a value ('--mutating-tool' stored as a
+    // protected path), passing the non-empty config gate while judging garbage —
+    // a silent universal-uphold. Mutation caught: parseArgv accepting a '--'-prefixed
+    // token as a flag value instead of failing closed.
+    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
+
+    const result = spawnSync(
+      process.execPath,
+      [bodyPath, '--protected-path', '--mutating-tool', '--mutating-tool', 'Edit'],
+      { input: JSON.stringify(input), encoding: 'utf-8' },
+    );
+
+    expect(result.status).toBe(2);
+  });
+
+  it('a structurally malformed toolCalls element yields exit 2, never a crash exit code (fail-closed)', () => {
+    // Review finding (COVENANT-03): `toolCalls: [null]` passes core parseInput (element
+    // shapes are an intended CORE-01 boundary) and would crash the judge with a
+    // TypeError — Node exits 1, which the protocol reads as a *non-blocking* break.
+    // Mutation caught: the CLI shell not translating a judge throw into the blocking 2.
+    const result = spawnSync(
+      process.execPath,
+      [bodyPath, '--protected-path', PROTECTED, '--mutating-tool', 'Edit'],
+      {
+        input: '{"toolCalls":[null],"subagentSpawns":[],"userMessages":[]}',
+        encoding: 'utf-8',
+      },
+    );
+
+    expect(result.status).toBe(2);
+  });
+
   it('an unknown flag yields exit 2 (config fail-closed)', () => {
     // Mutation caught: unrecognized argv silently ignored instead of failing closed —
     // a typo'd flag in assembly must not silently degrade into a differently-configured
