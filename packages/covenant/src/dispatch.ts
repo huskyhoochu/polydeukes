@@ -13,6 +13,7 @@
  */
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING, EXIT_UPHOLD, parseInput } from '@polydeukes/core';
+import { mentionsPath } from './mention.js';
 import { runCovenant } from './run-covenant.js';
 import { appendRecordFailOpen } from './telemetry-fail-open.js';
 
@@ -23,31 +24,15 @@ import { appendRecordFailOpen } from './telemetry-fail-open.js';
  * globs); an empty array never matches, and empty-string entries are ignored (an
  * unguarded `''` would substring-match every input). `body` is the CORE-01 protocol
  * executable the dispatcher spawns via {@link runCovenant} when a protected path is
- * mentioned.
+ * mentioned. `escapeHatch`, when present, is evaluated only for a *matched*
+ * registration: a `true` return bypasses the spawn (measured as `bypassed`).
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
   body: { command: string; args?: string[] };
+  escapeHatch?: (input: CovenantInput) => boolean;
 };
-
-/**
- * Recursively test whether any string value inside `value` contains `path` as a
- * substring. Argument names are never inspected — only the string *values* are scanned,
- * keeping the dispatcher agent-neutral.
- */
-function mentionsPath(value: unknown, path: string): boolean {
-  if (typeof value === 'string') {
-    return value.includes(path);
-  }
-  if (Array.isArray(value)) {
-    return value.some((item) => mentionsPath(item, path));
-  }
-  if (typeof value === 'object' && value !== null) {
-    return Object.values(value).some((item) => mentionsPath(item, path));
-  }
-  return false;
-}
 
 /**
  * Match registrations against a {@link CovenantInput} by path mention (PRD §4.2, pure).
@@ -89,6 +74,12 @@ export function matchRegistrations(
  * registration runs sequentially via {@link runCovenant} (run-all, no short-circuit)
  * with the original raw payload forwarded verbatim; the verdict is `2` if any body
  * blocks, else `0`. No matches passes vacuously with zero spawns and zero telemetry.
+ *
+ * escape hatch (PRD §4.3): for a matched registration whose `escapeHatch` predicate
+ * returns `true`, the spawn is skipped, one `bypassed` record is appended, and the
+ * registration contributes `0` — run-all is preserved (the remaining matches still run).
+ * A predicate that throws counts as no bypass (the body spawns normally): an uncertain
+ * hatch never leaks toward fail-open.
  */
 export async function dispatchCovenants(spec: {
   stdinPayload: string;
@@ -121,6 +112,23 @@ export async function dispatchCovenants(spec: {
 
   const results: { label: string; exitCode: 0 | 2 }[] = [];
   for (const { registration, mentionedPath } of matches) {
+    let bypass = false;
+    try {
+      bypass = registration.escapeHatch?.(parsed.value) === true;
+    } catch {
+      // A throwing hatch counts as no bypass — the body spawns normally (fail-closed).
+      bypass = false;
+    }
+    if (bypass) {
+      appendRecordFailOpen(spec.telemetryPath, {
+        event: 'bypassed',
+        label: registration.label,
+        subject: mentionedPath,
+      });
+      results.push({ label: registration.label, exitCode: EXIT_UPHOLD });
+      continue;
+    }
+
     const { exitCode } = await runCovenant({
       command: registration.body.command,
       args: registration.body.args,

@@ -1,7 +1,7 @@
 {
   "name": "@polydeukes/covenant",
   "version": "0.0.1",
-  "description": "Polydeukes covenant — the run_covenant execution wrapper: exit-code translation and per-call ROI logging. Pre-alpha.",
+  "description": "Polydeukes covenant — the covenant execution layer: run_covenant wrapper, path-routing dispatcher, Bash command-line analysis, and the self-mod meta-covenant. Pre-alpha.",
   "license": "MIT",
   "repository": {
     "type": "git",
