@@ -343,3 +343,126 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     expect(result.exitCode).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// escape hatch seam (COVENANT-03, PRD §4.3) — dummy bodies again, no real
+// self-mod artifact needed here (that round trip lives in self-mod.test.ts).
+// ---------------------------------------------------------------------------
+
+describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
+  it('a matched registration with an escapeHatch predicate returning true is bypassed: no spawn, exitCode 0, one bypassed record', async () => {
+    // P0: the hatch must pre-empt spawning entirely (measured control, not a body-level
+    // decision). Mutation caught: the hatch evaluated but ignored (body still spawns),
+    // or the bypass not logged as the distinct 'bypassed' event.
+    const outFile = join(dir, 'should-not-exist.txt');
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
+    const reg: CovenantRegistration = {
+      label: 'sample-covenant',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: echoToFileScript(outFile) },
+      escapeHatch: () => true,
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: JSON.stringify(input),
+      registrations: [reg],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(outFile)).toBe(false);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(1);
+    const record = parseRecordLine(lines[0]);
+    expect(record?.event).toBe('bypassed');
+    expect(record?.label).toBe('sample-covenant');
+    expect(record?.subject).toBe('sub/protected/file.txt');
+  });
+
+  it('a matched registration with an escapeHatch predicate returning false spawns the body normally', async () => {
+    // Mutation caught: a hatch seam that always skips spawning regardless of the
+    // predicate's return value (fail-open in the wrong direction).
+    const outFile = join(dir, 'body-ran.txt');
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
+    const reg: CovenantRegistration = {
+      label: 'sample-covenant',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
+      escapeHatch: () => false,
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: JSON.stringify(input),
+      registrations: [reg],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(outFile)).toBe(true);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(1);
+    expect(parseRecordLine(lines[0])?.event).toBe('passed');
+  });
+
+  it('an escapeHatch predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
+    // P0 fail-open guard (PRD §4.3/§7: "hatch throw -> false, never bypass"). Mutation
+    // caught: a try/catch around the predicate that resolves to true on error instead of
+    // false, or an unhandled throw that escapes as a rejected dispatchCovenants promise
+    // (asserted here by awaiting directly, per the async-not-toThrow discipline).
+    const outFile = join(dir, 'body-ran.txt');
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
+    const reg: CovenantRegistration = {
+      label: 'sample-covenant',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      escapeHatch: () => {
+        throw new Error('boom');
+      },
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: JSON.stringify(input),
+      registrations: [reg],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(existsSync(outFile)).toBe(true);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(1);
+    expect(parseRecordLine(lines[0])?.event).toBe('blocked');
+  });
+
+  it('two matched registrations, first hatched and second a normal exit-0 body, both resolve (run-all preserved)', async () => {
+    // P0 run-all invariant carried into the hatch seam: a hatched registration must not
+    // stop other matched registrations from running. Mutation caught: an early return
+    // after the first bypass that skips evaluating/running the rest of the matches.
+    const outFileB = join(dir, 'body-b-ran.txt');
+    const input = inputWithArgs({ target: 'sub/protected/file.txt' });
+    const regA: CovenantRegistration = {
+      label: 'covenant-a',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: ['-e', 'process.exit(1)'] },
+      escapeHatch: () => true,
+    };
+    const regB: CovenantRegistration = {
+      label: 'covenant-b',
+      protectedPaths: ['sub/protected/file.txt'],
+      body: { command: process.execPath, args: echoToFileScript(outFileB, 0) },
+    };
+
+    const result = await dispatchCovenants({
+      stdinPayload: JSON.stringify(input),
+      registrations: [regA, regB],
+      telemetryPath,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(outFileB)).toBe(true);
+    const lines = readTelemetryLines(telemetryPath);
+    expect(lines).toHaveLength(2);
+    const records = lines.map((l) => parseRecordLine(l));
+    expect(records.map((r) => r?.event)).toEqual(['bypassed', 'passed']);
+    expect(records.map((r) => r?.label)).toEqual(['covenant-a', 'covenant-b']);
+  });
+});
