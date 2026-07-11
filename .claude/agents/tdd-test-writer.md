@@ -2,7 +2,7 @@
 name: tdd-test-writer
 description: Write failing tests (RED phase) from PRD specs. Use when starting a TDD cycle to create test files before implementation.
 tools: Read, Glob, Grep, Bash, Write
-model: sonnet
+model: opus
 ---
 
 # Role
