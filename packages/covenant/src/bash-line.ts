@@ -211,6 +211,31 @@ function scanControl(line: string, i: number): string | null {
   return null;
 }
 
+/** A heredoc opener awaiting its body: the terminator word and the `<<-` tab-strip mode. */
+type PendingHeredoc = { delimiter: string; stripTabs: boolean };
+
+/**
+ * Consume queued heredoc bodies starting at `start` (just past the opening newline), in
+ * queue order. Body lines are data — never parsed as commands — until a line equals the
+ * delimiter (`<<-` allows leading tabs), or end of input (bash ends at EOF too). Returns
+ * the index just past the last consumed body.
+ */
+function consumeHeredocBodies(line: string, start: number, pending: PendingHeredoc[]): number {
+  let i = start;
+  for (const heredoc of pending) {
+    while (i < line.length) {
+      let end = line.indexOf('\n', i);
+      if (end === -1) end = line.length;
+      let bodyLine = line.slice(i, end);
+      if (bodyLine.endsWith('\r')) bodyLine = bodyLine.slice(0, -1);
+      i = end + 1;
+      const stripped = heredoc.stripTabs ? bodyLine.replace(/^\t+/, '') : bodyLine;
+      if (stripped === heredoc.delimiter) break;
+    }
+  }
+  return i;
+}
+
 /**
  * Tokenize one shell line into simple commands (PRD §4.1). Fail-closed: an unclosed quote
  * returns `{ ok: false }` instead of throwing.
@@ -219,7 +244,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
   const commands: SimpleCommand[] = [];
   let current: SimpleCommand = { words: [], redirects: [] };
   // Heredoc delimiters queued on the current line, consumed in order at the next newline.
-  let pendingHeredocs: { delimiter: string; stripTabs: boolean }[] = [];
+  let pendingHeredocs: PendingHeredoc[] = [];
   let i = 0;
 
   while (i < line.length) {
@@ -232,24 +257,12 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
 
     // Newline (or CRLF, or a lone CR — every scanWord terminator needs a consuming
     // branch here, or the loop stalls) separates commands like `;`, then feeds any
-    // queued heredocs: subsequent lines are body data — never parsed as commands —
-    // until a line equals the delimiter (`<<-` allows leading tabs), or end of input
-    // (bash ends at EOF too).
+    // queued heredocs their body lines.
     if (ch === '\n' || ch === '\r') {
       commands.push(current);
       current = { words: [], redirects: [] };
       i += ch === '\r' && line[i + 1] === '\n' ? 2 : 1;
-      for (const heredoc of pendingHeredocs) {
-        while (i < line.length) {
-          let end = line.indexOf('\n', i);
-          if (end === -1) end = line.length;
-          let bodyLine = line.slice(i, end);
-          if (bodyLine.endsWith('\r')) bodyLine = bodyLine.slice(0, -1);
-          i = end + 1;
-          const stripped = heredoc.stripTabs ? bodyLine.replace(/^\t+/, '') : bodyLine;
-          if (stripped === heredoc.delimiter) break;
-        }
-      }
+      i = consumeHeredocBodies(line, i, pendingHeredocs);
       pendingHeredocs = [];
       continue;
     }

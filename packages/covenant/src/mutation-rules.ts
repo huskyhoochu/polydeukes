@@ -8,11 +8,16 @@
  * telemetry belong to 04d.
  */
 
-import type { MutationRule, MutationTarget } from './bash-line.js';
+import type { MutationRule, MutationTarget, WordToken } from './bash-line.js';
 
 const REDIRECT_WRITE_RULE_NAME = 'redirect-write';
 const TEE_RULE_NAME = 'tee';
 const SED_IN_PLACE_RULE_NAME = 'sed-in-place';
+
+/** The final path segment of a command word (`/usr/bin/tee` → `tee`). */
+function commandBasename(word: WordToken): string {
+  return word.text.slice(word.text.lastIndexOf('/') + 1);
+}
 
 /**
  * True when a `>&`-family target is an fd reference: all digits, `-` (close), or the
@@ -52,8 +57,7 @@ export const teeRule: MutationRule = {
   detect(command): MutationTarget[] {
     const first = command.words[0];
     if (first === undefined || first.opaque) return [];
-    const basename = first.text.slice(first.text.lastIndexOf('/') + 1);
-    if (basename !== 'tee') return [];
+    if (commandBasename(first) !== 'tee') return [];
 
     const targets: MutationTarget[] = [];
     let optionsEnded = false;
@@ -78,14 +82,17 @@ function isInPlaceFlag(text: string): boolean {
   return text.startsWith('-i') || text === '--in-place' || text.startsWith('--in-place=');
 }
 
+// The script-flag forms whose value arrives in the NEXT word. isScriptFlag must cover
+// every flag listed here, or `scriptSkipped` mis-seeds and the wrong operand is dropped.
+const SEPARATED_SCRIPT_FLAGS = ['-e', '-f', '--expression', '--file'];
+
 /** True for any script-supplying flag form (`-e`/`-f` family) — its value is never a file. */
 function isScriptFlag(text: string): boolean {
   return (
+    SEPARATED_SCRIPT_FLAGS.includes(text) ||
     text.startsWith('-e') ||
     text.startsWith('-f') ||
-    text === '--expression' ||
     text.startsWith('--expression=') ||
-    text === '--file' ||
     text.startsWith('--file=')
   );
 }
@@ -103,8 +110,7 @@ export const sedInPlaceRule: MutationRule = {
   detect(command): MutationTarget[] {
     const first = command.words[0];
     if (first === undefined || first.opaque) return [];
-    const basename = first.text.slice(first.text.lastIndexOf('/') + 1);
-    if (basename !== 'sed') return [];
+    if (commandBasename(first) !== 'sed') return [];
 
     const args = command.words.slice(1);
     if (!args.some((word) => isInPlaceFlag(word.text))) return [];
@@ -127,14 +133,7 @@ export const sedInPlaceRule: MutationRule = {
         // A lone `-` is an operand, not a flag — same boundary as the tee rule.
         if (word.text.startsWith('-') && word.text !== '-') {
           // The separated flag forms carry their value in the NEXT word — skip it too.
-          if (
-            word.text === '-e' ||
-            word.text === '-f' ||
-            word.text === '--expression' ||
-            word.text === '--file'
-          ) {
-            skipNext = true;
-          }
+          if (SEPARATED_SCRIPT_FLAGS.includes(word.text)) skipNext = true;
           continue;
         }
       }
