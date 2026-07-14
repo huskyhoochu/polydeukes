@@ -9,6 +9,8 @@
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 
+export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
+
 /** Package version, mirrored from package.json until a build-time injection exists. */
 export const version = '0.0.1';
 
