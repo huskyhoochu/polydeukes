@@ -137,9 +137,10 @@ CLAUDE.local.md
 .claude/statsig/
 .claude/.credentials.json
 
-# Harness telemetry / logs (see assessment doc §3-D)
+# Discipline-framework telemetry / logs (see assessment doc §3-D)
 .hook-roi.log
 .docs-search.log
+.polydeukes/
 
 # ─────────────────────────────────────────────────────────────
 # Private development docs (kept local, never pushed to public remote)

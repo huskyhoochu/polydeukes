@@ -50,6 +50,18 @@ Runtime is pinned: **Node ≥24, pnpm@10.32.1** (`.nvmrc` = 24). Use pnpm, never
 Development follows a roadmap → PRD → TDD loop, codified as skills: `/ticket <ID>` runs the full
 unit-task loop (PRD → branch → `/tdd` cycle → `/post-task` checks → PR + code review → squash merge
 → archive), and `/post-task` alone closes out substantial non-ticket chores before they commit.
-Once the minimal core exists, Polydeukes is meant to develop *itself* (self-dogfooding): its own
-covenants protect its source, its ledger measures the work. Unit tasks must be small enough to fit
-one PRD and verifiable by a command or test.
+Unit tasks must be small enough to fit one PRD and verifiable by a command or test.
+
+**Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
+`.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
+project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant
+(Bash axis) both protect the three packages' `src`/`dist` plus the hook wiring itself. Every call
+is measured in `.polydeukes/roi.log` (local, gitignored). Consequences to know:
+
+- Editing covenant/core/adapter sources — or any command *mentioning* those paths without a
+  read-only first token — is **blocked (exit 2)** by design. The sanctioned valve is the
+  `POLYDEUKES_COVENANT_BYPASS` env var (recorded as `bypassed`, never silent).
+- The hook fails **closed**: an unbuilt `dist` blocks edits too. Recovery is `pnpm build`
+  (mentions no protected path, so it is never blocked).
+- Arming the hatch via settings env takes effect immediately; **disarming requires a session
+  restart** (the env persists in the running session).
