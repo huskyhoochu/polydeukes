@@ -72,21 +72,6 @@ function stubReturning(outcome: DispatchOutcome): {
   };
 }
 
-/** A dispatch stub that rejects, counting its calls. */
-function stubRejecting(): {
-  dispatch: (stdinPayload: string) => Promise<DispatchOutcome>;
-  calls: string[];
-} {
-  const calls: string[] = [];
-  return {
-    calls,
-    dispatch: async (stdinPayload: string) => {
-      calls.push(stdinPayload);
-      throw new Error('dispatch blew up');
-    },
-  };
-}
-
 /**
  * A dispatch stub that faithfully mirrors the real dispatcher's record contract:
  * for each matched registration it appends one record (its own covenant label,
@@ -169,16 +154,15 @@ describe('§5.1 translate-failure measurement', () => {
     // P0: an unhandled rejection would exit the hook non-blocking = a bypass vector
     // (PRD §4.1 step 4). Mutation caught: the try/catch around dispatch removed (throw
     // escapes), or the caught rejection mapped to exit 0 instead of 2.
-    const { dispatch, calls } = stubRejecting();
+    const calls: string[] = [];
+    const dispatch = async (stdinPayload: string): Promise<DispatchOutcome> => {
+      calls.push(stdinPayload);
+      throw new Error('dispatch blew up');
+    };
 
-    let verdict: { exitCode: 0 | 2 } | undefined;
     await expect(
-      (async () => {
-        verdict = await runAdapterPath({ rawPayload: rawOf(editFixture), telemetryPath, dispatch });
-      })(),
-    ).resolves.toBeUndefined();
-
-    expect(verdict).toEqual({ exitCode: 2 });
+      runAdapterPath({ rawPayload: rawOf(editFixture), telemetryPath, dispatch }),
+    ).resolves.toEqual({ exitCode: 2 });
     expect(calls.length).toBe(1); // dispatch was reached, then threw
 
     const { records } = readRecords(telemetryPath);
@@ -449,18 +433,9 @@ describe('§5.4 fail-open logging', () => {
     mkdirSync(occupied); // a directory where the log file should be
     const { dispatch } = stubReturning({ exitCode: 0, results: [] });
 
-    let verdict: { exitCode: 0 | 2 } | undefined;
     await expect(
-      (async () => {
-        verdict = await runAdapterPath({
-          rawPayload: 'not json {',
-          telemetryPath: occupied,
-          dispatch,
-        });
-      })(),
-    ).resolves.toBeUndefined();
-
-    expect(verdict).toEqual({ exitCode: 2 });
+      runAdapterPath({ rawPayload: 'not json {', telemetryPath: occupied, dispatch }),
+    ).resolves.toEqual({ exitCode: 2 });
   });
 
   it('an unwritable telemetryPath does not throw and leaves a passing verdict unchanged (exit 0)', async () => {
@@ -471,17 +446,8 @@ describe('§5.4 fail-open logging', () => {
     mkdirSync(occupied);
     const { dispatch } = stubReturning({ exitCode: 0, results: [] });
 
-    let verdict: { exitCode: 0 | 2 } | undefined;
     await expect(
-      (async () => {
-        verdict = await runAdapterPath({
-          rawPayload: rawOf(editFixture),
-          telemetryPath: occupied,
-          dispatch,
-        });
-      })(),
-    ).resolves.toBeUndefined();
-
-    expect(verdict).toEqual({ exitCode: 0 });
+      runAdapterPath({ rawPayload: rawOf(editFixture), telemetryPath: occupied, dispatch }),
+    ).resolves.toEqual({ exitCode: 0 });
   });
 });
