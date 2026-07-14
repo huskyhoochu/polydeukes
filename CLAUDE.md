@@ -6,8 +6,9 @@ covenants, a verifiable ledger, local memory, and adversarial verification on on
 **This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
 protocol, ROI telemetry, config loader), `packages/covenant` (the run_covenant execution
 wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
-(redirect/tee/`sed -i`), the path-routing dispatcher, and the self-mod
-meta-covenant with its escape-hatch seam), and
+(redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
+meta-covenant with its escape-hatch seam, and the shell-mod meta-covenant that assembles
+the detection rules into a Bash-axis judge with a read-only allowlist), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation);
 `packages/polydeukes` remains a name-reserving stub.
 The design docs are still the source of truth for everything not yet implemented. When a design

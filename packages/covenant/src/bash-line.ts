@@ -66,6 +66,15 @@ export type MutationAnalysis = {
 // vectors (indirect path computation) are telemetry's concern in 04d, not blocking here.
 const NESTED_SHELL_COMMANDS = new Set(['eval', 'bash', 'sh', 'zsh']);
 
+/**
+ * True when `commandName` (a command word's basename) re-parses its string arguments in a
+ * nested shell — the reinterpretation boundary the tokenizer refuses to parse into. A judge
+ * can consult this to refuse to treat such a command as provably read-only.
+ */
+export function isNestedShellCommand(commandName: string): boolean {
+  return NESTED_SHELL_COMMANDS.has(commandName);
+}
+
 /** True if a raw (unquoted) fragment carries a dynamic construct whose value is unknowable. */
 function fragmentIsOpaque(fragment: string): boolean {
   return (
@@ -264,6 +273,18 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       i += ch === '\r' && line[i + 1] === '\n' ? 2 : 1;
       i = consumeHeredocBodies(line, i, pendingHeredocs);
       pendingHeredocs = [];
+      continue;
+    }
+
+    // Process substitution `<(…)` / `>(…)` is a word-level filename token bash EXECUTES,
+    // not a redirect. Consume the whole `(…)` (matching nested parens) as one opaque word,
+    // scanned before the redirect operators would split on the leading `<`/`>` — otherwise
+    // the inner command's args leak as top-level words and a first-word allowlist could
+    // absolve them while the inner write runs.
+    if ((ch === '<' || ch === '>') && line[i + 1] === '(') {
+      const end = matchParen(line, i + 1);
+      current.words.push({ text: line.slice(i, end), opaque: true });
+      i = end;
       continue;
     }
 

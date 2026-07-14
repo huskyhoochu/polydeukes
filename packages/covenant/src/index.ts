@@ -11,6 +11,9 @@
  * COVENANT-03 lands the self-mod meta-covenant — the dispatcher's first real
  * registrant: a pure judge + CLI body that block mutating tool calls on protected
  * paths, plus the escape-hatch seam whose bypasses are measured as `bypassed`.
+ * COVENANT-04d lands the shell-mod meta-covenant — the Bash-axis mirror: a pure
+ * judge + CLI body that assemble the tokenizer and detection rules into a verdict,
+ * with a read-only allowlist as the friction valve.
  */
 
 export {
@@ -30,3 +33,8 @@ export { envEscapeHatch } from './escape-hatch.js';
 export { redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';
 export { judgeSelfModification, type SelfModificationSpec } from './self-mod.js';
+export {
+  DEFAULT_READ_ONLY_COMMANDS,
+  judgeShellModification,
+  type ShellModificationSpec,
+} from './shell-mod.js';

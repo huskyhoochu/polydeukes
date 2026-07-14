@@ -168,15 +168,35 @@ describe('§5.1 redirect operator separation', () => {
     ]);
   });
 
-  it('marks a process-substitution redirect target ">(…)" opaque', () => {
-    // Mutation caught: the real write path lives inside the substitution; a confident
-    // mangled target like "(tee" would let the inner write escape without a signal.
+  it('consumes a process substitution ">(…)" as one opaque word, not a redirect', () => {
+    // Mutation caught: process substitution is a word-level filename token bash executes,
+    // not a redirect. If `>` split it as a redirect, the inner command's args would leak as
+    // top-level words. The whole `>(tee f)` must be one opaque word so the inner write
+    // stays inside an opaque token.
     const result = tokenizeCommandLine('cmd >(tee f)');
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.commands[0].redirects[0].operator).toBe('>');
-    expect(result.commands[0].redirects[0].target.opaque).toBe(true);
+    expect(result.commands[0].redirects).toEqual([]);
+    expect(result.commands[0].words).toEqual([
+      { text: 'cmd', opaque: false },
+      { text: '>(tee f)', opaque: true },
+    ]);
+  });
+
+  it('consumes a process substitution "<(…)" as one opaque word — no inner-arg leak', () => {
+    // Fail-open caught (review): `cat <(sed -i … path)` — the tokenizer must not leak the
+    // inner `sed`, `-i`, and the path as top-level words of the outer command, or a
+    // first-word allowlist would absolve the whole line while bash runs the inner write.
+    const result = tokenizeCommandLine('cat <(sed -i s/a/b/ p)');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.commands[0].redirects).toEqual([]);
+    expect(result.commands[0].words).toEqual([
+      { text: 'cat', opaque: false },
+      { text: '<(sed -i s/a/b/ p)', opaque: true },
+    ]);
   });
 
   it('recognizes fd duplication "1>&2" as one command, not a phantom background split', () => {

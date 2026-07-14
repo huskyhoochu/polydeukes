@@ -15,7 +15,7 @@ const TEE_RULE_NAME = 'tee';
 const SED_IN_PLACE_RULE_NAME = 'sed-in-place';
 
 /** The final path segment of a command word (`/usr/bin/tee` → `tee`). */
-function commandBasename(word: WordToken): string {
+export function commandBasename(word: WordToken): string {
   return word.text.slice(word.text.lastIndexOf('/') + 1);
 }
 
