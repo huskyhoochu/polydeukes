@@ -11,8 +11,9 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import { type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import { redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
+import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
+import { mentionsPath } from './mention.js';
+import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 
 /**
  * `ShellModificationSpec` — the injected axes of the judge (PRD §4.1).
@@ -34,6 +35,11 @@ export type ShellModificationSpec = {
  * Commands proven read-only by shell semantics (PRD §4.3) — the default allowlist. An
  * entry is a leading word sequence; multi-word entries exist because a bare command name
  * (`git`) can front mutating subcommands. Omission errs toward friction, never a hole.
+ *
+ * An entry must have no way to write a file through its own arguments, since the allowlist
+ * vouches for the command head while `matchesReadOnlyEntry` never inspects trailing argv.
+ * That is why `git diff`/`git log`/`git show` are absent: all accept `--output=<file>`, a
+ * redirect-free truncating write. `git status`/`git grep` reject `--output`, so they stay.
  */
 export const DEFAULT_READ_ONLY_COMMANDS: string[] = [
   'cat',
@@ -49,9 +55,6 @@ export const DEFAULT_READ_ONLY_COMMANDS: string[] = [
   'echo',
   'printf',
   'git status',
-  'git diff',
-  'git log',
-  'git show',
   'git grep',
 ];
 
@@ -61,11 +64,14 @@ const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
 /** True when the command's leading words match the allowlist entry's word sequence. */
 function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): boolean {
+  // An empty entry would match every command vacuously (`[].every()` is true) — reject it
+  // locally so the guard does not depend on a distant caller-side filter.
+  if (entry.length === 0) return false;
   return entry.every((entryWord, k) => {
     const word = command.words[k];
     if (word === undefined || word.opaque) return false;
     // The first word is compared by basename (`/bin/cat` is still `cat`); later words verbatim.
-    const text = k === 0 ? word.text.slice(word.text.lastIndexOf('/') + 1) : word.text;
+    const text = k === 0 ? commandBasename(word) : word.text;
     return text === entryWord;
   });
 }
@@ -82,7 +88,7 @@ function judgeCommand(
   // (a) Precise rules: a detected mutation whose target carries a protected path breaks.
   for (const rule of MUTATION_RULES) {
     for (const target of rule.detect(command)) {
-      const hit = protectedPaths.find((path) => target.path.includes(path));
+      const hit = protectedPaths.find((path) => mentionsPath(target.path, path));
       if (hit !== undefined) return `${target.rule} targets protected path ${hit}`;
     }
   }
@@ -93,15 +99,16 @@ function judgeCommand(
   let mentioned: string | undefined;
   let mentionIsOpaque = false;
   for (const token of tokens) {
-    const hit = protectedPaths.find((path) => token.text.includes(path));
+    const hit = protectedPaths.find((path) => mentionsPath(token.text, path));
     if (hit === undefined) continue;
     mentioned ??= hit;
     if (token.opaque) mentionIsOpaque = true;
   }
   if (mentioned === undefined) return null;
 
-  // (c) A mention inside an opaque token (command substitution, expansion, glob) is
-  // undecidable — the "protected path inside command substitution" policy clause.
+  // (c) A mention inside an opaque token (command substitution, process substitution,
+  // expansion, glob) is undecidable — the "protected path inside command substitution"
+  // policy clause.
   if (mentionIsOpaque) return `protected path ${mentioned} inside an opaque token`;
 
   // (d) An opaque write target could resolve to the protected path — unprovable, so it
@@ -110,13 +117,20 @@ function judgeCommand(
     return `opaque redirect target alongside protected path ${mentioned}`;
   }
 
-  // (e) Read-only allowlist: a proven read absolves the mention.
-  if (readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))) return null;
+  // (e) Read-only allowlist: a proven read absolves the mention — but a nested shell
+  // (`eval`/`sh -c …`) re-parses its string args, so it can never be proven read-only even
+  // if it was injected into the allowlist. Its mention falls through to the backstop.
+  const first = command.words[0];
+  const firstBasename = first !== undefined ? commandBasename(first) : '';
+  if (
+    !isNestedShellCommand(firstBasename) &&
+    readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))
+  ) {
+    return null;
+  }
 
-  // (f) Backstop — mention + unproven = block. Nested shells (eval etc.) die here too:
-  // they are never allowlisted, so their mere mention of the path breaks.
-  const first = command.words[0]?.text ?? '';
-  return `${first} mentions protected path ${mentioned} without read-only proof`;
+  // (f) Backstop — mention + unproven = block.
+  return `${first?.text ?? ''} mentions protected path ${mentioned} without read-only proof`;
 }
 
 /**
@@ -155,7 +169,7 @@ export function judgeShellModification(
     for (const line of lines) {
       const result = tokenizeCommandLine(line);
       if (!result.ok) {
-        const hit = protectedPaths.find((path) => line.includes(path));
+        const hit = protectedPaths.find((path) => mentionsPath(line, path));
         if (hit !== undefined) {
           return {
             upheld: false,

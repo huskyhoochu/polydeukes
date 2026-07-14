@@ -188,6 +188,69 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
 
     expect(verdict.upheld).toBe(false);
   });
+
+  // --- Review-found fail-open fixes (PR #12) ------------------------------------------
+
+  it('an allowlisted reader fronting a process substitution that writes the protected path breaks', () => {
+    // Fail-open caught (review): `cat <(sed -i … <protected>)` — bash executes the inner
+    // sed, writing the protected file. The tokenizer must consume `<(…)` as one opaque word
+    // so the path lands inside an opaque token and step (c) breaks; otherwise the inner
+    // args leak as plain words and the leading `cat` is absolved by the allowlist.
+    const verdict = judgeShellModification(
+      shellCall(`cat <(sed -i s/a/b/ ${PROTECTED})`),
+      baseSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
+
+  it('git diff --output writing the protected path breaks (write-capable allowlist entry removed)', () => {
+    // Fail-open caught (review): `git diff --output=<file>` writes <file> with no redirect,
+    // so no rule fires; the fix removes `git diff`/`git log`/`git show` from the default
+    // allowlist (they are write-capable via --output), so the mention hits the backstop.
+    const verdict = judgeShellModification(
+      shellCall(`git diff --output=${PROTECTED} HEAD`),
+      baseSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
+
+  it('a nested-shell command is never absolved even when injected into the allowlist', () => {
+    // Defense-in-depth (review): the default allowlist excludes nested shells, but a
+    // misassembled `--allow-read sh` must not absolve `sh -c '…write…'` — a nested shell
+    // re-parses its string argument, so it can never be proven read-only.
+    const verdict = judgeShellModification(shellCall(`sh -c 'sed -i s/a/b/ ${PROTECTED}'`), {
+      ...baseSpec(),
+      readOnlyCommands: ['sh'],
+    });
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
+
+  it('a whitespace-only allowlist entry does not vacuously absolve every command', () => {
+    // Fail-open caught (review): `matchesReadOnlyEntry(command, [])` returns true vacuously.
+    // A whitespace-only entry must reject, not match every command — otherwise one blank
+    // allowlist entry turns every protected-path mention into a proven read.
+    const verdict = judgeShellModification(shellCall(`node x.js ${PROTECTED}`), {
+      ...baseSpec(),
+      readOnlyCommands: ['   '],
+    });
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
 });
 
 describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
@@ -206,17 +269,19 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
     });
   });
 
-  it('cat, grep, and git diff on the protected path uphold via the allowlist (incl. the two-word entry)', () => {
+  it('cat, grep, and git status on the protected path uphold via the allowlist (incl. the two-word entry)', () => {
     // Mutation caught: the allowlist (e) not consulted, so every protected-path mention
-    // backstops to break — legitimate reads become friction. The `git diff` case also
-    // proves the multi-word sequence match (`git` alone is not enough; `diff` must follow).
+    // backstops to break — legitimate reads become friction. The `git status` case also
+    // proves the multi-word sequence match (`git` alone is not enough; `status` must
+    // follow). `git status` (unlike `git diff`) has no --output write flag, so it stays a
+    // proven read-only allowlist entry.
     expect(judgeShellModification(shellCall(`cat ${PROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
     expect(judgeShellModification(shellCall(`grep x ${PROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
-    expect(judgeShellModification(shellCall(`git diff ${PROTECTED}`), baseSpec())).toEqual({
+    expect(judgeShellModification(shellCall(`git status ${PROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
   });
