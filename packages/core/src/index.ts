@@ -20,6 +20,13 @@ export {
 } from './config.js';
 
 export {
+  type FailMode,
+  type FailureKind,
+  failModeToExitCode,
+  resolveFailMode,
+} from './fail-policy.js';
+
+export {
   aggregateGain,
   appendRecord,
   formatRecordLine,
