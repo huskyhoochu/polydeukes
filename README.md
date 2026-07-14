@@ -5,7 +5,7 @@
 > A development *discipline* framework for building alongside an AI coding partner.
 > Deterministic covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one thin core.
 
-**Status: pre-alpha.** The first units have landed in `@polydeukes/core` (covenant protocol, ROI telemetry, config loader), `@polydeukes/covenant` (the run_covenant wrapper, heredoc-aware multi-line Bash analysis with its write-detection rules (redirect/tee/`sed -i`), the path-routing dispatcher, and the self-mod meta-covenant with its escape hatch), and `@polydeukes/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation); everything else is still blueprint. This repository holds that early core plus the architecture blueprint and the reasoning behind it. What follows is a description of what is being built.
+**Status: pre-alpha.** The first units have landed in `@polydeukes/core` (covenant protocol, ROI telemetry, config loader), `@polydeukes/covenant` (the run_covenant wrapper, heredoc-aware multi-line Bash analysis with its write-detection rules (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod meta-covenant with its escape hatch, and the shell-mod meta-covenant that assembles the detection rules into a Bash-axis judge with a read-only allowlist), and `@polydeukes/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation); everything else is still blueprint. This repository holds that early core plus the architecture blueprint and the reasoning behind it. What follows is a description of what is being built.
 
 ---
 
