@@ -91,7 +91,9 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
     const ch = line[i];
 
     // Whitespace and control/redirect operators terminate a word (outside quotes).
-    if (ch === ' ' || ch === '\t') break;
+    // Newlines count too (04c): they separate commands, like `;`. Inside quotes they
+    // remain word content — the quote branches below consume across them.
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') break;
     if (ch === ';' || ch === '|' || ch === '&' || ch === '<' || ch === '>') break;
 
     if (ch === '\\') {
@@ -191,6 +193,10 @@ function scanRedirect(line: string, i: number): { operator: string; length: numb
   if (three === '&>>') return { operator: '&>>', length: 3 };
   if (two === '>>' || two === '&>' || two === '>&') return { operator: two, length: 2 };
   if (ch === '>') return { operator: '>', length: 1 };
+  // Heredoc family (04c): longest match first so `<<EOF` is never a lone `<` with an
+  // empty (fail-closing) target — `<<<` herestring, `<<-` tab-stripping heredoc, `<<`.
+  if (three === '<<<' || three === '<<-') return { operator: three, length: 3 };
+  if (two === '<<') return { operator: '<<', length: 2 };
   if (ch === '<') return { operator: '<', length: 1 };
   return null;
 }
@@ -205,6 +211,31 @@ function scanControl(line: string, i: number): string | null {
   return null;
 }
 
+/** A heredoc opener awaiting its body: the terminator word and the `<<-` tab-strip mode. */
+type PendingHeredoc = { delimiter: string; stripTabs: boolean };
+
+/**
+ * Consume queued heredoc bodies starting at `start` (just past the opening newline), in
+ * queue order. Body lines are data — never parsed as commands — until a line equals the
+ * delimiter (`<<-` allows leading tabs), or end of input (bash ends at EOF too). Returns
+ * the index just past the last consumed body.
+ */
+function consumeHeredocBodies(line: string, start: number, pending: PendingHeredoc[]): number {
+  let i = start;
+  for (const heredoc of pending) {
+    while (i < line.length) {
+      let end = line.indexOf('\n', i);
+      if (end === -1) end = line.length;
+      let bodyLine = line.slice(i, end);
+      if (bodyLine.endsWith('\r')) bodyLine = bodyLine.slice(0, -1);
+      i = end + 1;
+      const stripped = heredoc.stripTabs ? bodyLine.replace(/^\t+/, '') : bodyLine;
+      if (stripped === heredoc.delimiter) break;
+    }
+  }
+  return i;
+}
+
 /**
  * Tokenize one shell line into simple commands (PRD §4.1). Fail-closed: an unclosed quote
  * returns `{ ok: false }` instead of throwing.
@@ -212,6 +243,8 @@ function scanControl(line: string, i: number): string | null {
 export function tokenizeCommandLine(line: string): TokenizeResult {
   const commands: SimpleCommand[] = [];
   let current: SimpleCommand = { words: [], redirects: [] };
+  // Heredoc delimiters queued on the current line, consumed in order at the next newline.
+  let pendingHeredocs: PendingHeredoc[] = [];
   let i = 0;
 
   while (i < line.length) {
@@ -219,6 +252,18 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
 
     if (ch === ' ' || ch === '\t') {
       i += 1;
+      continue;
+    }
+
+    // Newline (or CRLF, or a lone CR — every scanWord terminator needs a consuming
+    // branch here, or the loop stalls) separates commands like `;`, then feeds any
+    // queued heredocs their body lines.
+    if (ch === '\n' || ch === '\r') {
+      commands.push(current);
+      current = { words: [], redirects: [] };
+      i += ch === '\r' && line[i + 1] === '\n' ? 2 : 1;
+      i = consumeHeredocBodies(line, i, pendingHeredocs);
+      pendingHeredocs = [];
       continue;
     }
 
@@ -232,6 +277,17 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       // A redirect with no target is a bash syntax error — fail closed, never a confident
       // empty-string target.
       if (scanned.word.text === '') return { ok: false, reason: 'missing redirect target' };
+      if (redirect.operator === '<<' || redirect.operator === '<<-') {
+        // An opaque delimiter makes the body end statically undecidable — fail closed,
+        // like an unclosed quote.
+        if (scanned.word.opaque) return { ok: false, reason: 'opaque heredoc delimiter' };
+        pendingHeredocs.push({
+          delimiter: scanned.word.text,
+          stripTabs: redirect.operator === '<<-',
+        });
+        i = scanned.next;
+        continue;
+      }
       // Process substitution (`>(…)`/`<(…)`): the real path lives inside the substitution
       // and is not statically knowable — an opaque target, never a confident path.
       const target = scanned.word.text.startsWith('(')
