@@ -27,17 +27,24 @@ describe('resolveFailMode — registered kinds (PRD §4.1 policy table)', () => 
 });
 
 describe('resolveFailMode — fail-closed default (PRD §5.2)', () => {
-  it.each(['unknown-kind', ''])('resolves the unregistered kind %j to fail-closed', (kind) => {
+  it.each([
+    'unknown-kind',
+    '',
+    '__proto__',
+    'toString',
+  ])('resolves the unregistered kind %j to fail-closed', (kind) => {
     // P0: an unregistered/unknown failure is "cannot judge" → block. A mutation that
     // defaults the lookup to 'open' (or drops the default branch entirely, letting an
     // undefined leak through) is the highest-value fail-open hole this ticket closes.
+    // The prototype-pollution keys pin the null-prototype table: on a plain object they
+    // would resolve to truthy inherited members, skipping the fallback — a fail-open leak.
     expect(resolveFailMode(kind)).toBe('closed');
   });
 
   it('never throws on arbitrary input (a throw is itself a boundary collapse)', () => {
     // PRD §4.2 / §7: resolveFailMode is pure and total. A throw could be caught upstream
     // and mistaken for a pass. Covers unusual runtime-string shapes a serialization path
-    // might hand in. Catches a mutation that indexes without a total-lookup guard.
+    // might hand in. Catches a mutation that indexes without a total-lookup fallback.
     const hostileInputs = ['', ' ', 'CLOSED', 'open', '__proto__', 'toString', '\n', '0'];
     for (const input of hostileInputs) {
       expect(() => resolveFailMode(input)).not.toThrow();
