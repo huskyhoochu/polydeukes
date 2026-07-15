@@ -26,10 +26,14 @@ export function normalizeProtectedPaths(spec: {
 
   for (const entry of union) {
     let path = entry.trim();
-    if (path.startsWith('./')) {
+    // Strip to a fixpoint: a single pass would leave residues on repeated prefixes or
+    // suffixes ('././x', 'x//'), and a residual './' or '/' silently matches nothing
+    // downstream — the fail-open narrowing the contract forbids. Interior segments and
+    // absolute paths are path *resolution*, deliberately out of scope.
+    while (path.startsWith('./')) {
       path = path.slice(2);
     }
-    if (path.endsWith('/')) {
+    while (path.endsWith('/')) {
       path = path.slice(0, -1);
     }
     if (path.length === 0 || seen.has(path)) {

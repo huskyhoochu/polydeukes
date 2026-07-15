@@ -252,7 +252,8 @@ describe('§5.2 defineConfig adapters field (CONFIG-02)', () => {
 
   it('preserves a valid adapters array in the returned ResolvedConfig', () => {
     // Mutation caught: defineConfig dropping the adapters field from its return value,
-    // so downstream normalization never sees the registered adapters (the §9난관7 hole).
+    // so downstream normalization never sees the registered adapters (the assessment
+    // §9 difficulty 7 hole).
     const resolved = defineConfig({
       ...validTwoLanguageConfig,
       adapters: ['packages/adapter-foo', 'packages/adapter-bar'],

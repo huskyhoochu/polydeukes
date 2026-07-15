@@ -69,6 +69,11 @@ export class ConfigValidationError extends Error {
   }
 }
 
+/** True when the value is an array whose every element is a string. */
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
 /** True when the glob value is a present, non-empty string or a non-empty array of non-empty strings. */
 function isValidGlob(glob: unknown): boolean {
   if (typeof glob === 'string') {
@@ -108,22 +113,12 @@ export function defineConfig(config: PolydeukesConfig): ResolvedConfig {
     }
   }
 
-  if (config.protectedPaths !== undefined) {
-    if (
-      !Array.isArray(config.protectedPaths) ||
-      !config.protectedPaths.every((entry) => typeof entry === 'string')
-    ) {
-      throw new ConfigValidationError('protectedPaths must be an array of strings');
-    }
+  if (config.protectedPaths !== undefined && !isStringArray(config.protectedPaths)) {
+    throw new ConfigValidationError('protectedPaths must be an array of strings');
   }
 
-  if (config.adapters !== undefined) {
-    if (
-      !Array.isArray(config.adapters) ||
-      !config.adapters.every((entry) => typeof entry === 'string')
-    ) {
-      throw new ConfigValidationError('adapters must be an array of strings');
-    }
+  if (config.adapters !== undefined && !isStringArray(config.adapters)) {
+    throw new ConfigValidationError('adapters must be an array of strings');
   }
 
   return {

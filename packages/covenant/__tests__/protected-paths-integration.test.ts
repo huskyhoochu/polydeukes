@@ -27,7 +27,7 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
 
 describe('adapter auto-include wired through normalizeProtectedPaths (PRD §5.3)', () => {
   it('an Edit inside a registered adapter directory breaks (missing-adapter hole is unreproducible)', () => {
-    // P0 (§9난관7): registering the adapter via `adapters` must auto-include its
+    // P0 (assessment §9 difficulty 7): registering the adapter via `adapters` must auto-include its
     // directory in the protection surface, so a mutating edit inside it is blocked.
     // Mutation caught: normalizeProtectedPaths dropping the adapters field — the
     // exact regression that let a second agent freely weaken the gate in memoriq.

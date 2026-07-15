@@ -13,7 +13,7 @@ describe('normalizeProtectedPaths — union of protectedPaths and adapters (PRD 
   it('includes both registered adapter directories in the output', () => {
     // AC: "two adapters registered -> output contains both". Mutation caught: the
     // adapters field dropped from the union (auto-include regression -> the exact
-    // §9난관7 hole where a registered adapter is silently unprotected).
+    // assessment §9 difficulty 7 hole where a registered adapter is silently unprotected).
     const result = normalizeProtectedPaths({
       adapters: ['packages/adapter-foo', 'packages/adapter-bar'],
     });
@@ -65,6 +65,22 @@ describe('normalizeProtectedPaths — per-entry normalization rules (PRD §5.1)'
     // strip skipped — 'x/y/' matches a strictly narrower set of inputs than 'x/y',
     // a real fail-open-narrowing bug the PRD calls out.
     const result = normalizeProtectedPaths({ protectedPaths: ['x/y/'] });
+
+    expect(result).toEqual(['x/y']);
+  });
+
+  it('strips repeated leading "./" prefixes to a fixpoint', () => {
+    // Mutation caught: a single-pass strip ('if' instead of 'while') leaving './x/y',
+    // which substring-matches no real payload path — silent fail-open narrowing.
+    const result = normalizeProtectedPaths({ protectedPaths: ['././x/y'] });
+
+    expect(result).toEqual(['x/y']);
+  });
+
+  it('strips repeated trailing "/" suffixes to a fixpoint', () => {
+    // Mutation caught: a single-pass strip leaving 'x/y/', which never matches the
+    // bare directory mention 'x/y' — the same silent narrowing on the suffix side.
+    const result = normalizeProtectedPaths({ protectedPaths: ['x/y//'] });
 
     expect(result).toEqual(['x/y']);
   });
