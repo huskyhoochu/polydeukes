@@ -18,13 +18,13 @@ export {
   type PolydeukesConfig,
   type ResolvedConfig,
 } from './config.js';
-
 export {
   type FailMode,
   type FailureKind,
   failModeToExitCode,
   resolveFailMode,
 } from './fail-policy.js';
+export { normalizeProtectedPaths } from './protected-paths.js';
 
 export {
   aggregateGain,

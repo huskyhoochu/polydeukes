@@ -23,20 +23,22 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // ---------------------------------------------------------------------------
 // Assembly values. Agent/tool vocabulary is injected HERE — never in package
-// source (CORE-01 grep gate's counterpart). protectedPaths are literal strings
-// (dispatcher contract); CONFIG-02 will later normalize/auto-include these.
+// source (CORE-01 grep gate's counterpart). The raw entries below are fed
+// through core's normalizeProtectedPaths (CONFIG-02): registered adapter
+// directories are auto-included, so an adapter can never be left off the
+// protection surface. The normalized output is the dispatcher's literal-string
+// contract.
 // ---------------------------------------------------------------------------
 
-const PROTECTED_PATHS = [
+const RAW_PROTECTED_PATHS = [
   'packages/core/src',
   'packages/core/dist',
   'packages/covenant/src',
   'packages/covenant/dist',
-  'packages/adapter-claude-code/src',
-  'packages/adapter-claude-code/dist',
   '.claude/hooks',
   '.claude/settings.json',
 ];
+const ADAPTER_DIRS = ['packages/adapter-claude-code/src', 'packages/adapter-claude-code/dist'];
 const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
 const SHELL_TOOLS = ['Bash'];
 const COMMAND_ARGS = ['command'];
@@ -46,6 +48,7 @@ const telemetryPath =
   process.env.POLYDEUKES_TELEMETRY_PATH ?? join(repoRoot, '.polydeukes', 'roi.log');
 
 try {
+  const core = await import(pathToFileURL(join(repoRoot, 'packages/core/dist/index.js')).href);
   const covenant = await import(
     pathToFileURL(join(repoRoot, 'packages/covenant/dist/index.js')).href
   );
@@ -53,14 +56,19 @@ try {
     pathToFileURL(join(repoRoot, 'packages/adapter-claude-code/dist/index.js')).href
   );
 
+  const protectedPaths = core.normalizeProtectedPaths({
+    protectedPaths: RAW_PROTECTED_PATHS,
+    adapters: ADAPTER_DIRS,
+  });
+
   const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
   const shellModBody = join(repoRoot, 'packages/covenant/dist/shell-mod-body.js');
-  const pathArgs = PROTECTED_PATHS.flatMap((p) => ['--protected-path', p]);
+  const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
 
   const registrations = [
     {
       label: 'self-mod',
-      protectedPaths: PROTECTED_PATHS,
+      protectedPaths,
       body: {
         command: process.execPath,
         args: [selfModBody, ...pathArgs, ...MUTATING_TOOLS.flatMap((t) => ['--mutating-tool', t])],
@@ -69,7 +77,7 @@ try {
     },
     {
       label: 'shell-mod',
-      protectedPaths: PROTECTED_PATHS,
+      protectedPaths,
       body: {
         command: process.execPath,
         args: [

@@ -225,3 +225,39 @@ describe('§5.2 defineConfig invalid path (throws ConfigValidationError)', () =>
     expectConfigValidationError(invalidConfig);
   });
 });
+
+describe('§5.2 defineConfig adapters field (CONFIG-02)', () => {
+  it('throws ConfigValidationError when adapters contains a non-string element', () => {
+    // P0: adapters is validated on the same axis as protectedPaths — a non-string
+    // element must fail closed at config authoring time. Mutation caught: the
+    // every-element-is-string check on adapters missing entirely, letting a stray
+    // number slip into the protection surface.
+    const invalidConfig = {
+      ...validTwoLanguageConfig,
+      // Deliberately invalid literal: 42 is not a string. Cast widened via the spread.
+      adapters: ['packages/adapter-foo', 42],
+    } as unknown as PolydeukesConfig;
+
+    expectConfigValidationError(invalidConfig);
+  });
+
+  it('accepts a config without adapters (backward compatibility)', () => {
+    // Backward compat: the adapters field is optional; a pre-CONFIG-02 config must
+    // still validate. Mutation caught: adapters made required, or an undefined
+    // adapters treated as an error instead of being skipped.
+    const resolved = defineConfig(validTwoLanguageConfig);
+
+    expect(resolved.adapters).toBeUndefined();
+  });
+
+  it('preserves a valid adapters array in the returned ResolvedConfig', () => {
+    // Mutation caught: defineConfig dropping the adapters field from its return value,
+    // so downstream normalization never sees the registered adapters (the §9난관7 hole).
+    const resolved = defineConfig({
+      ...validTwoLanguageConfig,
+      adapters: ['packages/adapter-foo', 'packages/adapter-bar'],
+    });
+
+    expect(resolved.adapters).toEqual(['packages/adapter-foo', 'packages/adapter-bar']);
+  });
+});
