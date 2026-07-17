@@ -37,6 +37,13 @@ export {
   type TelemetryEvent,
   type TelemetryRecord,
 } from './telemetry.js';
+export {
+  type CanonicalTranscript,
+  noopTranscript,
+  type SubagentInvocation,
+  type TranscriptUserMessage,
+  transcriptFromInput,
+} from './transcript.js';
 
 /**
  * exit-code semantics of the covenant protocol (PRD §4.1).
