@@ -132,9 +132,9 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   });
 
   it('a 2-arg hatch that throws is treated as no bypass: the body spawns and the call is blocked (fail-closed unchanged)', async () => {
-    // P0 fail-closed regression (PRD §4.3: "throw하는 hatch = bypass 아님"), now with the
-    // widened 2-arg signature. Mutation caught: the seam widening dropping the try/catch,
-    // or a throwing hatch resolving to bypass instead of a normal spawn.
+    // P0 fail-closed regression (PRD §4.3: a throwing hatch is never a bypass), now with
+    // the widened 2-arg signature. Mutation caught: the seam widening dropping the
+    // try/catch, or a throwing hatch resolving to bypass instead of a normal spawn.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -161,9 +161,9 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   });
 
   it('verdict parity: injecting a transcript does not change matching/spawn/verdict for a registration without escapeHatch', async () => {
-    // Invariant (PRD §5.2/§7 "판정 불변"): the seam carries no verdict weight for a
-    // hatch-less registration. A blocking body must yield the same exitCode 2 whether or
-    // not spec.transcript is supplied. Mutation caught: the transcript wiring altering
+    // Invariant (PRD §5.2/§7, verdict unchanged): the seam carries no verdict weight for
+    // a hatch-less registration. A blocking body must yield the same exitCode 2 whether
+    // or not spec.transcript is supplied. Mutation caught: the transcript wiring altering
     // the match/spawn path for registrations that never consult it.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const makeReg = (): CovenantRegistration => ({

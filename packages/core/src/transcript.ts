@@ -48,15 +48,17 @@ export const noopTranscript: CanonicalTranscript = {
  * Wrap a {@link CovenantInput} as a {@link CanonicalTranscript} (PRD §4.2).
  *
  * Exposes `subagentSpawns` as invocations (filtered when a kind is given) and
- * `userMessages` with `timestampMs` always `undefined` — the bare IR cannot prove
- * freshness, and that absence is the *correct* fail-closed signal for a waiver
- * consumer. Order preserved; the input is never mutated.
+ * `userMessages` with `timestampMs` omitted — the bare IR cannot prove freshness,
+ * and that absence is the *correct* fail-closed signal for a waiver consumer.
+ * Order preserved; the input is never mutated, and every query returns fresh
+ * objects so consumers never hold live aliases into the shared IR.
  */
 export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
   return {
     findSubagentInvocations: (kind) =>
-      input.subagentSpawns.filter((spawn) => kind === undefined || spawn.kind === kind),
-    findUserMessages: () =>
-      input.userMessages.map((message) => ({ text: message.text, timestampMs: undefined })),
+      input.subagentSpawns
+        .filter((spawn) => kind === undefined || spawn.kind === kind)
+        .map((spawn) => ({ kind: spawn.kind })),
+    findUserMessages: () => input.userMessages.map((message) => ({ text: message.text })),
   };
 }

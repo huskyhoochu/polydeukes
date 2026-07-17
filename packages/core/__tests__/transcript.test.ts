@@ -14,7 +14,7 @@ import { noopTranscript, transcriptFromInput } from '../src/index.ts';
 // ---------------------------------------------------------------------------
 // §5.1 interface + implementations — pure, no I/O. A fake transcript is built
 // inline to prove the interface is consumable by covenant code with a stand-in
-// (the roadmap acceptance: "fake transcript로 findSubagentInvocations 동작").
+// (the roadmap acceptance: findSubagentInvocations works over a fake transcript).
 // ---------------------------------------------------------------------------
 
 /** Build a CovenantInput with the given spawns and user-message texts. */
@@ -36,10 +36,9 @@ describe('§5.1 CanonicalTranscript — fake transcript consumable by the interf
       { kind: 'reader-kind' },
       { kind: 'writer-kind' },
     ];
-    const messages: TranscriptUserMessage[] = [{ text: 'hello', timestampMs: 10 }];
+    const messages: TranscriptUserMessage[] = [];
     const fake: CanonicalTranscript = {
-      findSubagentInvocations: (kind) =>
-        kind === undefined ? invocations : invocations.filter((i) => i.kind === kind),
+      findSubagentInvocations: () => invocations,
       findUserMessages: () => messages,
     };
 
@@ -91,32 +90,38 @@ describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
     expect(transcript.findSubagentInvocations('never-spawned')).toEqual([]);
   });
 
-  it('exposes input.userMessages in order via findUserMessages() with every timestampMs undefined', () => {
-    // PRD §4.2/§2 contract: the IR carries no timestamps, so "timestampMs 부재 = 신선도
-    // 증명 불가" is the correct signal a waiver consumer will fail-closed on. Mutation
-    // caught: a fabricated timestamp (Date.now()) injected, or the message order lost.
+  it('exposes input.userMessages in order via findUserMessages() with timestampMs absent', () => {
+    // PRD §4.2/§2 contract: the IR carries no timestamps, so an absent timestampMs
+    // (= freshness unprovable) is the signal a waiver consumer will fail-closed on.
+    // The key must be OMITTED, not present with an undefined value, so key-presence
+    // checks and JSON round-trips agree about absence. Mutation caught: a fabricated
+    // timestamp (Date.now()) injected, a present-but-undefined key, or order lost.
     const input = inputWith([], ['first', 'second']);
 
     const transcript = transcriptFromInput(input);
     const messages = transcript.findUserMessages();
 
-    expect(messages).toEqual([
-      { text: 'first', timestampMs: undefined },
-      { text: 'second', timestampMs: undefined },
-    ]);
-    expect(messages.every((m) => m.timestampMs === undefined)).toBe(true);
+    expect(messages).toEqual([{ text: 'first' }, { text: 'second' }]);
+    expect(messages.every((m) => !('timestampMs' in m))).toBe(true);
   });
 
   it('does not mutate the input object', () => {
-    // Invariant (PRD §4.2 "입력 비변이"): the IR-backed implementation is read-only over
-    // its input. Mutation caught: an in-place normalization that rewrites userMessages /
-    // subagentSpawns on the shared input object.
+    // Invariant (PRD §4.2, input never mutated): the IR-backed implementation is
+    // read-only over its input. Mutation caught: an in-place normalization that
+    // rewrites userMessages / subagentSpawns on the shared input object.
     const input = inputWith([{ kind: 'writer-kind' }], ['only']);
     const snapshot = structuredClone(input);
 
     const transcript = transcriptFromInput(input);
     transcript.findSubagentInvocations();
     transcript.findUserMessages();
+
+    // Query results must be fresh objects, never live aliases into the shared IR —
+    // a consumer mutating a result must not rewrite what other covenants judge.
+    const [invocation] = transcript.findSubagentInvocations();
+    invocation.kind = 'rewritten';
+    const [message] = transcript.findUserMessages();
+    message.text = 'rewritten';
 
     expect(input).toEqual(snapshot);
   });
