@@ -62,6 +62,8 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 | Document | Contents |
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
+| [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
 ## CLI (planned)
 
