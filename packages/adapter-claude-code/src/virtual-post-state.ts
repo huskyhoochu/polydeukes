@@ -49,13 +49,15 @@ function applyEdit(
   if (occurrences === 0) {
     return { ok: false, reason: 'old_string does not occur in the pre-state' };
   }
+  // Replacer functions insert newString literally — passing it as a plain string would
+  // expand $-replacement patterns ($&, $$, $'), diverging from the real Edit tool.
   if (replaceAll === true) {
-    return { ok: true, content: content.replaceAll(oldString, newString) };
+    return { ok: true, content: content.replaceAll(oldString, () => newString) };
   }
   if (occurrences > 1) {
     return { ok: false, reason: 'old_string occurs more than once without replace_all' };
   }
-  return { ok: true, content: content.replace(oldString, newString) };
+  return { ok: true, content: content.replace(oldString, () => newString) };
 }
 
 /**

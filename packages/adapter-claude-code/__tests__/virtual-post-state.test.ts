@@ -86,6 +86,29 @@ describe('§4.1 per-tool post-state compute', () => {
     });
   });
 
+  it('Edit inserts new_string literally — $-replacement patterns are never expanded', () => {
+    // String.prototype.replace/replaceAll interpret $-patterns ($&, $$, $') in the
+    // replacement argument; the real Edit tool substitutes literally. A divergence here
+    // hands COVENANT-05 the wrong post-state (both bypass and false-block directions).
+    // Mutation caught: passing new_string directly as the replacement argument.
+    const single = virtualPostState(
+      editPayloadWith({ file_path: 'src/app.ts', old_string: 'foo', new_string: '$&bar' }),
+      'foo',
+    );
+    expect(single).toEqual({ ok: true, value: { filePath: 'src/app.ts', content: '$&bar' } });
+
+    const all = virtualPostState(
+      editPayloadWith({
+        file_path: 'src/app.ts',
+        old_string: 'x',
+        new_string: '$$',
+        replace_all: true,
+      }),
+      'x and x',
+    );
+    expect(all).toEqual({ ok: true, value: { filePath: 'src/app.ts', content: '$$ and $$' } });
+  });
+
   it('MultiEdit applies edits sequentially — the 2nd edit targets the 1st edit result', () => {
     // The 2nd edit's old_string ('two') only exists AFTER the 1st edit turns 'one' into
     // 'two'. An order-ignoring / parallel implementation cannot produce 'three' and fails.
@@ -107,7 +130,7 @@ describe('§4.1 per-tool post-state compute', () => {
 
 describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, never throws)', () => {
   it('non-object payloads fail closed without throwing', () => {
-    // Mutation caught: a typeof / Array.isArray guard removed, letting a hostile payload
+    // Mutation caught: a typeof / Array.isArray check removed, letting a hostile payload
     // through as ok:true, or an unhandled throw escaping the function.
     for (const hostile of ['a string', null, [], 42]) {
       let result: VirtualPostState | undefined;
