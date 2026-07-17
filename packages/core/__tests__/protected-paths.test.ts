@@ -96,7 +96,7 @@ describe('normalizeProtectedPaths — per-entry normalization rules (PRD §5.1)'
 
 describe('normalizeProtectedPaths — empty-equivalent entries dropped (PRD §5.1)', () => {
   it('drops an empty-string entry from the output', () => {
-    // AC: "'' dropped". P0 fail-open guard: an unguarded '' substring-matches every
+    // AC: "'' dropped". P0 fail-open covenant: an unchecked '' substring-matches every
     // input, turning the protection surface into a match-everything sieve.
     const result = normalizeProtectedPaths({ protectedPaths: [''] });
 

@@ -367,6 +367,81 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// COVENANT-07 §5.1/§5.2/§5.3 — path-segment matching upgrade of the shared
+// primitive, applied by the Bash-axis judge. Uses the real protected path
+// `packages/core/src` so the parent-operation and quote-split vectors match
+// exactly the audit-found bypasses.
+// ---------------------------------------------------------------------------
+
+const REAL_PROTECTED = 'packages/core/src';
+
+/** A shell-mod spec keyed on the real protected path (audit vectors). */
+function realSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModificationSpec {
+  return {
+    protectedPaths: [REAL_PROTECTED],
+    shellToolNames: [SHELL_TOOL],
+    commandArgNames: [COMMAND_ARG],
+    readOnlyCommands: DEFAULT_READ_ONLY_COMMANDS,
+    ...overrides,
+  };
+}
+
+describe('judgeShellModification — parent-of-protected operations (PRD §5.1)', () => {
+  it('rm -rf on the protected parent directory breaks (ancestor match)', () => {
+    // Mutation caught: reverting mentionsPath to substring semantics — `packages/core` does
+    // NOT contain `packages/core/src` as a substring, so the substring primitive let
+    // `rm -rf packages/core` (a parent-of-protected deletion) pass. Ancestor matching blocks.
+    const verdict = judgeShellModification(shellCall('rm -rf packages/core'), realSpec());
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(REAL_PROTECTED);
+    }
+  });
+
+  it('mv of the protected parent directory breaks (ancestor match)', () => {
+    // Mutation caught: same substring bypass on the move vector — `mv packages/core /tmp/x`
+    // relocates the parent of the protected dir. The ancestor relation must catch it.
+    const verdict = judgeShellModification(shellCall('mv packages/core /tmp/x'), realSpec());
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(REAL_PROTECTED);
+    }
+  });
+});
+
+describe('judgeShellModification — quote/escape/line-continuation split path (PRD §5.2)', () => {
+  it('a quote-split protected path in a redirect target breaks (tokenizer strips quotes)', () => {
+    // Mutation caught: matching the raw string instead of the tokenized (quote-stripped)
+    // word — the raw `packages/core/sr"c"/index.ts` has no contiguous `packages/core/src`,
+    // so a raw-substring judge misses it while the shell writes the protected file.
+    const verdict = judgeShellModification(
+      shellCall('printf x > packages/core/sr"c"/index.ts'),
+      realSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(REAL_PROTECTED);
+    }
+  });
+
+  it('a backslash+newline line continuation inside a path is elided, so the path matches and breaks', () => {
+    // Mutation caught: scanWord inserting a literal newline for `\`+newline instead of
+    // eliding it as a shell line continuation. The byte sequence is backslash then an actual
+    // newline char mid-path; after continuation removal the word is `packages/core/src/...`.
+    const line = 'printf x > packages/core/sr\\\nc/index.ts';
+    const verdict = judgeShellModification(shellCall(line), realSpec());
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(REAL_PROTECTED);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PRD §5.3 (body CLI) + §5.4 (dispatcher E2E) — real compiled artifact.
 // ---------------------------------------------------------------------------
 

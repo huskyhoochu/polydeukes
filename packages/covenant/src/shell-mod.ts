@@ -65,7 +65,7 @@ const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 /** True when the command's leading words match the allowlist entry's word sequence. */
 function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): boolean {
   // An empty entry would match every command vacuously (`[].every()` is true) — reject it
-  // locally so the guard does not depend on a distant caller-side filter.
+  // locally so the covenant does not depend on a distant caller-side filter.
   if (entry.length === 0) return false;
   return entry.every((entryWord, k) => {
     const word = command.words[k];
@@ -169,6 +169,8 @@ export function judgeShellModification(
     for (const line of lines) {
       const result = tokenizeCommandLine(line);
       if (!result.ok) {
+        // Tokenize failed: fall back to a segment-match of the raw line (mentionsPath splits
+        // it into candidates — no raw substring). A path named in the line fails closed.
         const hit = protectedPaths.find((path) => mentionsPath(line, path));
         if (hit !== undefined) {
           return {

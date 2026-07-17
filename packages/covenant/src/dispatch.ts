@@ -13,7 +13,8 @@
  */
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING, EXIT_UPHOLD, parseInput } from '@polydeukes/core';
-import { mentionsPath } from './mention.js';
+import { tokenizeCommandLine } from './bash-line.js';
+import { pathMatchesProtected } from './mention.js';
 import { runCovenant } from './run-covenant.js';
 import { appendRecordFailOpen } from './telemetry-fail-open.js';
 
@@ -35,25 +36,66 @@ export type CovenantRegistration = {
 };
 
 /**
+ * Collect path candidates from every string value inside `value` (PRD §4.2). Each string is
+ * tokenized quote-aware (via the shared tokenizer) so quote/escape splits collapse to the
+ * word the shell would see; each resulting word text is a candidate. A tokenize failure
+ * surfaces as `failed = true` so the caller can route fail-closed rather than fall back to a
+ * raw-substring scan.
+ */
+function collectPathCandidates(value: unknown): { candidates: string[]; failed: boolean } {
+  const candidates: string[] = [];
+  let failed = false;
+
+  const walk = (node: unknown): void => {
+    if (typeof node === 'string') {
+      const result = tokenizeCommandLine(node);
+      if (!result.ok) {
+        failed = true;
+        return;
+      }
+      for (const command of result.commands) {
+        for (const word of command.words) candidates.push(word.text);
+        for (const redirect of command.redirects) candidates.push(redirect.target.text);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    if (typeof node === 'object' && node !== null) {
+      for (const item of Object.values(node)) walk(item);
+    }
+  };
+
+  walk(value);
+  return { candidates, failed };
+}
+
+/**
  * Match registrations against a {@link CovenantInput} by path mention (PRD §4.2, pure).
  *
- * A registration matches when any of its `protectedPaths` appears as a substring of any
- * string value reachable at any depth inside `input.toolCalls[].args`; `subagentSpawns`
- * and `userMessages` never participate. `mentionedPath` is the first protected path (in
- * array order) that mentions. Result preserves registration order, at most one entry per
- * registration.
+ * A registration matches when any of its `protectedPaths` is an ancestor/descendant/equal of
+ * a path candidate extracted from any string value reachable at any depth inside
+ * `input.toolCalls[].args`; candidates are quote-aware tokenizer words, so a quote-split
+ * write still routes. A tokenize failure with a non-empty `protectedPaths` routes fail-closed
+ * (the registration matches on its first protected path) rather than silently miss.
+ * `subagentSpawns` and `userMessages` never participate. `mentionedPath` is the first
+ * protected path (in array order) that mentions. Result preserves registration order, at most
+ * one entry per registration.
  */
 export function matchRegistrations(
   input: CovenantInput,
   registrations: CovenantRegistration[],
 ): { registration: CovenantRegistration; mentionedPath: string }[] {
-  const argValues = input.toolCalls.map((call) => call.args);
+  const { candidates, failed } = collectPathCandidates(input.toolCalls.map((call) => call.args));
   const matches: { registration: CovenantRegistration; mentionedPath: string }[] = [];
 
   for (const registration of registrations) {
-    const mentionedPath = registration.protectedPaths.find(
-      (path) => path !== '' && argValues.some((args) => mentionsPath(args, path)),
-    );
+    const paths = registration.protectedPaths.filter((path) => path !== '');
+    const mentionedPath =
+      paths.find((path) => candidates.some((candidate) => pathMatchesProtected(candidate, path))) ??
+      (failed ? paths[0] : undefined);
     if (mentionedPath !== undefined) {
       matches.push({ registration, mentionedPath });
     }

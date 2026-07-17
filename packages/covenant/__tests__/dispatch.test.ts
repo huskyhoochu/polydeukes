@@ -128,6 +128,19 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
 
     expect(matches).toEqual([]);
   });
+
+  it('routes a quote-split protected path in a command arg to the registration (PRD §5.2)', () => {
+    // Mutation caught: matchRegistrations keeping raw-substring routing — a quote-split write
+    // like `printf x > sub/prot"e"cted/file.txt` has no contiguous `sub/protected/file.txt`
+    // in the raw arg, so a substring router silently misses it and no covenant is spawned.
+    // The tokenize-aware candidate extraction (quote-stripped) must still route it.
+    const input = inputWithArgs({ command: 'printf x > sub/prot"e"cted/file.txt' });
+    const reg = registration('sample-covenant', ['sub/protected/file.txt']);
+
+    const matches = matchRegistrations(input, [reg]);
+
+    expect(matches).toEqual([{ registration: reg, mentionedPath: 'sub/protected/file.txt' }]);
+  });
 });
 
 // ---------------------------------------------------------------------------
