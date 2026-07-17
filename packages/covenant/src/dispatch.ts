@@ -14,7 +14,7 @@
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING, EXIT_UPHOLD, parseInput } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
-import { pathMatchesProtected } from './mention.js';
+import { pathCandidates, pathMatchesProtected } from './mention.js';
 import { runCovenant } from './run-covenant.js';
 import { appendRecordFailOpen } from './telemetry-fail-open.js';
 
@@ -23,7 +23,7 @@ import { appendRecordFailOpen } from './telemetry-fail-open.js';
  *
  * `protectedPaths` are literal path strings (the output shape of normalization, not
  * globs); an empty array never matches, and empty-string entries are ignored (an
- * unguarded `''` would substring-match every input). `body` is the CORE-01 protocol
+ * empty `''` would match every input). `body` is the CORE-01 protocol
  * executable the dispatcher spawns via {@link runCovenant} when a protected path is
  * mentioned. `escapeHatch`, when present, is evaluated only for a *matched*
  * registration: a `true` return bypasses the spawn (measured as `bypassed`).
@@ -54,8 +54,12 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
         return;
       }
       for (const command of result.commands) {
-        for (const word of command.words) candidates.push(word.text);
-        for (const redirect of command.redirects) candidates.push(redirect.target.text);
+        // Split each tokenized word the same way mentionsPath does, so a path fused to
+        // another lexeme (`--dest=path`) still surfaces as its own candidate.
+        for (const word of command.words) candidates.push(...pathCandidates(word.text));
+        for (const redirect of command.redirects) {
+          candidates.push(...pathCandidates(redirect.target.text));
+        }
       }
       return;
     }

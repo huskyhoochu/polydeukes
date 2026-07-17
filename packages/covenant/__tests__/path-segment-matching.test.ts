@@ -40,6 +40,34 @@ describe('pathMatchesProtected — segment-boundary prefix trap (PRD §5.1)', ()
   });
 });
 
+describe('pathMatchesProtected — absolute candidate paths (high-review regression)', () => {
+  it('an ABSOLUTE descendant matches the relative protected path', () => {
+    // Claude Code sends file_path as an absolute path; the relative protected path
+    // 'core/src' must match it as a contiguous segment subsequence, not an index-0 prefix.
+    // Mutation caught: prefix anchored at segment 0 — the exact absolute-path bypass that
+    // silently reopened self-mod protection.
+    expect(
+      pathMatchesProtected('/home/u/proj/packages/core/src/index.ts', 'packages/core/src'),
+    ).toBe(true);
+  });
+
+  it('an ABSOLUTE ancestor (parent-dir op on an absolute path) matches', () => {
+    // `rm -rf /home/u/proj/packages/core` — the protected 'packages/core/src' sequence is
+    // not present, but 'packages/core' is an ancestor of it; the candidate carries the
+    // protected path's ancestor as a contiguous tail. Mutation caught: ancestor relation
+    // only checked at index 0.
+    expect(pathMatchesProtected('/home/u/proj/packages/core', 'packages/core/src')).toBe(true);
+  });
+
+  it('an absolute sibling sharing a segment prefix still does NOT match', () => {
+    // The boundary trap must survive the absolute-path fix: core/src-generated is not
+    // core/src at any offset.
+    expect(
+      pathMatchesProtected('/home/u/proj/packages/core/src-generated/x.ts', 'packages/core/src'),
+    ).toBe(false);
+  });
+});
+
 describe('pathMatchesProtected — normalization (PRD §4.1 segment normalize)', () => {
   it('a leading "./" and trailing "/" on the candidate are normalized before matching', () => {
     // Mutation caught: normalization skipped, so `./core/src/` splits into segments with a
@@ -74,5 +102,28 @@ describe('mentionsPath — recursive traversal with segment semantics (PRD §5.1
     // src-gen/x.ts` would substring-hit `packages/core/src` and produce a false block/route.
     const args = inputWithArgs({ file_path: 'packages/core/src-gen/x.ts' }).toolCalls[0].args;
     expect(mentionsPath(args, 'packages/core/src')).toBe(false);
+  });
+
+  it('matches an ABSOLUTE file_path nested in args (the real Edit payload shape)', () => {
+    // Claude Code Edit/Write always send an absolute file_path — the self-mod judge reads it
+    // through mentionsPath. Mutation caught: absolute paths silently unprotected.
+    const args = inputWithArgs({
+      file_path: '/home/u/proj/packages/core/src/index.ts',
+    }).toolCalls[0].args;
+    expect(mentionsPath(args, 'packages/core/src')).toBe(true);
+  });
+
+  it('matches a protected path embedded behind a `--flag=` token', () => {
+    // A `--dest=<protected>` argument must surface the path as its own candidate.
+    // Mutation caught: the token split omits `=`, so the flag-form write is missed.
+    const args = inputWithArgs({ command: 'cp x --dest=packages/core/src/y' }).toolCalls[0].args;
+    expect(mentionsPath(args, 'packages/core/src')).toBe(true);
+  });
+
+  it('matches a protected path in a colon-joined argument (PATH-style)', () => {
+    // Mutation caught: the separator class omits `:`, so a colon-joined path list hides the
+    // protected path in one un-split candidate.
+    const args = inputWithArgs({ command: 'x --paths=/tmp:packages/core/src' }).toolCalls[0].args;
+    expect(mentionsPath(args, 'packages/core/src')).toBe(true);
   });
 });

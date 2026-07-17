@@ -177,6 +177,21 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
+  it('a tokenize failure whose quote-split target names the protected path breaks (high-review regression)', () => {
+    // The fallback strips quotes before matching, so a quote-split protected target inside an
+    // untokenizable line is not hidden by the very quoting that broke tokenization.
+    // Mutation caught: the fallback matching the raw (quoted) line, missing `sub/prot"e"cted`.
+    const verdict = judgeShellModification(
+      shellCall(`printf x > sub/prot"e"cted/file.txt 'unclosed`),
+      baseSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
+
   it('a shell-tool call with no string value under any command-arg key breaks (§4.1 step 1 misassembly)', () => {
     // Mutation caught: a shell-tool call whose command cannot be read (arg-name typo, or a
     // non-string value) silently upheld instead of failing closed — the judge-level twin of

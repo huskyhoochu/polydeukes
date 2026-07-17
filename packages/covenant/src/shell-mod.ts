@@ -169,9 +169,13 @@ export function judgeShellModification(
     for (const line of lines) {
       const result = tokenizeCommandLine(line);
       if (!result.ok) {
-        // Tokenize failed: fall back to a segment-match of the raw line (mentionsPath splits
-        // it into candidates — no raw substring). A path named in the line fails closed.
-        const hit = protectedPaths.find((path) => mentionsPath(line, path));
+        // Tokenize failed: the shell would still remove quotes, so a quote-split target like
+        // `sr"c"` becomes `src` on execution. Strip quote characters before the segment-match
+        // so the fallback is not defeated by the very quoting that broke tokenization; this
+        // stays fail-closed (a path named in an untokenizable line breaks). Quote removal here
+        // may over-join unrelated words, which only ever widens what breaks — never a hole.
+        const dequoted = line.replace(/['"]/g, '');
+        const hit = protectedPaths.find((path) => mentionsPath(dequoted, path));
         if (hit !== undefined) {
           return {
             upheld: false,
