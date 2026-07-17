@@ -128,6 +128,42 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
 
     expect(matches).toEqual([]);
   });
+
+  it('routes a quote-split protected path in a command arg to the registration (PRD §5.2)', () => {
+    // Mutation caught: matchRegistrations keeping raw-substring routing — a quote-split write
+    // like `printf x > sub/prot"e"cted/file.txt` has no contiguous `sub/protected/file.txt`
+    // in the raw arg, so a substring router silently misses it and no covenant is spawned.
+    // The tokenize-aware candidate extraction (quote-stripped) must still route it.
+    const input = inputWithArgs({ command: 'printf x > sub/prot"e"cted/file.txt' });
+    const reg = registration('sample-covenant', ['sub/protected/file.txt']);
+
+    const matches = matchRegistrations(input, [reg]);
+
+    expect(matches).toEqual([{ registration: reg, mentionedPath: 'sub/protected/file.txt' }]);
+  });
+
+  it('routes an absolute file_path to the registration (high-review regression)', () => {
+    // Claude Code Edit/Write send an absolute file_path; matchRegistrations must route it to
+    // the covenant body. Mutation caught: segment matching anchored at index 0, so an
+    // absolute descendant of the relative protected path never routes and self-mod is skipped.
+    const input = inputWithArgs({ file_path: '/home/u/proj/sub/protected/file.txt' });
+    const reg = registration('sample-covenant', ['sub/protected/file.txt']);
+
+    const matches = matchRegistrations(input, [reg]);
+
+    expect(matches).toEqual([{ registration: reg, mentionedPath: 'sub/protected/file.txt' }]);
+  });
+
+  it('routes a `--flag=<protected>` argument to the registration (high-review regression)', () => {
+    // Mutation caught: the dispatcher tests raw tokenizer word.text without the shell-separator
+    // split, so `--dest=sub/protected/file.txt` (one word) never surfaces the path candidate.
+    const input = inputWithArgs({ command: 'cp x --dest=sub/protected/file.txt' });
+    const reg = registration('sample-covenant', ['sub/protected/file.txt']);
+
+    const matches = matchRegistrations(input, [reg]);
+
+    expect(matches).toEqual([{ registration: reg, mentionedPath: 'sub/protected/file.txt' }]);
+  });
 });
 
 // ---------------------------------------------------------------------------

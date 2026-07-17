@@ -15,7 +15,7 @@
  * `bypassed`; it is evaluated inside the dispatcher seam, never up here.
  */
 
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -47,8 +47,9 @@ const HATCH_ENV = 'POLYDEUKES_COVENANT_BYPASS';
 const telemetryPath =
   process.env.POLYDEUKES_TELEMETRY_PATH ?? join(repoRoot, '.polydeukes', 'roi.log');
 
+let core;
 try {
-  const core = await import(pathToFileURL(join(repoRoot, 'packages/core/dist/index.js')).href);
+  core = await import(pathToFileURL(join(repoRoot, 'packages/core/dist/index.js')).href);
   const covenant = await import(
     pathToFileURL(join(repoRoot, 'packages/covenant/dist/index.js')).href
   );
@@ -101,5 +102,20 @@ try {
   process.exit(exitCode);
 } catch (error) {
   console.error(`covenant hook failed closed: ${error?.message ?? error}`);
+  // If core imported before the failure, honor the one-call-one-record invariant with a
+  // blocked record (COVENANT-07 §4.3). If core import itself failed, no record is possible.
+  if (core?.appendRecord) {
+    try {
+      mkdirSync(dirname(telemetryPath), { recursive: true });
+      core.appendRecord(telemetryPath, {
+        timestamp: new Date().toISOString(),
+        event: 'blocked',
+        label: 'hook',
+        subject: '-',
+      });
+    } catch {
+      // A telemetry failure must never convert the blocking exit into a bypass.
+    }
+  }
   process.exit(2);
 }

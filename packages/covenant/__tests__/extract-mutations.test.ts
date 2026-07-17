@@ -150,3 +150,17 @@ describe('§5.3 fail-closed no-throw fuzz cases', () => {
     expect(() => extractMutations(pathological, [])).not.toThrow();
   });
 });
+
+describe('§5.5 nested-shell boundary uses command basename (SSOT with shell-mod)', () => {
+  it('"/bin/sh -c \'...\'" is indeterminate — matched by basename, not raw first.text', () => {
+    // COVENANT-07 §5.5. Mutation caught: the nested-shell boundary comparing the raw first
+    // word (`/bin/sh`) against the bare-name set instead of its basename (`sh`). A raw-text
+    // comparison misses `/bin/sh`, so the inner `> packages/core/src/y` write neither
+    // surfaces as a mutation nor as indeterminate — the confident-pass drift this ticket
+    // closes. The basename boundary (mirror of shell-mod's (e) clause) reports indeterminate.
+    const result = extractMutations("/bin/sh -c 'echo x > packages/core/src/y'", []);
+
+    expect(result.mutations).toEqual([]);
+    expect(result.indeterminate.length).toBeGreaterThan(0);
+  });
+});

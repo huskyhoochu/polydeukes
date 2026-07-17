@@ -108,6 +108,16 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
     if (ch === '\\') {
       // Backslash escape: the next character is literal, never a separator or expansion.
       const nextCh = line[i + 1];
+      if (nextCh === '\n') {
+        // `\`+newline is a shell line continuation: elide both characters (the word
+        // continues on the next physical line) rather than inserting a literal newline.
+        i += 2;
+        continue;
+      }
+      if (nextCh === '\r' && line[i + 2] === '\n') {
+        i += 3;
+        continue;
+      }
       if (nextCh !== undefined) {
         text += nextCh;
         i += 2;
@@ -359,7 +369,11 @@ export function extractMutations(line: string, rules: MutationRule[]): MutationA
     const first = command.words[0];
 
     // Nested shell = reinterpretation boundary: report indeterminate, do not parse inside.
-    if (first !== undefined && NESTED_SHELL_COMMANDS.has(first.text)) {
+    // Matched by command basename (`/bin/sh` → `sh`), the same boundary shell-mod's (e)
+    // clause uses (SSOT), so a leading-path nested shell is not missed by a raw-text compare.
+    const firstBasename =
+      first !== undefined ? first.text.slice(first.text.lastIndexOf('/') + 1) : '';
+    if (first !== undefined && isNestedShellCommand(firstBasename)) {
       indeterminate.push({ reason: `nested shell execution: ${first.text}` });
       continue;
     }
