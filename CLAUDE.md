@@ -10,8 +10,9 @@ wrapper, the heredoc-aware multi-line Bash analysis core with its write-detectio
 (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
 meta-covenant with its escape-hatch seam, and the shell-mod meta-covenant that assembles
 the detection rules into a Bash-axis judge with a read-only allowlist), and
-`packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, and the
-adapter-path ROI telemetry wiring with its injected dispatch seam);
+`packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
+adapter-path ROI telemetry wiring with its injected dispatch seam, and the virtual-post-state
+parser that computes Edit/Write/MultiEdit apply-results without touching disk);
 `packages/polydeukes` remains a name-reserving stub.
 The design docs are still the source of truth for everything not yet implemented. When a design
 doc and shipped code disagree, neither side wins by default — triage the discrepancy against the

@@ -9,7 +9,10 @@
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 
+import { isPlainObject } from './is-plain-object.js';
+
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
+export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
 
 /** Package version, mirrored from package.json until a build-time injection exists. */
 export const version = '0.0.1';
@@ -42,10 +45,6 @@ export type TranslatedEvent =
   | { ok: true; kind: 'toolCall'; value: { name: string; args?: Record<string, unknown> } }
   | { ok: true; kind: 'subagentSpawn'; value: { kind: string } }
   | { ok: false; reason: string };
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /**
  * Up-translate one Claude Code payload into an IR fragment (pure, PRD §4.2).
