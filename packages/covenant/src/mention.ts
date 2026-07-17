@@ -26,44 +26,45 @@ function containsSegmentRun(haystack: string[], needle: string[]): boolean {
   return false;
 }
 
-/** True iff some non-empty suffix of `candidate` is a prefix of `protectedPath`. */
-function candidateTailIsProtectedHead(candidate: string[], protectedPath: string[]): boolean {
-  for (let start = 0; start < candidate.length; start++) {
-    const tail = candidate.slice(start);
-    if (tail.length > protectedPath.length) continue;
-    if (tail.every((segment, i) => segment === protectedPath[i])) return true;
-  }
-  return false;
-}
-
 /**
- * True iff `candidate` names the protected path, a descendant of it, or an ancestor of it —
- * compared on normalized path segments (not raw substrings, PRD §4.1). Matching is
- * offset-independent, so a candidate carrying leading path noise (an ABSOLUTE path, a `../`
- * chain) still matches a relative protected path:
- *  - descendant / equal: the protected segments appear as a contiguous run inside the
- *    candidate — `/home/u/proj/core/src/x` ⊇ `core/src`;
- *  - ancestor: some suffix of the candidate is a prefix of the protected path — the parent
- *    op `rm -rf /home/u/proj/packages/core` (tail `packages/core` heads `packages/core/src`).
- * The segment boundary is exact, so `core/src-generated` never matches `core/src`.
+ * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
+ * of it — compared on normalized path segments (not raw substrings, PRD §4.1). The two
+ * directions are deliberately asymmetric:
+ *  - descendant / equal: the protected segments appear as a contiguous run at ANY offset in
+ *    the candidate, so an ABSOLUTE `file_path` (`/home/u/proj/core/src/x` — the real Edit
+ *    payload shape) matches the relative protected `core/src`;
+ *  - ancestor: the WHOLE candidate is a root-anchored prefix of the protected path, so the
+ *    relative parent op `rm -rf packages/core` matches but an unrelated `vendor/packages`
+ *    whose tail merely coincides with the protected head does NOT.
+ * The asymmetry is load-bearing: allowing any candidate *suffix* to head the protected path
+ * would block legitimate unrelated dirs (`x/packages/core`). The cost is that an ABSOLUTE
+ * ancestor path (`rm -rf /abs/.../packages/core`) is not caught — an accepted non-goal
+ * (complete Bash lockdown was never the goal; the relative form is still caught, and the
+ * over-block alternative is worse). The segment boundary is exact, so `core/src-generated`
+ * never matches `core/src`.
  */
 export function pathMatchesProtected(candidate: string, protectedPath: string): boolean {
   const a = pathSegments(candidate);
   const b = pathSegments(protectedPath);
   if (a.length === 0 || b.length === 0) return false;
-  return containsSegmentRun(a, b) || candidateTailIsProtectedHead(a, b);
+  if (containsSegmentRun(a, b)) return true;
+  // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
+  return a.length < b.length && a.every((segment, i) => segment === b[i]);
 }
 
 /**
  * Extract path candidates from one string token. The token is split on shell separators
- * that join a path to other lexemes — whitespace, `=`, `:`, `,`, parentheses, backtick — so a
- * path embedded in a compound token (a `--flag=path`, a `PATH=/a:proto/x` list, an opaque
- * command substitution, an eval's quoted argument) surfaces as its own candidate while a
- * standalone token stays intact (so the segment-boundary trap still rejects a sibling like
- * `core/src-generated`). `/` is never a separator — it is the path's own segment boundary.
+ * that join a path to other lexemes — whitespace, `=`, `,`, parentheses, backtick — so a path
+ * embedded in a compound token (a `--flag=path`, an opaque command substitution, an eval's
+ * quoted argument) surfaces as its own candidate while a standalone token stays intact (so the
+ * segment-boundary trap still rejects a sibling like `core/src-generated`). `/` is never a
+ * separator (it is the path's own segment boundary); `:` is deliberately NOT a separator
+ * either — splitting on it shatters URLs (`https://…`) into fragments that the offset-free
+ * descendant match then over-blocks, and a colon-joined path list is already reached by the
+ * contiguous-run match without the split.
  */
 export function pathCandidates(token: string): string[] {
-  return token.split(/[\s=:,()`]+/).filter((fragment) => fragment !== '');
+  return token.split(/[\s=,()`]+/).filter((fragment) => fragment !== '');
 }
 
 /**
