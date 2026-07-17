@@ -5,7 +5,8 @@ covenants, a verifiable ledger, local memory, and adversarial verification on on
 
 **This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
 protocol, ROI telemetry, config loader, fail-open/fail-closed policy table, protected-path
-normalization with adapter auto-inclusion), `packages/covenant` (the run_covenant execution
+normalization with adapter auto-inclusion, and the canonical-transcript query seam with its
+noop default), `packages/covenant` (the run_covenant execution
 wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
 (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
 meta-covenant with its escape-hatch seam, and the shell-mod meta-covenant that assembles

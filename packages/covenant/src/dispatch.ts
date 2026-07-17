@@ -12,7 +12,14 @@
  * the body receives the original raw stdin verbatim (opaque cargo).
  */
 
-import { type CovenantInput, EXIT_BREAK_BLOCKING, EXIT_UPHOLD, parseInput } from '@polydeukes/core';
+import {
+  type CanonicalTranscript,
+  type CovenantInput,
+  EXIT_BREAK_BLOCKING,
+  EXIT_UPHOLD,
+  noopTranscript,
+  parseInput,
+} from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
 import { runCovenant } from './run-covenant.js';
@@ -26,13 +33,14 @@ import { appendRecordFailOpen } from './telemetry-fail-open.js';
  * empty `''` would match every input). `body` is the CORE-01 protocol
  * executable the dispatcher spawns via {@link runCovenant} when a protected path is
  * mentioned. `escapeHatch`, when present, is evaluated only for a *matched*
- * registration: a `true` return bypasses the spawn (measured as `bypassed`).
+ * registration, receiving the injected transcript seam as its second argument
+ * (CORE-04): a `true` return bypasses the spawn (measured as `bypassed`).
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
   body: { command: string; args?: string[] };
-  escapeHatch?: (input: CovenantInput) => boolean;
+  escapeHatch?: (input: CovenantInput, transcript: CanonicalTranscript) => boolean;
 };
 
 /**
@@ -124,14 +132,16 @@ export function matchRegistrations(
  * escape hatch (PRD §4.3): for a matched registration whose `escapeHatch` predicate
  * returns `true`, the spawn is skipped, one `bypassed` record is appended, and the
  * registration contributes `0` — run-all is preserved (the remaining matches still run).
- * A predicate that throws counts as no bypass (the body spawns normally): an uncertain
- * hatch never leaks toward fail-open.
+ * The hatch receives the injected `spec.transcript` (CORE-04 seam, `noopTranscript`
+ * when omitted) as its second argument. A predicate that throws counts as no bypass
+ * (the body spawns normally): an uncertain hatch never leaks toward fail-open.
  */
 export async function dispatchCovenants(spec: {
   stdinPayload: string;
   registrations: CovenantRegistration[];
   telemetryPath: string;
   dispatcherLabel?: string;
+  transcript?: CanonicalTranscript;
 }): Promise<{ exitCode: 0 | 2; results: { label: string; exitCode: 0 | 2 }[] }> {
   const blockedByDispatcher = (): { exitCode: 2; results: [] } => {
     appendRecordFailOpen(spec.telemetryPath, {
@@ -156,11 +166,12 @@ export async function dispatchCovenants(spec: {
     return blockedByDispatcher();
   }
 
+  const transcript = spec.transcript ?? noopTranscript;
   const results: { label: string; exitCode: 0 | 2 }[] = [];
   for (const { registration, mentionedPath } of matches) {
     let bypass = false;
     try {
-      bypass = registration.escapeHatch?.(parsed.value) === true;
+      bypass = registration.escapeHatch?.(parsed.value, transcript) === true;
     } catch {
       // A throwing hatch counts as no bypass — the body spawns normally (fail-closed).
       bypass = false;
