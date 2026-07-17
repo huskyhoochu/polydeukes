@@ -128,6 +128,46 @@ describe('§4.1 per-tool post-state compute', () => {
   });
 });
 
+describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
+  it('MultiEdit with preState null and an empty first old_string creates the file', () => {
+    // The real MultiEdit tool accepts this shape as file creation: the first edit's
+    // empty old_string seeds the content, subsequent edits apply sequentially.
+    // Mutation caught: the preState-null check rejecting the creation convention,
+    // falsely blocking a tool-accepted payload (high-review finding, PRD §3.2 parity).
+    const payload = multiEditPayload('src/created.ts', [
+      { old_string: '', new_string: 'const a = 1;' },
+      { old_string: 'a', new_string: 'b' },
+    ]);
+
+    const result = virtualPostState(payload, null);
+
+    expect(result).toEqual({
+      ok: true,
+      value: { filePath: 'src/created.ts', content: 'const b = 1;' },
+    });
+  });
+
+  it('MultiEdit with preState null and a non-empty first old_string still fails closed', () => {
+    // Mutation caught: the creation convention widened into accepting any null-preState
+    // MultiEdit, fabricating a post-state with no file to edit.
+    const payload = multiEditPayload('src/created.ts', [{ old_string: 'a', new_string: 'b' }]);
+
+    expect(virtualPostState(payload, null).ok).toBe(false);
+  });
+
+  it('an empty old_string in a non-first edit or with a non-null preState still fails closed', () => {
+    // Mutation caught: the empty-old_string rejection relaxed beyond the creation seat.
+    const nonFirst = multiEditPayload('src/seq.ts', [
+      { old_string: 'one', new_string: 'two' },
+      { old_string: '', new_string: 'three' },
+    ]);
+    const withPreState = multiEditPayload('src/seq.ts', [{ old_string: '', new_string: 'seed' }]);
+
+    expect(virtualPostState(nonFirst, 'value = one').ok).toBe(false);
+    expect(virtualPostState(withPreState, 'existing').ok).toBe(false);
+  });
+});
+
 describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, never throws)', () => {
   it('non-object payloads fail closed without throwing', () => {
     // Mutation caught: a typeof / Array.isArray check removed, letting a hostile payload

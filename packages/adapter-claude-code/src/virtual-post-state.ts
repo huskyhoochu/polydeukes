@@ -8,6 +8,7 @@
  */
 
 import { isPlainObject } from './is-plain-object.js';
+import { parsePayloadEnvelope } from './payload-envelope.js';
 
 /**
  * `VirtualPostState` — the result of computing one payload's post-state (PRD §3.1).
@@ -70,18 +71,12 @@ function applyEdit(
  * `{ ok: false, reason }` (fail-closed, PRD §4.2).
  */
 export function virtualPostState(payload: unknown, preState: string | null): VirtualPostState {
-  if (!isPlainObject(payload)) {
-    return { ok: false, reason: 'payload is not a non-null object' };
-  }
-  if (typeof payload.tool_name !== 'string') {
-    return { ok: false, reason: 'payload is missing a string tool_name' };
-  }
-  if (!isPlainObject(payload.tool_input)) {
-    return { ok: false, reason: 'payload is missing a non-null object tool_input' };
+  const envelope = parsePayloadEnvelope(payload);
+  if (envelope.ok !== true) {
+    return { ok: false, reason: envelope.reason };
   }
 
-  const toolName = payload.tool_name;
-  const toolInput = payload.tool_input;
+  const { toolName, toolInput } = envelope;
   if (toolName !== 'Write' && toolName !== 'Edit' && toolName !== 'MultiEdit') {
     return { ok: false, reason: `tool ${toolName} has no computable post-state` };
   }
@@ -109,17 +104,34 @@ export function virtualPostState(payload: unknown, preState: string | null): Vir
   }
 
   // MultiEdit — the only tool left after the dispatch filter above.
-  if (preState === null) {
-    return { ok: false, reason: 'MultiEdit requires a non-null pre-state' };
-  }
   const edits = toolInput.edits;
   if (!Array.isArray(edits) || edits.length === 0) {
     return { ok: false, reason: 'MultiEdit tool_input is missing a non-empty edits array' };
   }
+
+  // Real-tool parity: MultiEdit creates a file when there is no pre-state and the
+  // FIRST edit's old_string is empty — that edit seeds the content. Anywhere else an
+  // empty old_string stays rejected by applyEdit.
+  let content: string;
+  let startIndex = 0;
+  if (preState === null) {
+    const first = edits[0];
+    if (!isPlainObject(first) || first.old_string !== '' || typeof first.new_string !== 'string') {
+      return {
+        ok: false,
+        reason:
+          'MultiEdit requires a non-null pre-state unless the first edit creates the file (empty old_string)',
+      };
+    }
+    content = first.new_string;
+    startIndex = 1;
+  } else {
+    content = preState;
+  }
+
   // Sequential application: edit N targets the result of edit N-1. Any failure
   // fails the whole call — a partial result must never leak (PRD §6).
-  let content = preState;
-  for (let index = 0; index < edits.length; index++) {
+  for (let index = startIndex; index < edits.length; index++) {
     const edit = edits[index];
     if (!isPlainObject(edit)) {
       return { ok: false, reason: `MultiEdit edit at index ${index} is not a non-null object` };

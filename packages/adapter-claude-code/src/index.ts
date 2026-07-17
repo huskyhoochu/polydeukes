@@ -9,7 +9,7 @@
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 
-import { isPlainObject } from './is-plain-object.js';
+import { parsePayloadEnvelope } from './payload-envelope.js';
 
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
@@ -54,18 +54,12 @@ export type TranslatedEvent =
  * to `{ ok: false, reason }` (fail-closed, PRD §5.2).
  */
 export function translateEvent(payload: unknown): TranslatedEvent {
-  if (!isPlainObject(payload)) {
-    return { ok: false, reason: 'payload is not a non-null object' };
-  }
-  if (typeof payload.tool_name !== 'string') {
-    return { ok: false, reason: 'payload is missing a string tool_name' };
-  }
-  if (!isPlainObject(payload.tool_input)) {
-    return { ok: false, reason: 'payload is missing a non-null object tool_input' };
+  const envelope = parsePayloadEnvelope(payload);
+  if (envelope.ok !== true) {
+    return { ok: false, reason: envelope.reason };
   }
 
-  const toolName = payload.tool_name;
-  const toolInput = payload.tool_input;
+  const { toolName, toolInput } = envelope;
 
   if (toolName === 'Task') {
     if (typeof toolInput.subagent_type !== 'string') {
