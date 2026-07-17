@@ -27,6 +27,14 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - Re-read the ticket's row (검증기준 = acceptance criteria) and its `why` bullet.
 - Scan `_docs/knowledge/` for entries relevant to the ticket's area before writing the PRD —
   the PRD must build on recorded decisions, not re-derive them.
+- **Carry-over sweep (separate from the keyword scan):** carried-over items live in the *body*
+  (§8 follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket,
+  so a filename scan structurally misses them
+  (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`). Grep the archive body and
+  the memory's progress log for the ticket's ID and carry-over markers, e.g.
+  `grep -ln '이월\|carry-over' _docs/knowledge/*.prd.*.md` plus a `grep '<ID>'` over the memory
+  progress notes. Every hit must be dispositioned in the PRD's scope section — included or
+  explicitly excluded; silence is a miss.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): same 4-key frontmatter (`scope`/`type`/`tags`/`created_at`), status line
   `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
