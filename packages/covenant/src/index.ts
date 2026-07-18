@@ -39,3 +39,4 @@ export {
   judgeShellModification,
   type ShellModificationSpec,
 } from './shell-mod.js';
+export { type TtlWaiverSpec, ttlWaiverHatch } from './ttl-waiver.js';
