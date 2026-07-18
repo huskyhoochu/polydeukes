@@ -1,6 +1,6 @@
 ---
 name: post-task
-description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make CLAUDE.md / .claude/rules / README stale?), and the dev-log self-question (was there a non-obvious learning worth recording?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
+description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make CLAUDE.md / .claude/rules / README stale?), the dev-log self-question (was there a non-obvious learning worth recording?), and the public-language promotion question (is there a decision worth promoting into docs/why-polydeukes.md or build-in-public?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
 user_invocable: true
 argument: "(none — operates on the current session's uncommitted changes)"
 ---
@@ -12,7 +12,7 @@ final commit, for non-ticket chores). It is the manual precursor of the guidance
 `finish` gate will print after self-dogfooding (roadmap LEDGER-06); until then, this checklist
 is upheld by hand, exactly like the TDD skill's pre-flight.
 
-Three checks, then one mandatory block. Every item must be grounded in tool output from **this
+Four checks, then one mandatory block. Every item must be grounded in tool output from **this
 session** — an unverified "looks fine" is not an answer. Skipping the block is not an option;
 "nothing to do" is recorded, not implied.
 
@@ -50,6 +50,18 @@ If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` followin
 symptom → wrong hypothesis → real cause → prescription, one `## H2 {#anchor}` per atomic topic.
 If all three are no, record `dev-log: none` explicitly.
 
+## 4. Public-language promotion (always answer)
+
+Ask: **did this session produce a decision or narrative worth promoting into the public
+docs' shared language?** The public surface is `docs/why-polydeukes.md` (+ `.ko.md`) and
+`docs/build-in-public/` — decisions and their reasons only, never internal roadmap or
+in-flight designs. This is the public counterpart of the dev-log question: dev-log feeds
+internal memory, this feeds the common language outsiders can understand.
+
+If yes, do the smallest honest thing this session: fill one `TODO` section, add one
+sentence, or note the candidate in the block below for a later pass. If no, record
+`public docs: none` explicitly.
+
 ## The mandatory block
 
 Emit this before proceeding to the PR (or the final commit):
@@ -59,6 +71,7 @@ Emit this before proceeding to the PR (or the final commit):
 - TSDoc: <files documented, or "no exported symbols changed">
 - Docs drift: <stale sentence found + fix applied | "no drift" (checked: <files>)>
 - Dev-log: <_docs/knowledge/<scope>.dev-log.<name>.md — one-line conclusion | "none">
+- Public docs: <section filled / sentence added / candidate noted: <what> | "none">
 ```
 
 The user may waive a run via the literal phrase `skip post-task` in their **most recent**
