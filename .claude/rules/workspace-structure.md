@@ -33,13 +33,15 @@ declaring it only at the root — add it to the catalog and reference it. Only t
 tools (turbo, biome, lefthook, commitlint) live in the root `package.json`. Verify a single
 resolved version with `pnpm why typescript -r` (expect `Found 1 version`).
 
-The catalog pins **`typescript: 7.0.1-rc` (TypeScript 7.0 RC, the native Go compiler)**, chosen
-deliberately over stable 5.x/6.x — pin an exact version in the catalog, not a dist-tag like `rc`,
-so installs are reproducible. Bump the one catalog line on GA/patch and every package follows.
-TS7 RC ships as the standard `typescript` package with the standard `tsc` binary (not
-`@typescript/native-preview`/`tsgo`), so the `tsc -p tsconfig.json` build is unchanged.
-**Caveat:** the TS programmatic compiler API is unstable until 7.1 — avoid depending on it in
-`core` until then.
+The catalog pins **`typescript: 7.0.2` (TypeScript 7.0 GA, the native Go compiler)** — pin an
+exact version in the catalog, not a dist-tag, so installs are reproducible. Bump the one catalog
+line on patch releases and every package follows. TS7 ships as the standard `typescript` package
+with the standard `tsc` binary (not `@typescript/native-preview`/`tsgo`), so the
+`tsc -p tsconfig.json` build is unchanged. The RC→GA default changes (`rootDir` → `./`, `types`
+→ `[]`) don't bite here: every emitting build config sets `rootDir` explicitly and every package
+tsconfig sets `types: ["node"]`.
+**Caveat:** TS 7.0 ships **no programmatic compiler API** (planned for 7.1) — avoid depending on
+it in `core` until then.
 
 ## npm `keywords` exempt the banned control vocabulary
 

@@ -3,11 +3,11 @@ packages:
   - "packages/*"
 
 # Shared dependency versions — defined once here, referenced as `catalog:` in
-# each package.json. TypeScript 7.0 RC (the native Go compiler). Bump this one
-# line on GA/patch and every package follows.
+# each package.json. TypeScript 7.0 GA (the native Go compiler). Bump this one
+# line on patch releases and every package follows.
 catalog:
   "@types/node": ^24.0.0
-  typescript: 7.0.1-rc
+  typescript: 7.0.2
   vitest: ^4.1.0
 
 onlyBuiltDependencies:
