@@ -39,15 +39,24 @@ human in a hurry — can quietly remove.
 
 ### 1. Covenant, not control
 
-**A promise shared by both, not a fence around one.** The industry frames agent safety as
-restraint imposed on the machine — the vocabulary of taming. Polydeukes refuses the frame:
-the same rules that block the AI block the human, and the meta-covenant that keeps the AI
-from weakening a covenant trips on a human hand exactly the same way. Before the rules,
-the two are equals.
+**A promise shared by both, not a fence around one.** The industry frames agent safety
+as restraint imposed on the machine — the vocabulary of taming. Polydeukes refuses the
+frame. The rules it enforces were never invented to cage an AI; they are the rules a
+good developer has always imposed on themselves — write the test first, verify before
+you claim, record what you decided. Handing those rules to a partner is not fencing them
+in. It is a gift of the discipline one already lives by.
 
-<!-- TODO: 100-200 words. Source: STORY.md §1 (the refusal), the self-mod meta-covenant
-     as the concrete embodiment. The renamed vocabulary (covenant / discipline / memory)
-     is a design decision, not branding — say so. -->
+The renamed vocabulary is a design decision, not branding. This project bans the
+industry's control words from its own code and documentation, because names decide how
+you treat the thing named: what you call a fence you will use as a fence, and what you
+call a promise you must yourself keep.
+
+And the promise has teeth. The self-mod meta-covenant blocks any attempt to weaken a
+covenant — editing its sources, or even a shell command that merely mentions them
+without proof of read-only intent — and it does not ask whose hand moved. The authors
+of Polydeukes are blocked by it daily. The only way through is a sanctioned valve that
+records the bypass; silence is not an option. Equality before the rules is not an
+aspiration here. It is enforced.
 
 ### 2. Deterministic, not persuasive
 
