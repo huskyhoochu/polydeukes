@@ -13,7 +13,7 @@ in code, package names, CLI, comments, and commit messages.
 | Concept | Package / code | Verb | CLI | Definition |
 |---------|----------------|------|-----|------------|
 | **Covenant** | `@polydeukes/covenant` | uphold / break | `pdks covenant check` | Deterministic block on edits/pushes — a mutual promise that binds the human and the AI equally. |
-| **Discipline** | — (category term) | — | `pdks` (root) | The framework itself: "Polydeukes is a development *discipline* framework." Self-discipline made into tooling. |
+| **Discipline** | — (category + unit term) | — | `pdks` (root) | Two levels, one word. The category: "Polydeukes is a development *discipline* framework." The countable unit: **a discipline** is one practice a team imposes on itself — registered as prose (with an enforcement tag) and promotable into a covenant. Self-discipline made into tooling. |
 | **Gain** | — (cross-cutting) | gain | `pdks gain` | ROI telemetry aggregation across all areas (covenant/ledger/memory). A root verb, not an area subcommand — it reads measurements every area writes. |
 | **Ledger** | `@polydeukes/ledger` | record / verify | `pdks ledger {start,verify,finish}` | Work tracking; completion authority moves from "I'm done" to "the actions passed." |
 | **Memory** | `@polydeukes/memory` | recall / ingest | `pdks memory search` | Searchable record of decisions and dead ends. Local SQLite + FTS5. |
@@ -30,5 +30,19 @@ in code, package names, CLI, comments, and commit messages.
    - ❌ `guard` → ✅ `covenant`
    - ❌ `harness` → ✅ `discipline framework`
    - ❌ `kb` → ✅ `memory`
+   - ❌ `rule` → ✅ `discipline` (user-facing surfaces: folder names, config keys, CLI, docs)
 
    If an internal compatibility alias is unavoidable, confine it to a comment — never an exported name.
+
+## Discipline vs `rule` — the precise boundary
+
+- **Discipline** is the user-facing concept: a practice one imposes on oneself. A discipline
+  is born as prose and promoted into a covenant; what users register, list, and read are
+  disciplines — never "rules".
+- **`rule` survives only as internal jargon for detection primitives** inside judge
+  implementations (the `MutationRule` family — pattern detectors over shell commands).
+  A detector is a machine part, not a practice; renaming it `discipline` would merge two
+  different concepts into one word. Keep the jargon internal: never exported into a
+  user-facing name, folder, config key, or doc.
+- Surfaces owned by other tools (an agent's own rules directory) and the npm `keywords`
+  array keep their native vocabulary — same exception axis as `keywords`.
