@@ -178,6 +178,17 @@ describe('captureBaseline — multiset extraction (PRD §5.6)', () => {
     expect(baseline.size).toBe(3);
     expect(baseline.get('#222222')).toBe(1);
   });
+
+  it('captures every occurrence when the caller pattern lacks the g flag', () => {
+    // P0 flag-guarantee branch (PRD §4.3): the internal clone must append `g` when the
+    // caller's pattern lacks it. Mutation caught: reusing the caller's flags verbatim —
+    // matchAll on a non-global RegExp throws, so a non-g caller would crash instead of
+    // getting a full scan.
+    const nonGlobal = /#[0-9a-f]{6}/;
+    const baseline = captureBaseline('#111111 #222222', nonGlobal);
+    expect(baseline.size).toBe(2);
+    expect(baseline.get('#111111')).toBe(1);
+  });
 });
 
 describe('diffBaselines — symmetric difference (PRD §5.6)', () => {
