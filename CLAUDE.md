@@ -11,8 +11,10 @@ noop default), `packages/covenant` (the run_covenant execution
 wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
 (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
 meta-covenant with its escape-hatch seam, the shell-mod meta-covenant that assembles
-the detection rules into a Bash-axis judge with a read-only allowlist, and the TTL-waiver
-hatch predicate — a time-boxed skip token judged over the canonical-transcript seam), and
+the detection rules into a Bash-axis judge with a read-only allowlist, the TTL-waiver
+hatch predicate — a time-boxed skip token judged over the canonical-transcript seam, and
+the new-violation-only delta layer — pure pre/post baseline comparison whose added-direction
+judgment is the execution base of the delta predicate family), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
 adapter-path ROI telemetry wiring with its injected dispatch seam, and the virtual-post-state
 parser that computes Edit/Write/MultiEdit apply-results without touching disk);

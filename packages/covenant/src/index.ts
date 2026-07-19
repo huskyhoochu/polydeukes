@@ -28,6 +28,13 @@ export {
   tokenizeCommandLine,
   type WordToken,
 } from './bash-line.js';
+export {
+  type Baseline,
+  captureBaseline,
+  diffBaselines,
+  type FileDelta,
+  judgeAddedViolations,
+} from './delta.js';
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
 export { envEscapeHatch } from './escape-hatch.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';
