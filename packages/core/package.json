@@ -16,10 +16,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./schema.json": "./schema/polydeukes.schema.json"
   },
   "files": [
     "dist",
+    "schema",
     "README.md"
   ],
   "scripts": {
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "ajv": "8.20.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

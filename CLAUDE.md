@@ -4,7 +4,8 @@ A development *discipline* framework for building alongside an AI coding partner
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
 **This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
-protocol, ROI telemetry, config loader, fail-open/fail-closed policy table, protected-path
+protocol, ROI telemetry, the data-config schema v2 with its `defineConfig(unknown)` validator
+and published JSON Schema (`@polydeukes/core/schema.json`), fail-open/fail-closed policy table, protected-path
 normalization with adapter auto-inclusion, and the canonical-transcript query seam with its
 noop default), `packages/covenant` (the run_covenant execution
 wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
