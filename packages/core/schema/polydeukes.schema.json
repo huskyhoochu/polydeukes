@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Polydeukes config",
+  "description": "Schema v2 (config as data) — equivalent to the runtime defineConfig() validator; the equivalence is enforced by a contract test.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["languages"],
+  "properties": {
+    "languages": {
+      "description": "Language axis, first-class. Keys are user values ('typescript', 'python', ...).",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/languageProfile" }
+    },
+    "protectedPaths": {
+      "description": "Raw protected path patterns — normalization happens at resolve time.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "adapters": {
+      "description": "Adapter directories — auto-included into the protection surface.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "telemetry": { "$ref": "#/$defs/telemetry" }
+  },
+  "$defs": {
+    "languageProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productionGlob", "testCmd"],
+      "properties": {
+        "productionGlob": {
+          "description": "What counts as production source for this language.",
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          ]
+        },
+        "testCmd": {
+          "description": "Shell command template that verifies the given scope — every literal {scope} token is substituted at resolve time.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logPath": {
+          "description": "Telemetry log path. Defaults to .polydeukes/roi.log when omitted.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

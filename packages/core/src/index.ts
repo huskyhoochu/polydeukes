@@ -17,6 +17,7 @@ export {
   type LanguageProfile,
   type PolydeukesConfig,
   type ResolvedConfig,
+  type ResolvedLanguageProfile,
 } from './config.js';
 export {
   type FailMode,
