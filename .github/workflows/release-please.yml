@@ -1,0 +1,28 @@
+# Milestone-gated release automation (research: foundation.research.release-automation).
+#
+# release-please keeps ONE release PR open, accumulating conventional commits since the
+# last release. Nothing bumps until a human merges that PR — merging it IS the milestone
+# gate step ③ (lockstep bump of every package via extra-files + CHANGELOG + v0.X.0 tag +
+# GitHub Release). npm publish is intentionally absent while pre-alpha; a separate
+# workflow on `release published` will own it when the packages go public.
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

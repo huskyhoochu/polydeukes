@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "b61da64cc799d8e77dbb551a365aa64247039f62",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "include-component-in-tag": false,
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "extra-files": [
+        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/covenant/package.json", "jsonpath": "$.version" },
+        {
+          "type": "json",
+          "path": "packages/adapter-claude-code/package.json",
+          "jsonpath": "$.version"
+        },
+        { "type": "json", "path": "packages/polydeukes/package.json", "jsonpath": "$.version" }
+      ]
+    }
+  }
+}
