@@ -139,7 +139,9 @@ function isValidGlob(glob: unknown): glob is string | string[] {
  * vocabulary and pass through untouched.
  */
 function compileTestCmd(template: string): (scope: string) => string {
-  return (scope) => template.replaceAll('{scope}', scope);
+  // Callback form: a string replacement would interpret `$`-patterns ($$, $&, $`, $')
+  // via GetSubstitution, breaking literal insertion for scopes containing `$`.
+  return (scope) => template.replaceAll('{scope}', () => scope);
 }
 
 /**

@@ -126,6 +126,16 @@ describe('§5.1 template testCmd — valid path and {scope} substitution', () =>
     );
   });
 
+  it('inserts scope values containing $-replacement patterns ($&, $$) literally', () => {
+    // PR #20 review fix (executed counterexample): a string replacement argument lets
+    // GetSubstitution interpret $-patterns, so scope '$&' would re-insert '{scope}' and
+    // '$$' would collapse to '$'. The compiled testCmd must match v1 string interpolation.
+    const resolved = defineConfig(validTwoLanguageConfig);
+
+    expect(resolved.languages.typescript.testCmd('$&')).toBe('fake-runner $& --strict');
+    expect(resolved.languages.typescript.testCmd('$$')).toBe('fake-runner $$ --strict');
+  });
+
   it('preserves input fields (productionGlob, multi-language) in the resolved value', () => {
     // Mutation caught: defineConfig that drops a language key or mutates productionGlob.
     const resolved = defineConfig(validTwoLanguageConfig);
