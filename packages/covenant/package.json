@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/covenant",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Polydeukes covenant — the covenant execution layer: run_covenant wrapper, path-routing dispatcher, Bash command-line analysis, and the self-mod meta-covenant. Pre-alpha.",
   "license": "MIT",
   "repository": {

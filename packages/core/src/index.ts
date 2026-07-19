@@ -7,9 +7,6 @@
  * See https://github.com/huskyhoochu/polydeukes
  */
 
-/** Package version, mirrored from package.json until a build-time injection exists. */
-export const version = '0.0.1';
-
 export {
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,

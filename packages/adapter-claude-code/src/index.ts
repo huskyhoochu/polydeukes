@@ -14,9 +14,6 @@ import { parsePayloadEnvelope } from './payload-envelope.js';
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
 
-/** Package version, mirrored from package.json until a build-time injection exists. */
-export const version = '0.0.1';
-
 /**
  * `ClaudePreToolUsePayload` — a Claude Code PreToolUse hook payload (PRD §4.1).
  *
