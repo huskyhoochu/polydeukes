@@ -33,7 +33,11 @@ human in a hurry — can quietly remove.
 - **verify** — judgments are not taken at their word; they check each other adversarially.
 
 <!-- TODO: one link per area to its doc/package once each ships; mark current status
-     honestly (pre-alpha: covenant core shipped, others on the roadmap). -->
+     honestly (pre-alpha: covenant core shipped, others on the roadmap).
+     Parked candidates (promote in a later pass, delete when landed):
+     - debt amnesty: a discipline judges only what an edit ADDS — pre-existing debt is
+       forgiven, so adopting a rule never blocks a legacy codebase. New-violation-only
+       is the delta direction itself, not a flag (COVENANT-05, 2026-07-20). -->
 
 ## Three design principles
 
@@ -65,9 +69,20 @@ predicate. Every judgment is reproducible from its input, fail-open and fail-clo
 chosen per failure class in a policy table — never improvised — and an unjudgeable input
 blocks rather than slips through. The gate closes; the measurement stays open.
 
-<!-- TODO: 100-200 words. Source: core policy table, fail-closed dispatch, the
-     "cannot judge means block" rule. One concrete example: the unbuilt-dist block and
-     its sanctioned recovery. -->
+The policy table is small enough to quote. Failures that threaten the gate's integrity —
+evidence absent, input unparseable, structure undecidable — resolve closed: the call
+blocks. Failures of observability resolve open: losing a telemetry line never holds work
+hostage. Four rows, decided once, applied everywhere; a failure kind nobody registered
+resolves closed by default, because "cannot classify" is itself a gate-integrity failure.
+The rules themselves are data, not code — a discipline is declared in configuration and
+judged by a predicate that was tested before you wrote a single line.
+
+And the rule is lived, not aspirational. The enforcement hook fails closed too: if the
+framework's own compiled output is missing, every protected edit blocks — including the
+edit that would fix it. The sanctioned recovery is ordinary and boring — run the build,
+a command that mentions no protected path. Boring is the point. A deterministic gate is
+inconvenient in exactly the ways it promised and in no others, and the way out of a
+closed gate is never a clever prompt — always a recorded, human-shaped action.
 
 ### 3. Evidence, not self-report
 
@@ -76,8 +91,17 @@ appends a telemetry record; bypasses are recorded, never silent. Completion is w
 ledger verified, not what the worker claimed. And verification itself is adversarial:
 judgments reflect each other, as twins do.
 
-<!-- TODO: 100-200 words. Source: ROI telemetry (roi.log), ledger verbs (record/verify),
-     verify area. Real numbers from dogfooding once a milestone round is written up. -->
+This is not a metaphor; it is an append-only log. The first dogfooded ticket left 133
+lines behind it — 2 blocks, 56 bypasses, 75 passes, and not one silent call. By the
+v0.1 gate the log held 1,020 verdicts, and the interesting number was the unflattering
+one: bypasses had grown tenfold, 56 to 552, because the escape valve, once armed for a
+single legitimate edit, stayed armed around everything else in the session. The log did
+not soften that. It indicted the framework's own valve, and on that number alone a
+time-boxed waiver was promoted to the head of the next milestone. That is the stance
+working end to end: the framework improves because the evidence says so, not because
+anyone — including its authors — claims so. The ledger and adversarial verify extend
+the same standard to completion claims and review judgments; they are still on the
+roadmap, and they will be held to the same log.
 
 ## What Polydeukes is not
 
@@ -95,7 +119,15 @@ Since 2026-07-14 every edit and shell command in the Polydeukes repository runs 
 its own covenants. The framework's sources are protected by the framework; the authors
 get blocked by their own rules and the blocks are measured.
 
-<!-- TODO: fold in dogfooding-journal numbers (passes / blocks / bypasses) per milestone.
+The v0.1 round of the dogfooding journal puts numbers to it: 1,020 verdicts across three
+tickets — 455 passes, 13 blocks, 552 recorded bypasses — and zero unmeasured calls. The
+milestone did not close on the backlog's word, either: the closing audit ran the exit
+criteria as real commands and caught five path-matching bypasses in the framework's own
+matching primitive, which became a pre-fix ticket before v0.1 was allowed to stand. The
+journal adds a round per milestone and never edits an old one — the trend is the data.
+
+<!-- Standing rule: add one paragraph per milestone round from the dogfooding journal
+     (passes / blocks / bypasses + what the numbers changed); never rewrite past rounds.
      This section is the whitepaper's proof and should stay current. -->
 
 ## Where it stands

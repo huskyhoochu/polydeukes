@@ -59,7 +59,11 @@ in-flight designs. This is the public counterpart of the dev-log question: dev-l
 internal memory, this feeds the common language outsiders can understand.
 
 If yes, do the smallest honest thing this session: fill one `TODO` section, add one
-sentence, or note the candidate in the block below for a later pass. If no, record
+sentence, or park the candidate on a **durable surface** — one line inside the target
+section's `TODO`/parked-candidates comment in `docs/why-polydeukes.md` (both languages).
+The `### Post-task` block alone does not count: it lives only in the session transcript,
+so a candidate recorded nowhere else evaporates when the session ends (this exact leak
+ate the CONFIG-04 candidate before it was recovered by hand). If no, record
 `public docs: none` explicitly.
 
 ## The mandatory block
