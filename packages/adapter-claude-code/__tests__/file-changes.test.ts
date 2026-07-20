@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseInput } from '@polydeukes/core';
@@ -182,5 +182,60 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
     expect(parsed.ok).toBe(true);
     if (parsed.ok !== true) return;
     expect('fileChanges' in parsed.value).toBe(false);
+  });
+
+  it('a Write to a nonexistent path dispatches creation evidence (pre=null survives the ENOENT branch)', async () => {
+    // P0 absence semantics: ENOENT is the ONE read failure that legitimately means
+    // "no file yet" — the fileChange must still be emitted with pre=null. Mutation
+    // caught: the fail-closed read guard over-reaching and blocking real creations.
+    const filePath = join(tmpRoot, 'brand-new.ts');
+    const payload = {
+      ...writePayload,
+      cwd: tmpRoot,
+      tool_input: { file_path: filePath, content: 'export const x = 1;' },
+    };
+    const { dispatch, calls } = capturingDispatch();
+
+    const { exitCode } = await runAdapterPath({
+      rawPayload: JSON.stringify(payload),
+      telemetryPath,
+      dispatch,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(calls).toHaveLength(1);
+    const parsed = parseInput(calls[0]);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok !== true) return;
+    expect(parsed.value.fileChanges).toEqual([
+      { path: filePath, pre: null, post: 'export const x = 1;' },
+    ]);
+  });
+
+  it('a pre-state read failure that is not absence blocks (exit 2, one adapter blocked row, no dispatch)', async () => {
+    // P0 fail-closed (PR #23 review, CONFIRMED): a read error other than ENOENT must
+    // not masquerade as pre=null — a Write over an existing-but-unreadable file would
+    // otherwise carry creation evidence and let an immutable discipline uphold the
+    // overwrite. A directory target raises EISDIR deterministically without chmod tricks.
+    const payload = {
+      ...writePayload,
+      cwd: tmpRoot,
+      tool_input: { file_path: tmpRoot, content: 'overwrite attempt' },
+    };
+    const { dispatch, calls } = capturingDispatch();
+
+    const { exitCode } = await runAdapterPath({
+      rawPayload: JSON.stringify(payload),
+      telemetryPath,
+      dispatch,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(calls).toHaveLength(0);
+    const lines = readFileSync(telemetryPath, 'utf-8')
+      .split('\n')
+      .filter((l) => l.length > 0);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('blocked');
   });
 });
