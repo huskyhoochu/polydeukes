@@ -44,6 +44,28 @@ const SHELL_TOOLS = ['Bash'];
 const COMMAND_ARGS = ['command'];
 const HATCH_ENV = 'POLYDEUKES_COVENANT_BYPASS';
 
+// ---------------------------------------------------------------------------
+// Disciplines (COVENANT-10 §4.6) — data entries judged by the generic discipline
+// body. This inline array is interim wiring: CONFIG-03 moves it into the data
+// config file, and that move is a data diff only. The banned-vocabulary words
+// below appear as enforcement DATA (the forbidden pattern itself), never as
+// product vocabulary.
+// ---------------------------------------------------------------------------
+
+const DISCIPLINES = [
+  {
+    id: 'covenant-vocabulary',
+    why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.',
+    in: ['packages/core/src/**', 'packages/covenant/src/**', 'packages/adapter-claude-code/src/**'],
+    forbid: '\\b(guard|harness|kb)\\b',
+  },
+  {
+    id: 'hooks-stay-armed',
+    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.',
+    forbidCommand: 'LEFTHOOK=(0|false|no|off)\\b|core\\.hooksPath',
+  },
+];
+
 const telemetryPath =
   process.env.POLYDEUKES_TELEMETRY_PATH ?? join(repoRoot, '.polydeukes', 'roi.log');
 
@@ -64,6 +86,7 @@ try {
 
   const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
   const shellModBody = join(repoRoot, 'packages/covenant/dist/shell-mod-body.js');
+  const disciplineBody = join(repoRoot, 'packages/covenant/dist/discipline-body.js');
   const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
 
   const registrations = [
@@ -90,6 +113,15 @@ try {
       },
       escapeHatch: covenant.envEscapeHatch(HATCH_ENV),
     },
+    ...covenant.compileDisciplineRegistrations({
+      disciplines: DISCIPLINES,
+      rootDir: repoRoot,
+      bodyCommand: process.execPath,
+      bodyModulePath: disciplineBody,
+      shellTools: SHELL_TOOLS,
+      commandArgs: COMMAND_ARGS,
+      escapeHatch: covenant.envEscapeHatch(HATCH_ENV),
+    }),
   ];
 
   const rawPayload = readFileSync(0, 'utf-8');

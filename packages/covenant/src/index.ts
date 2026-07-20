@@ -35,6 +35,12 @@ export {
   type FileDelta,
   judgeAddedViolations,
 } from './delta.js';
+export {
+  type CompileDisciplinesSpec,
+  compileDisciplineRegistrations,
+  type DisciplineJudgeOptions,
+  judgeDiscipline,
+} from './discipline.js';
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
 export { envEscapeHatch } from './escape-hatch.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';

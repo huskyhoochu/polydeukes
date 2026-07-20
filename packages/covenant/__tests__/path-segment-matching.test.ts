@@ -1,8 +1,8 @@
-import type { CovenantInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
 // COVENANT-07 §4.1 — `pathMatchesProtected` does not exist yet (RED phase). This import
 // must fail to resolve until mention.ts is upgraded from substring to path-segment matching.
 import { mentionsPath, pathMatchesProtected } from '../src/mention.js';
+import { inputWithArgs } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // COVENANT-07 §5.1 — path-segment matching primitive. The protected path and
@@ -95,15 +95,6 @@ describe('pathMatchesProtected — normalization (PRD §4.1 segment normalize)',
 // COVENANT-07 §5.1 — mentionsPath keeps recursive traversal but now judges each
 // string token with segment semantics, not raw substring.
 // ---------------------------------------------------------------------------
-
-/** Build a minimal CovenantInput with a single toolCalls[0].args value tree. */
-function inputWithArgs(args: Record<string, unknown>): CovenantInput {
-  return {
-    toolCalls: [{ name: 'some-tool', args }],
-    subagentSpawns: [],
-    userMessages: [],
-  };
-}
 
 describe('mentionsPath — recursive traversal with segment semantics (PRD §5.1)', () => {
   it('does NOT match a sibling sharing a segment prefix nested inside args (src-gen)', () => {

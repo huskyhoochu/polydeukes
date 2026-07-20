@@ -14,6 +14,7 @@
 - **Shell-mod meta-covenant (Bash axis)** — a heredoc-aware, multi-line shell analyzer with write-detection rules (redirects, `tee`, `sed -i`) and path-segment matching that also catches parent-directory manipulation and quote-split paths. A command that mentions a protected path passes only if its leading word proves it read-only; anything unprovable fails closed.
 - **TTL waiver** — a sudo-style, time-boxed skip token judged over the canonical transcript seam. AI-synthesized messages do not qualify, expiry re-blocks, and every skip is measured as `bypassed`.
 - **Delta layer** — pure new-violation-only judgment over a file's before/after pair: pre-existing debt is forgiven, and only the matches an edit adds break the covenant. This is the execution base the standard discipline library's `forbid` predicate builds on.
+- **Standard discipline library** — config `disciplines:` entries become enforcement without a line of code: `forbid` (delta family — new occurrences only), `immutable` (path family — modification blocks, creation passes), and `forbidCommand` (command family — a content predicate that routes commands mentioning *no* protected path, closing the path-mention routing gap). One entry compiles into one registration: per-discipline telemetry labels, a generic judged body, and the same escape-hatch seam.
 
 ## Design stance
 

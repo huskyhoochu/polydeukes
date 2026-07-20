@@ -37,7 +37,12 @@ human in a hurry — can quietly remove.
      Parked candidates (promote in a later pass, delete when landed):
      - debt amnesty: a discipline judges only what an edit ADDS — pre-existing debt is
        forgiven, so adopting a rule never blocks a legacy codebase. New-violation-only
-       is the delta direction itself, not a flag (COVENANT-05, 2026-07-20). -->
+       is the delta direction itself, not a flag (COVENANT-05, 2026-07-20).
+     - a discipline is one data entry: users declare forbid/immutable/forbidCommand as
+       config data and get enforcement, per-rule telemetry, and the escape valve without
+       writing process plumbing — "rules are config, plugins are few" (ESLint's shape).
+       The command family routes on content, so even a command mentioning no protected
+       path is judged (COVENANT-10, 2026-07-20). -->
 
 ## Three design principles
 

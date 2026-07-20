@@ -30,6 +30,38 @@ export type LanguageProfile = {
 };
 
 /**
+ * `DisciplineForbid` — the delta-family predicate value (COVENANT-10 §4.1).
+ *
+ * The string shorthand is equivalent to `{ added }`; `removed`/`present` directions are
+ * deferred (COVENANT-12) and rejected by validation.
+ */
+export type DisciplineForbid = string | { added: string };
+
+/**
+ * `DisciplineEntry` — one user-declared discipline (COVENANT-10 §4.1). Pure JSON data.
+ *
+ * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand`) per entry;
+ * `in`/`except` scope only the delta family. Compilation is the covenant package's job —
+ * the core validates compilability of regex strings but never executes them.
+ */
+export type DisciplineEntry = {
+  /** unique handle — telemetry label and verdict reason prefix */
+  id: string;
+  /** prose rationale, documentation only — never judged */
+  why?: string;
+  /** delta-family scope: glob(s) the file path must match (absent = every file change) */
+  in?: string | string[];
+  /** delta-family scope: glob(s) excluded after `in` */
+  except?: string | string[];
+  /** delta family — string shorthand = { added } */
+  forbid?: DisciplineForbid;
+  /** path family — its own glob is the scope */
+  immutable?: string | string[];
+  /** command family — regex over shell command strings */
+  forbidCommand?: string;
+};
+
+/**
  * `PolydeukesConfig` — the input shape a user writes (PRD §4.1). JSON-serializable data.
  *
  * Language keys (`typescript`, `python`, …) are user *values*, not the core's vocabulary —
@@ -46,6 +78,8 @@ export type PolydeukesConfig = {
     /** conventional default applies when omitted (§4.3) */
     logPath?: string;
   };
+  /** user-declared disciplines — validated here, compiled by the covenant package */
+  disciplines?: DisciplineEntry[];
 };
 
 /**
@@ -71,6 +105,8 @@ export type ResolvedConfig = {
   telemetry: {
     logPath: string;
   };
+  /** validated discipline data, passed through verbatim (absent stays absent) */
+  disciplines?: DisciplineEntry[];
 };
 
 /**
@@ -93,9 +129,20 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   'protectedPaths',
   'adapters',
   'telemetry',
+  'disciplines',
 ]);
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
+const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
+  'id',
+  'why',
+  'in',
+  'except',
+  'forbid',
+  'immutable',
+  'forbidCommand',
+]);
+const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand'] as const;
 
 /** True when the value is a plain record — not null, not an array. */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -142,6 +189,96 @@ function compileTestCmd(template: string): (scope: string) => string {
   // Callback form: a string replacement would interpret `$`-patterns ($$, $&, $`, $')
   // via GetSubstitution, breaking literal insertion for scopes containing `$`.
   return (scope) => template.replaceAll('{scope}', () => scope);
+}
+
+/** Throw unless the pattern string compiles with `new RegExp` — compilability only, never run. */
+function rejectUncompilableRegex(pattern: string, location: string): void {
+  try {
+    new RegExp(pattern);
+  } catch {
+    throw new ConfigValidationError(`${location} must be a compilable regular expression`);
+  }
+}
+
+/**
+ * Validate the `disciplines` array (COVENANT-10 §4.1). Throws {@link ConfigValidationError}
+ * naming the offending entry/key; the validated data passes through verbatim.
+ */
+function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
+  if (!Array.isArray(disciplines)) {
+    throw new ConfigValidationError('disciplines must be an array');
+  }
+
+  const seenIds = new Set<string>();
+  disciplines.forEach((entry, index) => {
+    if (!isPlainObject(entry)) {
+      throw new ConfigValidationError(`disciplines[${index}] must be an object`);
+    }
+    if (typeof entry.id !== 'string' || entry.id.length === 0) {
+      throw new ConfigValidationError(`disciplines[${index}].id must be a non-empty string`);
+    }
+    const location = `disciplines[${index}] ('${entry.id}')`;
+    if (seenIds.has(entry.id)) {
+      throw new ConfigValidationError(`${location} duplicates the id of an earlier entry`);
+    }
+    seenIds.add(entry.id);
+    rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
+    if (entry.why !== undefined && typeof entry.why !== 'string') {
+      throw new ConfigValidationError(`${location} why must be a string`);
+    }
+
+    const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
+    if (predicates.length !== 1) {
+      throw new ConfigValidationError(
+        `${location} must have exactly one predicate key (forbid | immutable | forbidCommand)`,
+      );
+    }
+    const predicate = predicates[0];
+    if (predicate !== 'forbid' && (entry.in !== undefined || entry.except !== undefined)) {
+      throw new ConfigValidationError(`${location} allows in/except only on a forbid entry`);
+    }
+
+    if (predicate === 'forbid') {
+      const forbid = entry.forbid;
+      if (typeof forbid === 'string') {
+        rejectUncompilableRegex(forbid, `${location} forbid`);
+      } else if (isPlainObject(forbid)) {
+        // Only the { added } direction exists before COVENANT-12.
+        const keys = Object.keys(forbid);
+        if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
+          throw new ConfigValidationError(
+            `${location} forbid object must have exactly one key 'added' with a string pattern`,
+          );
+        }
+        rejectUncompilableRegex(forbid.added, `${location} forbid.added`);
+      } else {
+        throw new ConfigValidationError(
+          `${location} forbid must be a string pattern or an { added } object`,
+        );
+      }
+      if (entry.in !== undefined && !isValidGlob(entry.in)) {
+        throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
+      }
+      if (entry.except !== undefined && !isValidGlob(entry.except)) {
+        throw new ConfigValidationError(
+          `${location} except must be a non-empty glob or glob array`,
+        );
+      }
+    } else if (predicate === 'immutable') {
+      if (!isValidGlob(entry.immutable)) {
+        throw new ConfigValidationError(
+          `${location} immutable must be a non-empty glob or glob array`,
+        );
+      }
+    } else {
+      if (typeof entry.forbidCommand !== 'string') {
+        throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
+      }
+      rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
+    }
+  });
+
+  return disciplines as DisciplineEntry[];
 }
 
 /**
@@ -202,6 +339,9 @@ export function defineConfig(config: unknown): ResolvedConfig {
     throw new ConfigValidationError('adapters must be an array of strings');
   }
 
+  const disciplines =
+    config.disciplines !== undefined ? validateDisciplines(config.disciplines) : undefined;
+
   let logPath: string | undefined;
   if (config.telemetry !== undefined) {
     if (!isPlainObject(config.telemetry)) {
@@ -223,5 +363,6 @@ export function defineConfig(config: unknown): ResolvedConfig {
     telemetry: {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },
+    ...(disciplines !== undefined && { disciplines }),
   };
 }

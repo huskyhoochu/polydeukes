@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020';
+import addFormats from 'ajv-formats';
 import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
 
@@ -16,8 +17,15 @@ import { defineConfig } from '../src/index.ts';
 // rejections (a function testCmd) are structurally unrepresentable in a schema,
 // so they are covered by config.test.ts alone, not this file.
 //
+// COVENANT-10 §4.1 / AC §5.1 (last item): `disciplines` fixtures extend the same
+// equivalence harness. The schema uses `format: 'regex'` for the pattern fields, so
+// the Ajv instance is armed with ajv-formats (already a devDependency) — otherwise
+// format keywords are ignored and the non-compilable-regex fixtures would drift.
+//
 // Dummy commands are FAKE (`fake-runner`, never vitest/pytest/go test) so the
-// core grep gate stays satisfied even inside fixtures.
+// core grep gate stays satisfied even inside fixtures. `guard|harness|kb` appears
+// only inside a discipline forbid pattern — that is discipline DATA (AC §5.7 exempts
+// pattern literals from the vocabulary gate).
 // ---------------------------------------------------------------------------
 
 // The schema artifact — hand-written, published at core/schema/polydeukes.schema.json.
@@ -28,7 +36,17 @@ const schemaSource = readFileSync(schemaPath, 'utf8');
 const schema = JSON.parse(schemaSource) as Record<string, unknown>;
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
+// Arm format validation ('regex' etc.) so the schema's `format: regex` pattern fields
+// are actually enforced — required for the discipline regex-compilability fixtures.
+addFormats(ajv);
 const validate = ajv.compile(schema);
+
+// A valid single-language config the discipline fixtures attach to.
+const validLanguages = {
+  languages: {
+    typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
+  },
+};
 
 // Shared fixtures — JSON-representable only.
 const VALID_CONFIGS: readonly unknown[] = [
@@ -69,6 +87,22 @@ const VALID_CONFIGS: readonly unknown[] = [
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     telemetry: {},
+  },
+  // COVENANT-10: one entry per predicate family, string-shorthand and object-form forbid.
+  {
+    ...validLanguages,
+    disciplines: [
+      {
+        id: 'vocabulary',
+        why: 'ban new control-framing vocabulary',
+        in: ['packages/core/src/**'],
+        except: 'packages/core/src/legacy/**',
+        forbid: '\\b(guard|harness|kb)\\b',
+      },
+      { id: 'object-forbid', forbid: { added: '#[0-9a-f]{6}' } },
+      { id: 'config-immutable', immutable: ['config/*.lock'] },
+      { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
+    ],
   },
 ];
 
@@ -156,6 +190,52 @@ const INVALID_CONFIGS: readonly unknown[] = [
   },
   // Top-level non-object (array).
   ['languages'],
+  // COVENANT-10 — zero predicate keys.
+  { ...validLanguages, disciplines: [{ id: 'no-predicate', why: 'oops' }] },
+  // COVENANT-10 — two predicate keys.
+  { ...validLanguages, disciplines: [{ id: 'two', forbid: 'x', immutable: 'y/**' }] },
+  // COVENANT-10 — deferred forbid direction (removed).
+  { ...validLanguages, disciplines: [{ id: 'removed-dir', forbid: { removed: 'x' } }] },
+  // COVENANT-10 — deferred forbid direction (present).
+  { ...validLanguages, disciplines: [{ id: 'present-dir', forbid: { present: 'x' } }] },
+  // COVENANT-10 — forbid object with non-string added.
+  { ...validLanguages, disciplines: [{ id: 'added-number', forbid: { added: 1 } }] },
+  // COVENANT-10 — empty forbid object.
+  { ...validLanguages, disciplines: [{ id: 'empty-forbid', forbid: {} }] },
+  // COVENANT-10 — unknown per-entry key (enforce).
+  { ...validLanguages, disciplines: [{ id: 'has-enforce', forbid: 'x', enforce: 'advise' }] },
+  // COVENANT-10 — in on a non-forbid (immutable) entry.
+  { ...validLanguages, disciplines: [{ id: 'immutable-with-in', immutable: 'y/**', in: 'z/**' }] },
+  // COVENANT-10 — except on a forbidCommand entry.
+  {
+    ...validLanguages,
+    disciplines: [{ id: 'command-with-except', forbidCommand: 'x', except: 'z/**' }],
+  },
+  // COVENANT-10 — duplicate id across entries. The two entries are FULLY identical
+  // (copy-paste duplication): JSON Schema cannot express by-key uniqueness, so the
+  // schema side rejects via uniqueItems while defineConfig rejects by id.
+  {
+    ...validLanguages,
+    disciplines: [
+      { id: 'dup', forbid: 'a' },
+      { id: 'dup', forbid: 'a' },
+    ],
+  },
+  // COVENANT-10 — non-string why (schema types it; the validator must agree — REVIEW
+  // caught this as a latent one-sided rejection).
+  { ...validLanguages, disciplines: [{ id: 'why-typed', forbid: 'a', why: 123 }] },
+  // COVENANT-10 — empty-string id.
+  { ...validLanguages, disciplines: [{ id: '', forbid: 'a' }] },
+  // COVENANT-10 — non-string id.
+  { ...validLanguages, disciplines: [{ id: 7, forbid: 'a' }] },
+  // COVENANT-10 — non-compilable forbid regex (format: regex catches this).
+  { ...validLanguages, disciplines: [{ id: 'bad-forbid-re', forbid: '(' }] },
+  // COVENANT-10 — non-compilable forbidCommand regex.
+  { ...validLanguages, disciplines: [{ id: 'bad-cmd-re', forbidCommand: '(' }] },
+  // COVENANT-10 — disciplines not an array.
+  { ...validLanguages, disciplines: { id: 'x', forbid: 'a' } },
+  // COVENANT-10 — a disciplines entry that is not an object.
+  { ...validLanguages, disciplines: ['not-an-object'] },
 ];
 
 /** True when defineConfig accepts the input (does not throw). */

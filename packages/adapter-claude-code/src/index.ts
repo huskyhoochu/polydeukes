@@ -11,6 +11,7 @@ import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 
 import { parsePayloadEnvelope } from './payload-envelope.js';
 
+export { collectFileChanges } from './file-changes.js';
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
 

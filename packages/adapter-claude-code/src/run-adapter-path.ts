@@ -7,7 +7,7 @@
  * translate layer (index.ts) stays pure.
  */
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   appendRecord,
@@ -15,6 +15,7 @@ import {
   EXIT_UPHOLD,
   type TelemetryRecord,
 } from '@polydeukes/core';
+import { collectFileChanges } from './file-changes.js';
 import { buildCovenantInput } from './index.js';
 
 /**
@@ -31,6 +32,23 @@ export type DispatchOutcome = {
 
 /** Default label for adapter-level telemetry records. */
 const DEFAULT_ADAPTER_LABEL = 'adapter-claude-code';
+
+/**
+ * Real-fs pre-state reader for fileChanges — `null` only for true absence (ENOENT).
+ *
+ * Any other read failure (permissions, a directory target, fd exhaustion) throws:
+ * `null` is the IR's creation sentinel, and a poisoned `pre: null` on an existing
+ * file would let a path-family discipline uphold the overwrite (fail-open). The
+ * caller converts the throw into one adapter `blocked` record (PR #23 review).
+ */
+function readPreStateFromDisk(filePath: string): string | null {
+  try {
+    return readFileSync(filePath, 'utf-8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
 
 /**
  * Append one telemetry record, timestamping it here; swallow every logging failure.
@@ -88,9 +106,21 @@ export async function runAdapterPath(spec: {
     return blockAndRecord();
   }
 
+  // Attach pre/post evidence for mutating payloads (COVENANT-10 §4.3). The key is
+  // only attached when non-empty — a non-mutating payload keeps the legacy IR shape.
+  // A pre-state read failure that is not absence blocks: evidence that cannot be
+  // gathered must not dispatch a shape that reads as creation.
+  let fileChanges: ReturnType<typeof collectFileChanges>;
+  try {
+    fileChanges = collectFileChanges(payload, readPreStateFromDisk);
+  } catch {
+    return blockAndRecord();
+  }
+  const input = fileChanges.length > 0 ? { ...built.value, fileChanges } : built.value;
+
   let outcome: DispatchOutcome;
   try {
-    outcome = await spec.dispatch(JSON.stringify(built.value));
+    outcome = await spec.dispatch(JSON.stringify(input));
   } catch {
     return blockAndRecord();
   }
