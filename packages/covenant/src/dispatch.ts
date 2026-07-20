@@ -35,12 +35,16 @@ import { appendRecordFailOpen } from './telemetry-fail-open.js';
  * mentioned. `escapeHatch`, when present, is evaluated only for a *matched*
  * registration, receiving the injected transcript seam as its second argument
  * (CORE-04): a `true` return bypasses the spawn (measured as `bypassed`).
+ * `matches`, when present, replaces path-mention routing with a content predicate
+ * (COVENANT-10 §4.4): a non-null return routes (the string becomes the telemetry
+ * subject), null does not, and a throw is a fail-closed match with subject `'-'`.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
   body: { command: string; args?: string[] };
   escapeHatch?: (input: CovenantInput, transcript: CanonicalTranscript) => boolean;
+  matches?: (input: CovenantInput) => string | null;
 };
 
 /**
@@ -95,6 +99,11 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
  * `subagentSpawns` and `userMessages` never participate. `mentionedPath` is the first
  * protected path (in array order) that mentions. Result preserves registration order, at most
  * one entry per registration.
+ *
+ * A registration carrying a `matches` predicate routes on it exclusively (path mention is
+ * skipped for it, COVENANT-10 §4.4): non-null return → included with that string as
+ * `mentionedPath`; null → skipped; a throw → fail-closed inclusion with `'-'` (caught per
+ * registration, never bubbling to the dispatcher-level catch).
  */
 export function matchRegistrations(
   input: CovenantInput,
@@ -104,6 +113,20 @@ export function matchRegistrations(
   const matches: { registration: CovenantRegistration; mentionedPath: string }[] = [];
 
   for (const registration of registrations) {
+    if (registration.matches !== undefined) {
+      let subject: string | null;
+      try {
+        subject = registration.matches(input);
+      } catch {
+        // An uncertain predicate must not leak fail-open — route with subject '-'.
+        subject = '-';
+      }
+      if (subject !== null) {
+        matches.push({ registration, mentionedPath: subject });
+      }
+      continue;
+    }
+
     const paths = registration.protectedPaths.filter((path) => path !== '');
     const mentionedPath =
       paths.find((path) => candidates.some((candidate) => pathMatchesProtected(candidate, path))) ??

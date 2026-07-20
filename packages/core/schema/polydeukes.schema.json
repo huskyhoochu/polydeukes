@@ -22,7 +22,13 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "telemetry": { "$ref": "#/$defs/telemetry" }
+    "telemetry": { "$ref": "#/$defs/telemetry" },
+    "disciplines": {
+      "description": "User-declared disciplines — validated data the covenant package compiles. Fully identical entries are copy-paste duplicates (by-id uniqueness is enforced by the runtime validator).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/discipline" }
+    }
   },
   "$defs": {
     "languageProfile": {
@@ -57,6 +63,82 @@
           "type": "string"
         }
       }
+    },
+    "disciplineId": {
+      "description": "Unique handle — telemetry label and verdict reason prefix.",
+      "type": "string",
+      "minLength": 1
+    },
+    "disciplineWhy": {
+      "description": "Prose rationale, documentation only — never judged.",
+      "type": "string"
+    },
+    "globOrGlobs": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      ]
+    },
+    "discipline": {
+      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand); in/except scope the forbid family only.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "forbid"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": { "$ref": "#/$defs/disciplineWhy" },
+            "in": { "$ref": "#/$defs/globOrGlobs" },
+            "except": { "$ref": "#/$defs/globOrGlobs" },
+            "forbid": {
+              "description": "Delta family — string shorthand is equivalent to { added }.",
+              "anyOf": [
+                { "type": "string", "format": "regex" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["added"],
+                  "properties": {
+                    "added": { "type": "string", "format": "regex" }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "immutable"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": { "$ref": "#/$defs/disciplineWhy" },
+            "immutable": {
+              "description": "Path family — its own glob is the scope.",
+              "$ref": "#/$defs/globOrGlobs"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "forbidCommand"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": { "$ref": "#/$defs/disciplineWhy" },
+            "forbidCommand": {
+              "description": "Command family — regex over shell command strings.",
+              "type": "string",
+              "format": "regex"
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { envEscapeHatch } from '../src/escape-hatch.ts';
 import { judgeSelfModification } from '../src/self-mod.ts';
+import { readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // PRD §5.1 — pure judge. Tool-name strings and protected-path strings below
@@ -357,12 +358,6 @@ describe('self-mod E2E through dispatchCovenants (PRD §5.3)', () => {
       },
       ...(escapeHatch ? { escapeHatch } : {}),
     };
-  }
-
-  function readTelemetryLines(path: string): string[] {
-    return readFileSync(path, 'utf-8')
-      .split('\n')
-      .filter((l) => l.length > 0);
   }
 
   beforeEach(() => {

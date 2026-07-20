@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // COVENANT-01. Imports go through the package entry point (src/index.ts) so the tests
 // also pin the public export surface. The signature asserted here is the PRD §4.1 contract.
 import { runCovenant } from '../src/index.ts';
+import { echoToFileScript, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Dummy covenant bodies — deterministic `node -e` inline scripts (PRD §6 step 2).
@@ -16,31 +17,6 @@ import { runCovenant } from '../src/index.ts';
 /** A body that exits with a fixed code, ignoring stdin entirely. */
 function exitScript(code: number): string[] {
   return ['-e', `process.exit(${code})`];
-}
-
-/**
- * A body that reads stdin to completion and writes it verbatim to `outFile`
- * (passed as the script's argv), then exits 0. Used to prove stdin passthrough
- * without the wrapper parsing anything.
- */
-function echoToFileScript(outFile: string): string[] {
-  const script = `
-    const fs = require('node:fs');
-    const chunks = [];
-    process.stdin.on('data', (c) => chunks.push(c));
-    process.stdin.on('end', () => {
-      fs.writeFileSync(process.argv[1], Buffer.concat(chunks).toString('utf-8'));
-      process.exit(0);
-    });
-  `;
-  return ['-e', script, outFile];
-}
-
-/** Read the telemetry log and return its non-empty lines. */
-function readTelemetryLines(path: string): string[] {
-  return readFileSync(path, 'utf-8')
-    .split('\n')
-    .filter((l) => l.length > 0);
 }
 
 let dir: string;

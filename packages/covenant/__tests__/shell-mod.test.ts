@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ import {
   judgeShellModification,
   type ShellModificationSpec,
 } from '../src/shell-mod.ts';
+import { readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // PRD §5.1/§5.2 — pure judge. The shell-tool name, command-arg name, and
@@ -613,12 +614,6 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
         ],
       },
     };
-  }
-
-  function readTelemetryLines(path: string): string[] {
-    return readFileSync(path, 'utf-8')
-      .split('\n')
-      .filter((l) => l.length > 0);
   }
 
   beforeEach(() => {

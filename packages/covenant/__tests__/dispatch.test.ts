@@ -6,19 +6,11 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
+import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // §6.1 matching core (pure) — synthetic CovenantInput builders, no I/O.
 // ---------------------------------------------------------------------------
-
-/** Build a minimal CovenantInput with a single toolCalls[0].args value tree. */
-function inputWithArgs(args: Record<string, unknown>): CovenantInput {
-  return {
-    toolCalls: [{ name: 'some-tool', args }],
-    subagentSpawns: [],
-    userMessages: [],
-  };
-}
 
 function registration(label: string, protectedPaths: string[]): CovenantRegistration {
   return {
@@ -170,32 +162,6 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
 // §6.2 dispatch shell — real dummy bodies spawned via `node -e` inline scripts,
 // following the run-covenant.test.ts convention.
 // ---------------------------------------------------------------------------
-
-/**
- * A body that reads stdin to completion and writes it verbatim to `outFile`
- * (passed as the script's argv), then exits with the given code. Used both to prove
- * stdin passthrough and to prove/disprove that a spawn happened at all (a missing
- * outFile means the body never ran).
- */
-function echoToFileScript(outFile: string, exitCode = 0): string[] {
-  const script = `
-    const fs = require('node:fs');
-    const chunks = [];
-    process.stdin.on('data', (c) => chunks.push(c));
-    process.stdin.on('end', () => {
-      fs.writeFileSync(process.argv[1], Buffer.concat(chunks).toString('utf-8'));
-      process.exit(${exitCode});
-    });
-  `;
-  return ['-e', script, outFile];
-}
-
-/** Read the telemetry log and return its non-empty lines. */
-function readTelemetryLines(path: string): string[] {
-  return readFileSync(path, 'utf-8')
-    .split('\n')
-    .filter((l) => l.length > 0);
-}
 
 let dir: string;
 let telemetryPath: string;

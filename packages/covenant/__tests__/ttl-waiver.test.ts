@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CanonicalTranscript, CovenantInput } from '@polydeukes/core';
@@ -10,6 +10,7 @@ import { dispatchCovenants } from '../src/dispatch.ts';
 // so this import is unresolvable and the whole file is RED by construction. The behaviours
 // asserted here become the GREEN contract (PRD §4.1–4.2, §5.1–5.4).
 import { ttlWaiverHatch } from '../src/ttl-waiver.ts';
+import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers.
@@ -34,41 +35,6 @@ function fakeTranscript(
       invocations.filter((inv) => kind === undefined || inv.kind === kind),
     findUserMessages: () => userMessages,
   };
-}
-
-// --- dispatcher-integration helpers (patterned on transcript-seam.test.ts) ---
-
-/** Build a minimal CovenantInput with a single toolCalls[0].args value tree. */
-function inputWithArgs(args: Record<string, unknown>): CovenantInput {
-  return {
-    toolCalls: [{ name: 'some-tool', args }],
-    subagentSpawns: [],
-    userMessages: [],
-  };
-}
-
-/**
- * A body that reads stdin to completion, writes it verbatim to `outFile`
- * (passed as argv), then exits with the given code. File presence == it spawned.
- */
-function echoToFileScript(outFile: string, exitCode = 0): string[] {
-  const script = `
-    const fs = require('node:fs');
-    const chunks = [];
-    process.stdin.on('data', (c) => chunks.push(c));
-    process.stdin.on('end', () => {
-      fs.writeFileSync(process.argv[1], Buffer.concat(chunks).toString('utf-8'));
-      process.exit(${exitCode});
-    });
-  `;
-  return ['-e', script, outFile];
-}
-
-/** Read the telemetry log and return its non-empty lines. */
-function readTelemetryLines(path: string): string[] {
-  return readFileSync(path, 'utf-8')
-    .split('\n')
-    .filter((l) => l.length > 0);
 }
 
 let dir: string;

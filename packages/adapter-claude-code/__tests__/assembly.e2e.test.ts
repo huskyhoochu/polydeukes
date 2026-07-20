@@ -133,3 +133,71 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records[0].label).toBe('adapter-claude-code');
   });
 });
+
+// ===========================================================================
+// COVENANT-10 §4.6 / AC §5.7 — real wired disciplines: the routing gap closes.
+// A command mentioning NO protected path now reaches a registration (content-
+// predicate routing), and a delta discipline judges real fileChanges end to end.
+// ===========================================================================
+
+function writePayload(filePath: string, content: string) {
+  return {
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Write',
+    tool_input: { file_path: filePath, content },
+  };
+}
+
+describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
+  it('a gate-disarming command mentioning no protected path is blocked by hooks-stay-armed (exit 2)', () => {
+    // The routing-gap pin: before COVENANT-10 this command matched NO registration
+    // (path-mention only) and sailed through; the content predicate now routes it.
+    const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
+
+    expect(result.status).toBe(2);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].label).toBe('hooks-stay-armed');
+    expect(records[0].event).toBe('blocked');
+  });
+
+  it('a plain push command passes (exit 0) — the command discipline does not overblock', () => {
+    const result = runHook(bashPayload('git push origin main'));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+
+  it('a Write adding banned vocabulary to an in-scope source path is blocked by covenant-vocabulary', () => {
+    // Absolute in-scope path that does not exist on disk: pre=null, so the Write's
+    // whole content is the added direction. self-mod blocks the same call by path
+    // mention (run-all) — the discipline verdict is pinned by its own labeled row.
+    const result = runHook(
+      writePayload(
+        join(repoRoot, 'packages/core/src/e2e-probe.ts'),
+        'export const note = 1; // the guard word\n',
+      ),
+    );
+
+    expect(result.status).toBe(2);
+    const { records } = readRecords(telemetryPath);
+    const byLabel = (label: string) => records.filter((r) => r.label === label);
+    expect(byLabel('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    expect(byLabel('self-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('the same banned-vocabulary Write outside the discipline scope passes (exit 0)', () => {
+    const result = runHook(
+      writePayload(join(repoRoot, 'docs/e2e-probe.md'), 'prose mentioning the guard word\n'),
+    );
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+});
