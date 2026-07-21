@@ -1,5 +1,13 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
@@ -33,21 +41,55 @@ afterEach(() => {
 });
 
 /**
- * Spawn the real hook with one payload. The hatch env var is always set explicitly —
- * an empty string DISARMS it (the assembly session running this test may have it
- * armed, and inheriting that would corrupt the block cases).
+ * Spawn the real hook with one payload. The valve is the TTL waiver (the 2026-07-21
+ * assembly removed the env hatch): a test that wants the valve open passes
+ * `transcriptPath` pointing at a JSONL transcript carrying a fresh human-typed
+ * token, and the hook parses it out of the raw payload. Block cases simply omit it —
+ * no transcript, no valve (the dispatcher stays on its noopTranscript default).
  */
-function runHook(payload: unknown, opts?: { bypass?: boolean }) {
-  const input = typeof payload === 'string' ? payload : JSON.stringify(payload);
+function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
+  const withTranscript =
+    typeof payload === 'string' || opts?.transcriptPath === undefined
+      ? payload
+      : { ...(payload as Record<string, unknown>), transcript_path: opts.transcriptPath };
+  const input =
+    typeof withTranscript === 'string' ? withTranscript : JSON.stringify(withTranscript);
   return spawnSync(process.execPath, [hookPath], {
     input,
     encoding: 'utf-8',
     env: {
       ...process.env,
       POLYDEUKES_TELEMETRY_PATH: telemetryPath,
-      POLYDEUKES_COVENANT_BYPASS: opts?.bypass === true ? 'e2e' : '',
     },
   });
+}
+
+/**
+ * The waiver token the hook will judge against comes from the real root config (this
+ * file IS the dogfooding-assembly E2E — it already couples to the repo's own config
+ * for protected paths, and the token is no different). Extracted textually so the
+ * adapter package gains no dependency on the umbrella loader.
+ */
+function configuredToken(): string {
+  const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
+  const match = /^\s*token:\s*'([^']+)'/m.exec(cfg);
+  if (!match) throw new Error('waiver token not found in polydeukes.config.yaml');
+  return match[1];
+}
+
+/** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
+function invokingTranscript(): string {
+  const path = join(tmpRoot, 'transcript.jsonl');
+  writeFileSync(
+    path,
+    `${JSON.stringify({
+      type: 'user',
+      origin: { kind: 'human' },
+      timestamp: new Date().toISOString(),
+      message: { role: 'user', content: configuredToken() },
+    })}\n`,
+  );
+  return path;
 }
 
 function editPayload(filePath: string) {
@@ -115,8 +157,17 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records.map((r) => r.event).sort()).toEqual(['passed', 'passed']);
   });
 
-  it('the armed escape hatch bypasses a blocked edit (exit 0) and both bypasses are measured', () => {
-    const result = runHook(editPayload('packages/covenant/src/dispatch.ts'), { bypass: true });
+  it('a fresh human-typed waiver token bypasses a blocked edit (exit 0) and both bypasses are measured', () => {
+    // The valve property the removed env hatch used to pin, restated for the TTL
+    // waiver: a transcript carrying the config token as a fresh human utterance
+    // (first line, alone — COVENANT-15) opens the valve for this dispatch, the edit
+    // rides through with exit 0, and every skipped judgment is measured `bypassed`,
+    // never silent. This is the only hook-level test of the transcript_path →
+    // dispatcher → waiver wiring; the predicate itself is pinned in the covenant
+    // package and the provider in transcript-waiver.e2e.
+    const result = runHook(editPayload('packages/covenant/src/dispatch.ts'), {
+      transcriptPath: invokingTranscript(),
+    });
 
     expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
@@ -247,7 +298,6 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
         env: {
           ...process.env,
           POLYDEUKES_TELEMETRY_PATH: telemetryPath,
-          POLYDEUKES_COVENANT_BYPASS: '',
         },
       });
 
