@@ -75,6 +75,12 @@ of Polydeukes are blocked by it daily. The only way through is a sanctioned valv
 records the bypass; silence is not an option. Equality before the rules is not an
 aspiration here. It is enforced.
 
+<!-- parked candidate (CONFIG-05): the valve is becoming time-boxed — a waiver token the
+human types in conversation, valid for a configured window, then blocking resumes on its
+own. The token is not a secret; the defense is provenance (only positively-identified
+human-typed messages count), so an AI that knows the token still cannot waive for itself.
+Promote once the assembly session wires it live. -->
+
 ### 2. Deterministic, not persuasive
 
 **Discipline lives in code, not in prompts.** A prompt is a request; a covenant is a

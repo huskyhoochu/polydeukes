@@ -82,6 +82,16 @@ export type PolydeukesConfig = {
   };
   /** user-declared disciplines — validated here, compiled by the covenant package */
   disciplines?: DisciplineEntry[];
+  /**
+   * TTL waiver values for the covenant escape-hatch seam (CONFIG-05) — consumed at
+   * assembly time, validated here
+   */
+  waiver?: {
+    /** the agreed phrase a human types in the conversation — non-empty after trimming */
+    token: string;
+    /** validity window in minutes from the user message's timestamp — finite and > 0 */
+    ttlMinutes: number;
+  };
 };
 
 /**
@@ -109,6 +119,11 @@ export type ResolvedConfig = {
   };
   /** validated discipline data, passed through verbatim (absent stays absent) */
   disciplines?: DisciplineEntry[];
+  /** validated waiver data, passed through verbatim (absent stays absent) */
+  waiver?: {
+    token: string;
+    ttlMinutes: number;
+  };
 };
 
 /**
@@ -133,9 +148,11 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   'adapters',
   'telemetry',
   'disciplines',
+  'waiver',
 ]);
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
+const WAIVER_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
 const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'id',
   'why',
@@ -365,6 +382,22 @@ export function defineConfig(config: unknown): ResolvedConfig {
     }
   }
 
+  let waiver: { token: string; ttlMinutes: number } | undefined;
+  if (config.waiver !== undefined) {
+    if (!isPlainObject(config.waiver)) {
+      throw new ConfigValidationError('waiver must be an object');
+    }
+    rejectUnknownKeys(config.waiver, WAIVER_KEYS, 'waiver');
+    const { token, ttlMinutes } = config.waiver;
+    if (typeof token !== 'string' || token.trim().length === 0) {
+      throw new ConfigValidationError('waiver.token must be a non-empty string after trimming');
+    }
+    if (typeof ttlMinutes !== 'number' || !(Number.isFinite(ttlMinutes) && ttlMinutes > 0)) {
+      throw new ConfigValidationError('waiver.ttlMinutes must be a finite number greater than 0');
+    }
+    waiver = { token, ttlMinutes };
+  }
+
   return {
     languages: resolvedLanguages,
     ...(config.protectedPaths !== undefined && { protectedPaths: config.protectedPaths }),
@@ -373,5 +406,6 @@ export function defineConfig(config: unknown): ResolvedConfig {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },
     ...(disciplines !== undefined && { disciplines }),
+    ...(waiver !== undefined && { waiver }),
   };
 }
