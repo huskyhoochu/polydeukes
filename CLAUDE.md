@@ -86,11 +86,21 @@ they mention no protected path. Every call
 is measured in `.polydeukes/roi.log` (local, gitignored). Consequences to know:
 
 - Editing covenant/core/adapter/umbrella sources or the root config file — or any command
-  *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design. The sanctioned valve is the
-  `POLYDEUKES_COVENANT_BYPASS` env var (recorded as `bypassed`, never silent).
+  *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design.
+  The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
+  `waiver:` block into the conversation and the valve holds for `ttlMinutes` from that message,
+  then blocking resumes on its own (recorded as `bypassed`, never silent). Only a real human
+  utterance counts — the transcript marking it carries cannot be forged by an agent, so an AI
+  can never open the valve for itself. The old `POLYDEUKES_COVENANT_BYPASS` env var was removed
+  in the 2026-07-21 assembly; a value left in local settings is inert.
 - The hook fails **closed**: an unbuilt `dist` blocks edits too. Recovery is `pnpm build`
   (mentions no protected path, so it is never blocked). Corollary learned the hard way: when the
   hook gains a reference to a **new** dist symbol, build first, rewire the hook second — the
   reverse order crashes hook assembly and blocks every call, including the recovery build.
-- Arming the hatch via settings env takes effect immediately; **disarming requires a session
-  restart** (the env persists in the running session).
+- The waiver arms and disarms itself: typing the token opens the valve for the configured
+  window, and expiry needs no action (the old env valve's "armed until you remember to disarm"
+  shape is gone, along with the session-restart dance it required).
+- **Reassembling the hook cuts your own valve.** The composition root is itself protected, so a
+  broken rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired
+  hook by spawning it against real payloads *before* relying on it, and never remove the current
+  valve until the replacement is proven.
