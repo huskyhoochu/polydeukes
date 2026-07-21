@@ -75,11 +75,23 @@ of Polydeukes are blocked by it daily. The only way through is a sanctioned valv
 records the bypass; silence is not an option. Equality before the rules is not an
 aspiration here. It is enforced.
 
-<!-- parked candidate (CONFIG-05): the valve is becoming time-boxed — a waiver token the
-human types in conversation, valid for a configured window, then blocking resumes on its
-own. The token is not a secret; the defense is provenance (only positively-identified
-human-typed messages count), so an AI that knows the token still cannot waive for itself.
-Promote once the assembly session wires it live. -->
+That valve is time-boxed, and its shape carries the same argument. A human types an
+agreed token into the conversation; judgments are waived for a configured window, then
+blocking resumes on its own. Nobody has to remember to close it. The token is not a
+secret — it sits in plain sight in the config file — because the defense is not
+confidentiality but provenance: a waiver counts only when the token arrives in a message
+the transcript marks as human-typed, and that mark is one an agent cannot forge. The AI
+can read the token and still cannot open the valve for itself. Consent has an author, and
+the mechanism can tell who it was.
+
+Provenance alone was not enough, and finding that out cost us a day. Matching the token
+anywhere in a message meant that *discussing* the valve opened it — a question about when
+the waiver expires carried the token, and the window silently extended. Speech about a
+thing had become an instance of it. The fix was to narrow what counts as invocation: the
+token must stand alone on the first line, so quoting it is a mention and typing it is an
+act. The general lesson is one a discipline framework should expect to keep relearning —
+a string does not carry intent, and any mechanism that reads consent out of text must say
+precisely which shape of text it will accept.
 
 ### 2. Deterministic, not persuasive
 

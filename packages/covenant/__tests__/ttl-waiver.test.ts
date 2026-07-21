@@ -59,7 +59,7 @@ describe('ttlWaiverHatch — verdict (PRD §5.1)', () => {
     // never returning true (dead waiver), or the substring match being inverted.
     const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
-      { text: `please ${TOKEN} this once`, timestampMs: NOW - 1000 },
+      { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 1000 },
     ]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
@@ -80,7 +80,7 @@ describe('ttlWaiverHatch — verdict (PRD §5.1)', () => {
     // caught: treating a missing timestampMs as fresh (fail-open hole), or defaulting it
     // to 0/now.
     const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
-    const transcript = fakeTranscript([{ text: `${TOKEN} now` }]);
+    const transcript = fakeTranscript([{ text: TOKEN }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
@@ -93,21 +93,13 @@ describe('ttlWaiverHatch — verdict (PRD §5.1)', () => {
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
-  it('does not waive when no message contains the token', () => {
-    // P1: a fresh message that never mentions the token must not waive. Mutation caught:
-    // the substring check being replaced by an always-true condition.
-    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
-    const transcript = fakeTranscript([{ text: 'unrelated chatter', timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
-  });
-
   it('waives when exactly one of several messages qualifies (order-independent)', () => {
     // P1 existential quantifier: the predicate is `SOME message satisfies ALL`. Mutation
     // caught: `.some` narrowed to `.every` (all-must-qualify), or first/last-only scanning.
     const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: 'no token here', timestampMs: NOW - 100 },
-      { text: `${TOKEN} yes`, timestampMs: NOW - 100 },
+      { text: TOKEN, timestampMs: NOW - 100 },
       { text: 'also no token', timestampMs: NOW - 100 },
     ]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
@@ -122,10 +114,118 @@ describe('ttlWaiverHatch — verdict (PRD §5.1)', () => {
     const input: CovenantInput = {
       toolCalls: [],
       subagentSpawns: [],
-      userMessages: [{ text: `${TOKEN} please` }],
+      userMessages: [{ text: TOKEN }],
     };
     expect(predicate(input, noopTranscript)).toBe(false);
     expect(predicate(input, transcriptFromInput(input))).toBe(false);
+  });
+});
+
+// ===========================================================================
+// COVENANT-15 §5.1 — mention exclusion (PRD §4.1 first-line exact match, §4.3 backticks)
+//
+// The token may only invoke when the FIRST LINE of the message, trimmed, equals the
+// token exactly. Every case below merely *mentions* the token and must stay false.
+// ===========================================================================
+
+describe('ttlWaiverHatch — mention exclusion (COVENANT-15 §5.1)', () => {
+  it('does not waive when the token sits mid-sentence in a question about the waiver', () => {
+    // P0 security fail-closed (the measured 2026-07-21 incident): asking *about* the valve
+    // must not open it. Mutation caught: `firstLine(text).trim() === token` regressing to
+    // `text.includes(token)` — the exact substring semantics this ticket renegotiates.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([
+      { text: `so when does ${TOKEN} expire?`, timestampMs: NOW - 100 },
+    ]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+  });
+
+  it('does not waive when the first line starts with the token but carries trailing text', () => {
+    // P0 boundary of the exact-match rule (PRD §4.2 table row `<token> 지금`): prefix is not
+    // enough. Mutation caught: `=== token` weakened to `.startsWith(token)`, which would let
+    // any sentence opening with the token through.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([
+      { text: `${TOKEN} — what is that?`, timestampMs: NOW - 100 },
+    ]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+  });
+
+  it('does not waive when the token is wrapped in backticks (PRD §4.3)', () => {
+    // P0 adopted safety property: code formatting signals *mention*, not intent. No stripping
+    // code exists by design — exact match excludes it naturally. Mutation caught: any added
+    // normalisation that peels backticks/punctuation before comparing, or `.includes`.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: `\`${TOKEN}\``, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+  });
+
+  it('does not waive when the token appears only on a line below the first', () => {
+    // P0 first-line-only scope: quoting the token under an introduction is a mention.
+    // Mutation caught: the predicate scanning every line (`text.split('\n').some(...)`)
+    // instead of the first line alone.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([
+      { text: `here is the token:\n${TOKEN}`, timestampMs: NOW - 100 },
+    ]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+  });
+
+  it('does not waive when a leading blank line precedes the token (PRD §4.1)', () => {
+    // P0 explicit rule "the token IS the start of the utterance": a leading empty line is
+    // not forgiven, because forgiving it reintroduces a "how many lines do we search"
+    // boundary. Mutation caught: skipping/trimming leading blank lines before taking the
+    // first line (e.g. `text.trim()` applied before splitting, or `.split` + `.find(Boolean)`).
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: `\n${TOKEN}`, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+  });
+});
+
+// ===========================================================================
+// COVENANT-15 §5.2 — invocation preserved (PRD §4.2 table, invoking rows)
+//
+// Narrowing must not break real invocations: the predicate only ever shrinks.
+// ===========================================================================
+
+describe('ttlWaiverHatch — invocation preserved (COVENANT-15 §5.2)', () => {
+  it('waives when the whole utterance is the bare token', () => {
+    // P0 business rule: the canonical invocation form must keep working, otherwise the
+    // narrowing has produced a dead valve. Mutation caught: the match predicate inverted or
+    // hard-wired to false.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+  });
+
+  it('waives when the first line is the token and later lines carry the work instruction', () => {
+    // P1 first-line scoping in the invoking direction: text below the first line is free.
+    // Mutation caught: comparing the WHOLE text to the token (`text.trim() === token`),
+    // which would reject every multi-line invocation — the realistic usage shape.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([
+      { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 100 },
+    ]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+  });
+
+  it('waives when the first line has surrounding whitespace around the token', () => {
+    // P1 boundary of the trim rule (PRD §4.1): leading/trailing spaces on the first line are
+    // removed before comparing. Mutation caught: `.trim()` dropped from the first-line
+    // comparison, which would reject accidentally-indented invocations.
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: `  ${TOKEN}  \nfix it`, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+  });
+
+  it('waives when the message was transported with CRLF line endings', () => {
+    // P1 external transport contract: a `\r` left at the end of the first line by CRLF
+    // transport must be absorbed by `trim()`. Mutation caught: splitting on `\n` without
+    // trimming (the residual `\r` would break equality and silently kill the valve for
+    // CRLF-carried transcripts).
+    const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: `${TOKEN}\r\nfix it`, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
 });
 
@@ -161,6 +261,17 @@ describe('ttlWaiverHatch — factory validation (PRD §5.3)', () => {
     expect(() => ttlWaiverHatch({ token: '   ', ttlMs: 5000, now: fakeNow })).toThrow();
   });
 
+  it('normalises a token configured with surrounding whitespace instead of dying silently', () => {
+    // P0 silent-death guard (REVIEW finding): the first line is compared trimmed, so a
+    // token carrying stray whitespace would never equal it — the factory would accept the
+    // config and the valve would then refuse every utterance, with no error to explain it.
+    // Mutation caught: dropping the assembly-time `rawToken.trim()` (normalising only one
+    // side of the comparison).
+    const predicate = ttlWaiverHatch({ token: `  ${TOKEN}  `, ttlMs: 5000, now: fakeNow });
+    const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
+    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+  });
+
   it('throws when ttlMs is not a finite positive number', () => {
     // P0 assembly guard: zero/negative/NaN/Infinity TTL each break the closed-interval
     // meaning (0 disables, negative is impossible, NaN never compares true, Infinity never
@@ -180,7 +291,7 @@ describe('ttlWaiverHatch — factory validation (PRD §5.3)', () => {
     // Mutation caught: validation logic leaking into the predicate body (would throw at
     // dispatch time, which the dispatcher would silently absorb as no-bypass).
     const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
-    const weird = fakeTranscript([{ text: `${TOKEN} but no timestamp` }]);
+    const weird = fakeTranscript([{ text: TOKEN }]);
     expect(() => predicate(inputWithArgs({}), noopTranscript)).not.toThrow();
     expect(predicate(inputWithArgs({}), noopTranscript)).toBe(false);
     expect(() => predicate(inputWithArgs({}), weird)).not.toThrow();
@@ -210,7 +321,9 @@ describe('ttlWaiverHatch — dispatcher integration (PRD §5.4)', () => {
       stdinPayload: JSON.stringify(input),
       registrations: [reg],
       telemetryPath,
-      transcript: fakeTranscript([{ text: `${TOKEN} go`, timestampMs: NOW - 100 }]),
+      transcript: fakeTranscript([
+        { text: `${TOKEN}\nedit the protected file`, timestampMs: NOW - 100 },
+      ]),
     });
 
     expect(result.exitCode).toBe(0);
@@ -239,7 +352,7 @@ describe('ttlWaiverHatch — dispatcher integration (PRD §5.4)', () => {
       stdinPayload: JSON.stringify(input),
       registrations: [reg],
       telemetryPath,
-      transcript: fakeTranscript([{ text: `${TOKEN} stale`, timestampMs: NOW - 6000 }]),
+      transcript: fakeTranscript([{ text: TOKEN, timestampMs: NOW - 6000 }]),
     });
 
     expect(result.exitCode).toBe(2);

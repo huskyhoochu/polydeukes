@@ -25,6 +25,10 @@ adapters:
 # in a single day. The token is not a secret: the defence is provenance, not
 # confidentiality. Only a real human utterance carries the transcript marking the
 # predicate admits, and no agent can forge that marking.
+#
+# The token must stand alone on the message's first line: mentioning it mid-sentence is
+# talking about the valve, not opening it (COVENANT-15). Any value works — placement is
+# what is judged, never the phrase's shape.
 waiver:
   token: 'pdks waive'
   ttlMinutes: 10

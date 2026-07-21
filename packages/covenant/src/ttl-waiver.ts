@@ -6,6 +6,11 @@
  * agreed token into the conversation; the waiver holds for `ttlMs` from that user
  * message's timestamp, then blocking resumes automatically — no stored state, every
  * dispatch re-judges against the injected clock.
+ *
+ * Invoking the waiver is distinct from talking about it (COVENANT-15): the token must
+ * stand alone on the utterance's first line, so quoting or asking about it never opens
+ * the valve. Only the token's *placement* is constrained — its value is free, and this
+ * module never inspects its shape.
  */
 
 import type { CanonicalTranscript, CovenantInput } from '@polydeukes/core';
@@ -13,7 +18,12 @@ import { resolveFailMode } from '@polydeukes/core';
 
 /** Configuration for {@link ttlWaiverHatch}. */
 export type TtlWaiverSpec = {
-  /** The agreed phrase a human types in the conversation. Trimmed-empty throws at assembly. */
+  /**
+   * The agreed phrase a human types on the first line of a message, alone. Any value
+   * works — the defence is provenance, not secrecy, so the phrase is never checked for
+   * a prefix, a command shape, or any other form. Surrounding whitespace is trimmed at
+   * assembly (both sides of the comparison normalise the same way); trimmed-empty throws.
+   */
   token: string;
   /** Validity window in milliseconds from the user message's timestamp. Must be finite and > 0. */
   ttlMs: number;
@@ -26,10 +36,10 @@ export type TtlWaiverSpec = {
  * within the TTL window (PRD §4.2).
  *
  * A message waives only when all hold: it comes from `transcript.findUserMessages()`
- * (no other text surface is consulted — an AI-synthesised token never counts), its
- * `text` contains the token as a substring, its `timestampMs` is present, and
- * `0 <= now() - timestampMs <= ttlMs` (closed interval; a future timestamp is
- * rejected). A missing `timestampMs` defers to `resolveFailMode('evidence-absence')`
+ * (no other text surface is consulted — an AI-synthesised token never counts), the
+ * first line of its `text` equals the token once trimmed, its `timestampMs` is
+ * present, and `0 <= now() - timestampMs <= ttlMs` (closed interval; a future
+ * timestamp is rejected). A missing `timestampMs` defers to `resolveFailMode('evidence-absence')`
  * — the CORE-04 contract "missing timestampMs = freshness unprovable = fail-closed"
  * — so the disposition's single source of truth stays in the core policy table.
  *
@@ -41,8 +51,12 @@ export type TtlWaiverSpec = {
 export function ttlWaiverHatch(
   spec: TtlWaiverSpec,
 ): (input: CovenantInput, transcript: CanonicalTranscript) => boolean {
-  const { token, ttlMs, now = Date.now } = spec;
-  if (token.trim().length === 0) {
+  const { token: rawToken, ttlMs, now = Date.now } = spec;
+  // Normalise once, at assembly: the first line is compared trimmed, so a token
+  // carrying stray surrounding whitespace could never equal it — the valve would
+  // pass validation and then silently never open.
+  const token = rawToken.trim();
+  if (token.length === 0) {
     throw new TypeError('ttlWaiverHatch: token must be non-empty after trimming');
   }
   if (!(Number.isFinite(ttlMs) && ttlMs > 0)) {
@@ -54,7 +68,12 @@ export function ttlWaiverHatch(
     // a message's position in the transcript.
     const judgedAt = now();
     return transcript.findUserMessages().some((message) => {
-      if (!message.text.includes(token)) return false;
+      // The first line only, compared whole: an utterance invokes the waiver, it does
+      // not merely mention it (COVENANT-15 §4.1). `split` keeps a leading blank line as
+      // an empty first element, so a token below it never matches, and `trim` absorbs
+      // both surrounding spaces and the `\r` a CRLF transport leaves behind.
+      const [firstLine = ''] = message.text.split('\n');
+      if (firstLine.trim() !== token) return false;
       if (message.timestampMs === undefined) {
         return resolveFailMode('evidence-absence') === 'open';
       }
