@@ -117,8 +117,30 @@ conversation; judgments are waived for `ttlMinutes` from that message's timestam
 blocking resumes automatically. Both keys are required when the section is present: the
 token must be non-empty after trimming, the window a finite number greater than zero.
 
+**The token must stand alone on the message's first line.** Invoking the waiver is
+distinct from talking about it: a message that quotes, questions, or explains the token
+mid-sentence — or wraps it in backticks — does not open the valve, while a first line
+carrying the token alone does, with any following lines free for the work itself.
+
+A message that invokes — the token alone on the first line, the rest free:
+
+```
+covenant waive
+
+now fix the hook file
+```
+
+A message that merely mentions — the valve stays shut:
+
+```
+so when does `covenant waive` expire?
+```
+
+The token's value is free — any phrase works, and it is never checked for a prefix or a
+command shape. Only its placement is constrained.
+
 The token is not a secret — the defense is provenance, not secrecy. A waiver counts only
-when the token appears in a message positively identified as human-typed in the session
+when the token arrives in a message positively identified as human-typed in the session
 transcript, so an AI that knows the token still cannot forge one. Waived judgments are
 recorded as `bypassed`, never silent.
 

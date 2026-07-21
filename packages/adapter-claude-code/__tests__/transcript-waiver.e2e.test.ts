@@ -118,7 +118,10 @@ describe('ADAPTER-04 §5.2 waiver integration — real dists, injected clock', (
     // must surface the human message WITH its timestamp so the fresh-token case waives.
     // Mutation caught: the provider dropping the timestamp (would fail-closed even inside the
     // window), or not surfacing the human message at all — either breaks the waiver end to end.
-    const jsonl = toJsonl([humanEntry(`please ${TOKEN} this`, SENT_AT)]);
+    // The token stands alone on the first line because COVENANT-15 narrowed matching from
+    // substring to first-line-exact; the transport under test here is the timestamp, not the
+    // match shape, so the fixture carries the token in its invoking form.
+    const jsonl = toJsonl([humanEntry(`${TOKEN}\nplease do the thing`, SENT_AT)]);
 
     const verdict = waiverVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });
 
@@ -134,10 +137,14 @@ describe('ADAPTER-04 §5.2 waiver integration — real dists, injected clock', (
     // token planted in task-notification, tool_result and no-origin entries must NOT waive.
     // Mutation caught: the provider relaxing its origin.kind==="human" allowlist, which would
     // let a subagent self-issue a waiver by printing the token into an AI-controlled surface.
+    // Each entry's text is the BARE token in its invoking form (first line, alone): if the
+    // allowlist ever admitted one of these entries, the match would succeed and this test
+    // would fail. Decorated tokens would be refused on the match instead, leaving the
+    // provenance check unexercised — the silent-green failure the COVENANT-15 review caught.
     const jsonl = toJsonl([
-      taskNotificationEntry(`<task-notification>${TOKEN}</task-notification>`, SENT_AT),
-      toolResultEntry(`tool said ${TOKEN}`, SENT_AT),
-      commandWrapperEntry(`<command-name>${TOKEN}</command-name>`, SENT_AT),
+      taskNotificationEntry(TOKEN, SENT_AT),
+      toolResultEntry(TOKEN, SENT_AT),
+      commandWrapperEntry(TOKEN, SENT_AT),
     ]);
 
     const verdict = waiverVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });
@@ -149,8 +156,10 @@ describe('ADAPTER-04 §5.2 waiver integration — real dists, injected clock', (
     // AC "timestamp-less entry is fail-closed": the message is kept (timestampMs undefined) but
     // freshness is unprovable, so the waiver predicate must refuse it. Mutation caught: the
     // provider fabricating a timestamp for a timestamp-less entry, converting an unprovable
-    // message into a waiving one.
-    const jsonl = toJsonl([humanEntry(`please ${TOKEN} this`)]);
+    // message into a waiving one. The token must match on the first line (COVENANT-15) or the
+    // predicate would refuse on the match instead, and this test would go green without ever
+    // reaching the freshness check it exists to pin.
+    const jsonl = toJsonl([humanEntry(TOKEN)]);
 
     const verdict = waiverVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });
 

@@ -87,7 +87,11 @@ export type PolydeukesConfig = {
    * assembly time, validated here
    */
   waiver?: {
-    /** the agreed phrase a human types in the conversation — non-empty after trimming */
+    /**
+     * the agreed phrase a human types alone on a message's first line — quoting it
+     * mid-sentence is a mention, not an invocation (COVENANT-15). Non-empty after
+     * trimming; the value itself is free (provenance, not secrecy, is the defence)
+     */
     token: string;
     /** validity window in minutes from the user message's timestamp — finite and > 0 */
     ttlMinutes: number;

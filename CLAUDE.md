@@ -89,7 +89,10 @@ is measured in `.polydeukes/roi.log` (local, gitignored). Consequences to know:
   *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design.
   The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
   `waiver:` block into the conversation and the valve holds for `ttlMinutes` from that message,
-  then blocking resumes on its own (recorded as `bypassed`, never silent). Only a real human
+  then blocking resumes on its own (recorded as `bypassed`, never silent). The token must
+  **stand alone on the message's first line** — quoting or asking about it mid-sentence is a
+  mention, not an invocation, and leaves the valve shut (COVENANT-15); following lines are free
+  for the work itself. Only a real human
   utterance counts — the transcript marking it carries cannot be forged by an agent, so an AI
   can never open the valve for itself. The old `POLYDEUKES_COVENANT_BYPASS` env var was removed
   in the 2026-07-21 assembly; a value left in local settings is inert.
