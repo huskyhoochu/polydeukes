@@ -101,9 +101,14 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
     subagentInvocations.push(...toSubagentInvocations(entry));
   }
 
+  // Both queries return fresh objects — never live aliases into the snapshot — so a
+  // consumer mutating a result cannot corrupt what later queries read (the same
+  // alias-safety contract the core transcriptFromInput upholds).
   return {
     findSubagentInvocations: (kind) =>
-      subagentInvocations.filter((invocation) => kind === undefined || invocation.kind === kind),
+      subagentInvocations
+        .filter((invocation) => kind === undefined || invocation.kind === kind)
+        .map((invocation) => ({ ...invocation })),
     findUserMessages: () => userMessages.map((message) => ({ ...message })),
   };
 }

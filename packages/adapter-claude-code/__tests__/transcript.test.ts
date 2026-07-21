@@ -215,6 +215,28 @@ describe('§5.3 findSubagentInvocations — detection by subagent_type field pre
       { kind: 'code-reviewer' },
     ]);
   });
+
+  it('returns fresh objects — mutating a query result does not corrupt the snapshot', () => {
+    // PR-review finding: alias-safety is the CanonicalTranscript contract the core
+    // transcriptFromInput pins (core transcript tests) — queries must return fresh objects.
+    // Mutation caught: filter() results returned as live aliases into the snapshot, so a
+    // consumer writing invocation.kind would rewrite what every later query reads.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 'x', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
+      ]),
+      humanEntry('hello', '2026-07-21T04:00:00.000Z'),
+    ]);
+    const transcript = transcriptFromJsonl(jsonl);
+
+    const [invocation] = transcript.findSubagentInvocations();
+    invocation.kind = 'rewritten';
+    const [message] = transcript.findUserMessages();
+    message.text = 'rewritten';
+
+    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
+    expect(transcript.findUserMessages()[0]?.text).toBe('hello');
+  });
 });
 
 // ===========================================================================
