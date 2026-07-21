@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+
+languages:
+  typescript:
+    productionGlob: 'packages/*/src/**/*.ts'
+    testCmd: 'pnpm --filter {scope} test'
+
+protectedPaths:
+  - 'packages/core/src'
+  - 'packages/core/dist'
+  - 'packages/covenant/src'
+  - 'packages/covenant/dist'
+  - '.claude/hooks'
+  - '.claude/settings.json'
+  - 'packages/polydeukes/src'
+  - 'packages/polydeukes/dist'
+
+adapters:
+  - 'packages/adapter-claude-code/src'
+  - 'packages/adapter-claude-code/dist'
+
+disciplines:
+  - id: 'covenant-vocabulary'
+    why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.'
+    in:
+      - 'packages/core/src/**'
+      - 'packages/covenant/src/**'
+      - 'packages/adapter-claude-code/src/**'
+    forbid: '\b(guard|harness|kb)\b'
+  - id: 'hooks-stay-armed'
+    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
+    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
