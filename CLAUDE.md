@@ -24,7 +24,10 @@ registrations with per-discipline telemetry and a generic judged body), and
 adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
 parser that computes Edit/Write/MultiEdit apply-results without touching disk, and the
 `collectFileChanges` evidence step that feeds those apply-results into the IR);
-`packages/polydeukes` remains a name-reserving stub.
+`packages/polydeukes` (umbrella) has its first real export: the `loadConfig(rootDir)` config
+discovery loader — finds the root data config (`polydeukes.config.yaml`/`.yml`/`.json`, exactly
+one), parses it with the `yaml` safe schema, delegates validation to core `defineConfig()`, and
+attaches the config file to its own protection surface.
 The design docs are still the source of truth for everything not yet implemented. When a design
 doc and shipped code disagree, neither side wins by default — triage the discrepancy against the
 archived PRD (the merged contract): it may be a stale doc, or a code bug to fix.
@@ -68,15 +71,18 @@ Unit tasks must be small enough to fit one PRD and verifiable by a command or te
 **Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
 `.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
 project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant
-(Bash axis) both protect the three packages' `src`/`dist` plus the hook wiring itself, and two
+(Bash axis) both protect the four packages' `src`/`dist` plus the hook wiring and the root
+`polydeukes.config.yaml` itself. Since CONFIG-03 the protection-policy data (protectedPaths /
+adapters / disciplines) lives in that config file, not in the hook — the hook consumes it via the
+umbrella `loadConfig`, and a missing or invalid config blocks every call (fail-closed). Two
 wired disciplines (since COVENANT-10) judge content: `covenant-vocabulary` blocks *new*
 banned-vocabulary occurrences in package sources (existing debt is forgiven), and
 `hooks-stay-armed` blocks gate-disarming commands (`LEFTHOOK=0 …`, `core.hooksPath`) even though
 they mention no protected path. Every call
 is measured in `.polydeukes/roi.log` (local, gitignored). Consequences to know:
 
-- Editing covenant/core/adapter sources — or any command *mentioning* those paths without a
-  read-only first token — is **blocked (exit 2)** by design. The sanctioned valve is the
+- Editing covenant/core/adapter/umbrella sources or the root config file — or any command
+  *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design. The sanctioned valve is the
   `POLYDEUKES_COVENANT_BYPASS` env var (recorded as `bypassed`, never silent).
 - The hook fails **closed**: an unbuilt `dist` blocks edits too. Recovery is `pnpm build`
   (mentions no protected path, so it is never blocked). Corollary learned the hard way: when the

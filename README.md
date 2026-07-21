@@ -51,7 +51,7 @@ create-polydeukes           externalizes domain-specific values into templates/c
 
 Three separations:
 
-- **Language ⊥ agent** — language coupling (test commands, path globs for TS/Python/Go) goes in `polydeukes.config.ts`; AI-runtime coupling (transcript schema) goes in `adapter-*`. The two are orthogonal.
+- **Language ⊥ agent** — language coupling (test commands, path globs for TS/Python/Go) goes in `polydeukes.config.yaml`; AI-runtime coupling (transcript schema) goes in `adapter-*`. The two are orthogonal.
 - **Essential vs incidental** — "verification is decided by exit code" is essential; "that command happens to be vitest" is incidental (config). "Knowledge is a local SQLite file" is essential; "that file happens to live on S3" is incidental (a sync adapter).
 - **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then feed it back in a closed loop. Prove "it produces safer code" with data.
 

@@ -386,3 +386,30 @@ describe('§5.2 v1 failure-path regression (fixtures ported to v2 templates)', (
     });
   });
 });
+
+describe('§5.2 top-level $schema key (CONFIG-03 core opening)', () => {
+  it('accepts a string $schema key and omits it from the resolution output', () => {
+    // AC §5.2 (item 1): defineConfig accepts a top-level `$schema` string (IDE schema
+    // reference) and IGNORES it — it must not appear in the ResolvedConfig. Mutation
+    // caught: `$schema` not added to the allowed key set (unknown-key rejection would
+    // throw), OR `$schema` leaking into the resolution output.
+    const resolved = defineConfig({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      ...validTwoLanguageConfig,
+    });
+
+    expect(resolved).not.toHaveProperty('$schema');
+    expect(resolved.languages.typescript.testCmd('pkg-a')).toBe('fake-runner pkg-a --strict');
+  });
+
+  it('rejects a non-string $schema (number)', () => {
+    // AC §5.2 (item 2): the key is allowed but still type-checked — a non-string
+    // `$schema` must throw. Mutation caught: allowing the key without validating its
+    // type (a bare additive-to-allowed-set change that skips the string check).
+    const error = expectConfigValidationError({
+      ...validTwoLanguageConfig,
+      $schema: 42,
+    });
+    expect(error.message).toContain('$schema');
+  });
+});

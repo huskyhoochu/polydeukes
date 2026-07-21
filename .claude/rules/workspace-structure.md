@@ -12,11 +12,13 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
 
 ## Package roles
 
-- **`packages/polydeukes`** is the **unscoped name reservation** on npm and the *future*
-  umbrella / `pdks` CLI entry point. It is intentionally a near-empty stub — that is the
-  finished state for now, **not** an unimplemented package. Do not move real logic here;
-  real code goes in scoped `@polydeukes/*` packages. The unscoped name was verified free on
-  npm and is a deliberately held asset — never delete or rename it.
+- **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
+  future `pdks` CLI entry point. Since CONFIG-03 it owns the config discovery loader
+  (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
+  file-I/O-free). Only umbrella-role logic (discovery, assembly-facing loading, future CLI)
+  belongs here; area logic still goes in scoped `@polydeukes/*` packages. Its `src`/`dist` are
+  on the protection surface (the loader feeds the judges). The unscoped name was verified free
+  on npm and is a deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
 - **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,

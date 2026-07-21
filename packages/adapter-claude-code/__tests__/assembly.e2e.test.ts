@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
@@ -199,5 +199,61 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
+  });
+});
+
+// ===========================================================================
+// CONFIG-03 §5.3 — config-file consumption: config-absence fail-closed and the
+// config file itself joining the protection surface.
+// ===========================================================================
+
+describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-protecting', () => {
+  it('an Edit targeting polydeukes.config.yaml itself is blocked (exit 2, config self-protection)', () => {
+    // AC §5.3 (last item): after the dogfooding migration the discovered config file is
+    // auto-attached to the protection surface (schema rule 6), so editing it must block.
+    // Mutation caught: the loader failing to self-attach configPath, leaving the config
+    // file editable. This passes only AFTER migration — expected to fail in RED.
+    const result = runHook(editPayload('polydeukes.config.yaml'));
+
+    expect(result.status).toBe(2);
+    const { records } = readRecords(telemetryPath);
+    // The config file lives on the self-mod (tool-axis) protection surface.
+    const byLabel = (label: string) => records.filter((r) => r.label === label);
+    expect(byLabel('self-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('the hook fails closed (exit 2) when spawned against a rootDir that has no config file', () => {
+    // AC §5.3 (item "config 파일이 없는 rootDir → exit 2"): silent defaults are
+    // forbidden, so a repoRoot with no polydeukes.config.{yaml,yml,json} must block
+    // EVERY call. Mutation caught: the loader returning an empty/default config on
+    // absence instead of throwing (the whole covenant surface would silently vanish).
+    //
+    // Harness note: the real hook resolves repoRoot purely from its own file location
+    // (`.claude/hooks/../..`) with no env override. To exercise a configless rootDir at
+    // the E2E level we copy the hook into a temp tree whose `packages` is a symlink back
+    // to the real repo (so the dist imports still resolve) but which has NO config file.
+    // This is the most faithful configless-root spawn the current harness supports; if a
+    // future hook gains a repoRoot seam this can collapse to a plain env override.
+    const configlessRoot = mkdtempSync(join(tmpdir(), 'pdks-configless-'));
+    try {
+      mkdirSync(join(configlessRoot, '.claude', 'hooks'), { recursive: true });
+      cpSync(hookPath, join(configlessRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
+      symlinkSync(join(repoRoot, 'packages'), join(configlessRoot, 'packages'), 'dir');
+
+      const copiedHook = join(configlessRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs');
+      const result = spawnSync(process.execPath, [copiedHook], {
+        input: JSON.stringify(editPayload('docs/example.md')),
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          POLYDEUKES_TELEMETRY_PATH: telemetryPath,
+          POLYDEUKES_COVENANT_BYPASS: '',
+        },
+      });
+
+      expect(result.status).toBe(2);
+    } finally {
+      rmSync(configlessRoot, { recursive: true, force: true });
+    }
   });
 });

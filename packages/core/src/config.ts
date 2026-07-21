@@ -68,6 +68,8 @@ export type DisciplineEntry = {
  * no language or tool literal appears in the core source.
  */
 export type PolydeukesConfig = {
+  /** IDE schema reference (CONFIG-03) — accepted and ignored, never part of the resolution */
+  $schema?: string;
   /** language axis, first-class. keys are user values ('typescript', 'python', …) */
   languages: Record<string, LanguageProfile>;
   /** raw protected path patterns — normalization is CONFIG-02's job */
@@ -125,6 +127,7 @@ export class ConfigValidationError extends Error {
 
 /** The exact key vocabulary of each object level — anything else is a typo, rejected loudly. */
 const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
+  '$schema',
   'languages',
   'protectedPaths',
   'adapters',
@@ -297,6 +300,12 @@ export function defineConfig(config: unknown): ResolvedConfig {
     throw new ConfigValidationError('config must be a plain object');
   }
   rejectUnknownKeys(config, TOP_LEVEL_KEYS, 'config');
+
+  // `$schema` is an IDE schema reference (CONFIG-03): accepted, type-checked, and
+  // ignored — it never appears in the resolution output.
+  if (config.$schema !== undefined && typeof config.$schema !== 'string') {
+    throw new ConfigValidationError('$schema must be a string');
+  }
 
   const languages = config.languages;
   if (!isPlainObject(languages) || Object.keys(languages).length === 0) {

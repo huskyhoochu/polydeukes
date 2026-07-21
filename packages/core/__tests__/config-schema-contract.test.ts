@@ -104,9 +104,22 @@ const VALID_CONFIGS: readonly unknown[] = [
       { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
     ],
   },
+  // CONFIG-03 §5.2: a top-level `$schema` string (IDE reference) must be accepted by
+  // BOTH the validator and the JSON Schema. The equivalence is only enforced where a
+  // fixture exists (dev-log lesson) — so the opening carries its own fixture.
+  {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    ...validLanguages,
+  },
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
+  // CONFIG-03 §5.2: a non-string `$schema` must be rejected by both sides — the key is
+  // allowed but still type-checked.
+  {
+    ...validLanguages,
+    $schema: 42,
+  },
   // Missing languages.
   {},
   // Empty languages object.

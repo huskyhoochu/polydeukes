@@ -42,7 +42,11 @@ human in a hurry — can quietly remove.
        config data and get enforcement, per-rule telemetry, and the escape valve without
        writing process plumbing — "rules are config, plugins are few" (ESLint's shape).
        The command family routes on content, so even a command mentioning no protected
-       path is judged (COVENANT-10, 2026-07-20). -->
+       path is judged (COVENANT-10, 2026-07-20).
+     - the config that declares the discipline is itself under the discipline: the
+       discovered config file auto-joins the protection surface, and so does the loader
+       that reads it — every link in the judging chain is judged, or the chain is
+       decoration (CONFIG-03, 2026-07-21). -->
 
 ## Three design principles
 

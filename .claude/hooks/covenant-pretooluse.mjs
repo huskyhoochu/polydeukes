@@ -6,68 +6,40 @@
  * package (dispatcher + judge bodies) meet: packages stay one-way (each depends only
  * on core), so their composition lives here, outside the package graph. Wiring shape:
  * COVENANT-03 §4.4 + COVENANT-04d §4.5 registrations consumed through ADAPTER-03 §4.1
- * runAdapterPath, with dispatchCovenants bound to the injected dispatch seam.
+ * runAdapterPath, with dispatchCovenants bound to the injected dispatch seam. Since
+ * CONFIG-03 the protection-policy data (protectedPaths / adapters / disciplines) is
+ * no longer inlined here — it is read from the root data config via the umbrella
+ * loader (`loadConfig`), which also attaches the config file to its own surface.
  *
- * fail-closed: ANY failure here — unbuilt dist, import error, unreadable stdin — exits 2
- * (blocking). A dead hook that exits non-blocking would be the cheapest bypass vector.
- * Recovery from an unbuilt clone is `pnpm build` (mentions no protected path, so it is
- * never blocked). The sanctioned valve is the escape-hatch env var, measured as
- * `bypassed`; it is evaluated inside the dispatcher seam, never up here.
+ * fail-closed: ANY failure here — unbuilt dist, import error, unreadable stdin, a
+ * missing or invalid config file — exits 2 (blocking). A dead hook that exits
+ * non-blocking would be the cheapest bypass vector. Recovery from an unbuilt clone is
+ * `pnpm build` (mentions no protected path, so it is never blocked). The sanctioned
+ * valve is the escape-hatch env var, measured as `bypassed`; it is evaluated inside
+ * the dispatcher seam, never up here.
  */
 
 import { mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // ---------------------------------------------------------------------------
-// Assembly values. Agent/tool vocabulary is injected HERE — never in package
-// source (CORE-01 grep gate's counterpart). The raw entries below are fed
-// through core's normalizeProtectedPaths (CONFIG-02): registered adapter
-// directories are auto-included, so an adapter can never be left off the
-// protection surface. The normalized output is the dispatcher's literal-string
-// contract.
+// Assembly wiring. Agent/tool vocabulary is injected HERE — never in package
+// source (CORE-01 grep gate's counterpart). Protection-policy DATA lives in the
+// root config file (CONFIG-03); only agent vocabulary, the hatch env name, and
+// dist import paths remain in this file.
 // ---------------------------------------------------------------------------
 
-const RAW_PROTECTED_PATHS = [
-  'packages/core/src',
-  'packages/core/dist',
-  'packages/covenant/src',
-  'packages/covenant/dist',
-  '.claude/hooks',
-  '.claude/settings.json',
-];
-const ADAPTER_DIRS = ['packages/adapter-claude-code/src', 'packages/adapter-claude-code/dist'];
 const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
 const SHELL_TOOLS = ['Bash'];
 const COMMAND_ARGS = ['command'];
 const HATCH_ENV = 'POLYDEUKES_COVENANT_BYPASS';
 
-// ---------------------------------------------------------------------------
-// Disciplines (COVENANT-10 §4.6) — data entries judged by the generic discipline
-// body. This inline array is interim wiring: CONFIG-03 moves it into the data
-// config file, and that move is a data diff only. The banned-vocabulary words
-// below appear as enforcement DATA (the forbidden pattern itself), never as
-// product vocabulary.
-// ---------------------------------------------------------------------------
-
-const DISCIPLINES = [
-  {
-    id: 'covenant-vocabulary',
-    why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.',
-    in: ['packages/core/src/**', 'packages/covenant/src/**', 'packages/adapter-claude-code/src/**'],
-    forbid: '\\b(guard|harness|kb)\\b',
-  },
-  {
-    id: 'hooks-stay-armed',
-    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.',
-    forbidCommand: 'LEFTHOOK=(0|false|no|off)\\b|core\\.hooksPath',
-  },
-];
-
-const telemetryPath =
-  process.env.POLYDEUKES_TELEMETRY_PATH ?? join(repoRoot, '.polydeukes', 'roi.log');
+// Env-first telemetry precedence (E2E contract); the config value applies after load.
+const envTelemetryPath = process.env.POLYDEUKES_TELEMETRY_PATH;
+let telemetryPath = envTelemetryPath ?? join(repoRoot, '.polydeukes', 'roi.log');
 
 let core;
 try {
@@ -78,10 +50,18 @@ try {
   const adapter = await import(
     pathToFileURL(join(repoRoot, 'packages/adapter-claude-code/dist/index.js')).href
   );
+  const umbrella = await import(
+    pathToFileURL(join(repoRoot, 'packages/polydeukes/dist/index.js')).href
+  );
+
+  // Discovery + parse + validation are the loader's job; a throw here (absent,
+  // ambiguous, unparseable, or invalid config) falls into the fail-closed catch.
+  const { config } = umbrella.loadConfig(repoRoot);
+  telemetryPath = envTelemetryPath ?? resolve(repoRoot, config.telemetry.logPath);
 
   const protectedPaths = core.normalizeProtectedPaths({
-    protectedPaths: RAW_PROTECTED_PATHS,
-    adapters: ADAPTER_DIRS,
+    protectedPaths: config.protectedPaths,
+    adapters: config.adapters,
   });
 
   const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
@@ -114,7 +94,7 @@ try {
       escapeHatch: covenant.envEscapeHatch(HATCH_ENV),
     },
     ...covenant.compileDisciplineRegistrations({
-      disciplines: DISCIPLINES,
+      disciplines: config.disciplines ?? [],
       rootDir: repoRoot,
       bodyCommand: process.execPath,
       bodyModulePath: disciplineBody,

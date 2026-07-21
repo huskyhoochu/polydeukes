@@ -6,6 +6,10 @@
   "additionalProperties": false,
   "required": ["languages"],
   "properties": {
+    "$schema": {
+      "description": "IDE schema reference — accepted and ignored by the runtime validator.",
+      "type": "string"
+    },
     "languages": {
       "description": "Language axis, first-class. Keys are user values ('typescript', 'python', ...).",
       "type": "object",
