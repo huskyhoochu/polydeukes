@@ -95,7 +95,7 @@ importers:
   packages/polydeukes:
     dependencies:
       '@polydeukes/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       yaml:
         specifier: 2.9.0
