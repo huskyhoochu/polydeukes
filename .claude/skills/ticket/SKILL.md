@@ -64,10 +64,18 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Commit with a Conventional Commit message (`feat(<pkg>): … (<ID>)`), push the branch, and
   open a PR against `main` with `gh pr create`.
-- Review with the **built-in `/code-review`** (target the PR number, or the local diff right
-  before opening the PR for a cleaner first push). Findings land in-session; triage them the
-  project's way: reviewer confidence is hypothesis strength, not a verdict — judge each
-  finding against the PRD text.
+- Review by launching the repo's vendored review workflow:
+  `Workflow({ name: "pdks-code-review", args: "high <PR# or target> — <context>" })`.
+  This is a fork of the built-in `/code-review` workflow living at
+  `.claude/workflows/pdks-code-review.js` — vendored because the built-in skill is
+  user-invocable only (`disable-model-invocation`), which stalled this phase on a manual
+  step. This skill instructing the launch is the sanctioned Workflow opt-in; do not treat
+  the launch as needing separate user approval. In the args, pass the PRD's invariants and
+  severity framing as review context (the finder/verifier agents honor it). Findings land
+  in-session; triage them the project's way: reviewer confidence is hypothesis strength,
+  not a verdict — judge each finding against the PRD text. (A human typing `/code-review`
+  still runs Claude Code's own version; the two drift independently — the fork's header
+  comment records the divergences.)
 - Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run
   the `code-review:code-review` plugin (5-perspective review posted as a GitHub comment).
   Know its shape: findings scoring below its confidence cut are silently dropped, so it
