@@ -239,12 +239,15 @@ describe('ttlWaiverHatch — layer boundary (PRD §5.2)', () => {
     // an invocation kind and in the tool-call args, but no user message carries it — no
     // waiver. Mutation caught: the predicate scanning findSubagentInvocations() or the
     // input IR (an AI-synthesised token would then waive — a security bypass).
+    // The planted tokens are BARE (nothing appended): under first-line-exact matching a
+    // decorated token never matches anywhere, which would let a leaked scan pass this
+    // test unnoticed — the review's executed mutation proved exactly that (COVENANT-15).
     const predicate = ttlWaiverHatch({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript(
       [{ text: 'ordinary message', timestampMs: NOW - 100 }],
-      [{ kind: `${TOKEN}-subagent` }],
+      [{ kind: TOKEN }],
     );
-    const input = inputWithArgs({ note: `${TOKEN} embedded in args` });
+    const input = inputWithArgs({ note: TOKEN });
     expect(predicate(input, transcript)).toBe(false);
   });
 });
@@ -259,6 +262,16 @@ describe('ttlWaiverHatch — factory validation (PRD §5.3)', () => {
     // Mutation caught: the trimmed-empty check being dropped, or `.trim()` omitted.
     expect(() => ttlWaiverHatch({ token: '', ttlMs: 5000, now: fakeNow })).toThrow();
     expect(() => ttlWaiverHatch({ token: '   ', ttlMs: 5000, now: fakeNow })).toThrow();
+  });
+
+  it('throws when the token contains a line break (structurally inert under first-line matching)', () => {
+    // P0 silent-death guard (review finding ④): the judgment compares an utterance's
+    // FIRST LINE, which never contains a line break, so a token with an embedded \n or
+    // lone \r could never match anything — factory acceptance would ship a valve that
+    // refuses every utterance with no error pointing at the token. Mutation caught:
+    // dropping the /[\r\n]/ viability check.
+    expect(() => ttlWaiverHatch({ token: 'pdks\nwaive', ttlMs: 5000, now: fakeNow })).toThrow();
+    expect(() => ttlWaiverHatch({ token: 'pdks\rwaive', ttlMs: 5000, now: fakeNow })).toThrow();
   });
 
   it('normalises a token configured with surrounding whitespace instead of dying silently', () => {

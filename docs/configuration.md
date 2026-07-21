@@ -122,10 +122,18 @@ distinct from talking about it: a message that quotes, questions, or explains th
 mid-sentence — or wraps it in backticks — does not open the valve, while a first line
 carrying the token alone does, with any following lines free for the work itself.
 
-```
-covenant waive          ← waives, and the rest of the message is yours
+A message that invokes — the token alone on the first line, the rest free:
 
-so when does `covenant waive` expire?   ← mentions it; the valve stays shut
+```
+covenant waive
+
+now fix the hook file
+```
+
+A message that merely mentions — the valve stays shut:
+
+```
+so when does `covenant waive` expire?
 ```
 
 The token's value is free — any phrase works, and it is never checked for a prefix or a

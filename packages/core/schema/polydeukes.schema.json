@@ -76,7 +76,7 @@
       "required": ["token", "ttlMinutes"],
       "properties": {
         "token": {
-          "description": "The agreed phrase a human types in the conversation. Must be non-empty after trimming.",
+          "description": "The agreed phrase a human types alone on a message's first line — quoting it mid-sentence is a mention, not an invocation (COVENANT-15). Must be non-empty after trimming; the value itself is free.",
           "type": "string",
           "minLength": 1,
           "pattern": "\\S"

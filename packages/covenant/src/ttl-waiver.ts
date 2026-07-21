@@ -22,7 +22,8 @@ export type TtlWaiverSpec = {
    * The agreed phrase a human types on the first line of a message, alone. Any value
    * works — the defence is provenance, not secrecy, so the phrase is never checked for
    * a prefix, a command shape, or any other form. Surrounding whitespace is trimmed at
-   * assembly (both sides of the comparison normalise the same way); trimmed-empty throws.
+   * assembly (both sides of the comparison normalise the same way); trimmed-empty
+   * throws, as does a value containing a line break (it could never match a first line).
    */
   token: string;
   /** Validity window in milliseconds from the user message's timestamp. Must be finite and > 0. */
@@ -59,6 +60,14 @@ export function ttlWaiverHatch(
   if (token.length === 0) {
     throw new TypeError('ttlWaiverHatch: token must be non-empty after trimming');
   }
+  // A token containing a line break is structurally inert: the judgment compares the
+  // FIRST LINE of an utterance, which by construction never contains one, so such a
+  // token could never match anything — the valve would pass validation and then
+  // silently refuse every utterance. Rejecting it here is validation of viability,
+  // not interpretation of the phrase (the value stays free otherwise).
+  if (/[\r\n]/.test(token)) {
+    throw new TypeError('ttlWaiverHatch: token must not contain line breaks');
+  }
   if (!(Number.isFinite(ttlMs) && ttlMs > 0)) {
     throw new TypeError('ttlWaiverHatch: ttlMs must be a finite positive number');
   }
@@ -71,7 +80,9 @@ export function ttlWaiverHatch(
       // The first line only, compared whole: an utterance invokes the waiver, it does
       // not merely mention it (COVENANT-15 §4.1). `split` keeps a leading blank line as
       // an empty first element, so a token below it never matches, and `trim` absorbs
-      // both surrounding spaces and the `\r` a CRLF transport leaves behind.
+      // both surrounding spaces and the trailing `\r` of a CRLF transport — CRLF only:
+      // a lone `\r` with no `\n` is not treated as a line break, so such a message
+      // fails closed (refused), never open.
       const [firstLine = ''] = message.text.split('\n');
       if (firstLine.trim() !== token) return false;
       if (message.timestampMs === undefined) {

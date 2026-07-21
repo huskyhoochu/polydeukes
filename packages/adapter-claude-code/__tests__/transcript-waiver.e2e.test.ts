@@ -137,10 +137,14 @@ describe('ADAPTER-04 §5.2 waiver integration — real dists, injected clock', (
     // token planted in task-notification, tool_result and no-origin entries must NOT waive.
     // Mutation caught: the provider relaxing its origin.kind==="human" allowlist, which would
     // let a subagent self-issue a waiver by printing the token into an AI-controlled surface.
+    // Each entry's text is the BARE token in its invoking form (first line, alone): if the
+    // allowlist ever admitted one of these entries, the match would succeed and this test
+    // would fail. Decorated tokens would be refused on the match instead, leaving the
+    // provenance check unexercised — the silent-green failure the COVENANT-15 review caught.
     const jsonl = toJsonl([
-      taskNotificationEntry(`<task-notification>${TOKEN}</task-notification>`, SENT_AT),
-      toolResultEntry(`tool said ${TOKEN}`, SENT_AT),
-      commandWrapperEntry(`<command-name>${TOKEN}</command-name>`, SENT_AT),
+      taskNotificationEntry(TOKEN, SENT_AT),
+      toolResultEntry(TOKEN, SENT_AT),
+      commandWrapperEntry(TOKEN, SENT_AT),
     ]);
 
     const verdict = waiverVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });
