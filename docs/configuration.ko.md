@@ -1,0 +1,154 @@
+# 폴리데우케스 설정하기
+
+[English](./configuration.md) · **한국어**
+
+> 프리알파 단계입니다. 이 문서는 지금 출시된 설정 표면(스키마 v2, 로더, 내장 술어 3종)을
+> 다룹니다. 필드와 술어는 앞으로 늘어나지만, 여기 적힌 것은 지금 테스트되고 강제되는
+> 내용입니다.
+
+`polydeukes.config.yaml`은 프로젝트가 자신의 규율(discipline)을 선언하는 단 하나의
+파일입니다. 사람과 AI 파트너가 함께 묶이기로 합의한 약속이 여기 담깁니다. 이 파일은
+코드가 아니라 **데이터**입니다. 아무것도 계산할 수 없으므로 아무것도 거짓말할 수
+없습니다. 코어가 검증하고, covenant 패키지가 강제하며, 이 파일이 일으키는 모든 판정은
+측정됩니다.
+
+## 파일
+
+프로젝트 루트에 다음 셋 중 정확히 하나를 둡니다.
+
+| 파일명 | 비고 |
+|---|---|
+| `polydeukes.config.yaml` | 정본 |
+| `polydeukes.config.yml` | 수용 변형 |
+| `polydeukes.config.json` | 수용 변형. 같은 파서로 읽습니다(YAML은 JSON의 상위집합) |
+
+발견 규칙은 의도적으로 엄격하고, 모든 실패는 추측 대신 큰 소리로 거부합니다.
+
+- **파일이 없으면** 후보 파일명 셋을 모두 나열하며 에러를 냅니다. 설정이 없다고 조용히
+  기본값으로 기동하는 일은 없습니다. 조용한 기본값은 조용한 무보호와 같기 때문입니다.
+- **둘 이상 발견되면** 충돌한 파일들을 나열하며 에러를 냅니다. 모호할 때 임의로 승자를
+  고르지 않습니다.
+- **파싱 오류나 커스텀 YAML 태그**를 만나면 파일명을 담아 에러를 냅니다. 파서가 태그를
+  실행할 수 없는데도 거부하는 이유가 있습니다. 설정 데이터는 계약상 계산 불가능한 채로
+  남아야 합니다.
+- **스키마 위반**이면 키와 파일명을 담아 에러를 냅니다. 모든 층위에서 미지 키를
+  거부하므로, 오타(`protectedPaths:`를 `protectedPath:`로 적는 실수)가 보호를 조용히 끄는
+  일은 일어날 수 없습니다.
+
+## IDE 지원
+
+발행된 JSON Schema(`@polydeukes/core/schema.json`)가 편집기 자동완성과 검증을 제공합니다.
+첫 줄에서 참조하세요.
+
+```yaml
+# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+```
+
+JSON 설정이라면 표준 최상위 키를 대신 씁니다. 이 키는 수락되고 무시됩니다.
+
+```json
+{ "$schema": "node_modules/@polydeukes/core/schema/polydeukes.schema.json" }
+```
+
+## 레퍼런스
+
+### `languages` (필수)
+
+언어 축은 1급 시민입니다. 키는 사용자의 값(`typescript`, `python` 등)입니다. 코어는 언어
+이름을 하나도 내장하지 않고, 명령 문자열을 해석하지도 않습니다.
+
+```yaml
+languages:
+  typescript:
+    productionGlob: 'packages/*/src/**/*.ts'   # 무엇이 프로덕션 소스인가
+    testCmd: 'pnpm --filter {scope} test'      # {scope}는 해석 시점에 치환된다
+```
+
+`testCmd`는 함수가 아니라 템플릿 문자열입니다. 모든 `{scope}` 등장이 치환되고, 그 외의
+중괄호(`${VAR}`, `{a,b}`, `awk '{print}'`)는 원형 그대로 통과합니다. scope를 무시하는
+명령(`pnpm test`)도 똑같이 유효합니다.
+
+### `protectedPaths` (선택)
+
+covenant가 수정으로부터 보호할 경로 패턴입니다. 편집 도구만이 아니라 셸 명령(`sed -i`,
+`tee`, 리다이렉트, heredoc, 상위 디렉터리 조작)도 같은 판정을 받습니다. 항목은 해석
+시점에 정규화(공백 제거, 중복 제거)됩니다.
+
+```yaml
+protectedPaths:
+  - 'packages/core/src'
+  - '.claude/hooks'
+```
+
+**설정 파일은 자기 자신을 보호합니다.** 발견된 설정 파일은 `protectedPaths`에 자동으로
+덧붙습니다. 자기 게이트를 낮추려는 편집도 다른 모든 편집과 같은 판정기를 통과합니다.
+규율을 선언하는 파일이 규율 밖에 있다면 사슬 전체가 장식이 되기 때문입니다.
+
+### `adapters` (선택)
+
+어댑터 디렉터리입니다. 보호 표면에 자동으로 포함되므로, 등록된 어댑터가 누락으로
+무보호 상태에 남는 일은 없습니다.
+
+```yaml
+adapters:
+  - 'packages/adapter-claude-code/src'
+  - 'packages/adapter-claude-code/dist'
+```
+
+### `telemetry` (선택)
+
+```yaml
+telemetry:
+  logPath: '.polydeukes/roi.log'   # 생략 시 기본값. gitignore에 두는 것을 권장
+```
+
+통과·차단·우회 모든 판정이 한 줄씩 기록을 남깁니다. 텔레메트리는 의도적으로
+fail-open입니다. 기록 실패가 판정을 바꾸는 일은 없습니다.
+
+### `disciplines` (선택)
+
+각 항목이 규율 하나입니다. 팀이 스스로에게 지우는 실천을 데이터로 선언합니다. 항목은
+정확히 **하나의** 술어를 가지며(0개도 2개도 거부), `id`(텔레메트리 라벨)와 함께
+선택적으로 `why`(이유를 규칙 옆에 보관)와 `in`(판정할 파일 glob)을 가집니다.
+
+**`forbid`는 내용 델타를 봅니다.** 패턴의 새 매치를 *더하는* 편집을 차단합니다. 기존
+매치는 사면됩니다. 판정의 방향이 "파일에 무엇이 있는가"가 아니라 "이 편집이 무엇을
+더했는가"이므로, 규율 도입이 레거시 코드베이스를 막는 일이 없습니다.
+
+```yaml
+disciplines:
+  - id: 'covenant-vocabulary'
+    why: 'control-framing vocabulary is banned in package sources.'
+    in:
+      - 'packages/*/src/**'
+    forbid: '\b(guard|harness|kb)\b'
+```
+
+**`immutable`은 경로족입니다.** 매치하는 기존 파일의 수정을 차단합니다. 새 파일 생성은
+허용됩니다.
+
+```yaml
+  - id: 'archived-records-stay-frozen'
+    why: 'an archive that can be edited is not an archive.'
+    immutable: 'records/archive/**'
+```
+
+**`forbidCommand`는 명령족입니다.** 패턴에 매치하는 셸 명령을 차단합니다. 보호 경로를
+전혀 언급하지 않는 명령도 잡습니다. 게이트를 무장 해제하는 명령을 잡는 방법이 이것입니다.
+
+```yaml
+  - id: 'hooks-stay-armed'
+    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
+    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
+```
+
+규율 추가는 데이터 편집입니다. 코드도 배관도 필요 없습니다. 데이터로 표현할 수 없는
+소수의 규칙을 위해 커스텀 판정 본체가 탈출층으로 남아 있습니다.
+
+## 강제는 이렇게 보입니다
+
+위반하는 도구 호출이나 셸 명령은 실행 전에 **차단(exit 2)**되고, 해당 규율의 `id`가
+텔레메트리에 남습니다. 승인된 밸브는 명시적 우회뿐이며 `bypassed`로 기록됩니다. 조용한
+우회는 없습니다. 설정이 없거나 모호하거나 무효라면 고칠 때까지 모든 호출이 막힙니다.
+시스템은 닫히는 쪽으로 실패합니다. 아무거나 통과시키는 죽은 게이트야말로 가장 값싼
+우회이기 때문입니다.
