@@ -22,8 +22,10 @@ library that compiles `disciplines:` data entries (`forbid`/`immutable`/`forbidC
 registrations with per-discipline telemetry and a generic judged body), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
 adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
-parser that computes Edit/Write/MultiEdit apply-results without touching disk, and the
-`collectFileChanges` evidence step that feeds those apply-results into the IR);
+parser that computes Edit/Write/MultiEdit apply-results without touching disk, the
+`collectFileChanges` evidence step that feeds those apply-results into the IR, and the
+JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — the TTL
+waiver's real data source, admitting only positively-identified human-typed messages);
 `packages/polydeukes` (umbrella) has its first real export: the `loadConfig(rootDir)` config
 discovery loader — finds the root data config (`polydeukes.config.yaml`/`.yml`/`.json`, exactly
 one), parses it with the `yaml` safe schema, delegates validation to core `defineConfig()`, and
