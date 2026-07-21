@@ -19,6 +19,16 @@ adapters:
   - 'packages/adapter-claude-code/src'
   - 'packages/adapter-claude-code/dist'
 
+# The time-boxed valve. A human types this token into the conversation and the waiver
+# holds for ttlMinutes from that message, then blocking resumes on its own — replacing
+# an env valve whose "armed until you remember to disarm" shape measured 562 bypasses
+# in a single day. The token is not a secret: the defence is provenance, not
+# confidentiality. Only a real human utterance carries the transcript marking the
+# predicate admits, and no agent can forge that marking.
+waiver:
+  token: 'pdks waive'
+  ttlMinutes: 10
+
 disciplines:
   - id: 'covenant-vocabulary'
     why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.'
