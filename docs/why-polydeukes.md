@@ -46,7 +46,11 @@ human in a hurry — can quietly remove.
      - the config that declares the discipline is itself under the discipline: the
        discovered config file auto-joins the protection surface, and so does the loader
        that reads it — every link in the judging chain is judged, or the chain is
-       decoration (CONFIG-03, 2026-07-21). -->
+       decoration (CONFIG-03, 2026-07-21).
+     - provenance, not secrecy, is the defense: the waiver token may sit in plain sight
+       in the config — the AI can know it and still cannot forge the human-typed
+       provenance mark the transcript records, so only a human can open the valve
+       (ADAPTER-04, 2026-07-21). -->
 
 ## Three design principles
 

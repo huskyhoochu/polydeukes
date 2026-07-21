@@ -13,6 +13,7 @@ import { parsePayloadEnvelope } from './payload-envelope.js';
 
 export { collectFileChanges } from './file-changes.js';
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
+export { transcriptFromJsonl, transcriptFromJsonlFile } from './transcript.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
 
 /**
