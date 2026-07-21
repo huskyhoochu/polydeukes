@@ -103,6 +103,25 @@ telemetry:
 Every judgment — passed, blocked, or bypassed — appends one record. Telemetry is
 fail-open by design: a logging failure never changes a verdict.
 
+### `waiver` (optional)
+
+```yaml
+waiver:
+  token: 'covenant waive'   # the phrase a human types in the conversation
+  ttlMinutes: 10            # validity window, in minutes, from that message
+```
+
+The values of the time-boxed escape valve, consumed where the covenants are assembled.
+When a covenant blocks a legitimate edit, a human types the agreed token into the
+conversation; judgments are waived for `ttlMinutes` from that message's timestamp, then
+blocking resumes automatically. Both keys are required when the section is present: the
+token must be non-empty after trimming, the window a finite number greater than zero.
+
+The token is not a secret — the defense is provenance, not secrecy. A waiver counts only
+when the token appears in a message positively identified as human-typed in the session
+transcript, so an AI that knows the token still cannot forge one. Waived judgments are
+recorded as `bypassed`, never silent.
+
 ### `disciplines` (optional)
 
 Each entry is one discipline: a practice the team imposes on itself, declared as data.

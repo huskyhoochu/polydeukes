@@ -32,7 +32,8 @@
       "type": "array",
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/discipline" }
-    }
+    },
+    "waiver": { "$ref": "#/$defs/waiver" }
   },
   "$defs": {
     "languageProfile": {
@@ -65,6 +66,25 @@
         "logPath": {
           "description": "Telemetry log path. Defaults to .polydeukes/roi.log when omitted.",
           "type": "string"
+        }
+      }
+    },
+    "waiver": {
+      "description": "TTL waiver settings — the agreed token and validity window (minutes) consumed by the covenant escape-hatch assembly (CONFIG-05).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token", "ttlMinutes"],
+      "properties": {
+        "token": {
+          "description": "The agreed phrase a human types in the conversation. Must be non-empty after trimming.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "ttlMinutes": {
+          "description": "Validity window in minutes from the user message's timestamp. Must be a finite number > 0.",
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       }
     },
