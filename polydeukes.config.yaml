@@ -33,6 +33,15 @@ waiver:
   token: 'pdks waive'
   ttlMinutes: 10
 
+# Adapter namespaces (CONFIG-07): each adapter owns its own vocabulary; the core passes
+# contents through verbatim. `enforce: advise` turns the commit surface into a backstop
+# without a block (CONFIG-06): a verdict on a staged change is recorded as `advised` and
+# the commit proceeds — no TTY prompt. The session surface (the hook) stays blocking;
+# an unjudgeable run (missing config, stale dist) still fails closed even here.
+adapters:
+  git:
+    enforce: advise
+
 disciplines:
   - id: 'covenant-vocabulary'
     why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.'

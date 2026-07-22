@@ -11,6 +11,7 @@
 import type { CovenantInput } from '@polydeukes/core';
 
 export { collectStagedChanges } from './collect.js';
+export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
 
 /** Tool name a staged creation or modification surfaces as in the IR. */
 export const STAGED_WRITE = 'staged-write';

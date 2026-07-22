@@ -32,10 +32,14 @@ JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — 
 waiver's real data source, admitting only positively-identified human-typed messages), and the new `adapter-git`
 package (the commit-surface adapter: staged diff → covenant input up-translation, filling
 the same agent-neutral `fileChanges` evidence from HEAD/staged blobs — the second adapter,
-proving IR neutrality with zero core changes);
+proving IR neutrality with zero core changes — plus its own namespace vocabulary:
+`resolveGitAdapterSettings`, validating `adapters.git.enforce: block|advise`, the first
+tenant of the CONFIG-07 container);
 `packages/polydeukes` (umbrella) has its first real exports: the `pdks` bin (`covenant check` —
-the pre-commit judgment entry point whose waiver valve is a TTY prompt only a human at a
-terminal can answer, spawned by lefthook and consumed as a root dogfooding devDependency)
+the pre-commit judgment entry point whose waiver valve, at the `block` level, is a TTY
+prompt only a human at a terminal can answer — at `advise` the verdict is recorded as
+`advised` and the commit proceeds, no prompt — spawned by lefthook and consumed as a root
+dogfooding devDependency)
 and the `loadConfig(rootDir)` config
 discovery loader — finds the root data config (`polydeukes.config.yaml`/`.yml`/`.json`, exactly
 one), parses it with the `yaml` safe schema, delegates validation to core `defineConfig()`, and
@@ -92,9 +96,14 @@ banned-vocabulary occurrences in package sources (existing debt is forgiven), an
 `hooks-stay-armed` blocks gate-disarming commands (`LEFTHOOK=0 …`, `core.hooksPath`) even though
 they mention no protected path. Every call
 is measured in `.polydeukes/roi.log` (local, gitignored). Since ADAPTER-git the same
-judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`, and a
-commit staging a protected path blocks unless a human answers the TTY waiver prompt with
-the full token — an agent-spawned commit has no TTY, so this valve too is human-only.
+judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`. The
+commit surface's level is the git adapter's namespace setting (`adapters.git.enforce`,
+CONFIG-06): under `block` a commit staging a protected path blocks unless a human answers
+the TTY waiver prompt with the full token (an agent-spawned commit has no TTY, so that
+valve too is human-only); under `advise` the verdict is recorded as an `advised` event and
+the commit proceeds with a stderr advisory — a backstop that measures instead of blocking.
+**This repo's config sets `advise` (2026-07-23)**; the session surface always blocks, and
+an unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
 Consequences to know:
 
 - Editing covenant/core/adapter/umbrella sources or the root config file — or any command

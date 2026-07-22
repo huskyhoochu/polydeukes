@@ -20,10 +20,11 @@ import {
   EXIT_UPHOLD,
   noopTranscript,
   parseInput,
+  type TelemetryEvent,
 } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
-import { runCovenant } from './run-covenant.js';
+import { runCovenant, translateExitCode } from './run-covenant.js';
 
 /**
  * `CovenantRegistration` — one registered covenant (PRD §4.1).
@@ -158,6 +159,12 @@ export function matchRegistrations(
  * The hatch receives the injected `spec.transcript` (CORE-04 seam, `noopTranscript`
  * when omitted) as its second argument. A predicate that throws counts as no bypass
  * (the body spawns normally): an uncertain hatch never leaks toward fail-open.
+ *
+ * enforce (CONFIG-06 §4.5): `spec.enforce` is threaded into every {@link runCovenant}
+ * call — the level axis lives in the wrapper's translation table. The dispatcher's own
+ * fail-closed (unparseable or unjudgeable payload) is outside that axis and never
+ * softens. Each results entry surfaces its telemetry `event` (`bypassed` on the hatch
+ * path, the translated event on the body path).
  */
 export async function dispatchCovenants(spec: {
   stdinPayload: string;
@@ -165,7 +172,11 @@ export async function dispatchCovenants(spec: {
   telemetryPath: string;
   dispatcherLabel?: string;
   transcript?: CanonicalTranscript;
-}): Promise<{ exitCode: 0 | 2; results: { label: string; exitCode: 0 | 2 }[] }> {
+  enforce?: 'block' | 'advise';
+}): Promise<{
+  exitCode: 0 | 2;
+  results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[];
+}> {
   const blockedByDispatcher = (): { exitCode: 2; results: [] } => {
     appendRecordFailOpen(spec.telemetryPath, {
       event: 'blocked',
@@ -190,7 +201,7 @@ export async function dispatchCovenants(spec: {
   }
 
   const transcript = spec.transcript ?? noopTranscript;
-  const results: { label: string; exitCode: 0 | 2 }[] = [];
+  const results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[] = [];
   for (const { registration, mentionedPath } of matches) {
     let bypass = false;
     try {
@@ -205,19 +216,23 @@ export async function dispatchCovenants(spec: {
         label: registration.label,
         subject: mentionedPath,
       });
-      results.push({ label: registration.label, exitCode: EXIT_UPHOLD });
+      results.push({ label: registration.label, exitCode: EXIT_UPHOLD, event: 'bypassed' });
       continue;
     }
 
-    const { exitCode } = await runCovenant({
+    const { exitCode, bodyExitCode } = await runCovenant({
       command: registration.body.command,
       args: registration.body.args,
       stdinPayload: spec.stdinPayload,
       label: registration.label,
       subject: mentionedPath,
       telemetryPath: spec.telemetryPath,
+      enforce: spec.enforce,
     });
-    results.push({ label: registration.label, exitCode });
+    // Recomputed from the pure translation table — identical to the event the wrapper
+    // logged, without widening runCovenant's resolved shape.
+    const { event } = translateExitCode(bodyExitCode, spec.enforce);
+    results.push({ label: registration.label, exitCode, event });
   }
 
   const exitCode = results.some((result) => result.exitCode === EXIT_BREAK_BLOCKING)

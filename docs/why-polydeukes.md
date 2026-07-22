@@ -167,7 +167,12 @@ journal adds a round per milestone and never edits an old one — the trend is t
      Parked candidate (2026-07-22, ADAPTER-git): "provenance translates per surface" —
      the session valve trusts the transcript's human-utterance marking, the commit-time
      valve trusts a human at the terminal (TTY); one principle — an AI can never open
-     its own valve — with one concrete translation per enforcement surface. -->
+     its own valve — with one concrete translation per enforcement surface.
+     Parked candidate (2026-07-23, CONFIG-06): "the level belongs to the observer" —
+     a commit-time verdict is a second observation of the same change, and how strictly
+     an observation is enforced (block | advise) is the observer's own setting, never
+     the judge's shared vocabulary; advise turns a valve-as-ritual contradiction into
+     a backstop that measures instead of blocking. -->
 
 ## Where it stands
 

@@ -11,8 +11,11 @@
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-/** The three telemetry events. `bypassed` is a first-class event, not a flag on `passed`. */
-export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed';
+/**
+ * The four telemetry events. `bypassed` is a first-class event, not a flag on `passed`;
+ * `advised` is a violation verdict an advise-level observer recorded but let through.
+ */
+export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed' | 'advised';
 
 /**
  * `TelemetryRecord` — one measured covenant outcome (PRD §4.1).
@@ -34,7 +37,7 @@ export type GainSummary = {
 };
 
 const TAB = '\t';
-const VALID_EVENTS: readonly TelemetryEvent[] = ['passed', 'blocked', 'bypassed'];
+const VALID_EVENTS: readonly TelemetryEvent[] = ['passed', 'blocked', 'bypassed', 'advised'];
 
 /**
  * Replace tab/newline/carriage-return with single spaces (PRD §4.1 line integrity).
@@ -61,7 +64,7 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for the wrong field count, an event outside {passed, blocked, bypassed}, or an
+ * `null` for the wrong field count, an event outside the four valid events, or an
  * empty line — a malformed line is rejected, never coerced into a bogus record.
  */
 export function parseRecordLine(line: string): TelemetryRecord | null {
@@ -160,14 +163,14 @@ export function readRecords(path: string): { records: TelemetryRecord[]; skipped
 /**
  * Aggregate records into per-label event counts (PRD §4.4, pure).
  *
- * Each label gets its own counter across all three events, so a corrupt or missing
+ * Each label gets its own counter across all four events, so a corrupt or missing
  * event never bleeds counts between labels.
  */
 export function aggregateGain(records: TelemetryRecord[]): GainSummary {
   const counts: Record<string, Record<TelemetryEvent, number>> = {};
   for (const record of records) {
     if (!(record.label in counts)) {
-      counts[record.label] = { passed: 0, blocked: 0, bypassed: 0 };
+      counts[record.label] = { passed: 0, blocked: 0, bypassed: 0, advised: 0 };
     }
     counts[record.label][record.event] += 1;
   }
@@ -177,8 +180,8 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
 /**
  * Render a {@link GainSummary} into human-readable lines (pure).
  *
- * Each label is mentioned with its passed/blocked/bypassed counts; `bypassed` is a
- * distinct column, not folded into passed/blocked (PRD §4.4). A non-zero `skipped`
+ * Each label is mentioned with its passed/blocked/bypassed/advised counts; each is a
+ * distinct column, never folded into another (PRD §4.4). A non-zero `skipped`
  * count is reported rather than hidden — silent skipping would mask log corruption.
  */
 function renderGain(summary: GainSummary, skipped: number): string {
@@ -189,7 +192,7 @@ function renderGain(summary: GainSummary, skipped: number): string {
   const lines = [`total ${summary.total}`];
   for (const [label, counts] of Object.entries(summary.counts)) {
     lines.push(
-      `${label}: passed=${counts.passed} blocked=${counts.blocked} bypassed=${counts.bypassed}`,
+      `${label}: passed=${counts.passed} blocked=${counts.blocked} bypassed=${counts.bypassed} advised=${counts.advised}`,
     );
   }
   if (skipped > 0) {

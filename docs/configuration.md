@@ -87,13 +87,32 @@ disciplines, the whole chain would be decoration.
 Adapter namespaces. One config file, one namespace per adapter: each key names an
 adapter, and its value is that adapter's own settings object. The core validates the
 container shape only — the keys and the contents belong to each adapter, which ships
-its own validator for its own vocabulary.
+its own validator for its own vocabulary. An unknown key *inside* a namespace is
+rejected by that adapter's validator, with the full field path in the error.
 
 ```yaml
 adapters:
   git:
-    # settings the git adapter defines — see that adapter's documentation
+    enforce: advise
 ```
+
+#### `adapters.git` — the git commit adapter
+
+| Key | Values | Default | Meaning |
+|---|---|---|---|
+| `enforce` | `block` \| `advise` | `block` | Enforcement level of the commit surface |
+
+- **`block`** — a staged change that breaks a covenant blocks the commit (exit 2). The
+  only way through is the waiver valve: a human answering the TTY prompt with the full
+  token. An absent namespace, an absent `adapters` map, or an absent `enforce` key all
+  mean `block` — not writing the key selects the strictest level.
+- **`advise`** — the commit surface becomes a backstop without a block: a verdict on a
+  staged change is recorded as an `advised` telemetry event and the commit proceeds
+  (exit 0) with one advisory line on stderr. No TTY prompt fires. Only the verdict is
+  relaxed — a run that cannot judge (missing or invalid config, an unresolvable judge
+  body) still fails closed at exit 2, at either level.
+
+The session surface (the editor-time hook) has no level setting here; it always blocks.
 
 ### `telemetry` (optional)
 
@@ -102,8 +121,8 @@ telemetry:
   logPath: '.polydeukes/roi.log'   # default when omitted; keep it gitignored
 ```
 
-Every judgment — passed, blocked, or bypassed — appends one record. Telemetry is
-fail-open by design: a logging failure never changes a verdict.
+Every judgment — passed, blocked, bypassed, or advised — appends one record. Telemetry
+is fail-open by design: a logging failure never changes a verdict.
 
 ### `waiver` (optional)
 
@@ -150,8 +169,9 @@ recorded as `bypassed`, never silent.
 
 Each entry is one discipline: a practice the team imposes on itself, declared as data.
 An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
-telemetry label), and optionally a `why` (the reason, kept next to the rule) and `in`
-(the file globs it judges).
+telemetry label), and optionally a `why` (the reason, kept next to the rule) plus, on a
+`forbid` entry only, `in` (the file globs it judges) and `except` (globs carved out of
+that scope).
 
 **`forbid` — content delta.** Blocks an edit that *adds* a new match of the pattern.
 Existing occurrences are forgiven: adopting a discipline never blocks a legacy codebase,
@@ -193,6 +213,8 @@ escape layer for the few rules data cannot express.
 
 A violating tool call or shell command is **blocked (exit 2)** before it runs, with the
 discipline's `id` in the telemetry record. The sanctioned valve is an explicit bypass,
-recorded as `bypassed` — never silent. A missing, ambiguous, or invalid config blocks
-every call until it is fixed: the system fails closed, because a dead gate that waves
-things through is the cheapest bypass of all.
+recorded as `bypassed` — never silent. On the commit surface under
+`adapters.git.enforce: advise`, a verdict is recorded as `advised` and the commit
+proceeds — a backstop that measures instead of blocking. A missing, ambiguous, or
+invalid config blocks every call until it is fixed: the system fails closed, because a
+dead gate that waves things through is the cheapest bypass of all.

@@ -10,6 +10,7 @@
 
 - **스테이징 변경 수집.** `collectStagedChanges(repoRoot)`가 `--no-renames`를 강제해 스테이징 영역을 읽습니다. 이름 바꾸기(rename)는 삭제 하나와 추가 하나로 갈라 판정합니다. 보호 파일을 `git mv`로 옮기는 일이 불투명한 rename 엔트리 하나로 빠져나가면 안 되기 때문입니다. `pre`는 HEAD의 blob에서, `post`는 인덱스에 담긴 blob에서 옵니다. `git add` 뒤에 달라졌을 수 있는 워크트리는 결코 읽지 않습니다. 바이너리 blob(NUL 휴리스틱)은 깨진 디코드 결과 대신 null 내용을 내고, HEAD가 없는 첫 커밋은 예외 대신 전부 추가로 좁혀 판정합니다.
 - **순수 번역.** `covenantInputFromStagedChanges(changes)`가 수집한 변경을 하나의 `CovenantInput`으로 접습니다. 변경마다 어댑터 소유 이름(`staged-write`/`staged-delete`)의 도구 호출이 하나씩 실리고, 쓰기에는 `fileChanges`의 pre/post 쌍이 붙습니다. 삭제는 post 내용이 없으므로 원소를 생략하되 도구 호출은 남깁니다. 커밋 표면에는 세션이 없으니 세션 컬렉션 두 개는 정직하게 빈 배열이고, 키를 날조하지 않습니다.
+- **어댑터 자신의 어휘.** `resolveGitAdapterSettings(namespace)`가 이 어댑터의 설정 네임스페이스(`adapters.git`)를 검증합니다. `enforce: block | advise`, 곧 커밋 표면의 시행 수위입니다. 코어는 컨테이너 구조(어댑터당 설정 객체 하나)만 검증하고 내용은 원형 그대로 통과시키므로, 어휘와 검증기와 기본값은 전부 여기 삽니다. 부재는 `block`으로 채워지고, 미지 키와 미지 값은 전체 필드 경로를 담아 즉시 거부됩니다.
 - **이것뿐인 이유.** 이 패키지는 순수 라이브러리입니다. `staged diff`라는 페이로드 형식만 알고, 설치·훅 러너·밸브는 모릅니다. umbrella의 `pdks covenant check`가 이것을 pre-commit 표면으로 조립하고, 훅 러너에 거는 일은 이 모듈 밖의 배포 행위입니다.
 
 아키텍처 청사진과 설계 근거는 [프로젝트 저장소](https://github.com/huskyhoochu/polydeukes)에 있습니다.
