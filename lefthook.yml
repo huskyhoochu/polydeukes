@@ -9,6 +9,9 @@ pre-commit:
   commands:
     covenant:
       priority: 1
+      # interactive: 스피너·출력 캡처가 TTY 유예 프롬프트를 가리고 입력 대기만 남는 것을
+      # 막는다(2026-07-22 첫 실사용 실측 — waiver-observable-behaviour 참조).
+      interactive: true
       run: ./node_modules/.bin/pdks covenant check
     check:
       priority: 2
