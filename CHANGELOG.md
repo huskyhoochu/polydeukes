@@ -12,6 +12,27 @@ below is grouped under `[Unreleased]`. The v0.1 MVP milestone is complete and wi
 become the first tagged release; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.2.0](https://github.com/huskyhoochu/polydeukes/compare/v0.1.0...v0.2.0) (2026-07-22)
+
+
+### Features
+
+* **adapter-claude-code:** jsonl transcript provider as the ttl waiver data source (ADAPTER-04) ([#25](https://github.com/huskyhoochu/polydeukes/issues/25)) ([a84c3b1](https://github.com/huskyhoochu/polydeukes/commit/a84c3b179fe60602448a42ebbc372666ae5a3bef))
+* **adapter-git:** adapters.git.enforce level + advised telemetry event (CONFIG-06) ([#31](https://github.com/huskyhoochu/polydeukes/issues/31)) ([441ccce](https://github.com/huskyhoochu/polydeukes/commit/441ccceca3a62c2ec4071205d8eefc1df80390e2))
+* **adapter-git:** git pre-commit adapter + pdks covenant check entry point (ADAPTER-git) ([#28](https://github.com/huskyhoochu/polydeukes/issues/28)) ([06b984b](https://github.com/huskyhoochu/polydeukes/commit/06b984b78780e568d020a296c4f8c66489ca4dcf))
+* **assembly:** replace the session-global env valve with the TTL waiver ([7c5ee18](https://github.com/huskyhoochu/polydeukes/commit/7c5ee1868b738870e5d26178da13c85ce105e0a9))
+* **config:** adopt native deny rules and implicit conventions as disciplines ([582f25c](https://github.com/huskyhoochu/polydeukes/commit/582f25cd2705527fb49cad288697046e0884e8d6))
+* **core:** add CanonicalTranscript behavioral seam with noop default (CORE-04) ([#18](https://github.com/huskyhoochu/polydeukes/issues/18)) ([328efba](https://github.com/huskyhoochu/polydeukes/commit/328efbae7e0f00bd632d4fdd8d99a3eb62d0dbb6))
+* **core:** config schema v2 — data config with {scope} templates + published JSON Schema (CONFIG-04) ([#20](https://github.com/huskyhoochu/polydeukes/issues/20)) ([e12cd22](https://github.com/huskyhoochu/polydeukes/commit/e12cd2288123d3099f2bc009c8db95a05b8eeae8))
+* **core:** promote isPlainObject + fail-open telemetry helper to core exports (CORE-05) ([#29](https://github.com/huskyhoochu/polydeukes/issues/29)) ([b3c034c](https://github.com/huskyhoochu/polydeukes/commit/b3c034cc8d285ed0dd9721a9d703870a4a405698))
+* **core:** redefine adapters as adapter namespace map (CONFIG-07) ([#30](https://github.com/huskyhoochu/polydeukes/issues/30)) ([c17dd5d](https://github.com/huskyhoochu/polydeukes/commit/c17dd5dee115d7b38e07c687d3e12886737f2a4f))
+* **core:** waiver settings surface — token + ttlMinutes as config data (CONFIG-05) ([#26](https://github.com/huskyhoochu/polydeukes/issues/26)) ([0458196](https://github.com/huskyhoochu/polydeukes/commit/045819657dcbe5e125211403bcda7e42d506caef))
+* **covenant:** add TTL waiver hatch predicate (COVENANT-06) ([#19](https://github.com/huskyhoochu/polydeukes/issues/19)) ([4bdf7c4](https://github.com/huskyhoochu/polydeukes/commit/4bdf7c46b7a4f26d2134bc266776f6301194c630))
+* **covenant:** new-violation-only delta layer (COVENANT-05) ([#22](https://github.com/huskyhoochu/polydeukes/issues/22)) ([de62b8b](https://github.com/huskyhoochu/polydeukes/commit/de62b8badad40bba4e0c3242e2039a3a481be3f5))
+* **covenant:** standard discipline library — data entries become enforcement (COVENANT-10) ([#23](https://github.com/huskyhoochu/polydeukes/issues/23)) ([a0258c4](https://github.com/huskyhoochu/polydeukes/commit/a0258c4611645d1fda8a4cf2fded6d9f5af099e9))
+* **covenant:** the waiver token invokes only on a message's first line (COVENANT-15) ([#27](https://github.com/huskyhoochu/polydeukes/issues/27)) ([95b4874](https://github.com/huskyhoochu/polydeukes/commit/95b48743b8cb750c9924b699ef5fa08415188568))
+* **polydeukes:** config discovery loader + dogfooding migration (CONFIG-03) ([#24](https://github.com/huskyhoochu/polydeukes/issues/24)) ([5a5b741](https://github.com/huskyhoochu/polydeukes/commit/5a5b741dade80e95c0daafa9189d1a7bced49263))
+
 ## [Unreleased]
 
 ### v0.1 MVP — covenant core + measurement (complete)

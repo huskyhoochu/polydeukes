@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Polydeukes core — covenant protocol, config loader, and transcript interface. Domain- and agent-agnostic. Pre-alpha.",
   "license": "MIT",
   "repository": {
