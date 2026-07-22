@@ -8,7 +8,8 @@
  * than building its own logger.
  */
 
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 /** The three telemetry events. `bypassed` is a first-class event, not a flag on `passed`. */
 export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed';
@@ -100,6 +101,26 @@ export function appendRecord(path: string, record: TelemetryRecord): { ok: boole
     return { ok: true };
   } catch {
     return { ok: false };
+  }
+}
+
+/**
+ * Append one telemetry record fail-open, timestamping it here (CORE-05).
+ *
+ * This layer lives above the deliberately mkdir-free {@link appendRecord} (COVENANT-01b:
+ * an absent directory is a fail-open `{ ok: false }` for `appendRecord` itself), so this
+ * wrapper carries the parent-directory guarantee. The mkdir and the append share one try
+ * block, and a failure of either never alters the caller's verdict and never propagates.
+ */
+export function appendRecordFailOpen(
+  telemetryPath: string,
+  record: Omit<TelemetryRecord, 'timestamp'>,
+): void {
+  try {
+    mkdirSync(dirname(telemetryPath), { recursive: true });
+    appendRecord(telemetryPath, { timestamp: new Date().toISOString(), ...record });
+  } catch {
+    // fail-open: a logging problem must not alter the verdict or propagate.
   }
 }
 

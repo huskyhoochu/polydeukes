@@ -7,14 +7,8 @@
  * translate layer (index.ts) stays pure.
  */
 
-import { mkdirSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
-import {
-  appendRecord,
-  EXIT_BREAK_BLOCKING,
-  EXIT_UPHOLD,
-  type TelemetryRecord,
-} from '@polydeukes/core';
+import { readFileSync } from 'node:fs';
+import { appendRecordFailOpen, EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '@polydeukes/core';
 import { collectFileChanges } from './file-changes.js';
 import { buildCovenantInput } from './index.js';
 
@@ -47,25 +41,6 @@ function readPreStateFromDisk(filePath: string): string | null {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
-  }
-}
-
-/**
- * Append one telemetry record, timestamping it here; swallow every logging failure.
- *
- * Deliberate local replica of the covenant package's fail-open helper (PRD §7 —
- * sibling imports are forbidden, so the shape is copied, not shared). The mkdir and
- * the append share one try block; a failure of either never alters the verdict.
- */
-function appendRecordFailOpen(
-  telemetryPath: string,
-  record: Omit<TelemetryRecord, 'timestamp'>,
-): void {
-  try {
-    mkdirSync(dirname(telemetryPath), { recursive: true });
-    appendRecord(telemetryPath, { timestamp: new Date().toISOString(), ...record });
-  } catch {
-    // fail-open: a logging problem must not alter the verdict or propagate.
   }
 }
 

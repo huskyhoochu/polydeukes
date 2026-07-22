@@ -1,6 +1,6 @@
 /** Internal shared envelope validation — not part of the package's public surface. */
 
-import { isPlainObject } from './is-plain-object.js';
+import { isPlainObject } from '@polydeukes/core';
 
 /**
  * `PayloadEnvelope` — the validated outer shape every PreToolUse payload shares.

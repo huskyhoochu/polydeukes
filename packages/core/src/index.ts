@@ -3,9 +3,12 @@
  *
  * Pre-alpha. The covenant protocol (CORE-01) landed first, then the ROI telemetry
  * collector (CORE-02) and the config loader (CONFIG-01). Pure types and functions,
- * except telemetry's two confined I/O functions (appendRecord / readRecords).
+ * except telemetry's confined I/O functions (appendRecord / readRecords /
+ * appendRecordFailOpen — the fail-open wrapper promoted by CORE-05).
  * See https://github.com/huskyhoochu/polydeukes
  */
+
+import { isPlainObject } from './is-plain-object.js';
 
 export {
   ConfigValidationError,
@@ -24,11 +27,13 @@ export {
   failModeToExitCode,
   resolveFailMode,
 } from './fail-policy.js';
+export { isPlainObject } from './is-plain-object.js';
 export { normalizeProtectedPaths } from './protected-paths.js';
 
 export {
   aggregateGain,
   appendRecord,
+  appendRecordFailOpen,
   formatRecordLine,
   type GainSummary,
   parseRecordLine,
@@ -113,11 +118,11 @@ export function parseInput(
     return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
   }
 
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (!isPlainObject(parsed)) {
     return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
   }
 
-  const candidate = parsed as Record<string, unknown>;
+  const candidate = parsed;
   if (
     !Array.isArray(candidate.toolCalls) ||
     !Array.isArray(candidate.subagentSpawns) ||

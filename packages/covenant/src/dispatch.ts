@@ -13,6 +13,7 @@
  */
 
 import {
+  appendRecordFailOpen,
   type CanonicalTranscript,
   type CovenantInput,
   EXIT_BREAK_BLOCKING,
@@ -23,7 +24,6 @@ import {
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
 import { runCovenant } from './run-covenant.js';
-import { appendRecordFailOpen } from './telemetry-fail-open.js';
 
 /**
  * `CovenantRegistration` — one registered covenant (PRD §4.1).

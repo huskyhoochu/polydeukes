@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ResolvedConfig } from '@polydeukes/core';
-import { ConfigValidationError, defineConfig } from '@polydeukes/core';
+import { ConfigValidationError, defineConfig, isPlainObject } from '@polydeukes/core';
 import { parseDocument } from 'yaml';
 
 export type { ResolvedConfig } from '@polydeukes/core';
@@ -80,8 +80,8 @@ export function loadConfig(rootDir: string): LoadedConfig {
   // Strip the IDE `$schema` reference before delegating — the loader owns no
   // structural validation beyond this key removal.
   let input = parsed;
-  if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-    const { $schema: _schema, ...rest } = parsed as Record<string, unknown>;
+  if (isPlainObject(parsed)) {
+    const { $schema: _schema, ...rest } = parsed;
     input = rest;
   }
 
