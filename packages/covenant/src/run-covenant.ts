@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import {
   appendRecordFailOpen,
   EXIT_BREAK_BLOCKING,
+  EXIT_BREAK_NON_BLOCKING,
   EXIT_UPHOLD,
   type TelemetryEvent,
 } from '@polydeukes/core';
@@ -25,6 +26,7 @@ type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
  * `stdinPayload` is opaque cargo — piped to the body's stdin verbatim, never parsed or
  * validated (that is the body's fail-closed `parseInput`). `subject` defaults to the
  * `-` sentinel in telemetry when absent. `telemetryPath` is always an explicit argument.
+ * `enforce` selects the translation column (CONFIG-06): absent defaults to `block`.
  */
 export type RunCovenantSpec = {
   command: string;
@@ -33,6 +35,7 @@ export type RunCovenantSpec = {
   label: string;
   subject?: string;
   telemetryPath: string;
+  enforce?: 'block' | 'advise';
 };
 
 /**
@@ -42,13 +45,23 @@ export type RunCovenantSpec = {
  * body's own fail-closed (`2`), any uninterpretable code (`3+`), or a spawn failure /
  * signal termination (`null`) — is fail-closed to the blocking `2` / `blocked`. This is
  * the CORE-03 evolution seam: the unconditional 1→2 translation lives here, isolated.
+ *
+ * `enforce` (CONFIG-06 §4.4) relaxes ONLY the verdict cell: under `advise` a break
+ * report (`1`) becomes `0` / `advised` — recorded, not blocking. Every unjudgeable
+ * outcome (`2`, `3+`, `null`) stays `2` / `blocked` regardless of level.
  */
-export function translateExitCode(bodyExitCode: number | null): {
+export function translateExitCode(
+  bodyExitCode: number | null,
+  enforce: 'block' | 'advise' = 'block',
+): {
   exitCode: WrapperExitCode;
   event: TelemetryEvent;
 } {
   if (bodyExitCode === EXIT_UPHOLD) {
     return { exitCode: EXIT_UPHOLD, event: 'passed' };
+  }
+  if (enforce === 'advise' && bodyExitCode === EXIT_BREAK_NON_BLOCKING) {
+    return { exitCode: EXIT_UPHOLD, event: 'advised' };
   }
   return { exitCode: EXIT_BREAK_BLOCKING, event: 'blocked' };
 }
@@ -76,7 +89,9 @@ function spawnBody(command: string, args: string[], stdinPayload: string): Promi
  * Run a covenant body through the wrapper (PRD §4).
  *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the raw `bodyExitCode`
- * for observation (`null` when the body left no code). Logging is fail-open (PRD §4.3)
+ * for observation (`null` when the body left no code) — the telemetry event is a pure
+ * function of both ({@link translateExitCode}), so callers needing it recompute rather
+ * than widen this shape. Logging is fail-open (PRD §4.3)
  * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and
  * never throws. The gate closes; the measurement stays open.
  */
@@ -84,7 +99,7 @@ export async function runCovenant(
   spec: RunCovenantSpec,
 ): Promise<{ exitCode: WrapperExitCode; bodyExitCode: number | null }> {
   const bodyExitCode = await spawnBody(spec.command, spec.args ?? [], spec.stdinPayload);
-  const { exitCode, event } = translateExitCode(bodyExitCode);
+  const { exitCode, event } = translateExitCode(bodyExitCode, spec.enforce);
 
   appendRecordFailOpen(spec.telemetryPath, {
     event,

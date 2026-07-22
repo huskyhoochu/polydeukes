@@ -31,6 +31,7 @@ import { dirname, join, resolve } from 'node:path';
 import {
   collectStagedChanges,
   covenantInputFromStagedChanges,
+  resolveGitAdapterSettings,
   STAGED_DELETE,
   STAGED_WRITE,
 } from '@polydeukes/adapter-git';
@@ -129,6 +130,10 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
   // invariant, which an unrecorded propagation to the bin's catch would narrow
   // (review F5).
   try {
+    // The adapter namespace validator throws on unknown levels/keys (CONFIG-06 §4.2) —
+    // resolved inside this try so a misconfiguration fails closed, never softens.
+    const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
+
     const protectedPaths = normalizeProtectedPaths({
       protectedPaths: config.protectedPaths,
     });
@@ -137,7 +142,10 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     // the real package (never a test alias), so the commit surface spawns the same
     // judges the session hook does.
     const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
-    const escapeHatch = ttyValveHatch(config.waiver, spec.ttyPrompt);
+    // Under advise the TTY valve is structurally absent (CONFIG-06 §4.6): a verdict
+    // already passes, so there is nothing to waive and the prompt must never fire.
+    const escapeHatch =
+      enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
     const registrations: CovenantRegistration[] = [
       {
@@ -170,15 +178,23 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     ];
 
     let blocked = false;
+    let advisedCount = 0;
     for (const change of changes) {
       const input = covenantInputFromStagedChanges([change]);
-      const { exitCode } = await dispatchCovenants({
+      const { exitCode, results } = await dispatchCovenants({
         stdinPayload: JSON.stringify(input),
         registrations,
         telemetryPath,
         dispatcherLabel: 'covenant-check',
+        enforce,
       });
       if (exitCode === 2) blocked = true;
+      advisedCount += results.filter((result) => result.event === 'advised').length;
+    }
+    if (advisedCount > 0) {
+      process.stderr.write(
+        `covenant advisory (enforce: advise): ${advisedCount} verdict(s) recorded, commit allowed\n`,
+      );
     }
     return { exitCode: blocked ? 2 : 0 };
   } catch (error) {
