@@ -3,14 +3,18 @@
  *
  * Spawns a covenant body, pipes the opaque stdin payload verbatim, translates the
  * body's exit code by policy (1 → blocking 2), and appends exactly one ROI telemetry
- * record per call via {@link appendRecordFailOpen} (which wraps the core's sole
- * collector — no local logger). Process spawning is confined to this file;
+ * record per call via {@link appendRecordFailOpen} (the core's fail-open wrapper
+ * around its sole collector — no local logger). Process spawning is confined to this file;
  * {@link translateExitCode} is pure.
  */
 
 import { spawn } from 'node:child_process';
-import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD, type TelemetryEvent } from '@polydeukes/core';
-import { appendRecordFailOpen } from './telemetry-fail-open.js';
+import {
+  appendRecordFailOpen,
+  EXIT_BREAK_BLOCKING,
+  EXIT_UPHOLD,
+  type TelemetryEvent,
+} from '@polydeukes/core';
 
 /** The wrapper's final verdict — `1` never escapes: a break becomes the blocking `2`. */
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;

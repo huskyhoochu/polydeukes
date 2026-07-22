@@ -10,6 +10,8 @@
  * source never reads).
  */
 
+import { isPlainObject } from './is-plain-object.js';
+
 /** Conventional default telemetry log path (PRD §4.3) — local-only observation data. */
 export const DEFAULT_TELEMETRY_LOG_PATH = '.polydeukes/roi.log';
 
@@ -167,11 +169,6 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'forbidCommand',
 ]);
 const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand'] as const;
-
-/** True when the value is a plain record — not null, not an array. */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /** Throw on the first key outside the allowed vocabulary, naming the key and its location. */
 function rejectUnknownKeys(

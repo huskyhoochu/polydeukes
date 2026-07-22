@@ -10,13 +10,12 @@
 
 import { readFileSync } from 'node:fs';
 
-import type {
-  CanonicalTranscript,
-  SubagentInvocation,
-  TranscriptUserMessage,
+import {
+  type CanonicalTranscript,
+  isPlainObject,
+  type SubagentInvocation,
+  type TranscriptUserMessage,
 } from '@polydeukes/core';
-
-import { isPlainObject } from './is-plain-object.js';
 
 /**
  * Extract a human utterance from one entry, or `undefined` (PRD §4.2).

@@ -7,7 +7,7 @@
  * `replace_all`) stays confined to this package, never the core.
  */
 
-import { isPlainObject } from './is-plain-object.js';
+import { isPlainObject } from '@polydeukes/core';
 import { parsePayloadEnvelope } from './payload-envelope.js';
 
 /**
