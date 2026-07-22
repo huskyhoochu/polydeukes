@@ -18,6 +18,7 @@ import { ConfigValidationError, defineConfig } from '@polydeukes/core';
 import { parseDocument } from 'yaml';
 
 export type { ResolvedConfig } from '@polydeukes/core';
+export { type CovenantCheckSpec, runCovenantCheck } from './covenant-check.js';
 
 /** The three accepted config filenames, checked directly under the given rootDir. */
 const CONFIG_FILENAMES = [

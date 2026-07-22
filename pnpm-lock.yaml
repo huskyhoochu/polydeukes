@@ -32,11 +32,30 @@ importers:
       lefthook:
         specifier: ^2.1.9
         version: 2.1.9
+      polydeukes:
+        specifier: workspace:*
+        version: link:packages/polydeukes
       turbo:
         specifier: latest
         version: 2.10.5
 
   packages/adapter-claude-code:
+    dependencies:
+      '@polydeukes/core':
+        specifier: workspace:^
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))
+
+  packages/adapter-git:
     dependencies:
       '@polydeukes/core':
         specifier: workspace:^
@@ -94,9 +113,15 @@ importers:
 
   packages/polydeukes:
     dependencies:
+      '@polydeukes/adapter-git':
+        specifier: workspace:^
+        version: link:../adapter-git
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core
+      '@polydeukes/covenant':
+        specifier: workspace:^
+        version: link:../covenant
       yaml:
         specifier: 2.9.0
         version: 2.9.0
