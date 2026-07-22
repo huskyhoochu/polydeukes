@@ -192,4 +192,10 @@ the name — a twin who split his immortality to make his brother his equal — 
 [docs/build-in-public](./build-in-public/).
 
 <!-- TODO: CTA once there is something to install. Until then the CTA is: read the story,
-     follow the build. -->
+     follow the build.
+     Parked candidate (2026-07-23, monetization conversation): "the gift changes contents
+     as it matures" — what the twin hands over is discipline at first: blocks, records,
+     demanded verification, an inconvenient present. Once that discipline has cut the
+     variance of AI work below a manageable threshold, what remains in the hand is
+     imagination — finally free to be delegated. Discipline was the means; the freed
+     imagination is the gift. Candidate for this closing section or STORY.md. -->
