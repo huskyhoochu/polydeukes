@@ -12,8 +12,20 @@ import { execFileSync } from 'node:child_process';
 
 import type { StagedChange } from './index.js';
 
+// maxBuffer everywhere: the default 1MB would throw ENOBUFS on any large staged blob and
+// fail the whole commit closed (review F2) — size is not a judgment axis.
 function git(repoRoot: string, args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
+  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8', maxBuffer: Infinity });
+}
+
+/**
+ * Read one blob as judgeable text, or null for a binary blob (NUL-byte heuristic — the
+ * same one git uses). A lossy utf-8 decode would hand the delta judges corrupted bytes,
+ * so "no judgeable text" is surfaced as null instead (review F4, PRD §4.2).
+ */
+function gitBlobText(repoRoot: string, ref: string): string | null {
+  const blob = execFileSync('git', ['show', ref], { cwd: repoRoot, maxBuffer: Infinity });
+  return blob.includes(0) ? null : blob.toString('utf-8');
 }
 
 /** True when the repository has a HEAD commit (false on the unborn first commit). */
@@ -36,24 +48,22 @@ function headExists(repoRoot: string): boolean {
  */
 export function collectStagedChanges(repoRoot: string): StagedChange[] {
   const hasHead = headExists(repoRoot);
-  const listing = git(repoRoot, ['diff', '--cached', '--name-status', '-z']);
+  // --no-renames forces D+A reporting: git detects renames by default and would collapse
+  // `git mv` into one R entry whose SOURCE path vanishes from judgment — renaming a
+  // protected file away must surface as a judged deletion (review F1, PRD §4.1).
+  const listing = git(repoRoot, ['diff', '--cached', '--name-status', '-z', '--no-renames']);
   const tokens = listing.split('\0').filter((token) => token !== '');
 
   const changes: StagedChange[] = [];
   for (let index = 0; index < tokens.length; ) {
     const rawStatus = tokens[index++] as string;
-    // R/C entries carry two paths (source then destination) — consume both so the
-    // token stream stays aligned, and judge the destination as a write.
-    if (rawStatus.startsWith('R') || rawStatus.startsWith('C')) {
-      index++;
-    }
     const path = tokens[index++] as string;
 
     if (rawStatus === 'D') {
       changes.push({
         path,
         status: 'deleted',
-        pre: git(repoRoot, ['show', `HEAD:${path}`]),
+        pre: gitBlobText(repoRoot, `HEAD:${path}`),
         post: null,
       });
       continue;
@@ -63,8 +73,8 @@ export function collectStagedChanges(repoRoot: string): StagedChange[] {
     changes.push({
       path,
       status: existsInHead ? 'modified' : 'added',
-      pre: existsInHead ? git(repoRoot, ['show', `HEAD:${path}`]) : null,
-      post: git(repoRoot, ['show', `:${path}`]),
+      pre: existsInHead ? gitBlobText(repoRoot, `HEAD:${path}`) : null,
+      post: gitBlobText(repoRoot, `:${path}`),
     });
   }
 

@@ -146,6 +146,67 @@ describe('§4.2 collectStagedChanges — first commit with no HEAD', () => {
   });
 });
 
+describe('§4.2 collectStagedChanges — staged rename surfaces as delete + add (review F1)', () => {
+  it('reports the rename source as deleted and the destination as added', () => {
+    // P0: git enables rename detection by default, collapsing `git mv` into a single R
+    // entry whose SOURCE path would vanish from judgment — renaming a protected file
+    // away would bypass the covenant entirely. The collector must force D+A reporting
+    // (--no-renames) so the disappearance from the protected location is judged.
+    write('protected-here.txt', 'locked content\n');
+    git('add', 'protected-here.txt');
+    git('commit', '--quiet', '-m', 'initial');
+    git('mv', 'protected-here.txt', 'elsewhere.txt');
+
+    const changes = collectStagedChanges(repoRoot);
+
+    expect(changeFor(changes, 'protected-here.txt')).toEqual({
+      path: 'protected-here.txt',
+      status: 'deleted',
+      pre: 'locked content\n',
+      post: null,
+    });
+    expect(changeFor(changes, 'elsewhere.txt')).toEqual({
+      path: 'elsewhere.txt',
+      status: 'added',
+      pre: null,
+      post: 'locked content\n',
+    });
+  });
+});
+
+describe('§4.2 collectStagedChanges — staged blob over 1MB (review F2)', () => {
+  it('collects a large staged file instead of failing on the spawn buffer default', () => {
+    // P0 availability: execFileSync defaults maxBuffer to 1MB, so `git show :<path>` on a
+    // legitimately large staged file (lockfile, fixture, bundle) would throw ENOBUFS and
+    // the runner would fail the whole commit closed. Mutation caught: the maxBuffer
+    // override dropped.
+    const twoMegabytes = 'x'.repeat(2 * 1024 * 1024);
+    write('big.txt', twoMegabytes);
+    git('add', 'big.txt');
+
+    const change = changeFor(collectStagedChanges(repoRoot), 'big.txt');
+
+    expect(change?.post?.length).toBe(twoMegabytes.length);
+  });
+});
+
+describe('§4.2 collectStagedChanges — binary staged blob (review F4, PRD §4.2)', () => {
+  it('yields null content for a binary blob instead of lossily decoded text', () => {
+    // A binary blob decoded as utf-8 replaces invalid sequences with U+FFFD, so a delta
+    // judge would scan corrupted bytes — a forbidden pattern could be mangled away
+    // (fail-open direction). PRD §4.2: no judgeable text content → the element is
+    // omitted downstream; at the collector level that is post=null with the toolCall
+    // surviving via status. Mutation caught: the NUL-byte binary detection dropped.
+    writeFileSync(join(repoRoot, 'blob.bin'), Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]));
+    git('add', 'blob.bin');
+
+    const change = changeFor(collectStagedChanges(repoRoot), 'blob.bin');
+
+    expect(change?.status).toBe('added');
+    expect(change?.post).toBeNull();
+  });
+});
+
 describe('§4.2 collectStagedChanges — empty staging area', () => {
   it('returns an empty array when nothing is staged', () => {
     // Boundary: no staged changes → []. Mutation caught: returning worktree-dirty or

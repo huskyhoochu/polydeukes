@@ -23,7 +23,9 @@ export const STAGED_DELETE = 'staged-delete';
  *
  * The collector fills it from a real repository; the translation core knows only this
  * shape. `pre` is the HEAD blob (`null` for a creation), `post` is the staged blob
- * (`null` for a deletion). Paths are repo-root-relative.
+ * (`null` for a deletion). A binary blob (no judgeable text) is also `null` on either
+ * side — its toolCall survives for path judgment while no corrupted content reaches the
+ * delta judges. Paths are repo-root-relative.
  */
 export type StagedChange = {
   path: string;

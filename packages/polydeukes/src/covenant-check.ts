@@ -123,56 +123,70 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     return { exitCode: 0 };
   }
 
-  const protectedPaths = normalizeProtectedPaths({
-    protectedPaths: config.protectedPaths,
-    adapters: config.adapters,
-  });
-
-  // The judge bodies are the covenant package's dist executables — resolved through the
-  // real package (never a test alias), so the commit surface spawns the same judges the
-  // session hook does. An unbuilt covenant dist fails the spawn, which the wrapper
-  // records as a blocked verdict (fail-closed, same recovery: build).
-  const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
-  const escapeHatch = ttyValveHatch(config.waiver, spec.ttyPrompt);
-
-  const registrations: CovenantRegistration[] = [
-    {
-      label: 'self-mod',
-      protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [
-          join(covenantDist, 'self-mod-body.js'),
-          ...protectedPaths.flatMap((path) => ['--protected-path', path]),
-          ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
-        ],
-      },
-      escapeHatch,
-    },
-    // Command-family entries are excluded: the commit surface has no shell axis (a staged
-    // diff carries no commands), so registering them would be spawn waste by design
-    // (PRD §2). Path and delta families judge the staged fileChanges as-is.
-    ...compileDisciplineRegistrations({
-      disciplines: (config.disciplines ?? []).filter((entry) => entry.forbidCommand === undefined),
-      rootDir: spec.repoRoot,
-      bodyCommand: process.execPath,
-      bodyModulePath: join(covenantDist, 'discipline-body.js'),
-      shellTools: [],
-      commandArgs: [],
-      escapeHatch,
-    }),
-  ];
-
-  let blocked = false;
-  for (const change of changes) {
-    const input = covenantInputFromStagedChanges([change]);
-    const { exitCode } = await dispatchCovenants({
-      stdinPayload: JSON.stringify(input),
-      registrations,
-      telemetryPath,
-      dispatcherLabel: 'covenant-check',
+  // Everything from here on is judgment assembly and dispatch: any throw (an unbuilt or
+  // unresolvable covenant dist, a registration-build failure) is unjudgeable and must
+  // both block AND leave one blocked record — the session hook's one-call-one-record
+  // invariant, which an unrecorded propagation to the bin's catch would narrow
+  // (review F5).
+  try {
+    const protectedPaths = normalizeProtectedPaths({
+      protectedPaths: config.protectedPaths,
+      adapters: config.adapters,
     });
-    if (exitCode === 2) blocked = true;
+
+    // The judge bodies are the covenant package's dist executables — resolved through
+    // the real package (never a test alias), so the commit surface spawns the same
+    // judges the session hook does.
+    const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
+    const escapeHatch = ttyValveHatch(config.waiver, spec.ttyPrompt);
+
+    const registrations: CovenantRegistration[] = [
+      {
+        label: 'self-mod',
+        protectedPaths,
+        body: {
+          command: process.execPath,
+          args: [
+            join(covenantDist, 'self-mod-body.js'),
+            ...protectedPaths.flatMap((path) => ['--protected-path', path]),
+            ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
+          ],
+        },
+        escapeHatch,
+      },
+      // Command-family entries are excluded: the commit surface has no shell axis (a
+      // staged diff carries no commands), so registering them would be spawn waste by
+      // design (PRD §2). Path and delta families judge the staged fileChanges as-is.
+      ...compileDisciplineRegistrations({
+        disciplines: (config.disciplines ?? []).filter(
+          (entry) => entry.forbidCommand === undefined,
+        ),
+        rootDir: spec.repoRoot,
+        bodyCommand: process.execPath,
+        bodyModulePath: join(covenantDist, 'discipline-body.js'),
+        shellTools: [],
+        commandArgs: [],
+        escapeHatch,
+      }),
+    ];
+
+    let blocked = false;
+    for (const change of changes) {
+      const input = covenantInputFromStagedChanges([change]);
+      const { exitCode } = await dispatchCovenants({
+        stdinPayload: JSON.stringify(input),
+        registrations,
+        telemetryPath,
+        dispatcherLabel: 'covenant-check',
+      });
+      if (exitCode === 2) blocked = true;
+    }
+    return { exitCode: blocked ? 2 : 0 };
+  } catch (error) {
+    process.stderr.write(
+      `covenant check failed closed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    recordFailClosed(telemetryPath);
+    return { exitCode: 2 };
   }
-  return { exitCode: blocked ? 2 : 0 };
 }
