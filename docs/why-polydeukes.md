@@ -10,7 +10,17 @@ partner. It turns the rules a good developer already imposes on themselves — v
 you claim, record what you decided, never weaken your own checks — into deterministic,
 measurable, shared infrastructure that binds the human and the AI equally.
 
-<!-- TODO: expand intro to ~60 words; keep the one-sentence positioning first. -->
+It was born from a flatline. Builders with more ideas than hands were promised that AI
+would multiply their output, yet their productivity barely moved — because neither vibe
+coding nor elaborate agent scaffolding can carry software development across long
+sessions. An AI that must be watched at every step is not delegation; it is supervision.
+The bottleneck was never the model's capability. It is predictability.
+
+Polydeukes aims to push the predictability of AI-driven development past a manageable
+threshold — not a flawless 100 percent, but a plannable 90-plus, where the framework
+knows where the remaining uncertainty lives and routes it back to the human. Discipline
+does not add capability; it cuts variance. Past that line delegation finally pays: you
+hand the machine your roadmap and your imagination, not your attention.
 
 ## The problem: collaboration built on unverifiable claims
 
