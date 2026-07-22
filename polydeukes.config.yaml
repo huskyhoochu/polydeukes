@@ -18,6 +18,8 @@ protectedPaths:
 adapters:
   - 'packages/adapter-claude-code/src'
   - 'packages/adapter-claude-code/dist'
+  - 'packages/adapter-git/src'
+  - 'packages/adapter-git/dist'
 
 # The time-boxed valve. A human types this token into the conversation and the waiver
 # holds for ttlMinutes from that message, then blocking resumes on its own — replacing

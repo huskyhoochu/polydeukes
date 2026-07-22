@@ -1,12 +1,12 @@
 {
-  "name": "@polydeukes/covenant",
+  "name": "@polydeukes/adapter-git",
   "version": "0.1.0",
-  "description": "Polydeukes covenant — the covenant execution layer: run_covenant wrapper, path-routing dispatcher, Bash command-line analysis, and the self-mod meta-covenant. Pre-alpha.",
+  "description": "Polydeukes adapter for git — up-translates a staged diff into the agent-neutral covenant input IR at commit time. Pre-alpha.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/huskyhoochu/polydeukes.git",
-    "directory": "packages/covenant"
+    "directory": "packages/adapter-git"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -15,8 +15,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -35,12 +34,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@polydeukes/core": "workspace:^",
-    "picomatch": "4.0.5"
+    "@polydeukes/core": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/picomatch": "4.0.3",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

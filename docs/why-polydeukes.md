@@ -159,7 +159,11 @@ journal adds a round per milestone and never edits an old one — the trend is t
 
 <!-- Standing rule: add one paragraph per milestone round from the dogfooding journal
      (passes / blocks / bypasses + what the numbers changed); never rewrite past rounds.
-     This section is the whitepaper's proof and should stay current. -->
+     This section is the whitepaper's proof and should stay current.
+     Parked candidate (2026-07-22, ADAPTER-git): "provenance translates per surface" —
+     the session valve trusts the transcript's human-utterance marking, the commit-time
+     valve trusts a human at the terminal (TTY); one principle — an AI can never open
+     its own valve — with one concrete translation per enforcement surface. -->
 
 ## Where it stands
 

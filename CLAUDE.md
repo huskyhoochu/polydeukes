@@ -27,8 +27,14 @@ adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-p
 parser that computes Edit/Write/MultiEdit apply-results without touching disk, the
 `collectFileChanges` evidence step that feeds those apply-results into the IR, and the
 JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — the TTL
-waiver's real data source, admitting only positively-identified human-typed messages);
-`packages/polydeukes` (umbrella) has its first real export: the `loadConfig(rootDir)` config
+waiver's real data source, admitting only positively-identified human-typed messages), and the new `adapter-git`
+package (the commit-surface adapter: staged diff → covenant input up-translation, filling
+the same agent-neutral `fileChanges` evidence from HEAD/staged blobs — the second adapter,
+proving IR neutrality with zero core changes);
+`packages/polydeukes` (umbrella) has its first real exports: the `pdks` bin (`covenant check` —
+the pre-commit judgment entry point whose waiver valve is a TTY prompt only a human at a
+terminal can answer, spawned by lefthook and consumed as a root dogfooding devDependency)
+and the `loadConfig(rootDir)` config
 discovery loader — finds the root data config (`polydeukes.config.yaml`/`.yml`/`.json`, exactly
 one), parses it with the `yaml` safe schema, delegates validation to core `defineConfig()`, and
 attaches the config file to its own protection surface.
@@ -75,7 +81,7 @@ Unit tasks must be small enough to fit one PRD and verifiable by a command or te
 **Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
 `.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
 project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant
-(Bash axis) both protect the four packages' `src`/`dist` plus the hook wiring and the root
+(Bash axis) both protect the five packages' `src`/`dist` plus the hook wiring and the root
 `polydeukes.config.yaml` itself. Since CONFIG-03 the protection-policy data (protectedPaths /
 adapters / disciplines) lives in that config file, not in the hook — the hook consumes it via the
 umbrella `loadConfig`, and a missing or invalid config blocks every call (fail-closed). Two
@@ -83,7 +89,11 @@ wired disciplines (since COVENANT-10) judge content: `covenant-vocabulary` block
 banned-vocabulary occurrences in package sources (existing debt is forgiven), and
 `hooks-stay-armed` blocks gate-disarming commands (`LEFTHOOK=0 …`, `core.hooksPath`) even though
 they mention no protected path. Every call
-is measured in `.polydeukes/roi.log` (local, gitignored). Consequences to know:
+is measured in `.polydeukes/roi.log` (local, gitignored). Since ADAPTER-git the same
+judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`, and a
+commit staging a protected path blocks unless a human answers the TTY waiver prompt with
+the full token — an agent-spawned commit has no TTY, so this valve too is human-only.
+Consequences to know:
 
 - Editing covenant/core/adapter/umbrella sources or the root config file — or any command
   *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design.

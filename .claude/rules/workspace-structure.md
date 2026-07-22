@@ -13,9 +13,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
 ## Package roles
 
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
-  future `pdks` CLI entry point. Since CONFIG-03 it owns the config discovery loader
+  `pdks` CLI entry point — since ADAPTER-git the bin is real, with `covenant check` (the
+  pre-commit judgment runner) as its only subcommand. Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
-  file-I/O-free). Only umbrella-role logic (discovery, assembly-facing loading, future CLI)
+  file-I/O-free). Only umbrella-role logic (discovery, assembly-facing loading, the CLI)
   belongs here; area logic still goes in scoped `@polydeukes/*` packages. Its `src`/`dist` are
   on the protection surface (the loader feeds the judges). The unscoped name was verified free
   on npm and is a deliberately held asset — never delete or rename it.
@@ -32,7 +33,9 @@ and each package references them as `"typescript": "catalog:"` in its own devDep
 is the pnpm + Turborepo recommended pattern: central version (no drift) **and** each package
 explicitly declares what it uses ("install where used"). Do **not** hoist a shared dev tool by
 declaring it only at the root — add it to the catalog and reference it. Only true repo-level
-tools (turbo, biome, lefthook, commitlint) live in the root `package.json`. Verify a single
+tools (turbo, biome, lefthook, commitlint) live in the root `package.json` — plus
+`polydeukes` itself as a dogfooding devDependency, which links the `pdks` bin that the
+lefthook pre-commit covenant gate spawns (ADAPTER-git). Verify a single
 resolved version with `pnpm why typescript -r` (expect `Found 1 version`).
 
 The catalog pins **`typescript: 7.0.2` (TypeScript 7.0 GA, the native Go compiler)** — pin an
