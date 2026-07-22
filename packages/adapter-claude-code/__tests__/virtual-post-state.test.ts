@@ -302,11 +302,11 @@ describe('§4.3 core sufficiency — post-state alone judges a protectedPaths co
   // /); it performs no glob expansion, so the covenant does prefix matching on the segment
   // before a trailing '/**' glob (PRD §3.3, protected-paths semantics).
 
-  const PROTECTED_SPEC = { protectedPaths: ['./src/**'], adapters: [] };
+  const PROTECTED_SPEC = { protectedPaths: ['./src/**'] };
 
   function upholdProtectedPath(
     output: { filePath: string; content: string },
-    spec: { protectedPaths?: string[]; adapters?: string[] },
+    spec: { protectedPaths?: string[] },
   ): { upheld: boolean } {
     const normalized = normalizeProtectedPaths(spec);
     const editsProtected = normalized.some((entry) => {

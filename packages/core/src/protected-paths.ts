@@ -1,30 +1,22 @@
 /**
- * Protected-path normalization — the union of `protectedPaths` and registered adapter
- * directories, normalized into the literal path strings the dispatcher contract expects
- * (CONFIG-02).
- *
- * Registering an adapter directory auto-includes it in the protection surface, so the
- * "adapter left out of the surface" hole is structurally unreproducible. Pure string
- * transformation — zero file I/O, no glob expansion, no path resolution (PRD §4.2).
+ * Protected-path normalization — the `protectedPaths` list normalized into the literal
+ * path strings the dispatcher contract expects (CONFIG-02). Pure string transformation —
+ * zero file I/O, no glob expansion, no path resolution (PRD §4.2).
  */
 
 /**
  * Normalize the protection surface from a config-shaped spec (PRD §4.2).
  *
- * Processing order: union (`protectedPaths` first, `adapters` second) → trim each entry →
- * strip a leading `./` → strip a trailing `/` → drop empty-equivalent entries → dedupe on
- * the normalized value, keeping the first occurrence. A `ResolvedConfig` can be passed
- * directly. Both fields absent or empty yields `[]` — its meaning is the dispatcher's call.
+ * Processing order: trim each entry → strip a leading `./` → strip a trailing `/` → drop
+ * empty-equivalent entries → dedupe on the normalized value, keeping the first occurrence.
+ * A `ResolvedConfig` can be passed directly. An absent or empty `protectedPaths` yields
+ * `[]` — its meaning is the dispatcher's call.
  */
-export function normalizeProtectedPaths(spec: {
-  protectedPaths?: string[];
-  adapters?: string[];
-}): string[] {
-  const union = [...(spec.protectedPaths ?? []), ...(spec.adapters ?? [])];
+export function normalizeProtectedPaths(spec: { protectedPaths?: string[] }): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
 
-  for (const entry of union) {
+  for (const entry of spec.protectedPaths ?? []) {
     let path = entry.trim();
     // Strip to a fixpoint: a single pass would leave residues on repeated prefixes or
     // suffixes ('././x', 'x//'), and a residual './' or '/' silently matches nothing

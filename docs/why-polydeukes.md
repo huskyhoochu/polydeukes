@@ -142,7 +142,11 @@ agent and solves *trust*: it judges tool calls before they land, measures every 
 and remembers what was decided. The two layers compose; they do not compete.
 
 <!-- TODO: sharpen the layer diagram in prose (runtime / agent / discipline). No named
-     comparisons needed — the category contrast carries it. -->
+     comparisons needed — the category contrast carries it.
+     Parked candidate (2026-07-22, CONFIG-07): adapters are independent, opt-in entities —
+     one config file, one namespace per adapter; the core validates the container only and
+     each adapter owns its own vocabulary. "The judge speaks one language; every surface
+     brings its own translator and its own settings." -->
 
 ## Proven on itself
 

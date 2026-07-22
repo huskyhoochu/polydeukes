@@ -68,7 +68,8 @@ const VALID_CONFIGS: readonly unknown[] = [
       },
     },
   },
-  // All optional fields present and well-typed.
+  // Optional fields present and well-typed (adapters fixtures live in the dedicated
+  // config-schema-adapters-contract file since CONFIG-07).
   {
     languages: {
       typescript: {
@@ -77,7 +78,6 @@ const VALID_CONFIGS: readonly unknown[] = [
       },
     },
     protectedPaths: ['src/covenant/**'],
-    adapters: ['packages/adapter-foo'],
     telemetry: { logPath: 'custom/telemetry.log' },
   },
   // telemetry present but empty (logPath omitted — default is filled by the validator,
