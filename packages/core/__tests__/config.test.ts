@@ -176,15 +176,16 @@ describe('§5.1 telemetry default-fill (v1 valid-path regression, v2 fixtures)',
     expect(resolved.telemetry.logPath).toBe('custom/telemetry.log');
   });
 
-  it('preserves a valid adapters array in the returned ResolvedConfig', () => {
-    // Mutation caught: defineConfig dropping the adapters field from its return value,
-    // so downstream normalization never sees the registered adapters.
+  it('preserves a valid adapters namespace map in the returned ResolvedConfig', () => {
+    // CONFIG-07: adapters is a namespace map. Mutation caught: defineConfig dropping
+    // the adapters field from its return value, so downstream consumers never see
+    // the adapter namespaces.
     const resolved = defineConfig({
       ...validTwoLanguageConfig,
-      adapters: ['packages/adapter-foo', 'packages/adapter-bar'],
+      adapters: { git: { enforce: 'advise' } },
     });
 
-    expect(resolved.adapters).toEqual(['packages/adapter-foo', 'packages/adapter-bar']);
+    expect(resolved.adapters).toEqual({ git: { enforce: 'advise' } });
   });
 });
 
@@ -377,12 +378,13 @@ describe('§5.2 v1 failure-path regression (fixtures ported to v2 templates)', (
     });
   });
 
-  it('rejects adapters with a non-string element', () => {
-    // P0: adapters is validated on the same axis as protectedPaths — a non-string
-    // element must fail closed at config authoring time.
+  it('rejects the removed adapters directory-list form', () => {
+    // CONFIG-07: an array is the removed directory-list shape — it must fail closed
+    // at config authoring time (migration guidance is pinned by the dedicated
+    // adapters-namespace test file).
     expectConfigValidationError({
       ...validTwoLanguageConfig,
-      adapters: ['packages/adapter-foo', 42],
+      adapters: ['packages/adapter-foo', 'packages/adapter-bar'],
     });
   });
 });

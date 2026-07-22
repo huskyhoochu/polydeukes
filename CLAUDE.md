@@ -9,8 +9,10 @@ evidence — ROI telemetry, the data-config schema v2 with its `defineConfig(unk
 and published JSON Schema (`@polydeukes/core/schema.json`), now including the `disciplines:`
 entry schema (exactly one predicate per entry) and the optional `waiver:` settings surface
 (`token` + `ttlMinutes`, validated to the TTL-waiver predicate's exact fail-fast boundaries and
-passed through verbatim), fail-open/fail-closed policy table, protected-path
-normalization with adapter auto-inclusion, and the canonical-transcript query seam with its
+passed through verbatim), and the `adapters:` namespace map (one settings object per
+adapter, keys and contents owned by each adapter — the core validates the container shape
+only and passes contents through verbatim), fail-open/fail-closed policy table,
+protected-path normalization, and the canonical-transcript query seam with its
 noop default), `packages/covenant` (the run_covenant execution
 wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
 (redirect/tee/`sed -i`), the path-routing dispatcher — extended with a content-predicate

@@ -14,8 +14,6 @@ protectedPaths:
   - '.claude/settings.json'
   - 'packages/polydeukes/src'
   - 'packages/polydeukes/dist'
-
-adapters:
   - 'packages/adapter-claude-code/src'
   - 'packages/adapter-claude-code/dist'
   - 'packages/adapter-git/src'

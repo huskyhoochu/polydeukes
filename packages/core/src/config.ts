@@ -76,8 +76,12 @@ export type PolydeukesConfig = {
   languages: Record<string, LanguageProfile>;
   /** raw protected path patterns — normalization is CONFIG-02's job */
   protectedPaths?: string[];
-  /** adapter directories — auto-included into the protection surface (CONFIG-02) */
-  adapters?: string[];
+  /**
+   * adapter namespaces (CONFIG-07) — keys are ecosystem values (never validated), each
+   * value is that adapter's own settings object, passed through verbatim (the vocabulary
+   * belongs to the adapter, whose own validator judges the contents)
+   */
+  adapters?: Record<string, Record<string, unknown>>;
   telemetry?: {
     /** conventional default applies when omitted (§4.3) */
     logPath?: string;
@@ -119,7 +123,8 @@ export type ResolvedLanguageProfile = {
 export type ResolvedConfig = {
   languages: Record<string, ResolvedLanguageProfile>;
   protectedPaths?: string[];
-  adapters?: string[];
+  /** validated adapter namespaces, passed through verbatim (absent stays absent) */
+  adapters?: Record<string, Record<string, unknown>>;
   telemetry: {
     logPath: string;
   };
@@ -310,8 +315,8 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
  * Throws {@link ConfigValidationError} (naming the offending field path) when the top level
  * is not a plain object, any object level carries an unknown key, `languages` is
  * missing/empty, any language's `productionGlob` is missing/empty, any `testCmd` is not a
- * non-empty string template, `telemetry.logPath` is not a string, or
- * `protectedPaths`/`adapters` carries a non-string element.
+ * non-empty string template, `telemetry.logPath` is not a string, `protectedPaths` carries a
+ * non-string element, or `adapters` is not a map of plain-object namespaces.
  */
 export function defineConfig(config: unknown): ResolvedConfig {
   if (!isPlainObject(config)) {
@@ -362,8 +367,22 @@ export function defineConfig(config: unknown): ResolvedConfig {
     throw new ConfigValidationError('protectedPaths must be an array of strings');
   }
 
-  if (config.adapters !== undefined && !isStringArray(config.adapters)) {
-    throw new ConfigValidationError('adapters must be an array of strings');
+  let adapters: Record<string, Record<string, unknown>> | undefined;
+  if (config.adapters !== undefined) {
+    // Array first: the removed directory-list form deserves a migration hint, not a
+    // generic type error — and an EMPTY array must land here too, never pass as a map.
+    if (Array.isArray(config.adapters) || !isPlainObject(config.adapters)) {
+      throw new ConfigValidationError(
+        'adapters must be an object map of adapter namespaces — the directory-list form ' +
+          'was removed; move directories to protectedPaths',
+      );
+    }
+    for (const [name, namespace] of Object.entries(config.adapters)) {
+      if (!isPlainObject(namespace)) {
+        throw new ConfigValidationError(`adapters.${name} must be an object`);
+      }
+    }
+    adapters = config.adapters as Record<string, Record<string, unknown>>;
   }
 
   const disciplines =
@@ -402,7 +421,7 @@ export function defineConfig(config: unknown): ResolvedConfig {
   return {
     languages: resolvedLanguages,
     ...(config.protectedPaths !== undefined && { protectedPaths: config.protectedPaths }),
-    ...(config.adapters !== undefined && { adapters: config.adapters }),
+    ...(adapters !== undefined && { adapters }),
     telemetry: {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },

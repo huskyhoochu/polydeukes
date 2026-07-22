@@ -131,7 +131,6 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
   try {
     const protectedPaths = normalizeProtectedPaths({
       protectedPaths: config.protectedPaths,
-      adapters: config.adapters,
     });
 
     // The judge bodies are the covenant package's dist executables — resolved through

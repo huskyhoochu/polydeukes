@@ -14,7 +14,7 @@
 - **ROI 텔레메트리.** append 전용 라인 수집기(`appendRecord`, `readRecords`)와 `gain` 집계(`runGain`)입니다. 모든 패키지가 공유 fail-open 래퍼(`appendRecordFailOpen`)를 거쳐 이 수집기 하나로 기록합니다. 관측은 fail-open이라서 기록 실패가 판정을 바꾸지 않습니다.
 - **config 스키마 v2, 설정은 데이터.** `defineConfig(unknown)`가 파싱된 yml/json 데이터를 검증합니다. 미지의 키는 모든 층위에서 시끄럽게 거부됩니다. 오타가 규율을 조용히 꺼 버리면 안 되기 때문입니다. `testCmd`는 `{scope}` 템플릿 문자열이고, 호출형 함수로 컴파일되어 돌아옵니다. 같은 계약의 JSON Schema가 `@polydeukes/core/schema.json`으로 배포되며, 검증기와의 동치는 계약 테스트가 강제합니다. 스키마에 `disciplines:`가 추가됐습니다. 사용자가 선언하는 규율(discipline) 항목(`forbid` / `immutable` / `forbidCommand`, 항목당 술어 정확히 하나)을 순수 데이터로 검증하고, 컴파일은 covenant 패키지가 맡습니다.
 - **실패 정책 테이블.** 실패 유형별 fail-open과 fail-closed를 테이블 하나(`resolveFailMode`)가 정합니다. "판정 불가"는 언제나 차단입니다.
-- **보호 경로 정규화.** `normalizeProtectedPaths`가 선언된 경로와 등록된 어댑터 디렉터리를 합칩니다. 어댑터는 등록되는 순간 보호 대상이 됩니다.
+- **보호 경로 정규화.** `normalizeProtectedPaths`가 선언된 `protectedPaths` 목록을 디스패처가 대조하는 리터럴 경로 문자열로 다듬습니다(공백 정리, 접두·접미 제거, 중복 제거). 어댑터 설정은 `adapters:` 네임스페이스 맵에 삽니다. 어댑터마다 객체 하나이며, 내용의 검증은 그 어댑터의 몫이고 코어는 그대로 통과시킵니다.
 - **정규 대화 기록(canonical transcript) 이음새(seam).** 약속이 세션 이력을 물을 때 쓰는 질의 인터페이스 `CanonicalTranscript`입니다. 기본값은 noop이고, 실제 대화 기록은 어댑터 뒤에 있습니다.
 
 ## 불변식

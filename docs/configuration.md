@@ -84,13 +84,15 @@ disciplines, the whole chain would be decoration.
 
 ### `adapters` (optional)
 
-Adapter directories. They are automatically included in the protection surface, so a
-registered adapter can never be left unprotected by omission.
+Adapter namespaces. One config file, one namespace per adapter: each key names an
+adapter, and its value is that adapter's own settings object. The core validates the
+container shape only — the keys and the contents belong to each adapter, which ships
+its own validator for its own vocabulary.
 
 ```yaml
 adapters:
-  - 'packages/adapter-claude-code/src'
-  - 'packages/adapter-claude-code/dist'
+  git:
+    # settings the git adapter defines — see that adapter's documentation
 ```
 
 ### `telemetry` (optional)

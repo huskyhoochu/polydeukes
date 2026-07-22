@@ -22,9 +22,9 @@
       "items": { "type": "string" }
     },
     "adapters": {
-      "description": "Adapter directories — auto-included into the protection surface.",
-      "type": "array",
-      "items": { "type": "string" }
+      "description": "Adapter namespaces — keys are adapter names, values are each adapter's own settings object (contents not validated by the core schema).",
+      "type": "object",
+      "additionalProperties": { "type": "object" }
     },
     "telemetry": { "$ref": "#/$defs/telemetry" },
     "disciplines": {

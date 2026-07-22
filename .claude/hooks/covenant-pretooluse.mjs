@@ -7,7 +7,7 @@
  * on core), so their composition lives here, outside the package graph. Wiring shape:
  * COVENANT-03 §4.4 + COVENANT-04d §4.5 registrations consumed through ADAPTER-03 §4.1
  * runAdapterPath, with dispatchCovenants bound to the injected dispatch seam. Since
- * CONFIG-03 the protection-policy data (protectedPaths / adapters / disciplines) is
+ * CONFIG-03 the protection-policy data (protectedPaths / disciplines) is
  * no longer inlined here — it is read from the root data config via the umbrella
  * loader (`loadConfig`), which also attaches the config file to its own surface.
  *
@@ -68,7 +68,6 @@ try {
 
   const protectedPaths = core.normalizeProtectedPaths({
     protectedPaths: config.protectedPaths,
-    adapters: config.adapters,
   });
 
   const rawPayload = readFileSync(0, 'utf-8');
