@@ -87,6 +87,13 @@ unit-task loop (PRD → branch → `/tdd` cycle → `/post-task` checks → PR +
 → archive), and `/post-task` alone closes out substantial non-ticket chores before they commit.
 Unit tasks must be small enough to fit one PRD and verifiable by a command or test.
 
+**A gap left by a finished ticket is closed by a retrofit ticket, not a new roadmap ID.** When an
+already-merged and archived ticket turns out to have missed a responsibility, it gets a suffixed
+ticket of its own (`COVENANT-01b` is the precedent — the `.polydeukes/` directory creation the
+original left unowned), worked on a feature branch with its own PR. Archived PRDs stay immutable;
+the retrofit records the correction and the archived PRDs get a footnote pointing at it. This keeps
+the roadmap a plan rather than a defect list.
+
 **Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
 `.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
 project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant

@@ -26,6 +26,18 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
   `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
   re-export them, but core must never depend on any sibling. Enforce this when adding packages.
 
+## New-package scaffold checklist
+
+Three registrations are enumerated, not inferred, so a new package silently misses them. All
+three have been forgotten at least once (ADAPTER-01, CONFIG-03, ADAPTER-git), each time surfacing
+later as a confusing failure rather than an obvious one:
+
+1. **`vitest.config.ts` alias** — map `@polydeukes/core` to its *source*. The exports map points
+   at `dist`, so without the alias `pnpm -F <pkg> test` breaks on a clean clone.
+2. **`release-please-config.json` `extra-files`** — the list is explicit, so a new package's
+   version file is not bumped until it is registered.
+3. **`workspace:^` for internal dependencies** — never a version range.
+
 ## Shared dependency versions go through the pnpm catalog
 
 Versions shared across packages are defined **once** in `pnpm-workspace.yaml` under `catalog:`
