@@ -25,19 +25,25 @@
 // high | xhigh | max, target an optional PR number, ref range, path, or free-form
 // instructions.
 //
-// DELIBERATE DIVERGENCE from upstream — fixed-role model policy (2026-07-22).
-// Upstream leaves every agent on the session model; a high run measured here spent
-// ~770k tokens with all 14 agents on the top tier. This fork pins models by role:
-//   - scope            → sonnet  (mechanical: run git diff, list files)
+// DELIBERATE DIVERGENCE from upstream — fixed-role model policy
+// (2026-07-22, revised 2026-07-26).
+// Upstream leaves every agent on the session model. A vendored copy cannot retune
+// itself the way the built-in may, so every role is pinned here instead:
+//   - scope            → sonnet  (mechanical: run git diff, list files — raising the
+//                                 tier buys nothing on a fixed procedure)
 //   - correctness find → opus    (bug hunting)
-//   - cleanup find     → sonnet  (conventions/cleanup)
+//   - cleanup find     → opus    (revised: this repo's "cleanup" angles include the
+//                                 binding vocabulary ban and the one-way dependency
+//                                 rule, which are architecture judgments, not tidying)
 //   - verify           → opus    (mutation-executing judgment; wrong verdicts sink
 //                                 the whole report)
 //   - sweep            → opus    (gap hunting, correctness-class)
-//   - synthesize       → INHERIT (the ONE exception: the final-decision agent rides
-//                                 the session model the human chose)
-// Rationale: the built-in may retune its agents dynamically; a vendored copy cannot,
-// so its cost/quality split must be constrained in the script itself.
+//   - synthesize       → opus    (revised from INHERIT — see the note at its call site:
+//                                 an inherited model made the report non-deterministic,
+//                                 and review rigour is set by the level argument)
+// The original split also leaned on a token measurement (~770k for a high run with
+// every agent on the top tier) taken when the top tier cost twice what it does now.
+// Cost is no longer the binding constraint on this repo's plan; role fit is.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const meta = {
@@ -274,7 +280,7 @@ const FINDERS = CORRECTNESS_ANGLES.slice(0, P.correctnessAngles)
   }])
 
 const finderOuts = await parallel(FINDERS.map(f => () =>
-  agent(FINDER_PROMPT(f), { label: f.label, phase: "Find", schema: CANDIDATES_SCHEMA, model: f.kind === "cleanup" ? "sonnet" : "opus" }).then(r => {
+  agent(FINDER_PROMPT(f), { label: f.label, phase: "Find", schema: CANDIDATES_SCHEMA, model: "opus" }).then(r => {
     if (!r) return []
     log(f.label + ": " + r.candidates.length + " candidates")
     return ingest(r.candidates, f.cap, f.kind)
@@ -341,10 +347,18 @@ const block = ranked.map((c, i) =>
   c.summary + "\nFailure scenario: " + c.failure_scenario + "\nVerifier evidence: " + c.evidence + "\n"
 ).join("\n")
 
-// Deliberately NO model option: the synthesizer is the one agent that inherits the
-// session model. It makes the final call — what survives, what merges, what ranks
-// where — so it rides whatever tier the human chose. Every other agent is pinned
-// (fixed-role model policy in the header); this is the exception.
+// Pinned like every other role (2026-07-26). This agent used to inherit the session
+// model, on the reasoning that the final call should ride the tier the human chose.
+// That reasoning assumed the session model *is* a deliberate choice about review
+// rigour; in practice it is whatever the session happened to start on. Inheriting
+// made the report non-deterministic — the same diff could yield different survivors,
+// leaving no way to tell a code change from a model change. The knob for review
+// rigour is the level argument (high / xhigh / max), which also decides fan-out and
+// whether the sweep runs; that is where the human's choice belongs.
+// Pinned to opus rather than a different tier on purpose: this stage reads verdicts
+// the finders and verifiers produced and decides what survives, so it wants the same
+// judgment scale they used, not a fresh perspective. Diversity belongs at the intake
+// (one finder per angle), consistency at the funnel.
 const report = await agent(
   "## Synthesis: final code-review report\n\n" +
   ranked.length + " findings survived independent verification (" + LEVEL + "-effort review). They are numbered [0]-[" + (ranked.length - 1) + "] below.\n\n" + block + "\n" +
@@ -354,7 +368,7 @@ const report = await agent(
   "2. Order decisions most-severe first. Correctness bugs always outrank cleanup findings.\n" +
   "3. Keep at most " + P.maxFindings + " decisions; omit the least severe beyond the cap.\n" +
   "4. Write a 2-3 sentence summary of the review.\n\nStructured output only.",
-  { label: "synthesize", schema: REPORT_SCHEMA }
+  { label: "synthesize", schema: REPORT_SCHEMA, model: "opus" }
 )
 
 // Assembler invariants:
