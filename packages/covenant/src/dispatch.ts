@@ -39,14 +39,23 @@ import { runCovenant, translateExitCode } from './run-covenant.js';
  * `matches`, when present, replaces path-mention routing with a content predicate
  * (COVENANT-10 §4.4): a non-null return routes (the string becomes the telemetry
  * subject), null does not, and a throw is a fail-closed match with subject `'-'`.
+ *
+ * A registration carries EITHER a `body` or a `skip` (COVENANT-13 §4.5). `skip` means
+ * assembly could not produce a judgeable body — the evidence channel is absent, or the
+ * declared evidence vocabulary could not be resolved — so a match records one `skipped`
+ * and upholds instead of spawning. Judging it anyway would block every matched input
+ * with no legitimate pass path; throwing at assembly would take down every sibling
+ * registration and the waiver valve with it.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
-  body: { command: string; args?: string[] };
   escapeHatch?: (input: CovenantInput, transcript: CanonicalTranscript) => boolean;
   matches?: (input: CovenantInput) => string | null;
-};
+} & (
+  | { body: { command: string; args?: string[] }; skip?: never }
+  | { body?: never; skip: { reason: string } }
+);
 
 /**
  * Collect path candidates from every string value inside `value` (PRD §4.2). Each string is
@@ -203,6 +212,18 @@ export async function dispatchCovenants(spec: {
   const transcript = spec.transcript ?? noopTranscript;
   const results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[] = [];
   for (const { registration, mentionedPath } of matches) {
+    if (registration.skip !== undefined) {
+      // Nothing to judge and nothing to waive — the hatch exists for a verdict, and a
+      // skip has none. Recording it keeps the no-op visible in `gain` (PRD §4.5).
+      appendRecordFailOpen(spec.telemetryPath, {
+        event: 'skipped',
+        label: registration.label,
+        subject: mentionedPath,
+      });
+      results.push({ label: registration.label, exitCode: EXIT_UPHOLD, event: 'skipped' });
+      continue;
+    }
+
     let bypass = false;
     try {
       bypass = registration.escapeHatch?.(parsed.value, transcript) === true;

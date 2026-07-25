@@ -35,7 +35,7 @@ import {
   STAGED_DELETE,
   STAGED_WRITE,
 } from '@polydeukes/adapter-git';
-import { appendRecord, appendRecordFailOpen, normalizeProtectedPaths } from '@polydeukes/core';
+import { appendRecord, normalizeProtectedPaths } from '@polydeukes/core';
 import {
   type CovenantRegistration,
   compileDisciplineRegistrations,
@@ -167,10 +167,15 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       // staged diff carries no commands), so registering them would be spawn waste by
       // design (PRD §2) — a vacuous exclusion, hence recorded nowhere. Path and delta
       // families judge the staged fileChanges as-is.
+      //
+      // Context-family entries are NOT filtered out any more. No transcript is injected
+      // here, so the compiler gives them skip registrations, and a skip records one
+      // `skipped` exactly when its trigger matches a staged change (COVENANT-13 §4.5).
+      // The commit surface stopped being a special case: an absent evidence channel gets
+      // the same disposition on both surfaces, and the scope gate comes free with the
+      // routing every registration already carries.
       ...compileDisciplineRegistrations({
-        disciplines: disciplines.filter(
-          (entry) => entry.forbidCommand === undefined && entry.requirePrecedent === undefined,
-        ),
+        disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
         rootDir: spec.repoRoot,
         bodyCommand: process.execPath,
         bodyModulePath: join(covenantDist, 'discipline-body.js'),
@@ -179,25 +184,6 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
         escapeHatch,
       }),
     ];
-
-    // Context-family entries (`requirePrecedent`) are excluded from that assembly, but
-    // for the opposite reason and with the opposite bookkeeping (COVENANT-13 §4.5):
-    // their trigger CAN match a staged change, yet the commit surface has no session
-    // evidence channel — judging them here would block every matching commit with no
-    // legitimate pass path. That makes the exclusion a real skip, so it must surface as
-    // one `skipped` record per excluded entry per run: an assembly-level fact, hence
-    // outside the dispatch loop, below the empty-staging early return, and AFTER the
-    // assembly above has succeeded — a run that fails closed judged nothing, and must
-    // not also claim a deliberate skip.
-    for (const entry of disciplines) {
-      if (entry.requirePrecedent !== undefined) {
-        appendRecordFailOpen(telemetryPath, {
-          event: 'skipped',
-          label: entry.id,
-          subject: '-',
-        });
-      }
-    }
 
     let blocked = false;
     let advisedCount = 0;

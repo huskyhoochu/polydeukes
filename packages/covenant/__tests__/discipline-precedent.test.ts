@@ -286,8 +286,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body.args).toContain('--precedent-found');
-    expect(reg.body.args).not.toContain('--precedent-missing');
+    expect(reg.body?.args).toContain('--precedent-found');
+    expect(reg.body?.args).not.toContain('--precedent-missing');
   });
 
   it('transports --precedent-missing when no shell command matches', () => {
@@ -296,8 +296,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     const transcript = transcriptWithToolCalls([{ name: 'Bash', args: { command: 'git status' } }]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body.args).toContain('--precedent-missing');
-    expect(reg.body.args).not.toContain('--precedent-found');
+    expect(reg.body?.args).toContain('--precedent-missing');
+    expect(reg.body?.args).not.toContain('--precedent-found');
   });
 
   it('ignores a matching command on a tool outside shellTools (not evidence)', () => {
@@ -309,7 +309,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body.args).toContain('--precedent-missing');
+    expect(reg.body?.args).toContain('--precedent-missing');
   });
 
   it('ignores a matching value under an arg name outside commandArgs (not evidence)', () => {
@@ -321,7 +321,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body.args).toContain('--precedent-missing');
+    expect(reg.body?.args).toContain('--precedent-missing');
   });
 
   it('matches the command as a regex, not a substring', () => {
@@ -340,18 +340,11 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([regexEntry], { transcript }));
 
-    expect(reg.body.args).toContain('--precedent-found');
+    expect(reg.body?.args).toContain('--precedent-found');
   });
 
-  it('transports --precedent-missing when no transcript is injected', () => {
-    // P0 sessionless default (PRD §4.4): no transcript = no evidence = missing, same as
-    // the noop seam. Mutation caught: an absent transcript short-circuiting to found
-    // (every sessionless assembly would wave the family through — fail-open).
-    const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry]));
-
-    expect(reg.body.args).toContain('--precedent-missing');
-    expect(reg.body.args).not.toContain('--precedent-found');
-  });
+  // A sessionless assembly no longer transports `missing` — it produces a skip
+  // registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5).
 });
 
 describe('compileDisciplineRegistrations — adapter evidence via the injected seam (AC 7)', () => {
@@ -378,7 +371,7 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
       }),
     );
 
-    expect(reg.body.args).toContain('--precedent-found');
+    expect(reg.body?.args).toContain('--precedent-found');
     expect(seen).toEqual([{ subagent: 'planner' }]);
   });
 
@@ -393,81 +386,13 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
       }),
     );
 
-    expect(reg.body.args).toContain('--precedent-missing');
+    expect(reg.body?.args).toContain('--precedent-missing');
   });
 });
 
-describe('compileDisciplineRegistrations — fail-closed assembly (AC 7)', () => {
-  const typoEntry = {
-    id: 'typo-vocabulary',
-    in: ['sacred/**'],
-    requirePrecedent: { subagnet: 'planner' },
-  } as DisciplineEntry;
-
-  it('throws when the evaluator does not recognize the evidence key (returns undefined)', () => {
-    // P0 fail-closed (resolveGitAdapterSettings precedent): undefined from the seam means
-    // "not my vocabulary" — assembly must halt, not guess. Mutation caught: undefined
-    // coerced to missing (a typo'd evidence key would silently become an always-blocking
-    // entry nobody can satisfy — or worse, always-found).
-    expect(() =>
-      compileDisciplineRegistrations(
-        contextSpec([typoEntry], {
-          transcript: transcriptWithToolCalls([]),
-          evaluatePrecedent: () => undefined,
-        }),
-      ),
-    ).toThrow();
-  });
-
-  it('throws when a non-command evidence key arrives with no evaluator injected', () => {
-    // P0 fail-closed: an assembly that cannot evaluate the declared evidence must not
-    // produce a registration. Mutation caught: the seam-absent path defaulting to
-    // missing/found instead of halting (the entry judged on evidence nobody looked for).
-    expect(() =>
-      compileDisciplineRegistrations(
-        contextSpec([typoEntry], { transcript: transcriptWithToolCalls([]) }),
-      ),
-    ).toThrow();
-  });
-
-  it('throws on a non-compilable requirePrecedent.command regex', () => {
-    // P0 fail-fast (existing compiler convention for forbid): a broken pattern halts
-    // assembly rather than deferring the crash to evidence-evaluation time. Mutation
-    // caught: the compilability probe not extended to the fourth family's pattern.
-    const broken = {
-      id: 'broken-evidence',
-      in: ['pkg/**'],
-      requirePrecedent: { command: '(' },
-    } as DisciplineEntry;
-
-    expect(() =>
-      compileDisciplineRegistrations(
-        contextSpec([broken], { transcript: transcriptWithToolCalls([]) }),
-      ),
-    ).toThrow();
-  });
-
-  it('throws on command evidence when a transcript exists but the shell surface is empty', () => {
-    // P0 fail-closed: with a session to read but no shellTools/commandArgs to read it
-    // through, command evidence can NEVER be found — transporting `missing` would forge a
-    // universal block with no legitimate pass path. The empty surface is a misassembly, so
-    // assembly halts. The contrast below is the boundary: without a transcript there is
-    // simply no session yet, which is the legitimate sessionless `missing` (pinned above),
-    // so the throw must be conditioned on the transcript's presence, not on the surface
-    // alone. Mutation caught: the surface probe hoisted above the transcript check
-    // (every sessionless assembly would crash), or dropped entirely.
-    for (const emptySurface of [{ shellTools: [] }, { commandArgs: [] }]) {
-      expect(() =>
-        compileDisciplineRegistrations(
-          contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]), ...emptySurface }),
-        ),
-      ).toThrow(/command evidence needs a shell surface/);
-
-      const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], emptySurface));
-      expect(reg.body.args).toContain('--precedent-missing');
-    }
-  });
-});
+// Assembly no longer fails closed by throwing — an unresolvable evidence spec becomes a
+// skip registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5). The
+// throw took every sibling registration and the waiver valve down with it.
 
 describe('compileDisciplineRegistrations — existing families carry no precedent flags (AC 9)', () => {
   it('forbid, immutable, and forbidCommand registrations get neither precedent flag', () => {
@@ -485,8 +410,8 @@ describe('compileDisciplineRegistrations — existing families carry no preceden
     const regs = compileDisciplineRegistrations(contextSpec(entries, { transcript }));
 
     for (const reg of regs) {
-      expect(reg.body.args).not.toContain('--precedent-found');
-      expect(reg.body.args).not.toContain('--precedent-missing');
+      expect(reg.body?.args).not.toContain('--precedent-found');
+      expect(reg.body?.args).not.toContain('--precedent-missing');
     }
   });
 });
@@ -581,14 +506,15 @@ describe('discipline-body CLI — precedent flag gate (AC 9)', () => {
     });
   }
 
-  it('a context entry arriving with neither precedent flag exits 2 (misassembly fail-closed)', () => {
-    // P0 misassembly gate (PRD §4.4, the command family's missing-shell-surface shape):
-    // a context entry without its evidence verdict is unjudgeable — never exit 0.
-    // Mutation caught: an absent flag defaulting to found (fail-open) or to a judged
-    // break (masking the assembly bug as a covenant break).
+  it('a context entry arriving with neither precedent flag breaks as a verdict, not a misassembly', () => {
+    // Assembly cannot produce a flagless body any more — an entry it cannot evaluate
+    // becomes a skip registration instead — so this is the direct-invocation path, and it
+    // still fails closed: judgeDiscipline reads an absent verdict as absent evidence and
+    // breaks (exit 1) where the removed gate exited 2. Mutation caught: an absent flag
+    // defaulting to found, which would wave every trigger through.
     const result = spawnBody([], triggeredInput());
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(1);
   });
 
   it('a context entry with --precedent-found and a matching trigger exits 0', () => {

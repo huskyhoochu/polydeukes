@@ -19,7 +19,6 @@ import {
   type CovenantVerdict,
   type DisciplineEntry,
   type FileChange,
-  noopTranscript,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
@@ -306,79 +305,171 @@ function buildMatches(
 }
 
 /**
+ * The three results of asking whether session evidence preceded a mutation
+ * (COVENANT-13 §4.5).
+ *
+ * `unjudgeable` is not a verdict — it reports that the question could not be asked.
+ * `configFault` separates an author's mistake, which must name itself on stderr, from an
+ * environment fact such as an absent session, which must not: warning on every sessionless
+ * assembly would train the reader to ignore the channel carrying the real faults.
+ */
+type EvidenceOutcome =
+  | { kind: 'found' }
+  | { kind: 'missing' }
+  | { kind: 'unjudgeable'; reason: string; configFault: boolean };
+
+/**
  * Evaluate a context entry's evidence against the session at assembly time
  * (COVENANT-13 §4.4) — the body is a spawned CLI and cannot hold a transcript.
  *
  * Vocabulary is layered: `command` is the core's own, evaluated here against the shell
  * surface with the same filter the command family judges by; every other key is adapter
- * vocabulary delegated to the injected seam. An unrecognized key (`undefined` from the
- * seam) or a missing seam halts assembly rather than guessing a direction.
+ * vocabulary delegated to the injected seam. Nothing throws — an evidence spec that
+ * cannot be resolved yields `unjudgeable`, which the compiler turns into a skip
+ * registration rather than a failure outliving the entry that caused it.
  */
-function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
+function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec): EvidenceOutcome {
   const evidence = entry.requirePrecedent as Record<string, unknown>;
   const command = evidence.command;
+  const noSession = {
+    kind: 'unjudgeable',
+    reason: 'no session transcript to read',
+    configFault: false,
+  } as const;
 
   if (typeof command === 'string') {
-    // Fail-fast compilability probe — throws on a broken pattern, like the other families.
-    const pattern = new RegExp(command);
-    if (spec.transcript === undefined) return false;
-    // A transcript with no shell surface can never satisfy command evidence: that is a
-    // misassembly, and guessing "missing" would turn the entry into a silent universal
-    // block with no legitimate pass path (the command family's body gate, moved up here).
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(command);
+    } catch {
+      return {
+        kind: 'unjudgeable',
+        reason: `requirePrecedent.command is not a compilable pattern (${command})`,
+        configFault: true,
+      };
+    }
+    if (spec.transcript === undefined) return noSession;
+    // A transcript with no shell surface can never satisfy command evidence. The question
+    // is unanswerable, not answered "no" — reporting `missing` would forge a universal
+    // block with no legitimate pass path.
     if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) {
-      throw new Error(
-        `discipline '${entry.id}': command evidence needs a shell surface (shellTools/commandArgs)`,
-      );
+      return {
+        kind: 'unjudgeable',
+        reason: 'command evidence needs a shell surface (shellTools/commandArgs)',
+        configFault: true,
+      };
     }
     const calls = spec.transcript.findToolCalls();
-    return filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
+    const found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
       pattern.test(c),
     );
+    return found ? { kind: 'found' } : { kind: 'missing' };
   }
 
+  if (spec.transcript === undefined) return noSession;
   if (spec.evaluatePrecedent === undefined) {
-    throw new Error(
-      `discipline '${entry.id}': no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
-    );
+    return {
+      kind: 'unjudgeable',
+      reason: `no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
   }
-  const answer = spec.evaluatePrecedent(evidence, spec.transcript ?? noopTranscript);
+  const answer = spec.evaluatePrecedent(evidence, spec.transcript);
   if (answer === undefined) {
-    throw new Error(
-      `discipline '${entry.id}': unrecognized precedent evidence ${JSON.stringify(evidence)}`,
-    );
+    return {
+      kind: 'unjudgeable',
+      reason: `unrecognized precedent evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
   }
-  return answer;
+  return answer ? { kind: 'found' } : { kind: 'missing' };
+}
+
+/**
+ * Describe the first pattern on an entry that does not compile, or `undefined` when all of
+ * them do. Every family is covered: containing only the context family would leave the
+ * other three able to take down the whole assembly through the same door.
+ */
+function patternFault(entry: DisciplineEntry): string | undefined {
+  const sources: [string, string | undefined][] = [
+    ['forbid', entry.forbid === undefined ? undefined : forbidPatternSource(entry.forbid)],
+    ['forbidCommand', entry.forbidCommand],
+    ['when', entry.when],
+  ];
+  for (const [key, source] of sources) {
+    if (source === undefined) continue;
+    try {
+      new RegExp(source);
+    } catch {
+      return `${key} is not a compilable pattern (${source})`;
+    }
+  }
+  return undefined;
 }
 
 /**
  * Compile validated discipline entries into dispatcher registrations (COVENANT-10 §4.5).
  *
  * One registration per entry: `label` = id (per-discipline telemetry), `protectedPaths`
- * = [] (routing is the matches closure, not path mention), `body` = the generic body
- * CLI with the serialized entry and assembly values as args. Structurally broken
- * entries (non-compilable regex) throw here — fail-fast assembly, never a registration
- * whose body would crash at judge time.
+ * = [] (routing is the matches closure, not path mention), `body` = the generic body CLI
+ * with the serialized entry and assembly values as args.
+ *
+ * An entry whose pattern does not compile, or whose evidence cannot be evaluated, compiles
+ * to a **skip registration** instead (COVENANT-13 §4.5): routing is kept so the no-op
+ * stays visible in `gain`, but there is no body to spawn. Assembly never throws — one bad
+ * entry taking down its siblings, both meta-covenants, and the waiver valve left no way to
+ * fix the config that caused it.
  */
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
   return spec.disciplines.map((entry) => {
-    // Fail-fast compilability probe — throws on a broken pattern.
-    if (entry.forbid !== undefined) new RegExp(forbidPatternSource(entry.forbid));
-    if (entry.forbidCommand !== undefined) new RegExp(entry.forbidCommand);
-    if (entry.when !== undefined) new RegExp(entry.when);
-    const precedentCommand = entry.requirePrecedent?.command;
-    if (typeof precedentCommand === 'string') new RegExp(precedentCommand);
+    const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
 
-    // Context family only: the other three would hit the body's misassembly gate.
-    const precedentFlag =
-      entry.requirePrecedent === undefined
-        ? []
-        : [evaluateEvidence(entry, spec) ? '--precedent-found' : '--precedent-missing'];
+    // A silent skip is how a discipline goes inert while its verdict still reads passed —
+    // the failure this project already shipped once with a `^` anchor.
+    const nameFault = (reason: string): void => {
+      process.stderr.write(`discipline '${entry.id}': ${reason} — skipped, not judged\n`);
+    };
 
-    return {
+    // A broken pattern is judged before routing is built, because `buildMatches` compiles
+    // that same pattern eagerly. It also routes to nothing: a pattern is what defines
+    // which inputs the entry is about, so a broken one leaves no match to record. That
+    // separates it from unevaluable evidence below, whose trigger is intact.
+    const fault = patternFault(entry);
+    if (fault !== undefined) {
+      nameFault(fault);
+      return {
+        label: entry.id,
+        protectedPaths: [],
+        matches: () => null,
+        ...hatch,
+        skip: { reason: fault },
+      };
+    }
+
+    const routing = {
       label: entry.id,
       protectedPaths: [],
+      matches: buildMatches(entry, spec),
+      ...hatch,
+    };
+
+    const outcome =
+      entry.requirePrecedent === undefined ? undefined : evaluateEvidence(entry, spec);
+
+    if (outcome?.kind === 'unjudgeable') {
+      if (outcome.configFault) nameFault(outcome.reason);
+      return { ...routing, skip: { reason: outcome.reason } };
+    }
+
+    const precedentFlag =
+      outcome === undefined
+        ? []
+        : [outcome.kind === 'found' ? '--precedent-found' : '--precedent-missing'];
+
+    return {
+      ...routing,
       body: {
         command: spec.bodyCommand,
         args: [
@@ -392,8 +483,6 @@ export function compileDisciplineRegistrations(
           ...precedentFlag,
         ],
       },
-      matches: buildMatches(entry, spec),
-      ...(spec.escapeHatch !== undefined && { escapeHatch: spec.escapeHatch }),
     };
   });
 }

@@ -121,11 +121,10 @@ if (entry.forbidCommand !== undefined && (shellTools.length === 0 || commandArgs
   process.exit(EXIT_BREAK_BLOCKING);
 }
 
-// A context-family entry without its evidence verdict is unjudgeable — the assembly,
-// not the input, is broken, so this is the misassembly exit and never a judged break.
-if (entry.requirePrecedent !== undefined && precedentFound === undefined) {
-  process.exit(EXIT_BREAK_BLOCKING);
-}
+// No gate for a missing precedent flag: assembly never produces a body without one
+// (an entry it cannot evaluate compiles to a skip registration instead, COVENANT-13
+// §4.5). A flagless direct invocation still fails closed — judgeDiscipline reads an
+// undefined verdict as absent evidence and breaks.
 
 const parsed = parseInput(readFileSync(0, 'utf-8'));
 if (!parsed.ok) {

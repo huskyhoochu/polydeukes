@@ -113,11 +113,10 @@ describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surfac
     expect(result.exitCode).toBe(0);
   });
 
-  it('records exactly one skipped record with label = entry id and subject = "-"', async () => {
-    // P0 no-silent-skip: the exclusion is a real skip (the trigger DID match) and must
-    // surface in the data. Mutation caught: exclusion without any record (silent skip),
-    // a wrong label (not the entry id), or a real subject leaking into the assembly-level
-    // sentinel slot.
+  it('records the skip under the entry id and the change it would have judged', async () => {
+    // No-silent-skip: the trigger DID match, so the skip must surface in the data with
+    // the subject a verdict would have carried. Mutation caught: exclusion without any
+    // record, or a wrong label that blinds per-discipline gain aggregation.
     writeConfig({ disciplines: [npmViewEntry] });
     commitConfig();
     write('manifest.json', '{\n  "left-pad": "^1.3.0"\n}\n');
@@ -125,13 +124,13 @@ describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surfac
 
     await runCovenantCheck({ repoRoot, telemetryPath });
 
-    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: '-' }]);
+    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: 'manifest.json' }]);
   });
 
-  it('records skipped ONCE per check run, not once per staged change', async () => {
-    // P0 cardinality: exclusion is an assembly-level fact. With two in-scope staged
-    // files, a per-change dispatch loop that emits skipped inside the loop would write
-    // two records. Mutation caught: skipped emitted per file change instead of per run.
+  it('records one skipped per matched change, the same unit every other event uses', async () => {
+    // Cardinality follows the dispatch unit: the commit surface dispatches per staged
+    // change (N:N), so two in-scope files produce two records exactly as passed and
+    // blocked do. Mutation caught: a run-level record smuggled back in beside the loop.
     writeConfig({ disciplines: [docsEntry] });
     commitConfig();
     write('docs/one.md', '# one\n');
@@ -140,13 +139,19 @@ describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surfac
 
     await runCovenantCheck({ repoRoot, telemetryPath });
 
-    expect(skippedRecords()).toEqual([{ label: DOCS_ENTRY_ID, subject: '-' }]);
+    expect(
+      skippedRecords()
+        .map((record) => record.subject)
+        .sort(),
+    ).toEqual(['docs/one.md', 'docs/two.md']);
   });
 
-  it('records one skipped per context-family entry, each under its own id', async () => {
-    // Two excluded entries → two records, each labelled with its own id. Mutation
-    // caught: only the first excluded entry recorded, or one aggregate record for the
-    // whole family (which would make per-discipline gain aggregation blind).
+  it('records nothing for a context entry whose scope the commit never touched', async () => {
+    // The scope gate that makes the number mean something. `docs/**` was not staged, so
+    // that entry had nothing to judge and its exclusion cost nothing. Mutation caught:
+    // the record emitted per configured entry rather than per matched change — the count
+    // would track commit volume instead of missed judgments, and `gain` would report a
+    // gate "skipped N times" where the true number is near zero.
     writeConfig({ disciplines: [npmViewEntry, docsEntry] });
     commitConfig();
     write('manifest.json', '{\n  "left-pad": "^1.3.0"\n}\n');
@@ -154,10 +159,7 @@ describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surfac
 
     await runCovenantCheck({ repoRoot, telemetryPath });
 
-    const labels = skippedRecords()
-      .map((record) => record.label)
-      .sort();
-    expect(labels).toEqual([NPM_VIEW_ENTRY_ID, DOCS_ENTRY_ID].sort());
+    expect(skippedRecords().map((record) => record.label)).toEqual([NPM_VIEW_ENTRY_ID]);
   });
 });
 
@@ -174,14 +176,17 @@ describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion'
     git('add', 'lib/a.ts', 'polydeukes.config.json');
     git('commit', '--quiet', '-m', 'initial');
     write('lib/a.ts', 'export const x = 1;\n// TODO fix later\n');
-    git('add', 'lib/a.ts');
+    // Both families need an in-scope change, or the contrast is vacuous: the context
+    // entry is scoped to the manifest, and an untouched scope now records nothing.
+    write('manifest.json', '{\n  "left-pad": "^1.3.0"\n}\n');
+    git('add', 'lib/a.ts', 'manifest.json');
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
 
     expect(result.exitCode).toBe(2);
     const { records } = readRecords(telemetryPath);
     expect(records.some((record) => record.event === 'blocked')).toBe(true);
-    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: '-' }]);
+    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: 'manifest.json' }]);
   });
 
   it('a command-family entry records NO skipped — only the context entry does', async () => {
@@ -200,7 +205,7 @@ describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion'
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
 
     expect(result.exitCode).toBe(0);
-    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: '-' }]);
+    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: 'manifest.json' }]);
   });
 
   it('records zero skipped when the config has no context-family entry', async () => {
@@ -274,6 +279,6 @@ describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion'
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
 
     expect(result.exitCode).toBe(0);
-    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: '-' }]);
+    expect(skippedRecords()).toEqual([{ label: NPM_VIEW_ENTRY_ID, subject: 'manifest.json' }]);
   });
 });

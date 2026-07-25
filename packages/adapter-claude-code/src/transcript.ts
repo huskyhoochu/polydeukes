@@ -151,15 +151,23 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
 /**
  * Read a transcript file and parse it (PRD §5.4).
  *
- * ANY read failure — missing file, permission, directory — degrades to an empty
- * transcript (both queries `[]`), never a throw: the valve turns off, never open.
+ * ANY read failure — missing file, permission, directory — answers `undefined`, never a
+ * throw. It is deliberately NOT an empty transcript: the two are different facts, and
+ * collapsing them hid the more likely one. An empty transcript is a session that has said
+ * nothing yet, and judging against it is correct. An unreadable one is no evidence channel
+ * at all, so the context family must skip rather than demand evidence from a session
+ * nobody can read — while the waiver valve reads the same absence and stays shut, leaving
+ * a dead end with no message naming the cause (COVENANT-13 §4.5).
+ *
+ * Either way the valve turns off, never open: `undefined` leaves the dispatcher on its
+ * `noopTranscript` default.
  */
-export function transcriptFromJsonlFile(path: string): CanonicalTranscript {
+export function transcriptFromJsonlFile(path: string): CanonicalTranscript | undefined {
   let text: string;
   try {
     text = readFileSync(path, 'utf-8');
   } catch {
-    return transcriptFromJsonl('');
+    return undefined;
   }
   return transcriptFromJsonl(text);
 }

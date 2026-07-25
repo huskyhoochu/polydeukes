@@ -108,6 +108,53 @@ function bashPayload(command: string) {
   };
 }
 
+describe('context family across the session boundary (COVENANT-13 §4.5)', () => {
+  // The live config's `dependency-needs-npm-view` entry is scoped to package manifests,
+  // which are NOT protected paths — so these payloads reach the context family alone,
+  // with no meta-covenant verdict mixed in. Until now the whole family was exercised by
+  // hand at assembly time and pinned by nothing; the first review found it inert on the
+  // very cases it exists for, and the third found the session boundary mishandled.
+  const manifest = 'packages/scratch/package.json';
+  const dependencyLine = '{\n  "left-pad": "^1.3.0"\n}\n';
+
+  it('skips rather than blocks when no transcript accompanies the payload', () => {
+    // No evidence channel is not "no evidence". Demanding session proof from a call that
+    // carries no session blocks every matching edit with no way through — and the waiver
+    // reads the same absence, so the valve is shut on the identical input.
+    const result = runHook(writePayload(manifest, dependencyLine));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(
+      records.filter((r) => r.label === 'dependency-needs-npm-view').map((r) => r.event),
+    ).toEqual(['skipped']);
+  });
+
+  it('blocks the same write when a session exists but carries no npm view', () => {
+    // The contrast that keeps the skip honest: a readable, empty transcript IS a session,
+    // and a session with no evidence is a real block. Mutation caught: the skip widened
+    // to swallow this case, which would make the discipline inert on its own purpose.
+    const transcriptPath = join(tmpRoot, 'no-evidence.jsonl');
+    writeFileSync(transcriptPath, '');
+
+    const result = runHook(writePayload(manifest, dependencyLine), { transcriptPath });
+
+    expect(result.status).toBe(2);
+  });
+
+  it('skips when the transcript path is present but unreadable', () => {
+    // The likelier anomaly, and the one the previous attempt missed: a rotated or deleted
+    // session file used to arrive as an empty transcript, indistinguishable from a fresh
+    // session, so it blocked with no message naming the cause and no `npm view` able to
+    // help — the evidence was read from the same unreadable file.
+    const result = runHook(writePayload(manifest, dependencyLine), {
+      transcriptPath: join(tmpRoot, 'rotated-away.jsonl'),
+    });
+
+    expect(result.status).toBe(0);
+  });
+});
+
 describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', () => {
   it('a no-match call exits 0 and leaves EXACTLY one adapter passed row (cross-package funnel pin)', () => {
     // Pins the behavioral contract the adapter supplement infers from results.length:
