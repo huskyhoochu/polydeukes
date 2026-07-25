@@ -385,6 +385,55 @@ describe('judgeSelfModification — AC3 evidence-free fallback conservatism (COV
     // The malformed element proves nothing, so the call is judged by its args mention.
     expect(judgeSelfModification(input, spec).upheld).toBe(false);
   });
+
+  it('a degenerate evidence path (zero segments) proves nothing and the call falls back to the args traversal', () => {
+    // Review finding (PR #32 round 2, execution-verified): '' and '.' pass a bare string
+    // check, match no protected entry — pathSegments yields zero segments — and the
+    // evidence branch then suppressed the fallback, upholding a Write whose args named
+    // the protected path literally. Mutation caught: entering the evidence branch on any
+    // string path instead of only on a path that carries segments to judge.
+    for (const degenerate of ['', '.', './', '/']) {
+      const input = inputWithCall({
+        name: 'Write',
+        args: { file_path: PROTECTED, content: 'overwrite the judge' },
+        fileChange: { kind: 'create', path: degenerate, post: 'x' },
+      });
+
+      const verdict = judgeSelfModification(input, {
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: MUTATING_TOOLS,
+      });
+
+      expect(verdict.upheld).toBe(false);
+      if (!verdict.upheld) {
+        expect(verdict.reason).toContain(PROTECTED);
+      }
+    }
+  });
+
+  it('an evidence stub with a string path but no recognized kind proves nothing and the call falls back to the args traversal', () => {
+    // The same unvalidated CORE-01 boundary admits a one-field stub {path} or a bogus
+    // discriminant — treating either as proof would let an untrusted producer suppress
+    // the conservative fallback with a single junk field. Mutation caught: gating the
+    // evidence branch on `fileChange.path` alone, ignoring the discriminant.
+    for (const stub of [{ path: NON_PROTECTED }, { kind: 'bogus', path: NON_PROTECTED }]) {
+      const input = inputWithCall({
+        name: 'Write',
+        args: { file_path: PROTECTED, content: 'overwrite the judge' },
+        fileChange: stub as unknown as FileChange,
+      });
+
+      const verdict = judgeSelfModification(input, {
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: MUTATING_TOOLS,
+      });
+
+      expect(verdict.upheld).toBe(false);
+      if (!verdict.upheld) {
+        expect(verdict.reason).toContain(PROTECTED);
+      }
+    }
+  });
 });
 
 describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5.4)', () => {
@@ -426,6 +475,17 @@ describe('envEscapeHatch — env-var predicate (COVENANT-03 §4.3)', () => {
     // a truthy hatch. Mutation caught: a `!== undefined` check instead of a non-empty
     // string check.
     process.env[TEST_VAR] = '';
+
+    expect(envEscapeHatch(TEST_VAR)(dummyInput)).toBe(false);
+  });
+
+  it('returns false when the named env var is unset', () => {
+    // Unset and empty-string take different paths through the non-empty check, and the
+    // E2E case that used to cover the unset direction was pruned with it — re-pinned here
+    // (review round 2) so the pair-wise deletion leaves no gap. Mutation caught: a hatch
+    // that treats absence as consent (`undefined` falling into the truthy arm), silently
+    // bypassing every covenant registered with a hatch.
+    delete process.env[TEST_VAR];
 
     expect(envEscapeHatch(TEST_VAR)(dummyInput)).toBe(false);
   });

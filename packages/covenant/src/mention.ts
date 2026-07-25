@@ -8,8 +8,12 @@
  * at any depth, keeping the traversal agent-neutral.
  */
 
-/** Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop empties. */
-function pathSegments(path: string): string[] {
+/**
+ * Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop
+ * empties. Exported so the self-mod judge can tell a judgeable evidence path from a
+ * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ */
+export function pathSegments(path: string): string[] {
   return path
     .replace(/^(\.\/)+/, '')
     .replace(/\/+$/, '')

@@ -99,7 +99,6 @@ never by convenience — a producer that cannot prove a target stays on the stri
 This is the concrete answer to "agreed enforcement, not control": the rule does not
 soften because the author found it inconvenient; it softens exactly where it can see.
 
-
 That valve is time-boxed, and its shape carries the same argument. A human types an
 agreed token into the conversation; judgments are waived for a configured window, then
 blocking resumes on its own. Nobody has to remember to close it. The token is not a

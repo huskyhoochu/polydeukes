@@ -11,7 +11,7 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import { mentionsPath, pathMatchesProtected } from './mention.js';
+import { mentionsPath, pathMatchesProtected, pathSegments } from './mention.js';
 
 /**
  * `SelfModificationSpec` — the injected axes of the judge (PRD §4.1).
@@ -56,7 +56,11 @@ export type SelfModificationSpec = {
  * `fileChange` to every mutating call it emits. The judge does not depend on it for safety —
  * an uncovered call falls through to the mention traversal rather than passing unjudged — so
  * the contract buys precision, not soundness: a covered call is judged on its proven target
- * instead of on whatever its `args` happen to mention.
+ * instead of on whatever its `args` happen to mention. The evidence must be the call's
+ * *complete* mutation-target set: attaching it asserts the call mutates that one path and
+ * nothing else, so a producer whose call can reach a second target (a source/destination
+ * pair, a notebook with a separate output path) must omit the evidence and take the
+ * conservative judgment instead.
  */
 export function judgeSelfModification(
   input: CovenantInput,
@@ -70,11 +74,20 @@ export function judgeSelfModification(
       continue;
     }
     // Element shapes are an intentionally unvalidated CORE-01 boundary (core `parseInput`
-    // checks only the collection shapes), so a `fileChange` without a string `path` proves
-    // nothing and must fall through rather than be dereferenced — an exported pure judge
-    // that throws is a bypass vector.
-    const changePath = call.fileChange?.path;
-    if (typeof changePath === 'string') {
+    // checks only the collection shapes), so evidence is usable only when it could prove a
+    // target: a recognized discriminant and a path that carries segments to judge. A
+    // one-field stub, a bogus kind, or a degenerate path (`''`, `'.'`, `'/'` — zero
+    // segments) proves nothing and must fall through rather than be dereferenced or, worse,
+    // suppress the fallback — the evidence branch upholding on proof it never had is a
+    // fail-open, and an exported pure judge that throws is a bypass vector.
+    const evidence = call.fileChange;
+    const changePath = evidence?.path;
+    if (
+      typeof changePath === 'string' &&
+      // `pathSegments` keeps a lone `.` as a segment, so require one that names a file.
+      pathSegments(changePath).some((segment) => segment !== '.') &&
+      (evidence?.kind === 'create' || evidence?.kind === 'modify' || evidence?.kind === 'delete')
+    ) {
       if (protectedPaths.some((path) => pathMatchesProtected(changePath, path))) {
         return {
           upheld: false,

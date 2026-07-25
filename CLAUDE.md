@@ -121,8 +121,9 @@ Consequences to know:
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target
-  counts, and a producer that cannot prove one falls back to the old mention rule. On the Bash axis a command's
-  target is undecidable before it runs, so a mention there still blocks — including a
+  counts, and a producer that cannot prove one falls back to the old mention rule. On the
+  Bash axis a command's target is undecidable before it runs, so a mention there still
+  blocks — including a
   read-only query whose argument carries a glob (`grep … <protected>/*.ts`), which the
   opaque-token rule rejects before the read-only allowlist is ever consulted.
   The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
