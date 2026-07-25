@@ -119,9 +119,9 @@ Consequences to know:
 - Editing covenant/core/adapter/umbrella sources or the root config file — or any Bash command
   *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
-  mutation target (the IR's `fileChanges`), so a protected path that merely appears in an
-  edit's *content* no longer blocks the write; only the proven target counts, and a producer
-  that cannot prove one falls back to the old mention rule. On the Bash axis a command's
+  mutation target (the call's own nested `fileChange` evidence), so a protected path that
+  merely appears in an edit's *content* no longer blocks the write; only the proven target
+  counts, and a producer that cannot prove one falls back to the old mention rule. On the Bash axis a command's
   target is undecidable before it runs, so a mention there still blocks — including a
   read-only query whose argument carries a glob (`grep … <protected>/*.ts`), which the
   opaque-token rule rejects before the read-only allowlist is ever consulted.
