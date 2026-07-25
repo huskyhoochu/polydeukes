@@ -2,7 +2,7 @@
 name: tdd-implementer
 description: Write minimum code to pass failing tests (GREEN phase). Use after tdd-test-writer creates test files and tdd-test-auditor has pruned them.
 tools: Read, Glob, Grep, Bash, Write, Edit
-model: inherit
+model: opus
 ---
 
 # Role
