@@ -72,7 +72,7 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for the wrong field count, an event outside the valid event set, or an
+ * `null` for the wrong field count, an event outside the four valid events, or an
  * empty line — a malformed line is rejected, never coerced into a bogus record.
  */
 export function parseRecordLine(line: string): TelemetryRecord | null {

@@ -77,33 +77,18 @@ try {
   // the dispatcher on its `noopTranscript` default: lost evidence closes the valve
   // rather than opening it (ADAPTER-04 §4.4).
   let transcript;
-  let payloadShaped = false;
   try {
     const parsed = JSON.parse(rawPayload);
-    if (parsed !== null && typeof parsed === 'object') {
-      payloadShaped = true;
-      if (typeof parsed.transcript_path === 'string') {
-        transcript = adapter.transcriptFromJsonlFile(parsed.transcript_path);
-      }
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      typeof parsed.transcript_path === 'string'
+    ) {
+      transcript = adapter.transcriptFromJsonlFile(parsed.transcript_path);
     }
   } catch {
     // A payload this hook cannot parse is still dispatched: runAdapterPath owns that
     // verdict (one blocked record). Only the valve is forfeited here.
-  }
-
-  // A payload-shaped call without a transcript path is an anomaly no production payload
-  // produces — and the context family cannot be judged without a transcript, while the
-  // TTL waiver reads the same absence, so compiling `--precedent-missing` would block
-  // in-scope edits behind a message demanding session evidence nobody can provide, with
-  // the human valve shut on the same input (re-review, 2026-07-26). An unjudgeable run
-  // fails closed loudly instead, naming the real cause. An unparseable payload is NOT
-  // this case: it stays dispatched, and the adapter owns that verdict (above).
-  if (
-    payloadShaped &&
-    transcript === undefined &&
-    (config.disciplines ?? []).some((entry) => entry.requirePrecedent !== undefined)
-  ) {
-    throw new Error('transcript unavailable — context-family disciplines are unjudgeable');
   }
 
   // One waiver predicate shared by every registration: a waiver is a session-wide

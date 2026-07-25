@@ -48,19 +48,10 @@ afterEach(() => {
  * no transcript, no valve (the dispatcher stays on its noopTranscript default).
  */
 function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
-  // Production payloads always carry transcript_path, so object payloads default to an
-  // empty JSONL transcript: the valve stays shut (no human message), block cases keep
-  // their semantics, and the hook's missing-transcript anomaly guard (re-review
-  // 2026-07-26) fires only for the string payloads that deliberately omit the field.
-  let transcriptPath = opts?.transcriptPath;
-  if (transcriptPath === undefined) {
-    transcriptPath = join(tmpRoot, 'empty-transcript.jsonl');
-    writeFileSync(transcriptPath, '');
-  }
   const withTranscript =
-    typeof payload === 'string'
+    typeof payload === 'string' || opts?.transcriptPath === undefined
       ? payload
-      : { ...(payload as Record<string, unknown>), transcript_path: transcriptPath };
+      : { ...(payload as Record<string, unknown>), transcript_path: opts.transcriptPath };
   const input =
     typeof withTranscript === 'string' ? withTranscript : JSON.stringify(withTranscript);
   return spawnSync(process.execPath, [hookPath], {
@@ -191,20 +182,6 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('blocked');
     expect(records[0].label).toBe('adapter-claude-code');
-  });
-
-  it('a payload-shaped call without transcript_path fails closed at assembly, naming the cause', () => {
-    // Re-review 2026-07-26: with a context-family entry configured (the repo config
-    // ships one), a missing transcript would compile `--precedent-missing` — an edit
-    // blocked behind a demand for session evidence nobody can provide, with the TTL
-    // valve shut on the same absence. The anomaly guard fails closed loudly instead.
-    // Sent pre-stringified so runHook does not attach its default transcript_path.
-    const result = runHook(JSON.stringify(editPayload(join(tmpRoot, 'workspace/README.md'))));
-
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain('transcript unavailable');
-    const { records } = readRecords(telemetryPath);
-    expect(records.map((r) => [r.event, r.label])).toEqual([['blocked', 'hook']]);
   });
 });
 

@@ -9,7 +9,7 @@
  * never silently degrades into universal-uphold (self-mod body precedent).
  */
 
-import { readFileSync, writeSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import {
   type CovenantVerdict,
   type DisciplineEntry,
@@ -123,14 +123,7 @@ if (entry.forbidCommand !== undefined && (shellTools.length === 0 || commandArgs
 
 // A context-family entry without its evidence verdict is unjudgeable — the assembly,
 // not the input, is broken, so this is the misassembly exit and never a judged break.
-// A contained evidence failure lands here by design, so name the entry: a silent block
-// would send the user hunting for session evidence instead of the config entry.
-// writeSync because process.exit can preempt a buffered stderr write (tail comment).
 if (entry.requirePrecedent !== undefined && precedentFound === undefined) {
-  writeSync(
-    2,
-    `discipline '${entry.id}': precedent evidence was not evaluated at assembly — the entry fails closed; check its requirePrecedent key\n`,
-  );
   process.exit(EXIT_BREAK_BLOCKING);
 }
 

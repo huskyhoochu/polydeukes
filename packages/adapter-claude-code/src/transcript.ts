@@ -144,7 +144,7 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
     findToolCalls: (name) =>
       toolCalls
         .filter((call) => name === undefined || call.name === name)
-        .map((call) => ({ name: call.name, args: structuredClone(call.args) })),
+        .map((call) => ({ name: call.name, args: { ...call.args } })),
   };
 }
 
