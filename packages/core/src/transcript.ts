@@ -22,6 +22,12 @@ export type SubagentInvocation = { kind: string };
 export type TranscriptUserMessage = { text: string; timestampMs?: number };
 
 /**
+ * One tool call observed in the session (COVENANT-13 §4.2). Both fields are
+ * adapter-supplied values — the core knows the query vocabulary, never a tool's name.
+ */
+export type TranscriptToolCall = { name: string; args: Record<string, unknown> };
+
+/**
  * `CanonicalTranscript` — what a covenant may ask about the session (PRD §4.1).
  *
  * Synchronous by design (covenant bodies are short-lived CLI processes) and
@@ -33,15 +39,19 @@ export type CanonicalTranscript = {
   findSubagentInvocations(kind?: string): SubagentInvocation[];
   /** Every user message, observation order preserved. Missing timestampMs = freshness unprovable. */
   findUserMessages(): TranscriptUserMessage[];
+  /** Tool calls with the given name, or all when omitted. Observation order preserved. */
+  findToolCalls(name?: string): TranscriptToolCall[];
 };
 
 /**
- * The injection-absent default (PRD §4.2): both queries answer "nothing happened".
- * A waiver consumer naturally converges to fail-closed — no evidence, no skip.
+ * The injection-absent default (PRD §4.2): every query answers "nothing happened".
+ * A waiver consumer naturally converges to fail-closed — no evidence, no skip — and
+ * so does a precedent consumer (no evidence, gate stays shut).
  */
 export const noopTranscript: CanonicalTranscript = {
   findSubagentInvocations: () => [],
   findUserMessages: () => [],
+  findToolCalls: () => [],
 };
 
 /**
@@ -52,6 +62,10 @@ export const noopTranscript: CanonicalTranscript = {
  * and that absence is the *correct* fail-closed signal for a waiver consumer.
  * Order preserved; the input is never mutated, and every query returns fresh
  * objects so consumers never hold live aliases into the shared IR.
+ *
+ * `findToolCalls` projects each call down to `{ name, args }` only: since CORE-06 a
+ * call element also carries `fileChange` evidence, and evidence is judgment input, not
+ * session history — the two vocabularies stay separate (COVENANT-13 §4.2).
  */
 export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
   return {
@@ -60,5 +74,9 @@ export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
         .filter((spawn) => kind === undefined || spawn.kind === kind)
         .map((spawn) => ({ kind: spawn.kind })),
     findUserMessages: () => input.userMessages.map((message) => ({ text: message.text })),
+    findToolCalls: (name) =>
+      input.toolCalls
+        .filter((call) => name === undefined || call.name === name)
+        .map((call) => ({ name: call.name, args: { ...call.args } })),
   };
 }

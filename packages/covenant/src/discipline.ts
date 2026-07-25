@@ -14,10 +14,12 @@
 import { isAbsolute, relative } from 'node:path';
 import {
   allFileChanges,
+  type CanonicalTranscript,
   type CovenantInput,
   type CovenantVerdict,
   type DisciplineEntry,
   type FileChange,
+  noopTranscript,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
@@ -28,16 +30,24 @@ import type { CovenantRegistration } from './dispatch.js';
  *
  * `shellTools`/`commandArgs` name the shell surface (injected values, shell-mod
  * precedent — never core vocabulary); `rootDir` anchors glob relativization.
+ * `precedentFound` is the context family's evidence verdict, evaluated at assembly
+ * time and transported to the body as an argv flag (COVENANT-13 §4.4).
  */
 export type DisciplineJudgeOptions = {
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+  precedentFound?: boolean;
 };
 
 /**
  * `CompileDisciplinesSpec` — validated entries plus the assembly values baked into
  * each registration's body args and matches closure (COVENANT-10 §4.5).
+ *
+ * `transcript` is the session history the context family's evidence is evaluated
+ * against at assembly time (absent = no evidence); `evaluatePrecedent` is the seam an
+ * adapter fills for its own evidence vocabulary — `undefined` from it means the key is
+ * unrecognized and assembly halts (COVENANT-13 §4.4).
  */
 export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
@@ -47,6 +57,11 @@ export type CompileDisciplinesSpec = {
   shellTools: string[];
   commandArgs: string[];
   escapeHatch?: CovenantRegistration['escapeHatch'];
+  transcript?: CanonicalTranscript;
+  evaluatePrecedent?: (
+    evidence: Record<string, unknown>,
+    transcript: CanonicalTranscript,
+  ) => boolean | undefined;
 };
 
 /** Normalize an optional glob field to an array (absent = empty). */
@@ -108,17 +123,74 @@ function forbidPatternSource(forbid: NonNullable<DisciplineEntry['forbid']>): st
   return typeof forbid === 'string' ? forbid : forbid.added;
 }
 
-/** Shell command strings of the input: values of the named args on shell-tool calls. */
-function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+/** The one shell-surface filter: named args of shell-tool calls, whatever the source. */
+function filterShellCommands(
+  calls: readonly { name: string; args?: Record<string, unknown> }[],
+  shellTools: string[],
+  commandArgs: string[],
+): string[] {
   const commands: string[] = [];
-  for (const call of input.toolCalls) {
-    if (!opts.shellTools.includes(call.name)) continue;
-    for (const argName of opts.commandArgs) {
+  for (const call of calls) {
+    if (!shellTools.includes(call.name)) continue;
+    for (const argName of commandArgs) {
       const value = call.args?.[argName];
       if (typeof value === 'string') commands.push(value);
     }
   }
   return commands;
+}
+
+/** Shell command strings of the input: values of the named args on shell-tool calls. */
+function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+  return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
+}
+
+/**
+ * The relativized path of the first change triggering a context entry, or null
+ * (COVENANT-13 §4.4). One trigger definition, shared by the judge and by routing.
+ *
+ * With `when`, the trigger is the added direction of the delta layer verbatim, so a
+ * `delete` never triggers (deletion adds no content). Without `when`, every in-scope
+ * mutation triggers — deletion included, since erasing a covered file without precedent
+ * is exactly what such an entry demands evidence for.
+ */
+function precedentTrigger(
+  entry: DisciplineEntry,
+  input: CovenantInput,
+  rootDir: string,
+): string | null {
+  const pattern = entry.when === undefined ? null : new RegExp(entry.when);
+  for (const target of forbidScope(entry, allFileChanges(input), rootDir)) {
+    if (pattern === null) return target.path;
+    const change = target.change;
+    let verdict: CovenantVerdict;
+    switch (change.kind) {
+      case 'create':
+        verdict = judgeAddedViolations({ pre: null, post: change.post }, pattern);
+        break;
+      case 'modify':
+        verdict = judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
+        break;
+      case 'delete':
+        verdict = { upheld: true };
+        break;
+      default: {
+        const unhandled: never = change;
+        throw new Error(
+          `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
+        );
+      }
+    }
+    if (verdict.upheld === false) return target.path;
+  }
+  return null;
+}
+
+/** Describe the evidence an entry requires, for the break reason. */
+function describePrecedent(requirePrecedent: Record<string, unknown>): string {
+  return Object.entries(requirePrecedent)
+    .map(([key, value]) => `${key} ${JSON.stringify(value)}`)
+    .join(', ');
 }
 
 /**
@@ -200,6 +272,18 @@ export function judgeDiscipline(
     return { upheld: true };
   }
 
+  if (entry.requirePrecedent !== undefined) {
+    const triggered = precedentTrigger(entry, input, opts.rootDir);
+    // Absent evidence is missing evidence: only an explicit true opens the gate.
+    if (triggered !== null && opts.precedentFound !== true) {
+      return {
+        upheld: false,
+        reason: `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)})`,
+      };
+    }
+    return { upheld: true };
+  }
+
   // Entries reach here only unvalidated; validated data always carries one predicate.
   return { upheld: true };
 }
@@ -221,6 +305,12 @@ function buildMatches(
   if (entry.immutable !== undefined) {
     return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
   }
+  if (entry.requirePrecedent !== undefined) {
+    // Routing is evidence-blind: a trigger with evidence still spawns the body and
+    // records `passed` — "the gate checked, and the evidence was there" is the context
+    // family's measurement value, not spawn waste (COVENANT-13 §4.4).
+    return (input) => precedentTrigger(entry, input, spec.rootDir);
+  }
   // Deletions can never break the added direction, so they must not route a body spawn
   // (COVENANT-10: routing adds no spawn waste); the judge still short-circuits them
   // defensively when a mixed input arrives.
@@ -228,6 +318,43 @@ function buildMatches(
     forbidScope(entry, allFileChanges(input), spec.rootDir).find(
       (target) => target.change.kind !== 'delete',
     )?.path ?? null;
+}
+
+/**
+ * Evaluate a context entry's evidence against the session at assembly time
+ * (COVENANT-13 §4.4) — the body is a spawned CLI and cannot hold a transcript.
+ *
+ * Vocabulary is layered: `command` is the core's own, evaluated here against the shell
+ * surface with the same filter the command family judges by; every other key is adapter
+ * vocabulary delegated to the injected seam. An unrecognized key (`undefined` from the
+ * seam) or a missing seam halts assembly rather than guessing a direction.
+ */
+function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
+  const evidence = entry.requirePrecedent as Record<string, unknown>;
+  const command = evidence.command;
+
+  if (typeof command === 'string') {
+    // Fail-fast compilability probe — throws on a broken pattern, like the other families.
+    const pattern = new RegExp(command);
+    if (spec.transcript === undefined) return false;
+    const calls = spec.transcript.findToolCalls();
+    return filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
+      pattern.test(c),
+    );
+  }
+
+  if (spec.evaluatePrecedent === undefined) {
+    throw new Error(
+      `discipline '${entry.id}': no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
+    );
+  }
+  const answer = spec.evaluatePrecedent(evidence, spec.transcript ?? noopTranscript);
+  if (answer === undefined) {
+    throw new Error(
+      `discipline '${entry.id}': unrecognized precedent evidence ${JSON.stringify(evidence)}`,
+    );
+  }
+  return answer;
 }
 
 /**
@@ -246,6 +373,13 @@ export function compileDisciplineRegistrations(
     // Fail-fast compilability probe — throws on a broken pattern.
     if (entry.forbid !== undefined) new RegExp(forbidPatternSource(entry.forbid));
     if (entry.forbidCommand !== undefined) new RegExp(entry.forbidCommand);
+    if (entry.when !== undefined) new RegExp(entry.when);
+
+    // Context family only: the other three would hit the body's misassembly gate.
+    const precedentFlag =
+      entry.requirePrecedent === undefined
+        ? []
+        : [evaluateEvidence(entry, spec) ? '--precedent-found' : '--precedent-missing'];
 
     return {
       label: entry.id,
@@ -260,6 +394,7 @@ export function compileDisciplineRegistrations(
           spec.rootDir,
           ...spec.shellTools.flatMap((tool) => ['--shell-tool', tool]),
           ...spec.commandArgs.flatMap((arg) => ['--command-arg', arg]),
+          ...precedentFlag,
         ],
       },
       matches: buildMatches(entry, spec),

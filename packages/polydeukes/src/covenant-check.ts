@@ -35,7 +35,7 @@ import {
   STAGED_DELETE,
   STAGED_WRITE,
 } from '@polydeukes/adapter-git';
-import { appendRecord, normalizeProtectedPaths } from '@polydeukes/core';
+import { appendRecord, appendRecordFailOpen, normalizeProtectedPaths } from '@polydeukes/core';
 import {
   type CovenantRegistration,
   compileDisciplineRegistrations,
@@ -147,6 +147,24 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const escapeHatch =
       enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
+    // Context-family entries (`requirePrecedent`) are excluded too, but for the opposite
+    // reason and with the opposite bookkeeping (COVENANT-13 §4.5): their trigger CAN match
+    // a staged change, yet the commit surface has no session evidence channel — judging
+    // them here would block every matching commit with no legitimate pass path. That makes
+    // the exclusion a real skip, so it must surface in the data as one `skipped` record
+    // per excluded entry per run (an assembly-level fact, hence outside the dispatch loop
+    // and below the empty-staging early return).
+    const disciplines = config.disciplines ?? [];
+    for (const entry of disciplines) {
+      if (entry.requirePrecedent !== undefined) {
+        appendRecordFailOpen(telemetryPath, {
+          event: 'skipped',
+          label: entry.id,
+          subject: '-',
+        });
+      }
+    }
+
     const registrations: CovenantRegistration[] = [
       {
         label: 'self-mod',
@@ -163,10 +181,11 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       },
       // Command-family entries are excluded: the commit surface has no shell axis (a
       // staged diff carries no commands), so registering them would be spawn waste by
-      // design (PRD §2). Path and delta families judge the staged fileChanges as-is.
+      // design (PRD §2) — a vacuous exclusion, hence recorded nowhere. Path and delta
+      // families judge the staged fileChanges as-is.
       ...compileDisciplineRegistrations({
-        disciplines: (config.disciplines ?? []).filter(
-          (entry) => entry.forbidCommand === undefined,
+        disciplines: disciplines.filter(
+          (entry) => entry.forbidCommand === undefined && entry.requirePrecedent === undefined,
         ),
         rootDir: spec.repoRoot,
         bodyCommand: process.execPath,

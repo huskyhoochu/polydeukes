@@ -164,6 +164,18 @@ anyone — including its authors — claims so. The ledger and adversarial verif
 the same standard to completion claims and review judgments; they are still on the
 roadmap, and they will be held to the same log.
 
+<!-- Parked candidate (COVENANT-13, 2026-07-26): the context family — a covenant that
+demands a *precedent* rather than forbidding a mutation. The edit is legitimate; what is
+refused is arriving without the procedure that should have preceded it (measure the
+dependency version before writing it). Two threads worth prose here: (1) it answers a
+question the other principles don't — not "what does the rule forbid" but "what does it
+require", enforcing order rather than prohibition; (2) unlike the waiver, its evidence
+lives on a surface the AI controls, so forgery is structurally possible — and it holds
+anyway, because the cheapest way through the gate is to actually call the tool, which is
+precisely the behavior the discipline wanted. A rule whose evasion costs more than its
+observance does not need to be unforgeable. Fits §3 (evidence over self-report) or §1
+(agreed enforcement); §1 is already long. -->
+
 ## What Polydeukes is not
 
 It is not an agent runtime. Frameworks that build and run agents — sessions, sandboxes,

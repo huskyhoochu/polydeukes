@@ -107,8 +107,22 @@
         }
       ]
     },
+    "requirePrecedent": {
+      "description": "Context family — the session evidence one edit requires beforehand. Exactly one evidence key. The core owns and fully validates 'command'; every other key is adapter vocabulary whose value passes through verbatim (unconstrained here, judged by that adapter).",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "command": {
+          "description": "Core evidence vocabulary — regex over the shell command strings observed in the session.",
+          "type": "string",
+          "minLength": 1,
+          "format": "regex"
+        }
+      }
+    },
     "discipline": {
-      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand); in/except scope the forbid family only.",
+      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
       "oneOf": [
         {
           "type": "object",
@@ -160,6 +174,23 @@
               "type": "string",
               "format": "regex"
             }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "requirePrecedent"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": { "$ref": "#/$defs/disciplineWhy" },
+            "in": { "$ref": "#/$defs/globOrGlobs" },
+            "except": { "$ref": "#/$defs/globOrGlobs" },
+            "when": {
+              "description": "Context-family trigger — added-direction delta regex. Absent means every in-scope change triggers.",
+              "type": "string",
+              "format": "regex"
+            },
+            "requirePrecedent": { "$ref": "#/$defs/requirePrecedent" }
           }
         }
       ]

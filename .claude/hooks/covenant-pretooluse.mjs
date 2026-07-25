@@ -143,6 +143,12 @@ try {
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
       escapeHatch,
+      // Context-family evidence is evaluated here, at assembly: a spawned body cannot
+      // hold a transcript, and passing a path would leak JSONL knowledge into covenant
+      // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
+      // `tool` vocabulary; core owns `command`, which the compiler judges directly.
+      transcript,
+      evaluatePrecedent: adapter.evaluatePrecedent,
     }),
   ];
 

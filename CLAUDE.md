@@ -9,7 +9,10 @@ union (`create`/`modify`/`delete` — deletion is first-class), each change nest
 tool-call element (singular `fileChange`, flattened via `allFileChanges`) so no sibling
 call's evidence can stand in for another — ROI telemetry, the data-config schema v2 with its `defineConfig(unknown)` validator
 and published JSON Schema (`@polydeukes/core/schema.json`), now including the `disciplines:`
-entry schema (exactly one predicate per entry) and the optional `waiver:` settings surface
+entry schema (exactly one of four predicates per entry, the fourth being the context family's
+`requirePrecedent` whose evidence container carries exactly one key — the core owns and fully
+validates `command`, every other key being adapter vocabulary passed through verbatim) and the
+optional `waiver:` settings surface
 (`token` + `ttlMinutes`, validated to the TTL-waiver predicate's exact fail-fast boundaries and
 passed through verbatim), and the `adapters:` namespace map (one settings object per
 adapter, keys and contents owned by each adapter — the core validates the container shape
@@ -24,14 +27,21 @@ the detection rules into a Bash-axis judge with a read-only allowlist, the TTL-w
 hatch predicate — a time-boxed skip token judged over the canonical-transcript seam,
 the new-violation-only delta layer — pure pre/post baseline comparison whose added-direction
 judgment is the execution base of the delta predicate family — and the standard discipline
-library that compiles `disciplines:` data entries (`forbid`/`immutable`/`forbidCommand`) into
-registrations with per-discipline telemetry and a generic judged body), and
+library that compiles `disciplines:` data entries (`forbid`/`immutable`/`forbidCommand`/
+`requirePrecedent`) into registrations with per-discipline telemetry and a generic judged body.
+The context family (`requirePrecedent`, COVENANT-13) judges session history rather than the
+mutation: its evidence is evaluated at assembly time — a spawned body cannot hold a transcript —
+and transported to the body as an argv flag, with the `command` vocabulary judged by the
+compiler itself and every other key delegated to an adapter-supplied evaluator), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
 adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
 parser that computes Edit/Write/MultiEdit apply-results without touching disk, the
 `collectFileChanges` evidence step that feeds those apply-results into the IR, and the
 JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — the TTL
-waiver's real data source, admitting only positively-identified human-typed messages), and the new `adapter-git`
+waiver's real data source, admitting only positively-identified human-typed messages, and since
+COVENANT-13 also the tool-call history the context family queries — plus `evaluatePrecedent`,
+this adapter's own evidence vocabulary (`subagent` spawn-kind equality, `tool` name regex),
+returning `undefined` for any key it does not own so assembly fails closed), and the new `adapter-git`
 package (the commit-surface adapter: staged diff → covenant input up-translation, filling
 the same agent-neutral per-call `fileChange` evidence from HEAD/staged blobs, deletions
 included — the second adapter,
@@ -100,11 +110,15 @@ project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mo
 (Bash axis) both protect the five packages' `src`/`dist` plus the hook wiring and the root
 `polydeukes.config.yaml` itself. Since CONFIG-03 the protection-policy data (protectedPaths /
 adapters / disciplines) lives in that config file, not in the hook — the hook consumes it via the
-umbrella `loadConfig`, and a missing or invalid config blocks every call (fail-closed). Two
-wired disciplines (since COVENANT-10) judge content: `covenant-vocabulary` blocks *new*
-banned-vocabulary occurrences in package sources (existing debt is forgiven), and
-`hooks-stay-armed` blocks gate-disarming commands (`LEFTHOOK=0 …`, `core.hooksPath`) even though
-they mention no protected path. Every call
+umbrella `loadConfig`, and a missing or invalid config blocks every call (fail-closed). Seven
+wired disciplines (since COVENANT-10) judge beyond path mention, across four predicate families:
+`covenant-vocabulary` and `english-only-sources` block *new* banned occurrences in package
+sources (delta family — existing debt is forgiven); `hooks-stay-armed`, `work-stays-recoverable`,
+and `pnpm-only` block gate-disarming, unrecoverable, or wrong-runtime commands (command family)
+even though they mention no protected path; and since COVENANT-13 the context family judges
+*session history* rather than the mutation itself — `dependency-needs-npm-view` blocks a
+version-shaped dependency addition unless the session already ran `npm view`, the sanctioned
+path being to actually run it. Every call
 is measured in `.polydeukes/roi.log` (local, gitignored). Since ADAPTER-git the same
 judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`. The
 commit surface's level is the git adapter's namespace setting (`adapters.git.enforce`,

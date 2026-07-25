@@ -268,7 +268,7 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
     ]);
   });
 
-  it('returns an empty transcript (both queries []) for a nonexistent file, without throwing', () => {
+  it('returns an empty transcript (every query []) for a nonexistent file, without throwing', () => {
     // P0 valve-off-not-valve-open: an unreadable/missing transcript file must degrade to zero
     // evidence, never a throw and never fabricated evidence. Mutation caught: the file wrapper
     // letting the fs error escape (crashing the hook) or returning a non-empty default.
@@ -282,8 +282,188 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
 
       expect(transcript?.findUserMessages()).toEqual([]);
       expect(transcript?.findSubagentInvocations()).toEqual([]);
+      expect(transcript?.findToolCalls()).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+// ===========================================================================
+// COVENANT-13 §5.2(5) — findToolCalls (tool-call query; ADAPTER-04 §4.2 trust
+// contract inherited: positive identification, every failure reduces evidence).
+// RED phase: the query does not exist on the JSONL provider yet.
+// ===========================================================================
+
+describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_use blocks', () => {
+  it('extracts {name, args} from tool_use blocks across entries, observation order preserved', () => {
+    // P0 extraction contract: every tool_use block with a string name surfaces as
+    // {name, args} in observation order, across multiple assistant entries, args taken
+    // from `input`. Mutation caught: args mapped from the wrong field, text blocks
+    // emitted as calls, order lost, or entries after the first assistant entry dropped.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'text', text: 'let me check the registry first' },
+        { type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'npm view yaml version' } },
+        { type: 'tool_use', id: 't2', name: 'Read', input: { file_path: '/repo/package.json' } },
+      ]),
+      humanEntry('carry on', '2026-07-26T01:00:00.000Z'),
+      assistantSpawnEntry([
+        {
+          type: 'tool_use',
+          id: 't3',
+          name: 'mcp__context7__get-library-docs',
+          input: { context7CompatibleLibraryID: '/eemeli/yaml' },
+        },
+      ]),
+    ]);
+
+    expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
+      { name: 'Bash', args: { command: 'npm view yaml version' } },
+      { name: 'Read', args: { file_path: '/repo/package.json' } },
+      {
+        name: 'mcp__context7__get-library-docs',
+        args: { context7CompatibleLibraryID: '/eemeli/yaml' },
+      },
+    ]);
+  });
+
+  it('filters by exact tool name when given, and returns every call when omitted', () => {
+    // P1 filter contract: findToolCalls('Bash') narrows by strict name equality — a
+    // prefix-sharing tool (BashOutput) must not leak in. Mutation caught: the filter
+    // comparing with startsWith/includes, keeping only the first match, or the
+    // no-argument path returning a filtered subset.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'npm view yaml version' } },
+        { type: 'tool_use', id: 't2', name: 'BashOutput', input: { bash_id: 'b1' } },
+      ]),
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't3', name: 'Bash', input: { command: 'pnpm build' } },
+      ]),
+    ]);
+    const transcript = transcriptFromJsonl(jsonl);
+
+    expect(transcript.findToolCalls('Bash')).toEqual([
+      { name: 'Bash', args: { command: 'npm view yaml version' } },
+      { name: 'Bash', args: { command: 'pnpm build' } },
+    ]);
+    expect(transcript.findToolCalls()).toHaveLength(3);
+  });
+
+  it('excludes tool_use blocks whose name is not a string (numeric or absent)', () => {
+    // P1 positive-identification allowlist: a block that cannot prove a string name is
+    // dropped. Mutation caught: the string check relaxed, emitting a {name: 42} or
+    // {name: undefined} phantom call that a tool evidence regex could then match.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't1', name: 42, input: { command: 'ls' } },
+        { type: 'tool_use', id: 't2', input: { command: 'ls' } },
+        { type: 'tool_use', id: 't3', name: 'Edit', input: { file_path: '/repo/a.ts' } },
+      ]),
+    ]);
+
+    expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
+      { name: 'Edit', args: { file_path: '/repo/a.ts' } },
+    ]);
+  });
+
+  it('keeps a block whose input is not a plain object, reducing args to {} — call still counts', () => {
+    // P0 evidence-reduction boundary (PRD §4.3): a string/array/null/absent input empties
+    // the args but the call itself remains evidence — dropping the block would flip a
+    // requirePrecedent gate from found to missing for a name-only pattern. Mutation
+    // caught: the block excluded instead of kept, or a non-plain input (an array passes
+    // typeof === 'object') written through as args verbatim.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't1', name: 'Glob', input: 'src/**/*.ts' },
+        { type: 'tool_use', id: 't2', name: 'Grep', input: ['pattern'] },
+        { type: 'tool_use', id: 't3', name: 'WebFetch', input: null },
+        { type: 'tool_use', id: 't4', name: 'TodoWrite' },
+        { type: 'tool_use', id: 't5', name: 'Edit', input: { file_path: '/repo/a.ts' } },
+      ]),
+    ]);
+
+    expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
+      { name: 'Glob', args: {} },
+      { name: 'Grep', args: {} },
+      { name: 'WebFetch', args: {} },
+      { name: 'TodoWrite', args: {} },
+      { name: 'Edit', args: { file_path: '/repo/a.ts' } },
+    ]);
+  });
+
+  it('skips broken/non-object lines without affecting extraction from surrounding lines', () => {
+    // P0 fail-closed robustness (§5.4 pattern extended to the new query): a parse failure
+    // must neither throw nor abort the scan. Mutation caught: an unparseable line
+    // blanking the whole tool-call history (evidence lost beyond the broken line) or
+    // crashing the hook assembly.
+    const jsonl = [
+      JSON.stringify(
+        assistantSpawnEntry([
+          { type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'a' } },
+        ]),
+      ),
+      '{broken',
+      '42',
+      JSON.stringify(
+        assistantSpawnEntry([
+          { type: 'tool_use', id: 't2', name: 'Bash', input: { command: 'b' } },
+        ]),
+      ),
+    ].join('\n');
+
+    expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
+      { name: 'Bash', args: { command: 'a' } },
+      { name: 'Bash', args: { command: 'b' } },
+    ]);
+  });
+
+  it('coexists with the shipped queries — a subagent spawn is both a spawn and a tool call', () => {
+    // P0 regression + disposition pin: adding the tool-call query must not change what
+    // findUserMessages/findSubagentInvocations return, and a spawn block (a tool_use
+    // identified by input.subagent_type) surfaces in BOTH findSubagentInvocations and
+    // findToolCalls — two queries over the same fact. Mutation caught: spawn blocks
+    // carved out of findToolCalls, or the single-pass scan consuming entries so a later
+    // query sees fewer of them.
+    const jsonl = toJsonl([
+      humanEntry('please run the tdd cycle', '2026-07-26T01:00:00.000Z'),
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't1', name: 'Task', input: { subagent_type: 'tdd-implementer' } },
+        { type: 'tool_use', id: 't2', name: 'Bash', input: { command: 'pnpm test' } },
+      ]),
+    ]);
+    const transcript = transcriptFromJsonl(jsonl);
+
+    expect(transcript.findToolCalls()).toEqual([
+      { name: 'Task', args: { subagent_type: 'tdd-implementer' } },
+      { name: 'Bash', args: { command: 'pnpm test' } },
+    ]);
+    expect(transcript.findUserMessages()).toEqual([
+      { text: 'please run the tdd cycle', timestampMs: Date.parse('2026-07-26T01:00:00.000Z') },
+    ]);
+    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-implementer' }]);
+  });
+
+  it('returns fresh objects — mutating a returned call or its args leaves later queries intact', () => {
+    // P1 alias-safety (the same contract the shipped queries pin), extended to the nested
+    // args object. Mutation caught: a shallow copy sharing args with the snapshot, so
+    // writing call.args.subagent_type would rewrite what a later findToolCalls — or the
+    // spawn query reading the same block — returns.
+    const jsonl = toJsonl([
+      assistantSpawnEntry([
+        { type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
+      ]),
+    ]);
+    const transcript = transcriptFromJsonl(jsonl);
+
+    const [call] = transcript.findToolCalls();
+    call.name = 'rewritten';
+    call.args.subagent_type = 'rewritten';
+
+    expect(transcript.findToolCalls()).toEqual([
+      { name: 'Agent', args: { subagent_type: 'tdd-writer' } },
+    ]);
+    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
   });
 });

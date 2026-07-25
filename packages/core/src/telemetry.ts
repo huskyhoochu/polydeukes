@@ -12,10 +12,12 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /**
- * The four telemetry events. `bypassed` is a first-class event, not a flag on `passed`;
- * `advised` is a violation verdict an advise-level observer recorded but let through.
+ * The five telemetry events. `bypassed` is a first-class event, not a flag on `passed`;
+ * `advised` is a violation verdict an advise-level observer recorded but let through;
+ * `skipped` is a discipline a surface could not judge at all (no evidence channel) —
+ * a no-op that shows up in the data instead of vanishing.
  */
-export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed' | 'advised';
+export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed' | 'advised' | 'skipped';
 
 /**
  * `TelemetryRecord` — one measured covenant outcome (PRD §4.1).
@@ -37,7 +39,13 @@ export type GainSummary = {
 };
 
 const TAB = '\t';
-const VALID_EVENTS: readonly TelemetryEvent[] = ['passed', 'blocked', 'bypassed', 'advised'];
+const VALID_EVENTS: readonly TelemetryEvent[] = [
+  'passed',
+  'blocked',
+  'bypassed',
+  'advised',
+  'skipped',
+];
 
 /**
  * Replace tab/newline/carriage-return with single spaces (PRD §4.1 line integrity).
@@ -163,14 +171,14 @@ export function readRecords(path: string): { records: TelemetryRecord[]; skipped
 /**
  * Aggregate records into per-label event counts (PRD §4.4, pure).
  *
- * Each label gets its own counter across all four events, so a corrupt or missing
+ * Each label gets its own counter across all five events, so a corrupt or missing
  * event never bleeds counts between labels.
  */
 export function aggregateGain(records: TelemetryRecord[]): GainSummary {
   const counts: Record<string, Record<TelemetryEvent, number>> = {};
   for (const record of records) {
     if (!(record.label in counts)) {
-      counts[record.label] = { passed: 0, blocked: 0, bypassed: 0, advised: 0 };
+      counts[record.label] = { passed: 0, blocked: 0, bypassed: 0, advised: 0, skipped: 0 };
     }
     counts[record.label][record.event] += 1;
   }
@@ -180,9 +188,13 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
 /**
  * Render a {@link GainSummary} into human-readable lines (pure).
  *
- * Each label is mentioned with its passed/blocked/bypassed/advised counts; each is a
- * distinct column, never folded into another (PRD §4.4). A non-zero `skipped`
+ * Each label is mentioned with its passed/blocked/bypassed/advised/skipped counts; each
+ * is a distinct column, never folded into another (PRD §4.4). A non-zero corrupt-line
  * count is reported rather than hidden — silent skipping would mask log corruption.
+ *
+ * Two different meanings share the word `skipped`: the per-label EVENT column above,
+ * and the unparseable-line count below. They are rendered on separate lines and never
+ * summed — `corrupt lines skipped=N` names its own subject so neither reads as the other.
  */
 function renderGain(summary: GainSummary, skipped: number): string {
   if (summary.total === 0 && skipped === 0) {
@@ -192,11 +204,11 @@ function renderGain(summary: GainSummary, skipped: number): string {
   const lines = [`total ${summary.total}`];
   for (const [label, counts] of Object.entries(summary.counts)) {
     lines.push(
-      `${label}: passed=${counts.passed} blocked=${counts.blocked} bypassed=${counts.bypassed} advised=${counts.advised}`,
+      `${label}: passed=${counts.passed} blocked=${counts.blocked} bypassed=${counts.bypassed} advised=${counts.advised} skipped=${counts.skipped}`,
     );
   }
   if (skipped > 0) {
-    lines.push(`skipped=${skipped}`);
+    lines.push(`corrupt lines skipped=${skipped}`);
   }
   return lines.join('\n');
 }

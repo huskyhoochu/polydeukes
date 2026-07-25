@@ -12,6 +12,7 @@ import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 import { parsePayloadEnvelope } from './payload-envelope.js';
 
 export { collectFileChanges } from './file-changes.js';
+export { evaluatePrecedent } from './precedent.js';
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
 export { transcriptFromJsonl, transcriptFromJsonlFile } from './transcript.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';

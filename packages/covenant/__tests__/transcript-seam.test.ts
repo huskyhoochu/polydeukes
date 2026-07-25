@@ -22,6 +22,7 @@ function transcriptWithUserMessages(texts: string[]): CanonicalTranscript {
   return {
     findSubagentInvocations: () => [],
     findUserMessages: () => texts.map((text) => ({ text })),
+    findToolCalls: () => [],
   };
 }
 

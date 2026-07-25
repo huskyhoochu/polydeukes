@@ -21,23 +21,40 @@ import {
 } from '@polydeukes/core';
 import { judgeDiscipline } from './discipline.js';
 
-/** Parse the flag grid; exit 2 on any misuse (dropped values shift the pair grid). */
+/**
+ * Parse argv; exit 2 on any misuse (an unknown flag, or a dropped value).
+ *
+ * Valued flags consume the next token, boolean ones consume nothing, so the walk steps
+ * one token at a time rather than assuming a fixed pair grid. A '--'-prefixed token in
+ * a value position still means a dropped value (a serialized entry always starts with
+ * '{', a root dir with a path character).
+ */
 function parseArgv(argv: string[]): {
   disciplineJson: string;
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+  precedentFound: boolean | undefined;
 } {
   let disciplineJson: string | undefined;
   let rootDir: string | undefined;
   const shellTools: string[] = [];
   const commandArgs: string[] = [];
+  let sawFound = false;
+  let sawMissing = false;
 
-  for (let i = 0; i < argv.length; i += 2) {
+  for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
+    if (flag === '--precedent-found') {
+      sawFound = true;
+      continue;
+    }
+    if (flag === '--precedent-missing') {
+      sawMissing = true;
+      continue;
+    }
+
     const value = argv[i + 1];
-    // A '--'-prefixed token in a value position means a dropped value shifted the pair
-    // grid (a serialized entry always starts with '{', a root dir with a path character).
     if (value === undefined || value.startsWith('--')) {
       process.exit(EXIT_BREAK_BLOCKING);
     }
@@ -52,12 +69,18 @@ function parseArgv(argv: string[]): {
     } else {
       process.exit(EXIT_BREAK_BLOCKING);
     }
+    i += 1;
   }
 
   if (disciplineJson === undefined || rootDir === undefined || rootDir === '') {
     process.exit(EXIT_BREAK_BLOCKING);
   }
-  return { disciplineJson, rootDir, shellTools, commandArgs };
+  // Contradictory evidence verdicts are unjudgeable — never silently pick one direction.
+  if (sawFound && sawMissing) {
+    process.exit(EXIT_BREAK_BLOCKING);
+  }
+  const precedentFound = sawFound ? true : sawMissing ? false : undefined;
+  return { disciplineJson, rootDir, shellTools, commandArgs, precedentFound };
 }
 
 /**
@@ -76,20 +99,31 @@ function parseEntry(json: string): DisciplineEntry {
     process.exit(EXIT_BREAK_BLOCKING);
   }
   const entry = candidate as DisciplineEntry;
-  const predicateCount = [entry.forbid, entry.immutable, entry.forbidCommand].filter(
-    (predicate) => predicate !== undefined,
-  ).length;
+  const predicateCount = [
+    entry.forbid,
+    entry.immutable,
+    entry.forbidCommand,
+    entry.requirePrecedent,
+  ].filter((predicate) => predicate !== undefined).length;
   if (predicateCount !== 1 || typeof entry.id !== 'string' || entry.id === '') {
     process.exit(EXIT_BREAK_BLOCKING);
   }
   return entry;
 }
 
-const { disciplineJson, rootDir, shellTools, commandArgs } = parseArgv(process.argv.slice(2));
+const { disciplineJson, rootDir, shellTools, commandArgs, precedentFound } = parseArgv(
+  process.argv.slice(2),
+);
 const entry = parseEntry(disciplineJson);
 
 // A command-family entry with no shell surface would uphold everything — fail closed.
 if (entry.forbidCommand !== undefined && (shellTools.length === 0 || commandArgs.length === 0)) {
+  process.exit(EXIT_BREAK_BLOCKING);
+}
+
+// A context-family entry without its evidence verdict is unjudgeable — the assembly,
+// not the input, is broken, so this is the misassembly exit and never a judged break.
+if (entry.requirePrecedent !== undefined && precedentFound === undefined) {
   process.exit(EXIT_BREAK_BLOCKING);
 }
 
@@ -100,7 +134,12 @@ if (!parsed.ok) {
 
 let verdict: CovenantVerdict;
 try {
-  verdict = judgeDiscipline(entry, parsed.value, { rootDir, shellTools, commandArgs });
+  verdict = judgeDiscipline(entry, parsed.value, {
+    rootDir,
+    shellTools,
+    commandArgs,
+    precedentFound,
+  });
 } catch {
   // A structurally unjudgeable input or a broken pattern that slipped past assembly:
   // cannot judge means block (CORE-03 policy table), never a crash exit code.
