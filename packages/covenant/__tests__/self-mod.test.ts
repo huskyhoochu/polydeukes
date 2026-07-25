@@ -357,6 +357,67 @@ describe('judgeSelfModification — evidence-based target judgment (COVENANT-09 
     }
   });
 
+  it('a mutating call whose own target is absent from fileChanges still falls back to the args traversal when a SIBLING call contributed evidence', () => {
+    // P0 fail-open (review finding, PR #32): `fileChanges` is one flat array per input with
+    // no call attribution, so gating the traversal on an input-level `length > 0` lets a
+    // call the evidence never covered ride a sibling's element past the gate. This is the
+    // shipped commit-surface shape — the git adapter emits a toolCall for a staged deletion
+    // but deliberately omits its fileChanges element (a deletion has no post content), so
+    // staging any ordinary write alongside the deletion of a protected source file upheld a
+    // commit that blocks when the deletion is staged alone. Mutation caught: wrapping the
+    // evidence comparison in `if (fileChanges.length > 0) { … continue }`, which makes
+    // evidence absence conservative per *input* instead of per *call*.
+    const input: CovenantInput = {
+      toolCalls: [
+        { name: 'Write', args: { file_path: NON_PROTECTED } },
+        { name: 'Write', args: { file_path: PROTECTED } },
+      ],
+      subagentSpawns: [],
+      userMessages: [],
+      // Only the first call's target is proven; the second call's is missing entirely.
+      fileChanges: [{ path: NON_PROTECTED, pre: 'a', post: 'b' }],
+    };
+
+    const verdict = judgeSelfModification(input, {
+      protectedPaths: [PROTECTED],
+      mutatingToolNames: MUTATING_TOOLS,
+    });
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(PROTECTED);
+    }
+  });
+
+  it('a malformed fileChanges element is skipped rather than thrown on (the judge stays total)', () => {
+    // Element shapes are an intentionally unvalidated CORE-01 boundary — core `parseInput`
+    // checks only that `fileChanges` is an array — so an element without a string `path`
+    // reaches this judge. Mutation caught: an unguarded `change.path` read, which makes the
+    // exported pure judge throw a TypeError out of `pathSegments`. The body CLI translates a
+    // throw into exit 2, but any consumer binding the judge directly turns a malformed
+    // payload into an uncaught rejection, which the dispatcher reads as non-blocking.
+    const input: CovenantInput = {
+      toolCalls: [{ name: 'Write', args: { file_path: PROTECTED } }],
+      subagentSpawns: [],
+      userMessages: [],
+      fileChanges: [{ pre: 'a', post: 'b' } as unknown as FileChange],
+    };
+
+    expect(() =>
+      judgeSelfModification(input, {
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: MUTATING_TOOLS,
+      }),
+    ).not.toThrow();
+    // The malformed element proves nothing, so the call falls back to the args traversal.
+    expect(
+      judgeSelfModification(input, {
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: MUTATING_TOOLS,
+      }).upheld,
+    ).toBe(false);
+  });
+
   it('AC4 axis boundary: a non-mutating Bash-shaped call is upheld even when fileChanges evidence names the protected path', () => {
     // P0 axis co-existence (PRD §4.1 "non-mutating calls unchanged"): the Bash axis belongs
     // to the shell-mod meta-covenant. Mutation caught: the evidence comparison hoisted out
@@ -375,16 +436,45 @@ describe('judgeSelfModification — evidence-based target judgment (COVENANT-09 
     expect(verdict).toEqual({ upheld: true });
   });
 
-  it('evidence wins over the call target: a protected path in file_path is upheld when fileChanges proves the mutation target is non-protected', () => {
+  it('evidence wins over an args mention when it covers the call: a protected path in `content` is upheld beside the proven non-protected target', () => {
     // DELIBERATE SPEC SEMANTICS, not an oversight — the sharpest safety question of this
-    // ticket. PRD §4.1 says the args traversal is SKIPPED ENTIRELY when evidence exists;
-    // §4.2 makes that safe by binding evidence producers to a completeness contract (the
-    // fileChanges of an input carry every mutation target of that input). So a protected
-    // string sitting in `file_path` while the proven target is elsewhere is, by contract,
-    // a mention — not a target — and must uphold. If a future adapter violates §4.2 this
-    // test is the one that must be revisited alongside the contract.
-    // Mutation caught: a defensive "also check file_path" clause bolted onto the evidence
-    // branch, which reintroduces the exact false-positive class AC1 removes.
+    // ticket. Evidence that covers this call decides the verdict, so a protected path
+    // elsewhere in `args` is a mention, not a target, and must uphold. Coverage is what
+    // makes that safe: `fileChanges` is one flat array per input with no call attribution,
+    // so the call's own args must name a change path for the evidence to speak for it.
+    // Mutation caught: a defensive "also scan the rest of args" clause bolted onto the
+    // evidence branch, which reintroduces the exact false-positive class AC1 removes.
+    //
+    // Revised 2026-07-26 (PR #32 review). The original case put the protected path in
+    // `file_path` — the call's own target slot — and expected uphold, on the strength of
+    // the §4.2 completeness contract. That contract turned out to be unkeepable: the git
+    // adapter cannot emit an element for a staged deletion, because the current FileChange
+    // type has no way to express one. With a protected `file_path` and no covering element,
+    // the judge can no longer tell "evidence proves this call's target is elsewhere" from
+    // "evidence never covered this call" — and the second reading is a live fail-open at
+    // the commit surface. That form now breaks (see the sibling-call regression test);
+    // making it uphold again is CORE-06's job, once deletions become first-class evidence.
+    const input = inputWithEvidence(
+      'Write',
+      { file_path: NON_PROTECTED, content: `see ${PROTECTED} for details` },
+      [{ path: NON_PROTECTED, pre: null, post: 'x' }],
+    );
+
+    const verdict = judgeSelfModification(input, {
+      protectedPaths: [PROTECTED],
+      mutatingToolNames: MUTATING_TOOLS,
+    });
+
+    expect(verdict).toEqual({ upheld: true });
+  });
+
+  it('a protected path in the call target itself breaks even when evidence proves a different, non-protected target', () => {
+    // The converse of the case above, and the reason it had to be narrowed. This input is
+    // indistinguishable from the fail-open shape: a call whose own target the evidence
+    // never covered, sitting beside evidence contributed by something else. Blocking is the
+    // conservative reading, and it costs nothing measured — all six recorded false
+    // positives had a NON-protected file_path. Mutation caught: reinstating the
+    // input-level `fileChanges.length > 0` gate, which upholds this and reopens the hole.
     const input = inputWithEvidence('Write', { file_path: PROTECTED, content: 'x' }, [
       { path: NON_PROTECTED, pre: null, post: 'x' },
     ]);
@@ -394,7 +484,7 @@ describe('judgeSelfModification — evidence-based target judgment (COVENANT-09 
       mutatingToolNames: MUTATING_TOOLS,
     });
 
-    expect(verdict).toEqual({ upheld: true });
+    expect(verdict.upheld).toBe(false);
   });
 });
 
