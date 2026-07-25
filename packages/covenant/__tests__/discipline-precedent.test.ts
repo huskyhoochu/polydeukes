@@ -518,15 +518,16 @@ describe('discipline-body CLI — precedent flag gate (AC 9)', () => {
     });
   }
 
-  it('a context entry arriving with neither precedent flag breaks as a verdict, not a misassembly', () => {
-    // Assembly cannot produce a flagless body any more — an entry it cannot evaluate
-    // becomes a skip registration instead — so this is the direct-invocation path, and it
-    // still fails closed: judgeDiscipline reads an absent verdict as absent evidence and
-    // breaks (exit 1) where the removed gate exited 2. Mutation caught: an absent flag
-    // defaulting to found, which would wave every trigger through.
+  it('a context entry arriving with neither precedent flag exits 2 (misassembly fail-closed)', () => {
+    // The compiler cannot emit this shape any more — an entry it cannot evaluate becomes a
+    // skip registration — but the body is a shipped CLI a third party can spawn directly,
+    // or pin against an older compiler. It must stay exit 2 rather than the judged break's
+    // exit 1, because `enforce: advise` translates a break into an advisory that lets the
+    // commit through, and a misassembly has to block at either level. Mutation caught: the
+    // gate deleted as unreachable, or an absent flag defaulting to found.
     const result = spawnBody([], triggeredInput());
 
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(2);
   });
 
   it('a context entry with --precedent-found and a matching trigger exits 0', () => {

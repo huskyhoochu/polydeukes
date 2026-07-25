@@ -121,10 +121,17 @@ if (entry.forbidCommand !== undefined && (shellTools.length === 0 || commandArgs
   process.exit(EXIT_BREAK_BLOCKING);
 }
 
-// No gate for a missing precedent flag: assembly never produces a body without one
-// (an entry it cannot evaluate compiles to a skip registration instead, COVENANT-13
-// §4.5). A flagless direct invocation still fails closed — judgeDiscipline reads an
-// undefined verdict as absent evidence and breaks.
+// A context-family entry without its evidence verdict is unjudgeable — the assembly, not
+// the input, is broken, so this is the misassembly exit and never a judged break. The
+// current compiler cannot emit this shape (an entry it cannot evaluate becomes a skip
+// registration instead, COVENANT-13 §4.5), and the gate stays anyway: this is a shipped
+// dist CLI a third-party composition root can spawn directly, or that a consumer can pin
+// against an older compiler. Without it the same misassembly exits 1, which `enforce:
+// advise` translates into an advisory that lets the commit through — a misassembly has to
+// block at either level. A defence line outlives the path that made it reachable.
+if (entry.requirePrecedent !== undefined && precedentFound === undefined) {
+  process.exit(EXIT_BREAK_BLOCKING);
+}
 
 const parsed = parseInput(readFileSync(0, 'utf-8'));
 if (!parsed.ok) {
