@@ -142,6 +142,32 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     expect(result.status).toBe(2);
   });
 
+  it('protects the transcript itself — a command that would delete it is blocked', () => {
+    // The skip disposition above is only safe if the evidence channel cannot be removed
+    // on purpose. The transcript is what the context family reads AND what the waiver
+    // reads, it lives outside the repository so no config `protectedPaths` entry can
+    // reach it, and deleting it would disable every context discipline while shutting
+    // the human valve on the same absence. Assembly knows the path, so assembly protects
+    // it. Mutation caught: the payload's transcript_path dropped from the protected set.
+    const transcriptPath = join(tmpRoot, 'live-session.jsonl');
+    writeFileSync(transcriptPath, '');
+
+    const result = runHook(bashPayload(`rm ${transcriptPath}`), { transcriptPath });
+
+    expect(result.status).toBe(2);
+  });
+
+  it('still allows reading the transcript it protects', () => {
+    // Protection is the shell axis's ordinary rule, not a new one: a read-only first
+    // token passes. Debugging a session must not require the waiver.
+    const transcriptPath = join(tmpRoot, 'live-session.jsonl');
+    writeFileSync(transcriptPath, '');
+
+    const result = runHook(bashPayload(`cat ${transcriptPath}`), { transcriptPath });
+
+    expect(result.status).toBe(0);
+  });
+
   it('skips when the transcript path is present but unreadable', () => {
     // The likelier anomaly, and the one the previous attempt missed: a rotated or deleted
     // session file used to arrive as an empty transcript, indistinguishable from a fresh

@@ -66,10 +66,6 @@ try {
   const { config } = umbrella.loadConfig(repoRoot);
   telemetryPath = envTelemetryPath ?? resolve(repoRoot, config.telemetry.logPath);
 
-  const protectedPaths = core.normalizeProtectedPaths({
-    protectedPaths: config.protectedPaths,
-  });
-
   const rawPayload = readFileSync(0, 'utf-8');
 
   // The transcript path travels in the raw payload only — up-translation drops it, so
@@ -77,6 +73,7 @@ try {
   // the dispatcher on its `noopTranscript` default: lost evidence closes the valve
   // rather than opening it (ADAPTER-04 §4.4).
   let transcript;
+  let transcriptPath;
   try {
     const parsed = JSON.parse(rawPayload);
     if (
@@ -84,12 +81,29 @@ try {
       typeof parsed === 'object' &&
       typeof parsed.transcript_path === 'string'
     ) {
-      transcript = adapter.transcriptFromJsonlFile(parsed.transcript_path);
+      transcriptPath = parsed.transcript_path;
+      transcript = adapter.transcriptFromJsonlFile(transcriptPath);
     }
   } catch {
     // A payload this hook cannot parse is still dispatched: runAdapterPath owns that
     // verdict (one blocked record). Only the valve is forfeited here.
   }
+
+  // The live transcript joins the protected surface. It is the evidence channel the
+  // context family reads AND the one the waiver reads, so erasing it disables every
+  // context discipline while shutting the human valve on the same absence — and since
+  // COVENANT-13 answers a missing channel with a skip that passes, that erasure would be
+  // a bypass rather than a block. The file lives outside the repository, so no config
+  // `protectedPaths` entry can reach it. Assembly knows the path, so assembly protects
+  // it: a user declares which disciplines to keep, never what the judge must read in
+  // order to judge (review 4). The shell axis's ordinary rule applies from here — a
+  // read-only first token still passes, so inspecting a session needs no waiver.
+  const protectedPaths = core.normalizeProtectedPaths({
+    protectedPaths: [
+      ...(config.protectedPaths ?? []),
+      ...(transcriptPath === undefined ? [] : [transcriptPath]),
+    ],
+  });
 
   // One waiver predicate shared by every registration: a waiver is a session-wide
   // permission the human granted, not a per-covenant one. Absent `waiver` config leaves

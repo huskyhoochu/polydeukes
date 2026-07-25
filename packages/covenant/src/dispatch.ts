@@ -118,21 +118,30 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
 export function matchRegistrations(
   input: CovenantInput,
   registrations: CovenantRegistration[],
-): { registration: CovenantRegistration; mentionedPath: string }[] {
+): { registration: CovenantRegistration; mentionedPath: string; routingFailed?: boolean }[] {
   const { candidates, failed } = collectPathCandidates(input.toolCalls.map((call) => call.args));
-  const matches: { registration: CovenantRegistration; mentionedPath: string }[] = [];
+  const matches: {
+    registration: CovenantRegistration;
+    mentionedPath: string;
+    routingFailed?: boolean;
+  }[] = [];
 
   for (const registration of registrations) {
     if (registration.matches !== undefined) {
       let subject: string | null;
+      let routingFailed = false;
       try {
         subject = registration.matches(input);
       } catch {
-        // An uncertain predicate must not leak fail-open — route with subject '-'.
+        // An uncertain predicate must not leak fail-open — route with subject '-'. The
+        // flag travels with the match because a skip registration has no body to carry
+        // that verdict out, and answering `skipped` there would turn the fail-closed
+        // routing into a pass (review 4).
         subject = '-';
+        routingFailed = true;
       }
       if (subject !== null) {
-        matches.push({ registration, mentionedPath: subject });
+        matches.push({ registration, mentionedPath: subject, routingFailed });
       }
       continue;
     }
@@ -211,8 +220,26 @@ export async function dispatchCovenants(spec: {
 
   const transcript = spec.transcript ?? noopTranscript;
   const results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[] = [];
-  for (const { registration, mentionedPath } of matches) {
+  for (const { registration, mentionedPath, routingFailed } of matches) {
     if (registration.skip !== undefined) {
+      if (routingFailed === true) {
+        // The routing predicate could not answer, which matchRegistrations already
+        // resolved fail-closed. A body-bearing registration would carry that verdict out
+        // by spawning and blocking; a skip has no body, so the block is recorded here
+        // rather than softened into a pass. Outside the enforce axis, like every
+        // unjudgeable outcome.
+        appendRecordFailOpen(spec.telemetryPath, {
+          event: 'blocked',
+          label: registration.label,
+          subject: mentionedPath,
+        });
+        results.push({
+          label: registration.label,
+          exitCode: EXIT_BREAK_BLOCKING,
+          event: 'blocked',
+        });
+        continue;
+      }
       // Nothing to judge and nothing to waive — the hatch exists for a verdict, and a
       // skip has none. Recording it keeps the no-op visible in `gain` (PRD §4.5).
       appendRecordFailOpen(spec.telemetryPath, {

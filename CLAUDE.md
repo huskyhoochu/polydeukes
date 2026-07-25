@@ -35,9 +35,11 @@ and transported to the body as an argv flag, with the `command` vocabulary judge
 compiler itself and every other key delegated to an adapter-supplied evaluator. Evaluation
 answers found, missing, or **unjudgeable** — the last compiling a *skip registration* that
 keeps its routing, carries no body, and records one `skipped` on a match instead of judging.
-Assembly never throws, in any of the four families: one unresolvable entry taking down its
-siblings, both meta-covenants, and the waiver valve would leave no way to fix the config that
-caused it), and
+`compileDisciplineRegistrations` never throws, in any of the four families: one unresolvable
+entry taking down its siblings, both meta-covenants, and the waiver valve would leave no way to
+fix the config that caused it. A pattern that does not compile is refused earlier still, by
+`defineConfig` — that path does fail the whole config load, and it is the one remaining shape
+where a single bad entry blocks every call until a human edits the file outside the session), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
 adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
 parser that computes Edit/Write/MultiEdit apply-results without touching disk, the

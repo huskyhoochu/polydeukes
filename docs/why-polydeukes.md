@@ -130,8 +130,9 @@ blocks. Failures of observability resolve open: losing a telemetry line never ho
 hostage. Four rows, decided once, applied everywhere; a failure kind nobody registered
 resolves closed by default, because "cannot classify" is itself a gate-integrity failure.
 
-One distinction in that table was earned the hard way. *Evidence is absent* and *the
-evidence channel is absent* look alike and resolve in opposite directions. A gate that can
+One distinction the table does not contain was earned the hard way, and it decides which
+row a case belongs to. *Evidence is absent* and *the evidence channel is absent* look alike
+and resolve in opposite directions. A gate that can
 read the session and finds nothing has an answer, and that answer blocks. A gate with no
 session to read has no question — and blocking there demands proof the caller cannot
 possibly supply, while the human override reads the same missing channel and stays shut

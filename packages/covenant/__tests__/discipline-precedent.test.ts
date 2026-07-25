@@ -437,7 +437,12 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
   it('returns null for out-of-scope and when-nonmatching inputs', () => {
     // P0 routing filter: a non-trigger must not spawn a body. Mutation caught: the in
     // glob or the when pattern dropped from the matches closure (every input routes).
-    const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry]));
+    // A transcript is injected so this compiles to a body-bearing registration: without
+    // one the entry becomes a skip, and the routing suite would only ever exercise
+    // registrations the dispatcher never spawns.
+    const [reg] = compileDisciplineRegistrations(
+      contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]) }),
+    );
     const outOfScope = inputWithEvidence([
       { kind: 'modify', path: 'docs/dep.json', pre: 'a;', post: 'a;\nneeds-precedent;' },
     ]);
@@ -453,7 +458,12 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
     // P0 routing/judgment coherence: the delete non-trigger of a when entry must hold at
     // the routing layer too. Mutation caught: matches routing deletions the judge would
     // never break (spawn waste and phantom `passed` telemetry for a non-trigger).
-    const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry]));
+    // A transcript is injected so this compiles to a body-bearing registration: without
+    // one the entry becomes a skip, and the routing suite would only ever exercise
+    // registrations the dispatcher never spawns.
+    const [reg] = compileDisciplineRegistrations(
+      contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]) }),
+    );
     const input = inputWithEvidence([
       { kind: 'delete', path: 'pkg/dep.json', pre: 'needs-precedent;' },
     ]);
@@ -465,7 +475,9 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
     // P0 partner direction: a when-absent entry judges deletions, so routing must carry
     // them to the body. Mutation caught: the forbid-family delete filter over-extended to
     // the context family (the erase channel would bypass the gate at the routing layer).
-    const [reg] = compileDisciplineRegistrations(contextSpec([anyMutationEntry]));
+    const [reg] = compileDisciplineRegistrations(
+      contextSpec([anyMutationEntry], { transcript: transcriptWithToolCalls([]) }),
+    );
     const input = inputWithEvidence([{ kind: 'delete', path: '/repo/sacred/x.ts' }]);
 
     expect(reg.matches?.(input)).toBe('sacred/x.ts');

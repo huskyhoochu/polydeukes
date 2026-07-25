@@ -19,6 +19,7 @@ import {
   type CovenantVerdict,
   type DisciplineEntry,
   type FileChange,
+  noopTranscript,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
@@ -363,14 +364,28 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
         configFault: true,
       };
     }
-    const calls = spec.transcript.findToolCalls();
-    const found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
-      pattern.test(c),
-    );
+    let found: boolean;
+    try {
+      const calls = spec.transcript.findToolCalls();
+      found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
+        pattern.test(c),
+      );
+    } catch {
+      // An injected transcript that throws is an unusable channel, not an answer — the
+      // same reason the evaluator seam below is wrapped.
+      return {
+        kind: 'unjudgeable',
+        reason: 'the injected transcript threw while being queried',
+        configFault: true,
+      };
+    }
     return found ? { kind: 'found' } : { kind: 'missing' };
   }
 
-  if (spec.transcript === undefined) return noSession;
+  // Vocabulary is settled BEFORE the session is. Both facts can be true at once, and
+  // answering "no session" for a misspelled key files the author's mistake under an
+  // environment fact — on the commit surface, which never injects a transcript, that
+  // would hide it for the life of the config.
   if (spec.evaluatePrecedent === undefined) {
     return {
       kind: 'unjudgeable',
@@ -378,7 +393,19 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
       configFault: true,
     };
   }
-  const answer = spec.evaluatePrecedent(evidence, spec.transcript);
+  let answer: boolean | undefined;
+  try {
+    answer = spec.evaluatePrecedent(evidence, spec.transcript ?? noopTranscript);
+  } catch {
+    // An injected seam that throws is an unusable evaluator, not a verdict. Letting it
+    // escape would brick assembly exactly as the throws this function replaced did — the
+    // dispatcher wraps `matches` and `escapeHatch` for the same reason.
+    return {
+      kind: 'unjudgeable',
+      reason: `precedent evaluator threw on evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
+  }
   if (answer === undefined) {
     return {
       kind: 'unjudgeable',
@@ -386,6 +413,7 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
       configFault: true,
     };
   }
+  if (spec.transcript === undefined) return noSession;
   return answer ? { kind: 'found' } : { kind: 'missing' };
 }
 
@@ -418,11 +446,15 @@ function patternFault(entry: DisciplineEntry): string | undefined {
  * = [] (routing is the matches closure, not path mention), `body` = the generic body CLI
  * with the serialized entry and assembly values as args.
  *
- * An entry whose pattern does not compile, or whose evidence cannot be evaluated, compiles
- * to a **skip registration** instead (COVENANT-13 §4.5): routing is kept so the no-op
- * stays visible in `gain`, but there is no body to spawn. Assembly never throws — one bad
- * entry taking down its siblings, both meta-covenants, and the waiver valve left no way to
- * fix the config that caused it.
+ * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead
+ * (COVENANT-13 §4.5): routing is kept, so the no-op stays visible in `gain`, but there is
+ * no body to spawn. Assembly never throws — one bad entry taking down its siblings, both
+ * meta-covenants, and the waiver valve left no way to fix the config that caused it.
+ *
+ * A non-compilable pattern also skips, but routes to nothing: the pattern IS the
+ * definition of what the entry matches, so a broken one leaves no match to record. Its
+ * only signal is the stderr line, and in production it is unreachable anyway — the
+ * validator refuses such a config before assembly is ever called.
  */
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,

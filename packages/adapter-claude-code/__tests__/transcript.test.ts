@@ -302,6 +302,9 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
       expect(transcript).toBeDefined();
       expect(transcript?.findUserMessages()).toEqual([]);
       expect(transcript?.findToolCalls()).toEqual([]);
+      // The success branch of the file wrapper is only exercised here, so all three
+      // queries are pinned — `subagent` is the waiver's sibling evidence vocabulary.
+      expect(transcript?.findSubagentInvocations()).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

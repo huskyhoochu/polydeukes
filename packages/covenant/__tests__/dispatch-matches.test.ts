@@ -38,7 +38,9 @@ describe('matchRegistrations — matches predicate seam (PRD §4.4)', () => {
 
     const matches = matchRegistrations(input, [reg]);
 
-    expect(matches).toEqual([{ registration: reg, mentionedPath: 'src/a.ts' }]);
+    expect(matches).toEqual([
+      { registration: reg, mentionedPath: 'src/a.ts', routingFailed: false },
+    ]);
   });
 
   it('does not include a registration whose matches returns null', () => {
@@ -71,7 +73,9 @@ describe('matchRegistrations — matches predicate seam (PRD §4.4)', () => {
 
     const matches = matchRegistrations(input, [reg]);
 
-    expect(matches).toEqual([{ registration: reg, mentionedPath: '-' }]);
+    // routingFailed travels with the match so a bodyless skip registration can still
+    // carry the fail-closed verdict out — it has no body to spawn one.
+    expect(matches).toEqual([{ registration: reg, mentionedPath: '-', routingFailed: true }]);
   });
 
   it('a registration WITHOUT matches keeps existing path-mention semantics (regression pin)', () => {
