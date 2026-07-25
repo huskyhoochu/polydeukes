@@ -27,11 +27,23 @@ const judgeOpts: DisciplineJudgeOptions = {
   commandArgs: ['command'],
 };
 
-/** Build a CovenantInput carrying only fileChanges (no toolCalls). */
+/**
+ * Build a CovenantInput whose evidence rides its own tool-call element (CORE-06 §4.1).
+ * Flat pre/post pairs are tagged for the caller: `pre === null` is a create, else a modify.
+ */
 function inputWithFileChanges(
   fileChanges: { path: string; pre: string | null; post: string }[],
 ): CovenantInput {
-  return { toolCalls: [], subagentSpawns: [], userMessages: [], fileChanges };
+  return {
+    toolCalls: fileChanges.map(({ path, pre, post }, index) => ({
+      name: `call-${index}`,
+      args: { file_path: path },
+      fileChange:
+        pre === null ? { kind: 'create', path, post } : { kind: 'modify', path, pre, post },
+    })),
+    subagentSpawns: [],
+    userMessages: [],
+  };
 }
 
 /** Build a CovenantInput carrying a single tool call. */

@@ -1,6 +1,6 @@
 /**
- * fileChanges computation (COVENANT-10 §4.3) — turns one Edit/Write/MultiEdit payload
- * into the agent-neutral `FileChange` evidence the discipline layer judges.
+ * File-change evidence computation (COVENANT-10 §4.3) — turns one Edit/Write/MultiEdit
+ * payload into the agent-neutral `FileChange` evidence the discipline layer judges.
  *
  * Pure translation: pre-state comes through an injected reader (disk is the caller's
  * choice), post-state through `virtualPostState`. An unresolvable post-state OMITS the
@@ -17,10 +17,12 @@ import { virtualPostState } from './virtual-post-state.js';
 const MUTATING_TOOLS = new Set(['Write', 'Edit', 'MultiEdit']);
 
 /**
- * Collect the fileChanges of one raw PreToolUse payload (COVENANT-10 §4.3).
+ * Collect the file-change evidence of one raw PreToolUse payload (COVENANT-10 §4.3).
  *
  * `readPreState` returns the target file's current content, `null` when it does not
- * exist. At most one element: `{ path, pre, post }` when the virtual apply succeeds.
+ * exist — that absence IS the union discriminant (CORE-06 §4.2): no pre-state tags a
+ * `create`, an existing one a `modify` (these tools cannot delete). At most one element,
+ * produced when the virtual apply succeeds.
  */
 export function collectFileChanges(
   rawPayload: unknown,
@@ -35,5 +37,9 @@ export function collectFileChanges(
   const pre = readPreState(filePath);
   const post = virtualPostState(rawPayload, pre);
   if (post.ok !== true) return [];
-  return [{ path: filePath, pre, post: post.value.content }];
+  return [
+    pre === null
+      ? { kind: 'create', path: filePath, post: post.value.content }
+      : { kind: 'modify', path: filePath, pre, post: post.value.content },
+  ];
 }

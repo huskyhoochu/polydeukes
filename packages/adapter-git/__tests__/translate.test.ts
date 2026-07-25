@@ -39,14 +39,16 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
     // Mutation caught: added routed to STAGED_DELETE, or file_path key renamed/dropped.
     const result = covenantInputFromStagedChanges([addedChange]);
 
-    expect(result.toolCalls).toEqual([{ name: STAGED_WRITE, args: { file_path: 'lib/added.ts' } }]);
+    expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
+      { name: STAGED_WRITE, args: { file_path: 'lib/added.ts' } },
+    ]);
   });
 
   it('emits STAGED_WRITE for a modified file', () => {
     // Mutation caught: modified routed to STAGED_DELETE (modified is a write, not a delete).
     const result = covenantInputFromStagedChanges([modifiedChange]);
 
-    expect(result.toolCalls).toEqual([
+    expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_WRITE, args: { file_path: 'lib/modified.ts' } },
     ]);
   });
@@ -55,7 +57,7 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
     // Mutation caught: deleted routed to STAGED_WRITE (delete misclassified as a write).
     const result = covenantInputFromStagedChanges([deletedChange]);
 
-    expect(result.toolCalls).toEqual([
+    expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_DELETE, args: { file_path: 'lib/removed.ts' } },
     ]);
   });
@@ -64,7 +66,7 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
     // Mutation caught: order not preserved, a change dropped, or a change duplicated.
     const result = covenantInputFromStagedChanges([addedChange, deletedChange, modifiedChange]);
 
-    expect(result.toolCalls).toEqual([
+    expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_WRITE, args: { file_path: 'lib/added.ts' } },
       { name: STAGED_DELETE, args: { file_path: 'lib/removed.ts' } },
       { name: STAGED_WRITE, args: { file_path: 'lib/modified.ts' } },
@@ -72,37 +74,30 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
   });
 });
 
-describe('§5 AC-1 covenantInputFromStagedChanges — fileChanges', () => {
-  it('pairs pre/post for an added file with pre=null', () => {
-    // Mutation caught: pre defaulted to '' instead of null on a creation (the delta layer
-    // treats null as an empty baseline — a '' would still be a value, not "no file").
+describe('§5 AC-1 covenantInputFromStagedChanges — nested evidence', () => {
+  it('tags an added file as create evidence on its own call', () => {
+    // Mutation caught: a creation tagged modify (an immutable discipline would then break
+    // on first authoring), or the staged blob dropped from the post.
     const result = covenantInputFromStagedChanges([addedChange]);
 
-    expect(result.fileChanges).toEqual([
-      { path: 'lib/added.ts', pre: null, post: 'export const created = 1;' },
-    ]);
+    expect(result.toolCalls[0].fileChange).toEqual({
+      kind: 'create',
+      path: 'lib/added.ts',
+      post: 'export const created = 1;',
+    });
   });
 
-  it('pairs pre/post for a modified file with the HEAD blob as pre', () => {
+  it('tags a modified file as modify evidence with the HEAD blob as pre', () => {
     // Mutation caught: pre/post swapped, which would forgive the new violation and judge
     // the old content instead (delta family reads pre as the forgiven baseline).
     const result = covenantInputFromStagedChanges([modifiedChange]);
 
-    expect(result.fileChanges).toEqual([
-      { path: 'lib/modified.ts', pre: 'export const old = 1;', post: 'export const changed = 2;' },
-    ]);
-  });
-
-  it('omits the deleted file from fileChanges while keeping its toolCall', () => {
-    // P0: a deleted file has no post content, so it produces no fileChanges element
-    // (ADAPTER-04 "unsatisfiable element omitted"), yet its toolCall must survive so the
-    // path axis still judges the deletion.
-    const result = covenantInputFromStagedChanges([deletedChange]);
-
-    expect(result.fileChanges).toEqual([]);
-    expect(result.toolCalls).toEqual([
-      { name: STAGED_DELETE, args: { file_path: 'lib/removed.ts' } },
-    ]);
+    expect(result.toolCalls[0].fileChange).toEqual({
+      kind: 'modify',
+      path: 'lib/modified.ts',
+      pre: 'export const old = 1;',
+      post: 'export const changed = 2;',
+    });
   });
 });
 
@@ -119,14 +114,13 @@ describe('§5 AC-1 covenantInputFromStagedChanges — session-less collections',
 
   it('returns empty collections for an empty change list', () => {
     // Boundary: zero staged changes still yields a well-formed IR (empty everywhere),
-    // not undefined fields. Mutation caught: fileChanges left undefined vs [].
+    // not undefined fields. Mutation caught: a collection left undefined vs [].
     const result = covenantInputFromStagedChanges([]);
 
     expect(result).toEqual({
       toolCalls: [],
       subagentSpawns: [],
       userMessages: [],
-      fileChanges: [],
     });
   });
 });

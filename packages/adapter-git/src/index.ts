@@ -8,7 +8,7 @@
  * away before it reaches the core.
  */
 
-import type { CovenantInput } from '@polydeukes/core';
+import type { CovenantInput, FileChange } from '@polydeukes/core';
 
 export { collectStagedChanges } from './collect.js';
 export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
@@ -36,28 +36,45 @@ export type StagedChange = {
 };
 
 /**
- * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1).
+ * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1 / CORE-06 §4.2).
  *
- * One `toolCall` per change in input order; `fileChanges` pairs pre/post for writes
- * only — a deletion has no post content, so its element is omitted while its toolCall
- * survives (ADAPTER-04 "unsatisfiable element omitted"). The commit surface has no
- * session, so `subagentSpawns`/`userMessages` are honestly empty (CORE-04).
+ * One `toolCall` per change in input order, each carrying its own union evidence:
+ * `added` → `create`, `modified` → `modify`, `deleted` → `delete` (the HEAD blob is the
+ * baseline the collector already supplies). A change whose required content is `null`
+ * (a binary blob) gets no evidence — its call stays unproven and its toolCall survives
+ * for path judgment. The commit surface has no session, so `subagentSpawns`/
+ * `userMessages` are honestly empty (CORE-04).
  */
 export function covenantInputFromStagedChanges(changes: StagedChange[]): CovenantInput {
   const input: CovenantInput = {
     toolCalls: [],
     subagentSpawns: [],
     userMessages: [],
-    fileChanges: [],
   };
 
   for (const change of changes) {
     const name = change.status === 'deleted' ? STAGED_DELETE : STAGED_WRITE;
-    input.toolCalls.push({ name, args: { file_path: change.path } });
-    if (change.status !== 'deleted' && change.post !== null) {
-      input.fileChanges?.push({ path: change.path, pre: change.pre, post: change.post });
-    }
+    const evidence = stagedEvidence(change);
+    input.toolCalls.push({
+      name,
+      args: { file_path: change.path },
+      ...(evidence !== null && { fileChange: evidence }),
+    });
   }
 
   return input;
+}
+
+/** Tag one staged change as union evidence — `null` when its content is unavailable. */
+function stagedEvidence(change: StagedChange): FileChange | null {
+  if (change.status === 'deleted') {
+    return change.pre === null ? null : { kind: 'delete', path: change.path, pre: change.pre };
+  }
+  if (change.post === null) return null;
+  if (change.status === 'added') {
+    return { kind: 'create', path: change.path, post: change.post };
+  }
+  return change.pre === null
+    ? null
+    : { kind: 'modify', path: change.path, pre: change.pre, post: change.post };
 }

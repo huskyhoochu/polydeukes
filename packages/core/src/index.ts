@@ -69,13 +69,17 @@ export const EXIT_BREAK_NON_BLOCKING = 1;
 export const EXIT_BREAK_BLOCKING = 2;
 
 /**
- * `FileChange` — one file's content pair around the judged call (COVENANT-10 §4.2).
+ * `FileChange` — one file's mutation evidence around the judged call (CORE-06 §4.1).
  *
- * Agent-neutral pre/post evidence: `pre` is `null` when the file does not exist yet
- * (creation). Adapters fill this from their own sources (virtual apply, git blobs) —
- * the core only transports it.
+ * Agent-neutral, discriminated by `kind`: a deletion is first-class evidence rather
+ * than an unrepresentable case, and impossible states (a deletion with resulting
+ * content, a creation with a baseline) cannot be written down. Adapters fill this from
+ * their own sources (virtual apply, git blobs) — the core only transports it.
  */
-export type FileChange = { path: string; pre: string | null; post: string };
+export type FileChange =
+  | { kind: 'create'; path: string; post: string }
+  | { kind: 'modify'; path: string; pre: string; post: string }
+  | { kind: 'delete'; path: string; pre: string };
 
 /**
  * `CovenantInput` — the agent-neutral input IR a covenant judges (PRD §4.2).
@@ -83,13 +87,14 @@ export type FileChange = { path: string; pre: string | null; post: string };
  * Adapters up-translate their own agent payloads into this shape and pipe it as
  * stdin-JSON. The vocabulary carries no agent/tool literals; concrete tool or
  * subagent names are *values* an adapter fills in, never part of the core's type.
- * `fileChanges` is optional (legacy IR compatibility) — absent stays absent.
+ * Evidence has exactly one home — the call element it belongs to (CORE-06 §4.1):
+ * `fileChange` absent means "this call is unproven", and no sibling call's evidence
+ * can stand in for it.
  */
 export type CovenantInput = {
-  toolCalls: { name: string; args?: Record<string, unknown> }[];
+  toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
-  fileChanges?: FileChange[];
 };
 
 /**
@@ -131,13 +136,21 @@ export function parseInput(
     return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
   }
 
-  // fileChanges: present must be an array (element shapes stay unvalidated — the
-  // CORE-01 boundary); absent stays absent — the key is never fabricated (CORE-04).
-  if (candidate.fileChanges !== undefined && !Array.isArray(candidate.fileChanges)) {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
-  }
-
   return { ok: true, value: candidate as CovenantInput };
+}
+
+/**
+ * Flatten every call's evidence into one array in call order (CORE-06 §4.1).
+ *
+ * The one traversal for consumers that need no attribution (discipline scope, delta
+ * judging): calls without evidence are skipped, never substituted for.
+ */
+export function allFileChanges(input: CovenantInput): FileChange[] {
+  const changes: FileChange[] = [];
+  for (const call of input.toolCalls) {
+    if (call.fileChange !== undefined) changes.push(call.fileChange);
+  }
+  return changes;
 }
 
 /**

@@ -188,7 +188,7 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
 // ===========================================================================
 // COVENANT-10 §4.6 / AC §5.7 — real wired disciplines: the routing gap closes.
 // A command mentioning NO protected path now reaches a registration (content-
-// predicate routing), and a delta discipline judges real fileChanges end to end.
+// predicate routing), and a delta discipline judges real file-change evidence end to end.
 // ===========================================================================
 
 function writePayload(filePath: string, content: string) {

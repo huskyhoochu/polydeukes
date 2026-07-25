@@ -69,12 +69,14 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
 // ===========================================================================
 
 describe('collectFileChanges — Write (AC §5.6)', () => {
-  it('produces a FileChange with pre=null for a new file (reader returns null)', () => {
-    // P0 creation: Write to a non-existent file has pre=null and post=content. Mutation
-    // caught: pre=null coerced to '' (a debt-forgiveness hole downstream), or content dropped.
+  it('produces create evidence for a new file (reader returns null)', () => {
+    // P0 creation: Write to a non-existent file is tagged create with post=content. Mutation
+    // caught: absence tagged modify (a debt-forgiveness hole downstream), or content dropped.
     const changes = collectFileChanges(writePayload, () => null);
 
-    expect(changes).toEqual([{ path: 'src/new-file.ts', pre: null, post: 'export const x = 1;' }]);
+    expect(changes).toEqual([
+      { kind: 'create', path: 'src/new-file.ts', post: 'export const x = 1;' },
+    ]);
   });
 });
 
@@ -84,7 +86,9 @@ describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
     // edits applied against pre independently (post would be 'value = two', not 'three').
     const changes = collectFileChanges(multiEditPayload, readerFor('src/seq.ts', 'value = one'));
 
-    expect(changes).toEqual([{ path: 'src/seq.ts', pre: 'value = one', post: 'value = three' }]);
+    expect(changes).toEqual([
+      { kind: 'modify', path: 'src/seq.ts', pre: 'value = one', post: 'value = three' },
+    ]);
   });
 });
 
@@ -140,9 +144,9 @@ function capturingDispatch(): {
 }
 
 describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () => {
-  it('an Edit payload hands dispatch an IR whose fileChanges carries the disk pre and applied post', async () => {
+  it('an Edit payload hands dispatch an IR whose evidence carries the disk pre and applied post', async () => {
     // P0 end-to-end: runAdapterPath reads real pre-state from disk and the IR it forwards to
-    // dispatch carries the computed fileChanges. Mutation caught: fileChanges never wired into
+    // dispatch carries the computed evidence. Mutation caught: evidence never wired into
     // the IR (a discipline would see no evidence), or pre read as the post-applied content.
     const filePath = join(tmpRoot, 'app.ts');
     writeFileSync(filePath, 'const v = alpha;');
@@ -159,16 +163,19 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
     const parsed = parseInput(calls[0]);
     expect(parsed.ok).toBe(true);
     if (parsed.ok !== true) return;
-    expect(parsed.value.fileChanges).toEqual([
-      { path: filePath, pre: 'const v = alpha;', post: 'const v = beta;' },
-    ]);
+    expect(parsed.value.toolCalls[0].fileChange).toEqual({
+      kind: 'modify',
+      path: filePath,
+      pre: 'const v = alpha;',
+      post: 'const v = beta;',
+    });
   });
 
-  it('a Bash payload hands dispatch an IR with no fileChanges key (no fabrication when empty)', async () => {
-    // P0 no-fabrication (mirrors core CORE-04 precedent): a non-mutating payload must not
-    // carry a fabricated fileChanges key — the IR is indistinguishable from a legacy one.
-    // Mutation caught: the adapter always assigning fileChanges (even []), which core would
-    // then preserve as an explicit empty array rather than absence.
+  it('a Bash payload hands dispatch an IR whose call carries no fileChange key (no fabrication)', async () => {
+    // P0 no-fabrication (mirrors core CORE-04 precedent): a non-mutating payload's call must
+    // not carry a fabricated fileChange key — absence is what marks the call unproven.
+    // Mutation caught: the adapter always assigning evidence, which a judge would then read
+    // as a proven call rather than an absent one.
     const { dispatch, calls } = capturingDispatch();
 
     await runAdapterPath({
@@ -181,13 +188,13 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
     const parsed = parseInput(calls[0]);
     expect(parsed.ok).toBe(true);
     if (parsed.ok !== true) return;
-    expect('fileChanges' in parsed.value).toBe(false);
+    expect('fileChange' in parsed.value.toolCalls[0]).toBe(false);
   });
 
-  it('a Write to a nonexistent path dispatches creation evidence (pre=null survives the ENOENT branch)', async () => {
+  it('a Write to a nonexistent path dispatches create evidence (ENOENT survives as absence)', async () => {
     // P0 absence semantics: ENOENT is the ONE read failure that legitimately means
-    // "no file yet" — the fileChange must still be emitted with pre=null. Mutation
-    // caught: the fail-closed read guard over-reaching and blocking real creations.
+    // "no file yet" — the fileChange must still be emitted, tagged create. Mutation
+    // caught: the fail-closed read check over-reaching and blocking real creations.
     const filePath = join(tmpRoot, 'brand-new.ts');
     const payload = {
       ...writePayload,
@@ -207,9 +214,11 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
     const parsed = parseInput(calls[0]);
     expect(parsed.ok).toBe(true);
     if (parsed.ok !== true) return;
-    expect(parsed.value.fileChanges).toEqual([
-      { path: filePath, pre: null, post: 'export const x = 1;' },
-    ]);
+    expect(parsed.value.toolCalls[0].fileChange).toEqual({
+      kind: 'create',
+      path: filePath,
+      post: 'export const x = 1;',
+    });
   });
 
   it('a pre-state read failure that is not absence blocks (exit 2, one adapter blocked row, no dispatch)', async () => {
