@@ -124,6 +124,7 @@ const GROUP_VERDICT_SCHEMA = {
         evidence: { type: "string" },
       },
     }},
+    worktree_incident: { type: "string", description: "REQUIRED if any file you mutated could not be restored to its exact pre-test state: the file path(s) and what state they were left in. Omit entirely when the tree is clean." },
   },
 }
 const REPORT_SCHEMA = {
@@ -223,6 +224,23 @@ const ingest = (cs, cap, kind) => cs.slice(0, cap).map(c => ({ ...c, file: canon
 const loc = c => c.file + (c.line != null ? ":" + c.line : "")
 const inBounds = (i, n) => Number.isInteger(i) && i >= 0 && i < n
 
+// Worktree hygiene for mutation-testing verifiers (2026-07-26). Three parallel
+// verifiers once backed up different files to the same shared-scratchpad path
+// (all targets were named index.ts), raced, and one restored a corrupted backup
+// into a protected source file — then failed to recover and finished without
+// reporting it. The backup-name rule removes the collision; the pre-exit git
+// check catches what slips through; worktree_incident is the reporting channel
+// that structured output previously lacked.
+const WORKTREE_HYGIENE =
+  "## Worktree hygiene (MANDATORY if you mutate any repo file)\n" +
+  "You run in parallel with other verifiers sharing the same scratchpad and worktree.\n" +
+  "1. Backups: never use a bare-basename backup path (e.g. scratchpad/index.ts.bak) — " +
+  "other agents' targets share basenames. Derive a unique name from your verify label and " +
+  "the file's full repo-relative path (slashes → underscores).\n" +
+  "2. Before finishing, restore every mutated file and verify with `git status --porcelain` " +
+  "plus `git diff -- <file>` that the tree matches its pre-test state.\n" +
+  "3. If restoration fails or the tree differs unexpectedly, report it in `worktree_incident` " +
+  "— this outranks your verdicts; never finish silently with a dirty tree."
 const GROUP_VERIFIER_PROMPT = group =>
   "## Code-review verifier\n\n" + SCOPE_BLOCK + "\n" +
   "## Candidate findings at " + loc(group[0]) + "\n" +
@@ -234,6 +252,7 @@ const GROUP_VERIFIER_PROMPT = group =>
   "Judge EACH candidate independently on its own claim — candidates at the same location may describe distinct issues, the same issue, or a mix. " +
   "Reference each by its [i] index.\n\n" +
   VERDICT_LADDER + "\n\n" + VERDICT_LADDER_RECALL + "\n\n" +
+  WORKTREE_HYGIENE + "\n\n" +
   "Structured output only. Evidence must quote or cite the relevant line(s)."
 
 // ─── Same-location verifier merge — group ingested candidates by loc(c),
@@ -245,6 +264,7 @@ const GROUP_VERIFIER_PROMPT = group =>
 // report as fabricated PLAUSIBLE. Trade-off vs per-candidate: one verifier-
 // agent failure now drops every candidate at that location instead of one.
 let verifierAgents = 0
+const worktreeIncidents = []
 
 async function verifyGroups(candidates) {
   const byLoc = Object.create(null)
@@ -255,6 +275,10 @@ async function verifyGroups(candidates) {
     const short = g[0].file.split("/").pop()
     const r = await agent(GROUP_VERIFIER_PROMPT(g), { label: "verify:" + short + "(" + g.length + ")", phase: "Verify", schema: GROUP_VERDICT_SCHEMA, model: "opus" })
     if (!r) return []
+    if (r.worktree_incident) {
+      worktreeIncidents.push("verify:" + short + " — " + r.worktree_incident)
+      log("⚠ WORKTREE INCIDENT (verify:" + short + "): " + r.worktree_incident)
+    }
     const byIdx = {}
     for (const v of r.verdicts) if (inBounds(v.index, g.length)) byIdx[v.index] = v
     return g.flatMap((c, i) => byIdx[i] ? [{ ...c, verdict: byIdx[i].verdict, evidence: byIdx[i].evidence }] : [])
@@ -332,6 +356,7 @@ if (surviving.length === 0) {
     level: LEVEL, target: TARGET || undefined,
     summary: "No findings survived verification.",
     findings: [],
+    worktreeIncidents: worktreeIncidents.length > 0 ? worktreeIncidents : undefined,
     stats,
   }
 }
@@ -409,5 +434,6 @@ return {
   summary,
   findings,
   refuted: refuted.map(c => ({ file: c.file, line: c.line, summary: c.summary })),
+  worktreeIncidents: worktreeIncidents.length > 0 ? worktreeIncidents : undefined,
   stats: { ...stats, reported: findings.length },
 }
