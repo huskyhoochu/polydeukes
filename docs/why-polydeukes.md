@@ -90,6 +90,15 @@ of Polydeukes are blocked by it daily. The only way through is a sanctioned valv
 records the bypass; silence is not an option. Equality before the rules is not an
 aspiration here. It is enforced.
 
+Strictness has a second half: what the judgment demands before it relaxes. A shell
+command's target cannot be known before it runs, so a mention there still blocks. An
+edit's target can be computed without touching disk, so only the proven target counts,
+and a file that merely quotes a protected path passes. Same covenant, different
+judgment, because the evidence available differs. The relaxation is licensed by proof,
+never by convenience — a producer that cannot prove a target stays on the strict rule.
+This is the concrete answer to "agreed enforcement, not control": the rule does not
+soften because the author found it inconvenient; it softens exactly where it can see.
+
 That valve is time-boxed, and its shape carries the same argument. A human types an
 agreed token into the conversation; judgments are waived for a configured window, then
 blocking resumes on its own. Nobody has to remember to close it. The token is not a
