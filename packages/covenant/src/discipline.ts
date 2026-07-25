@@ -123,6 +123,32 @@ function forbidPatternSource(forbid: NonNullable<DisciplineEntry['forbid']>): st
   return typeof forbid === 'string' ? forbid : forbid.added;
 }
 
+/**
+ * Added-direction verdict for one change, exhaustive over the CORE-06 evidence union.
+ * One definition shared by the delta family's judge and the context family's trigger,
+ * so the two can never disagree on what a change kind means. A deletion upholds —
+ * it adds no content, so the added direction has no violation to find.
+ */
+function judgeAddedForChange(change: FileChange, pattern: RegExp): CovenantVerdict {
+  switch (change.kind) {
+    case 'create':
+      return judgeAddedViolations({ pre: null, post: change.post }, pattern);
+    case 'modify':
+      return judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
+    case 'delete':
+      return { upheld: true };
+    default: {
+      // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
+      // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
+      // throw a legible reason and let the judged body fail closed (exit 2).
+      const unhandled: never = change;
+      throw new Error(
+        `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
+      );
+    }
+  }
+}
+
 /** The one shell-surface filter: named args of shell-tool calls, whatever the source. */
 function filterShellCommands(
   calls: readonly { name: string; args?: Record<string, unknown> }[],
@@ -162,26 +188,7 @@ function precedentTrigger(
   const pattern = entry.when === undefined ? null : new RegExp(entry.when);
   for (const target of forbidScope(entry, allFileChanges(input), rootDir)) {
     if (pattern === null) return target.path;
-    const change = target.change;
-    let verdict: CovenantVerdict;
-    switch (change.kind) {
-      case 'create':
-        verdict = judgeAddedViolations({ pre: null, post: change.post }, pattern);
-        break;
-      case 'modify':
-        verdict = judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
-        break;
-      case 'delete':
-        verdict = { upheld: true };
-        break;
-      default: {
-        const unhandled: never = change;
-        throw new Error(
-          `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
-        );
-      }
-    }
-    if (verdict.upheld === false) return target.path;
+    if (judgeAddedForChange(target.change, pattern).upheld === false) return target.path;
   }
   return null;
 }
@@ -214,29 +221,7 @@ export function judgeDiscipline(
   if (entry.forbid !== undefined) {
     const pattern = new RegExp(forbidPatternSource(entry.forbid));
     for (const target of forbidScope(entry, fileChanges, opts.rootDir)) {
-      const change = target.change;
-      let verdict: CovenantVerdict;
-      switch (change.kind) {
-        case 'create':
-          verdict = judgeAddedViolations({ pre: null, post: change.post }, pattern);
-          break;
-        case 'modify':
-          verdict = judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
-          break;
-        case 'delete':
-          // Deletion adds no content, so the added direction has no violation to find.
-          verdict = { upheld: true };
-          break;
-        default: {
-          // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
-          // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
-          // throw a legible reason and let the judged body fail closed (exit 2).
-          const unhandled: never = change;
-          throw new Error(
-            `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
-          );
-        }
-      }
+      const verdict = judgeAddedForChange(target.change, pattern);
       if (verdict.upheld === false) {
         return {
           upheld: false,
@@ -337,6 +322,14 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
     // Fail-fast compilability probe — throws on a broken pattern, like the other families.
     const pattern = new RegExp(command);
     if (spec.transcript === undefined) return false;
+    // A transcript with no shell surface can never satisfy command evidence: that is a
+    // misassembly, and guessing "missing" would turn the entry into a silent universal
+    // block with no legitimate pass path (the command family's body gate, moved up here).
+    if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) {
+      throw new Error(
+        `discipline '${entry.id}': command evidence needs a shell surface (shellTools/commandArgs)`,
+      );
+    }
     const calls = spec.transcript.findToolCalls();
     return filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
       pattern.test(c),
@@ -374,6 +367,8 @@ export function compileDisciplineRegistrations(
     if (entry.forbid !== undefined) new RegExp(forbidPatternSource(entry.forbid));
     if (entry.forbidCommand !== undefined) new RegExp(entry.forbidCommand);
     if (entry.when !== undefined) new RegExp(entry.when);
+    const precedentCommand = entry.requirePrecedent?.command;
+    if (typeof precedentCommand === 'string') new RegExp(precedentCommand);
 
     // Context family only: the other three would hit the body's misassembly gate.
     const precedentFlag =

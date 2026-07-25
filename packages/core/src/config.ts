@@ -359,6 +359,11 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
         if (typeof entry.when !== 'string') {
           throw new ConfigValidationError(`${location} when must be a string pattern`);
         }
+        if (entry.when.length === 0) {
+          // An empty pattern matches at every position, so the trigger would fire on any
+          // file that merely grows — reject it like every sibling pattern field.
+          throw new ConfigValidationError(`${location} when must be a non-empty string pattern`);
+        }
         rejectUncompilableRegex(entry.when, `${location} when`);
       }
       validateRequirePrecedent(entry.requirePrecedent, location);

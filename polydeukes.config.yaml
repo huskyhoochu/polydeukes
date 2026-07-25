@@ -72,8 +72,10 @@ disciplines:
       - 'packages/core/schema/**'
     forbid: '\b(vitest|pytest|go test)\b'
   - id: 'dependency-needs-npm-view'
-    why: 'a dependency version must be measured before it is written; training knowledge and context7 version strings are not evidence. the trigger matches added version-shaped values only, so script and non-version edits stay out of scope.'
-    in: 'package.json'
-    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d'
+    why: 'a dependency version must be measured before it is written; training knowledge and context7 version strings are not evidence. the pattern spans the whole version value because the delta keys on matched text, and a truncated match hides same-prefix bumps.'
+    in:
+      - 'package.json'
+      - 'packages/*/package.json'
+    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
     requirePrecedent:
       command: 'npm view '

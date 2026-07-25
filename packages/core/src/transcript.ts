@@ -77,6 +77,8 @@ export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
     findToolCalls: (name) =>
       input.toolCalls
         .filter((call) => name === undefined || call.name === name)
-        .map((call) => ({ name: call.name, args: { ...call.args } })),
+        // Deep copy: args nest arbitrarily (real payloads are parsed JSON), and a shallow
+        // spread would leave nested values as live aliases into the IR the judges share.
+        .map((call) => ({ name: call.name, args: structuredClone(call.args ?? {}) })),
   };
 }

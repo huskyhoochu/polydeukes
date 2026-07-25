@@ -74,14 +74,16 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
     expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(false);
   });
 
-  it('treats a non-string subagent value as absent evidence (false), fail-closed', () => {
+  it('answers undefined for a malformed value of the KNOWN subagent key — evaluation impossibility, not key recognition, drives the handshake', () => {
     // P1 adapter-owned validation (core validates only the container, values pass
-    // verbatim): a malformed value cannot prove evidence, so the gate stays closed.
-    // Mutation caught: a non-string value coerced into a match, or an unguarded
-    // comparison throwing at judgment time.
+    // verbatim): a non-string value cannot be evaluated at all, so the adapter declines
+    // with the same undefined signal that makes assembly fail closed. `false` would be
+    // worse than a crash — a gate no amount of actually spawning the subagent could ever
+    // open, with nothing diagnosing why. Mutation caught: a non-string value coerced into
+    // a comparison (fail-open), or collapsed to a judged miss (permanently shut gate).
     const transcript = transcriptWith([spawnBlock(SPAWN_KIND)]);
 
-    expect(evaluatePrecedent({ subagent: 123 }, transcript)).toBe(false);
+    expect(evaluatePrecedent({ subagent: 123 }, transcript)).toBeUndefined();
   });
 });
 
@@ -111,18 +113,20 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex
     expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(false);
   });
 
-  it('treats a non-compiling tool regex as absent evidence (false), never a throw', () => {
+  it('answers undefined for a non-compiling tool regex — an unevaluatable KNOWN key declines here and fails closed at assembly, never throws mid-judgment', () => {
     // P1 judgment-time safety: '(' does not compile; an unguarded `new RegExp` would
-    // throw during evidence evaluation — a crash, not a verdict. The adapter validates
-    // its own vocabulary and collapses the malformed pattern to "no evidence" (gate
-    // closed). Mutation caught: the RegExp construction left unguarded.
+    // throw during evidence evaluation — a crash, not a verdict. The adapter catches it
+    // and declines to evaluate (undefined), which assembly turns into a loud, diagnosable
+    // failure. Answering `false` would instead bury a broken pattern as a gate that can
+    // never open. Mutation caught: the RegExp construction left unguarded, or the
+    // malformed pattern collapsed to a judged miss.
     const transcript = transcriptWith([toolBlock(MCP_TOOL)]);
 
     let verdict: boolean | undefined;
     expect(() => {
       verdict = evaluatePrecedent({ tool: '(' }, transcript);
     }).not.toThrow();
-    expect(verdict).toBe(false);
+    expect(verdict).toBeUndefined();
   });
 });
 

@@ -446,6 +446,27 @@ describe('compileDisciplineRegistrations — fail-closed assembly (AC 7)', () =>
       ),
     ).toThrow();
   });
+
+  it('throws on command evidence when a transcript exists but the shell surface is empty', () => {
+    // P0 fail-closed: with a session to read but no shellTools/commandArgs to read it
+    // through, command evidence can NEVER be found — transporting `missing` would forge a
+    // universal block with no legitimate pass path. The empty surface is a misassembly, so
+    // assembly halts. The contrast below is the boundary: without a transcript there is
+    // simply no session yet, which is the legitimate sessionless `missing` (pinned above),
+    // so the throw must be conditioned on the transcript's presence, not on the surface
+    // alone. Mutation caught: the surface probe hoisted above the transcript check
+    // (every sessionless assembly would crash), or dropped entirely.
+    for (const emptySurface of [{ shellTools: [] }, { commandArgs: [] }]) {
+      expect(() =>
+        compileDisciplineRegistrations(
+          contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]), ...emptySurface }),
+        ),
+      ).toThrow(/command evidence needs a shell surface/);
+
+      const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], emptySurface));
+      expect(reg.body.args).toContain('--precedent-missing');
+    }
+  });
 });
 
 describe('compileDisciplineRegistrations — existing families carry no precedent flags (AC 9)', () => {

@@ -99,6 +99,9 @@ const INVALID_CONFIGS: readonly unknown[] = [
   withDisciplines([{ id: 'forbid-with-when', forbid: 'x', when: 'y' }]),
   // Non-string when.
   withDisciplines([{ id: 'when-number', when: 123, requirePrecedent: { command: 'fake-probe ' } }]),
+  // Empty-string when (minLength boundary — it compiles, so `format: regex` alone lets it
+  // through; only the schema's minLength: 1 mirrors the validator's non-empty check).
+  withDisciplines([{ id: 'empty-when', when: '', requirePrecedent: { command: 'fake-probe ' } }]),
   // Non-compilable when regex.
   withDisciplines([{ id: 'bad-when-re', when: '(', requirePrecedent: { command: 'fake-probe ' } }]),
   // --- exactly-one-predicate widened to 4 keys ---

@@ -222,8 +222,10 @@ session history.
 ```yaml
   - id: 'dependency-needs-npm-view'
     why: 'a dependency version must be measured before it is written.'
-    in: 'package.json'
-    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d'
+    in:
+      - 'package.json'
+      - 'packages/*/package.json'
+    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
     requirePrecedent:
       command: 'npm view '
 ```
@@ -250,6 +252,16 @@ written with `^` matches only the first line and the discipline silently stops f
 the regex still compiles, the judgment still runs, and the verdict is `passed`. Write
 `(^|\n)` when you mean the start of a line. This is why the example above carries
 `(^|\n)\s*"[^"]+"…` rather than `^\s*"[^"]+"…`.
+
+**And a caution on match length.** The delta keys on the matched *text*: a change is only
+seen as added when the matched string itself differs between the file's before and after.
+A pattern that stops mid-value — say at the first digit of a version — produces the same
+match text for `4.0.5` and `4.0.6`, so a version bump adds nothing to the delta and the
+discipline silently passes. Make the pattern span the whole value that can change; the
+example above runs through the closing quote (`\d[^"]*"`) for exactly this reason. Both
+failure shapes are the same class: the regex compiles, the verdict says `passed`, and
+nothing tells you the discipline is inert — so when you add an entry, measure it against
+a real file and a realistic edit, not a one-line snippet.
 
 The kind of change matters at the trigger. With `when` present, a deletion never triggers
 — deleting adds no content. With `when` absent, deletion triggers like any other change in

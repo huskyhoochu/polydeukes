@@ -147,23 +147,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const escapeHatch =
       enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
-    // Context-family entries (`requirePrecedent`) are excluded too, but for the opposite
-    // reason and with the opposite bookkeeping (COVENANT-13 §4.5): their trigger CAN match
-    // a staged change, yet the commit surface has no session evidence channel — judging
-    // them here would block every matching commit with no legitimate pass path. That makes
-    // the exclusion a real skip, so it must surface in the data as one `skipped` record
-    // per excluded entry per run (an assembly-level fact, hence outside the dispatch loop
-    // and below the empty-staging early return).
     const disciplines = config.disciplines ?? [];
-    for (const entry of disciplines) {
-      if (entry.requirePrecedent !== undefined) {
-        appendRecordFailOpen(telemetryPath, {
-          event: 'skipped',
-          label: entry.id,
-          subject: '-',
-        });
-      }
-    }
 
     const registrations: CovenantRegistration[] = [
       {
@@ -195,6 +179,25 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
         escapeHatch,
       }),
     ];
+
+    // Context-family entries (`requirePrecedent`) are excluded from that assembly, but
+    // for the opposite reason and with the opposite bookkeeping (COVENANT-13 §4.5):
+    // their trigger CAN match a staged change, yet the commit surface has no session
+    // evidence channel — judging them here would block every matching commit with no
+    // legitimate pass path. That makes the exclusion a real skip, so it must surface as
+    // one `skipped` record per excluded entry per run: an assembly-level fact, hence
+    // outside the dispatch loop, below the empty-staging early return, and AFTER the
+    // assembly above has succeeded — a run that fails closed judged nothing, and must
+    // not also claim a deliberate skip.
+    for (const entry of disciplines) {
+      if (entry.requirePrecedent !== undefined) {
+        appendRecordFailOpen(telemetryPath, {
+          event: 'skipped',
+          label: entry.id,
+          subject: '-',
+        });
+      }
+    }
 
     let blocked = false;
     let advisedCount = 0;

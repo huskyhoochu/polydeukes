@@ -19,8 +19,10 @@ import type { CanonicalTranscript } from '@polydeukes/core';
  * - anything else: `undefined` — outside this adapter's vocabulary, including the core's
  *   own `command` key, which the covenant compiler evaluates itself.
  *
- * A malformed value (non-string, non-compiling pattern) is absent evidence — `false`,
- * never a throw: a crash at judgment time is worse than a closed gate.
+ * A malformed value of a known key (non-string, non-compiling pattern) is also
+ * `undefined`: the adapter cannot evaluate it, and assembly must fail loud. Answering
+ * `false` instead would make the gate permanently unsatisfiable — no amount of actually
+ * doing the required action could ever open it, with nothing diagnosing why.
  */
 export function evaluatePrecedent(
   evidence: Record<string, unknown>,
@@ -29,7 +31,7 @@ export function evaluatePrecedent(
   if ('subagent' in evidence) {
     const kind = evidence.subagent;
     if (typeof kind !== 'string') {
-      return false;
+      return undefined;
     }
     return transcript.findSubagentInvocations(kind).length > 0;
   }
@@ -37,13 +39,13 @@ export function evaluatePrecedent(
   if ('tool' in evidence) {
     const pattern = evidence.tool;
     if (typeof pattern !== 'string') {
-      return false;
+      return undefined;
     }
     let matcher: RegExp;
     try {
       matcher = new RegExp(pattern);
     } catch {
-      return false;
+      return undefined;
     }
     return transcript.findToolCalls().some((call) => matcher.test(call.name));
   }

@@ -26,11 +26,17 @@ import { runCovenantCheck } from '../src/index.ts';
 
 // Context-family fixture entries (injected values, PRD §4.1 shape). The regexes are
 // data the config carries, not source literals.
+//
+// The `when` pattern anchors with `(^|\n)`, not a bare `^`: the trigger is tested against
+// whole file content with no multiline flag, so a lone `^` would only ever match line 1 —
+// and a dependency line never IS line 1 of a manifest. With a bare `^` every fixture below
+// would pass for the wrong reason (trigger never matched), making the exclusion tests
+// vacuous. The alternation makes the premise "the trigger genuinely matches" true.
 const NPM_VIEW_ENTRY_ID = 'dependency-needs-npm-view';
 const npmViewEntry = {
   id: NPM_VIEW_ENTRY_ID,
   in: 'manifest.json',
-  when: '^\\s*"[^"]+"\\s*:\\s*"[~^]?\\d',
+  when: '(^|\\n)\\s*"[^"]+"\\s*:\\s*"[~^]?\\d',
   requirePrecedent: { command: 'npm view ' },
 };
 const DOCS_ENTRY_ID = 'design-doc-first';
@@ -210,6 +216,29 @@ describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion'
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
 
     expect(result.exitCode).toBe(0);
+    expect(skippedRecords()).toEqual([]);
+  });
+
+  it('records zero skipped when assembly itself fails closed', async () => {
+    // P0 ordering boundary (review F7): a run that blocked because it could not assemble
+    // judged nothing, so it must not also claim a deliberate skip — `skipped` means "this
+    // entry was consciously left out of a working assembly", not "the run died before
+    // reaching it". The failure is reached through the CONFIG-07 layering seam: core
+    // validates only the `adapters` container and passes contents through verbatim, so an
+    // unknown enforce level survives defineConfig and throws in the git adapter's own
+    // resolver at assembly time. Mutation caught: the skipped bookkeeping hoisted above
+    // the assembly block, inflating skip counts with runs that never judged anything.
+    writeConfig({
+      disciplines: [npmViewEntry],
+      adapters: { git: { enforce: 'loud' } },
+    });
+    commitConfig();
+    write('manifest.json', '{\n  "left-pad": "^1.3.0"\n}\n');
+    git('add', 'manifest.json');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
     expect(skippedRecords()).toEqual([]);
   });
 

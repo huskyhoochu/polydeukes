@@ -243,6 +243,22 @@ describe('defineConfig context family — when trigger coupling and validity (AC
     expect(error.message).toContain('when-number');
   });
 
+  it('rejects an empty-string when trigger', () => {
+    // P0 boundary partner of the empty-command rejection: '' compiles fine and matches
+    // every content, so an empty trigger silently means "always", which is what OMITTING
+    // `when` already expresses. Admitting it would let a typo'd trigger masquerade as a
+    // narrow one. Mutation caught: the non-empty check applied to command evidence but
+    // not to `when` (compilability alone never catches '').
+    const error = expectConfigValidationError(
+      withDisciplines([
+        { id: 'empty-when', when: '', requirePrecedent: { command: 'fake-probe ' } },
+      ]),
+    );
+
+    expect(error.message).toContain('empty-when');
+    expect(error.message).toContain('when must be a non-empty string pattern');
+  });
+
   it('rejects a non-compilable when regex', () => {
     // P0: same authoring-time compilability gate as every other pattern field. Mutation
     // caught: the compilability probe not extended to the new `when` field.

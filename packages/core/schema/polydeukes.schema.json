@@ -188,6 +188,7 @@
             "when": {
               "description": "Context-family trigger — added-direction delta regex. Absent means every in-scope change triggers.",
               "type": "string",
+              "minLength": 1,
               "format": "regex"
             },
             "requirePrecedent": { "$ref": "#/$defs/requirePrecedent" }
