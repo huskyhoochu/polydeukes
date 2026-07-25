@@ -62,14 +62,33 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
     ]);
   });
 
-  it('emits exactly one toolCall per change, in input order', () => {
-    // Mutation caught: order not preserved, a change dropped, or a change duplicated.
+  it('emits exactly one toolCall per change, in input order, each with its own evidence', () => {
+    // Mutation caught: order not preserved, a change dropped or duplicated, or — the
+    // laundering this ticket outlaws — one change's evidence attached to a sibling call
+    // (full-element equality keeps the attribution pinned; review round 1).
     const result = covenantInputFromStagedChanges([addedChange, deletedChange, modifiedChange]);
 
-    expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
-      { name: STAGED_WRITE, args: { file_path: 'lib/added.ts' } },
-      { name: STAGED_DELETE, args: { file_path: 'lib/removed.ts' } },
-      { name: STAGED_WRITE, args: { file_path: 'lib/modified.ts' } },
+    expect(result.toolCalls).toEqual([
+      {
+        name: STAGED_WRITE,
+        args: { file_path: 'lib/added.ts' },
+        fileChange: { kind: 'create', path: 'lib/added.ts', post: 'export const created = 1;' },
+      },
+      {
+        name: STAGED_DELETE,
+        args: { file_path: 'lib/removed.ts' },
+        fileChange: { kind: 'delete', path: 'lib/removed.ts', pre: 'export const gone = 1;' },
+      },
+      {
+        name: STAGED_WRITE,
+        args: { file_path: 'lib/modified.ts' },
+        fileChange: {
+          kind: 'modify',
+          path: 'lib/modified.ts',
+          pre: 'export const old = 1;',
+          post: 'export const changed = 2;',
+        },
+      },
     ]);
   });
 });

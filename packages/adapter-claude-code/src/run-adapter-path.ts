@@ -86,15 +86,14 @@ export async function runAdapterPath(spec: {
   // only when provable: a non-mutating payload leaves its call unproven. A pre-state
   // read failure that is not absence blocks: evidence that cannot be gathered must not
   // dispatch a shape that reads as creation.
-  let fileChanges: ReturnType<typeof collectFileChanges>;
+  let evidence: ReturnType<typeof collectFileChanges>;
   try {
-    fileChanges = collectFileChanges(payload, readPreStateFromDisk);
+    evidence = collectFileChanges(payload, readPreStateFromDisk);
   } catch {
     return blockAndRecord();
   }
-  const evidence = fileChanges[0];
   const input =
-    evidence === undefined
+    evidence === null
       ? built.value
       : {
           ...built.value,

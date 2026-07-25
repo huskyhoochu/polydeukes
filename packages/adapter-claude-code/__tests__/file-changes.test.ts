@@ -72,11 +72,13 @@ describe('collectFileChanges — Write (AC §5.6)', () => {
   it('produces create evidence for a new file (reader returns null)', () => {
     // P0 creation: Write to a non-existent file is tagged create with post=content. Mutation
     // caught: absence tagged modify (a debt-forgiveness hole downstream), or content dropped.
-    const changes = collectFileChanges(writePayload, () => null);
+    const change = collectFileChanges(writePayload, () => null);
 
-    expect(changes).toEqual([
-      { kind: 'create', path: 'src/new-file.ts', post: 'export const x = 1;' },
-    ]);
+    expect(change).toEqual({
+      kind: 'create',
+      path: 'src/new-file.ts',
+      post: 'export const x = 1;',
+    });
   });
 });
 
@@ -84,30 +86,33 @@ describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
   it('applies edits sequentially so the post reflects all edits', () => {
     // P0 sequential application: the 2nd edit targets the 1st edit's result. Mutation caught:
     // edits applied against pre independently (post would be 'value = two', not 'three').
-    const changes = collectFileChanges(multiEditPayload, readerFor('src/seq.ts', 'value = one'));
+    const change = collectFileChanges(multiEditPayload, readerFor('src/seq.ts', 'value = one'));
 
-    expect(changes).toEqual([
-      { kind: 'modify', path: 'src/seq.ts', pre: 'value = one', post: 'value = three' },
-    ]);
+    expect(change).toEqual({
+      kind: 'modify',
+      path: 'src/seq.ts',
+      pre: 'value = one',
+      post: 'value = three',
+    });
   });
 });
 
 describe('collectFileChanges — omission of unresolvable post-state (AC §5.6, PRD §4.3)', () => {
-  it('omits the element when the Edit old_string is absent from pre (empty array, not an error)', () => {
+  it('yields nothing when the Edit old_string is absent from pre (null, not an error)', () => {
     // P0 specified disposition (PRD §4.3): an Edit whose virtual application fails is OMITTED,
     // not surfaced as an error and not fabricated with a bogus post. Mutation caught: the
     // element pushed with a wrong/undefined post, or the whole call throwing on a failed apply.
-    const changes = collectFileChanges(editPayload, readerFor('src/app.ts', 'no match here'));
+    const change = collectFileChanges(editPayload, readerFor('src/app.ts', 'no match here'));
 
-    expect(changes).toEqual([]);
+    expect(change).toBeNull();
   });
 });
 
 describe('collectFileChanges — non-mutating payloads (AC §5.6)', () => {
-  it('returns an empty array for a Bash payload', () => {
+  it('returns null for a Bash payload', () => {
     // P0: a non-file-mutating tool contributes no fileChanges. Mutation caught: a default
     // branch fabricating a FileChange for a Bash command (there is no file to judge).
-    expect(collectFileChanges(bashPayload, () => null)).toEqual([]);
+    expect(collectFileChanges(bashPayload, () => null)).toBeNull();
   });
 });
 

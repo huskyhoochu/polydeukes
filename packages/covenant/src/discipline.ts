@@ -155,6 +155,15 @@ export function judgeDiscipline(
           // Deletion adds no content, so the added direction has no violation to find.
           verdict = { upheld: true };
           break;
+        default: {
+          // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
+          // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
+          // throw a legible reason and let the judged body fail closed (exit 2).
+          const unhandled: never = change;
+          throw new Error(
+            `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
+          );
+        }
       }
       if (verdict.upheld === false) {
         return {
@@ -212,7 +221,13 @@ function buildMatches(
   if (entry.immutable !== undefined) {
     return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
   }
-  return (input) => forbidScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
+  // Deletions can never break the added direction, so they must not route a body spawn
+  // (COVENANT-10: routing adds no spawn waste); the judge still short-circuits them
+  // defensively when a mixed input arrives.
+  return (input) =>
+    forbidScope(entry, allFileChanges(input), spec.rootDir).find(
+      (target) => target.change.kind !== 'delete',
+    )?.path ?? null;
 }
 
 /**

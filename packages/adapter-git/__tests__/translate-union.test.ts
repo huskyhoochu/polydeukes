@@ -71,3 +71,51 @@ describe('covenantInputFromStagedChanges — call-nested union evidence (AC 3)',
     expect('fileChanges' in result).toBe(false);
   });
 });
+
+describe('covenantInputFromStagedChanges — unreadable (binary) content arms (review round 1)', () => {
+  it('a deletion with a binary HEAD blob still carries delete evidence, just without pre', () => {
+    // P0 hole closure: immutable judgment needs no content, so a binary baseline must not
+    // suppress the delete evidence. Mutation caught: the pre === null gate resurrected
+    // (deleting a binary immutable-matched file would silently uphold), or an empty-string
+    // pre fabricated where none is readable.
+    const result = covenantInputFromStagedChanges([
+      { path: 'assets/logo.png', status: 'deleted', pre: null, post: null },
+    ]);
+
+    expect(result.toolCalls).toEqual([
+      {
+        name: STAGED_DELETE,
+        args: { file_path: 'assets/logo.png' },
+        fileChange: { kind: 'delete', path: 'assets/logo.png' },
+      },
+    ]);
+  });
+
+  it('a modified change with a binary HEAD blob maps to create — an unreadable baseline forgives nothing', () => {
+    // P0 regression pin (main parity): main judged {pre:null, post} as a creation and
+    // scanned the full post; dropping the evidence instead would let newly staged
+    // forbidden content sail through. Mutation caught: the null return for this arm.
+    const result = covenantInputFromStagedChanges([
+      { path: 'docs/spec.md', status: 'modified', pre: null, post: 'now text with content' },
+    ]);
+
+    expect(result.toolCalls[0].fileChange).toEqual({
+      kind: 'create',
+      path: 'docs/spec.md',
+      post: 'now text with content',
+    });
+  });
+
+  it('a non-deletion whose staged blob is binary attaches no evidence — the call stays unproven', () => {
+    // P0 no-fabrication pin: with no readable staged content there is nothing provable;
+    // the toolCall survives for path judgment but carries no fileChange. Mutation caught:
+    // evidence fabricated from a null post (a bogus create/modify with undefined content).
+    const result = covenantInputFromStagedChanges([
+      { path: 'assets/icon.png', status: 'added', pre: null, post: null },
+    ]);
+
+    expect(result.toolCalls).toEqual([
+      { name: STAGED_WRITE, args: { file_path: 'assets/icon.png' } },
+    ]);
+  });
+});

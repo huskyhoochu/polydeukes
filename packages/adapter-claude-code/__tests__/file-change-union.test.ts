@@ -38,11 +38,13 @@ describe('collectFileChanges — union tagging (AC 4)', () => {
     // P0 tagging: absence of a file IS the create discriminant. Mutation caught: the flat
     // shape kept (no kind — downstream switches cannot judge), or a leftover pre:null
     // sentinel riding the create variant (toEqual rejects a defined null field).
-    const changes = collectFileChanges(writePayload, () => null);
+    const change = collectFileChanges(writePayload, () => null);
 
-    expect(changes).toEqual([
-      { kind: 'create', path: 'src/new-file.ts', post: 'export const x = 1;' },
-    ]);
+    expect(change).toEqual({
+      kind: 'create',
+      path: 'src/new-file.ts',
+      post: 'export const x = 1;',
+    });
   });
 
   it('tags a Write over existing content as kind modify carrying both the pre and the post', () => {
@@ -50,19 +52,17 @@ describe('collectFileChanges — union tagging (AC 4)', () => {
     // discriminant is the evidence, not the tool. Mutation caught: existing content tagged
     // create (an immutable discipline would uphold an overwrite as first authoring), or
     // pre/post swapped.
-    const changes = collectFileChanges(
+    const change = collectFileChanges(
       writePayload,
       readerFor('src/new-file.ts', 'export const seed = 1;'),
     );
 
-    expect(changes).toEqual([
-      {
-        kind: 'modify',
-        path: 'src/new-file.ts',
-        pre: 'export const seed = 1;',
-        post: 'export const x = 1;',
-      },
-    ]);
+    expect(change).toEqual({
+      kind: 'modify',
+      path: 'src/new-file.ts',
+      pre: 'export const seed = 1;',
+      post: 'export const x = 1;',
+    });
   });
 });
 

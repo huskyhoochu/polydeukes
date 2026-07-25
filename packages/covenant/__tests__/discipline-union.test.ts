@@ -6,7 +6,11 @@ import { describe, expect, it } from 'vitest';
 // file can be neither modified nor deleted). Today delete evidence cannot even be
 // expressed and the judge reads the removed top-level array, so this file is RED by
 // construction — AC 6 in particular demonstrates the live fail-open hole.
-import { type DisciplineJudgeOptions, judgeDiscipline } from '../src/discipline.ts';
+import {
+  compileDisciplineRegistrations,
+  type DisciplineJudgeOptions,
+  judgeDiscipline,
+} from '../src/discipline.ts';
 
 // ---------------------------------------------------------------------------
 // Fixtures. Evidence is ALWAYS nested on its own tool-call element — the only
@@ -132,5 +136,80 @@ describe('judgeDiscipline — immutable delete judgment (AC 6)', () => {
     const input = inputWithEvidence([{ kind: 'create', path: 'config/a.lock', post: 'seed' }]);
 
     expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
+  });
+
+  it('breaks a delete of an immutable-matched binary file — evidence without a pre baseline', () => {
+    // P0 hole closure (review round 1): a binary HEAD blob leaves delete.pre absent, and
+    // the judgment must not care — immutable reads path and kind only. Mutation caught:
+    // the judge or scope requiring pre (the binary deletion would silently uphold again).
+    const input = inputWithEvidence([{ kind: 'delete', path: 'config/a.lock' }]);
+
+    expect(judgeDiscipline(immutable, input, judgeOpts).upheld).toBe(false);
+  });
+});
+
+// ===========================================================================
+// Review round 1 — unjudgeable kinds fail closed legibly; delete never routes forbid
+// ===========================================================================
+
+describe('judgeDiscipline — unrecognized evidence kind (review round 1)', () => {
+  it('throws a legible unjudgeable error instead of a bare TypeError', () => {
+    // P1 legibility pin: a legacy-shaped evidence (stale adapter dist) has no kind; the
+    // judged body must fail closed with a reason an operator can act on. Mutation caught:
+    // the never-guard default removed (bare "reading 'upheld'" TypeError returns).
+    const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
+    const legacy = {
+      toolCalls: [
+        {
+          name: 'call-0',
+          args: { file_path: 'src/a.css' },
+          fileChange: { path: 'src/a.css', pre: 'a', post: 'b' },
+        },
+      ],
+      subagentSpawns: [],
+      userMessages: [],
+    } as unknown as CovenantInput;
+
+    expect(() => judgeDiscipline(forbidHex, legacy, judgeOpts)).toThrow(
+      /unjudgeable evidence kind/,
+    );
+  });
+});
+
+describe('forbid routing — deletions never spawn a body (review round 1)', () => {
+  function compileOne(entry: DisciplineEntry) {
+    const [reg] = compileDisciplineRegistrations({
+      disciplines: [entry],
+      rootDir: ROOT,
+      bodyCommand: '/usr/bin/node',
+      bodyModulePath: '/repo/discipline-body.js',
+      shellTools: ['Bash'],
+      commandArgs: ['command'],
+    });
+    return reg;
+  }
+
+  it('forbid matches returns null for a delete-only input (no spawn waste, no telemetry noise)', () => {
+    // P1 routing filter: a deletion cannot break the added direction, so routing it spawns
+    // a body that can only uphold. Mutation caught: the delete filter dropped from the
+    // forbid matches closure (delete-heavy commits spawn one body per discipline per file).
+    const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
+    const reg = compileOne(forbidHex);
+    const input = inputWithEvidence([
+      { kind: 'delete', path: 'src/legacy.css', pre: 'a: #123456;' },
+    ]);
+
+    expect(reg.matches?.(input)).toBeNull();
+  });
+
+  it('immutable matches still routes a delete-only input (that family judges deletions)', () => {
+    // P1 filter scope partner: the delete filter belongs to forbid ONLY. Mutation caught:
+    // the filter over-extended to immutable routing (immutable deletions would never spawn
+    // a judge — the AC6 hole reopened at the routing layer).
+    const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
+    const reg = compileOne(immutable);
+    const input = inputWithEvidence([{ kind: 'delete', path: 'config/a.lock', pre: 'locked' }]);
+
+    expect(reg.matches?.(input)).toBe('config/a.lock');
   });
 });

@@ -75,11 +75,13 @@ export const EXIT_BREAK_BLOCKING = 2;
  * than an unrepresentable case, and impossible states (a deletion with resulting
  * content, a creation with a baseline) cannot be written down. Adapters fill this from
  * their own sources (virtual apply, git blobs) — the core only transports it.
+ * `delete.pre` is the readable text baseline when one exists — absent for a binary
+ * blob, because a deletion needs no content to be judged.
  */
 export type FileChange =
   | { kind: 'create'; path: string; post: string }
   | { kind: 'modify'; path: string; pre: string; post: string }
-  | { kind: 'delete'; path: string; pre: string };
+  | { kind: 'delete'; path: string; pre?: string };
 
 /**
  * `CovenantInput` — the agent-neutral input IR a covenant judges (PRD §4.2).

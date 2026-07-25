@@ -21,25 +21,24 @@ const MUTATING_TOOLS = new Set(['Write', 'Edit', 'MultiEdit']);
  *
  * `readPreState` returns the target file's current content, `null` when it does not
  * exist — that absence IS the union discriminant (CORE-06 §4.2): no pre-state tags a
- * `create`, an existing one a `modify` (these tools cannot delete). At most one element,
- * produced when the virtual apply succeeds.
+ * `create`, an existing one a `modify` (these tools cannot delete). Evidence is
+ * singular like its IR home (`toolCall.fileChange`): one payload proves at most one
+ * change, and `null` means nothing provable.
  */
 export function collectFileChanges(
   rawPayload: unknown,
   readPreState: (filePath: string) => string | null,
-): FileChange[] {
+): FileChange | null {
   const envelope = parsePayloadEnvelope(rawPayload);
-  if (envelope.ok !== true) return [];
-  if (!MUTATING_TOOLS.has(envelope.toolName)) return [];
+  if (envelope.ok !== true) return null;
+  if (!MUTATING_TOOLS.has(envelope.toolName)) return null;
   const filePath = envelope.toolInput.file_path;
-  if (typeof filePath !== 'string') return [];
+  if (typeof filePath !== 'string') return null;
 
   const pre = readPreState(filePath);
   const post = virtualPostState(rawPayload, pre);
-  if (post.ok !== true) return [];
-  return [
-    pre === null
-      ? { kind: 'create', path: filePath, post: post.value.content }
-      : { kind: 'modify', path: filePath, pre, post: post.value.content },
-  ];
+  if (post.ok !== true) return null;
+  return pre === null
+    ? { kind: 'create', path: filePath, post: post.value.content }
+    : { kind: 'modify', path: filePath, pre, post: post.value.content };
 }

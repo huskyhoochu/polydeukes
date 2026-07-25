@@ -39,11 +39,12 @@ export type StagedChange = {
  * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1 / CORE-06 §4.2).
  *
  * One `toolCall` per change in input order, each carrying its own union evidence:
- * `added` → `create`, `modified` → `modify`, `deleted` → `delete` (the HEAD blob is the
- * baseline the collector already supplies). A change whose required content is `null`
- * (a binary blob) gets no evidence — its call stays unproven and its toolCall survives
- * for path judgment. The commit surface has no session, so `subagentSpawns`/
- * `userMessages` are honestly empty (CORE-04).
+ * `added` → `create`, `modified` → `modify`, `deleted` → `delete` — a deletion carries
+ * evidence unconditionally (its optional `pre` baseline drops when the HEAD blob is
+ * binary). Only a non-deletion whose staged content is unreadable (binary) gets no
+ * evidence — that call stays unproven while its toolCall survives for path judgment.
+ * The commit surface has no session, so `subagentSpawns`/`userMessages` are honestly
+ * empty (CORE-04).
  */
 export function covenantInputFromStagedChanges(changes: StagedChange[]): CovenantInput {
   const input: CovenantInput = {
@@ -65,16 +66,24 @@ export function covenantInputFromStagedChanges(changes: StagedChange[]): Covenan
   return input;
 }
 
-/** Tag one staged change as union evidence — `null` when its content is unavailable. */
+/**
+ * Tag one staged change as union evidence — `null` only when the staged content itself
+ * is unavailable (a binary staged blob), leaving that call unproven.
+ *
+ * A deletion always carries evidence: the judgment needs no content, so an unreadable
+ * (binary) HEAD blob merely drops the optional `pre` baseline. A `modified` change whose
+ * HEAD blob is unreadable maps to `create` — an unreadable baseline forgives nothing, so
+ * the whole staged content is judged as added (the same judgment main produced).
+ */
 function stagedEvidence(change: StagedChange): FileChange | null {
   if (change.status === 'deleted') {
-    return change.pre === null ? null : { kind: 'delete', path: change.path, pre: change.pre };
+    return change.pre === null
+      ? { kind: 'delete', path: change.path }
+      : { kind: 'delete', path: change.path, pre: change.pre };
   }
   if (change.post === null) return null;
-  if (change.status === 'added') {
+  if (change.status === 'added' || change.pre === null) {
     return { kind: 'create', path: change.path, post: change.post };
   }
-  return change.pre === null
-    ? null
-    : { kind: 'modify', path: change.path, pre: change.pre, post: change.post };
+  return { kind: 'modify', path: change.path, pre: change.pre, post: change.post };
 }
