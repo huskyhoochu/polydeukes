@@ -8,7 +8,7 @@
  * away before it reaches the core.
  */
 
-import type { CovenantInput } from '@polydeukes/core';
+import type { CovenantInput, FileChange } from '@polydeukes/core';
 
 export { collectStagedChanges } from './collect.js';
 export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
@@ -36,28 +36,54 @@ export type StagedChange = {
 };
 
 /**
- * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1).
+ * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1 / CORE-06 §4.2).
  *
- * One `toolCall` per change in input order; `fileChanges` pairs pre/post for writes
- * only — a deletion has no post content, so its element is omitted while its toolCall
- * survives (ADAPTER-04 "unsatisfiable element omitted"). The commit surface has no
- * session, so `subagentSpawns`/`userMessages` are honestly empty (CORE-04).
+ * One `toolCall` per change in input order, each carrying its own union evidence:
+ * `added` → `create`, `modified` → `modify`, `deleted` → `delete` — a deletion carries
+ * evidence unconditionally (its optional `pre` baseline drops when the HEAD blob is
+ * binary). Only a non-deletion whose staged content is unreadable (binary) gets no
+ * evidence — that call stays unproven while its toolCall survives for path judgment.
+ * The commit surface has no session, so `subagentSpawns`/`userMessages` are honestly
+ * empty (CORE-04).
  */
 export function covenantInputFromStagedChanges(changes: StagedChange[]): CovenantInput {
   const input: CovenantInput = {
     toolCalls: [],
     subagentSpawns: [],
     userMessages: [],
-    fileChanges: [],
   };
 
   for (const change of changes) {
     const name = change.status === 'deleted' ? STAGED_DELETE : STAGED_WRITE;
-    input.toolCalls.push({ name, args: { file_path: change.path } });
-    if (change.status !== 'deleted' && change.post !== null) {
-      input.fileChanges?.push({ path: change.path, pre: change.pre, post: change.post });
-    }
+    const evidence = stagedEvidence(change);
+    input.toolCalls.push({
+      name,
+      args: { file_path: change.path },
+      ...(evidence !== null && { fileChange: evidence }),
+    });
   }
 
   return input;
+}
+
+/**
+ * Tag one staged change as union evidence — `null` only when the staged content itself
+ * is unavailable (a binary staged blob), leaving that call unproven.
+ *
+ * A deletion always carries evidence: the judgment needs no content, so an unreadable
+ * (binary) HEAD blob merely drops the optional `pre` baseline. A `modified` change whose
+ * HEAD blob is unreadable maps to `create` — an unreadable baseline forgives nothing, so
+ * the whole staged content is judged as added (the same judgment main produced).
+ */
+function stagedEvidence(change: StagedChange): FileChange | null {
+  if (change.status === 'deleted') {
+    return change.pre === null
+      ? { kind: 'delete', path: change.path }
+      : { kind: 'delete', path: change.path, pre: change.pre };
+  }
+  if (change.post === null) return null;
+  if (change.status === 'added' || change.pre === null) {
+    return { kind: 'create', path: change.path, post: change.post };
+  }
+  return { kind: 'modify', path: change.path, pre: change.pre, post: change.post };
 }

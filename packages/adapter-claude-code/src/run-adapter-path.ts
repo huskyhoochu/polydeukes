@@ -81,17 +81,26 @@ export async function runAdapterPath(spec: {
     return blockAndRecord();
   }
 
-  // Attach pre/post evidence for mutating payloads (COVENANT-10 §4.3). The key is
-  // only attached when non-empty — a non-mutating payload keeps the legacy IR shape.
-  // A pre-state read failure that is not absence blocks: evidence that cannot be
-  // gathered must not dispatch a shape that reads as creation.
-  let fileChanges: ReturnType<typeof collectFileChanges>;
+  // Attach pre/post evidence to the call it belongs to (CORE-06 §4.2) — this path
+  // translates exactly one payload, so the one evidence rides toolCalls[0]. Attached
+  // only when provable: a non-mutating payload leaves its call unproven. A pre-state
+  // read failure that is not absence blocks: evidence that cannot be gathered must not
+  // dispatch a shape that reads as creation.
+  let evidence: ReturnType<typeof collectFileChanges>;
   try {
-    fileChanges = collectFileChanges(payload, readPreStateFromDisk);
+    evidence = collectFileChanges(payload, readPreStateFromDisk);
   } catch {
     return blockAndRecord();
   }
-  const input = fileChanges.length > 0 ? { ...built.value, fileChanges } : built.value;
+  const input =
+    evidence === null
+      ? built.value
+      : {
+          ...built.value,
+          toolCalls: built.value.toolCalls.map((call, index) =>
+            index === 0 ? { ...call, fileChange: evidence } : call,
+          ),
+        };
 
   let outcome: DispatchOutcome;
   try {

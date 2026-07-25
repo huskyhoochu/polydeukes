@@ -4,8 +4,10 @@ A development *discipline* framework for building alongside an AI coding partner
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
 **This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
-protocol — whose input IR now optionally carries agent-neutral `fileChanges` pre/post
-evidence — ROI telemetry, the data-config schema v2 with its `defineConfig(unknown)` validator
+protocol — whose input IR carries agent-neutral file-change evidence as a discriminated
+union (`create`/`modify`/`delete` — deletion is first-class), each change nested on its own
+tool-call element (singular `fileChange`, flattened via `allFileChanges`) so no sibling
+call's evidence can stand in for another — ROI telemetry, the data-config schema v2 with its `defineConfig(unknown)` validator
 and published JSON Schema (`@polydeukes/core/schema.json`), now including the `disciplines:`
 entry schema (exactly one predicate per entry) and the optional `waiver:` settings surface
 (`token` + `ttlMinutes`, validated to the TTL-waiver predicate's exact fail-fast boundaries and
@@ -31,7 +33,8 @@ parser that computes Edit/Write/MultiEdit apply-results without touching disk, t
 JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — the TTL
 waiver's real data source, admitting only positively-identified human-typed messages), and the new `adapter-git`
 package (the commit-surface adapter: staged diff → covenant input up-translation, filling
-the same agent-neutral `fileChanges` evidence from HEAD/staged blobs — the second adapter,
+the same agent-neutral per-call `fileChange` evidence from HEAD/staged blobs, deletions
+included — the second adapter,
 proving IR neutrality with zero core changes — plus its own namespace vocabulary:
 `resolveGitAdapterSettings`, validating `adapters.git.enforce: block|advise`, the first
 tenant of the CONFIG-07 container);

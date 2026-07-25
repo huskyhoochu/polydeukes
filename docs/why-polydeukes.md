@@ -130,6 +130,12 @@ a command that mentions no protected path. Boring is the point. A deterministic 
 inconvenient in exactly the ways it promised and in no others, and the way out of a
 closed gate is never a clever prompt — always a recorded, human-shaped action.
 
+<!-- Parked candidate (2026-07-25, CORE-06): a contract enforced only by documentation
+     will fail — three patches each moved the same hole until the promise moved into the
+     type itself: deletion became first-class evidence and every change rides its own
+     call, so absence of proof can no longer be misread as proof. Types are the
+     covenant's native language. -->
+
 ### 3. Evidence, not self-report
 
 **Nothing is trusted because someone — human or AI — says so.** Every covenant verdict

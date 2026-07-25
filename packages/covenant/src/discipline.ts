@@ -12,7 +12,13 @@
  */
 
 import { isAbsolute, relative } from 'node:path';
-import type { CovenantInput, CovenantVerdict, DisciplineEntry, FileChange } from '@polydeukes/core';
+import {
+  allFileChanges,
+  type CovenantInput,
+  type CovenantVerdict,
+  type DisciplineEntry,
+  type FileChange,
+} from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
 import type { CovenantRegistration } from './dispatch.js';
@@ -119,25 +125,46 @@ function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): stri
  * Judge one discipline entry against a covenant input (pure, COVENANT-10 §4.5).
  *
  * Delta family: in-scope file changes judged via {@link judgeAddedViolations} — the
- * reason names the discipline id and the added match text. Path family: a matching
- * change with `pre !== null` breaks (creation upholds). Command family: a shell-tool
- * command matching the pattern breaks. No file changes / no targets uphold (defensive
- * re-check of what routing would not have matched).
+ * reason names the discipline id and the added match text, and a deletion short-circuits
+ * to uphold (CORE-06 §4.3: deletion adds no content). Path family: a matching change of
+ * any kind but `create` breaks (an immutable file can be neither modified nor deleted;
+ * first authoring upholds). Command family: a shell-tool command matching the pattern
+ * breaks. No file changes / no targets uphold (defensive re-check of what routing would
+ * not have matched).
  */
 export function judgeDiscipline(
   entry: DisciplineEntry,
   input: CovenantInput,
   opts: DisciplineJudgeOptions,
 ): CovenantVerdict {
-  const fileChanges = input.fileChanges ?? [];
+  const fileChanges = allFileChanges(input);
 
   if (entry.forbid !== undefined) {
     const pattern = new RegExp(forbidPatternSource(entry.forbid));
     for (const target of forbidScope(entry, fileChanges, opts.rootDir)) {
-      const verdict = judgeAddedViolations(
-        { pre: target.change.pre, post: target.change.post },
-        pattern,
-      );
+      const change = target.change;
+      let verdict: CovenantVerdict;
+      switch (change.kind) {
+        case 'create':
+          verdict = judgeAddedViolations({ pre: null, post: change.post }, pattern);
+          break;
+        case 'modify':
+          verdict = judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
+          break;
+        case 'delete':
+          // Deletion adds no content, so the added direction has no violation to find.
+          verdict = { upheld: true };
+          break;
+        default: {
+          // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
+          // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
+          // throw a legible reason and let the judged body fail closed (exit 2).
+          const unhandled: never = change;
+          throw new Error(
+            `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
+          );
+        }
+      }
       if (verdict.upheld === false) {
         return {
           upheld: false,
@@ -150,10 +177,10 @@ export function judgeDiscipline(
 
   if (entry.immutable !== undefined) {
     for (const target of immutableScope(entry, fileChanges, opts.rootDir)) {
-      if (target.change.pre !== null) {
+      if (target.change.kind !== 'create') {
         return {
           upheld: false,
-          reason: `discipline '${entry.id}' broken: immutable file ${target.path} modified`,
+          reason: `discipline '${entry.id}' broken: immutable file ${target.path} mutated`,
         };
       }
     }
@@ -192,9 +219,15 @@ function buildMatches(
     return (input) => (shellCommands(input, opts).some((c) => pattern.test(c)) ? '-' : null);
   }
   if (entry.immutable !== undefined) {
-    return (input) => immutableScope(entry, input.fileChanges ?? [], spec.rootDir)[0]?.path ?? null;
+    return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
   }
-  return (input) => forbidScope(entry, input.fileChanges ?? [], spec.rootDir)[0]?.path ?? null;
+  // Deletions can never break the added direction, so they must not route a body spawn
+  // (COVENANT-10: routing adds no spawn waste); the judge still short-circuits them
+  // defensively when a mixed input arrives.
+  return (input) =>
+    forbidScope(entry, allFileChanges(input), spec.rootDir).find(
+      (target) => target.change.kind !== 'delete',
+    )?.path ?? null;
 }
 
 /**
