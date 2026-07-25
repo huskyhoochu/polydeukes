@@ -43,10 +43,14 @@ export type DisciplineJudgeOptions = {
  * `CompileDisciplinesSpec` — validated entries plus the assembly values baked into
  * each registration's body args and matches closure (COVENANT-10 §4.5).
  *
- * `transcript` is the session history the context family's evidence is evaluated
- * against at assembly time (absent = no evidence); `evaluatePrecedent` is the seam an
- * adapter fills for its own evidence vocabulary — `undefined` from it means the key is
- * unrecognized and assembly halts (COVENANT-13 §4.4).
+ * `transcript` is the session history the context family's evidence is evaluated against
+ * at assembly time. Absent means no evidence CHANNEL, not absent evidence — the entry
+ * cannot be judged and skips, whereas an empty-but-present transcript is a session that
+ * has said nothing yet and is judged as missing evidence (COVENANT-13 §4.5).
+ *
+ * `evaluatePrecedent` is the seam an adapter fills for its own evidence vocabulary.
+ * `undefined` from it means the key belongs to no adapter, so the entry skips rather than
+ * being judged on a guess. Assembly does not halt.
  */
 export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];

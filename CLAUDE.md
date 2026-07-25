@@ -32,7 +32,12 @@ library that compiles `disciplines:` data entries (`forbid`/`immutable`/`forbidC
 The context family (`requirePrecedent`, COVENANT-13) judges session history rather than the
 mutation: its evidence is evaluated at assembly time — a spawned body cannot hold a transcript —
 and transported to the body as an argv flag, with the `command` vocabulary judged by the
-compiler itself and every other key delegated to an adapter-supplied evaluator), and
+compiler itself and every other key delegated to an adapter-supplied evaluator. Evaluation
+answers found, missing, or **unjudgeable** — the last compiling a *skip registration* that
+keeps its routing, carries no body, and records one `skipped` on a match instead of judging.
+Assembly never throws, in any of the four families: one unresolvable entry taking down its
+siblings, both meta-covenants, and the waiver valve would leave no way to fix the config that
+caused it), and
 `packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
 adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
 parser that computes Edit/Write/MultiEdit apply-results without touching disk, the
@@ -41,7 +46,9 @@ JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — 
 waiver's real data source, admitting only positively-identified human-typed messages, and since
 COVENANT-13 also the tool-call history the context family queries — plus `evaluatePrecedent`,
 this adapter's own evidence vocabulary (`subagent` spawn-kind equality, `tool` name regex),
-returning `undefined` for any key it does not own so assembly fails closed), and the new `adapter-git`
+returning `undefined` for any key it does not own so the entry skips rather than judging on a
+guess; a read failure answers `undefined` too, keeping "no session file" distinct from "a session
+that has said nothing"), and the new `adapter-git`
 package (the commit-surface adapter: staged diff → covenant input up-translation, filling
 the same agent-neutral per-call `fileChange` evidence from HEAD/staged blobs, deletions
 included — the second adapter,

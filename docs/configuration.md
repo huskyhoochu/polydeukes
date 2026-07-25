@@ -114,12 +114,20 @@ adapters:
 
 The session surface (the editor-time hook) has no level setting here; it always blocks.
 
-**Context-family disciplines are left out of the commit surface.** A commit has no session
-to look at, so `requirePrecedent` entries are excluded when `pdks covenant check` assembles
-its judges — judging them with no evidence channel would block every matching commit with
-no legitimate way through. The exclusion is not silent: each excluded entry writes one
-`skipped` telemetry record, labelled with its `id`, so a discipline that did nothing on
-this surface says so in the data.
+**Context-family disciplines skip on the commit surface.** A commit has no session to look
+at, so a `requirePrecedent` entry cannot be judged there — demanding evidence a commit
+cannot carry would block every matching commit with no legitimate way through.
+
+They are not filtered out, though. They assemble like any other discipline and become
+*skip registrations*: routing intact, no judge body. When one matches a staged change it
+records a `skipped` telemetry event and lets the commit proceed. The record carries the
+entry's `id` and the change it would have judged, so a gate that did nothing says so in
+the data — and it appears **only when the entry's scope actually matched**, so a commit
+touching nothing the entry cares about records nothing at all.
+
+This is the same disposition the session surface uses whenever it has no transcript to
+read. One rule, both surfaces: evidence that cannot be evaluated is skipped and measured,
+never blocked and never silent.
 
 ### `telemetry` (optional)
 
