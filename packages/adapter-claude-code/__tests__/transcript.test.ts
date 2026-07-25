@@ -446,13 +446,19 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('returns fresh objects — mutating a returned call or its args leaves later queries intact', () => {
-    // P1 alias-safety (the same contract the shipped queries pin), extended to the nested
-    // args object. Mutation caught: a shallow copy sharing args with the snapshot, so
-    // writing call.args.subagent_type would rewrite what a later findToolCalls — or the
-    // spawn query reading the same block — returns.
+    // P1 alias-safety (the same contract the shipped queries pin), extended to values
+    // NESTED inside args — a top-level-only mutation passes under a shallow spread, so
+    // the deep write below is what actually defends the contract (re-review 2026-07-26).
+    // Mutation caught: a shallow copy sharing nested arg values with the snapshot, so
+    // writing call.args.edits[0] would rewrite what a later findToolCalls returns.
     const jsonl = toJsonl([
       assistantSpawnEntry([
-        { type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
+        {
+          type: 'tool_use',
+          id: 't1',
+          name: 'Agent',
+          input: { subagent_type: 'tdd-writer', edits: [{ old_string: 'keep' }] },
+        },
       ]),
     ]);
     const transcript = transcriptFromJsonl(jsonl);
@@ -460,9 +466,10 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     const [call] = transcript.findToolCalls();
     call.name = 'rewritten';
     call.args.subagent_type = 'rewritten';
+    (call.args.edits as { old_string: string }[])[0].old_string = 'rewritten';
 
     expect(transcript.findToolCalls()).toEqual([
-      { name: 'Agent', args: { subagent_type: 'tdd-writer' } },
+      { name: 'Agent', args: { subagent_type: 'tdd-writer', edits: [{ old_string: 'keep' }] } },
     ]);
     expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
   });

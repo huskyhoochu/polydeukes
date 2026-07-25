@@ -108,7 +108,7 @@
       ]
     },
     "requirePrecedent": {
-      "description": "Context family — the session evidence one edit requires beforehand. Exactly one evidence key. The core owns and fully validates 'command'; every other key is adapter vocabulary whose value passes through verbatim (unconstrained here, judged by that adapter).",
+      "description": "Context family — the session evidence one edit requires beforehand. Exactly one evidence key. The core owns and fully validates 'command'; every other key is adapter vocabulary whose value passes through verbatim (unconstrained here, judged by that adapter). Beware: a misspelled core key (e.g. 'commmand') also validates here as adapter vocabulary — spelling mistakes surface only at assembly, where the entry fails closed.",
       "type": "object",
       "minProperties": 1,
       "maxProperties": 1,

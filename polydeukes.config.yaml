@@ -76,6 +76,6 @@ disciplines:
     in:
       - 'package.json'
       - 'packages/*/package.json'
-    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
+    when: '(^|\n)\s*"[^"]+"\s*:\s*"(?:[~^<>=]{0,2}\s?\d|\*|latest|npm:|git\+|github:|file:|workspace:)[^"]*"'
     requirePrecedent:
       command: 'npm view '

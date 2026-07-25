@@ -312,7 +312,9 @@ function buildMatches(
  * Vocabulary is layered: `command` is the core's own, evaluated here against the shell
  * surface with the same filter the command family judges by; every other key is adapter
  * vocabulary delegated to the injected seam. An unrecognized key (`undefined` from the
- * seam) or a missing seam halts assembly rather than guessing a direction.
+ * seam) or a missing seam throws rather than guessing a direction; the compiler
+ * contains that throw to the entry (a flagless registration the body's misassembly
+ * gate blocks) instead of letting one entry take down the whole assembly.
  */
 function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
   const evidence = entry.requirePrecedent as Record<string, unknown>;
@@ -367,14 +369,23 @@ export function compileDisciplineRegistrations(
     if (entry.forbid !== undefined) new RegExp(forbidPatternSource(entry.forbid));
     if (entry.forbidCommand !== undefined) new RegExp(entry.forbidCommand);
     if (entry.when !== undefined) new RegExp(entry.when);
-    const precedentCommand = entry.requirePrecedent?.command;
-    if (typeof precedentCommand === 'string') new RegExp(precedentCommand);
 
     // Context family only: the other three would hit the body's misassembly gate.
-    const precedentFlag =
-      entry.requirePrecedent === undefined
-        ? []
-        : [evaluateEvidence(entry, spec) ? '--precedent-found' : '--precedent-missing'];
+    // An evidence failure (unrecognized key, missing evaluator, unusable surface) is
+    // contained to the entry: it compiles flagless, so the body's misassembly gate
+    // blocks the entry's own scope while every other registration — and the waiver
+    // valve — stays assembled. Rethrowing here turned one bad evidence key into a
+    // total assembly lockout with no in-session recovery (re-review, 2026-07-26).
+    let precedentFlag: string[] = [];
+    if (entry.requirePrecedent !== undefined) {
+      try {
+        precedentFlag = [
+          evaluateEvidence(entry, spec) ? '--precedent-found' : '--precedent-missing',
+        ];
+      } catch {
+        precedentFlag = [];
+      }
+    }
 
     return {
       label: entry.id,
