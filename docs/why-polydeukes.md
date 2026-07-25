@@ -35,32 +35,37 @@ human in a hurry — can quietly remove.
 
 ## What it puts on one thin core
 
-- **covenant** — deterministic blocks on edits and commands, defined as promises both
-  sides accept. Breaking one is loud, bypassing one is recorded, and the block applies to
-  the human exactly as much as to the AI.
-- **ledger** — completion authority moves from "I say I'm done" to "the checks passed."
-- **memory** — yesterday's decisions and dead ends, kept searchable next to the code.
-- **verify** — judgments are not taken at their word; they check each other adversarially.
+- **covenant** *(shipped, pre-alpha)* — deterministic blocks on edits and commands,
+  defined as promises both sides accept. Breaking one is loud, bypassing one is recorded,
+  and the block applies to the human exactly as much as to the AI. Two surfaces judge
+  today: session tool calls and git commits. See
+  [Configuring Polydeukes](./configuration.md).
+- **ledger** *(on the roadmap)* — completion authority moves from "I say I'm done" to
+  "the checks passed."
+- **memory** *(on the roadmap)* — yesterday's decisions and dead ends, kept searchable
+  next to the code.
+- **verify** *(on the roadmap)* — judgments are not taken at their word; they check each
+  other adversarially.
 
-<!-- TODO: one link per area to its doc/package once each ships; mark current status
-     honestly (pre-alpha: covenant core shipped, others on the roadmap).
-     Parked candidates (promote in a later pass, delete when landed):
-     - debt amnesty: a discipline judges only what an edit ADDS — pre-existing debt is
-       forgiven, so adopting a rule never blocks a legacy codebase. New-violation-only
-       is the delta direction itself, not a flag (COVENANT-05, 2026-07-20).
-     - a discipline is one data entry: users declare forbid/immutable/forbidCommand as
-       config data and get enforcement, per-rule telemetry, and the escape valve without
-       writing process plumbing — "rules are config, plugins are few" (ESLint's shape).
-       The command family routes on content, so even a command mentioning no protected
-       path is judged (COVENANT-10, 2026-07-20).
-     - the config that declares the discipline is itself under the discipline: the
-       discovered config file auto-joins the protection surface, and so does the loader
-       that reads it — every link in the judging chain is judged, or the chain is
-       decoration (CONFIG-03, 2026-07-21).
-     - provenance, not secrecy, is the defense: the waiver token may sit in plain sight
-       in the config — the AI can know it and still cannot forge the human-typed
-       provenance mark the transcript records, so only a human can open the valve
-       (ADAPTER-04, 2026-07-21). -->
+Three properties of the shipped layer are worth stating plainly, because each removes a
+reason adoption usually fails.
+
+**Debt is amnestied.** A discipline judges only what an edit *adds*. Pre-existing
+violations are forgiven, so switching a rule on never blocks a legacy codebase on day
+one. This is not a migration flag to be removed later — judging the delta *is* the
+semantics.
+
+**A discipline is one data entry.** Users declare `forbid`, `immutable`, or
+`forbidCommand` as configuration data and get enforcement, per-rule telemetry, and the
+escape valve — without writing any process plumbing. Rules are config; plugins are few.
+The command family routes on content, so even a command that mentions no protected path
+is still judged.
+
+**The config that declares the discipline is itself under it.** The discovered config
+file joins the protection surface automatically, and so does the loader that reads it.
+Every link in the judging chain is judged, or the chain is decoration.
+
+<!-- TODO: link each remaining area to its doc/package as it ships. -->
 
 ## Three design principles
 
@@ -171,18 +176,22 @@ criteria as real commands and caught five path-matching bypasses in the framewor
 matching primitive, which became a pre-fix ticket before v0.1 was allowed to stand. The
 journal adds a round per milestone and never edits an old one — the trend is the data.
 
+Two properties held when a second enforcement surface arrived. **Provenance translates
+per surface.** The session valve trusts the marking a transcript puts on a human-typed
+message; the commit-time valve trusts a human at a terminal, because an agent-spawned
+commit has no TTY to answer the prompt. One principle — an AI can never open its own
+valve — with one concrete translation per surface it runs on. **And the level belongs to
+the observer.** A commit-time verdict is not a new change but a second observation of the
+same one, so how strictly that observation is enforced — block or advise — is the
+observer's own setting, never part of the judge's shared vocabulary. Advise turns a
+verdict that could only be passed by typing a waiver into a backstop that measures
+instead of blocking.
+
 <!-- Standing rule: add one paragraph per milestone round from the dogfooding journal
      (passes / blocks / bypasses + what the numbers changed); never rewrite past rounds.
-     This section is the whitepaper's proof and should stay current.
-     Parked candidate (2026-07-22, ADAPTER-git): "provenance translates per surface" —
-     the session valve trusts the transcript's human-utterance marking, the commit-time
-     valve trusts a human at the terminal (TTY); one principle — an AI can never open
-     its own valve — with one concrete translation per enforcement surface.
-     Parked candidate (2026-07-23, CONFIG-06): "the level belongs to the observer" —
-     a commit-time verdict is a second observation of the same change, and how strictly
-     an observation is enforced (block | advise) is the observer's own setting, never
-     the judge's shared vocabulary; advise turns a valve-as-ritual contradiction into
-     a backstop that measures instead of blocking. -->
+     The journal is the primary source — this section quotes it, never precedes it.
+     v0.2 round is still unwritten (the milestone gate runs it); add the paragraph then.
+     This section is the whitepaper's proof and should stay current. -->
 
 ## Where it stands
 
