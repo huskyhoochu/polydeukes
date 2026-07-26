@@ -279,12 +279,8 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
     const dir = mkdtempSync(join(tmpdir(), 'pdks-transcript-'));
     const missingPath = join(dir, 'does-not-exist.jsonl');
     try {
-      let transcript: ReturnType<typeof transcriptFromJsonlFile>;
-      expect(() => {
-        transcript = transcriptFromJsonlFile(missingPath);
-      }).not.toThrow();
-
-      expect(transcript).toBeUndefined();
+      // Calling it directly IS the no-throw assertion — a raise fails the test outright.
+      expect(transcriptFromJsonlFile(missingPath)).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
