@@ -114,8 +114,12 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
   // with no meta-covenant verdict mixed in. Until now the whole family was exercised by
   // hand at assembly time and pinned by nothing; the first review found it inert on the
   // very cases it exists for, and the third found the session boundary mishandled.
+  // Two context entries share this scope — one wants a measured version (`command`), one
+  // wants the docs read (`tool`, the adapter's own vocabulary). Neither carries a `when`,
+  // so the content below is irrelevant to the trigger: touching a manifest is the trigger.
   const manifest = 'packages/scratch/package.json';
   const dependencyLine = '{\n  "left-pad": "^1.3.0"\n}\n';
+  const CONTEXT_ENTRIES = ['manifest-needs-context7', 'manifest-needs-npm-view'];
 
   it('skips rather than blocks when no transcript accompanies the payload', () => {
     // No evidence channel is not "no evidence". Demanding session proof from a call that
@@ -126,8 +130,11 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
     expect(
-      records.filter((r) => r.label === 'dependency-needs-npm-view').map((r) => r.event),
-    ).toEqual(['skipped']);
+      records
+        .filter((r) => r.event === 'skipped')
+        .map((r) => r.label)
+        .sort(),
+    ).toEqual(CONTEXT_ENTRIES);
   });
 
   it('blocks the same write when a session exists but carries no npm view', () => {
@@ -197,8 +204,8 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records[0].label).toBe('adapter-claude-code');
   });
 
-  it('an Edit on a protected source path is blocked by self-mod (exit 2) with run-all rows', () => {
-    const result = runHook(editPayload('packages/covenant/src/dispatch.ts'));
+  it('an Edit on a protected gate file is blocked by self-mod (exit 2) with run-all rows', () => {
+    const result = runHook(editPayload('.claude/hooks/covenant-pretooluse.mjs'));
 
     expect(result.status).toBe(2);
     const { records } = readRecords(telemetryPath);
@@ -209,9 +216,9 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records.length).toBe(2);
   });
 
-  it('a Bash sed -i on a protected source path is blocked by shell-mod (exit 2)', () => {
+  it('a Bash sed -i on a protected gate file is blocked by shell-mod (exit 2)', () => {
     const result = runHook(
-      bashPayload("sed -i 's/exit 2/exit 0/' packages/covenant/src/dispatch.ts"),
+      bashPayload("sed -i 's/exit 2/exit 0/' .claude/hooks/covenant-pretooluse.mjs"),
     );
 
     expect(result.status).toBe(2);
@@ -223,7 +230,7 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
   });
 
   it('a read-only allowlisted command mentioning a protected path passes (exit 0)', () => {
-    const result = runHook(bashPayload('cat packages/covenant/src/index.ts'));
+    const result = runHook(bashPayload('cat .claude/hooks/covenant-pretooluse.mjs'));
 
     expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
@@ -238,7 +245,7 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     // never silent. This is the only hook-level test of the transcript_path →
     // dispatcher → waiver wiring; the predicate itself is pinned in the covenant
     // package and the provider in transcript-waiver.e2e.
-    const result = runHook(editPayload('packages/covenant/src/dispatch.ts'), {
+    const result = runHook(editPayload('.claude/hooks/covenant-pretooluse.mjs'), {
       transcriptPath: invokingTranscript(),
     });
 
@@ -296,9 +303,10 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
   });
 
   it('a Write adding banned vocabulary to an in-scope source path is blocked by covenant-vocabulary', () => {
-    // Absolute in-scope path that does not exist on disk: pre=null, so the Write's
-    // whole content is the added direction. self-mod blocks the same call by path
-    // mention (run-all) — the discipline verdict is pinned by its own labeled row.
+    // Absolute in-scope path that does not exist on disk: pre=null, so the Write's whole
+    // content is the added direction. Since the protected surface narrowed to gate files
+    // (2026-07-26) the meta-covenants no longer route here at all, so this is the
+    // discipline judging alone — which is what a user's own repository looks like.
     const result = runHook(
       writePayload(
         join(repoRoot, 'packages/core/src/e2e-probe.ts'),
@@ -310,7 +318,9 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     const { records } = readRecords(telemetryPath);
     const byLabel = (label: string) => records.filter((r) => r.label === label);
     expect(byLabel('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
-    expect(byLabel('self-mod').map((r) => r.event)).toEqual(['blocked']);
+    // No meta-covenant row: a package source is not a gate file, so nothing but the
+    // discipline had anything to say about this call.
+    expect(byLabel('self-mod')).toEqual([]);
   });
 
   it('the same banned-vocabulary Write outside the discipline scope passes (exit 0)', () => {

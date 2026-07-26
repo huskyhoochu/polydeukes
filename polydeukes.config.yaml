@@ -5,18 +5,35 @@ languages:
     productionGlob: 'packages/*/src/**/*.ts'
     testCmd: 'pnpm --filter {scope} test'
 
+# The session surface protects what only IT can see (narrowed 2026-07-26).
+#
+# Judge SOURCES were on this list and are not any more. They live in git, so a staged
+# change to them is already caught by `pdks covenant check` re-observing the commit —
+# the second of the two observation layers. Blocking them here as well measured 2,414
+# waiver bypasses against 14 real discipline blocks, which is friction, not defence: it
+# was stopping the work this repository exists to do and being waived every time.
+#
+# `dist` is the opposite case. It is gitignored, so the commit surface never sees it, and
+# a poisoned judge executable disarms every covenant without a trace. Nobody edits it by
+# hand either, so keeping it costs nothing. It is the one file class this surface alone
+# can defend — which is the only reason a path belongs here.
+#
+# The root config attaches itself (CONFIG-03), and assembly adds the live transcript
+# (COVENANT-13) — both for the same reason: losing them disarms the judge.
 protectedPaths:
-  - 'packages/core/src'
-  - 'packages/core/dist'
-  - 'packages/covenant/src'
-  - 'packages/covenant/dist'
+  # Gate definitions. Editing any of these disarms a check rather than passing it, and
+  # none can be caught by the layer it defines. The hook wiring IS the session surface;
+  # lefthook.yml IS the commit surface; biome.json sets the bar the commit surface holds
+  # things to, so loosening a rule there is indistinguishable from fixing the code.
   - '.claude/hooks'
   - '.claude/settings.json'
-  - 'packages/polydeukes/src'
+  - 'lefthook.yml'
+  - 'biome.json'
+  # The judge executables, unseeable by the commit surface because they are gitignored.
+  - 'packages/core/dist'
+  - 'packages/covenant/dist'
   - 'packages/polydeukes/dist'
-  - 'packages/adapter-claude-code/src'
   - 'packages/adapter-claude-code/dist'
-  - 'packages/adapter-git/src'
   - 'packages/adapter-git/dist'
 
 # The time-boxed valve. A human types this token into the conversation and the waiver
@@ -71,11 +88,26 @@ disciplines:
       - 'packages/core/src/**'
       - 'packages/core/schema/**'
     forbid: '\b(vitest|pytest|go test)\b'
-  - id: 'dependency-needs-npm-view'
-    why: 'a dependency version must be measured before it is written; training knowledge and context7 version strings are not evidence. the pattern spans the whole version value because the delta keys on matched text, and a truncated match hides same-prefix bumps.'
+  # Two entries over one scope: a manifest edit needs BOTH a measured version and read
+  # docs. `requirePrecedent` takes exactly one key, so a pair of requirements is written
+  # as a pair of disciplines.
+  #
+  # Neither carries a `when` (rewritten 2026-07-26). Three review rounds went into a regex
+  # answering "is this string a new dependency version" — a semantic question asked
+  # syntactically, which leaked both ways every time: it missed ranges, tags and protocol
+  # forms, and once widened it caught `workspace:` and the `engines` field. Editing a
+  # manifest at all is rare enough that scope alone is the cheaper, honest trigger.
+  - id: 'manifest-needs-npm-view'
+    why: 'a dependency version must be measured before it is written; training knowledge is not evidence of what npm currently resolves.'
     in:
       - 'package.json'
       - 'packages/*/package.json'
-    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
     requirePrecedent:
       command: 'npm view '
+  - id: 'manifest-needs-context7'
+    why: 'the API a dependency exposes is read from its docs, not recalled. this is the adapter evidence vocabulary rather than the core one — the observation is a tool call, and no shell command carries it.'
+    in:
+      - 'package.json'
+      - 'packages/*/package.json'
+    requirePrecedent:
+      tool: 'context7'

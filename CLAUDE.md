@@ -116,18 +116,26 @@ the roadmap a plan rather than a defect list.
 **Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
 `.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
 project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant
-(Bash axis) both protect the five packages' `src`/`dist` plus the hook wiring and the root
-`polydeukes.config.yaml` itself. Since CONFIG-03 the protection-policy data (protectedPaths /
-adapters / disciplines) lives in that config file, not in the hook — the hook consumes it via the
-umbrella `loadConfig`, and a missing or invalid config blocks every call (fail-closed). Seven
-wired disciplines (since COVENANT-10) judge beyond path mention, across four predicate families:
-`covenant-vocabulary` and `english-only-sources` block *new* banned occurrences in package
-sources (delta family — existing debt is forgiven); `hooks-stay-armed`, `work-stays-recoverable`,
-and `pnpm-only` block gate-disarming, unrecoverable, or wrong-runtime commands (command family)
-even though they mention no protected path; and since COVENANT-13 the context family judges
-*session history* rather than the mutation itself — `dependency-needs-npm-view` blocks a
-version-shaped dependency addition unless the session already ran `npm view`, the sanctioned
-path being to actually run it. Every call
+(Bash axis) protect **gate definitions and judge executables only** (narrowed 2026-07-26): the
+hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, and the five packages'
+`dist`. Package **sources came off that list** — they live in git, so the commit surface already
+re-observes any staged change to them, and blocking them in-session as well had measured 2,414
+waiver bypasses against 14 real discipline blocks. What stays is what only this surface can see:
+a file whose edit disarms a check rather than passing it, and gitignored build output that no
+commit ever shows. The root `polydeukes.config.yaml` attaches itself (CONFIG-03) and assembly
+adds the live transcript path (COVENANT-13), both for the same reason. Since CONFIG-03 the
+protection-policy data (protectedPaths / adapters / disciplines) lives in that config file, not
+in the hook — the hook consumes it via the umbrella `loadConfig`, and a missing or invalid config
+blocks every call (fail-closed). Eight wired disciplines (since COVENANT-10) judge beyond path
+mention, across four predicate families: `covenant-vocabulary` and `english-only-sources` block
+*new* banned occurrences in package sources (delta family — existing debt is forgiven);
+`hooks-stay-armed`, `work-stays-recoverable`, and `pnpm-only` block gate-disarming,
+unrecoverable, or wrong-runtime commands (command family) even though they mention no protected
+path; and since COVENANT-13 the context family judges *session history* rather than the mutation
+itself — `manifest-needs-npm-view` and `manifest-needs-context7` require a measured version and
+read docs before any manifest edit, the sanctioned path being to actually run them. Neither
+carries a `when`: three review rounds went into a regex asking "is this string a new dependency
+version" syntactically, and scope alone turned out to be the cheaper trigger. Every call
 is measured in `.polydeukes/roi.log` (local, gitignored). Since ADAPTER-git the same
 judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`. The
 commit surface's level is the git adapter's namespace setting (`adapters.git.enforce`,
@@ -139,8 +147,11 @@ the commit proceeds with a stderr advisory — a backstop that measures instead 
 an unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
 Consequences to know:
 
-- Editing covenant/core/adapter/umbrella sources or the root config file — or any Bash command
-  *mentioning* those paths without a read-only first token — is **blocked (exit 2)** by design.
+- Editing a gate definition (hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`),
+  a package's `dist`, or the root config file — or any Bash command *mentioning* those paths
+  without a read-only first token — is **blocked (exit 2)** by design. **Package sources are no
+  longer on that list** (2026-07-26), so ordinary development runs without a waiver; the
+  disciplines still judge those edits on their own axes.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target
