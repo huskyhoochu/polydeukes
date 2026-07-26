@@ -77,12 +77,20 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
     expectSkip(registration);
   });
 
-  it('skips when a non-command evidence key arrives with no evaluator injected', () => {
+  it('skips QUIETLY when no evaluator is injected — the surface cannot speak the vocabulary', () => {
+    // Not an author's mistake. A surface that does not speak adapter vocabulary declines
+    // to supply an evaluator, and `pdks covenant check` never supplies one — announcing
+    // it would put a line on stderr for every commit. Mutation caught: this case merged
+    // back into the loud configFault branch, which is what the repo actually observed the
+    // day it first configured a `tool` entry.
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
     const [registration] = compileDisciplineRegistrations(
       contextSpec([typoEntry], { transcript: transcriptWithToolCalls([]) }),
     );
 
     expectSkip(registration);
+    expect(stderr).not.toHaveBeenCalled();
   });
 
   it('skips on a non-compilable requirePrecedent.command pattern', () => {

@@ -387,10 +387,15 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
   // environment fact — on the commit surface, which never injects a transcript, that
   // would hide it for the life of the config.
   if (spec.evaluatePrecedent === undefined) {
+    // An environment fact, not an author's mistake: a surface that does not speak adapter
+    // vocabulary correctly declines to supply an evaluator, and the commit surface never
+    // does. Announcing it would put a line on stderr for every commit (measured the day
+    // this repo first configured a `tool` entry). A misspelled key is the loud case — the
+    // evaluator is present and answers `undefined` for it, below.
     return {
       kind: 'unjudgeable',
       reason: `no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
-      configFault: true,
+      configFault: false,
     };
   }
   let answer: boolean | undefined;
