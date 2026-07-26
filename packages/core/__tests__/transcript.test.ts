@@ -40,6 +40,7 @@ describe('§5.1 CanonicalTranscript — fake transcript consumable by the interf
     const fake: CanonicalTranscript = {
       findSubagentInvocations: () => invocations,
       findUserMessages: () => messages,
+      findToolCalls: () => [],
     };
 
     expect(fake.findSubagentInvocations()).toEqual([

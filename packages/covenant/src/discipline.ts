@@ -14,10 +14,12 @@
 import { isAbsolute, relative } from 'node:path';
 import {
   allFileChanges,
+  type CanonicalTranscript,
   type CovenantInput,
   type CovenantVerdict,
   type DisciplineEntry,
   type FileChange,
+  noopTranscript,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
@@ -28,16 +30,28 @@ import type { CovenantRegistration } from './dispatch.js';
  *
  * `shellTools`/`commandArgs` name the shell surface (injected values, shell-mod
  * precedent — never core vocabulary); `rootDir` anchors glob relativization.
+ * `precedentFound` is the context family's evidence verdict, evaluated at assembly
+ * time and transported to the body as an argv flag (COVENANT-13 §4.4).
  */
 export type DisciplineJudgeOptions = {
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+  precedentFound?: boolean;
 };
 
 /**
  * `CompileDisciplinesSpec` — validated entries plus the assembly values baked into
  * each registration's body args and matches closure (COVENANT-10 §4.5).
+ *
+ * `transcript` is the session history the context family's evidence is evaluated against
+ * at assembly time. Absent means no evidence CHANNEL, not absent evidence — the entry
+ * cannot be judged and skips, whereas an empty-but-present transcript is a session that
+ * has said nothing yet and is judged as missing evidence (COVENANT-13 §4.5).
+ *
+ * `evaluatePrecedent` is the seam an adapter fills for its own evidence vocabulary.
+ * `undefined` from it means the key belongs to no adapter, so the entry skips rather than
+ * being judged on a guess. Assembly does not halt.
  */
 export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
@@ -47,6 +61,11 @@ export type CompileDisciplinesSpec = {
   shellTools: string[];
   commandArgs: string[];
   escapeHatch?: CovenantRegistration['escapeHatch'];
+  transcript?: CanonicalTranscript;
+  evaluatePrecedent?: (
+    evidence: Record<string, unknown>,
+    transcript: CanonicalTranscript,
+  ) => boolean | undefined;
 };
 
 /** Normalize an optional glob field to an array (absent = empty). */
@@ -108,17 +127,81 @@ function forbidPatternSource(forbid: NonNullable<DisciplineEntry['forbid']>): st
   return typeof forbid === 'string' ? forbid : forbid.added;
 }
 
-/** Shell command strings of the input: values of the named args on shell-tool calls. */
-function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+/**
+ * Added-direction verdict for one change, exhaustive over the CORE-06 evidence union.
+ * One definition shared by the delta family's judge and the context family's trigger,
+ * so the two can never disagree on what a change kind means. A deletion upholds —
+ * it adds no content, so the added direction has no violation to find.
+ */
+function judgeAddedForChange(change: FileChange, pattern: RegExp): CovenantVerdict {
+  switch (change.kind) {
+    case 'create':
+      return judgeAddedViolations({ pre: null, post: change.post }, pattern);
+    case 'modify':
+      return judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
+    case 'delete':
+      return { upheld: true };
+    default: {
+      // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
+      // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
+      // throw a legible reason and let the judged body fail closed (exit 2).
+      const unhandled: never = change;
+      throw new Error(
+        `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
+      );
+    }
+  }
+}
+
+/** The one shell-surface filter: named args of shell-tool calls, whatever the source. */
+function filterShellCommands(
+  calls: readonly { name: string; args?: Record<string, unknown> }[],
+  shellTools: string[],
+  commandArgs: string[],
+): string[] {
   const commands: string[] = [];
-  for (const call of input.toolCalls) {
-    if (!opts.shellTools.includes(call.name)) continue;
-    for (const argName of opts.commandArgs) {
+  for (const call of calls) {
+    if (!shellTools.includes(call.name)) continue;
+    for (const argName of commandArgs) {
       const value = call.args?.[argName];
       if (typeof value === 'string') commands.push(value);
     }
   }
   return commands;
+}
+
+/** Shell command strings of the input: values of the named args on shell-tool calls. */
+function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+  return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
+}
+
+/**
+ * The relativized path of the first change triggering a context entry, or null
+ * (COVENANT-13 §4.4). One trigger definition, shared by the judge and by routing.
+ *
+ * With `when`, the trigger is the added direction of the delta layer verbatim, so a
+ * `delete` never triggers (deletion adds no content). Without `when`, every in-scope
+ * mutation triggers — deletion included, since erasing a covered file without precedent
+ * is exactly what such an entry demands evidence for.
+ */
+function precedentTrigger(
+  entry: DisciplineEntry,
+  input: CovenantInput,
+  rootDir: string,
+): string | null {
+  const pattern = entry.when === undefined ? null : new RegExp(entry.when);
+  for (const target of forbidScope(entry, allFileChanges(input), rootDir)) {
+    if (pattern === null) return target.path;
+    if (judgeAddedForChange(target.change, pattern).upheld === false) return target.path;
+  }
+  return null;
+}
+
+/** Describe the evidence an entry requires, for the break reason. */
+function describePrecedent(requirePrecedent: Record<string, unknown>): string {
+  return Object.entries(requirePrecedent)
+    .map(([key, value]) => `${key} ${JSON.stringify(value)}`)
+    .join(', ');
 }
 
 /**
@@ -142,29 +225,7 @@ export function judgeDiscipline(
   if (entry.forbid !== undefined) {
     const pattern = new RegExp(forbidPatternSource(entry.forbid));
     for (const target of forbidScope(entry, fileChanges, opts.rootDir)) {
-      const change = target.change;
-      let verdict: CovenantVerdict;
-      switch (change.kind) {
-        case 'create':
-          verdict = judgeAddedViolations({ pre: null, post: change.post }, pattern);
-          break;
-        case 'modify':
-          verdict = judgeAddedViolations({ pre: change.pre, post: change.post }, pattern);
-          break;
-        case 'delete':
-          // Deletion adds no content, so the added direction has no violation to find.
-          verdict = { upheld: true };
-          break;
-        default: {
-          // Compiler-enforced exhaustiveness stays (the never assignment breaks the build
-          // if a variant goes unhandled); at runtime an unrecognized kind is unjudgeable —
-          // throw a legible reason and let the judged body fail closed (exit 2).
-          const unhandled: never = change;
-          throw new Error(
-            `unjudgeable evidence kind ${JSON.stringify(unhandled)} — a stale adapter dist? rebuild with pnpm build`,
-          );
-        }
-      }
+      const verdict = judgeAddedForChange(target.change, pattern);
       if (verdict.upheld === false) {
         return {
           upheld: false,
@@ -200,6 +261,18 @@ export function judgeDiscipline(
     return { upheld: true };
   }
 
+  if (entry.requirePrecedent !== undefined) {
+    const triggered = precedentTrigger(entry, input, opts.rootDir);
+    // Absent evidence is missing evidence: only an explicit true opens the gate.
+    if (triggered !== null && opts.precedentFound !== true) {
+      return {
+        upheld: false,
+        reason: `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)})`,
+      };
+    }
+    return { upheld: true };
+  }
+
   // Entries reach here only unvalidated; validated data always carries one predicate.
   return { upheld: true };
 }
@@ -221,6 +294,12 @@ function buildMatches(
   if (entry.immutable !== undefined) {
     return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
   }
+  if (entry.requirePrecedent !== undefined) {
+    // Routing is evidence-blind: a trigger with evidence still spawns the body and
+    // records `passed` — "the gate checked, and the evidence was there" is the context
+    // family's measurement value, not spawn waste (COVENANT-13 §4.4).
+    return (input) => precedentTrigger(entry, input, spec.rootDir);
+  }
   // Deletions can never break the added direction, so they must not route a body spawn
   // (COVENANT-10: routing adds no spawn waste); the judge still short-circuits them
   // defensively when a mixed input arrives.
@@ -231,25 +310,202 @@ function buildMatches(
 }
 
 /**
+ * The three results of asking whether session evidence preceded a mutation
+ * (COVENANT-13 §4.5).
+ *
+ * `unjudgeable` is not a verdict — it reports that the question could not be asked.
+ * `configFault` separates an author's mistake, which must name itself on stderr, from an
+ * environment fact such as an absent session, which must not: warning on every sessionless
+ * assembly would train the reader to ignore the channel carrying the real faults.
+ */
+type EvidenceOutcome =
+  | { kind: 'found' }
+  | { kind: 'missing' }
+  | { kind: 'unjudgeable'; reason: string; configFault: boolean };
+
+/**
+ * Evaluate a context entry's evidence against the session at assembly time
+ * (COVENANT-13 §4.4) — the body is a spawned CLI and cannot hold a transcript.
+ *
+ * Vocabulary is layered: `command` is the core's own, evaluated here against the shell
+ * surface with the same filter the command family judges by; every other key is adapter
+ * vocabulary delegated to the injected seam. Nothing throws — an evidence spec that
+ * cannot be resolved yields `unjudgeable`, which the compiler turns into a skip
+ * registration rather than a failure outliving the entry that caused it.
+ */
+function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec): EvidenceOutcome {
+  const evidence = entry.requirePrecedent as Record<string, unknown>;
+  const command = evidence.command;
+  const noSession = {
+    kind: 'unjudgeable',
+    reason: 'no session transcript to read',
+    configFault: false,
+  } as const;
+
+  if (typeof command === 'string') {
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(command);
+    } catch {
+      return {
+        kind: 'unjudgeable',
+        reason: `requirePrecedent.command is not a compilable pattern (${command})`,
+        configFault: true,
+      };
+    }
+    if (spec.transcript === undefined) return noSession;
+    // A transcript with no shell surface can never satisfy command evidence. The question
+    // is unanswerable, not answered "no" — reporting `missing` would forge a universal
+    // block with no legitimate pass path.
+    if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) {
+      return {
+        kind: 'unjudgeable',
+        reason: 'command evidence needs a shell surface (shellTools/commandArgs)',
+        configFault: true,
+      };
+    }
+    let found: boolean;
+    try {
+      const calls = spec.transcript.findToolCalls();
+      found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
+        pattern.test(c),
+      );
+    } catch {
+      // An injected transcript that throws is an unusable channel, not an answer — the
+      // same reason the evaluator seam below is wrapped.
+      return {
+        kind: 'unjudgeable',
+        reason: 'the injected transcript threw while being queried',
+        configFault: true,
+      };
+    }
+    return found ? { kind: 'found' } : { kind: 'missing' };
+  }
+
+  // Vocabulary is settled BEFORE the session is. Both facts can be true at once, and
+  // answering "no session" for a misspelled key files the author's mistake under an
+  // environment fact — on the commit surface, which never injects a transcript, that
+  // would hide it for the life of the config.
+  if (spec.evaluatePrecedent === undefined) {
+    return {
+      kind: 'unjudgeable',
+      reason: `no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
+  }
+  let answer: boolean | undefined;
+  try {
+    answer = spec.evaluatePrecedent(evidence, spec.transcript ?? noopTranscript);
+  } catch {
+    // An injected seam that throws is an unusable evaluator, not a verdict. Letting it
+    // escape would brick assembly exactly as the throws this function replaced did — the
+    // dispatcher wraps `matches` and `escapeHatch` for the same reason.
+    return {
+      kind: 'unjudgeable',
+      reason: `precedent evaluator threw on evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
+  }
+  if (answer === undefined) {
+    return {
+      kind: 'unjudgeable',
+      reason: `unrecognized precedent evidence ${JSON.stringify(evidence)}`,
+      configFault: true,
+    };
+  }
+  if (spec.transcript === undefined) return noSession;
+  return answer ? { kind: 'found' } : { kind: 'missing' };
+}
+
+/**
+ * Describe the first pattern on an entry that does not compile, or `undefined` when all of
+ * them do. Every family is covered: containing only the context family would leave the
+ * other three able to take down the whole assembly through the same door.
+ */
+function patternFault(entry: DisciplineEntry): string | undefined {
+  const sources: [string, string | undefined][] = [
+    ['forbid', entry.forbid === undefined ? undefined : forbidPatternSource(entry.forbid)],
+    ['forbidCommand', entry.forbidCommand],
+    ['when', entry.when],
+  ];
+  for (const [key, source] of sources) {
+    if (source === undefined) continue;
+    try {
+      new RegExp(source);
+    } catch {
+      return `${key} is not a compilable pattern (${source})`;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Compile validated discipline entries into dispatcher registrations (COVENANT-10 §4.5).
  *
  * One registration per entry: `label` = id (per-discipline telemetry), `protectedPaths`
- * = [] (routing is the matches closure, not path mention), `body` = the generic body
- * CLI with the serialized entry and assembly values as args. Structurally broken
- * entries (non-compilable regex) throw here — fail-fast assembly, never a registration
- * whose body would crash at judge time.
+ * = [] (routing is the matches closure, not path mention), `body` = the generic body CLI
+ * with the serialized entry and assembly values as args.
+ *
+ * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead
+ * (COVENANT-13 §4.5): routing is kept, so the no-op stays visible in `gain`, but there is
+ * no body to spawn. Assembly never throws — one bad entry taking down its siblings, both
+ * meta-covenants, and the waiver valve left no way to fix the config that caused it.
+ *
+ * A non-compilable pattern also skips, but routes to nothing: the pattern IS the
+ * definition of what the entry matches, so a broken one leaves no match to record. Its
+ * only signal is the stderr line, and in production it is unreachable anyway — the
+ * validator refuses such a config before assembly is ever called.
  */
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
   return spec.disciplines.map((entry) => {
-    // Fail-fast compilability probe — throws on a broken pattern.
-    if (entry.forbid !== undefined) new RegExp(forbidPatternSource(entry.forbid));
-    if (entry.forbidCommand !== undefined) new RegExp(entry.forbidCommand);
+    const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
 
-    return {
+    // A silent skip is how a discipline goes inert while its verdict still reads passed —
+    // the failure this project already shipped once with a `^` anchor.
+    const nameFault = (reason: string): void => {
+      process.stderr.write(`discipline '${entry.id}': ${reason} — skipped, not judged\n`);
+    };
+
+    // A broken pattern is judged before routing is built, because `buildMatches` compiles
+    // that same pattern eagerly. It also routes to nothing: a pattern is what defines
+    // which inputs the entry is about, so a broken one leaves no match to record. That
+    // separates it from unevaluable evidence below, whose trigger is intact.
+    const fault = patternFault(entry);
+    if (fault !== undefined) {
+      nameFault(fault);
+      return {
+        label: entry.id,
+        protectedPaths: [],
+        matches: () => null,
+        ...hatch,
+        skip: { reason: fault },
+      };
+    }
+
+    const routing = {
       label: entry.id,
       protectedPaths: [],
+      matches: buildMatches(entry, spec),
+      ...hatch,
+    };
+
+    const outcome =
+      entry.requirePrecedent === undefined ? undefined : evaluateEvidence(entry, spec);
+
+    if (outcome?.kind === 'unjudgeable') {
+      if (outcome.configFault) nameFault(outcome.reason);
+      return { ...routing, skip: { reason: outcome.reason } };
+    }
+
+    const precedentFlag =
+      outcome === undefined
+        ? []
+        : [outcome.kind === 'found' ? '--precedent-found' : '--precedent-missing'];
+
+    return {
+      ...routing,
       body: {
         command: spec.bodyCommand,
         args: [
@@ -260,10 +516,9 @@ export function compileDisciplineRegistrations(
           spec.rootDir,
           ...spec.shellTools.flatMap((tool) => ['--shell-tool', tool]),
           ...spec.commandArgs.flatMap((arg) => ['--command-arg', arg]),
+          ...precedentFlag,
         ],
       },
-      matches: buildMatches(entry, spec),
-      ...(spec.escapeHatch !== undefined && { escapeHatch: spec.escapeHatch }),
     };
   });
 }

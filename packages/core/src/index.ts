@@ -46,6 +46,7 @@ export {
   type CanonicalTranscript,
   noopTranscript,
   type SubagentInvocation,
+  type TranscriptToolCall,
   type TranscriptUserMessage,
   transcriptFromInput,
 } from './transcript.js';

@@ -42,18 +42,19 @@ export type DisciplineForbid = string | { added: string };
 /**
  * `DisciplineEntry` — one user-declared discipline (COVENANT-10 §4.1). Pure JSON data.
  *
- * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand`) per entry;
- * `in`/`except` scope only the delta family. Compilation is the covenant package's job —
- * the core validates compilability of regex strings but never executes them.
+ * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand` |
+ * `requirePrecedent`) per entry; `in`/`except` scope the delta and context families.
+ * Compilation is the covenant package's job — the core validates compilability of regex
+ * strings but never executes them.
  */
 export type DisciplineEntry = {
   /** unique handle — telemetry label and verdict reason prefix */
   id: string;
   /** prose rationale, documentation only — never judged */
   why?: string;
-  /** delta-family scope: glob(s) the file path must match (absent = every file change) */
+  /** delta/context-family scope: glob(s) the file path must match (absent = every file change) */
   in?: string | string[];
-  /** delta-family scope: glob(s) excluded after `in` */
+  /** delta/context-family scope: glob(s) excluded after `in` */
   except?: string | string[];
   /** delta family — string shorthand = { added } */
   forbid?: DisciplineForbid;
@@ -61,6 +62,14 @@ export type DisciplineEntry = {
   immutable?: string | string[];
   /** command family — regex over shell command strings */
   forbidCommand?: string;
+  /** context-family trigger: added-direction delta regex (absent = every in-scope change) */
+  when?: string;
+  /**
+   * context family — the session evidence one edit requires beforehand. Exactly one
+   * evidence key. The core owns and fully validates `command`; every other key is
+   * adapter vocabulary whose value passes through verbatim (CONFIG-07 layering).
+   */
+  requirePrecedent?: Record<string, unknown>;
 };
 
 /**
@@ -172,8 +181,12 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'forbid',
   'immutable',
   'forbidCommand',
+  'when',
+  'requirePrecedent',
 ]);
-const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand'] as const;
+const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent'] as const;
+/** Predicate families that `in`/`except` may scope — delta and context (COVENANT-13 §4.1). */
+const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
 
 /** Throw on the first key outside the allowed vocabulary, naming the key and its location. */
 function rejectUnknownKeys(
@@ -227,6 +240,37 @@ function rejectUncompilableRegex(pattern: string, location: string): void {
 }
 
 /**
+ * Validate a context-family `requirePrecedent` value (COVENANT-13 §4.1).
+ *
+ * Evidence vocabulary is layered: the container (a flat object holding exactly one
+ * evidence key) is the core's, and so is the `command` key — a shell command is the
+ * agent-crossing surface, fully validated here. Every other key belongs to an adapter,
+ * whose own validator judges the value; the core passes it through verbatim and never
+ * inspects it (CONFIG-07 layering). An unrecognized evidence key fails closed at
+ * assembly time, not here.
+ */
+function validateRequirePrecedent(evidence: unknown, location: string): void {
+  if (!isPlainObject(evidence)) {
+    throw new ConfigValidationError(`${location} requirePrecedent must be an object`);
+  }
+  const keys = Object.keys(evidence);
+  if (keys.length !== 1) {
+    throw new ConfigValidationError(
+      `${location} requirePrecedent must have exactly one evidence key`,
+    );
+  }
+  if (keys[0] === 'command') {
+    const command = evidence.command;
+    if (typeof command !== 'string' || command.length === 0) {
+      throw new ConfigValidationError(
+        `${location} requirePrecedent.command must be a non-empty string pattern`,
+      );
+    }
+    rejectUncompilableRegex(command, `${location} requirePrecedent.command`);
+  }
+}
+
+/**
  * Validate the `disciplines` array (COVENANT-10 §4.1). Throws {@link ConfigValidationError}
  * naming the offending entry/key; the validated data passes through verbatim.
  */
@@ -256,12 +300,29 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
     const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
     if (predicates.length !== 1) {
       throw new ConfigValidationError(
-        `${location} must have exactly one predicate key (forbid | immutable | forbidCommand)`,
+        `${location} must have exactly one predicate key ` +
+          `(forbid | immutable | forbidCommand | requirePrecedent)`,
       );
     }
     const predicate = predicates[0];
-    if (predicate !== 'forbid' && (entry.in !== undefined || entry.except !== undefined)) {
-      throw new ConfigValidationError(`${location} allows in/except only on a forbid entry`);
+    if (
+      !SCOPED_PREDICATE_KEYS.has(predicate) &&
+      (entry.in !== undefined || entry.except !== undefined)
+    ) {
+      throw new ConfigValidationError(
+        `${location} allows in/except only on a forbid or requirePrecedent entry`,
+      );
+    }
+    // `when` is the context family's trigger; on any other family it would be dead data
+    // implying a trigger that is never applied.
+    if (entry.when !== undefined && predicate !== 'requirePrecedent') {
+      throw new ConfigValidationError(`${location} allows when only on a requirePrecedent entry`);
+    }
+    if (entry.in !== undefined && !isValidGlob(entry.in)) {
+      throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
+    }
+    if (entry.except !== undefined && !isValidGlob(entry.except)) {
+      throw new ConfigValidationError(`${location} except must be a non-empty glob or glob array`);
     }
 
     if (predicate === 'forbid') {
@@ -282,25 +343,30 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
           `${location} forbid must be a string pattern or an { added } object`,
         );
       }
-      if (entry.in !== undefined && !isValidGlob(entry.in)) {
-        throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
-      }
-      if (entry.except !== undefined && !isValidGlob(entry.except)) {
-        throw new ConfigValidationError(
-          `${location} except must be a non-empty glob or glob array`,
-        );
-      }
     } else if (predicate === 'immutable') {
       if (!isValidGlob(entry.immutable)) {
         throw new ConfigValidationError(
           `${location} immutable must be a non-empty glob or glob array`,
         );
       }
-    } else {
+    } else if (predicate === 'forbidCommand') {
       if (typeof entry.forbidCommand !== 'string') {
         throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
       }
       rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
+    } else {
+      if (entry.when !== undefined) {
+        if (typeof entry.when !== 'string') {
+          throw new ConfigValidationError(`${location} when must be a string pattern`);
+        }
+        if (entry.when.length === 0) {
+          // An empty pattern matches at every position, so the trigger would fire on any
+          // file that merely grows — reject it like every sibling pattern field.
+          throw new ConfigValidationError(`${location} when must be a non-empty string pattern`);
+        }
+        rejectUncompilableRegex(entry.when, `${location} when`);
+      }
+      validateRequirePrecedent(entry.requirePrecedent, location);
     }
   });
 

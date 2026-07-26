@@ -14,6 +14,7 @@ import {
   type CanonicalTranscript,
   isPlainObject,
   type SubagentInvocation,
+  type TranscriptToolCall,
   type TranscriptUserMessage,
 } from '@polydeukes/core';
 
@@ -73,6 +74,35 @@ function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocati
 }
 
 /**
+ * Extract tool calls from one entry (COVENANT-13 §4.3).
+ *
+ * Positive identification on the *name*: any `tool_use` block with a string `name` is a
+ * call, in observation order. A non-plain `input` empties the args but keeps the block —
+ * the call's existence is itself the evidence, and dropping it would shrink a precedent
+ * gate's evidence beyond what the malformed field justifies. Spawn blocks surface here
+ * too: the same fact answers two queries.
+ */
+function toToolCalls(entry: Record<string, unknown>): TranscriptToolCall[] {
+  if (entry.type !== 'assistant' || !isPlainObject(entry.message)) {
+    return [];
+  }
+  const content = entry.message.content;
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  const calls: TranscriptToolCall[] = [];
+  for (const block of content) {
+    if (isPlainObject(block) && block.type === 'tool_use' && typeof block.name === 'string') {
+      calls.push({
+        name: block.name,
+        args: isPlainObject(block.input) ? { ...block.input } : {},
+      });
+    }
+  }
+  return calls;
+}
+
+/**
  * Parse JSONL transcript text into a {@link CanonicalTranscript} (PRD §4.2–4.4).
  *
  * One pass over the lines builds an immutable snapshot; the queries only read it.
@@ -82,6 +112,7 @@ function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocati
 export function transcriptFromJsonl(text: string): CanonicalTranscript {
   const userMessages: TranscriptUserMessage[] = [];
   const subagentInvocations: SubagentInvocation[] = [];
+  const toolCalls: TranscriptToolCall[] = [];
 
   for (const line of text.split('\n')) {
     let entry: unknown;
@@ -98,32 +129,45 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
       userMessages.push(message);
     }
     subagentInvocations.push(...toSubagentInvocations(entry));
+    toolCalls.push(...toToolCalls(entry));
   }
 
-  // Both queries return fresh objects — never live aliases into the snapshot — so a
-  // consumer mutating a result cannot corrupt what later queries read (the same
-  // alias-safety contract the core transcriptFromInput upholds).
+  // Every query returns fresh objects — never live aliases into the snapshot, down to a
+  // call's nested args — so a consumer mutating a result cannot corrupt what later
+  // queries read (the same alias-safety contract the core transcriptFromInput upholds).
   return {
     findSubagentInvocations: (kind) =>
       subagentInvocations
         .filter((invocation) => kind === undefined || invocation.kind === kind)
         .map((invocation) => ({ ...invocation })),
     findUserMessages: () => userMessages.map((message) => ({ ...message })),
+    findToolCalls: (name) =>
+      toolCalls
+        .filter((call) => name === undefined || call.name === name)
+        .map((call) => ({ name: call.name, args: { ...call.args } })),
   };
 }
 
 /**
  * Read a transcript file and parse it (PRD §5.4).
  *
- * ANY read failure — missing file, permission, directory — degrades to an empty
- * transcript (both queries `[]`), never a throw: the valve turns off, never open.
+ * ANY read failure — missing file, permission, directory — answers `undefined`, never a
+ * throw. It is deliberately NOT an empty transcript: the two are different facts, and
+ * collapsing them hid the more likely one. An empty transcript is a session that has said
+ * nothing yet, and judging against it is correct. An unreadable one is no evidence channel
+ * at all, so the context family must skip rather than demand evidence from a session
+ * nobody can read — while the waiver valve reads the same absence and stays shut, leaving
+ * a dead end with no message naming the cause (COVENANT-13 §4.5).
+ *
+ * Either way the valve turns off, never open: `undefined` leaves the dispatcher on its
+ * `noopTranscript` default.
  */
-export function transcriptFromJsonlFile(path: string): CanonicalTranscript {
+export function transcriptFromJsonlFile(path: string): CanonicalTranscript | undefined {
   let text: string;
   try {
     text = readFileSync(path, 'utf-8');
   } catch {
-    return transcriptFromJsonl('');
+    return undefined;
   }
   return transcriptFromJsonl(text);
 }

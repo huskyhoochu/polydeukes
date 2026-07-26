@@ -147,6 +147,8 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const escapeHatch =
       enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
+    const disciplines = config.disciplines ?? [];
+
     const registrations: CovenantRegistration[] = [
       {
         label: 'self-mod',
@@ -163,11 +165,17 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       },
       // Command-family entries are excluded: the commit surface has no shell axis (a
       // staged diff carries no commands), so registering them would be spawn waste by
-      // design (PRD §2). Path and delta families judge the staged fileChanges as-is.
+      // design (PRD §2) — a vacuous exclusion, hence recorded nowhere. Path and delta
+      // families judge the staged fileChanges as-is.
+      //
+      // Context-family entries are NOT filtered out any more. No transcript is injected
+      // here, so the compiler gives them skip registrations, and a skip records one
+      // `skipped` exactly when its trigger matches a staged change (COVENANT-13 §4.5).
+      // The commit surface stopped being a special case: an absent evidence channel gets
+      // the same disposition on both surfaces, and the scope gate comes free with the
+      // routing every registration already carries.
       ...compileDisciplineRegistrations({
-        disciplines: (config.disciplines ?? []).filter(
-          (entry) => entry.forbidCommand === undefined,
-        ),
+        disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
         rootDir: spec.repoRoot,
         bodyCommand: process.execPath,
         bodyModulePath: join(covenantDist, 'discipline-body.js'),

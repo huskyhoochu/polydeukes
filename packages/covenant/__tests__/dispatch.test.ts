@@ -351,6 +351,69 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
 // self-mod artifact needed here (that round trip lives in self-mod.test.ts).
 // ---------------------------------------------------------------------------
 
+describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
+  const skipRegistration = (matches: () => string | null): CovenantRegistration => ({
+    label: 'unjudgeable-entry',
+    protectedPaths: [],
+    matches,
+    skip: { reason: 'no session transcript to read' },
+  });
+
+  it('records skipped and upholds, with no body to spawn', async () => {
+    const { exitCode, results } = await dispatchCovenants({
+      stdinPayload: JSON.stringify(inputWithArgs({ file_path: 'src/a.ts' })),
+      registrations: [skipRegistration(() => 'src/a.ts')],
+      telemetryPath,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(results).toEqual([{ label: 'unjudgeable-entry', exitCode: 0, event: 'skipped' }]);
+  });
+
+  it('never consults the escape hatch — a skip has no verdict to waive', async () => {
+    // The structurally adjacent bypass branch runs first for body-bearing registrations,
+    // so nothing but this pins that a skip short-circuits ahead of it. Mutation caught:
+    // the skip branch moved below the hatch, which would turn a live waiver into
+    // `bypassed` rows for entries that were never judged.
+    let consulted = false;
+    const registration = {
+      ...skipRegistration(() => 'src/a.ts'),
+      escapeHatch: () => {
+        consulted = true;
+        return true;
+      },
+    } as CovenantRegistration;
+
+    const { results } = await dispatchCovenants({
+      stdinPayload: JSON.stringify(inputWithArgs({ file_path: 'src/a.ts' })),
+      registrations: [registration],
+      telemetryPath,
+    });
+
+    expect(consulted).toBe(false);
+    expect(results[0].event).toBe('skipped');
+  });
+
+  it('blocks instead of skipping when the routing predicate itself could not answer', async () => {
+    // A throwing `matches` is resolved fail-closed by matchRegistrations, which a
+    // body-bearing registration carries out by spawning and blocking. A skip has no body,
+    // so answering `skipped` here would convert that fail-closed routing into a pass —
+    // exactly the stale-dist case the routing throw exists to catch.
+    const { exitCode, results } = await dispatchCovenants({
+      stdinPayload: JSON.stringify(inputWithArgs({ file_path: 'src/a.ts' })),
+      registrations: [
+        skipRegistration(() => {
+          throw new Error('unjudgeable evidence kind — a stale adapter dist?');
+        }),
+      ],
+      telemetryPath,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(results).toEqual([{ label: 'unjudgeable-entry', exitCode: 2, event: 'blocked' }]);
+  });
+});
+
 describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
   it('a matched registration with an escapeHatch predicate returning true is bypassed: no spawn, exitCode 0, one bypassed record', async () => {
     // P0: the hatch must pre-empt spawning entirely (measured control, not a body-level

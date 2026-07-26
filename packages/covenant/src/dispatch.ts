@@ -39,14 +39,23 @@ import { runCovenant, translateExitCode } from './run-covenant.js';
  * `matches`, when present, replaces path-mention routing with a content predicate
  * (COVENANT-10 §4.4): a non-null return routes (the string becomes the telemetry
  * subject), null does not, and a throw is a fail-closed match with subject `'-'`.
+ *
+ * A registration carries EITHER a `body` or a `skip` (COVENANT-13 §4.5). `skip` means
+ * assembly could not produce a judgeable body — the evidence channel is absent, or the
+ * declared evidence vocabulary could not be resolved — so a match records one `skipped`
+ * and upholds instead of spawning. Judging it anyway would block every matched input
+ * with no legitimate pass path; throwing at assembly would take down every sibling
+ * registration and the waiver valve with it.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
-  body: { command: string; args?: string[] };
   escapeHatch?: (input: CovenantInput, transcript: CanonicalTranscript) => boolean;
   matches?: (input: CovenantInput) => string | null;
-};
+} & (
+  | { body: { command: string; args?: string[] }; skip?: never }
+  | { body?: never; skip: { reason: string } }
+);
 
 /**
  * Collect path candidates from every string value inside `value` (PRD §4.2). Each string is
@@ -109,21 +118,30 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
 export function matchRegistrations(
   input: CovenantInput,
   registrations: CovenantRegistration[],
-): { registration: CovenantRegistration; mentionedPath: string }[] {
+): { registration: CovenantRegistration; mentionedPath: string; routingFailed?: boolean }[] {
   const { candidates, failed } = collectPathCandidates(input.toolCalls.map((call) => call.args));
-  const matches: { registration: CovenantRegistration; mentionedPath: string }[] = [];
+  const matches: {
+    registration: CovenantRegistration;
+    mentionedPath: string;
+    routingFailed?: boolean;
+  }[] = [];
 
   for (const registration of registrations) {
     if (registration.matches !== undefined) {
       let subject: string | null;
+      let routingFailed = false;
       try {
         subject = registration.matches(input);
       } catch {
-        // An uncertain predicate must not leak fail-open — route with subject '-'.
+        // An uncertain predicate must not leak fail-open — route with subject '-'. The
+        // flag travels with the match because a skip registration has no body to carry
+        // that verdict out, and answering `skipped` there would turn the fail-closed
+        // routing into a pass (review 4).
         subject = '-';
+        routingFailed = true;
       }
       if (subject !== null) {
-        matches.push({ registration, mentionedPath: subject });
+        matches.push({ registration, mentionedPath: subject, routingFailed });
       }
       continue;
     }
@@ -202,7 +220,37 @@ export async function dispatchCovenants(spec: {
 
   const transcript = spec.transcript ?? noopTranscript;
   const results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[] = [];
-  for (const { registration, mentionedPath } of matches) {
+  for (const { registration, mentionedPath, routingFailed } of matches) {
+    if (registration.skip !== undefined) {
+      if (routingFailed === true) {
+        // The routing predicate could not answer, which matchRegistrations already
+        // resolved fail-closed. A body-bearing registration would carry that verdict out
+        // by spawning and blocking; a skip has no body, so the block is recorded here
+        // rather than softened into a pass. Outside the enforce axis, like every
+        // unjudgeable outcome.
+        appendRecordFailOpen(spec.telemetryPath, {
+          event: 'blocked',
+          label: registration.label,
+          subject: mentionedPath,
+        });
+        results.push({
+          label: registration.label,
+          exitCode: EXIT_BREAK_BLOCKING,
+          event: 'blocked',
+        });
+        continue;
+      }
+      // Nothing to judge and nothing to waive — the hatch exists for a verdict, and a
+      // skip has none. Recording it keeps the no-op visible in `gain` (PRD §4.5).
+      appendRecordFailOpen(spec.telemetryPath, {
+        event: 'skipped',
+        label: registration.label,
+        subject: mentionedPath,
+      });
+      results.push({ label: registration.label, exitCode: EXIT_UPHOLD, event: 'skipped' });
+      continue;
+    }
+
     let bypass = false;
     try {
       bypass = registration.escapeHatch?.(parsed.value, transcript) === true;

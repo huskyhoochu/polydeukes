@@ -3,7 +3,7 @@
 **English** · [한국어](./configuration.ko.md)
 
 > Pre-alpha. This reference describes the config surface as shipped today (schema v2,
-> loader, and the three built-in discipline predicates). Fields and predicates will grow;
+> loader, and the four built-in discipline predicates). Fields and predicates will grow;
 > what is written here is tested and enforced now.
 
 `polydeukes.config.yaml` is the one file where a project declares its disciplines — the
@@ -114,6 +114,21 @@ adapters:
 
 The session surface (the editor-time hook) has no level setting here; it always blocks.
 
+**Context-family disciplines skip on the commit surface.** A commit has no session to look
+at, so a `requirePrecedent` entry cannot be judged there — demanding evidence a commit
+cannot carry would block every matching commit with no legitimate way through.
+
+They are not filtered out, though. They assemble like any other discipline and become
+*skip registrations*: routing intact, no judge body. When one matches a staged change it
+records a `skipped` telemetry event and lets the commit proceed. The record carries the
+entry's `id` and the change it would have judged, so a gate that did nothing says so in
+the data — and it appears **only when the entry's scope actually matched**, so a commit
+touching nothing the entry cares about records nothing at all.
+
+This is the same disposition the session surface uses whenever it has no transcript to
+read. One rule, both surfaces: evidence that cannot be evaluated is skipped and measured,
+never blocked and never silent.
+
 ### `telemetry` (optional)
 
 ```yaml
@@ -121,8 +136,8 @@ telemetry:
   logPath: '.polydeukes/roi.log'   # default when omitted; keep it gitignored
 ```
 
-Every judgment — passed, blocked, bypassed, or advised — appends one record. Telemetry
-is fail-open by design: a logging failure never changes a verdict.
+Every judgment — passed, blocked, bypassed, advised, or skipped — appends one record.
+Telemetry is fail-open by design: a logging failure never changes a verdict.
 
 ### `waiver` (optional)
 
@@ -170,8 +185,8 @@ recorded as `bypassed`, never silent.
 Each entry is one discipline: a practice the team imposes on itself, declared as data.
 An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
 telemetry label), and optionally a `why` (the reason, kept next to the rule) plus, on a
-`forbid` entry only, `in` (the file globs it judges) and `except` (globs carved out of
-that scope).
+`forbid` or `requirePrecedent` entry, `in` (the file globs it judges) and `except` (globs
+carved out of that scope).
 
 **`forbid` — content delta.** Blocks an edit that *adds* a new match of the pattern.
 Existing occurrences are forgiven: adopting a discipline never blocks a legacy codebase,
@@ -205,6 +220,65 @@ caught.
     why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
     forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
 ```
+
+**`requirePrecedent` — context family.** Blocks a change that arrives without a required
+step having happened earlier in the session. The other three families all ask "is this
+change itself bad"; this one asks something else. The change is legitimate — what is
+missing is the procedure in front of it, so what gets judged is not the mutation but the
+session history.
+
+```yaml
+  - id: 'dependency-needs-npm-view'
+    why: 'a dependency version must be measured before it is written.'
+    in:
+      - 'package.json'
+      - 'packages/*/package.json'
+    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
+    requirePrecedent:
+      command: 'npm view '
+```
+
+The evidence vocabulary is layered. `command` (a regex over the shell command string) is
+the core's own key — a shell call is a surface every agent shares — and the core validates
+it fully, rejecting an empty string or a pattern that does not compile. Every other key
+belongs to an adapter: the core checks the container only (a flat object carrying exactly
+one evidence key) and passes the value through verbatim, and the adapter that owns the
+word validates and judges it. The Claude Code adapter brings two: `subagent` (exact match
+on a spawn kind) and `tool` (a regex over tool names) — so "query the docs tool before
+touching this" is expressible today. An evidence key no assembled adapter recognizes fails
+closed at assembly, so a typo can never pass itself off as adapter vocabulary.
+
+`when` (optional) is the trigger: an added-direction delta regex, combinable with
+`requirePrecedent` and with nothing else. When it is absent, every change inside `in`
+scope triggers the discipline. The two keys divide the work — `in` says which files are
+watched, `when` says which change in them demands the precedent.
+
+**A caution on line anchors.** These patterns are matched against the file's whole content
+as a single string, and the config schema takes a regex string with no flags. `^` therefore
+anchors to the start of the *file*, not the start of a line, so a line-shaped pattern
+written with `^` matches only the first line and the discipline silently stops firing —
+the regex still compiles, the judgment still runs, and the verdict is `passed`. Write
+`(^|\n)` when you mean the start of a line. This is why the example above carries
+`(^|\n)\s*"[^"]+"…` rather than `^\s*"[^"]+"…`.
+
+**And a caution on match length.** The delta keys on the matched *text*: a change is only
+seen as added when the matched string itself differs between the file's before and after.
+A pattern that stops mid-value — say at the first digit of a version — produces the same
+match text for `4.0.5` and `4.0.6`, so a version bump adds nothing to the delta and the
+discipline silently passes. Make the pattern span the whole value that can change; the
+example above runs through the closing quote (`\d[^"]*"`) for exactly this reason. Both
+failure shapes are the same class: the regex compiles, the verdict says `passed`, and
+nothing tells you the discipline is inert — so when you add an entry, measure it against
+a real file and a realistic edit, not a one-line snippet.
+
+The kind of change matters at the trigger. With `when` present, a deletion never triggers
+— deleting adds no content. With `when` absent, deletion triggers like any other change in
+scope, since the declared scope is the whole mutation.
+
+**The cheap way through is the honest one.** Unlike the waiver, this evidence lives on the
+AI's own surface, so it is not forgery-proof. It does not need to be: the least effortful
+way to open this gate is to actually call the tool, and that is exactly the behaviour the
+discipline exists to induce.
 
 Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the
 escape layer for the few rules data cannot express.

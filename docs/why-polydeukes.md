@@ -129,6 +129,17 @@ evidence absent, input unparseable, structure undecidable — resolve closed: th
 blocks. Failures of observability resolve open: losing a telemetry line never holds work
 hostage. Four rows, decided once, applied everywhere; a failure kind nobody registered
 resolves closed by default, because "cannot classify" is itself a gate-integrity failure.
+
+One distinction the table does not contain was earned the hard way, and it decides which
+row a case belongs to. *Evidence is absent* and *the evidence channel is absent* look alike
+and resolve in opposite directions. A gate that can
+read the session and finds nothing has an answer, and that answer blocks. A gate with no
+session to read has no question — and blocking there demands proof the caller cannot
+possibly supply, while the human override reads the same missing channel and stays shut
+too. That is not a closed gate; it is a door with no handle on either side. So an
+unreadable channel skips, loudly and measurably, and the skip shows up in the same data
+every verdict does. Fail-closed protects the gate's integrity. It is not a reflex to reach
+for whenever something is missing.
 The rules themselves are data, not code — a discipline is declared in configuration and
 judged by a predicate that was tested before you wrote a single line.
 
@@ -163,6 +174,18 @@ working end to end: the framework improves because the evidence says so, not bec
 anyone — including its authors — claims so. The ledger and adversarial verify extend
 the same standard to completion claims and review judgments; they are still on the
 roadmap, and they will be held to the same log.
+
+<!-- Parked candidate (COVENANT-13, 2026-07-26): the context family — a covenant that
+demands a *precedent* rather than forbidding a mutation. The edit is legitimate; what is
+refused is arriving without the procedure that should have preceded it (measure the
+dependency version before writing it). Two threads worth prose here: (1) it answers a
+question the other principles don't — not "what does the rule forbid" but "what does it
+require", enforcing order rather than prohibition; (2) unlike the waiver, its evidence
+lives on a surface the AI controls, so forgery is structurally possible — and it holds
+anyway, because the cheapest way through the gate is to actually call the tool, which is
+precisely the behavior the discipline wanted. A rule whose evasion costs more than its
+observance does not need to be unforgeable. Fits §3 (evidence over self-report) or §1
+(agreed enforcement); §1 is already long. -->
 
 ## What Polydeukes is not
 

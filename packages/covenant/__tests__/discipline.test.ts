@@ -294,8 +294,8 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     expect(regs).toHaveLength(2);
     expect(regs[0].label).toBe('no-hex');
     expect(regs[0].protectedPaths).toEqual([]);
-    expect(regs[0].body.command).toBe('/usr/bin/node');
-    expect(regs[0].body.args).toEqual([
+    expect(regs[0].body?.command).toBe('/usr/bin/node');
+    expect(regs[0].body?.args).toEqual([
       '/repo/discipline-body.js',
       '--discipline',
       JSON.stringify(forbidEntry),
@@ -319,11 +319,17 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     expect(regs[0].escapeHatch).toBe(hatch);
   });
 
-  it('throws (fail-fast assembly) on a structurally invalid entry (non-compilable regex)', () => {
-    // P0 fail-fast: a broken pattern must halt assembly, never produce a registration whose
-    // body would later crash. Mutation caught: the compilability probe dropped from the
-    // compiler, deferring the crash to judge time.
-    expect(() => compileDisciplineRegistrations(specWith([{ id: 'bad', forbid: '(' }]))).toThrow();
+  it('compiles a non-compilable pattern into a skip registration instead of throwing', () => {
+    // A broken pattern used to halt assembly, taking every sibling registration and the
+    // waiver valve down with it — leaving no way to edit the config that caused it. It
+    // now skips alone, and routes to nothing, since the pattern that would define its
+    // matches is the broken one. Mutation caught: the throw restored, or a body emitted
+    // that would crash at judge time.
+    const [reg] = compileDisciplineRegistrations(specWith([{ id: 'bad', forbid: '(' }]));
+
+    expect(reg.skip).toBeDefined();
+    expect(reg.body).toBeUndefined();
+    expect(reg.matches?.({ toolCalls: [], subagentSpawns: [], userMessages: [] })).toBeNull();
   });
 });
 

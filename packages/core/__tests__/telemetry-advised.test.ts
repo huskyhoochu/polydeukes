@@ -71,6 +71,7 @@ describe('CONFIG-06 §4.3 advised — aggregation', () => {
       blocked: 0,
       bypassed: 0,
       advised: 2,
+      skipped: 0,
     });
   });
 });

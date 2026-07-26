@@ -34,6 +34,7 @@ function fakeTranscript(
     findSubagentInvocations: (kind) =>
       invocations.filter((inv) => kind === undefined || inv.kind === kind),
     findUserMessages: () => userMessages,
+    findToolCalls: () => [],
   };
 }
 
