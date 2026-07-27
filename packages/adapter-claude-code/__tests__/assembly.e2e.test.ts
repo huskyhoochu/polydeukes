@@ -47,7 +47,7 @@ afterEach(() => {
  * token, and the hook parses it out of the raw payload. Block cases simply omit it —
  * no transcript, no valve (the dispatcher stays on its noopTranscript default).
  */
-function runHook(payload: unknown, opts?: { transcriptPath?: string; home?: string }) {
+function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
   const withTranscript =
     typeof payload === 'string' || opts?.transcriptPath === undefined
       ? payload
@@ -60,11 +60,6 @@ function runHook(payload: unknown, opts?: { transcriptPath?: string; home?: stri
     env: {
       ...process.env,
       POLYDEUKES_TELEMETRY_PATH: telemetryPath,
-      // Assembly registers the transcript's `~`/`$HOME` spellings only when the file really
-      // lives under HOME — the judge itself never expands them (COVENANT-07b §2-c). Pointing
-      // HOME at the temp root is therefore what makes a home-relative notation real for a
-      // fixture transcript, rather than something the judge is asked to guess at.
-      ...(opts?.home === undefined ? {} : { HOME: opts.home }),
     },
   });
 }
@@ -151,7 +146,6 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
 
     const result = runHook(writePayload(manifest, dependencyLine), {
       transcriptPath,
-      home: tmpRoot,
     });
 
     expect(result.status).toBe(2);
@@ -167,7 +161,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(bashPayload(`rm ${transcriptPath}`), { transcriptPath, home: tmpRoot });
+    const result = runHook(bashPayload(`rm ${transcriptPath}`), { transcriptPath });
 
     expect(result.status).toBe(2);
   });
@@ -178,7 +172,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(bashPayload(`cat ${transcriptPath}`), { transcriptPath, home: tmpRoot });
+    const result = runHook(bashPayload(`cat ${transcriptPath}`), { transcriptPath });
 
     expect(result.status).toBe(0);
   });
@@ -477,85 +471,28 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(rowsFor('shell-mod')).toEqual([]);
   });
 
-  it('an append to the protected transcript in tilde notation is blocked (exit 2)', () => {
-    // The audit's B2, end to end: this is the append that writes a forged human utterance
-    // into the file the TTL waiver reads, which opens a human-only valve for an agent.
-    // Assembly protects the transcript already — one notation is all that stood between
-    // that protection and nothing.
+  it('a home-relative spelling of the transcript still passes — audit B2 stays open', () => {
+    // The hole this ticket set out to close and did not. The transcript is registered by its
+    // ABSOLUTE path only, so the same file written home-relative reaches no judge, and this
+    // append is what forges the human utterance the TTL waiver reads.
+    //
+    // The obvious fix — registering the home-relative spellings alongside the absolute one —
+    // was implemented, measured, and withdrawn. A transcript that lives deep under HOME makes
+    // HOME itself a protected ANCESTOR, so every spelling of it inherits that: `echo $HOME`
+    // and `ls -la $HOME` break at the opaque-token step, which the read-only allowlist never
+    // reaches, and an edit whose CONTENT merely contains a bare `~` is refused by self-mod's
+    // fallback branch. `cd /home/<user>` has in fact blocked since COVENANT-13 — nobody
+    // noticed only because the spelling people actually type did not match. Closing B2 needs
+    // a registration that does not make an ancestor of the home directory, which is
+    // COVENANT-07c. Pinned here so the hole is audible and 07c turns this red.
     const transcriptPath = sessionTranscript();
 
     const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
       transcriptPath,
-      home: tmpRoot,
-    });
-
-    expect(result.status).toBe(2);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
-  });
-
-  it('an rm of that transcript in tilde notation is blocked at the backstop (exit 2)', () => {
-    // The same notation reaching a DIFFERENT judgment step. The append above is caught by
-    // the redirect-write rule at step (a) — `echo` is itself on the read-only allowlist, so
-    // that spawn proves nothing about the mention path. `rm` carries no write rule and no
-    // allowlist entry, so it can only be refused by the backstop at (f), which is the step
-    // the literal form in the audit's measured list (`rm ~/…jsonl`) actually exercises.
-    const transcriptPath = sessionTranscript();
-
-    const result = runHook(bashPayload(`rm ~/${TRANSCRIPT_TAIL}`), {
-      transcriptPath,
-      home: tmpRoot,
-    });
-
-    expect(result.status).toBe(2);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
-  });
-
-  it('a $HOME path targeting the protected transcript is blocked (exit 2)', () => {
-    // Variable-expansion family. Mutation caught: only `~` taught to the predicate, which
-    // leaves the same file reachable by the form a script would more naturally use.
-    const transcriptPath = sessionTranscript();
-
-    const result = runHook(bashPayload(`chmod 000 $HOME/${TRANSCRIPT_TAIL}`), {
-      transcriptPath,
-      home: tmpRoot,
-    });
-
-    expect(result.status).toBe(2);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
-  });
-
-  it('reading that transcript in tilde notation still passes, judged and upheld (exit 0)', () => {
-    // PRD §3.3, and the contract the shipped read-only case above states for literals:
-    // debugging a session must not require the waiver. The `passed` row is the load-bearing
-    // half — exit 0 alone is what this command already returns today for the opposite
-    // reason (no mention, no judgment), so only the row proves the allowlist absolved it
-    // rather than the scan missing it.
-    const transcriptPath = sessionTranscript();
-
-    const result = runHook(bashPayload(`cat ~/${TRANSCRIPT_TAIL}`), {
-      transcriptPath,
-      home: tmpRoot,
     });
 
     expect(result.status).toBe(0);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['passed']);
-  });
-
-  it('reading the same transcript through $HOME is blocked, because the token is opaque (exit 2)', () => {
-    // The contrast that makes the case above a contract rather than an accident: `~` is
-    // not on the tokenizer's opaque list (`$`, `*`, `?`) and `$HOME` is, so one reaches the
-    // read-only allowlist at step (e) and the other is refused at step (c) before the
-    // allowlist is ever consulted. This ticket does not touch that list or that order
-    // (PRD §2-d/§6), so the two reads must part here.
-    const transcriptPath = sessionTranscript();
-
-    const result = runHook(bashPayload(`cat $HOME/${TRANSCRIPT_TAIL}`), {
-      transcriptPath,
-      home: tmpRoot,
-    });
-
-    expect(result.status).toBe(2);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
+    expect(rowsFor('shell-mod')).toEqual([]);
   });
 
   it('a tool call whose absolute file_path carries an interior "." is blocked by self-mod (exit 2)', () => {

@@ -98,25 +98,22 @@ try {
   // it: a user declares which disciplines to keep, never what the judge must read in
   // order to judge (review 4). The shell axis's ordinary rule applies from here — a
   // read-only first token still passes, so inspecting a session needs no waiver.
-  // Registered in every spelling assembly can resolve, not just the absolute one. The judge
-  // is deliberately ignorant of the environment (COVENANT-07b §6) — it never expands `~` or
-  // `$HOME`, because a judge that guesses at an expansion either misses the real target or
-  // blocks an innocent one, and both were measured. A spelling this layer *can* resolve is
-  // therefore stated here as data rather than inferred there: assembly knows HOME, so it
-  // says so. Without this the absolute literal is the only defended form, and
-  // `echo … >> ~/<tail>` appends the forged human utterance the waiver reads (audit B2).
-  const home = process.env.HOME;
-  const transcriptSpellings = [];
-  if (transcriptPath !== undefined) {
-    transcriptSpellings.push(transcriptPath);
-    if (home !== undefined && transcriptPath.startsWith(`${home}/`)) {
-      const tail = transcriptPath.slice(home.length);
-      transcriptSpellings.push(`~${tail}`, `$HOME${tail}`, `\${HOME}${tail}`);
-    }
-  }
-
+  // The ABSOLUTE path only, which leaves audit B2 open (a home-relative spelling of this
+  // file reaches no judge, so a forged human utterance can be appended). COVENANT-07b
+  // implemented the obvious fix here — registering the home-relative spellings alongside —
+  // and measurement withdrew it. A transcript living deep under HOME makes HOME itself a
+  // protected ANCESTOR, so every spelling inherits that: `echo $HOME` and `ls -la $HOME`
+  // break at the opaque-token step, which the read-only allowlist never reaches, and an edit
+  // whose CONTENT merely carries a bare `~` is refused by self-mod's fallback branch with a
+  // reason naming a file the call never touched. `cd /home/<user>` has blocked since
+  // COVENANT-13 for that same reason and went unnoticed only because the spelling people
+  // type did not match it. Closing B2 needs a registration that does not make an ancestor of
+  // the home directory — COVENANT-07c, not this list.
   const protectedPaths = core.normalizeProtectedPaths({
-    protectedPaths: [...(config.protectedPaths ?? []), ...transcriptSpellings],
+    protectedPaths: [
+      ...(config.protectedPaths ?? []),
+      ...(transcriptPath === undefined ? [] : [transcriptPath]),
+    ],
   });
 
   // One waiver predicate shared by every registration: a waiver is a session-wide

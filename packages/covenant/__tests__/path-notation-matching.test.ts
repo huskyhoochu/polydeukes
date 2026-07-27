@@ -122,40 +122,24 @@ describe('pathMatchesProtected — undecidable notations are left alone on purpo
     expect(pathMatchesProtected('$BUILD/dist', PROTECTED_DIR)).toBe(false);
   });
 
-  it('a tilde is not expanded — the layer that knows the home directory registers it', () => {
-    // The judge stays ignorant of the environment (§6), so `~` names nothing here. The
-    // session transcript is still defended, because assembly knows the home directory and
-    // registers the `~` spelling as its own protected path — a fact, not an inference.
-    // Mutation caught: a home-directory guess reappearing in the predicate, which matched
-    // `~/dist` against `packages/core/dist` when it was last tried.
+  it('a tilde is not expanded, so a home-relative path names nothing here', () => {
+    // The judge stays ignorant of the environment (§6): `~` is an ordinary segment and
+    // matches only another `~`. Mutation caught: a home-directory guess reappearing in the
+    // predicate, which matched `~/dist` against `packages/core/dist` when it was last tried.
+    //
+    // The cost is that the session transcript is defended in its ABSOLUTE spelling only, so
+    // audit B2 is not closed by this ticket. Registering the home-relative spellings was
+    // tried and withdrawn — a transcript deep under HOME makes HOME a protected ancestor,
+    // which turns `echo $HOME` and any edit whose content carries a bare `~` into blocks.
+    // COVENANT-07c owns that, and an e2e pins the open hole so it cannot be forgotten.
     expect(pathMatchesProtected('~/dist', PROTECTED_DIR)).toBe(false);
     expect(pathMatchesProtected('~/settings.json', '.claude/settings.json')).toBe(false);
-    // …and the registered spelling matches by ordinary literal comparison.
     expect(
       pathMatchesProtected(
         '~/.claude/projects/-home-u-proj/x.jsonl',
-        '~/.claude/projects/-home-u-proj/x.jsonl',
+        '/home/u/.claude/projects/-home-u-proj/x.jsonl',
       ),
-    ).toBe(true);
-  });
-});
-
-describe('pathMatchesProtected — a registered home spelling carries the ancestor rule with it', () => {
-  it('a bare "~" is an ancestor of a transcript registered under its tilde spelling', () => {
-    // Consequence of §2-c, pinned rather than discovered later: once assembly registers
-    // `~/<tail>`, the ordinary root-anchored ancestor rule makes a lone `~` match it, so
-    // `cd ~` and `mv x ~` break while `cd ~/proj` and `rm -rf ~/scratch` stay free.
-    //
-    // This is not a new class of over-block, it is the removal of an inconsistency: the
-    // ABSOLUTE spelling has been registered since COVENANT-13, so `cd /home/<user>` already
-    // broke on exactly this rule while `cd ~` — the same directory — did not. Widening the
-    // ancestor direction is what catches `rm -rf <parent>`, and narrowing it reopens that
-    // hole ([[ancestor-match-is-intended-over-block]]).
-    const spelling = '~/.claude/projects/-home-u-proj/session.jsonl';
-
-    expect(pathMatchesProtected('~', spelling)).toBe(true);
-    expect(pathMatchesProtected('~/proj', spelling)).toBe(false);
-    expect(pathMatchesProtected('~/scratch/notes', spelling)).toBe(false);
+    ).toBe(false);
   });
 });
 

@@ -160,13 +160,16 @@ Consequences to know:
   loud. What the judge does **not** read is a glob or a variable expansion: resolving those
   needs the filesystem or the shell, so `rm packages/*/dist/index.js` and
   `rm -rf packages/$PKG/dist` still pass here — silently, which is the part COVENANT-10b
-  turns into a recorded `skipped`. It never expands `~` either; instead assembly, which does
-  know the home directory, registers the session transcript under its `~`/`$HOME` spellings
-  as well, so `rm ~/…jsonl` blocks while `cat ~/…jsonl`, `cd ..`, `rm -rf ../dist`, and
-  `find . -name '*.mjs'` all stay free. One consequence to expect: registering that spelling
-  brings the ordinary ancestor rule with it, so a bare `cd ~` / `mv x ~` breaks — the same
-  way `cd /home/<user>` already did, since the absolute spelling has been registered since
-  COVENANT-13. `cd ~/proj` and `rm -rf ~/scratch` are unaffected.
+  turns into a recorded `skipped`. It never expands `~` either, and the session transcript is
+  defended in its **absolute spelling only** — so `rm ~/…jsonl` still passes and audit B2
+  stays open, owned by COVENANT-07c. Registering the home-relative spellings in assembly was
+  implemented and withdrawn: a transcript living deep under HOME makes HOME itself a protected
+  *ancestor*, so every spelling inherits that — `echo $HOME` and `ls -la $HOME` broke at the
+  opaque-token step (which the read-only allowlist never reaches) and an edit whose *content*
+  merely carried a bare `~` was refused by self-mod's fallback branch. `cd /home/<user>` has
+  in fact blocked since COVENANT-13 for that same reason; it went unnoticed only because the
+  spelling people actually type did not match. `cd ..`, `cd ~`, `rm -rf ../dist`, and
+  `find . -name '*.mjs'` all stay free.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target
