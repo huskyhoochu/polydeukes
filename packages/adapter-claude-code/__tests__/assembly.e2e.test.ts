@@ -633,15 +633,18 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
   });
 
-  it('a sed -i over a scoped file is recorded skipped under that discipline id (exit 0)', () => {
-    // Content incomputable, target known: the row lands on the ONE entry scoping this path
-    // (adapter-git src is english-only-sources territory alone), never on the common label.
+  it('a sed -i over a scoped file is recorded skipped under EACH discipline scoping it (exit 0)', () => {
+    // Content incomputable, target known: one row per entry whose scope covers this path,
+    // attributed to the entry id and never the common label. Since the CONFIG-08 review
+    // widened covenant-vocabulary to the wildcard pair, adapter-git src is inside two
+    // scopes — this pin also proves the widening reached the live config.
     const result = runHook(
       bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
     );
 
     expect(result.status).toBe(0);
     expect(skippedRows().map((r) => [r.label, r.subject])).toEqual([
+      ['covenant-vocabulary', 'packages/adapter-git/src/collect.ts'],
       ['english-only-sources', 'packages/adapter-git/src/collect.ts'],
     ]);
   });

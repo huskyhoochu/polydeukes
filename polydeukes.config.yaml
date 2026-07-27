@@ -40,6 +40,11 @@ protectedPaths:
   - 'lefthook.yml'
   - 'biome.json'
   - '.git/hooks'
+  # lefthook's local-override surface: a lefthook-local.yml (or .lefthook-local/) can
+  # skip the covenant command outright, and it is never staged — the same disarm class
+  # as .git/hooks, one file over (PR #38 review F4).
+  - 'lefthook-local.yml'
+  - '.lefthook-local'
   # The judge executables, unseeable by the commit surface because they are gitignored.
   - 'packages/core/dist'
   - 'packages/covenant/dist'
@@ -86,14 +91,23 @@ adapters:
       - 'packages/polydeukes/src'
       - 'packages/adapter-claude-code/src'
       - 'packages/adapter-git/src'
+      # The chain's resolution manifests (PR #38 review F2): the commit surface locates
+      # its judge bodies through packages/covenant/package.json's exports, and lefthook
+      # reaches the pdks bin through the root manifest's devDependency — repointing
+      # either replaces the judge without touching a single src line.
+      - 'packages/core/package.json'
+      - 'packages/covenant/package.json'
+      - 'packages/polydeukes/package.json'
+      - 'packages/adapter-claude-code/package.json'
+      - 'packages/adapter-git/package.json'
+      - 'package.json'
 
 disciplines:
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources; added-direction judgment forgives existing debt and blocks only new occurrences.'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3).'
     in:
-      - 'packages/core/src/**'
-      - 'packages/covenant/src/**'
-      - 'packages/adapter-claude-code/src/**'
+      - 'packages/*/src/**'
+      - 'packages/*/__tests__/**'
     forbid: '\b(guard|harness|kb)\b'
   - id: 'hooks-stay-armed'
     why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself.'
