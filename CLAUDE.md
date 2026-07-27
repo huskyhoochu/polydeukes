@@ -163,7 +163,10 @@ Consequences to know:
   turns into a recorded `skipped`. It never expands `~` either; instead assembly, which does
   know the home directory, registers the session transcript under its `~`/`$HOME` spellings
   as well, so `rm ~/…jsonl` blocks while `cat ~/…jsonl`, `cd ..`, `rm -rf ../dist`, and
-  `find . -name '*.mjs'` all stay free.
+  `find . -name '*.mjs'` all stay free. One consequence to expect: registering that spelling
+  brings the ordinary ancestor rule with it, so a bare `cd ~` / `mv x ~` breaks — the same
+  way `cd /home/<user>` already did, since the absolute spelling has been registered since
+  COVENANT-13. `cd ~/proj` and `rm -rf ~/scratch` are unaffected.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target

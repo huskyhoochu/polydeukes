@@ -140,6 +140,25 @@ describe('pathMatchesProtected — undecidable notations are left alone on purpo
   });
 });
 
+describe('pathMatchesProtected — a registered home spelling carries the ancestor rule with it', () => {
+  it('a bare "~" is an ancestor of a transcript registered under its tilde spelling', () => {
+    // Consequence of §2-c, pinned rather than discovered later: once assembly registers
+    // `~/<tail>`, the ordinary root-anchored ancestor rule makes a lone `~` match it, so
+    // `cd ~` and `mv x ~` break while `cd ~/proj` and `rm -rf ~/scratch` stay free.
+    //
+    // This is not a new class of over-block, it is the removal of an inconsistency: the
+    // ABSOLUTE spelling has been registered since COVENANT-13, so `cd /home/<user>` already
+    // broke on exactly this rule while `cd ~` — the same directory — did not. Widening the
+    // ancestor direction is what catches `rm -rf <parent>`, and narrowing it reopens that
+    // hole ([[ancestor-match-is-intended-over-block]]).
+    const spelling = '~/.claude/projects/-home-u-proj/session.jsonl';
+
+    expect(pathMatchesProtected('~', spelling)).toBe(true);
+    expect(pathMatchesProtected('~/proj', spelling)).toBe(false);
+    expect(pathMatchesProtected('~/scratch/notes', spelling)).toBe(false);
+  });
+});
+
 describe('pathSegments — the degenerate contract self-mod depends on is unchanged', () => {
   it('keeps a lone "." as a segment and yields nothing for the empty shapes', () => {
     // COVENANT-09's evidence check reads this function to tell a path that names a file from
