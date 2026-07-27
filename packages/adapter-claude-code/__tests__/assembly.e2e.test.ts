@@ -444,13 +444,17 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
   });
 
-  it('a middle glob standing in for a package name is blocked (exit 2)', () => {
+  it('a middle glob standing in for a package name is blocked, and on that path (exit 2)', () => {
     // Glob family, directory-shaped protected path. One command removes every judge
-    // executable on the surface; today the dispatcher routes it nowhere.
+    // executable on the surface; before this ticket the dispatcher routed it nowhere.
+    // The subject assertion is not decoration: the first implementation passed this test
+    // while blocking on `lefthook.yml`, because a bare `*` matched every protected path —
+    // so the middle-glob logic could have been deleted entirely and the test stayed green.
     const result = runHook(bashPayload('rm packages/*/dist/index.js'));
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
+    expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['packages/core/dist']);
   });
 
   it('a trailing glob on a gate FILE is blocked, and on that gate file (exit 2)', () => {

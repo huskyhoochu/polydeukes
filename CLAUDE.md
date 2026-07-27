@@ -157,8 +157,12 @@ Consequences to know:
   `$HOME` — is read as a position something else will fill, so `rm packages/*/dist/index.js`,
   `rm lefthook.y*`, and `chmod 000 $HOME/…` block exactly as their literal forms always did.
   Nothing is ever expanded: the judge reads no home directory, no working directory, and no
-  filesystem, so an unknown segment stands for one or more segments but never proves one —
-  which is why `~/unrelated/x` stays free.
+  filesystem. Only a segment constrained by literals proves a match, so a bare `*` names
+  nothing (`find . -name '*.mjs'` and `git commit -m "* …"` stay free), and `~`/`$VAR` stand
+  for a run of segments only against an **absolute** protected path — which keeps
+  `~/unrelated/x` and `rm -rf ../dist` free while the session transcript stays defended.
+  A path that cancels above the repository root (`rm -rf .claude/hooks/../..`) is an ancestor
+  of everything and blocks.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target

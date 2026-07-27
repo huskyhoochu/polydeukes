@@ -28,6 +28,23 @@ function isUnknownSegment(segment: string): boolean {
   return segment === '..' || segment.startsWith('~') || segment.includes('$');
 }
 
+/** True when a segment carries glob metacharacters and is therefore matched as a pattern. */
+function isGlobSegment(segment: string): boolean {
+  return segment.includes('*') || segment.includes('?');
+}
+
+/**
+ * True when a glob segment carries at least one literal character to constrain it.
+ *
+ * A segment made only of `*` and `?` constrains nothing, so it fills a position without
+ * proving one. Counting it as proof is what let a lone `*` name every protected segment
+ * there is — `ls packages/*`, a `--name '*.mjs'` argument, and a markdown bullet in a file
+ * body all blocked, which is the friction the 2026-07-26 narrowing existed to remove.
+ */
+function globHasLiteral(segment: string): boolean {
+  return segment.replace(/[*?]/g, '') !== '';
+}
+
 /**
  * Normalize a path into segments: split on `/`, drop empties and `.`, and cancel the
  * preceding segment on `..`. Cancellation is refused when that predecessor is unknown —
@@ -43,6 +60,10 @@ export function pathSegments(path: string): string[] {
     const previous = segments[segments.length - 1];
     if (segment === '..' && previous !== undefined && !isUnknownSegment(previous)) {
       segments.pop();
+      // Cancelling the last definite segment lands on the tree root, which is an ancestor
+      // of every relative protected path. An empty list would answer "names nothing", and
+      // `rm -rf .claude/hooks/../..` would reach no judge at all.
+      if (segments.length === 0) segments.push('..');
       continue;
     }
     segments.push(segment);
@@ -59,8 +80,13 @@ export function pathSegments(path: string): string[] {
  * boundary trap COVENANT-07 closed.
  */
 function segmentCanName(segment: string, target: string): boolean {
-  if (!segment.includes('*') && !segment.includes('?')) return segment === target;
+  if (!isGlobSegment(segment)) return segment === target;
   const pattern = segment
+    // Collapse runs of `*` before translating. Consecutive `.*` groups backtrack
+    // combinatorially against a non-matching literal — 24 asterisks measured at 32s inside
+    // a hook that runs on every tool call — and `**` cannot mean more than `*` within one
+    // segment anyway, since the segment boundary is the split.
+    .replace(/\*+/g, '*')
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\*/g, '.*')
     .replace(/\?/g, '.');
@@ -73,11 +99,18 @@ function segmentCanName(segment: string, target: string): boolean {
  * whether any walk reaches a position pair `accepts` recognizes. Both match directions are
  * this same walk under a different acceptance.
  *
- * `named` counts the protected segments a definite/glob segment answered for, and must
- * reach one before either acceptance holds: an unknown segment FILLS positions but never
- * PROVES one. Without that, a walk carried by expansion alone would make `~/anything` a
- * match for every protected path there is — the tilde absorbs the whole protected run and
- * the definite part of the candidate is never consulted.
+ * `named` counts the protected segments a segment CONSTRAINED by literals answered for, and
+ * must reach one before either acceptance holds: an unknown segment — and a glob carrying no
+ * literal — fills a position but never proves one. Without that, a walk carried by expansion
+ * alone makes `~/anything` and a lone `*` match every protected path there is.
+ *
+ * `absolute` says whether the protected path is absolute, which decides what an unknown may
+ * stand for. A relative protected path is anchored at the repository root while `~`, `$VAR`,
+ * and a surviving `..` all reach outside it, so against a relative path an unknown can never
+ * name one of its segments — otherwise `~/dist` becomes `packages/core/dist` and a sibling
+ * checkout's build output is protected. Against an absolute path (the transcript assembly
+ * attaches) the unknown stands for its leading run. A repository that lives under the home
+ * directory is still reached either way, because the descendant rule slides its start.
  */
 function walk(
   candidate: string[],
@@ -85,18 +118,25 @@ function walk(
   ci: number,
   pi: number,
   named: number,
+  absolute: boolean,
   accepts: (ci: number, pi: number) => boolean,
 ): boolean {
   if (named > 0 && accepts(ci, pi)) return true;
   if (ci === candidate.length || pi === protectedSegments.length) return false;
-  if (isUnknownSegment(candidate[ci])) {
+  const segment = candidate[ci];
+  if (isUnknownSegment(segment)) {
+    if (!absolute) return false;
     for (let taken = 1; pi + taken <= protectedSegments.length; taken++) {
-      if (walk(candidate, protectedSegments, ci + 1, pi + taken, named, accepts)) return true;
+      if (walk(candidate, protectedSegments, ci + 1, pi + taken, named, absolute, accepts)) {
+        return true;
+      }
     }
     return false;
   }
-  if (!segmentCanName(candidate[ci], protectedSegments[pi])) return false;
-  return walk(candidate, protectedSegments, ci + 1, pi + 1, named + 1, accepts);
+  if (!segmentCanName(segment, protectedSegments[pi])) return false;
+  const proves = !isGlobSegment(segment) || globHasLiteral(segment);
+  const next = named + (proves ? 1 : 0);
+  return walk(candidate, protectedSegments, ci + 1, pi + 1, next, absolute, accepts);
 }
 
 /**
@@ -123,11 +163,16 @@ export function pathMatchesProtected(candidate: string, protectedPath: string): 
   const a = pathSegments(candidate);
   const b = pathSegments(protectedPath);
   if (a.length === 0 || b.length === 0) return false;
+  // A candidate left with nothing but `..` cancelled above the tree root, which is an
+  // ancestor of every relative protected path — the `rm -rf .claude/hooks/../..` form,
+  // which names no protected segment yet removes all of them.
+  if (a.every((segment) => segment === '..')) return true;
+  const absolute = protectedPath.startsWith('/');
   for (let start = 0; start < a.length; start++) {
-    if (walk(a, b, start, 0, 0, (_ci, pi) => pi === b.length)) return true;
+    if (walk(a, b, start, 0, 0, absolute, (_ci, pi) => pi === b.length)) return true;
   }
   // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
-  return walk(a, b, 0, 0, 0, (ci, pi) => ci === a.length && pi < b.length);
+  return walk(a, b, 0, 0, 0, absolute, (ci, pi) => ci === a.length && pi < b.length);
 }
 
 /**
