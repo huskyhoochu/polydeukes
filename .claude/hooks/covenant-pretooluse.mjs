@@ -28,6 +28,7 @@
  */
 
 import { mkdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -162,7 +163,12 @@ try {
       : [
           covenant.transcriptModRegistration({
             transcriptPath,
-            home: process.env.HOME,
+            // The env value first, since that is what the judged shell expands `~` and
+            // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
+            // HOME is unset, so a hook spawned without an environment (a service manager,
+            // `env -i`) keeps judging the home spellings instead of silently going absolute-
+            // only — an inert spelling closure looks identical to a passing call.
+            home: process.env.HOME ?? homedir(),
             bodyCommand: process.execPath,
             bodyModulePath: transcriptModBody,
             shellTools: SHELL_TOOLS,
