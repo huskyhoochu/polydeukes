@@ -1,3 +1,7 @@
+# 생성 훅이 lefthook 실행 파일을 찾지 못하면 커밋을 무판정 통과시키는 대신 실패한다
+# (감사 M2의 fail-open 꼬리 — CONFIG-08이 봉쇄).
+assert_lefthook_installed: true
+
 # biome는 node_modules/.bin/biome로 직접 호출한다.
 # `pnpm exec biome`는 일부 환경에서 네이티브 바이너리 spawn에 실패하며
 # "possibly out of memory"로 오보한다(실제 OOM 아님). .bin 직접 호출은 정상.

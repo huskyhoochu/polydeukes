@@ -245,3 +245,203 @@ describe('§5 AC-7 fail-closed and empty-staging boundaries', () => {
     expect(result.exitCode).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CONFIG-08 §4.2 — the commit surface consumes the UNION of the common
+// protectedPaths and the adapters.git additive list. The additive entries live in
+// the git adapter's own namespace vocabulary (§4.1), so a block caused by one can
+// come from nothing but the union wiring. Every blocked assertion below pins the
+// self-mod row (label + matched-entry subject — the dispatcher records the protected
+// entry that matched, so an additive-only entry as subject proves additive origin),
+// not just the exit code: the current
+// validator throws on the unknown `protectedPaths` key and fails closed at the SAME
+// exit 2, so an exit-code-only test would go green for the wrong reason.
+// ---------------------------------------------------------------------------
+
+describe('CONFIG-08 §4.2 commit surface — union of common and git-additive protected paths', () => {
+  /** Rows written by the protected-paths meta-covenant (never by the fail-closed handler). */
+  function selfModRows(): [string, string][] {
+    return readRecords(telemetryPath)
+      .records.filter((record) => record.label === 'self-mod')
+      .map((record) => [record.event, record.subject]);
+  }
+
+  it('blocks (exit 2) via a self-mod verdict when a staged file sits under a git-additive path', async () => {
+    // §5 commit-block AC: 'packages/core/src' is listed ONLY in adapters.git, so this
+    // block proves the union reached the judge. Mutation caught: the additive list never
+    // concatenated (exit 0), or exit 2 reached only through the fail-closed unknown-key
+    // handler (no self-mod row — the wrong-reason green this pin exists to refuse).
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('packages/core/src/judge.ts', 'export const judge = 1;\n');
+    git('add', 'packages/core/src/judge.ts');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
+    expect(selfModRows()).toEqual([['blocked', 'packages/core/src']]);
+  });
+
+  it('blocks (exit 2) the staged DELETION of a file under a git-additive path', async () => {
+    // The most direct disarming this ticket exists to stop: `git rm` on a judge-chain
+    // source travels the STAGED_DELETE evidence branch (kind 'delete'), not the write
+    // branch the sibling pin covers. Mutation caught: the union wired only into the
+    // write/modify evidence kinds, letting a staged deletion of the judge chain pass.
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
+    });
+    write('packages/core/src/judge.ts', 'export const judge = 1;\n');
+    git('add', 'polydeukes.config.json', 'packages/core/src/judge.ts');
+    git('commit', '--quiet', '-m', 'config and source');
+    git('rm', '--quiet', 'packages/core/src/judge.ts');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
+    expect(selfModRows()).toEqual([['blocked', 'packages/core/src']]);
+  });
+
+  it('opens (exit 0, bypassed) for a git-additive block when the TTY seam returns the token', async () => {
+    // §7 lockout class: the additive registration must carry the SAME escape hatch as
+    // the common one, or every commit staging a judge-chain source becomes un-waivable
+    // even for the human at the terminal. Mutation caught: the union implemented as a
+    // second registration wired without escapeHatch.
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      waiver: { token: WAIVER_TOKEN, ttlMinutes: 5 },
+      adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('packages/core/src/judge.ts', 'export const judge = 1;\n');
+    git('add', 'packages/core/src/judge.ts');
+
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      ttyPrompt: () => WAIVER_TOKEN,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(selfModRows()).toEqual([['bypassed', 'packages/core/src']]);
+  });
+
+  it('passes (exit 0) an unrelated staged file when the git namespace carries an additive list', async () => {
+    // The over-blocking half of the pair, and the honest RED today: the unknown-key
+    // throw currently fails this run closed at exit 2, so accepting the vocabulary is
+    // exactly what turns it green. Mutation caught: the union matching every path, or
+    // the namespace resolution still throwing on protectedPaths.
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('ordinary.txt', 'nothing special\n');
+    git('add', 'ordinary.txt');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('still blocks (exit 2) a staged file under the COMMON list while an additive list is present', async () => {
+    // The other end of the common↔additive axis: the union must APPEND, never replace.
+    // A consumer wiring normalizeProtectedPaths(gitAdditive) alone would leave every
+    // common entry unwatched on the commit surface — the fail-open mirror of the
+    // additive-block test above. Mutation caught: the common half dropped from the
+    // concatenation.
+    writeConfig({
+      protectedPaths: ['gate.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('gate.txt', 'gate definition\n');
+    git('add', 'gate.txt');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
+    expect(selfModRows()).toEqual([['blocked', 'gate.txt']]);
+  });
+
+  it('records advised (exit 0), not blocked, for a git-additive violation under enforce advise', async () => {
+    // The enforce axis crosses the new scope axis: the additive list must reach the
+    // advise branch too. Exit 0 alone cannot carry this pin — a no-match run also exits
+    // 0 — so the advised row is what proves the union was consulted. Mutation caught:
+    // the union threaded only into the block branch, silently un-measuring the additive
+    // scope wherever a repo dials the commit surface down to advise.
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      adapters: { git: { enforce: 'advise', protectedPaths: ['packages/core/src'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('packages/core/src/judge.ts', 'export const judge = 1;\n');
+    git('add', 'packages/core/src/judge.ts');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(0);
+    // The exact-row form (sibling pins' shape): a fail-closed collapse leaves no
+    // self-mod row at all, and a block-branch-only union leaves a blocked row — both
+    // refute this single advised row with the additive-only subject.
+    expect(selfModRows()).toEqual([['advised', 'packages/core/src']]);
+  });
+});
+
+describe('CONFIG-08 §4.2 the union is normalized as ONE list (consumer-side normalization)', () => {
+  function selfModRows(): [string, string][] {
+    return readRecords(telemetryPath)
+      .records.filter((record) => record.label === 'self-mod')
+      .map((record) => [record.event, record.subject]);
+  }
+
+  it('judges normally (one verdict, exit 2) when the same path is listed in BOTH lists', async () => {
+    // §4.2: dedupe belongs to the normalizer, and the union must survive a cross-list
+    // duplicate — first-occurrence dedupe, one registration, one verdict per staged
+    // change. Mutation caught: the concatenation bypassing normalizeProtectedPaths (a
+    // duplicate rejected as a config error → fail-closed, zero self-mod rows) or the
+    // duplicated entry double-judging the same staged change (two rows).
+    writeConfig({
+      protectedPaths: ['shared/secret.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: ['shared/secret.txt'] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('shared/secret.txt', 'sensitive\n');
+    git('add', 'shared/secret.txt');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
+    expect(selfModRows()).toEqual([['blocked', 'shared/secret.txt']]);
+  });
+
+  it('blocks (exit 2) a staged file under an additive entry spelled with surrounding whitespace', async () => {
+    // §4.1 hands additive entries over VERBATIM, so normalization must happen downstream
+    // of the concatenation for the two lists to be one vocabulary. Whitespace padding is
+    // the one spelling pathSegments does NOT forgive (a ./ prefix is stripped either
+    // way), so only this fixture refutes a union appended AFTER normalization — there
+    // the padded entry's segments carry spaces and match nothing (silent fail-open).
+    writeConfig({
+      protectedPaths: ['gatefile.txt'],
+      adapters: { git: { enforce: 'block', protectedPaths: [' packages/core/src '] } },
+    });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('packages/core/src/judge.ts', 'export const judge = 1;\n');
+    git('add', 'packages/core/src/judge.ts');
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+
+    expect(result.exitCode).toBe(2);
+    expect(selfModRows()).toEqual([['blocked', 'packages/core/src']]);
+  });
+});
