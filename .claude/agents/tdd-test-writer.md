@@ -45,10 +45,28 @@ than anywhere else, and they must assert the exact outcome — the specific exit
 "non-zero"), the specific verdict, the specific telemetry event — because a fail-open hole often
 shows up as *nearly* the right answer.
 
+Over-blocking is the mirror failure and it is not the safe one. A judge that blocks unrelated work
+pushes people to the waiver, and a waiver used daily is a gate that is already off — this repository
+narrowed its own protection surface after measuring 2,414 bypasses against 14 real blocks. So a test
+asserting that an ordinary operation still *passes* carries the same weight as one asserting a
+violation blocks, and both belong in the suite.
+
+When a test drives the assembled hook rather than a pure judge, assert **who answered**, not only
+what. The hook is fail-closed by construction — a stale `dist`, a failed import, a missing config
+all exit 2 — so an exit-code-only assertion can go green because the judge crashed rather than
+because it judged. The telemetry label separates those two, and the `subject` separates a verdict
+about the right protected path from one about the wrong one. A suite that omits the subject can stay
+green while the logic it names is deleted entirely.
+
 Beyond that, the recurring bug surfaces in this codebase are boundary conditions where the spec has
 a comparison or a "non-empty" check, forbidden state transitions that are easy to break silently in
 a refactor, round-trip transforms that lose an invariant, and contracts with the outside world
 (stdin payloads, exit codes, file presence) where the mutation surface is the boundary itself.
+
+When the spec introduces a new *kind* of thing, test the form of it that carries no content — a glob
+with no literal, a cancellation with nothing left to cancel, an absorption with nothing to absorb.
+A predicate whose degenerate form matches everything is not a predicate but a blocker, and the
+degenerate form is precisely what a fixture set written around realistic inputs never tries.
 
 Some things are already guaranteed and do not need a test: what the type system enforces at build
 time, what the module system enforces at import time, what a library's own suite covers, and the
@@ -86,4 +104,6 @@ existing code already contradicts — say so instead of writing a test that cert
 finding is worth more than the test would have been.
 
 Report what you wrote, the test titles, the actual pass/fail output from running the suite, and
-anything about the spec that did not hold up.
+anything about the spec that did not hold up. Name the axes the contract has and say which ones you
+covered at both ends — the auditor asks that question next, and an honest "I only tried the realistic
+end of this one" is worth more than a list that implies full coverage.

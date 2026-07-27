@@ -70,8 +70,11 @@ code is produced.
 
 - Input: test file paths produced by RED. For `audit <path>` entry, the supplied path or glob.
 - Output: per-`it()` Markdown table classifying each test as **P0 / P1 / DELETE** with a 1–2
-  sentence rationale per test. Only P0/P1 survive; everything else — including a happy-path already
-  covered by a nearby P0/P1 — is DELETE.
+  sentence rationale per test, plus a **coverage-gaps** section. Only P0/P1 survive; everything
+  else — including a happy-path already covered by a nearby P0/P1 — is DELETE.
+- The gaps section answers a different question from the table: the table asks what bug each test
+  catches, the gaps ask which input the suite never tried. A suite can be entirely P0 and still
+  blind — that is how COVENANT-07b shipped three defects past a 24-test audit. Read both.
 - Present the table verbatim. For every DELETE, ask the user whether to prune, rewrite, or keep.
   Default action on approved DELETE is surgical `Edit`; if a whole file is DELETE, `rm` it.
 - The auditor only has `Read, Glob, Grep`. It cannot delete. That is intentional — the DELETE

@@ -88,6 +88,11 @@ Each has a *why* — use the why to judge edge cases, not the label alone.
   a P0 happy-path covers the same logic.
 - **Fail-closed / fail-open tests**: for covenant and protocol code these are **P0**. A test
   asserting "ambiguous input blocks (exit 2)" guards the framework's core safety property.
+- **Over-block tests**: a test asserting that an ordinary, unrelated operation still *passes* is
+  **P0** in covenant code, not a nicety. Fail-open is the dangerous bug, but a judge that blocks
+  unrelated work pushes people to the waiver, and a waiver used daily is a gate already off —
+  this repository narrowed its own protection surface after measuring 2,414 bypasses against 14
+  real blocks. Never classify "this asserts nothing is blocked" as low-value.
 
 # High-value categories (Do Write — 6종)
 
@@ -126,6 +131,15 @@ can parse it consistently:
 | "happy-path 중복 it" | DELETE | 인접 P1(경계값)이 같은 경로를 이미 검증 — redundant happy-path |
 | ... | ... | ... |
 
+## Coverage gaps (the set question)
+
+| Axis | Covered | Missing |
+|------|---------|---------|
+| 글롭 세그먼트의 리터럴 유무 | 리터럴 있음 (`lefthook.y*`) | 리터럴 없음 (`*`) — 없음 |
+| ... | ... | ... |
+
+또는 "none — every axis the contract has is touched at both ends".
+
 ## Notes for the main session
 
 - Files where every test is DELETE → recommend `rm <path>` (whole-file removal)
@@ -147,6 +161,30 @@ hides this. Always list every test, even when the count gets large.
   approval gate is for.
 - Recommending production code refactors. That is out of scope for the auditor — its job is
   classification, not design.
+
+# The set question — asked once, after every test is classified
+
+Per-test classification cannot see a defect that lives in what the suite never tries. The two
+questions are different and both are needed: *"what bug does this test catch"* is answered test by
+test, *"which input has never appeared"* is answered only by looking at the whole set.
+
+List the axes the contract has, then check whether the fixtures touch **both ends** of each one:
+
+| Axis | One end | Other end |
+|---|---|---|
+| a glob segment | carries a literal (`lefthook.y*`) | carries none (`*`, `**`) |
+| a `..` segment | has something to cancel | has nothing left to cancel |
+| a protected path | absolute | relative |
+| an evidence field | present | absent, empty, wrong shape |
+
+An axis touched at only one end is a coverage gap. **Report it even when every individual test is
+P0** — the two findings are independent, and a suite can be entirely high-value and still blind.
+
+This is not hypothetical. A 24-test suite for COVENANT-07b, every test naming a real mutant and
+three redundancies already pruned, missed three confirmed defects: every glob fixture carried a
+literal anchor and every `..` fixture had something to cancel. The interior of the contract was
+covered; its boundaries were never tried. Two of the three defects blocked ordinary work and one
+opened a hole the previous implementation had closed.
 
 # The mutation question (tiebreaker)
 
