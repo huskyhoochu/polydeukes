@@ -31,7 +31,11 @@ human in a hurry — can quietly remove.
 
 <!-- TODO: 2-3 paragraphs. Concrete failure stories (the "I'm done" that wasn't; the
      silently weakened check). Keep it experiential, not abstract — this section is the
-     reader's pain, in their words. -->
+     reader's pain, in their words.
+     Parked candidate (2026-07-27, COVENANT-10b): the same banned content was blocked when
+     written with the edit tool and sailed through when delivered by a heredoc — not
+     forgiven, simply never judged. The fix's shape is the story: what can be computed is
+     judged, and what cannot leaves a recorded "could not judge" instead of silence. -->
 
 ## What it puts on one thin core
 

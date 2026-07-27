@@ -21,9 +21,10 @@ export function commandBasename(word: WordToken): string {
 
 /**
  * True when a `>&`-family target is an fd reference: all digits, `-` (close), or the
- * digits+`-` move-fd form (`2>&1-` moves fd 1, touching no file).
+ * digits+`-` move-fd form (`2>&1-` moves fd 1, touching no file). Exported as the SSOT
+ * of that boundary — the shell-evidence derivation consults the same judgment.
  */
-function isFdReference(text: string): boolean {
+export function isFdReference(text: string): boolean {
   return text === '-' || /^[0-9]+-?$/.test(text);
 }
 
