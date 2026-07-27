@@ -98,6 +98,17 @@ try {
   // it: a user declares which disciplines to keep, never what the judge must read in
   // order to judge (review 4). The shell axis's ordinary rule applies from here — a
   // read-only first token still passes, so inspecting a session needs no waiver.
+  // The ABSOLUTE path only, which leaves audit B2 open (a home-relative spelling of this
+  // file reaches no judge, so a forged human utterance can be appended). COVENANT-07b
+  // implemented the obvious fix here — registering the home-relative spellings alongside —
+  // and measurement withdrew it. A transcript living deep under HOME makes HOME itself a
+  // protected ANCESTOR, so every spelling inherits that: `echo $HOME` and `ls -la $HOME`
+  // break at the opaque-token step, which the read-only allowlist never reaches, and an edit
+  // whose CONTENT merely carries a bare `~` is refused by self-mod's fallback branch with a
+  // reason naming a file the call never touched. `cd /home/<user>` has blocked since
+  // COVENANT-13 for that same reason and went unnoticed only because the spelling people
+  // type did not match it. Closing B2 needs a registration that does not make an ancestor of
+  // the home directory — COVENANT-07c, not this list.
   const protectedPaths = core.normalizeProtectedPaths({
     protectedPaths: [
       ...(config.protectedPaths ?? []),

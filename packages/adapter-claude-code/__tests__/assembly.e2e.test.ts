@@ -144,7 +144,9 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'no-evidence.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(writePayload(manifest, dependencyLine), { transcriptPath });
+    const result = runHook(writePayload(manifest, dependencyLine), {
+      transcriptPath,
+    });
 
     expect(result.status).toBe(2);
   });
@@ -388,5 +390,122 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
     } finally {
       rmSync(configlessRoot, { recursive: true, force: true });
     }
+  });
+});
+
+// ===========================================================================
+// COVENANT-07b §3.4 — path NOTATION at the assembly boundary. Every spawn above
+// names its target literally, which is how seven measured bypass forms stayed
+// green underneath a passing suite (PRD §2-c): the mention never formed, so no
+// judgment step ever ran on them. One spawn per notation family, each pinning
+// WHICH judge answered — a fail-closed collapse is also exit 2, but it records
+// against the adapter, so only the label separates a verdict from a crash.
+// ===========================================================================
+
+describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', () => {
+  // The transcript assembly attaches from the payload (COVENANT-13) is the surface `~`
+  // and `$HOME` are written against. The judge expands neither — no home value is
+  // injected anywhere (PRD §2-b) — so what a notation form is matched on is the definite
+  // tail below, which is why this fixture can live under the temp root and still be the
+  // comparison the real session makes.
+  const TRANSCRIPT_DIR_PARTS = ['.claude', 'projects', '-home-u-proj'];
+  const TRANSCRIPT_FILE = 'session.jsonl';
+  const TRANSCRIPT_TAIL = [...TRANSCRIPT_DIR_PARTS, TRANSCRIPT_FILE].join('/');
+
+  /** An empty session file at that tail — a real session that has said nothing. */
+  function sessionTranscript(): string {
+    const dir = join(tmpRoot, ...TRANSCRIPT_DIR_PARTS);
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, TRANSCRIPT_FILE);
+    writeFileSync(path, '');
+    return path;
+  }
+
+  const rowsFor = (label: string) =>
+    readRecords(telemetryPath).records.filter((r) => r.label === label);
+
+  it('a redirect written through an interior "." is blocked on the Bash axis (exit 2)', () => {
+    // Measured bypass, interior-dot family. The target names a judge executable and the
+    // command is nowhere near read-only, yet today it exits 0 with no judge row at all.
+    // Mutation caught: the fix landing in the predicate but never reaching the assembled
+    // hook — the failure mode this file exists to catch and previously did not.
+    const result = runHook(bashPayload('echo x >> packages/core/./dist/index.js'));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('a sed -i whose target cancels through ".." is blocked on the Bash axis (exit 2)', () => {
+    // Same family, different write-detection rule: the target here is extracted by the
+    // sed-in-place rule rather than read off a redirect. Mutation caught: normalization
+    // added at one extraction site instead of in the shared primitive, which leaves the
+    // other rules judging raw strings (the drift that produced COVENANT-07 itself).
+    const result = runHook(bashPayload('sed -i s/a/b/ packages/core/src/../dist/index.js'));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('a cancelling prefix that descends again is blocked on the Bash axis (exit 2)', () => {
+    // The axis end that broke the previous attempt: cancellation in the MIDDLE of a path
+    // rather than at its end. `tmp/../.claude` is the same directory as `.claude`, and a
+    // resolution pass that only handles a trailing `..` loses the match while every fixture
+    // it wrote stayed green.
+    const result = runHook(bashPayload('rm -rf tmp/../.claude/hooks'));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
+    expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['.claude/hooks']);
+  });
+
+  it('a glob spelling of the same target passes silently — the deferred disposition', () => {
+    // Not an oversight, and pinned so it cannot become one quietly. Expanding a glob needs
+    // the filesystem, so the judge does not guess: both guessing directions were measured
+    // and both were worse than declining (a literal-free `*` blocked `ls`/`find`/markdown
+    // bullets; an anchored guess still cannot name a file that may not exist). What is wrong
+    // today is the SILENCE, not the pass — COVENANT-10b turns this row into a `skipped`, and
+    // this assertion is what will fail when it does.
+    const result = runHook(bashPayload('rm packages/*/dist/index.js'));
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('shell-mod')).toEqual([]);
+  });
+
+  it('a home-relative spelling of the transcript still passes — audit B2 stays open', () => {
+    // The hole this ticket set out to close and did not. The transcript is registered by its
+    // ABSOLUTE path only, so the same file written home-relative reaches no judge, and this
+    // append is what forges the human utterance the TTL waiver reads.
+    //
+    // The obvious fix — registering the home-relative spellings alongside the absolute one —
+    // was implemented, measured, and withdrawn. A transcript that lives deep under HOME makes
+    // HOME itself a protected ANCESTOR, so every spelling of it inherits that: `echo $HOME`
+    // and `ls -la $HOME` break at the opaque-token step, which the read-only allowlist never
+    // reaches, and an edit whose CONTENT merely contains a bare `~` is refused by self-mod's
+    // fallback branch. `cd /home/<user>` has in fact blocked since COVENANT-13 — nobody
+    // noticed only because the spelling people actually type did not match. Closing B2 needs
+    // a registration that does not make an ancestor of the home directory, which is
+    // COVENANT-07c. Pinned here so the hole is audible and 07c turns this red.
+    const transcriptPath = sessionTranscript();
+
+    const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+    });
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('shell-mod')).toEqual([]);
+  });
+
+  it('a tool call whose absolute file_path carries an interior "." is blocked by self-mod (exit 2)', () => {
+    // One primitive, three consumers (PRD §6): the tool axis reads the same predicate
+    // through a different judge, so a fix verified only on Bash payloads leaves the
+    // primary axis open. This is the real payload shape — absolute file_path — which is
+    // the input form whose absence hid COVENANT-07's regression. Write rather than Edit:
+    // Edit's virtual apply depends on what the built dist happens to contain, and a failed
+    // apply falls back to the mention branch, so the test would keep passing while no
+    // longer pinning the proven-target branch COVENANT-09 introduced.
+    const result = runHook(writePayload(`${repoRoot}/packages/core/./dist/index.js`, 'x'));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('self-mod').map((r) => r.event)).toEqual(['blocked']);
   });
 });

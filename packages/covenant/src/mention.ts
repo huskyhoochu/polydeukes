@@ -6,12 +6,30 @@
  * that keys on a protected path import this one function, so the two layers can never
  * drift apart. Argument names are never inspected — only string *values* are scanned,
  * at any depth, keeping the traversal agent-neutral.
+ *
+ * COVENANT-07b adds interior `.`/`..` as a SECOND comparison rather than a replacement.
+ * The raw segments are matched first, exactly as they always were, and the dot-resolved
+ * segments only if that fails. The union is the point: every path this predicate matched
+ * before still matches, so closing a notation can never cost a defence — the failure mode
+ * that a replacement pass produced twice before this shape was found.
+ *
+ * What it deliberately does NOT read is a glob, a variable expansion, or a tilde. None can
+ * be resolved without running the shell or touching the filesystem, and a judge that guesses
+ * at them either misses the real target or blocks an innocent one — both measured. They stay
+ * undecidable here and are answered where undecidability belongs (the Bash axis's opaque-token
+ * rule, and COVENANT-10b's skip registrations). A spelling that some layer genuinely *can*
+ * resolve — the home directory in front of the session transcript — is registered by that
+ * layer as its own protected path rather than inferred in here.
  */
 
 /**
  * Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop
  * empties. Exported so the self-mod judge can tell a judgeable evidence path from a
  * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ *
+ * A lone `.` survives as a segment. Resolving interior dots is a separate pass inside
+ * {@link pathMatchesProtected}, kept out of this function on purpose so that its contract —
+ * and self-mod's degenerate-evidence check built on top of it — stays exactly what it was.
  */
 export function pathSegments(path: string): string[] {
   return path
@@ -31,9 +49,7 @@ function containsSegmentRun(haystack: string[], needle: string[]): boolean {
 }
 
 /**
- * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
- * of it — compared on normalized path segments (not raw substrings, PRD §4.1). The two
- * directions are deliberately asymmetric:
+ * One comparison, shared by both passes. The two directions are deliberately asymmetric:
  *  - descendant / equal: the protected segments appear as a contiguous run at ANY offset in
  *    the candidate, so an ABSOLUTE `file_path` (`/home/u/proj/core/src/x` — the real Edit
  *    payload shape) matches the relative protected `core/src`;
@@ -47,13 +63,52 @@ function containsSegmentRun(haystack: string[], needle: string[]): boolean {
  * over-block alternative is worse). The segment boundary is exact, so `core/src-generated`
  * never matches `core/src`.
  */
-export function pathMatchesProtected(candidate: string, protectedPath: string): boolean {
-  const a = pathSegments(candidate);
-  const b = pathSegments(protectedPath);
-  if (a.length === 0 || b.length === 0) return false;
+function segmentsMatch(a: string[], b: string[]): boolean {
+  if (a.length === 0) return false;
   if (containsSegmentRun(a, b)) return true;
   // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
   return a.length < b.length && a.every((segment, i) => segment === b[i]);
+}
+
+/**
+ * Resolve `.` and `..` against the preceding segment — pure string work, no filesystem and
+ * no working directory, so the answer is the same wherever the judge runs.
+ *
+ * A `..` with nothing left to cancel is KEPT rather than dropped. Dropping it would collapse
+ * `../packages` into `packages` and hand a sibling checkout the protection meant for this
+ * one; keeping it leaves a segment that matches nothing, which is the honest answer for a
+ * path that points outside the tree.
+ */
+function resolveDotSegments(segments: string[]): string[] {
+  const resolved: string[] = [];
+  for (const segment of segments) {
+    if (segment === '.') continue;
+    if (segment === '..' && resolved.length > 0 && resolved[resolved.length - 1] !== '..') {
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved;
+}
+
+/**
+ * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
+ * of it — compared on path segments (not raw substrings, PRD §4.1), by {@link segmentsMatch}.
+ *
+ * Two passes, unioned. The raw pass is the shipped semantic and runs first: a command that
+ * spells the protected path out loud is caught by it no matter what the path resolves to
+ * afterwards, which is why `rm -rf .claude/hooks/../..` breaks here rather than needing a
+ * rule of its own. The dot-resolved pass runs only when the raw one finds nothing, and is
+ * what `packages/core/./dist/index.js` and `packages/core/src/../dist/index.js` need. Because
+ * it is a union it can only ever add matches, never withdraw one.
+ */
+export function pathMatchesProtected(candidate: string, protectedPath: string): boolean {
+  const a = pathSegments(candidate);
+  const b = pathSegments(protectedPath);
+  if (b.length === 0) return false;
+  if (segmentsMatch(a, b)) return true;
+  return segmentsMatch(resolveDotSegments(a), b);
 }
 
 /**

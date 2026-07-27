@@ -156,6 +156,22 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      call, so absence of proof can no longer be misread as proof. Types are the
      covenant's native language. -->
 
+<!-- Parked candidate (2026-07-27, COVENANT-07b): determinism is not only "same input,
+     same verdict" but "same verdict wherever it runs" — the judge reads no home
+     directory, no working directory, no filesystem, so the session hook and the commit
+     gate cannot disagree about the same command. That property survived a feature that
+     appeared to need the home directory, by moving the knowledge instead of the
+     ignorance: the layer that does know it states the spelling as data, and the judge
+     goes on comparing literals. Purity kept by ignorance rather than by injection — and
+     pinned by a test that reads the source, because no behavioural assertion can see the
+     difference. -->
+
+<!-- Parked candidate (2026-07-27, COVENANT-07b): a non-goal has two halves, and only one
+     of them is a contract. "We keep this pure" is a promise; "therefore we cannot judge
+     this" is a guess that rode along with it. Two documents had ruled path notation out
+     of scope on exactly that reasoning, and an audit walked through seven spellings of a
+     protected file. Nothing about the promise had to change to close them. -->
+
 ### 3. Evidence, not self-report
 
 **Nothing is trusted because someone — human or AI — says so.** Every covenant verdict
