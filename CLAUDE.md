@@ -88,7 +88,9 @@ What blocks and why:
   heredocs and herestrings) carry real evidence and block like a `Write`.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
-  absolute), reads pass in every spelling, and the home directory is never a protected ancestor.
+  absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
+  spelling, and the home directory is never a protected ancestor. A reader outside that
+  allowlist (`jq`, `bat`) still breaks — the allowlist vouches for the command, not the intent.
   Destroying out-of-repo ancestors is out of observation scope by design — the agent's own deny
   policy owns that ground.
 - **Disciplines** declared in the config judge beyond path mention (delta / command / context

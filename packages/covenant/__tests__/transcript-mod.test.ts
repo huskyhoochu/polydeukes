@@ -181,14 +181,38 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
     expect(verdict.upheld).toBe(false);
   });
 
-  it('a shell call with no string under any command-arg key breaks (fail-closed misassembly)', () => {
-    // Mutation caught: an unreadable shell call silently upheld — the judge-level twin of
-    // the config fail-closed gate, mirroring shell-mod's step 1.
-    const input = inputWithToolCall(SHELL_TOOL, { notTheCommandKey: 42 });
+  it('a candidate carrying a glued flag or operator still names the transcript', () => {
+    // Review finding: whole-path equality reads the candidate as one string, and no splitter
+    // separates `-o` or `>>` from the path fused to it. Under the protected-path routing this
+    // covenant replaces, the offset-tolerant comparison caught these; equality alone loses
+    // them, and every one is a write that overwrites the file the waiver reads.
+    for (const command of [
+      `curl -so${TRANSCRIPT} https://example.test/forged.jsonl`,
+      `wget -O${TRANSCRIPT} https://example.test/forged.jsonl`,
+      `rsync forged.jsonl host:${TRANSCRIPT}`,
+      `echo forged >>${TRANSCRIPT}`,
+    ]) {
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
 
-    const verdict = judgeTranscriptModification(input, baseSpec());
+  it('a home spelling whose ".." cancels back into home still names the transcript', () => {
+    // Review finding: the shell expands the prefix and THEN resolves dots. Resolving first
+    // cancels the `~` itself against the `..`, leaving a path that names nothing — so a
+    // spelling bash delivers straight to the transcript was upheld.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell expansion spelling
+    for (const prefix of ['~', '$HOME', '${HOME}']) {
+      const command = `echo forged >> ${prefix}/../u/${TRANSCRIPT_TAIL}`;
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
 
-    expect(verdict.upheld).toBe(false);
+  it('a non-canonical transcriptPath is still matched by its canonical spelling', () => {
+    // The payload supplies this path; nothing guarantees it is canonical. Both sides are
+    // dot-resolved, so the two forms name one file rather than two.
+    const spec = { ...baseSpec(), transcriptPath: `${HOME}/./x/../${TRANSCRIPT_TAIL}` };
+
+    expect(judgeTranscriptModification(shellCall(`rm ${TRANSCRIPT}`), spec).upheld).toBe(false);
   });
 });
 

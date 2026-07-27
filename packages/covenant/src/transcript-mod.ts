@@ -57,10 +57,14 @@ export type TranscriptModificationSpec = {
 // rule-selection injection stays closed, since dropping one would be a detection hole.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
-/** The transcript's axes once resolved: every spelling of it, plus the read-only allowlist. */
+/** The transcript's axes once resolved: the canonical target, the home forms, the allowlist. */
 type ResolvedTranscript = {
-  /** Segment spellings that all name the same file — the absolute form plus closed home forms. */
-  spellings: string[][];
+  /** The one segment run every spelling must resolve to: absolute, dot-resolved, canonical. */
+  target: string[];
+  /** Leading segments that stand for the home directory (`~`, `$HOME`, `${HOME}`, `~<user>`). */
+  homePrefixes: string[];
+  /** Home's own segments, substituted for a prefix before dots are resolved. */
+  homeSegments: string[];
   /** The canonical absolute path: the only spelling a break reason or a match ever reports. */
   path: string;
   readOnlyEntries: string[][];
@@ -88,64 +92,88 @@ function normalizeHome(home: string | undefined): { path: string; user: string }
 }
 
 /**
- * Every spelling that names the transcript, as segment runs (PRD §2).
+ * Resolve the transcript's axes, or `null` when there is nothing to protect (PRD §2).
  *
- * The absolute path always counts. The home forms are added only when the transcript really
- * lives under the given home — home and the transcript path arrive from different sources and
- * can disagree, and a tail sliced blindly out of a disagreement would close nothing but
- * garbage. `~<user>` derives its user from the home value's own last segment, so another
- * user's `~other` closes nothing.
+ * The target is the transcript's own segments, dot-resolved once, so a non-canonical
+ * `transcript_path` (`/home/u/./x/../<tail>`) is compared in the same form every candidate is.
+ * Home forms are recognized only when the transcript really lives under the given home — home
+ * and the transcript path arrive from different sources and can disagree, and a tail sliced
+ * blindly out of a disagreement would close nothing but garbage. `~<user>` derives its user
+ * from the home value's own last segment, so another user's `~other` closes nothing.
  *
- * An empty result means a degenerate `transcriptPath` (zero segments that name a file): the
- * covenant goes inert, the repo convention for an empty protected-path entry. Matching every
- * candidate against nothing would be a total lock-up out of one empty string.
+ * `null` means a degenerate `transcriptPath` (zero segments that name a file): the covenant
+ * goes inert, the repo convention for an empty protected-path entry. Matching every candidate
+ * against nothing would be a total lock-up out of one empty string.
  */
-function transcriptSpellings(spec: TranscriptModificationSpec): string[][] {
-  const absolute = pathSegments(spec.transcriptPath);
-  if (!absolute.some((segment) => segment !== '.')) return [];
+function resolveTranscript(spec: TranscriptModificationSpec): ResolvedTranscript | null {
+  const segments = pathSegments(spec.transcriptPath);
+  if (!segments.some((segment) => segment !== '.')) return null;
 
-  const spellings = [absolute];
   const home = normalizeHome(spec.home);
-  if (home !== null && spec.transcriptPath.startsWith(`${home.path}/`)) {
-    const tail = spec.transcriptPath.slice(home.path.length + 1);
+  const underHome = home !== null && spec.transcriptPath.startsWith(`${home.path}/`);
+  return {
+    target: resolveDotSegments(segments),
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell expansion spelling
-    const prefixes = ['~', '$HOME', '${HOME}', `~${home.user}`];
-    for (const prefix of prefixes) {
-      spellings.push(pathSegments(`${prefix}/${tail}`));
-    }
-  }
-  return spellings;
+    homePrefixes: underHome && home !== null ? ['~', '$HOME', '${HOME}', `~${home.user}`] : [],
+    homeSegments: home === null ? [] : pathSegments(home.path),
+    path: spec.transcriptPath,
+    readOnlyEntries: spec.readOnlyCommands
+      .map((entry) => entry.split(/\s+/).filter((word) => word !== ''))
+      .filter((entry) => entry.length > 0),
+  };
 }
 
 /**
  * True iff one path candidate names the transcript. Equality only — never an ancestor, a
- * descendant, or an embedded run at an offset, which is what removes the home ancestor at the
- * root. Raw segments are compared first and dot-resolved segments second (COVENANT-07b's
- * union), so `~/.claude/../<tail>` is the same file while `<tail>.bak` is not.
+ * descendant, or a run embedded at an offset, which is what removes the home ancestor at the
+ * root, so `<tail>.bak` and a foreign root that merely ends in the same segments both uphold.
+ *
+ * A home prefix is substituted BEFORE dots are resolved, because the shell expands in that
+ * order too: `~/../u/<tail>` is the transcript, and resolving first would cancel the `~` itself
+ * against the `..` and compare a path that names nothing.
  */
-function namesTranscript(candidate: string, spellings: string[][]): boolean {
-  const raw = pathSegments(candidate);
-  const resolved = resolveDotSegments(raw);
-  return spellings.some(
-    (spelling) => segmentsEqual(raw, spelling) || segmentsEqual(resolved, spelling),
-  );
+function namesTranscript(candidate: string, transcript: ResolvedTranscript): boolean {
+  const segments = pathSegments(candidate);
+  const head = segments[0];
+  const expanded =
+    head !== undefined && transcript.homePrefixes.includes(head)
+      ? [...transcript.homeSegments, ...segments.slice(1)]
+      : segments;
+  return segmentsEqual(resolveDotSegments(expanded), transcript.target);
+}
+
+/**
+ * The path forms one candidate string can carry: itself, plus the rooted suffix hiding behind a
+ * glued prefix. A shell word joins a path to a flag or an operator with no separator the
+ * candidate splitter recognizes (`curl -o/abs`, `wget -O/abs`, `host:/abs`, `>>/abs`), and under
+ * whole-path equality such a candidate names nothing at all — the offset-tolerant comparison
+ * that used to catch it is exactly what this judge gives up. Re-reading from the first root
+ * marker restores those spellings without restoring the ancestor direction: an extra form can
+ * only ever add a match, and every form is still compared for equality.
+ */
+function pathForms(candidate: string): string[] {
+  if (/^[/~$]/.test(candidate)) return [candidate];
+  const rooted = /[/~$]/.exec(candidate);
+  return rooted === null ? [candidate] : [candidate, candidate.slice(rooted.index)];
 }
 
 /** True iff any path candidate inside one token names the transcript. */
-function tokenNamesTranscript(token: string, spellings: string[][]): boolean {
-  return pathCandidates(token).some((candidate) => namesTranscript(candidate, spellings));
+function tokenNamesTranscript(token: string, transcript: ResolvedTranscript): boolean {
+  return pathCandidates(token)
+    .flatMap(pathForms)
+    .some((candidate) => namesTranscript(candidate, transcript));
 }
 
 /** True iff any string value inside `value`, at any depth, names the transcript. */
-function argsNameTranscript(value: unknown, spellings: string[][]): boolean {
+function argsNameTranscript(value: unknown, transcript: ResolvedTranscript): boolean {
   if (typeof value === 'string') {
-    return tokenNamesTranscript(value, spellings);
+    return tokenNamesTranscript(value, transcript);
   }
   if (Array.isArray(value)) {
-    return value.some((item) => argsNameTranscript(item, spellings));
+    return value.some((item) => argsNameTranscript(item, transcript));
   }
   if (typeof value === 'object' && value !== null) {
-    return Object.values(value).some((item) => argsNameTranscript(item, spellings));
+    return Object.values(value).some((item) => argsNameTranscript(item, transcript));
   }
   return false;
 }
@@ -155,12 +183,10 @@ function argsNameTranscript(value: unknown, spellings: string[][]): boolean {
  * the command contributes to uphold.
  */
 function judgeCommand(command: SimpleCommand, transcript: ResolvedTranscript): string | null {
-  const { spellings } = transcript;
-
   // (a) Precise rules: a detected mutation whose target is the transcript breaks.
   for (const rule of MUTATION_RULES) {
     for (const target of rule.detect(command)) {
-      if (tokenNamesTranscript(target.path, spellings)) {
+      if (tokenNamesTranscript(target.path, transcript)) {
         return `${target.rule} targets the session transcript ${transcript.path}`;
       }
     }
@@ -170,7 +196,7 @@ function judgeCommand(command: SimpleCommand, transcript: ResolvedTranscript): s
   // this ladder has no opaque-mention clause, so their text must still register a mention for
   // the backstop to answer. No mention: nothing left to judge.
   const tokens = [...command.words, ...command.redirects.map((redirect) => redirect.target)];
-  if (!tokens.some((token) => tokenNamesTranscript(token.text, spellings))) return null;
+  if (!tokens.some((token) => tokenNamesTranscript(token.text, transcript))) return null;
 
   // (d) An opaque write target could resolve to the transcript itself — unprovable, so it
   // breaks even for an allowlisted reader (order over (e) is the invariant).
@@ -199,12 +225,15 @@ function judgeShellCall(
   commandArgNames: string[],
   transcript: ResolvedTranscript,
 ): string | null {
+  // A shell call carrying no command string is not judged here. Shell-mod answers that
+  // misassembly with a break, but it is reached only after a protected path routed the call;
+  // in this covenant the judge IS the router, so the same clause would block every malformed
+  // payload and stamp `roi.log` with the transcript as the subject of a call that never named
+  // it — the misattribution PRD §3 forbids. The misassembly it defends against already goes
+  // silently inert on shell-mod's own axis for any command that mentions no protected path.
   const lines = commandArgNames
     .map((name) => call.args?.[name])
     .filter((value): value is string => typeof value === 'string');
-  if (lines.length === 0) {
-    return `unjudgeable shell call ${call.name}: no command string under any command-arg name`;
-  }
 
   for (const line of lines) {
     const result = tokenizeCommandLine(line);
@@ -212,7 +241,7 @@ function judgeShellCall(
       // Tokenize failed: the shell would still remove quotes, so strip them before the
       // segment comparison — otherwise the very quoting that broke tokenization defeats the
       // fallback. Over-joining unrelated words only ever widens what breaks, never a hole.
-      if (tokenNamesTranscript(line.replace(/['"]/g, ''), transcript.spellings)) {
+      if (tokenNamesTranscript(line.replace(/['"]/g, ''), transcript)) {
         return `untokenizable command line names the session transcript ${transcript.path}`;
       }
       continue;
@@ -244,12 +273,16 @@ function judgeMutatingCall(
     pathSegments(changePath).some((segment) => segment !== '.') &&
     (evidence?.kind === 'create' || evidence?.kind === 'modify' || evidence?.kind === 'delete')
   ) {
-    return namesTranscript(changePath, transcript.spellings)
+    return namesTranscript(changePath, transcript)
       ? `${call.name} would modify the session transcript ${changePath}`
       : null;
   }
-  return argsNameTranscript(call.args, transcript.spellings)
-    ? `${call.name} would modify the session transcript ${transcript.path}`
+  // No target is proven on this branch, so the reason says what was actually observed: the
+  // call names the transcript somewhere in its arguments. Claiming it "would modify" the file
+  // would send an author whose real problem is elsewhere (a stale `old_string`, so the apply
+  // produced no evidence) hunting a write their call never makes.
+  return argsNameTranscript(call.args, transcript)
+    ? `${call.name} names the session transcript ${transcript.path} with no proven target`
     : null;
 }
 
@@ -267,17 +300,10 @@ export function judgeTranscriptModification(
   input: CovenantInput,
   spec: TranscriptModificationSpec,
 ): CovenantVerdict {
-  const spellings = transcriptSpellings(spec);
-  if (spellings.length === 0) {
+  const transcript = resolveTranscript(spec);
+  if (transcript === null) {
     return { upheld: true };
   }
-  const transcript: ResolvedTranscript = {
-    spellings,
-    path: spec.transcriptPath,
-    readOnlyEntries: spec.readOnlyCommands
-      .map((entry) => entry.split(/\s+/).filter((word) => word !== ''))
-      .filter((entry) => entry.length > 0),
-  };
   const shellToolNames = spec.shellToolNames.filter((name) => name !== '');
   const commandArgNames = spec.commandArgNames.filter((name) => name !== '');
   const mutatingToolNames = spec.mutatingToolNames.filter((name) => name !== '');
