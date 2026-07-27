@@ -161,8 +161,10 @@ Consequences to know:
   needs the filesystem or the shell, so `rm packages/*/dist/index.js` and
   `rm -rf packages/$PKG/dist` still pass here — but no longer silently (COVENANT-10b): a
   mutation signal the judge cannot compute now leaves one `skipped` row — per-discipline when
-  the target path is known (`sed -i`, `tee`, opaque content), one `shell-unjudgeable` row when
-  it is not (opaque targets, nested shells, tokenize failures) — while shell-delivered writes
+  the target path is known AND inside that discipline's scope (`sed -i`, `tee`, opaque
+  content; an out-of-scope target is no discipline's business and leaves no row), one
+  `shell-unjudgeable` row when the target is unknowable (opaque targets, nested shells,
+  subshell groups, tokenize failures) — while shell-delivered writes
   it *can* compute (literal `echo` redirects, quoted/clean heredocs and herestrings, and
   NotebookEdit cells on the tool axis) reach the delta/context disciplines as real per-call
   evidence and block like a `Write` would. Signal-free reads (`ls *.md`, `echo $HOME`,

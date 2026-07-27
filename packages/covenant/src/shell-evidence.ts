@@ -19,7 +19,13 @@ import {
   type SimpleCommand,
   tokenizeCommandLine,
 } from './bash-line.js';
-import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
+import {
+  commandBasename,
+  isFdReference,
+  redirectWriteRule,
+  sedInPlaceRule,
+  teeRule,
+} from './mutation-rules.js';
 import { DEFAULT_READ_ONLY_COMMANDS } from './shell-mod.js';
 
 /** A computed write: the target, the exact bytes written, and the redirect direction. */
@@ -49,7 +55,11 @@ type Target = { path: string } | { reason: string };
 
 // A command that moves the working directory makes every relative target on the line
 // ambiguous — resolving it against a guessed base is the approximation §2-a refuses.
-const DIRECTORY_CHANGE_COMMANDS = new Set(['cd', 'pushd']);
+const DIRECTORY_CHANGE_COMMANDS = new Set(['cd', 'pushd', 'popd']);
+
+// The redirect spellings that carry stdout — the only stream whose bytes this layer can
+// compute. `1>` IS `>` by fd, so demoting it would turn a computable write into a skip.
+const STDOUT_WRITE_OPERATORS = new Set(['>', '>>', '1>', '1>>']);
 
 // Rules that detect a write with no redirect. The redirect rule is consulted separately,
 // for its fd-reference boundary (`2>&1` is neither a write nor a signal).
@@ -78,6 +88,9 @@ function writeRedirects(command: SimpleCommand): RedirectToken[] {
   return command.redirects.filter(
     (redirect) =>
       redirect.operator.includes('>') &&
+      // An fd duplication is never a write, even when its digit equals another write's
+      // filename (`> 1 2>&1`) — without this the digit re-admits it via `detected`.
+      !(redirect.operator.endsWith('>&') && isFdReference(redirect.target.text)) &&
       (redirect.target.opaque || detected.has(redirect.target.text)),
   );
 }
@@ -123,8 +136,10 @@ function stdinContent(command: SimpleCommand, reads: RedirectToken[]): Content {
 
   const heredoc = heredocs[0];
   if (heredoc !== undefined) {
-    if (!heredoc.literal && /[$`]/.test(heredoc.body)) {
-      return { reason: 'an unquoted heredoc body carries an expansion' };
+    // Backslash joins the escape set: in an unquoted heredoc bash processes `\` too
+    // (a trailing one is a line continuation), so captured bytes would be fiction.
+    if (!heredoc.literal && /[$`\\]/.test(heredoc.body)) {
+      return { reason: 'an unquoted heredoc body carries an expansion or escape' };
     }
     return { content: heredoc.body };
   }
@@ -177,7 +192,7 @@ function deriveWrites(
     return;
   }
   // Only stdout carries the content this layer can compute; `2>`/`&>` carry streams it cannot.
-  if (redirect.operator !== '>' && redirect.operator !== '>>') {
+  if (!STDOUT_WRITE_OPERATORS.has(redirect.operator)) {
     derivation.unjudgeable.push({
       path: target.path,
       reason: `redirect ${redirect.operator} does not carry stdout`,
@@ -193,8 +208,17 @@ function deriveWrites(
   derivation.evidence.push({
     path: target.path,
     content: content.content,
-    mode: redirect.operator === '>' ? 'truncate' : 'append',
+    mode: redirect.operator.endsWith('>>') ? 'append' : 'truncate',
   });
+}
+
+/**
+ * True when a word carries subshell group syntax. `(`/`)` are ordinary word characters
+ * to this tokenizer, so the grouping — and any `cd` inside it — is structurally
+ * invisible: a reinterpretation boundary this layer refuses to parse into.
+ */
+function hasSubshellMarker(command: SimpleCommand): boolean {
+  return command.words.some((word) => word.text.startsWith('(') || word.text.endsWith(')'));
 }
 
 /** Derive one simple command (§2-a, top to bottom — the first matching row answers). */
@@ -210,22 +234,33 @@ function deriveCommand(
     return;
   }
 
-  const writes = writeRedirects(command);
-  if (writes.length > 0) {
-    deriveWrites(command, writes, movesDirectory, derivation);
-    return;
-  }
-
-  const detected = DETECTION_RULES.flatMap((rule) => rule.detect(command));
-  if (detected.length > 0) {
-    for (const mutation of detected) {
-      const target = resolveTarget(mutation.path, false, movesDirectory);
-      derivation.unjudgeable.push(
-        fileTarget(target, `${mutation.rule} writes content this layer does not compute`),
-      );
+  if (hasSubshellMarker(command)) {
+    const grouped = writeRedirects(command);
+    if (grouped.length === 0) {
+      derivation.unjudgeable.push({ reason: 'subshell group syntax is not parsed here' });
+      return;
+    }
+    for (const redirect of grouped) {
+      const target = resolveTarget(redirect.target.text, redirect.target.opaque, movesDirectory);
+      derivation.unjudgeable.push(fileTarget(target, 'subshell group syntax is not parsed here'));
     }
     return;
   }
+
+  // A write redirect and a rule-detected write can ride ONE command (`sed -i f > log`,
+  // `… | tee f > /dev/null`) — each files its own row; an early return on either side
+  // would swallow the other (review PR #36 [1]).
+  const writes = writeRedirects(command);
+  deriveWrites(command, writes, movesDirectory, derivation);
+
+  const detected = DETECTION_RULES.flatMap((rule) => rule.detect(command));
+  for (const mutation of detected) {
+    const target = resolveTarget(mutation.path, false, movesDirectory);
+    derivation.unjudgeable.push(
+      fileTarget(target, `${mutation.rule} writes content this layer does not compute`),
+    );
+  }
+  if (writes.length > 0 || detected.length > 0) return;
 
   // Nothing detected, but an opaque token under a command that is not proven read-only
   // could still write — the signal remains even where the rules stay silent. Without that

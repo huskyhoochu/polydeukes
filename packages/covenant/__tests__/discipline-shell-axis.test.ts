@@ -606,3 +606,70 @@ describe('discipline-body CLI — absent-file append, same-path chaining, contex
     expect(found.status).toBe(0);
   });
 });
+
+// ===========================================================================
+// Review-round regressions (PR #36)
+// ===========================================================================
+
+describe('review-round regressions (PR #36) — routing scope spelling', () => {
+  it('a ./-prefixed spelling of an in-scope target still routes the judged arm', () => {
+    // Review [2]: verbatim glob matching let an equivalent spelling escape every
+    // scope — the same notation class 07b closed for the mention judge.
+    const [judged] = compileDisciplineRegistrations(specWith([deltaEntry]));
+
+    expect(judged.matches?.(bashInput(`echo '${BANNED}' > ./packages/core/src/a.ts`))).toBe(
+      'packages/core/src/a.ts',
+    );
+  });
+
+  it('a ./-prefixed sed target still routes the per-entry skip arm', () => {
+    // Review [2], skip-arm edition — the recorded row must not be spelled away either.
+    const regs = compileDisciplineRegistrations(specWith([deltaEntry]));
+    const skipArm = regs.find((reg) => reg.label === deltaEntry.id && reg.skip !== undefined);
+
+    expect(skipArm?.matches?.(bashInput('sed -i s/a/b/ ./packages/core/src/a.ts'))).toBe(
+      'packages/core/src/a.ts',
+    );
+  });
+});
+
+describe('review-round regressions (PR #36) — body pre-read failure', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'pdks-review-regr-'));
+    mkdirSync(join(dir, 'scoped'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('a pre-read failure that is not ENOENT blocks instead of passing (fail-closed)', () => {
+    // Review [3]: dropped evidence read as a clean pass — the outcome this ticket
+    // exists to remove. ENOTDIR: an intermediate path component is a plain file.
+    writeFileSync(join(dir, 'scoped', 'blocker.txt'), 'a file, not a directory\n');
+    const entry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
+    const target = join(dir, 'scoped', 'blocker.txt', 'x.ts');
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        bodyPath,
+        '--discipline',
+        JSON.stringify(entry),
+        '--root-dir',
+        dir,
+        '--shell-tool',
+        SHELL_TOOL,
+        '--command-arg',
+        COMMAND_ARG,
+      ],
+      { input: JSON.stringify(bashInput(`echo '${BANNED}' >> ${target}`)), encoding: 'utf-8' },
+    );
+
+    // The undecidable-structure fail mode, not a judged break: routing matched, the
+    // evidence could not be completed, and CORE-03 says cannot-judge blocks at exit 2.
+    expect(result.status).toBe(2);
+  });
+});

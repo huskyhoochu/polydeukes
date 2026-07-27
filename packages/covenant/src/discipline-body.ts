@@ -116,7 +116,8 @@ function parseEntry(json: string): DisciplineEntry {
 /**
  * The file's content before this call runs, `null` when it does not exist (a create), and
  * `undefined` when it cannot be read at all — a permission error or a race is not an empty
- * file, so that evidence is demoted to unjudgeable rather than judged on a fiction.
+ * file. The caller escalates that to the fail-closed exit: routing already matched, so a
+ * quiet drop here would record the run as `passed` (review PR #36 [3]).
  */
 function readPreState(location: string): string | null | undefined {
   try {
@@ -150,7 +151,11 @@ function enrichWithShellEvidence(
     const location = resolve(opts.rootDir, change.path);
     const chained = composed.get(location);
     const pre = chained !== undefined ? chained : readPreState(location);
-    if (pre === undefined) continue;
+    if (pre === undefined) {
+      // Cannot judge means block (CORE-03): the judge-level catch turns this throw into
+      // the undecidable-structure exit — never a quiet uphold recorded as `passed`.
+      throw new Error(`pre-state of ${change.path} is unreadable`);
+    }
     const post = change.mode === 'append' ? `${pre ?? ''}${change.content}` : change.content;
     composed.set(location, post);
     proven.push({

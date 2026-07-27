@@ -11,7 +11,7 @@
  * never match — scope is a repo-relative declaration).
  */
 
-import { isAbsolute, relative } from 'node:path';
+import { isAbsolute, posix, relative } from 'node:path';
 import {
   allFileChanges,
   type CanonicalTranscript,
@@ -81,7 +81,14 @@ function toGlobs(value: string | string[] | undefined): string[] {
  * (never matches — discipline scope is declared repo-relative).
  */
 function relativizeForScope(filePath: string, rootDir: string): string | null {
-  if (!isAbsolute(filePath)) return filePath;
+  if (!isAbsolute(filePath)) {
+    // A relative spelling normalizes before matching — `./x` and `a/../x` name x, and a
+    // spelling that resolves out of the root matches nothing. Verbatim matching let an
+    // equivalent spelling escape every scope (review PR #36 [2], 07b's notation class).
+    const normalized = posix.normalize(filePath);
+    if (normalized === '.' || normalized.startsWith('..')) return null;
+    return normalized;
+  }
   const relativized = relative(rootDir, filePath);
   if (relativized.startsWith('..') || isAbsolute(relativized)) return null;
   return relativized;

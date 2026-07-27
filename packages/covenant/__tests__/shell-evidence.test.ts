@@ -553,3 +553,79 @@ describe('deriveShellChanges — target unknown edge forms (audit G11/G12/G10)',
     expectPathlessSkip('cd /abs && echo x > rel.ts');
   });
 });
+
+// ===========================================================================
+// Review-round regressions (PR #36) — each fixture is a verifier's reproduction
+// ===========================================================================
+
+describe('deriveShellChanges — review-round regressions (PR #36)', () => {
+  it('reports a tee operand even when a write redirect rides the same command', () => {
+    // Review [1]: the early return on write redirects swallowed rule-detected
+    // targets — a banned word landed in the tee file with no row of any kind.
+    const { evidence, unjudgeable } = deriveShellChanges("echo 'x' | tee f2.ts > /dev/null");
+
+    expect(evidence).toEqual([]);
+    const paths = unjudgeable.map((entry) => entry.path);
+    expect(paths).toContain('f2.ts');
+    expect(paths).toContain('/dev/null');
+  });
+
+  it('reports a sed -i operand even when the same command redirects elsewhere', () => {
+    // Review [1], sed edition: the operand and the redirect target each keep a row.
+    const { evidence, unjudgeable } = deriveShellChanges('sed -i s/a/b/ f.ts > log.txt');
+
+    expect(evidence).toEqual([]);
+    const paths = unjudgeable.map((entry) => entry.path);
+    expect(paths).toContain('f.ts');
+    expect(paths).toContain('log.txt');
+  });
+
+  it('refuses an unquoted heredoc body carrying a backslash — a line continuation', () => {
+    // Review [4]: bash joins a trailing-backslash line in an unquoted heredoc, so
+    // captured bytes would be fiction; the form is unjudgeable, never confident.
+    const command = lines('cat > f.ts <<EOF', 'line gu\\', 'ard', 'EOF');
+
+    const { evidence, unjudgeable } = deriveShellChanges(command);
+
+    expect(evidence).toEqual([]);
+    expect(unjudgeable).toEqual([expect.objectContaining({ path: 'f.ts' })]);
+  });
+
+  it('a subshell group is a reinterpretation boundary, not a confident path or content', () => {
+    // Review [5]: '(' as a word defeated the cd rule; ')' leaked into derived content.
+    const { evidence, unjudgeable } = deriveShellChanges('( cd d && echo x > rel.ts )');
+
+    expect(evidence).toEqual([]);
+    expect(unjudgeable.length).toBeGreaterThan(0);
+    expect(unjudgeable.every((entry) => entry.reason.length > 0)).toBe(true);
+  });
+
+  it('popd moves the directory too — a following relative write is refused', () => {
+    // Review [6]: the directory-change set named cd and pushd only.
+    const { evidence, unjudgeable } = deriveShellChanges('popd && echo x > rel.ts');
+
+    expect(evidence).toEqual([]);
+    expect(unjudgeable.every((entry) => entry.path === undefined)).toBe(true);
+    expect(unjudgeable.length).toBeGreaterThan(0);
+  });
+
+  it('1> and 1>> are stdout by spelling — computable like > and >>', () => {
+    // Review [7]: the explicit fd-1 spellings were demoted to per-item skips.
+    expect(deriveShellChanges("echo 'x' 1> f.ts")).toEqual({
+      evidence: [{ path: 'f.ts', content: 'x\n', mode: 'truncate' }],
+      unjudgeable: [],
+    });
+    expect(deriveShellChanges("echo 'x' 1>> f.ts")).toEqual({
+      evidence: [{ path: 'f.ts', content: 'x\n', mode: 'append' }],
+      unjudgeable: [],
+    });
+  });
+
+  it('an fd duplication whose digit equals another write target is not a second write', () => {
+    // Review [8]: detected.has('1') re-admitted 2>&1 and tripped the two-write refusal.
+    expect(deriveShellChanges("echo 'x' > 1 2>&1")).toEqual({
+      evidence: [{ path: '1', content: 'x\n', mode: 'truncate' }],
+      unjudgeable: [],
+    });
+  });
+});
