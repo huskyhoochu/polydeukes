@@ -122,8 +122,9 @@ hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, and the five
 re-observes any staged change to them, and blocking them in-session as well had measured 2,414
 waiver bypasses against 14 real discipline blocks. What stays is what only this surface can see:
 a file whose edit disarms a check rather than passing it, and gitignored build output that no
-commit ever shows. The root `polydeukes.config.yaml` attaches itself (CONFIG-03) and assembly
-adds the live transcript path (COVENANT-13), both for the same reason. Since CONFIG-03 the
+commit ever shows. The root `polydeukes.config.yaml` attaches itself (CONFIG-03), and the live transcript is
+defended by its own assembly-built registration (COVENANT-13, reshaped by COVENANT-07c —
+see below), both for the same reason. Since CONFIG-03 the
 protection-policy data (protectedPaths / adapters / disciplines) lives in that config file, not
 in the hook — the hook consumes it via the umbrella `loadConfig`, and a missing or invalid config
 blocks every call (fail-closed). Eight wired disciplines (since COVENANT-10) judge beyond path
@@ -170,26 +171,29 @@ Consequences to know:
   evidence and block like a `Write` would. Signal-free reads (`ls *.md`, `echo $HOME`,
   `pnpm build`) stay silent by design, and the context family still has no commit-surface
   second layer, so its shell-axis skip row is the final record.
-  It never expands `~` either, and the session transcript is
-  defended in its **absolute spelling only** — so `rm ~/…jsonl` still passes and audit B2
-  stays open, owned by COVENANT-07c. Registering the home-relative spellings in assembly was
-  implemented and withdrawn: a transcript living deep under HOME makes HOME itself a protected
-  *ancestor*, so every spelling inherits that — `echo $HOME` and `ls -la $HOME` broke at the
-  opaque-token step (which the read-only allowlist never reaches) and an edit whose *content*
-  merely carried a bare `~` was refused by self-mod's fallback branch. `cd /home/<user>` has
-  in fact blocked since COVENANT-13 for that same reason; it went unnoticed only because the
-  spelling people actually type did not match. `cd ..`, `cd ~`, `rm -rf ../dist`, and
-  `find . -name '*.mjs'` all stay free.
+  It never expands `~` either. The session transcript is defended by its **own registration**
+  (`transcript-mod`, COVENANT-07c) rather than a protected-path entry: a `matches` predicate
+  judges "does this call write to the transcript *file*" on whole-path **equality** — never an
+  ancestor — with the `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data (assembly
+  injects `HOME`). So `echo forged >> ~/…jsonl` blocks (audit B2 closed, 2026-07-28) while
+  `cd /home/<user>`, `echo $HOME`, and an edit whose *content* carries a bare `~` are free —
+  the home directory never becomes a protected ancestor (the over-block that had shipped with
+  COVENANT-13 and widened when 07b tried the protected-path spelling fix, both measured).
+  Destruction of out-of-repo *ancestors* (`rm -rf ~/.claude/projects`) is declared out of
+  observation scope: repo-scoped judging ends at the project root plus this one evidence file,
+  and the agent's own deny policy owns the rest (07c §2). `cd ..`, `cd ~`, `rm -rf ../dist`,
+  and `find . -name '*.mjs'` all stay free.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target
   counts, and a producer that cannot prove one falls back to the old mention rule. On the
   Bash axis a command's target is undecidable before it runs, so a mention there still
   blocks — including a read-only query whose argument carries a glob or a variable
-  (`grep … <protected>/*.ts`, `cat lefthook.y*`, `cat $HOME/…`), which the opaque-token rule
-  rejects before the read-only allowlist is ever consulted. `~` is **not** on the tokenizer's
-  opaque list (`$`, `*`, `?` are), so `cat ~/…` reaches that allowlist and passes — debugging
-  a session never needs a waiver.
+  (`grep … <protected>/*.ts`, `cat lefthook.y*`), which the opaque-token rule
+  rejects before the read-only allowlist is ever consulted. The transcript is the designed
+  exception: its predicate resolves the home spellings as data instead of treating them as
+  opaque, so reading a session (`cat ~/…jsonl`, `cat $HOME/…jsonl`) passes in every spelling —
+  debugging a session never needs a waiver.
   The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
   `waiver:` block into the conversation and the valve holds for `ttlMinutes` from that message,
   then blocking resumes on its own (recorded as `bypassed`, never silent). The token must

@@ -62,8 +62,12 @@ export const DEFAULT_READ_ONLY_COMMANDS: string[] = [
 // from an assembly would be a detection hole, and no consumer needs a subset.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
-/** True when the command's leading words match the allowlist entry's word sequence. */
-function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): boolean {
+/**
+ * True when the command's leading words match the allowlist entry's word sequence. Exported
+ * so the transcript predicate's own (e) clause (COVENANT-07c) absolves reads by this exact
+ * comparison instead of a fork that could drift from it.
+ */
+export function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): boolean {
   // An empty entry would match every command vacuously (`[].every()` is true) — reject it
   // locally so the covenant does not depend on a distant caller-side filter.
   if (entry.length === 0) return false;

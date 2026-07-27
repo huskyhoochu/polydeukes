@@ -35,7 +35,12 @@ human in a hurry — can quietly remove.
      Parked candidate (2026-07-27, COVENANT-10b): the same banned content was blocked when
      written with the edit tool and sailed through when delivered by a heredoc — not
      forgiven, simply never judged. The fix's shape is the story: what can be computed is
-     judged, and what cannot leaves a recorded "could not judge" instead of silence. -->
+     judged, and what cannot leaves a recorded "could not judge" instead of silence.
+     Parked candidate (2026-07-28, COVENANT-07c): protecting one file the cheap way — as a
+     path with ancestors — quietly made the whole home directory a protected zone;
+     `cd /home/<user>` was refused for two weeks and nobody noticed. The fix was a narrower
+     claim, not a wider net: judge exactly one file, by equality, and declare everything
+     outside the project root out of scope. Enforcement earns trust by claiming less. -->
 
 ## What it puts on one thin core
 

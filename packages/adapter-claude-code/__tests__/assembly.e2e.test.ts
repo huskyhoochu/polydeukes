@@ -46,8 +46,13 @@ afterEach(() => {
  * `transcriptPath` pointing at a JSONL transcript carrying a fresh human-typed
  * token, and the hook parses it out of the raw payload. Block cases simply omit it —
  * no transcript, no valve (the dispatcher stays on its noopTranscript default).
+ * `env` entries are spread over the spawn env last, so a test can hand the hook a
+ * real HOME (the COVENANT-07c block) without touching the telemetry seam callers rely on.
  */
-function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
+function runHook(
+  payload: unknown,
+  opts?: { transcriptPath?: string; env?: Record<string, string> },
+) {
   const withTranscript =
     typeof payload === 'string' || opts?.transcriptPath === undefined
       ? payload
@@ -60,6 +65,7 @@ function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
     env: {
       ...process.env,
       POLYDEUKES_TELEMETRY_PATH: telemetryPath,
+      ...opts?.env,
     },
   });
 }
@@ -402,25 +408,29 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
 // against the adapter, so only the label separates a verdict from a crash.
 // ===========================================================================
 
+// The transcript fixture the 07c block below spawns against (hoisted out of the 07b
+// block when its B2 pin flipped). The definite tail is what a path-notation form is
+// matched on, which is why the fixture can live under the temp root and still be the
+// comparison the real session makes.
+const TRANSCRIPT_DIR_PARTS = ['.claude', 'projects', '-home-u-proj'];
+const TRANSCRIPT_FILE = 'session.jsonl';
+const TRANSCRIPT_TAIL = [...TRANSCRIPT_DIR_PARTS, TRANSCRIPT_FILE].join('/');
+
+/** An empty session file at that tail — a real session that has said nothing. */
+function sessionTranscript(): string {
+  const dir = join(tmpRoot, ...TRANSCRIPT_DIR_PARTS);
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, TRANSCRIPT_FILE);
+  writeFileSync(path, '');
+  return path;
+}
+
 describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', () => {
   // The transcript assembly attaches from the payload (COVENANT-13) is the surface `~`
-  // and `$HOME` are written against. The judge expands neither — no home value is
-  // injected anywhere (PRD §2-b) — so what a notation form is matched on is the definite
-  // tail below, which is why this fixture can live under the temp root and still be the
-  // comparison the real session makes.
-  const TRANSCRIPT_DIR_PARTS = ['.claude', 'projects', '-home-u-proj'];
-  const TRANSCRIPT_FILE = 'session.jsonl';
-  const TRANSCRIPT_TAIL = [...TRANSCRIPT_DIR_PARTS, TRANSCRIPT_FILE].join('/');
-
-  /** An empty session file at that tail — a real session that has said nothing. */
-  function sessionTranscript(): string {
-    const dir = join(tmpRoot, ...TRANSCRIPT_DIR_PARTS);
-    mkdirSync(dir, { recursive: true });
-    const path = join(dir, TRANSCRIPT_FILE);
-    writeFileSync(path, '');
-    return path;
-  }
-
+  // and `$HOME` are written against. The path-mention judges expand neither — but since
+  // COVENANT-07c the home value IS injected, as plain data, into the transcript-mod
+  // predicate alone (its block sits below this one); the path-mention judges exercised
+  // here still expand nothing, so a notation form is matched on the definite tail only.
   const rowsFor = (label: string) =>
     readRecords(telemetryPath).records.filter((r) => r.label === label);
 
@@ -470,30 +480,6 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(skipped.map((r) => r.label)).toEqual(['shell-unjudgeable']);
   });
 
-  it('a home-relative spelling of the transcript still passes — audit B2 stays open', () => {
-    // The hole this ticket set out to close and did not. The transcript is registered by its
-    // ABSOLUTE path only, so the same file written home-relative reaches no judge, and this
-    // append is what forges the human utterance the TTL waiver reads.
-    //
-    // The obvious fix — registering the home-relative spellings alongside the absolute one —
-    // was implemented, measured, and withdrawn. A transcript that lives deep under HOME makes
-    // HOME itself a protected ANCESTOR, so every spelling of it inherits that: `echo $HOME`
-    // and `ls -la $HOME` break at the opaque-token step, which the read-only allowlist never
-    // reaches, and an edit whose CONTENT merely contains a bare `~` is refused by self-mod's
-    // fallback branch. `cd /home/<user>` has in fact blocked since COVENANT-13 — nobody
-    // noticed only because the spelling people actually type did not match. Closing B2 needs
-    // a registration that does not make an ancestor of the home directory, which is
-    // COVENANT-07c. Pinned here so the hole is audible and 07c turns this red.
-    const transcriptPath = sessionTranscript();
-
-    const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
-      transcriptPath,
-    });
-
-    expect(result.status).toBe(0);
-    expect(rowsFor('shell-mod')).toEqual([]);
-  });
-
   it('a tool call whose absolute file_path carries an interior "." is blocked by self-mod (exit 2)', () => {
     // One primitive, three consumers (PRD §6): the tool axis reads the same predicate
     // through a different judge, so a fix verified only on Bash payloads leaves the
@@ -506,6 +492,104 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
 
     expect(result.status).toBe(2);
     expect(rowsFor('self-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+});
+
+// ===========================================================================
+// COVENANT-07c — the transcript moves off protectedPaths into its own matches
+// predicate, so protecting it stops making the home directory a protected
+// ancestor. The forgery spellings close (audit B2, pinned OPEN by 07b in this
+// file until now) and the COVENANT-13 over-block on the literal absolute home
+// dissolves with the root that caused it.
+// ===========================================================================
+
+describe('dogfooding assembly E2E — transcript protection without a home ancestor (COVENANT-07c)', () => {
+  // Every spawn hands the hook a real HOME (raw env, injected into the transcript-mod
+  // predicate as data) and attaches a real session under that home, so the home-relative
+  // spellings below name the same file the payload declares.
+  const rowsFor = (label: string) =>
+    readRecords(telemetryPath).records.filter((r) => r.label === label);
+
+  it('a "~" append to the transcript is blocked by transcript-mod, not shell-mod (exit 2) — audit B2 closes', () => {
+    // The flip of 07b's "audit B2 stays open" pin, which lived in the block above until
+    // this ticket. Asserting WHO answered: the subject must be the ABSOLUTE transcript
+    // path (the canonical spelling, not the typed one — roi.log rows must name the real
+    // file), and shell-mod must stay silent — the transcript is no longer in its
+    // protectedPaths, so a shell-mod row here means the home-ancestor root is back.
+    const transcriptPath = sessionTranscript();
+
+    const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      env: { HOME: tmpRoot },
+    });
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('transcript-mod').map((r) => [r.event, r.subject])).toEqual([
+      ['blocked', transcriptPath],
+    ]);
+    expect(rowsFor('shell-mod')).toEqual([]);
+  });
+
+  it('cd into the literal absolute home passes with no judge row (exit 0) — the COVENANT-13 over-block dissolves', () => {
+    // `cd /home/<user>` has blocked since COVENANT-13: the transcript in protectedPaths
+    // made home a protected ANCESTOR (§1 — unnoticed only because nobody types the
+    // absolute spelling). Mutation caught: a fix that closes the `~` spellings but keeps
+    // the transcript in protectedPaths (07b's withdrawn shape) leaves this blocked —
+    // §3 demands the root goes, not the symptom.
+    const transcriptPath = sessionTranscript();
+
+    const result = runHook(bashPayload(`cd ${tmpRoot}`), {
+      transcriptPath,
+      env: { HOME: tmpRoot },
+    });
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('transcript-mod')).toEqual([]);
+    expect(rowsFor('shell-mod')).toEqual([]);
+  });
+
+  it('ancestor destruction outside the repo stays out of scope — transcript-mod silent (exit 0)', () => {
+    // §2 scope principle, designed pass made audible (07b's non-goal convention): the
+    // predicate protects the transcript FILE only, never an ancestor directory — that
+    // surface is declared out of observation scope and parked with agent deny policy.
+    // The disciplines layer MAY leave a shell-unjudgeable skipped row for the rm;
+    // deliberately not asserted either way — the pin is that the transcript predicate
+    // stays silent and nothing blocks.
+    const transcriptPath = sessionTranscript();
+
+    const result = runHook(bashPayload('rm -rf ~/.claude/projects'), {
+      transcriptPath,
+      env: { HOME: tmpRoot },
+    });
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('transcript-mod')).toEqual([]);
+  });
+
+  it('an edit whose CONTENT carries a bare "~" and the transcript spelling passes (exit 0)', () => {
+    // Content is mention, not target: the Edit's own fileChange proves the unrelated
+    // file, so the tool axis never reads args. Mutation caught: the predicate's fallback
+    // (or an args scan on the evidence branch) breaking on the spelling inside
+    // new_string — the withdrawn 07b registration refused exactly this edit shape.
+    const transcriptPath = sessionTranscript();
+    const notesPath = join(tmpRoot, 'notes.md');
+    writeFileSync(notesPath, 'draft line\n');
+
+    const result = runHook(
+      {
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: notesPath,
+          old_string: 'draft line',
+          new_string: `see ~/${TRANSCRIPT_TAIL} and the bare ~ marker`,
+        },
+      },
+      { transcriptPath, env: { HOME: tmpRoot } },
+    );
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('transcript-mod')).toEqual([]);
   });
 });
 
