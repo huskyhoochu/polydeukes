@@ -24,6 +24,7 @@ import {
 import picomatch from 'picomatch';
 import { judgeAddedViolations } from './delta.js';
 import type { CovenantRegistration } from './dispatch.js';
+import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './shell-evidence.js';
 
 /**
  * `DisciplineJudgeOptions` — assembly values the judge needs beside the entry.
@@ -86,24 +87,40 @@ function relativizeForScope(filePath: string, rootDir: string): string | null {
   return relativized;
 }
 
+/** The forbid family's scope predicate over relativized paths: `in` absent = all, `except` subtracts. */
+function forbidScopeMatcher(entry: DisciplineEntry): (path: string) => boolean {
+  const inGlobs = toGlobs(entry.in);
+  const isIn = inGlobs.length === 0 ? () => true : picomatch(inGlobs, { dot: true });
+  const exceptGlobs = toGlobs(entry.except);
+  const isExcept = exceptGlobs.length === 0 ? () => false : picomatch(exceptGlobs, { dot: true });
+  return (path) => isIn(path) && !isExcept(path);
+}
+
 /** In-scope file changes for the forbid family: `in` absent = all, `except` subtracts. */
 function forbidScope(
   entry: DisciplineEntry,
   fileChanges: FileChange[],
   rootDir: string,
 ): { path: string; change: FileChange }[] {
-  const inGlobs = toGlobs(entry.in);
-  const isIn = inGlobs.length === 0 ? () => true : picomatch(inGlobs, { dot: true });
-  const exceptGlobs = toGlobs(entry.except);
-  const isExcept = exceptGlobs.length === 0 ? () => false : picomatch(exceptGlobs, { dot: true });
+  const isInScope = forbidScopeMatcher(entry);
 
   const targets: { path: string; change: FileChange }[] = [];
   for (const change of fileChanges) {
     const scoped = relativizeForScope(change.path, rootDir);
-    if (scoped === null || !isIn(scoped) || isExcept(scoped)) continue;
+    if (scoped === null || !isInScope(scoped)) continue;
     targets.push({ path: scoped, change });
   }
   return targets;
+}
+
+/** The first of `paths` that relativizes into the entry's scope, or null (routing only). */
+function firstScopedPath(entry: DisciplineEntry, paths: string[], rootDir: string): string | null {
+  const isInScope = forbidScopeMatcher(entry);
+  for (const path of paths) {
+    const scoped = relativizeForScope(path, rootDir);
+    if (scoped !== null && isInScope(scoped)) return scoped;
+  }
+  return null;
 }
 
 /** File changes matching the immutable glob(s), with their relativized paths. */
@@ -154,25 +171,66 @@ function judgeAddedForChange(change: FileChange, pattern: RegExp): CovenantVerdi
 }
 
 /** The one shell-surface filter: named args of shell-tool calls, whatever the source. */
+function filterShellCalls(
+  calls: readonly { name: string; args?: Record<string, unknown> }[],
+  shellTools: string[],
+  commandArgs: string[],
+): { toolName: string; command: string }[] {
+  const found: { toolName: string; command: string }[] = [];
+  for (const call of calls) {
+    if (!shellTools.includes(call.name)) continue;
+    for (const argName of commandArgs) {
+      const value = call.args?.[argName];
+      if (typeof value === 'string') found.push({ toolName: call.name, command: value });
+    }
+  }
+  return found;
+}
+
+/** The command strings of shell-tool calls, whatever the source. */
 function filterShellCommands(
   calls: readonly { name: string; args?: Record<string, unknown> }[],
   shellTools: string[],
   commandArgs: string[],
 ): string[] {
-  const commands: string[] = [];
-  for (const call of calls) {
-    if (!shellTools.includes(call.name)) continue;
-    for (const argName of commandArgs) {
-      const value = call.args?.[argName];
-      if (typeof value === 'string') commands.push(value);
-    }
-  }
-  return commands;
+  return filterShellCalls(calls, shellTools, commandArgs).map((call) => call.command);
 }
 
 /** Shell command strings of the input: values of the named args on shell-tool calls. */
 function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
   return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
+}
+
+/** What the input's shell commands prove, and what they only signal (COVENANT-10b §2-a). */
+export type ShellSignals = {
+  evidence: { toolName: string; change: ShellChange }[];
+  unjudgeable: ShellUnjudgeable[];
+};
+
+/**
+ * Derive the shell-delivered signals of an input (§2-b) — the one derivation seam both
+ * the routing closures and the judged body consume, so the two can never disagree on
+ * what a command proves. Pure: completing the evidence with a pre-state is the body's
+ * job, since routing may not read disk.
+ */
+export function deriveShellSignals(
+  input: CovenantInput,
+  opts: DisciplineJudgeOptions,
+): ShellSignals {
+  const signals: ShellSignals = { evidence: [], unjudgeable: [] };
+  for (const call of filterShellCalls(input.toolCalls, opts.shellTools, opts.commandArgs)) {
+    const derived = deriveShellChanges(call.command);
+    for (const change of derived.evidence) {
+      signals.evidence.push({ toolName: call.toolName, change });
+    }
+    signals.unjudgeable.push(...derived.unjudgeable);
+  }
+  return signals;
+}
+
+/** Shell-derived targets whose content is computable — routing's half of the derivation. */
+function derivedTargets(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+  return deriveShellSignals(input, opts).evidence.map((derived) => derived.change.path);
 }
 
 /**
@@ -298,7 +356,12 @@ function buildMatches(
     // Routing is evidence-blind: a trigger with evidence still spawns the body and
     // records `passed` — "the gate checked, and the evidence was there" is the context
     // family's measurement value, not spawn waste (COVENANT-13 §4.4).
-    return (input) => precedentTrigger(entry, input, spec.rootDir);
+    //
+    // A shell-derived target routes `when`-blind (COVENANT-10b §2-b): no pre exists at
+    // routing time, so the added direction cannot be asked here. Precision is the body's.
+    return (input) =>
+      precedentTrigger(entry, input, spec.rootDir) ??
+      firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
   }
   // Deletions can never break the added direction, so they must not route a body spawn
   // (COVENANT-10: routing adds no spawn waste); the judge still short-circuits them
@@ -306,7 +369,7 @@ function buildMatches(
   return (input) =>
     forbidScope(entry, allFileChanges(input), spec.rootDir).find(
       (target) => target.change.kind !== 'delete',
-    )?.path ?? null;
+    )?.path ?? firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
 }
 
 /**
@@ -445,11 +508,70 @@ function patternFault(entry: DisciplineEntry): string | undefined {
 }
 
 /**
+ * True for the families whose shell-delivered writes are attributable to one entry
+ * (COVENANT-10b §2-c): delta and context. A command entry's axis is the string itself and
+ * an immutable entry's shell deletion is out of scope, so neither gains a skip arm. An
+ * entry whose pattern is broken gains none either — a broken pattern defines no match.
+ */
+function hasShellSkipArm(entry: DisciplineEntry): boolean {
+  if (patternFault(entry) !== undefined) return false;
+  return entry.forbid !== undefined || entry.requirePrecedent !== undefined;
+}
+
+/**
+ * The per-entry skip registration (§2-c): a detected write in this entry's scope whose
+ * result cannot be computed records one `skipped` under the entry's own label, keeping
+ * the gain aggregation in one group instead of falling to the common backstop.
+ */
+function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): CovenantRegistration {
+  const opts: DisciplineJudgeOptions = {
+    rootDir: spec.rootDir,
+    shellTools: spec.shellTools,
+    commandArgs: spec.commandArgs,
+  };
+  return {
+    label: entry.id,
+    protectedPaths: [],
+    matches: (input) =>
+      firstScopedPath(
+        entry,
+        deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []),
+        spec.rootDir,
+      ),
+    skip: { reason: 'a shell write in scope whose result this layer cannot compute' },
+  };
+}
+
+/**
+ * The one common shell-axis skip registration (§2-c). A write whose target itself is
+ * unknowable belongs to no entry's scope, so leaving N rows under N labels would trade
+ * one silent pass for a fabricated attribution — one row, one subject `'-'`.
+ */
+function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantRegistration {
+  const opts: DisciplineJudgeOptions = {
+    rootDir: spec.rootDir,
+    shellTools: spec.shellTools,
+    commandArgs: spec.commandArgs,
+  };
+  return {
+    label: 'shell-unjudgeable',
+    protectedPaths: [],
+    matches: (input) =>
+      deriveShellSignals(input, opts).unjudgeable.some((signal) => signal.path === undefined)
+        ? '-'
+        : null,
+    skip: { reason: 'a shell command whose write target this layer cannot determine' },
+  };
+}
+
+/**
  * Compile validated discipline entries into dispatcher registrations (COVENANT-10 §4.5).
  *
  * One registration per entry: `label` = id (per-discipline telemetry), `protectedPaths`
  * = [] (routing is the matches closure, not path mention), `body` = the generic body CLI
- * with the serialized entry and assembly values as args.
+ * with the serialized entry and assembly values as args. Delta and context entries gain a
+ * second, body-less registration for their shell axis, and one common `shell-unjudgeable`
+ * registration is appended last whatever the entry count (COVENANT-10b §2-c).
  *
  * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead
  * (COVENANT-13 §4.5): routing is kept, so the no-op stays visible in `gain`, but there is
@@ -464,7 +586,7 @@ function patternFault(entry: DisciplineEntry): string | undefined {
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
-  return spec.disciplines.map((entry) => {
+  const judged = spec.disciplines.map((entry) => {
     const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
 
     // A silent skip is how a discipline goes inert while its verdict still reads passed —
@@ -526,4 +648,9 @@ export function compileDisciplineRegistrations(
       },
     };
   });
+
+  const skipArms = spec.disciplines
+    .filter(hasShellSkipArm)
+    .map((entry) => shellSkipArm(entry, spec));
+  return [...judged, ...skipArms, shellUnjudgeableRegistration(spec)];
 }

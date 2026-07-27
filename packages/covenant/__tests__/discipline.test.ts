@@ -291,7 +291,9 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     // repeated --shell-tool / --command-arg pairs.
     const regs = compileDisciplineRegistrations(specWith([forbidEntry, cmdEntry]));
 
-    expect(regs).toHaveLength(2);
+    // Two judged registrations, then the delta entry's shell skip arm and the common
+    // shell-unjudgeable backstop (COVENANT-10b §2-c).
+    expect(regs).toHaveLength(4);
     expect(regs[0].label).toBe('no-hex');
     expect(regs[0].protectedPaths).toEqual([]);
     expect(regs[0].body?.command).toBe('/usr/bin/node');

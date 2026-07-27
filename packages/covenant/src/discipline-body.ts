@@ -10,7 +10,9 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
+  type CovenantInput,
   type CovenantVerdict,
   type DisciplineEntry,
   EXIT_BREAK_BLOCKING,
@@ -19,7 +21,7 @@ import {
   resolveFailMode,
   verdictToExitCode,
 } from '@polydeukes/core';
-import { judgeDiscipline } from './discipline.js';
+import { type DisciplineJudgeOptions, deriveShellSignals, judgeDiscipline } from './discipline.js';
 
 /**
  * Parse argv; exit 2 on any misuse (an unknown flag, or a dropped value).
@@ -111,6 +113,57 @@ function parseEntry(json: string): DisciplineEntry {
   return entry;
 }
 
+/**
+ * The file's content before this call runs, `null` when it does not exist (a create), and
+ * `undefined` when it cannot be read at all — a permission error or a race is not an empty
+ * file, so that evidence is demoted to unjudgeable rather than judged on a fiction.
+ */
+function readPreState(location: string): string | null | undefined {
+  try {
+    return readFileSync(location, 'utf-8');
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? null : undefined;
+  }
+}
+
+/**
+ * Complete shell-derived evidence with disk pre-state and attach it to the input
+ * (COVENANT-10b §2-b). The hook runs before the tool does, so disk IS the pre-state.
+ *
+ * Two rules. **One evidence, one call element**: `toolCall.fileChange` is singular
+ * (CORE-06), so each derived change rides its own element (same tool name, no args) rather
+ * than the shell call it came from — an element without args carries nothing into the
+ * command family's judgment. **Same-path evidence chains in command order**: only the
+ * first write reads disk, and every later one composes onto its predecessor's post, or a
+ * truncate followed by a re-add would be forgiven as pre-existing debt.
+ */
+function enrichWithShellEvidence(
+  input: CovenantInput,
+  opts: DisciplineJudgeOptions,
+): CovenantInput {
+  const derived = deriveShellSignals(input, opts);
+  if (derived.evidence.length === 0) return input;
+
+  const composed = new Map<string, string>();
+  const proven: CovenantInput['toolCalls'] = [];
+  for (const { toolName, change } of derived.evidence) {
+    const location = resolve(opts.rootDir, change.path);
+    const chained = composed.get(location);
+    const pre = chained !== undefined ? chained : readPreState(location);
+    if (pre === undefined) continue;
+    const post = change.mode === 'append' ? `${pre ?? ''}${change.content}` : change.content;
+    composed.set(location, post);
+    proven.push({
+      name: toolName,
+      fileChange:
+        pre === null
+          ? { kind: 'create', path: change.path, post }
+          : { kind: 'modify', path: change.path, pre, post },
+    });
+  }
+  return { ...input, toolCalls: [...input.toolCalls, ...proven] };
+}
+
 const { disciplineJson, rootDir, shellTools, commandArgs, precedentFound } = parseArgv(
   process.argv.slice(2),
 );
@@ -140,12 +193,8 @@ if (!parsed.ok) {
 
 let verdict: CovenantVerdict;
 try {
-  verdict = judgeDiscipline(entry, parsed.value, {
-    rootDir,
-    shellTools,
-    commandArgs,
-    precedentFound,
-  });
+  const opts: DisciplineJudgeOptions = { rootDir, shellTools, commandArgs, precedentFound };
+  verdict = judgeDiscipline(entry, enrichWithShellEvidence(parsed.value, opts), opts);
 } catch {
   // A structurally unjudgeable input or a broken pattern that slipped past assembly:
   // cannot judge means block (CORE-03 policy table), never a crash exit code.

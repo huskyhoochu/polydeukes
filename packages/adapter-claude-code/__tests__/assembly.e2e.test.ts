@@ -458,17 +458,16 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['.claude/hooks']);
   });
 
-  it('a glob spelling of the same target passes silently — the deferred disposition', () => {
-    // Not an oversight, and pinned so it cannot become one quietly. Expanding a glob needs
-    // the filesystem, so the judge does not guess: both guessing directions were measured
-    // and both were worse than declining (a literal-free `*` blocked `ls`/`find`/markdown
-    // bullets; an anchored guess still cannot name a file that may not exist). What is wrong
-    // today is the SILENCE, not the pass — COVENANT-10b turns this row into a `skipped`, and
-    // this assertion is what will fail when it does.
+  it('a glob spelling of the same target is recorded skipped — the silence removed (COVENANT-10b)', () => {
+    // 07b's silence pin, flipped by 10b exactly as its comment promised. The pass stays —
+    // expanding a glob still needs the filesystem, so no judge guesses a target — but a
+    // mutation-capable command whose target cannot be judged now leaves ONE common skipped
+    // row instead of nothing (PRD §3.2).
     const result = runHook(bashPayload('rm packages/*/dist/index.js'));
 
     expect(result.status).toBe(0);
-    expect(rowsFor('shell-mod')).toEqual([]);
+    const skipped = readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
+    expect(skipped.map((r) => r.label)).toEqual(['shell-unjudgeable']);
   });
 
   it('a home-relative spelling of the transcript still passes — audit B2 stays open', () => {
@@ -507,5 +506,237 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
 
     expect(result.status).toBe(2);
     expect(rowsFor('self-mod').map((r) => r.event)).toEqual(['blocked']);
+  });
+});
+
+// ===========================================================================
+// COVENANT-10b §3.1–3.3 — the shell axis stops passing mutations silently.
+// The same banned content a Write delivers blocked (COVENANT-10 above) arrived
+// by heredoc/redirect as exit 0 with ZERO rows (audit B3): no evidence, no
+// routing, not even a skipped. 10b derives evidence where the command text
+// makes it computable, records an entry-scoped or common `skipped` where it
+// does not, and keeps signal-free calls silent. NotebookEdit closes the same
+// gap's tool-axis form. Every case spawns the real hook; all but the two
+// volume-defence pins are RED against the current dist by design.
+// ===========================================================================
+
+describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit (COVENANT-10b)', () => {
+  // A probe path inside covenant-vocabulary's scope that never exists on disk, so the
+  // judgment-time pre read answers ENOENT and the whole delivered text is the added
+  // direction — same fixture logic as the COVENANT-10 Write block above.
+  const SCOPED_SOURCE = 'packages/core/src/e2e-probe.ts';
+  const BANNED_LINE = 'export const note = 1; // the guard word';
+
+  const rowsFor = (label: string) =>
+    readRecords(telemetryPath).records.filter((r) => r.label === label);
+  const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
+
+  it('a heredoc delivering a banned word into a discipline-scoped file is blocked (exit 2)', () => {
+    // The B3 bypass itself: a quoted delimiter makes the body literal, so the text is computable.
+    const result = runHook(
+      bashPayload([`cat > ${SCOPED_SOURCE} <<'EOF'`, BANNED_LINE, 'EOF'].join('\n')),
+    );
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('an append redirect delivering a banned word into the same scope is blocked (exit 2)', () => {
+    // Append composes pre at judgment time (absence = create), so the echoed line IS the added text.
+    const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${SCOPED_SOURCE}`));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+  });
+
+  it('a sed -i over a scoped file is recorded skipped under that discipline id (exit 0)', () => {
+    // Content incomputable, target known: the row lands on the ONE entry scoping this path
+    // (adapter-git src is english-only-sources territory alone), never on the common label.
+    const result = runHook(
+      bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
+    );
+
+    expect(result.status).toBe(0);
+    expect(skippedRows().map((r) => [r.label, r.subject])).toEqual([
+      ['english-only-sources', 'packages/adapter-git/src/collect.ts'],
+    ]);
+  });
+
+  it('a redirect to an opaque target leaves one common skipped row, never one per entry (exit 0)', () => {
+    // No target path means no entry attribution — fan-out would multiply noise by the entry count.
+    const result = runHook(bashPayload('echo x > $F'));
+
+    expect(result.status).toBe(0);
+    expect(skippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
+  });
+
+  it('a nested shell invocation leaves one common skipped row (exit 0)', () => {
+    // 04a already answers nested shells indeterminate; 10b records that answer instead of dropping it.
+    const result = runHook(bashPayload('bash x.sh'));
+
+    expect(result.status).toBe(0);
+    expect(skippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
+  });
+
+  it('a signal-free command stays silent — the volume defence (exit 0, adapter row only)', () => {
+    // No detected mutation, no write redirect, no opaque token: a recovery build must never cost a row.
+    const result = runHook(bashPayload('pnpm build'));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+
+  it('a read-only command carrying a glob stays silent — an opaque token alone is no signal (exit 0)', () => {
+    // `ls` sits on the read-only allowlist, so its glob cannot mean a write the derivation missed.
+    const result = runHook(bashPayload('ls *.md'));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+
+  it('a NotebookEdit delivering a banned word into a scoped cell is blocked (exit 2)', () => {
+    // The tool-axis half of B3: the hook matcher names four tools, the evidence set covered
+    // three. The notebook must exist — cell evidence reads the target cell's pre from it.
+    const notebookPath = join(repoRoot, 'packages/core/src/e2e-probe.ipynb');
+    writeFileSync(
+      notebookPath,
+      JSON.stringify({
+        cells: [{ id: 'cell-one', cell_type: 'code', source: "print('original')", metadata: {} }],
+        metadata: {},
+        nbformat: 4,
+        nbformat_minor: 5,
+      }),
+    );
+    try {
+      const result = runHook({
+        hook_event_name: 'PreToolUse',
+        tool_name: 'NotebookEdit',
+        tool_input: {
+          notebook_path: notebookPath,
+          cell_id: 'cell-one',
+          new_source: "print('x')  # the guard word",
+          cell_type: 'code',
+          edit_mode: 'replace',
+        },
+      });
+
+      expect(result.status).toBe(2);
+      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    } finally {
+      rmSync(notebookPath, { force: true });
+    }
+  });
+});
+
+// ===========================================================================
+// COVENANT-10b §2-d / §3.1–3.3 — gap-closing round (set-level audit). The 10b
+// block above pins each disposition once; these pin the set ends it never
+// tried: a protected-path notebook surviving the evidence takeover (§2-d,
+// "evidence must not narrow existing blocking"), both attribution boundaries
+// of the computable axis (out of every scope / clean in scope), a real
+// on-disk pre for append composition, and a violation arriving second in a
+// chain. G4' and G2' hold against the current dist (mention fallback, silent
+// no-match) and exist to keep holding once the derivation lands; the rest
+// are RED by design.
+// ===========================================================================
+
+describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)', () => {
+  const SCOPED_SOURCE = 'packages/core/src/e2e-probe.ts';
+  const BANNED_LINE = 'export const note = 1; // the guard word';
+
+  const rowsFor = (label: string) =>
+    readRecords(telemetryPath).records.filter((r) => r.label === label);
+  const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
+
+  it('a NotebookEdit on a protected-path notebook stays blocked by self-mod (exit 2)', () => {
+    // G4' — the fail-open direction §2-d names: today the mention fallback blocks this
+    // call; once NotebookEdit carries cell evidence the proven-target branch answers
+    // instead, and an evidence path that passes validity while dodging protected matching
+    // would replay the 07b fail-open shape. The notebook is real and parseable ON PURPOSE
+    // so evidence lands and the pin holds across the takeover.
+    const notebookPath = join(repoRoot, 'packages/core/dist/e2e-probe.ipynb');
+    writeFileSync(
+      notebookPath,
+      JSON.stringify({
+        cells: [{ id: 'cell-one', cell_type: 'code', source: "print('original')", metadata: {} }],
+        metadata: {},
+        nbformat: 4,
+        nbformat_minor: 5,
+      }),
+    );
+    try {
+      const result = runHook({
+        hook_event_name: 'PreToolUse',
+        tool_name: 'NotebookEdit',
+        tool_input: {
+          notebook_path: notebookPath,
+          cell_id: 'cell-one',
+          // Clean cell content on purpose: only the protected PATH can explain a block.
+          new_source: "print('probe')",
+          cell_type: 'code',
+          edit_mode: 'replace',
+        },
+      });
+
+      expect(result.status).toBe(2);
+      expect(rowsFor('self-mod').map((r) => r.event)).toEqual(['blocked']);
+    } finally {
+      rmSync(notebookPath, { force: true });
+    }
+  });
+
+  it('a computable write outside every scope leaves only the adapter funnel row (exit 0)', () => {
+    // G2' — computable-but-unmatched is a pass, not an unjudgeable: a target no entry
+    // scopes must produce zero discipline rows AND zero common-skip rows.
+    const result = runHook(bashPayload('echo x > /tmp/y.ts'));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+
+  it('a clean computable write into scope is passed and never also skipped (exit 0)', () => {
+    // G3' — one derivation, one answer: a judged write that ALSO drops a skipped row
+    // would double-record every computable call and drown the skip lane it feeds.
+    const result = runHook(bashPayload(`echo 'const ok = 1;' >> ${SCOPED_SOURCE}`));
+
+    expect(result.status).toBe(0);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['passed']);
+    expect(skippedRows()).toEqual([]);
+  });
+
+  it('an append composing a real on-disk pre still blocks the banned addition (exit 2)', () => {
+    // G1' — every sibling's pre is ENOENT (= create); a real pre exercises the judgment-
+    // time disk read and pre/post composition, and the relative target sits where only a
+    // repo-root resolution finds it — the hook process cwd holds no such file.
+    const realTarget = 'packages/core/src/e2e-probe-real.ts';
+    const realTargetAbs = join(repoRoot, realTarget);
+    writeFileSync(realTargetAbs, 'export const cleanBase = 1;\n');
+    try {
+      const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${realTarget}`));
+
+      expect(result.status).toBe(2);
+      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    } finally {
+      rmSync(realTargetAbs, { force: true });
+    }
+  });
+
+  it('a violation delivered by the second command of a chain is still blocked (exit 2)', () => {
+    // G5' — two writes, two targets, the banned one second: an implementation keeping a
+    // single evidence per call would let chain position launder the violation.
+    const chained = `echo probe > /tmp/pdks-chain.ts && echo '${BANNED_LINE}' > ${SCOPED_SOURCE}`;
+    const result = runHook(bashPayload(chained));
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
   });
 });

@@ -409,7 +409,9 @@ describe('compileDisciplineRegistrations — existing families carry no preceden
     ];
     const regs = compileDisciplineRegistrations(contextSpec(entries, { transcript }));
 
-    for (const reg of regs) {
+    // The shell-axis skip registrations carry no body at all, so only the judged ones
+    // have args a flag could ride on (COVENANT-10b §2-c).
+    for (const reg of regs.filter((candidate) => candidate.body !== undefined)) {
       expect(reg.body?.args).not.toContain('--precedent-found');
       expect(reg.body?.args).not.toContain('--precedent-missing');
     }

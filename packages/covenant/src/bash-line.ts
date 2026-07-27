@@ -23,10 +23,24 @@ export type RedirectToken = {
   target: WordToken;
 };
 
-/** One simple command: its word tokens and any redirect operators. */
+/**
+ * One heredoc body a command declared, with its delimiter's quoting (COVENANT-10b §2-a).
+ * `literal` means the delimiter was quoted, so the body is written verbatim; an unquoted
+ * delimiter expands its body, which only a consumer can decide what to do about.
+ */
+export type HeredocBody = {
+  body: string;
+  literal: boolean;
+};
+
+/**
+ * One simple command: its word tokens, any redirect operators, and the heredoc bodies it
+ * declared (in declaration order — absent when it declared none).
+ */
 export type SimpleCommand = {
   words: WordToken[];
   redirects: RedirectToken[];
+  heredocs?: HeredocBody[];
 };
 
 /** The tokenizer's discriminated result — fail-closed on unclosed quotes. */
@@ -230,18 +244,30 @@ function scanControl(line: string, i: number): string | null {
   return null;
 }
 
-/** A heredoc opener awaiting its body: the terminator word and the `<<-` tab-strip mode. */
-type PendingHeredoc = { delimiter: string; stripTabs: boolean };
+/**
+ * A heredoc opener awaiting its body: the terminator word, the `<<-` tab-strip mode, the
+ * delimiter's quoting, and the command that declared it (bodies arrive after the command
+ * is already closed, so the owner is carried rather than looked up).
+ */
+type PendingHeredoc = {
+  delimiter: string;
+  stripTabs: boolean;
+  literal: boolean;
+  owner: SimpleCommand;
+};
 
 /**
  * Consume queued heredoc bodies starting at `start` (just past the opening newline), in
  * queue order. Body lines are data — never parsed as commands — until a line equals the
- * delimiter (`<<-` allows leading tabs), or end of input (bash ends at EOF too). Returns
- * the index just past the last consumed body.
+ * delimiter (`<<-` allows leading tabs), or end of input (bash ends at EOF too). Each body
+ * is recorded on the command that declared it, in the bytes bash would write (tabs
+ * stripped under `<<-`, the `\r` of CRLF dropped). Returns the index just past the last
+ * consumed body.
  */
 function consumeHeredocBodies(line: string, start: number, pending: PendingHeredoc[]): number {
   let i = start;
   for (const heredoc of pending) {
+    let body = '';
     while (i < line.length) {
       let end = line.indexOf('\n', i);
       if (end === -1) end = line.length;
@@ -250,7 +276,12 @@ function consumeHeredocBodies(line: string, start: number, pending: PendingHered
       i = end + 1;
       const stripped = heredoc.stripTabs ? bodyLine.replace(/^\t+/, '') : bodyLine;
       if (stripped === heredoc.delimiter) break;
+      body += `${stripped}\n`;
     }
+    heredoc.owner.heredocs = [
+      ...(heredoc.owner.heredocs ?? []),
+      { body, literal: heredoc.literal },
+    ];
   }
   return i;
 }
@@ -315,6 +346,10 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
         pendingHeredocs.push({
           delimiter: scanned.word.text,
           stripTabs: redirect.operator === '<<-',
+          // Quoting decides whether the body expands, and `scanWord` has already removed
+          // the quotes — so the raw character it started on is the only place to read it.
+          literal: line[j] === "'" || line[j] === '"',
+          owner: current,
         });
         i = scanned.next;
         continue;
