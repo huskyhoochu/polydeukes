@@ -47,7 +47,7 @@ afterEach(() => {
  * token, and the hook parses it out of the raw payload. Block cases simply omit it —
  * no transcript, no valve (the dispatcher stays on its noopTranscript default).
  */
-function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
+function runHook(payload: unknown, opts?: { transcriptPath?: string; home?: string }) {
   const withTranscript =
     typeof payload === 'string' || opts?.transcriptPath === undefined
       ? payload
@@ -60,6 +60,11 @@ function runHook(payload: unknown, opts?: { transcriptPath?: string }) {
     env: {
       ...process.env,
       POLYDEUKES_TELEMETRY_PATH: telemetryPath,
+      // Assembly registers the transcript's `~`/`$HOME` spellings only when the file really
+      // lives under HOME — the judge itself never expands them (COVENANT-07b §2-c). Pointing
+      // HOME at the temp root is therefore what makes a home-relative notation real for a
+      // fixture transcript, rather than something the judge is asked to guess at.
+      ...(opts?.home === undefined ? {} : { HOME: opts.home }),
     },
   });
 }
@@ -144,7 +149,10 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'no-evidence.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(writePayload(manifest, dependencyLine), { transcriptPath });
+    const result = runHook(writePayload(manifest, dependencyLine), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(2);
   });
@@ -159,7 +167,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(bashPayload(`rm ${transcriptPath}`), { transcriptPath });
+    const result = runHook(bashPayload(`rm ${transcriptPath}`), { transcriptPath, home: tmpRoot });
 
     expect(result.status).toBe(2);
   });
@@ -170,7 +178,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
-    const result = runHook(bashPayload(`cat ${transcriptPath}`), { transcriptPath });
+    const result = runHook(bashPayload(`cat ${transcriptPath}`), { transcriptPath, home: tmpRoot });
 
     expect(result.status).toBe(0);
   });
@@ -444,29 +452,29 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
   });
 
-  it('a middle glob standing in for a package name is blocked, and on that path (exit 2)', () => {
-    // Glob family, directory-shaped protected path. One command removes every judge
-    // executable on the surface; before this ticket the dispatcher routed it nowhere.
-    // The subject assertion is not decoration: the first implementation passed this test
-    // while blocking on `lefthook.yml`, because a bare `*` matched every protected path —
-    // so the middle-glob logic could have been deleted entirely and the test stayed green.
-    const result = runHook(bashPayload('rm packages/*/dist/index.js'));
+  it('a cancelling prefix that descends again is blocked on the Bash axis (exit 2)', () => {
+    // The axis end that broke the previous attempt: cancellation in the MIDDLE of a path
+    // rather than at its end. `tmp/../.claude` is the same directory as `.claude`, and a
+    // resolution pass that only handles a trailing `..` loses the match while every fixture
+    // it wrote stayed green.
+    const result = runHook(bashPayload('rm -rf tmp/../.claude/hooks'));
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
-    expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['packages/core/dist']);
+    expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['.claude/hooks']);
   });
 
-  it('a trailing glob on a gate FILE is blocked, and on that gate file (exit 2)', () => {
-    // Glob family, file-shaped protected path — the asymmetric half (PRD §1), where the
-    // glob replaces the protected segment instead of following it. The subject assertion
-    // is the second mutation: an over-broad potential match blocks too, but names whichever
-    // protected path came first in the config, which would pass an exit-code-only test.
-    const result = runHook(bashPayload('rm lefthook.y*'));
+  it('a glob spelling of the same target passes silently — the deferred disposition', () => {
+    // Not an oversight, and pinned so it cannot become one quietly. Expanding a glob needs
+    // the filesystem, so the judge does not guess: both guessing directions were measured
+    // and both were worse than declining (a literal-free `*` blocked `ls`/`find`/markdown
+    // bullets; an anchored guess still cannot name a file that may not exist). What is wrong
+    // today is the SILENCE, not the pass — COVENANT-10b turns this row into a `skipped`, and
+    // this assertion is what will fail when it does.
+    const result = runHook(bashPayload('rm packages/*/dist/index.js'));
 
-    expect(result.status).toBe(2);
-    expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
-    expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['lefthook.yml']);
+    expect(result.status).toBe(0);
+    expect(rowsFor('shell-mod')).toEqual([]);
   });
 
   it('an append to the protected transcript in tilde notation is blocked (exit 2)', () => {
@@ -476,7 +484,10 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     // that protection and nothing.
     const transcriptPath = sessionTranscript();
 
-    const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), { transcriptPath });
+    const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
@@ -490,7 +501,10 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     // the literal form in the audit's measured list (`rm ~/…jsonl`) actually exercises.
     const transcriptPath = sessionTranscript();
 
-    const result = runHook(bashPayload(`rm ~/${TRANSCRIPT_TAIL}`), { transcriptPath });
+    const result = runHook(bashPayload(`rm ~/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
@@ -501,7 +515,10 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     // leaves the same file reachable by the form a script would more naturally use.
     const transcriptPath = sessionTranscript();
 
-    const result = runHook(bashPayload(`chmod 000 $HOME/${TRANSCRIPT_TAIL}`), { transcriptPath });
+    const result = runHook(bashPayload(`chmod 000 $HOME/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);
@@ -515,7 +532,10 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     // rather than the scan missing it.
     const transcriptPath = sessionTranscript();
 
-    const result = runHook(bashPayload(`cat ~/${TRANSCRIPT_TAIL}`), { transcriptPath });
+    const result = runHook(bashPayload(`cat ~/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(0);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['passed']);
@@ -529,7 +549,10 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     // (PRD §2-d/§6), so the two reads must part here.
     const transcriptPath = sessionTranscript();
 
-    const result = runHook(bashPayload(`cat $HOME/${TRANSCRIPT_TAIL}`), { transcriptPath });
+    const result = runHook(bashPayload(`cat $HOME/${TRANSCRIPT_TAIL}`), {
+      transcriptPath,
+      home: tmpRoot,
+    });
 
     expect(result.status).toBe(2);
     expect(rowsFor('shell-mod').map((r) => r.event)).toEqual(['blocked']);

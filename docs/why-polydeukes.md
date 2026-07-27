@@ -160,10 +160,11 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      same verdict" but "same verdict wherever it runs" — the judge reads no home
      directory, no working directory, no filesystem, so the session hook and the commit
      gate cannot disagree about the same command. That property survived a feature that
-     appeared to need the home value, by not asking for it: a segment that cannot be
-     resolved is judged as a position something else will fill, never expanded. Purity
-     kept by ignorance rather than by injection — and pinned by a test that reads the
-     source, because no behavioural assertion can see the difference. -->
+     appeared to need the home directory, by moving the knowledge instead of the
+     ignorance: the layer that does know it states the spelling as data, and the judge
+     goes on comparing literals. Purity kept by ignorance rather than by injection — and
+     pinned by a test that reads the source, because no behavioural assertion can see the
+     difference. -->
 
 <!-- Parked candidate (2026-07-27, COVENANT-07b): a non-goal has two halves, and only one
      of them is a contract. "We keep this pure" is a promise; "therefore we cannot judge

@@ -152,17 +152,18 @@ Consequences to know:
   without a read-only first token — is **blocked (exit 2)** by design. **Package sources are no
   longer on that list** (2026-07-26), so ordinary development runs without a waiver; the
   disciplines still judge those edits on their own axes.
-  **A mention is judged on potential paths, not literal spelling** (COVENANT-07b): interior
-  `.`/`..` normalize away, and a segment that cannot be resolved statically — a glob, `~`,
-  `$HOME` — is read as a position something else will fill, so `rm packages/*/dist/index.js`,
-  `rm lefthook.y*`, and `chmod 000 $HOME/…` block exactly as their literal forms always did.
-  Nothing is ever expanded: the judge reads no home directory, no working directory, and no
-  filesystem. Only a segment constrained by literals proves a match, so a bare `*` names
-  nothing (`find . -name '*.mjs'` and `git commit -m "* …"` stay free), and `~`/`$VAR` stand
-  for a run of segments only against an **absolute** protected path — which keeps
-  `~/unrelated/x` and `rm -rf ../dist` free while the session transcript stays defended.
-  A path that cancels above the repository root (`rm -rf .claude/hooks/../..`) is an ancestor
-  of everything and blocks.
+  **A mention is compared twice** (COVENANT-07b): once on the raw segments, exactly as it
+  always was, and again on segments whose interior `.`/`..` have been resolved. It is a
+  union, so closing a spelling can never cost a defence — `packages/core/./dist/index.js`
+  and `packages/core/src/../dist/index.js` now block like their literal form, and
+  `rm -rf .claude/hooks/../..` blocks on the raw pass because the command named the path out
+  loud. What the judge does **not** read is a glob or a variable expansion: resolving those
+  needs the filesystem or the shell, so `rm packages/*/dist/index.js` and
+  `rm -rf packages/$PKG/dist` still pass here — silently, which is the part COVENANT-10b
+  turns into a recorded `skipped`. It never expands `~` either; instead assembly, which does
+  know the home directory, registers the session transcript under its `~`/`$HOME` spellings
+  as well, so `rm ~/…jsonl` blocks while `cat ~/…jsonl`, `cd ..`, `rm -rf ../dist`, and
+  `find . -name '*.mjs'` all stay free.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target

@@ -7,142 +7,49 @@
  * drift apart. Argument names are never inspected — only string *values* are scanned,
  * at any depth, keeping the traversal agent-neutral.
  *
- * Since COVENANT-07b the comparison is a POTENTIAL match: a candidate segment that cannot
- * be resolved statically (a glob, a variable expansion, a tilde) is not compared as a
- * literal but read as a position something else will fill. Nothing is ever expanded and
- * nothing is resolved — no filesystem, no home directory, no working directory — so the
- * judgment reads the same wherever it runs, and ambiguity falls toward a match. The hole
- * this closes was seven notations of the same file passing while the literal one blocked.
- */
-
-/**
- * True when a segment's expansion is unknown in both content and length: a tilde
- * (`~`, `~user`), a parameter expansion (`$HOME`), or a `..` that had nothing left to
- * cancel — it reaches outside the tree, so it can stand for anything (PRD §2-a).
+ * COVENANT-07b adds interior `.`/`..` as a SECOND comparison rather than a replacement.
+ * The raw segments are matched first, exactly as they always were, and the dot-resolved
+ * segments only if that fails. The union is the point: every path this predicate matched
+ * before still matches, so closing a notation can never cost a defence — the failure mode
+ * that a replacement pass produced twice before this shape was found.
  *
- * Such a segment stands for ONE OR MORE segments, never zero. A zero-width expansion would
- * root-anchor whatever follows it, making `~/packages` an ancestor of every protected path
- * under `packages/` and blocking the ordinary work of the repository.
+ * What it deliberately does NOT read is a glob, a variable expansion, or a tilde. None can
+ * be resolved without running the shell or touching the filesystem, and a judge that guesses
+ * at them either misses the real target or blocks an innocent one — both measured. They stay
+ * undecidable here and are answered where undecidability belongs (the Bash axis's opaque-token
+ * rule, and COVENANT-10b's skip registrations). A spelling that some layer genuinely *can*
+ * resolve — the home directory in front of the session transcript — is registered by that
+ * layer as its own protected path rather than inferred in here.
  */
-function isUnknownSegment(segment: string): boolean {
-  return segment === '..' || segment.startsWith('~') || segment.includes('$');
-}
-
-/** True when a segment carries glob metacharacters and is therefore matched as a pattern. */
-function isGlobSegment(segment: string): boolean {
-  return segment.includes('*') || segment.includes('?');
-}
 
 /**
- * True when a glob segment carries at least one literal character to constrain it.
+ * Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop
+ * empties. Exported so the self-mod judge can tell a judgeable evidence path from a
+ * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
  *
- * A segment made only of `*` and `?` constrains nothing, so it fills a position without
- * proving one. Counting it as proof is what let a lone `*` name every protected segment
- * there is — `ls packages/*`, a `--name '*.mjs'` argument, and a markdown bullet in a file
- * body all blocked, which is the friction the 2026-07-26 narrowing existed to remove.
- */
-function globHasLiteral(segment: string): boolean {
-  return segment.replace(/[*?]/g, '') !== '';
-}
-
-/**
- * Normalize a path into segments: split on `/`, drop empties and `.`, and cancel the
- * preceding segment on `..`. Cancellation is refused when that predecessor is unknown —
- * one `..` cancels one segment while an unknown stands for an unbounded run — so the `..`
- * survives as an unknown segment of its own rather than eating evidence it cannot account
- * for. Exported so the self-mod judge can tell a judgeable evidence path from a degenerate
- * one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ * A lone `.` survives as a segment. Resolving interior dots is a separate pass inside
+ * {@link pathMatchesProtected}, kept out of this function on purpose so that its contract —
+ * and self-mod's degenerate-evidence check built on top of it — stays exactly what it was.
  */
 export function pathSegments(path: string): string[] {
-  const segments: string[] = [];
-  for (const segment of path.split('/')) {
-    if (segment === '' || segment === '.') continue;
-    const previous = segments[segments.length - 1];
-    if (segment === '..' && previous !== undefined && !isUnknownSegment(previous)) {
-      segments.pop();
-      // Cancelling the last definite segment lands on the tree root, which is an ancestor
-      // of every relative protected path. An empty list would answer "names nothing", and
-      // `rm -rf .claude/hooks/../..` would reach no judge at all.
-      if (segments.length === 0) segments.push('..');
-      continue;
-    }
-    segments.push(segment);
+  return path
+    .replace(/^(\.\/)+/, '')
+    .replace(/\/+$/, '')
+    .split('/')
+    .filter((segment) => segment !== '');
+}
+
+/** True iff `needle` occurs as a contiguous segment run inside `haystack` (any offset). */
+function containsSegmentRun(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  for (let start = 0; start + needle.length <= haystack.length; start++) {
+    if (needle.every((segment, i) => segment === haystack[start + i])) return true;
   }
-  return segments;
+  return false;
 }
 
 /**
- * True iff the candidate segment could name `target`. A segment carrying `*` or `?`
- * occupies exactly ONE position and is constrained by the literals around the glob, so
- * `lefthook.y*` can name `lefthook.yml` while `core-generated*` can never name `core` —
- * the glob is read, never expanded. Every other segment is definite and compares by string
- * equality; prefix-comparing a segment that carries no glob is the `core/src-generated`
- * boundary trap COVENANT-07 closed.
- */
-function segmentCanName(segment: string, target: string): boolean {
-  if (!isGlobSegment(segment)) return segment === target;
-  const pattern = segment
-    // Collapse runs of `*` before translating. Consecutive `.*` groups backtrack
-    // combinatorially against a non-matching literal — 24 asterisks measured at 32s inside
-    // a hook that runs on every tool call — and `**` cannot mean more than `*` within one
-    // segment anyway, since the segment boundary is the split.
-    .replace(/\*+/g, '*')
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  return new RegExp(`^${pattern}$`).test(target);
-}
-
-/**
- * Walk candidate segments from `ci` against protected segments from `pi` — one protected
- * segment per definite/glob candidate segment, one or more per unknown one — and answer
- * whether any walk reaches a position pair `accepts` recognizes. Both match directions are
- * this same walk under a different acceptance.
- *
- * `named` counts the protected segments a segment CONSTRAINED by literals answered for, and
- * must reach one before either acceptance holds: an unknown segment — and a glob carrying no
- * literal — fills a position but never proves one. Without that, a walk carried by expansion
- * alone makes `~/anything` and a lone `*` match every protected path there is.
- *
- * `absolute` says whether the protected path is absolute, which decides what an unknown may
- * stand for. A relative protected path is anchored at the repository root while `~`, `$VAR`,
- * and a surviving `..` all reach outside it, so against a relative path an unknown can never
- * name one of its segments — otherwise `~/dist` becomes `packages/core/dist` and a sibling
- * checkout's build output is protected. Against an absolute path (the transcript assembly
- * attaches) the unknown stands for its leading run. A repository that lives under the home
- * directory is still reached either way, because the descendant rule slides its start.
- */
-function walk(
-  candidate: string[],
-  protectedSegments: string[],
-  ci: number,
-  pi: number,
-  named: number,
-  absolute: boolean,
-  accepts: (ci: number, pi: number) => boolean,
-): boolean {
-  if (named > 0 && accepts(ci, pi)) return true;
-  if (ci === candidate.length || pi === protectedSegments.length) return false;
-  const segment = candidate[ci];
-  if (isUnknownSegment(segment)) {
-    if (!absolute) return false;
-    for (let taken = 1; pi + taken <= protectedSegments.length; taken++) {
-      if (walk(candidate, protectedSegments, ci + 1, pi + taken, named, absolute, accepts)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  if (!segmentCanName(segment, protectedSegments[pi])) return false;
-  const proves = !isGlobSegment(segment) || globHasLiteral(segment);
-  const next = named + (proves ? 1 : 0);
-  return walk(candidate, protectedSegments, ci + 1, pi + 1, next, absolute, accepts);
-}
-
-/**
- * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
- * of it — compared on normalized path segments (not raw substrings, PRD §4.1). The two
- * directions are deliberately asymmetric:
+ * One comparison, shared by both passes. The two directions are deliberately asymmetric:
  *  - descendant / equal: the protected segments appear as a contiguous run at ANY offset in
  *    the candidate, so an ABSOLUTE `file_path` (`/home/u/proj/core/src/x` — the real Edit
  *    payload shape) matches the relative protected `core/src`;
@@ -155,24 +62,53 @@ function walk(
  * (complete Bash lockdown was never the goal; the relative form is still caught, and the
  * over-block alternative is worse). The segment boundary is exact, so `core/src-generated`
  * never matches `core/src`.
- * A run may be filled by segments the judge cannot resolve (COVENANT-07b): `~/.claude/…`
- * matches an absolute transcript path because the definite tail is the whole comparison,
- * and `lefthook.y*` matches `lefthook.yml` because a glob is a potential name, not a literal.
+ */
+function segmentsMatch(a: string[], b: string[]): boolean {
+  if (a.length === 0) return false;
+  if (containsSegmentRun(a, b)) return true;
+  // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
+  return a.length < b.length && a.every((segment, i) => segment === b[i]);
+}
+
+/**
+ * Resolve `.` and `..` against the preceding segment — pure string work, no filesystem and
+ * no working directory, so the answer is the same wherever the judge runs.
+ *
+ * A `..` with nothing left to cancel is KEPT rather than dropped. Dropping it would collapse
+ * `../packages` into `packages` and hand a sibling checkout the protection meant for this
+ * one; keeping it leaves a segment that matches nothing, which is the honest answer for a
+ * path that points outside the tree.
+ */
+function resolveDotSegments(segments: string[]): string[] {
+  const resolved: string[] = [];
+  for (const segment of segments) {
+    if (segment === '.') continue;
+    if (segment === '..' && resolved.length > 0 && resolved[resolved.length - 1] !== '..') {
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved;
+}
+
+/**
+ * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
+ * of it — compared on path segments (not raw substrings, PRD §4.1), by {@link segmentsMatch}.
+ *
+ * Two passes, unioned. The raw pass is the shipped semantic and runs first: a command that
+ * spells the protected path out loud is caught by it no matter what the path resolves to
+ * afterwards, which is why `rm -rf .claude/hooks/../..` breaks here rather than needing a
+ * rule of its own. The dot-resolved pass runs only when the raw one finds nothing, and is
+ * what `packages/core/./dist/index.js` and `packages/core/src/../dist/index.js` need. Because
+ * it is a union it can only ever add matches, never withdraw one.
  */
 export function pathMatchesProtected(candidate: string, protectedPath: string): boolean {
   const a = pathSegments(candidate);
   const b = pathSegments(protectedPath);
-  if (a.length === 0 || b.length === 0) return false;
-  // A candidate left with nothing but `..` cancelled above the tree root, which is an
-  // ancestor of every relative protected path — the `rm -rf .claude/hooks/../..` form,
-  // which names no protected segment yet removes all of them.
-  if (a.every((segment) => segment === '..')) return true;
-  const absolute = protectedPath.startsWith('/');
-  for (let start = 0; start < a.length; start++) {
-    if (walk(a, b, start, 0, 0, absolute, (_ci, pi) => pi === b.length)) return true;
-  }
-  // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
-  return walk(a, b, 0, 0, 0, absolute, (ci, pi) => ci === a.length && pi < b.length);
+  if (b.length === 0) return false;
+  if (segmentsMatch(a, b)) return true;
+  return segmentsMatch(resolveDotSegments(a), b);
 }
 
 /**
