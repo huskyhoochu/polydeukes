@@ -152,14 +152,23 @@ Consequences to know:
   without a read-only first token — is **blocked (exit 2)** by design. **Package sources are no
   longer on that list** (2026-07-26), so ordinary development runs without a waiver; the
   disciplines still judge those edits on their own axes.
+  **A mention is judged on potential paths, not literal spelling** (COVENANT-07b): interior
+  `.`/`..` normalize away, and a segment that cannot be resolved statically — a glob, `~`,
+  `$HOME` — is read as a position something else will fill, so `rm packages/*/dist/index.js`,
+  `rm lefthook.y*`, and `chmod 000 $HOME/…` block exactly as their literal forms always did.
+  Nothing is ever expanded: the judge reads no home directory, no working directory, and no
+  filesystem, so an unknown segment stands for one or more segments but never proves one —
+  which is why `~/unrelated/x` stays free.
   The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
   mutation target (the call's own nested `fileChange` evidence), so a protected path that
   merely appears in an edit's *content* no longer blocks the write; only the proven target
   counts, and a producer that cannot prove one falls back to the old mention rule. On the
   Bash axis a command's target is undecidable before it runs, so a mention there still
-  blocks — including a
-  read-only query whose argument carries a glob (`grep … <protected>/*.ts`), which the
-  opaque-token rule rejects before the read-only allowlist is ever consulted.
+  blocks — including a read-only query whose argument carries a glob or a variable
+  (`grep … <protected>/*.ts`, `cat lefthook.y*`, `cat $HOME/…`), which the opaque-token rule
+  rejects before the read-only allowlist is ever consulted. `~` is **not** on the tokenizer's
+  opaque list (`$`, `*`, `?` are), so `cat ~/…` reaches that allowlist and passes — debugging
+  a session never needs a waiver.
   The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
   `waiver:` block into the conversation and the valve holds for `ttlMinutes` from that message,
   then blocking resumes on its own (recorded as `bypassed`, never silent). The token must

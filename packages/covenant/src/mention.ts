@@ -6,28 +6,97 @@
  * that keys on a protected path import this one function, so the two layers can never
  * drift apart. Argument names are never inspected — only string *values* are scanned,
  * at any depth, keeping the traversal agent-neutral.
+ *
+ * Since COVENANT-07b the comparison is a POTENTIAL match: a candidate segment that cannot
+ * be resolved statically (a glob, a variable expansion, a tilde) is not compared as a
+ * literal but read as a position something else will fill. Nothing is ever expanded and
+ * nothing is resolved — no filesystem, no home directory, no working directory — so the
+ * judgment reads the same wherever it runs, and ambiguity falls toward a match. The hole
+ * this closes was seven notations of the same file passing while the literal one blocked.
  */
 
 /**
- * Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop
- * empties. Exported so the self-mod judge can tell a judgeable evidence path from a
- * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ * True when a segment's expansion is unknown in both content and length: a tilde
+ * (`~`, `~user`), a parameter expansion (`$HOME`), or a `..` that had nothing left to
+ * cancel — it reaches outside the tree, so it can stand for anything (PRD §2-a).
+ *
+ * Such a segment stands for ONE OR MORE segments, never zero. A zero-width expansion would
+ * root-anchor whatever follows it, making `~/packages` an ancestor of every protected path
+ * under `packages/` and blocking the ordinary work of the repository.
  */
-export function pathSegments(path: string): string[] {
-  return path
-    .replace(/^(\.\/)+/, '')
-    .replace(/\/+$/, '')
-    .split('/')
-    .filter((segment) => segment !== '');
+function isUnknownSegment(segment: string): boolean {
+  return segment === '..' || segment.startsWith('~') || segment.includes('$');
 }
 
-/** True iff `needle` occurs as a contiguous segment run inside `haystack` (any offset). */
-function containsSegmentRun(haystack: string[], needle: string[]): boolean {
-  if (needle.length === 0 || needle.length > haystack.length) return false;
-  for (let start = 0; start + needle.length <= haystack.length; start++) {
-    if (needle.every((segment, i) => segment === haystack[start + i])) return true;
+/**
+ * Normalize a path into segments: split on `/`, drop empties and `.`, and cancel the
+ * preceding segment on `..`. Cancellation is refused when that predecessor is unknown —
+ * one `..` cancels one segment while an unknown stands for an unbounded run — so the `..`
+ * survives as an unknown segment of its own rather than eating evidence it cannot account
+ * for. Exported so the self-mod judge can tell a judgeable evidence path from a degenerate
+ * one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ */
+export function pathSegments(path: string): string[] {
+  const segments: string[] = [];
+  for (const segment of path.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    const previous = segments[segments.length - 1];
+    if (segment === '..' && previous !== undefined && !isUnknownSegment(previous)) {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
   }
-  return false;
+  return segments;
+}
+
+/**
+ * True iff the candidate segment could name `target`. A segment carrying `*` or `?`
+ * occupies exactly ONE position and is constrained by the literals around the glob, so
+ * `lefthook.y*` can name `lefthook.yml` while `core-generated*` can never name `core` —
+ * the glob is read, never expanded. Every other segment is definite and compares by string
+ * equality; prefix-comparing a segment that carries no glob is the `core/src-generated`
+ * boundary trap COVENANT-07 closed.
+ */
+function segmentCanName(segment: string, target: string): boolean {
+  if (!segment.includes('*') && !segment.includes('?')) return segment === target;
+  const pattern = segment
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  return new RegExp(`^${pattern}$`).test(target);
+}
+
+/**
+ * Walk candidate segments from `ci` against protected segments from `pi` — one protected
+ * segment per definite/glob candidate segment, one or more per unknown one — and answer
+ * whether any walk reaches a position pair `accepts` recognizes. Both match directions are
+ * this same walk under a different acceptance.
+ *
+ * `named` counts the protected segments a definite/glob segment answered for, and must
+ * reach one before either acceptance holds: an unknown segment FILLS positions but never
+ * PROVES one. Without that, a walk carried by expansion alone would make `~/anything` a
+ * match for every protected path there is — the tilde absorbs the whole protected run and
+ * the definite part of the candidate is never consulted.
+ */
+function walk(
+  candidate: string[],
+  protectedSegments: string[],
+  ci: number,
+  pi: number,
+  named: number,
+  accepts: (ci: number, pi: number) => boolean,
+): boolean {
+  if (named > 0 && accepts(ci, pi)) return true;
+  if (ci === candidate.length || pi === protectedSegments.length) return false;
+  if (isUnknownSegment(candidate[ci])) {
+    for (let taken = 1; pi + taken <= protectedSegments.length; taken++) {
+      if (walk(candidate, protectedSegments, ci + 1, pi + taken, named, accepts)) return true;
+    }
+    return false;
+  }
+  if (!segmentCanName(candidate[ci], protectedSegments[pi])) return false;
+  return walk(candidate, protectedSegments, ci + 1, pi + 1, named + 1, accepts);
 }
 
 /**
@@ -46,14 +115,19 @@ function containsSegmentRun(haystack: string[], needle: string[]): boolean {
  * (complete Bash lockdown was never the goal; the relative form is still caught, and the
  * over-block alternative is worse). The segment boundary is exact, so `core/src-generated`
  * never matches `core/src`.
+ * A run may be filled by segments the judge cannot resolve (COVENANT-07b): `~/.claude/…`
+ * matches an absolute transcript path because the definite tail is the whole comparison,
+ * and `lefthook.y*` matches `lefthook.yml` because a glob is a potential name, not a literal.
  */
 export function pathMatchesProtected(candidate: string, protectedPath: string): boolean {
   const a = pathSegments(candidate);
   const b = pathSegments(protectedPath);
   if (a.length === 0 || b.length === 0) return false;
-  if (containsSegmentRun(a, b)) return true;
+  for (let start = 0; start < a.length; start++) {
+    if (walk(a, b, start, 0, 0, (_ci, pi) => pi === b.length)) return true;
+  }
   // Ancestor: the candidate is a proper root-anchored prefix of the protected path.
-  return a.length < b.length && a.every((segment, i) => segment === b[i]);
+  return walk(a, b, 0, 0, 0, (ci, pi) => ci === a.length && pi < b.length);
 }
 
 /**

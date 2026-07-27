@@ -84,8 +84,8 @@ export function judgeSelfModification(
     const changePath = evidence?.path;
     if (
       typeof changePath === 'string' &&
-      // `pathSegments` keeps a lone `.` as a segment, so require one that names a file.
-      pathSegments(changePath).some((segment) => segment !== '.') &&
+      // A degenerate path normalizes to zero segments and names no target (COVENANT-07b).
+      pathSegments(changePath).length > 0 &&
       (evidence?.kind === 'create' || evidence?.kind === 'modify' || evidence?.kind === 'delete')
     ) {
       if (protectedPaths.some((path) => pathMatchesProtected(changePath, path))) {
