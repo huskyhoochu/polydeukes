@@ -3,80 +3,30 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is pre-alpha.** The first units are landing in `packages/core` (covenant
-protocol — whose input IR carries agent-neutral file-change evidence as a discriminated
-union (`create`/`modify`/`delete` — deletion is first-class), each change nested on its own
-tool-call element (singular `fileChange`, flattened via `allFileChanges`) so no sibling
-call's evidence can stand in for another — ROI telemetry, the data-config schema v2 with its `defineConfig(unknown)` validator
-and published JSON Schema (`@polydeukes/core/schema.json`), now including the `disciplines:`
-entry schema (exactly one of four predicates per entry, the fourth being the context family's
-`requirePrecedent` whose evidence container carries exactly one key — the core owns and fully
-validates `command`, every other key being adapter vocabulary passed through verbatim) and the
-optional `waiver:` settings surface
-(`token` + `ttlMinutes`, validated to the TTL-waiver predicate's exact fail-fast boundaries and
-passed through verbatim), and the `adapters:` namespace map (one settings object per
-adapter, keys and contents owned by each adapter — the core validates the container shape
-only and passes contents through verbatim), fail-open/fail-closed policy table,
-protected-path normalization, and the canonical-transcript query seam with its
-noop default), `packages/covenant` (the run_covenant execution
-wrapper, the heredoc-aware multi-line Bash analysis core with its write-detection rules
-(redirect/tee/`sed -i`), the path-routing dispatcher — extended with a content-predicate
-`matches` routing seam — the self-mod
-meta-covenant with its escape-hatch seam, the shell-mod meta-covenant that assembles
-the detection rules into a Bash-axis judge with a read-only allowlist, the TTL-waiver
-hatch predicate — a time-boxed skip token judged over the canonical-transcript seam,
-the new-violation-only delta layer — pure pre/post baseline comparison whose added-direction
-judgment is the execution base of the delta predicate family — and the standard discipline
-library that compiles `disciplines:` data entries (`forbid`/`immutable`/`forbidCommand`/
-`requirePrecedent`) into registrations with per-discipline telemetry and a generic judged body.
-The context family (`requirePrecedent`, COVENANT-13) judges session history rather than the
-mutation: its evidence is evaluated at assembly time — a spawned body cannot hold a transcript —
-and transported to the body as an argv flag, with the `command` vocabulary judged by the
-compiler itself and every other key delegated to an adapter-supplied evaluator. Evaluation
-answers found, missing, or **unjudgeable** — the last compiling a *skip registration* that
-keeps its routing, carries no body, and records one `skipped` on a match instead of judging.
-`compileDisciplineRegistrations` never throws, in any of the four families: one unresolvable
-entry taking down its siblings, both meta-covenants, and the waiver valve would leave no way to
-fix the config that caused it. A pattern that does not compile is refused earlier still, by
-`defineConfig` — that path does fail the whole config load, and it is the one remaining shape
-where a single bad entry blocks every call until a human edits the file outside the session), and
-`packages/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
-adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state
-parser that computes Edit/Write/MultiEdit apply-results without touching disk, the
-`collectFileChanges` evidence step that feeds those apply-results into the IR, and the
-JSONL transcript provider (`transcriptFromJsonl`/`transcriptFromJsonlFile`) — the TTL
-waiver's real data source, admitting only positively-identified human-typed messages, and since
-COVENANT-13 also the tool-call history the context family queries — plus `evaluatePrecedent`,
-this adapter's own evidence vocabulary (`subagent` spawn-kind equality, `tool` name regex),
-returning `undefined` for any key it does not own so the entry skips rather than judging on a
-guess; a read failure answers `undefined` too, keeping "no session file" distinct from "a session
-that has said nothing"), and the new `adapter-git`
-package (the commit-surface adapter: staged diff → covenant input up-translation, filling
-the same agent-neutral per-call `fileChange` evidence from HEAD/staged blobs, deletions
-included — the second adapter,
-proving IR neutrality with zero core changes — plus its own namespace vocabulary:
-`resolveGitAdapterSettings`, validating `adapters.git.enforce: block|advise`, the first
-tenant of the CONFIG-07 container);
-`packages/polydeukes` (umbrella) has its first real exports: the `pdks` bin (`covenant check` —
-the pre-commit judgment entry point whose waiver valve, at the `block` level, is a TTY
-prompt only a human at a terminal can answer — at `advise` the verdict is recorded as
-`advised` and the commit proceeds, no prompt — spawned by lefthook and consumed as a root
-dogfooding devDependency)
-and the `loadConfig(rootDir)` config
-discovery loader — finds the root data config (`polydeukes.config.yaml`/`.yml`/`.json`, exactly
-one), parses it with the `yaml` safe schema, delegates validation to core `defineConfig()`, and
-attaches the config file to its own protection surface.
-The design docs are still the source of truth for everything not yet implemented. When a design
-doc and shipped code disagree, neither side wins by default — triage the discrepancy against the
-archived PRD (the merged contract): it may be a stale doc, or a code bug to fix.
+**This repo is pre-alpha.** Shipped so far, one line per package: `packages/core` — the covenant
+protocol (stdin-JSON in, exit code out) with per-call file-change evidence, the data-config
+schema + published JSON Schema, the fail-open/fail-closed policy table, and the
+canonical-transcript seam; `packages/covenant` — the execution wrapper, the Bash analysis core,
+the path-routing dispatcher with its `matches` content-predicate seam, the self-mod / shell-mod /
+transcript-mod meta-covenants, the TTL-waiver hatch, the added-direction delta layer, and the
+discipline library that compiles `disciplines:` config entries into registrations;
+`packages/adapter-claude-code` — PreToolUse payload → covenant input IR, virtual post-state
+evidence, the JSONL transcript provider, and the adapter's precedent-evidence vocabulary;
+`packages/adapter-git` — staged diff → the same IR (the second adapter, zero core changes);
+`packages/polydeukes` (umbrella) — the `pdks` bin (`covenant check`) and the `loadConfig`
+discovery loader. Details live in the code and the archived PRDs (the merged contracts). The
+design docs own everything not yet implemented; when a design doc and shipped code disagree,
+neither side wins by default — triage against the archived PRD: it may be a stale doc, or a
+code bug to fix.
 
 ## Vocabulary is binding
 
 This project deliberately renames control-framing terms. **Never use `guard`, `harness`, or `kb`**
 in code, packages, CLI, or docs — use `covenant`, `discipline framework`, and `memory`. The full
 glossary (concept → package → verb → CLI) is in `.claude/rules/domain-terms.md`, which auto-loads
-for `packages/**`. Read it before naming anything. The *why* behind each choice lives in the design
-docs; the rule itself is non-negotiable.
+for `packages/**`. Read it before naming anything. One deliberate exception: the npm `keywords`
+array in `package.json` keeps the industry terms (`harness`, `guard`) — it is a discoverability
+index, not a describing surface; the `description` field is NOT exempt.
 
 ## Commands
 
@@ -108,105 +58,62 @@ Unit tasks must be small enough to fit one PRD and verifiable by a command or te
 
 **A gap left by a finished ticket is closed by a retrofit ticket, not a new roadmap ID.** When an
 already-merged and archived ticket turns out to have missed a responsibility, it gets a suffixed
-ticket of its own (`COVENANT-01b` is the precedent — the `.polydeukes/` directory creation the
-original left unowned), worked on a feature branch with its own PR. Archived PRDs stay immutable;
-the retrofit records the correction and the archived PRDs get a footnote pointing at it. This keeps
-the roadmap a plan rather than a defect list.
+ticket of its own (`COVENANT-01b` is the precedent), worked on a feature branch with its own PR.
+Archived PRDs stay immutable; the retrofit records the correction and the archived PRDs get a
+footnote pointing at it. This keeps the roadmap a plan rather than a defect list.
 
-**Self-dogfooding is ON (since 2026-07-14).** A PreToolUse hook (`.claude/hooks/`, registered in
-`.claude/settings.json`) runs every Edit/Write/MultiEdit/NotebookEdit/Bash call through the
-project's own covenants: the self-mod meta-covenant (tool axis) and the shell-mod meta-covenant
-(Bash axis) protect **gate definitions and judge executables only** (narrowed 2026-07-26): the
-hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, and the five packages'
-`dist`. Package **sources came off that list** — they live in git, so the commit surface already
-re-observes any staged change to them, and blocking them in-session as well had measured 2,414
-waiver bypasses against 14 real discipline blocks. What stays is what only this surface can see:
-a file whose edit disarms a check rather than passing it, and gitignored build output that no
-commit ever shows. The root `polydeukes.config.yaml` attaches itself (CONFIG-03) and assembly
-adds the live transcript path (COVENANT-13), both for the same reason. Since CONFIG-03 the
-protection-policy data (protectedPaths / adapters / disciplines) lives in that config file, not
-in the hook — the hook consumes it via the umbrella `loadConfig`, and a missing or invalid config
-blocks every call (fail-closed). Eight wired disciplines (since COVENANT-10) judge beyond path
-mention, across four predicate families: `covenant-vocabulary` and `english-only-sources` block
-*new* banned occurrences in package sources (delta family — existing debt is forgiven);
-`hooks-stay-armed`, `work-stays-recoverable`, and `pnpm-only` block gate-disarming,
-unrecoverable, or wrong-runtime commands (command family) even though they mention no protected
-path; and since COVENANT-13 the context family judges *session history* rather than the mutation
-itself — `manifest-needs-npm-view` and `manifest-needs-context7` require a measured version and
-read docs before any manifest edit, the sanctioned path being to actually run them. Neither
-carries a `when`: three review rounds went into a regex asking "is this string a new dependency
-version" syntactically, and scope alone turned out to be the cheaper trigger. Every call
-is measured in `.polydeukes/roi.log` (local, gitignored). Since ADAPTER-git the same
-judges also gate `git commit`: lefthook's pre-commit spawns `pdks covenant check`. The
-commit surface's level is the git adapter's namespace setting (`adapters.git.enforce`,
-CONFIG-06): under `block` a commit staging a protected path blocks unless a human answers
-the TTY waiver prompt with the full token (an agent-spawned commit has no TTY, so that
-valve too is human-only); under `advise` the verdict is recorded as an `advised` event and
-the commit proceeds with a stderr advisory — a backstop that measures instead of blocking.
-**This repo's config sets `advise` (2026-07-23)**; the session surface always blocks, and
-an unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
-Consequences to know:
+## Self-dogfooding (ON since 2026-07-14)
 
-- Editing a gate definition (hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`),
-  a package's `dist`, or the root config file — or any Bash command *mentioning* those paths
-  without a read-only first token — is **blocked (exit 2)** by design. **Package sources are no
-  longer on that list** (2026-07-26), so ordinary development runs without a waiver; the
-  disciplines still judge those edits on their own axes.
-  **A mention is compared twice** (COVENANT-07b): once on the raw segments, exactly as it
-  always was, and again on segments whose interior `.`/`..` have been resolved. It is a
-  union, so closing a spelling can never cost a defence — `packages/core/./dist/index.js`
-  and `packages/core/src/../dist/index.js` now block like their literal form, and
-  `rm -rf .claude/hooks/../..` blocks on the raw pass because the command named the path out
-  loud. What the judge does **not** read is a glob or a variable expansion: resolving those
-  needs the filesystem or the shell, so `rm packages/*/dist/index.js` and
-  `rm -rf packages/$PKG/dist` still pass here — but no longer silently (COVENANT-10b): a
-  mutation signal the judge cannot compute now leaves one `skipped` row — per-discipline when
-  the target path is known AND inside that discipline's scope (`sed -i`, `tee`, opaque
-  content; an out-of-scope target is no discipline's business and leaves no row), one
-  `shell-unjudgeable` row when the target is unknowable (opaque targets, nested shells,
-  subshell groups, tokenize failures) — while shell-delivered writes
-  it *can* compute (literal `echo` redirects, quoted/clean heredocs and herestrings, and
-  NotebookEdit cells on the tool axis) reach the delta/context disciplines as real per-call
-  evidence and block like a `Write` would. Signal-free reads (`ls *.md`, `echo $HOME`,
-  `pnpm build`) stay silent by design, and the context family still has no commit-surface
-  second layer, so its shell-axis skip row is the final record.
-  It never expands `~` either, and the session transcript is
-  defended in its **absolute spelling only** — so `rm ~/…jsonl` still passes and audit B2
-  stays open, owned by COVENANT-07c. Registering the home-relative spellings in assembly was
-  implemented and withdrawn: a transcript living deep under HOME makes HOME itself a protected
-  *ancestor*, so every spelling inherits that — `echo $HOME` and `ls -la $HOME` broke at the
-  opaque-token step (which the read-only allowlist never reaches) and an edit whose *content*
-  merely carried a bare `~` was refused by self-mod's fallback branch. `cd /home/<user>` has
-  in fact blocked since COVENANT-13 for that same reason; it went unnoticed only because the
-  spelling people actually type did not match. `cd ..`, `cd ~`, `rm -rf ../dist`, and
-  `find . -name '*.mjs'` all stay free.
-  The two axes judge differently since COVENANT-09. On the tool axis the adapter proves the
-  mutation target (the call's own nested `fileChange` evidence), so a protected path that
-  merely appears in an edit's *content* no longer blocks the write; only the proven target
-  counts, and a producer that cannot prove one falls back to the old mention rule. On the
-  Bash axis a command's target is undecidable before it runs, so a mention there still
-  blocks — including a read-only query whose argument carries a glob or a variable
-  (`grep … <protected>/*.ts`, `cat lefthook.y*`, `cat $HOME/…`), which the opaque-token rule
-  rejects before the read-only allowlist is ever consulted. `~` is **not** on the tokenizer's
-  opaque list (`$`, `*`, `?` are), so `cat ~/…` reaches that allowlist and passes — debugging
-  a session never needs a waiver.
-  The sanctioned valve is the **TTL waiver**: a human types the token from the root config's
-  `waiver:` block into the conversation and the valve holds for `ttlMinutes` from that message,
-  then blocking resumes on its own (recorded as `bypassed`, never silent). The token must
-  **stand alone on the message's first line** — quoting or asking about it mid-sentence is a
-  mention, not an invocation, and leaves the valve shut (COVENANT-15); following lines are free
-  for the work itself. Only a real human
-  utterance counts — the transcript marking it carries cannot be forged by an agent, so an AI
-  can never open the valve for itself. The old `POLYDEUKES_COVENANT_BYPASS` env var was removed
-  in the 2026-07-21 assembly; a value left in local settings is inert.
-- The hook fails **closed**: an unbuilt `dist` blocks edits too. Recovery is `pnpm build`
-  (mentions no protected path, so it is never blocked). Corollary learned the hard way: when the
-  hook gains a reference to a **new** dist symbol, build first, rewire the hook second — the
-  reverse order crashes hook assembly and blocks every call, including the recovery build.
-- The waiver arms and disarms itself: typing the token opens the valve for the configured
-  window, and expiry needs no action (the old env valve's "armed until you remember to disarm"
-  shape is gone, along with the session-restart dance it required).
+A PreToolUse hook (`.claude/hooks/`, registered in `.claude/settings.json`) judges every
+Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's pre-commit spawns `pdks covenant
+check` over the staged diff — two observations of the same promises. Protection-policy data
+(protectedPaths / disciplines / adapters / waiver) lives in `polydeukes.config.yaml`, which
+documents each entry's why inline; the hook only assembles it. Protected: gate definitions (the
+hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`), the five packages'
+gitignored `dist`, the root config itself, and the live session transcript. Package sources are
+NOT on the session list — the commit surface re-observes them. The commit surface runs at
+`adapters.git.enforce: advise` (recorded, never blocking); the session surface always blocks,
+and an unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
+
+What blocks and why:
+
+- **Tool axis** (Edit/Write/…): only the call's proven mutation target (its nested `fileChange`
+  evidence) is compared — a protected path inside an edit's *content* is a mention and passes.
+  An evidence-free call falls back to the conservative args-mention judgment.
+- **Bash axis**: a command *mentioning* a protected path without a read-only first token blocks;
+  a command's target is undecidable before execution. Mentions compare raw AND dot-resolved
+  segments (a union). Globs and `$VAR` are never expanded — sharing one token with a protected
+  path they block as opaque; as uncomputable mutation targets they leave a `skipped` telemetry
+  row instead of passing silently. Computable shell writes (literal `echo` redirects, clean
+  heredocs and herestrings) carry real evidence and block like a `Write`.
+- **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
+  never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
+  absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
+  spelling, and the home directory is never a protected ancestor. A reader outside that
+  allowlist (`jq`, `bat`) still breaks — the allowlist vouches for the command, not the intent.
+  Destroying out-of-repo ancestors is out of observation scope by design — the agent's own deny
+  policy owns that ground.
+- **Disciplines** declared in the config judge beyond path mention (delta / command / context
+  families) — read `polydeukes.config.yaml` for the live set and each entry's why.
+- Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored):
+  `passed` / `blocked` / `bypassed` / `advised` / `skipped`.
+
+The sanctioned valve is the **TTL waiver**: a human types the token from the config's `waiver:`
+block so it stands alone on the message's FIRST line; the valve holds for `ttlMinutes`, then
+blocking resumes on its own (recorded as `bypassed`, never silent). A mid-sentence mention does
+not arm it, and only a real human utterance counts — an agent can never open the valve for
+itself.
+
+Recovery and rewiring:
+
+- The hook fails **closed**: an unbuilt `dist` blocks edits too. Recovery is `pnpm build` (it
+  mentions no protected path, so it is never blocked). When the hook gains a reference to a NEW
+  dist symbol: build first, rewire second — the reverse order crashes assembly and blocks every
+  call, including the recovery build.
 - **Reassembling the hook cuts your own valve.** The composition root is itself protected, so a
   broken rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired
   hook by spawning it against real payloads *before* relying on it, and never remove the current
   valve until the replacement is proven.
+
+The measured history behind these rules — narrowing decisions, bypass profiles, per-ticket
+evolution — lives in the local knowledge store; maintainers, see `CLAUDE.local.md` for pointers.

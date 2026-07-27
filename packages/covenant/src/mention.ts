@@ -18,8 +18,9 @@
  * at them either misses the real target or blocks an innocent one — both measured. They stay
  * undecidable here and are answered where undecidability belongs (the Bash axis's opaque-token
  * rule, and COVENANT-10b's skip registrations). A spelling that some layer genuinely *can*
- * resolve — the home directory in front of the session transcript — is registered by that
- * layer as its own protected path rather than inferred in here.
+ * resolve — the home directory in front of the session transcript — is closed by the layer
+ * that knows the value: assembly registers a dedicated `matches` predicate for the transcript
+ * (COVENANT-07c) rather than a protected path, so no home spelling is inferred in here.
  */
 
 /**
@@ -78,8 +79,11 @@ function segmentsMatch(a: string[], b: string[]): boolean {
  * `../packages` into `packages` and hand a sibling checkout the protection meant for this
  * one; keeping it leaves a segment that matches nothing, which is the honest answer for a
  * path that points outside the tree.
+ *
+ * Exported so a judge whose own equality needs the same second pass (the transcript
+ * predicate, COVENANT-07c) shares this one implementation instead of forking it per site.
  */
-function resolveDotSegments(segments: string[]): string[] {
+export function resolveDotSegments(segments: string[]): string[] {
   const resolved: string[] = [];
   for (const segment of segments) {
     if (segment === '.') continue;

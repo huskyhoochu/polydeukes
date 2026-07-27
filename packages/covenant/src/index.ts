@@ -52,4 +52,10 @@ export {
   judgeShellModification,
   type ShellModificationSpec,
 } from './shell-mod.js';
+export {
+  judgeTranscriptModification,
+  type TranscriptModificationSpec,
+  type TranscriptModRegistrationSpec,
+  transcriptModRegistration,
+} from './transcript-mod.js';
 export { type TtlWaiverSpec, ttlWaiverHatch } from './ttl-waiver.js';

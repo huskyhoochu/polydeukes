@@ -18,8 +18,11 @@ languages:
 # hand either, so keeping it costs nothing. It is the one file class this surface alone
 # can defend — which is the only reason a path belongs here.
 #
-# The root config attaches itself (CONFIG-03), and assembly adds the live transcript
-# (COVENANT-13) — both for the same reason: losing them disarms the judge.
+# The root config attaches itself (CONFIG-03) for the same reason. The live session
+# transcript is defended too, but NOT from this list and never as a path: assembly builds it
+# its own equality-judging registration (COVENANT-07c), because a file living deep under HOME
+# turns HOME itself into a protected ancestor and every daily spelling that passes through it
+# breaks. Do not "restore" a transcript entry here — that is the over-block, not the defence.
 protectedPaths:
   # Gate definitions. Editing any of these disarms a check rather than passing it, and
   # none can be caught by the layer it defines. The hook wiring IS the session surface;

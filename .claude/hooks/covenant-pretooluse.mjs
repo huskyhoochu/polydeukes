@@ -28,6 +28,7 @@
  */
 
 import { mkdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -89,31 +90,23 @@ try {
     // verdict (one blocked record). Only the valve is forfeited here.
   }
 
-  // The live transcript joins the protected surface. It is the evidence channel the
-  // context family reads AND the one the waiver reads, so erasing it disables every
-  // context discipline while shutting the human valve on the same absence — and since
-  // COVENANT-13 answers a missing channel with a skip that passes, that erasure would be
-  // a bypass rather than a block. The file lives outside the repository, so no config
-  // `protectedPaths` entry can reach it. Assembly knows the path, so assembly protects
-  // it: a user declares which disciplines to keep, never what the judge must read in
-  // order to judge (review 4). The shell axis's ordinary rule applies from here — a
-  // read-only first token still passes, so inspecting a session needs no waiver.
-  // The ABSOLUTE path only, which leaves audit B2 open (a home-relative spelling of this
-  // file reaches no judge, so a forged human utterance can be appended). COVENANT-07b
-  // implemented the obvious fix here — registering the home-relative spellings alongside —
-  // and measurement withdrew it. A transcript living deep under HOME makes HOME itself a
-  // protected ANCESTOR, so every spelling inherits that: `echo $HOME` and `ls -la $HOME`
-  // break at the opaque-token step, which the read-only allowlist never reaches, and an edit
-  // whose CONTENT merely carries a bare `~` is refused by self-mod's fallback branch with a
-  // reason naming a file the call never touched. `cd /home/<user>` has blocked since
-  // COVENANT-13 for that same reason and went unnoticed only because the spelling people
-  // type did not match it. Closing B2 needs a registration that does not make an ancestor of
-  // the home directory — COVENANT-07c, not this list.
+  // The live transcript is the evidence channel the context family reads AND the one
+  // the waiver reads, so erasing or forging it disables every context discipline while
+  // opening or shutting the human valve on the same file. It lives outside the
+  // repository, so no config `protectedPaths` entry can reach it — and since
+  // COVENANT-07c it does NOT join this list either. A file deep under HOME makes HOME
+  // itself a protected ANCESTOR, which measured as the COVENANT-13 over-block:
+  // `cd /home/<user>` refused for two weeks, and the 07b attempt to register the home
+  // spellings alongside only widened that to `echo $HOME` and every edit whose content
+  // carried a bare `~`. Assembly knows the path AND the home value, so assembly
+  // registers a dedicated `matches` predicate over that ONE file instead
+  // (transcript-mod, below): equality-only — never an ancestor — with the
+  // `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data, reads absolved by the
+  // read-only allowlist, and ancestor destruction outside the repository declared out
+  // of observation scope (07c §2: the agent's own deny policy owns what no repo-scoped
+  // judge can). The waiver valve applies to it like any other registration.
   const protectedPaths = core.normalizeProtectedPaths({
-    protectedPaths: [
-      ...(config.protectedPaths ?? []),
-      ...(transcriptPath === undefined ? [] : [transcriptPath]),
-    ],
+    protectedPaths: config.protectedPaths ?? [],
   });
 
   // One waiver predicate shared by every registration: a waiver is a session-wide
@@ -134,6 +127,7 @@ try {
   const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
   const shellModBody = join(repoRoot, 'packages/covenant/dist/shell-mod-body.js');
   const disciplineBody = join(repoRoot, 'packages/covenant/dist/discipline-body.js');
+  const transcriptModBody = join(repoRoot, 'packages/covenant/dist/transcript-mod-body.js');
   const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
 
   const registrations = [
@@ -160,6 +154,29 @@ try {
       },
       escapeHatch,
     },
+    // The transcript's own registration (COVENANT-07c). Routing is the matches
+    // predicate, never path mention, so the home directory cannot become a protected
+    // ancestor. No transcript in the payload means nothing to protect — the valve and
+    // the context family already forfeited on the same absence.
+    ...(transcriptPath === undefined
+      ? []
+      : [
+          covenant.transcriptModRegistration({
+            transcriptPath,
+            // The env value first, since that is what the judged shell expands `~` and
+            // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
+            // HOME is unset, so a hook spawned without an environment (a service manager,
+            // `env -i`) keeps judging the home spellings instead of silently going absolute-
+            // only — an inert spelling closure looks identical to a passing call.
+            home: process.env.HOME ?? homedir(),
+            bodyCommand: process.execPath,
+            bodyModulePath: transcriptModBody,
+            shellTools: SHELL_TOOLS,
+            commandArgs: COMMAND_ARGS,
+            mutatingTools: MUTATING_TOOLS,
+            escapeHatch,
+          }),
+        ]),
     ...covenant.compileDisciplineRegistrations({
       disciplines: config.disciplines ?? [],
       rootDir: repoRoot,
