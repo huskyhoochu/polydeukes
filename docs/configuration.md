@@ -94,6 +94,8 @@ rejected by that adapter's validator, with the full field path in the error.
 adapters:
   git:
     enforce: advise
+    protectedPaths:
+      - 'packages/core/src'
 ```
 
 #### `adapters.git` — the git commit adapter
@@ -101,6 +103,7 @@ adapters:
 | Key | Values | Default | Meaning |
 |---|---|---|---|
 | `enforce` | `block` \| `advise` | `block` | Enforcement level of the commit surface |
+| `protectedPaths` | string array | `[]` | Additive protection scope judged by the commit surface only |
 
 - **`block`** — a staged change that breaks a covenant blocks the commit (exit 2). The
   only way through is the waiver valve: a human answering the TTY prompt with the full
@@ -111,6 +114,15 @@ adapters:
   (exit 0) with one advisory line on stderr. No TTY prompt fires. Only the verdict is
   relaxed — a run that cannot judge (missing or invalid config, an unresolvable judge
   body) still fails closed at exit 2, at either level.
+
+**`protectedPaths` here is an additive scope.** The commit surface judges the union of the
+top-level `protectedPaths` and this list — concatenated (common first) and normalized as one,
+so spelling and dedupe rules are identical for both. The session surface never reads it: the
+list exists for paths whose edit is legitimate work during a session but must pass a judged
+checkpoint when it is promoted into repository history — a judgment chain's own sources are
+the canonical tenant. As the enforcement level is the observer's setting, so is the
+additional scope. There is no subtractive vocabulary: a config line can widen a surface's
+scope, never quietly strip one.
 
 The session surface (the editor-time hook) has no level setting here; it always blocks.
 

@@ -824,3 +824,87 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
   });
 });
+
+// ===========================================================================
+// CONFIG-08 §4.2 — the session surface never reads the git namespace. The
+// commit-only additive list (adapters.git.protectedPaths) exists so judgment-
+// chain sources can block at promotion time while staying free during work;
+// that split only holds if the hook's observation scope stays the COMMON
+// list. Spawned through the configless-root harness shape (hook copied into
+// a fixture tree whose packages/ symlinks back to the real dist) because the
+// pinned vocabulary must live in a config the TEST authors — the real repo
+// config cannot carry throwaway entries.
+// ===========================================================================
+
+describe('dogfooding assembly E2E — session surface ignores the git-additive list (CONFIG-08)', () => {
+  // Injected fixture values: the additive entry names the exact target the session
+  // payload edits, and the common list carries the M2 untracked-directory entry.
+  const GIT_ADDITIVE_ENTRY = 'packages/core/src';
+  const COMMON_UNTRACKED_ENTRY = '.git/hooks';
+
+  const rowsFor = (label: string) =>
+    readRecords(telemetryPath).records.filter((r) => r.label === label);
+
+  /** Copy the real hook into a fixture tree carrying the CONFIG-08 target-state config. */
+  function runHookWithFixtureConfig(payload: unknown) {
+    const fixtureRoot = join(tmpRoot, 'fixture-tree');
+    mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
+    cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
+    symlinkSync(join(repoRoot, 'packages'), join(fixtureRoot, 'packages'), 'dir');
+    writeFileSync(
+      join(fixtureRoot, 'polydeukes.config.json'),
+      JSON.stringify(
+        {
+          languages: { typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' } },
+          telemetry: { logPath: telemetryPath },
+          protectedPaths: [COMMON_UNTRACKED_ENTRY],
+          adapters: { git: { enforce: 'block', protectedPaths: [GIT_ADDITIVE_ENTRY] } },
+        },
+        null,
+        2,
+      ),
+    );
+    return spawnSync(
+      process.execPath,
+      [join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs')],
+      {
+        input: JSON.stringify(payload),
+        encoding: 'utf-8',
+        env: { ...process.env, POLYDEUKES_TELEMETRY_PATH: telemetryPath },
+      },
+    );
+  }
+
+  it('an Edit under a git-additive path passes the session surface with no waiver (exit 0)', () => {
+    // §4.2 contract pin: "the hook does not read the git namespace" is a promise, not
+    // an omission — source stays free during work and gates only at promotion. The
+    // additive entry names this exact target, so ANY reading of it shows up here.
+    // Mutation caught: the hook assembly unioning adapters.git.protectedPaths (self-mod
+    // blocks, exit 2), or loadConfig fail-fasting on the new vocabulary (fail-closed
+    // exit 2 with an adapter blocked row instead of the passed funnel row).
+    const result = runHookWithFixtureConfig(editPayload(`${GIT_ADDITIVE_ENTRY}/index.ts`));
+
+    expect(result.status).toBe(0);
+    const { records } = readRecords(telemetryPath);
+    expect(records.length).toBe(1);
+    expect(records[0].event).toBe('passed');
+    expect(records[0].label).toBe('adapter-claude-code');
+  });
+
+  it('a Write into .git/hooks is blocked by self-mod on the session surface (exit 2)', () => {
+    // M2's session half: .git/hooks is git-untracked, so the commit surface can never
+    // observe it — the common list is the ONE layer that can watch the generated hook,
+    // and the session must own that block. The self-mod label separates a verdict from
+    // a fail-closed collapse on the same exit code. Mutation caught: an untracked
+    // directory entry dropped from tool-axis ancestor matching, or the fixture config
+    // dying in loadConfig (adapter blocked row, no self-mod row).
+    const result = runHookWithFixtureConfig(
+      writePayload(`${COMMON_UNTRACKED_ENTRY}/pre-commit`, '#!/bin/sh\nexit 0\n'),
+    );
+
+    expect(result.status).toBe(2);
+    expect(rowsFor('self-mod').map((r) => [r.event, r.subject])).toEqual([
+      ['blocked', '.git/hooks'],
+    ]);
+  });
+});

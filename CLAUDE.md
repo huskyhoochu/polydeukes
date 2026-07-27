@@ -69,11 +69,14 @@ Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's pre-commit spawns `p
 check` over the staged diff — two observations of the same promises. Protection-policy data
 (protectedPaths / disciplines / adapters / waiver) lives in `polydeukes.config.yaml`, which
 documents each entry's why inline; the hook only assembles it. Protected: gate definitions (the
-hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`), the five packages'
-gitignored `dist`, the root config itself, and the live session transcript. Package sources are
-NOT on the session list — the commit surface re-observes them. The commit surface runs at
-`adapters.git.enforce: advise` (recorded, never blocking); the session surface always blocks,
-and an unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
+hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, the generated `.git/hooks`),
+the five packages' gitignored `dist`, the root config itself, and the live session transcript.
+Package sources are NOT on the session list — they live in the commit surface's own additive
+list (`adapters.git.protectedPaths`), so a session edit is free and the commit that stages it
+is judged. The commit surface runs at `adapters.git.enforce: block`: a commit staging a
+protected change stops unless a human answers the TTY prompt with the waiver token (an
+agent-spawned commit has no TTY and cannot). The session surface always blocks, and an
+unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
 
 What blocks and why:
 

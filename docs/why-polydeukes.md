@@ -224,7 +224,12 @@ and remembers what was decided. The two layers compose; they do not compete.
      Parked candidate (2026-07-22, CONFIG-07): adapters are independent, opt-in entities —
      one config file, one namespace per adapter; the core validates the container only and
      each adapter owns its own vocabulary. "The judge speaks one language; every surface
-     brings its own translator and its own settings." -->
+     brings its own translator and its own settings."
+     Parked candidate (2026-07-28, CONFIG-08): as the enforcement level is the observer's,
+     so is the scope. Commit-only protection is a policy — the checkpoint where work is
+     promoted into history; session-only protection is never a policy, only a visibility
+     fact (what no commit can see). Scope algebra is additive-only: a config line can
+     widen a surface's watch, never quietly strip one. -->
 
 ## Proven on itself
 

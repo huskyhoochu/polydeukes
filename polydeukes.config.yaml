@@ -5,18 +5,29 @@ languages:
     productionGlob: 'packages/*/src/**/*.ts'
     testCmd: 'pnpm --filter {scope} test'
 
-# The session surface protects what only IT can see (narrowed 2026-07-26).
+# The COMMON protection list — read by every observer that can see an entry (narrowed
+# 2026-07-26; split per surface 2026-07-28, CONFIG-08). Two kinds of entries belong here:
 #
-# Judge SOURCES were on this list and are not any more. They live in git, so a staged
-# change to them is already caught by `pdks covenant check` re-observing the commit —
-# the second of the two observation layers. Blocking them here as well measured 2,414
-# waiver bypasses against 14 real discipline blocks, which is friction, not defence: it
-# was stopping the work this repository exists to do and being waived every time.
+#   1. Gate definitions — files whose edit disarms a check rather than passing it, at
+#      whichever surface can see them. The hook wiring IS the session surface;
+#      lefthook.yml IS the commit surface; biome.json sets the bar the commit surface
+#      holds things to; the generated .git/hooks scripts are the commit gate's installed
+#      form (git-untracked, so the session surface is the ONE layer that can watch them —
+#      on the commit surface that entry is structurally vacuous, by nature not mistake).
+#   2. What only one layer can see — the gitignored judge executables (dist): a commit
+#      never shows them, and a poisoned judge disarms every covenant without a trace.
 #
-# `dist` is the opposite case. It is gitignored, so the commit surface never sees it, and
-# a poisoned judge executable disarms every covenant without a trace. Nobody edits it by
-# hand either, so keeping it costs nothing. It is the one file class this surface alone
-# can defend — which is the only reason a path belongs here.
+# Judge SOURCES are deliberately NOT here. They live in the commit surface's own additive
+# list (adapters.git.protectedPaths below): a session edit of a source is the work itself
+# (blocking it here measured 2,414 waiver bypasses against 14 real discipline blocks),
+# while the commit that PROMOTES it into history is the checkpoint a human answers for.
+#
+# Child-process blind spot, on record (CONFIG-08 AC): `pnpm build` rewrites dist and
+# `lefthook install` regenerates .git/hooks through child-process fs writes. The session
+# surface judges tool declarations, not child writes, and both targets are
+# gitignored/untracked, so neither layer observes either command. That is the nature of
+# the observation scope (same class as COVENANT-14 §2.1), named here so it is never
+# mistaken for coverage.
 #
 # The root config attaches itself (CONFIG-03) for the same reason. The live session
 # transcript is defended too, but NOT from this list and never as a path: assembly builds it
@@ -24,14 +35,11 @@ languages:
 # turns HOME itself into a protected ancestor and every daily spelling that passes through it
 # breaks. Do not "restore" a transcript entry here — that is the over-block, not the defence.
 protectedPaths:
-  # Gate definitions. Editing any of these disarms a check rather than passing it, and
-  # none can be caught by the layer it defines. The hook wiring IS the session surface;
-  # lefthook.yml IS the commit surface; biome.json sets the bar the commit surface holds
-  # things to, so loosening a rule there is indistinguishable from fixing the code.
   - '.claude/hooks'
   - '.claude/settings.json'
   - 'lefthook.yml'
   - 'biome.json'
+  - '.git/hooks'
   # The judge executables, unseeable by the commit surface because they are gitignored.
   - 'packages/core/dist'
   - 'packages/covenant/dist'
@@ -54,13 +62,30 @@ waiver:
   ttlMinutes: 10
 
 # Adapter namespaces (CONFIG-07): each adapter owns its own vocabulary; the core passes
-# contents through verbatim. `enforce: advise` turns the commit surface into a backstop
-# without a block (CONFIG-06): a verdict on a staged change is recorded as `advised` and
-# the commit proceeds — no TTY prompt. The session surface (the hook) stays blocking;
-# an unjudgeable run (missing config, stale dist) still fails closed even here.
+# contents through verbatim. Both keys below are the git adapter's vocabulary — CONFIG-06
+# opened `enforce`, CONFIG-08 opened `protectedPaths`.
+#
+# enforce: block — restored 2026-07-28 (CONFIG-08, executing the 2026-07-26 §5.1
+# decision). A staged change to a protected path stops the commit unless a human answers
+# the TTY prompt with the waiver token; an agent-spawned commit has no TTY and cannot.
+# The session surface (the hook) stays blocking either way; an unjudgeable run (missing
+# config, stale dist) still fails closed even here.
+#
+# protectedPaths (additive): the commit surface's OWN observation scope, judged on top of
+# the common list above. These are the judgment chain's sources — loader, validator,
+# judge bodies, and both adapters (the archived invariant names the whole chain: config,
+# loader, hook, core, covenant, adapter). Editing them in a session is the work itself
+# and stays free; committing them is the promotion a human vouches for. The session
+# surface never reads this list — the level is the observer's, and so is the scope.
 adapters:
   git:
-    enforce: advise
+    enforce: block
+    protectedPaths:
+      - 'packages/core/src'
+      - 'packages/covenant/src'
+      - 'packages/polydeukes/src'
+      - 'packages/adapter-claude-code/src'
+      - 'packages/adapter-git/src'
 
 disciplines:
   - id: 'covenant-vocabulary'

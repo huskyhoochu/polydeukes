@@ -132,10 +132,16 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
   try {
     // The adapter namespace validator throws on unknown levels/keys (CONFIG-06 §4.2) —
     // resolved inside this try so a misconfiguration fails closed, never softens.
-    const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
+    const { enforce, protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(
+      config.adapters?.git,
+    );
 
+    // The commit surface judges the UNION of the common list and the git namespace's
+    // additive one (CONFIG-08 §4.2) — common first, so first-occurrence dedupe inside
+    // the one normalization pass is deterministic. The session hook reads the common
+    // list alone; that asymmetry is the contract, not an omission.
     const protectedPaths = normalizeProtectedPaths({
-      protectedPaths: config.protectedPaths,
+      protectedPaths: [...(config.protectedPaths ?? []), ...gitAdditivePaths],
     });
 
     // The judge bodies are the covenant package's dist executables — resolved through
