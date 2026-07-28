@@ -17,6 +17,9 @@ import { describe, expect, it } from 'vitest';
 // COVENANT-13 is the ticket most at risk of breaking it: the new findToolCalls
 // seam pulls tool-call vocabulary toward the core, and the invariant (PRD §7) is
 // that only the QUERY vocabulary crosses — never an agent's own literals.
+// COVENANT-13b widens the same seam to carry an execution outcome, so the result
+// field names join the list: the core learns WHETHER a call succeeded, never the
+// vocabulary an agent spells that in.
 //
 // Scope is `src/` only, by design: `__tests__/` legitimately carries the literals
 // (this very file does) and imports `vitest`. That split is why packages/core's
@@ -39,8 +42,10 @@ const SRC_DIR = fileURLToPath(new URL('../src', import.meta.url));
  * - `go test` carries a space, so it is bounded to avoid matching e.g. "go tests".
  */
 const BANNED_LITERALS: readonly { label: string; pattern: RegExp }[] = [
-  // --- agent payload / JSONL field names (CORE-04 §5.3, COVENANT-13 §5.2) ---
+  // --- agent payload / JSONL field names (CORE-04 §5.3, COVENANT-13 §5.2, COVENANT-13b §5.1) ---
   { label: 'tool_use', pattern: /tool_use/ },
+  { label: 'tool_result', pattern: /tool_result/ },
+  { label: 'is_error', pattern: /is_error/ },
   { label: 'subagent_type', pattern: /subagent_type/ },
   { label: 'tool_name', pattern: /tool_name/ },
   { label: 'tool_input', pattern: /tool_input/ },

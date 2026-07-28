@@ -239,6 +239,12 @@ change itself bad"; this one asks something else. The change is legitimate — w
 missing is the procedure in front of it, so what gets judged is not the mutation but the
 session history.
 
+Evidence means an **execution**, not a request. A call the covenant blocked, one a human
+refused, and one that simply failed all leave the same trace in a session, and none of
+them is precedent — the transcript is read for what actually ran and reported success.
+That is what keeps the cheapest way through the gate being the thing the discipline
+asks for.
+
 ```yaml
   - id: 'dependency-needs-npm-view'
     why: 'a dependency version must be measured before it is written.'
@@ -250,14 +256,16 @@ session history.
       command: 'npm view '
 ```
 
-The evidence vocabulary is layered. `command` (a regex over the shell command string) is
-the core's own key — a shell call is a surface every agent shares — and the core validates
-it fully, rejecting an empty string or a pattern that does not compile. Every other key
-belongs to an adapter: the core checks the container only (a flat object carrying exactly
-one evidence key) and passes the value through verbatim, and the adapter that owns the
-word validates and judges it. The Claude Code adapter brings two: `subagent` (exact match
-on a spawn kind) and `tool` (a regex over tool names) — so "query the docs tool before
-touching this" is expressible today. An evidence key no assembled adapter recognizes fails
+The evidence vocabulary is layered. `command` is the core's own key — a shell call is a
+surface every agent shares — and the core validates it fully, rejecting an empty string or
+a pattern that does not compile. It is matched **at the start of a simple command**, not
+anywhere in the command line, so `echo "npm view yaml"` and a mention parked behind a `#`
+are not evidence while `cd pkg && npm view yaml` is. Every other key belongs to an adapter:
+the core checks the container only (a flat object carrying exactly one evidence key) and
+passes the value through verbatim, and the adapter that owns the word validates and judges
+it. The Claude Code adapter brings two: `subagent` (exact match on a spawn kind) and `tool`
+(a regex over tool names) — so "query the docs tool before touching this" is expressible
+today. Both follow the same execution rule as `command`. An evidence key no assembled adapter recognizes fails
 closed at assembly, so a typo can never pass itself off as adapter vocabulary.
 
 `when` (optional) is the trigger: an added-direction delta regex, combinable with

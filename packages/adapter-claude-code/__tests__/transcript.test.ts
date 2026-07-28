@@ -336,12 +336,16 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
       ]),
     ]);
 
+    // Every fixture in this describe block is resultless, so COVENANT-13b's join reports
+    // `succeeded: false` throughout — the outcome axis itself is pinned next door in
+    // transcript-tool-results.test.ts; here it is only part of the extracted shape.
     expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
-      { name: 'Bash', args: { command: 'npm view yaml version' } },
-      { name: 'Read', args: { file_path: '/repo/package.json' } },
+      { name: 'Bash', args: { command: 'npm view yaml version' }, succeeded: false },
+      { name: 'Read', args: { file_path: '/repo/package.json' }, succeeded: false },
       {
         name: 'mcp__context7__get-library-docs',
         args: { context7CompatibleLibraryID: '/eemeli/yaml' },
+        succeeded: false,
       },
     ]);
   });
@@ -363,8 +367,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     const transcript = transcriptFromJsonl(jsonl);
 
     expect(transcript.findToolCalls('Bash')).toEqual([
-      { name: 'Bash', args: { command: 'npm view yaml version' } },
-      { name: 'Bash', args: { command: 'pnpm build' } },
+      { name: 'Bash', args: { command: 'npm view yaml version' }, succeeded: false },
+      { name: 'Bash', args: { command: 'pnpm build' }, succeeded: false },
     ]);
     expect(transcript.findToolCalls()).toHaveLength(3);
   });
@@ -382,7 +386,7 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     ]);
 
     expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
-      { name: 'Edit', args: { file_path: '/repo/a.ts' } },
+      { name: 'Edit', args: { file_path: '/repo/a.ts' }, succeeded: false },
     ]);
   });
 
@@ -403,11 +407,11 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     ]);
 
     expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
-      { name: 'Glob', args: {} },
-      { name: 'Grep', args: {} },
-      { name: 'WebFetch', args: {} },
-      { name: 'TodoWrite', args: {} },
-      { name: 'Edit', args: { file_path: '/repo/a.ts' } },
+      { name: 'Glob', args: {}, succeeded: false },
+      { name: 'Grep', args: {}, succeeded: false },
+      { name: 'WebFetch', args: {}, succeeded: false },
+      { name: 'TodoWrite', args: {}, succeeded: false },
+      { name: 'Edit', args: { file_path: '/repo/a.ts' }, succeeded: false },
     ]);
   });
 
@@ -432,8 +436,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     ].join('\n');
 
     expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
-      { name: 'Bash', args: { command: 'a' } },
-      { name: 'Bash', args: { command: 'b' } },
+      { name: 'Bash', args: { command: 'a' }, succeeded: false },
+      { name: 'Bash', args: { command: 'b' }, succeeded: false },
     ]);
   });
 
@@ -454,8 +458,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     const transcript = transcriptFromJsonl(jsonl);
 
     expect(transcript.findToolCalls()).toEqual([
-      { name: 'Task', args: { subagent_type: 'tdd-implementer' } },
-      { name: 'Bash', args: { command: 'pnpm test' } },
+      { name: 'Task', args: { subagent_type: 'tdd-implementer' }, succeeded: false },
+      { name: 'Bash', args: { command: 'pnpm test' }, succeeded: false },
     ]);
     expect(transcript.findUserMessages()).toEqual([
       { text: 'please run the tdd cycle', timestampMs: Date.parse('2026-07-26T01:00:00.000Z') },
@@ -480,7 +484,7 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
     call.args.subagent_type = 'rewritten';
 
     expect(transcript.findToolCalls()).toEqual([
-      { name: 'Agent', args: { subagent_type: 'tdd-writer' } },
+      { name: 'Agent', args: { subagent_type: 'tdd-writer' }, succeeded: false },
     ]);
     expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
   });

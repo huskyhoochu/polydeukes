@@ -221,7 +221,12 @@ lives on a surface the AI controls, so forgery is structurally possible — and 
 anyway, because the cheapest way through the gate is to actually call the tool, which is
 precisely the behavior the discipline wanted. A rule whose evasion costs more than its
 observance does not need to be unforgeable. Fits §3 (evidence over self-report) or §1
-(agreed enforcement); §1 is already long. -->
+(agreed enforcement); §1 is already long.
+COVENANT-13b (2026-07-28) supplied what thread (2) was missing: the argument was FALSE as
+shipped. The judge read a request as proof, so `echo "npm view yaml"` was cheaper than the
+call and the gate's whole justification failed. Evidence now means a call that ran and
+reported success. Whichever section takes this, it should say that cheap-evasion is a
+property a judge has to earn, not one a design gets for free. -->
 
 ## What Polydeukes is not
 

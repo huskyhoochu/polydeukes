@@ -22,6 +22,7 @@ import {
   noopTranscript,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
+import { tokenizeCommandLine } from './bash-line.js';
 import { judgeAddedViolations } from './delta.js';
 import type { CovenantRegistration } from './dispatch.js';
 import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './shell-evidence.js';
@@ -269,6 +270,33 @@ function precedentTrigger(
   return null;
 }
 
+/**
+ * True when the pattern matches at the START of one of the command line's simple commands
+ * (COVENANT-13b §4.3) — the difference between having run a command and having mentioned
+ * it. The tokenizer already knows the `&&`/`||`/`;`/pipe boundaries, so a chained
+ * `cd pkg && npm view yaml` still qualifies while `echo "npm view yaml"` does not.
+ *
+ * Only `words` are joined: redirect targets and heredoc bodies are not command positions,
+ * and folding them in would let anyone forge evidence by writing the command into a
+ * document. A word-less command (a bare redirect) joins to the empty string, which a
+ * pattern able to match nothing would anchor at index 0 — index 0 is necessary for
+ * evidence, never sufficient, so an empty join is skipped. A tokenize failure answers
+ * false: nothing about an unparseable line is known, including where its commands start.
+ *
+ * The anchor is a POSITION check on the match, not `'^' + source`: prefixing binds the
+ * anchor to the first alternation branch only and leaves every other branch free to match
+ * mid-string.
+ */
+function commandAnchors(command: string, pattern: RegExp): boolean {
+  const tokenized = tokenizeCommandLine(command);
+  if (!tokenized.ok) return false;
+  return tokenized.commands.some((simple) => {
+    const joined = simple.words.map((word) => word.text).join(' ');
+    if (joined === '') return false;
+    return pattern.exec(joined)?.index === 0;
+  });
+}
+
 /** Describe the evidence an entry requires, for the break reason. */
 function describePrecedent(requirePrecedent: Record<string, unknown>): string {
   return Object.entries(requirePrecedent)
@@ -443,9 +471,13 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
     }
     let found: boolean;
     try {
-      const calls = spec.transcript.findToolCalls();
+      // Only a call the provider saw run and succeed is evidence: a blocked, refused, or
+      // failed call did not do the work the discipline demands (COVENANT-13b §4.2), and
+      // an absent outcome means the provider cannot tell — including the input-backed
+      // provider, whose calls are the very ones being judged.
+      const calls = spec.transcript.findToolCalls().filter((call) => call.succeeded === true);
       found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
-        pattern.test(c),
+        commandAnchors(c, pattern),
       );
     } catch {
       // An injected transcript that throws is an unusable channel, not an answer — the

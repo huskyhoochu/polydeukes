@@ -73,6 +73,9 @@ function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocati
   return invocations;
 }
 
+/** One observed tool call, carrying the id its result block will reference. */
+type ObservedToolCall = { name: string; args: Record<string, unknown>; id?: string };
+
 /**
  * Extract tool calls from one entry (COVENANT-13 §4.3).
  *
@@ -80,9 +83,10 @@ function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocati
  * call, in observation order. A non-plain `input` empties the args but keeps the block —
  * the call's existence is itself the evidence, and dropping it would shrink a precedent
  * gate's evidence beyond what the malformed field justifies. Spawn blocks surface here
- * too: the same fact answers two queries.
+ * too: the same fact answers two queries. A non-string `id` is left absent, which the
+ * join then reads as an unproven outcome.
  */
-function toToolCalls(entry: Record<string, unknown>): TranscriptToolCall[] {
+function toToolCalls(entry: Record<string, unknown>): ObservedToolCall[] {
   if (entry.type !== 'assistant' || !isPlainObject(entry.message)) {
     return [];
   }
@@ -90,16 +94,50 @@ function toToolCalls(entry: Record<string, unknown>): TranscriptToolCall[] {
   if (!Array.isArray(content)) {
     return [];
   }
-  const calls: TranscriptToolCall[] = [];
+  const calls: ObservedToolCall[] = [];
   for (const block of content) {
     if (isPlainObject(block) && block.type === 'tool_use' && typeof block.name === 'string') {
       calls.push({
         name: block.name,
         args: isPlainObject(block.input) ? { ...block.input } : {},
+        ...(typeof block.id === 'string' ? { id: block.id } : {}),
       });
     }
   }
   return calls;
+}
+
+/**
+ * Extract the outcomes reported by one entry's result blocks (COVENANT-13b §4.2).
+ *
+ * Results ride `user` entries and reference the call they answer; only that reference and
+ * the error marker are read, never the result body. Success is ENUMERATED — no marker, or
+ * a marker of exactly `false` — so every other value, boolean or not, reads as a failure
+ * and a shape mismatch can only ever reduce evidence (§7). A block that cannot prove a
+ * string reference is dropped alone.
+ */
+function toToolResults(entry: Record<string, unknown>): { id: string; succeeded: boolean }[] {
+  if (entry.type !== 'user' || !isPlainObject(entry.message)) {
+    return [];
+  }
+  const content = entry.message.content;
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  const results: { id: string; succeeded: boolean }[] = [];
+  for (const block of content) {
+    if (
+      isPlainObject(block) &&
+      block.type === 'tool_result' &&
+      typeof block.tool_use_id === 'string'
+    ) {
+      results.push({
+        id: block.tool_use_id,
+        succeeded: block.is_error === undefined || block.is_error === false,
+      });
+    }
+  }
+  return results;
 }
 
 /**
@@ -112,7 +150,8 @@ function toToolCalls(entry: Record<string, unknown>): TranscriptToolCall[] {
 export function transcriptFromJsonl(text: string): CanonicalTranscript {
   const userMessages: TranscriptUserMessage[] = [];
   const subagentInvocations: SubagentInvocation[] = [];
-  const toolCalls: TranscriptToolCall[] = [];
+  const observedCalls: ObservedToolCall[] = [];
+  const outcomes = new Map<string, boolean>();
 
   for (const line of text.split('\n')) {
     let entry: unknown;
@@ -129,8 +168,23 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
       userMessages.push(message);
     }
     subagentInvocations.push(...toSubagentInvocations(entry));
-    toolCalls.push(...toToolCalls(entry));
+    observedCalls.push(...toToolCalls(entry));
+    for (const result of toToolResults(entry)) {
+      // First result wins. Real transcripts carry no duplicate reference within one file
+      // (the duplicates they do carry are cross-file copies made on resume), and the
+      // judge reads one file.
+      if (!outcomes.has(result.id)) outcomes.set(result.id, result.succeeded);
+    }
   }
+
+  // The join (COVENANT-13b §4.2). No result found is not ignorance: this provider CAN
+  // read the result channel, so silence is success it failed to prove — `undefined` stays
+  // reserved for a provider that cannot see results at all.
+  const toolCalls: TranscriptToolCall[] = observedCalls.map((call) => ({
+    name: call.name,
+    args: call.args,
+    succeeded: call.id !== undefined && outcomes.get(call.id) === true,
+  }));
 
   // Every query returns fresh objects — never live aliases into the snapshot, down to a
   // call's nested args — so a consumer mutating a result cannot corrupt what later
@@ -144,7 +198,7 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
     findToolCalls: (name) =>
       toolCalls
         .filter((call) => name === undefined || call.name === name)
-        .map((call) => ({ name: call.name, args: { ...call.args } })),
+        .map((call) => ({ name: call.name, args: { ...call.args }, succeeded: call.succeeded })),
   };
 }
 
