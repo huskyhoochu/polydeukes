@@ -1,4 +1,8 @@
-# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+# yaml-language-server: $schema=packages/core/schema/polydeukes.schema.json
+# Repo-relative on purpose: this is the workspace's OWN config, and `@polydeukes/core` is a
+# workspace package, not a root dependency — there is no node_modules/@polydeukes here, so the
+# published `node_modules/...` spelling resolves to nothing and the editor silently loses schema
+# validation. The consumer-facing spelling belongs to the scaffold TEMPLATE-01 generates.
 
 languages:
   typescript:

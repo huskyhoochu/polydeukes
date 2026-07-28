@@ -17,9 +17,12 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
   pre-commit judgment runner) as its only subcommand. Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
   file-I/O-free). Only umbrella-role logic (discovery, assembly-facing loading, the CLI)
-  belongs here; area logic still goes in scoped `@polydeukes/*` packages. Its `src`/`dist` are
-  on the protection surface (the loader feeds the judges). The unscoped name was verified free
-  on npm and is a deliberately held asset — never delete or rename it.
+  belongs here; area logic still goes in scoped `@polydeukes/*` packages. The loader feeds the
+  judges, so both halves are protected — but at different surfaces (CONFIG-08): its `dist` is on
+  the common list (a gitignored judge executable no commit can show), its `src` on the commit
+  surface's additive one, so editing the loader in a session is the work itself and the commit
+  that stages it is what gets judged. The unscoped name was verified free on npm and is a
+  deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
 - **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,
