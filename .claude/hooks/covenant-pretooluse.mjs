@@ -27,7 +27,7 @@
  * `waiver` block stays valid and simply arms no valve at all.
  */
 
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -40,6 +40,21 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // root config file (CONFIG-03); only agent vocabulary and dist import paths
 // remain in this file.
 // ---------------------------------------------------------------------------
+
+/**
+ * Compose a judge body path and prove it exists (CONFIG-06b §4.2). A body module that was
+ * never built makes node exit 1 — the same code a real break verdict returns — so nothing
+ * downstream can separate an unjudgeable run from a judged one. The proof therefore belongs
+ * to the act of composing the path, and a body this assembly composes no path for is never
+ * proven: the throw lands in the fail-closed catch below, one blocked record and exit 2.
+ */
+function provenBodyPath(distDir, fileName) {
+  const modulePath = join(distDir, fileName);
+  if (!existsSync(modulePath)) {
+    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
+  }
+  return modulePath;
+}
 
 const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
 const SHELL_TOOLS = ['Bash'];
@@ -124,10 +139,14 @@ try {
           ttlMs: config.waiver.ttlMinutes * 60_000,
         });
 
-  const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
-  const shellModBody = join(repoRoot, 'packages/covenant/dist/shell-mod-body.js');
-  const disciplineBody = join(repoRoot, 'packages/covenant/dist/discipline-body.js');
-  const transcriptModBody = join(repoRoot, 'packages/covenant/dist/transcript-mod-body.js');
+  // Only the two unconditional registrations compose their paths here. The transcript-mod
+  // and discipline bodies are composed inside the conditions that decide whether their
+  // registrations exist at all — proving a body this run will never spawn would close a
+  // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
+  const covenantDist = join(repoRoot, 'packages/covenant/dist');
+  const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
+  const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
+  const disciplines = config.disciplines ?? [];
   const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
 
   const registrations = [
@@ -170,28 +189,33 @@ try {
             // only — an inert spelling closure looks identical to a passing call.
             home: process.env.HOME ?? homedir(),
             bodyCommand: process.execPath,
-            bodyModulePath: transcriptModBody,
+            bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
             shellTools: SHELL_TOOLS,
             commandArgs: COMMAND_ARGS,
             mutatingTools: MUTATING_TOOLS,
             escapeHatch,
           }),
         ]),
-    ...covenant.compileDisciplineRegistrations({
-      disciplines: config.disciplines ?? [],
-      rootDir: repoRoot,
-      bodyCommand: process.execPath,
-      bodyModulePath: disciplineBody,
-      shellTools: SHELL_TOOLS,
-      commandArgs: COMMAND_ARGS,
-      escapeHatch,
-      // Context-family evidence is evaluated here, at assembly: a spawned body cannot
-      // hold a transcript, and passing a path would leak JSONL knowledge into covenant
-      // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
-      // `tool` vocabulary; core owns `command`, which the compiler judges directly.
-      transcript,
-      evaluatePrecedent: adapter.evaluatePrecedent,
-    }),
+    // Composed inside the emptiness check for the same reason as the transcript body: a
+    // config declaring no disciplines never spawns this judge, so its absence must not
+    // close the call.
+    ...(disciplines.length === 0
+      ? []
+      : covenant.compileDisciplineRegistrations({
+          disciplines,
+          rootDir: repoRoot,
+          bodyCommand: process.execPath,
+          bodyModulePath: provenBodyPath(covenantDist, 'discipline-body.js'),
+          shellTools: SHELL_TOOLS,
+          commandArgs: COMMAND_ARGS,
+          escapeHatch,
+          // Context-family evidence is evaluated here, at assembly: a spawned body cannot
+          // hold a transcript, and passing a path would leak JSONL knowledge into covenant
+          // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
+          // `tool` vocabulary; core owns `command`, which the compiler judges directly.
+          transcript,
+          evaluatePrecedent: adapter.evaluatePrecedent,
+        })),
   ];
 
   const { exitCode } = await adapter.runAdapterPath({

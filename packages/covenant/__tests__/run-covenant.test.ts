@@ -250,3 +250,33 @@ describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
     expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// CONFIG-06b §4.1 — the exit-1 collision. A body MODULE that was never built is
+// not a spawn failure: node itself exists, so the spawn succeeds and the CHILD
+// fails, with the same code a real break verdict returns. This pin records that
+// collision at the level where it happens, so the assembly-time existence proof
+// cannot later be read as redundant — what makes it look unnecessary from down
+// here is exactly the ambiguity it exists to remove.
+// ---------------------------------------------------------------------------
+
+describe('CONFIG-06b §4.1 a body module that does not exist', () => {
+  it('resolves to bodyExitCode 1 — indistinguishable from a real break verdict, not a spawn failure', async () => {
+    // The measured fact the ticket is built on, pinned so it cannot drift silently. Compare
+    // the two siblings above: exitScript(1) — a genuine break verdict — produces this exact
+    // result object, and the nonexistent EXECUTABLE produces bodyExitCode null (the only
+    // unjudgeable signal the wrapper has, and one this branch never reaches). Mutation
+    // caught: a runtime or wrapper change that starts delivering a missing module as null/2
+    // would make the assembly proof look redundant, and this pin is what forces that
+    // discovery to be deliberate rather than a quiet deletion.
+    const result = await runCovenant({
+      command: process.execPath,
+      args: [join(dir, 'this-body-module-does-not-exist.js')],
+      stdinPayload: '{}',
+      label: 'test-covenant',
+      telemetryPath,
+    });
+
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1 });
+  });
+});

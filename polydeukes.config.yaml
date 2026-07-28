@@ -74,7 +74,9 @@ waiver:
 # decision). A staged change to a protected path stops the commit unless a human answers
 # the TTY prompt with the waiver token; an agent-spawned commit has no TTY and cannot.
 # The session surface (the hook) stays blocking either way; an unjudgeable run (missing
-# config, stale dist) still fails closed even here.
+# config, or a judge body that was never built) still fails closed even here. A body that
+# exists but is stale is NOT covered — it exits with whatever its old logic returns, and no
+# exit code separates that from a fresh judgment (CONFIG-06b).
 #
 # protectedPaths (additive): the commit surface's OWN observation scope, judged on top of
 # the common list above. These are the judgment chain's sources — loader, validator,

@@ -21,11 +21,13 @@
  * answer is cached so one commit prompts at most once, and nothing is ever persisted —
  * a state file would be an agent-forgeable surface (PRD §7).
  *
- * fail-closed: a missing/invalid config, or a collector failure, exits 2 with one
- * blocked record when a telemetry path is known. An empty staging area is an explicit
- * pass (nothing to judge — the dispatcher precedent of zero matches, zero records).
+ * fail-closed: a missing/invalid config, an unbuilt judge body, or a collector failure
+ * exits 2 with one blocked record when a telemetry path is known. An empty staging area
+ * is an explicit pass (nothing to judge — the dispatcher precedent of zero matches, zero
+ * records).
  */
 
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import {
@@ -49,6 +51,8 @@ export type CovenantCheckSpec = {
   repoRoot: string;
   /** Overrides the config's telemetry log path (tests and assembly injection). */
   telemetryPath?: string;
+  /** Overrides the resolved covenant dist directory (tests and assembly injection). */
+  covenantDist?: string;
   /**
    * TTY valve seam: returns the line a human typed, or null for no input. ABSENT means
    * a non-TTY environment — the valve never opens (AC-3 human-only arming).
@@ -74,6 +78,23 @@ function ttyValveHatch(
     }
     return verdict;
   };
+}
+
+/**
+ * Compose a judge body's module path and prove the file is there (CONFIG-06b §4.2).
+ * Spawning an absent module succeeds and its child exits 1 — the code a break verdict
+ * returns — so a judge that ran no line would arrive as a violation and, under `advise`,
+ * be waved through. Nothing downstream can separate the two (`translateExitCode` sees
+ * that number alone), so the proof happens here, before the spawn. Producing the path
+ * and proving it are one step on purpose: a path that skipped the proof cannot be
+ * constructed, and only the bodies this surface actually composes are proven.
+ */
+function provenBodyPath(distDir: string, fileName: string): string {
+  const modulePath = join(distDir, fileName);
+  if (!existsSync(modulePath)) {
+    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
+  }
+  return modulePath;
 }
 
 /** One blocked record for a run that failed closed before any dispatch could judge. */
@@ -146,14 +167,22 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
 
     // The judge bodies are the covenant package's dist executables — resolved through
     // the real package (never a test alias), so the commit surface spawns the same
-    // judges the session hook does.
-    const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
+    // judges the session hook does. An injected directory overrides that resolution:
+    // `createRequire` is real Node resolution and always lands on the real build, which
+    // no fixture can take a body away from.
+    const covenantDist =
+      spec.covenantDist ?? dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
     // Under advise the TTY valve is structurally absent (CONFIG-06 §4.6): a verdict
     // already passes, so there is nothing to waive and the prompt must never fire.
     const escapeHatch =
       enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
-    const disciplines = config.disciplines ?? [];
+    // Command-family entries never reach the commit surface (see the registration comment
+    // below), so this — not the raw config list — is the set that decides whether any
+    // discipline registration exists, and therefore whether that body is ever spawned.
+    const compiledDisciplines = (config.disciplines ?? []).filter(
+      (entry) => entry.forbidCommand === undefined,
+    );
 
     const registrations: CovenantRegistration[] = [
       {
@@ -162,7 +191,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
         body: {
           command: process.execPath,
           args: [
-            join(covenantDist, 'self-mod-body.js'),
+            provenBodyPath(covenantDist, 'self-mod-body.js'),
             ...protectedPaths.flatMap((path) => ['--protected-path', path]),
             ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
           ],
@@ -180,15 +209,22 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       // The commit surface stopped being a special case: an absent evidence channel gets
       // the same disposition on both surfaces, and the scope gate comes free with the
       // routing every registration already carries.
-      ...compileDisciplineRegistrations({
-        disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
-        rootDir: spec.repoRoot,
-        bodyCommand: process.execPath,
-        bodyModulePath: join(covenantDist, 'discipline-body.js'),
-        shellTools: [],
-        commandArgs: [],
-        escapeHatch,
-      }),
+      //
+      // The body path is composed INSIDE this condition, not above it: the proof belongs
+      // to the act of producing a path, so a surface that composes no path for a body
+      // must not be closed by that body's absence (PRD §4.2 corollary). A repository
+      // declaring no disciplines never spawns this judge.
+      ...(compiledDisciplines.length === 0
+        ? []
+        : compileDisciplineRegistrations({
+            disciplines: compiledDisciplines,
+            rootDir: spec.repoRoot,
+            bodyCommand: process.execPath,
+            bodyModulePath: provenBodyPath(covenantDist, 'discipline-body.js'),
+            shellTools: [],
+            commandArgs: [],
+            escapeHatch,
+          })),
     ];
 
     let blocked = false;

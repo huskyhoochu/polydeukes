@@ -45,7 +45,14 @@ describe('CONFIG-06 §4.4 translateExitCode — advise level (pure)', () => {
   it('body exit 2 (body-side fail-closed) stays exit 2 · blocked under advise', () => {
     // §4.4 row 3 invariant: advise relaxes the verdict, NOT the unjudgeable. A body's own
     // fail-closed 2 must never soften. Mutation caught: the advise branch relaxing exit 2
-    // the same way it relaxes exit 1 (fail-open hole on stale dist / parse failure).
+    // the same way it relaxes exit 1 — a fail-open hole wherever a body reaches its own
+    // refusal to judge and says so with 2. A judge body FILE that was never built does NOT
+    // arrive here (CONFIG-06b §4.1): node exits 1 for a missing module, colliding with a
+    // real break verdict, which is why that one branch is closed at assembly rather than in
+    // this translation; the measurement is pinned in run-covenant.test.ts. A body file that
+    // EXISTS but carries an older commit's logic is a third case again — it judges, so it
+    // arrives at any code at all and nothing observable here separates it. CONFIG-06b §4.3
+    // leaves that row open by decision.
     expect(translateExitCode(2, 'advise')).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
