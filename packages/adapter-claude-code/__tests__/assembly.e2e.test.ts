@@ -42,8 +42,8 @@ afterEach(() => {
 });
 
 /**
- * Spawn the real hook with one payload. The valve is the TTL waiver (the 2026-07-21
- * assembly removed the env hatch): a test that wants the valve open passes
+ * Spawn the real hook with one payload. The valve is the TTL witness (the 2026-07-21
+ * assembly removed the env witness): a test that wants the valve open passes
  * `transcriptPath` pointing at a JSONL transcript carrying a fresh human-typed
  * token, and the hook parses it out of the raw payload. Block cases simply omit it —
  * no transcript, no valve (the dispatcher stays on its noopTranscript default).
@@ -72,7 +72,7 @@ function runHook(
 }
 
 /**
- * The waiver token the hook will judge against comes from the real root config (this
+ * The witness token the hook will judge against comes from the real root config (this
  * file IS the dogfooding-assembly E2E — it already couples to the repo's own config
  * for protected paths, and the token is no different). Extracted textually so the
  * adapter package gains no dependency on the umbrella loader.
@@ -80,7 +80,7 @@ function runHook(
 function configuredToken(): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
   const match = /^\s*token:\s*'([^']+)'/m.exec(cfg);
-  if (!match) throw new Error('waiver token not found in polydeukes.config.yaml');
+  if (!match) throw new Error('witness token not found in polydeukes.config.yaml');
   return match[1];
 }
 
@@ -130,7 +130,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
 
   it('skips rather than blocks when no transcript accompanies the payload', () => {
     // No evidence channel is not "no evidence". Demanding session proof from a call that
-    // carries no session blocks every matching edit with no way through — and the waiver
+    // carries no session blocks every matching edit with no way through — and the witness
     // reads the same absence, so the valve is shut on the identical input.
     const result = runHook(writePayload(manifest, dependencyLine));
 
@@ -160,7 +160,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
 
   it('protects the transcript itself — a command that would delete it is blocked', () => {
     // The skip disposition above is only safe if the evidence channel cannot be removed
-    // on purpose. The transcript is what the context family reads AND what the waiver
+    // on purpose. The transcript is what the context family reads AND what the witness
     // reads, it lives outside the repository so no config `protectedPaths` entry can
     // reach it, and deleting it would disable every context discipline while shutting
     // the human valve on the same absence. Assembly knows the path, so assembly protects
@@ -175,7 +175,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
 
   it('still allows reading the transcript it protects', () => {
     // Protection is the shell axis's ordinary rule, not a new one: a read-only first
-    // token passes. Debugging a session must not require the waiver.
+    // token passes. Debugging a session must not require the witness.
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
@@ -246,21 +246,25 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records.map((r) => r.event).sort()).toEqual(['passed', 'passed']);
   });
 
-  it('a fresh human-typed waiver token bypasses a blocked edit (exit 0) and both bypasses are measured', () => {
-    // The valve property the removed env hatch used to pin, restated for the TTL
-    // waiver: a transcript carrying the config token as a fresh human utterance
-    // (first line, alone — COVENANT-15) opens the valve for this dispatch, the edit
-    // rides through with exit 0, and every skipped judgment is measured `bypassed`,
-    // never silent. This is the only hook-level test of the transcript_path →
-    // dispatcher → waiver wiring; the predicate itself is pinned in the covenant
-    // package and the provider in transcript-waiver.e2e.
+  it('a fresh human-typed witness token witnesses the blocked edit open (exit 0), would-block only', () => {
+    // The valve property the removed env witness used to pin, restated for the TTL
+    // witness AFTER COVENANT-17 moved it behind the verdict: a transcript carrying the
+    // config token as a fresh human utterance (first line, alone — COVENANT-15) lets a
+    // judgment that actually BLOCKED through as `witnessed`, while the sibling
+    // registration that upheld records its true `passed` — under the old routing-time
+    // valve both rows collapsed into bypasses. This is the only hook-level test of the
+    // transcript_path → dispatcher → witness wiring; the predicate itself is pinned in
+    // the covenant package and the provider in transcript-witness.e2e.
     const result = runHook(editPayload('.claude/hooks/covenant-pretooluse.mjs'), {
       transcriptPath: invokingTranscript(),
     });
 
     expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
-    expect(records.map((r) => r.event)).toEqual(['bypassed', 'bypassed']);
+    const byLabel = (label: string) => records.filter((r) => r.label === label);
+    expect(byLabel('self-mod').map((r) => r.event)).toEqual(['witnessed']);
+    expect(byLabel('shell-mod').map((r) => r.event)).toEqual(['passed']);
+    expect(records.length).toBe(2);
   });
 
   it('malformed hook stdin fails closed (exit 2) with one adapter blocked row', () => {
@@ -879,7 +883,7 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
     );
   }
 
-  it('an Edit under a git-additive path passes the session surface with no waiver (exit 0)', () => {
+  it('an Edit under a git-additive path passes the session surface with no witness (exit 0)', () => {
     // §4.2 contract pin: "the hook does not read the git namespace" is a promise, not
     // an omission — source stays free during work and gates only at promotion. The
     // additive entry names this exact target, so ANY reading of it shows up here.

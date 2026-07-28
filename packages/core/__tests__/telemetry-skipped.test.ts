@@ -73,7 +73,7 @@ describe('COVENANT-13 §4.5 skipped — aggregation', () => {
     expect(summary.counts['dependency-needs-npm-view']).toEqual({
       passed: 1,
       blocked: 0,
-      bypassed: 0,
+      witnessed: 0,
       advised: 0,
       skipped: 2,
     });

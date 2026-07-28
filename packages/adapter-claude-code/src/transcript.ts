@@ -1,6 +1,6 @@
 /**
  * JSONL-backed `CanonicalTranscript` provider (ADAPTER-04) — parses a Claude Code
- * session transcript into the agent-neutral query seam the waiver hatch judges over.
+ * session transcript into the agent-neutral query seam the witness valve judges over.
  *
  * JSONL vocabulary (`origin`, `subagent_type`, ISO timestamps) stays confined to this
  * package, never the core. Parsing happens once (a snapshot); the queries are pure
@@ -25,7 +25,7 @@ import {
  * and a plain-string `message.content`. Anything else — tool_result blocks,
  * task-notifications, origin-less command wrappers — is an AI-controlled or ambiguous
  * surface and never counts as human. A missing/unparseable timestamp keeps the message
- * with `timestampMs` undefined; fabricating freshness would open the waiver.
+ * with `timestampMs` undefined; fabricating freshness would open the witness.
  */
 function toUserMessage(entry: Record<string, unknown>): TranscriptUserMessage | undefined {
   if (entry.type !== 'user') {
@@ -210,7 +210,7 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
  * collapsing them hid the more likely one. An empty transcript is a session that has said
  * nothing yet, and judging against it is correct. An unreadable one is no evidence channel
  * at all, so the context family must skip rather than demand evidence from a session
- * nobody can read — while the waiver valve reads the same absence and stays shut, leaving
+ * nobody can read — while the witness valve reads the same absence and stays shut, leaving
  * a dead end with no message naming the cause (COVENANT-13 §4.5).
  *
  * Either way the valve turns off, never open: `undefined` leaves the dispatcher on its

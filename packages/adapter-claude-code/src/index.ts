@@ -75,7 +75,7 @@ export function translateEvent(payload: unknown): TranslatedEvent {
  * Fold a sequence of payloads into one {@link CovenantInput} (pure, PRD §4.2).
  *
  * Preserves observation order into `toolCalls` / `subagentSpawns`; `userMessages` is
- * always `[]` (ADAPTER-04 supplies waiver evidence later). If any payload fails
+ * always `[]` (ADAPTER-04 supplies witness evidence later). If any payload fails
  * classification the whole build fails closed with the blocking exit code — a silent
  * drop would be a bypass vector (PRD §5.2/§7).
  */

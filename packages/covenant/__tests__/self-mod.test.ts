@@ -8,7 +8,7 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.js';
 import { dispatchCovenants } from '../src/dispatch.js';
-import { envEscapeHatch } from '../src/escape-hatch.js';
+import { envWitness } from '../src/env-witness.js';
 import { judgeSelfModification } from '../src/self-mod.js';
 import { readTelemetryLines } from './helpers.js';
 
@@ -459,11 +459,11 @@ describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5
 });
 
 // ---------------------------------------------------------------------------
-// envEscapeHatch (COVENANT-03 §4.3)
+// envWitness (COVENANT-03 §4.3)
 // ---------------------------------------------------------------------------
 
-describe('envEscapeHatch — env-var predicate (COVENANT-03 §4.3)', () => {
-  const TEST_VAR = 'PDKS_TEST_SELF_MOD_ESCAPE_HATCH_VAR';
+describe('envWitness — env-var predicate (COVENANT-03 §4.3)', () => {
+  const TEST_VAR = 'PDKS_TEST_SELF_MOD_WITNESS_VAR';
   const dummyInput: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
 
   afterEach(() => {
@@ -472,22 +472,22 @@ describe('envEscapeHatch — env-var predicate (COVENANT-03 §4.3)', () => {
 
   it('returns false when the named env var is set to the empty string', () => {
     // Boundary case: an empty string is "set" in the shell sense but must not count as
-    // a truthy hatch. Mutation caught: a `!== undefined` check instead of a non-empty
+    // a truthy witness. Mutation caught: a `!== undefined` check instead of a non-empty
     // string check.
     process.env[TEST_VAR] = '';
 
-    expect(envEscapeHatch(TEST_VAR)(dummyInput)).toBe(false);
+    expect(envWitness(TEST_VAR)(dummyInput)).toBe(false);
   });
 
   it('returns false when the named env var is unset', () => {
     // Unset and empty-string take different paths through the non-empty check, and the
     // E2E case that used to cover the unset direction was pruned with it — re-pinned here
-    // (review round 2) so the pair-wise deletion leaves no gap. Mutation caught: a hatch
+    // (review round 2) so the pair-wise deletion leaves no gap. Mutation caught: a witness
     // that treats absence as consent (`undefined` falling into the truthy arm), silently
-    // bypassing every covenant registered with a hatch.
+    // bypassing every covenant registered with a witness.
     delete process.env[TEST_VAR];
 
-    expect(envEscapeHatch(TEST_VAR)(dummyInput)).toBe(false);
+    expect(envWitness(TEST_VAR)(dummyInput)).toBe(false);
   });
 });
 
@@ -632,7 +632,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
 
   function selfModRegistration(
     label: string,
-    escapeHatch?: (input: CovenantInput) => boolean,
+    witness?: (input: CovenantInput) => boolean,
   ): CovenantRegistration {
     return {
       label,
@@ -651,7 +651,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
           'MultiEdit',
         ],
       },
-      ...(escapeHatch ? { escapeHatch } : {}),
+      ...(witness ? { witness } : {}),
     };
   }
 
@@ -705,10 +705,10 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
     expect(existsSync(telemetryPath)).toBe(false);
   });
 
-  it('escapeHatch with the env var set bypasses the body: exitCode 0, one bypassed record, subject=protected path', async () => {
-    // P0 (COVENANT-03 §4.3 dispatch table row): hatch skips the spawn entirely and must
-    // be measured, not silently passed. Mutation caught: hatch not wired into the
-    // dispatcher at all, or bypass logged as 'passed' instead of the distinct 'bypassed'
+  it("witness with the env var set relaxes the body's break: exitCode 0, one witnessed record, subject=protected path", async () => {
+    // P0 (COVENANT-03 §4.3 dispatch table row): the witness relaxes the judge's block and
+    // must be measured, not silently passed. Mutation caught: witness not wired into the
+    // dispatcher at all, or bypass logged as 'passed' instead of the distinct 'witnessed'
     // event, losing the "controlled, not measured" distinction the PRD requires.
     process.env[TEST_VAR] = 'set';
     const input = inputWithToolCall('Edit', {
@@ -716,7 +716,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
       old_string: 'a',
       new_string: 'b',
     });
-    const reg = selfModRegistration('self-mod', envEscapeHatch(TEST_VAR));
+    const reg = selfModRegistration('self-mod', envWitness(TEST_VAR));
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
@@ -728,7 +728,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
     const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
-    expect(record?.event).toBe('bypassed');
+    expect(record?.event).toBe('witnessed');
     expect(record?.label).toBe('self-mod');
     expect(record?.subject).toBe(PROTECTED);
   });

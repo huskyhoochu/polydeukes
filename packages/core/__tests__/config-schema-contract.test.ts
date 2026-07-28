@@ -111,12 +111,12 @@ const VALID_CONFIGS: readonly unknown[] = [
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     ...validLanguages,
   },
-  // CONFIG-05 — minimal valid waiver: token non-empty, ttlMinutes finite and > 0.
-  // The optional top-level `waiver` key with BOTH required fields must be accepted by
+  // CONFIG-05 — minimal valid witness: token non-empty, ttlMinutes finite and > 0.
+  // The optional top-level `witness` key with BOTH required fields must be accepted by
   // both the validator and the JSON Schema.
   {
     ...validLanguages,
-    waiver: { token: 'fake-waive-token', ttlMinutes: 10 },
+    witness: { token: 'fake-witness-token', ttlMinutes: 10 },
   },
 ];
 
@@ -256,37 +256,37 @@ const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: { id: 'x', forbid: 'a' } },
   // COVENANT-10 — a disciplines entry that is not an object.
   { ...validLanguages, disciplines: ['not-an-object'] },
-  // CONFIG-05 — waiver is a string (non-object). The `waiver` value must be an object;
+  // CONFIG-05 — witness is a string (non-object). The `witness` value must be an object;
   // a scalar has neither `token` nor `ttlMinutes`.
-  { ...validLanguages, waiver: 'covenant-waive' },
-  // CONFIG-05 — waiver is an array. An array is typeof 'object' but is not a waiver record.
-  { ...validLanguages, waiver: ['covenant-waive'] },
-  // CONFIG-05 — unknown key inside waiver (`ttl` typo alongside the two required fields).
-  // The waiver-level unknown-key gate mirrors the telemetry precedent.
-  { ...validLanguages, waiver: { token: 'fake-waive-token', ttlMinutes: 10, ttl: 5 } },
+  { ...validLanguages, witness: 'covenant-witness' },
+  // CONFIG-05 — witness is an array. An array is typeof 'object' but is not a witness record.
+  { ...validLanguages, witness: ['covenant-witness'] },
+  // CONFIG-05 — unknown key inside witness (`ttl` typo alongside the two required fields).
+  // The witness-level unknown-key gate mirrors the telemetry precedent.
+  { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: 10, ttl: 5 } },
   // CONFIG-05 — token missing (only ttlMinutes present). Both fields are required.
-  { ...validLanguages, waiver: { ttlMinutes: 10 } },
+  { ...validLanguages, witness: { ttlMinutes: 10 } },
   // CONFIG-05 — token non-string (number).
-  { ...validLanguages, waiver: { token: 123, ttlMinutes: 10 } },
+  { ...validLanguages, witness: { token: 123, ttlMinutes: 10 } },
   // CONFIG-05 — token empty string. Boundary: trim-length 0 ⟺ schema minLength 1.
-  { ...validLanguages, waiver: { token: '', ttlMinutes: 10 } },
+  { ...validLanguages, witness: { token: '', ttlMinutes: 10 } },
   // CONFIG-05 — token whitespace-only. Boundary: validator `token.trim().length === 0`
   // ⟺ schema `pattern: \S` (requires at least one non-whitespace character).
-  { ...validLanguages, waiver: { token: '   ', ttlMinutes: 10 } },
+  { ...validLanguages, witness: { token: '   ', ttlMinutes: 10 } },
   // CONFIG-05 — ttlMinutes missing (only token present). Both fields are required.
-  { ...validLanguages, waiver: { token: 'fake-waive-token' } },
+  { ...validLanguages, witness: { token: 'fake-witness-token' } },
   // CONFIG-05 — ttlMinutes non-number (string).
-  { ...validLanguages, waiver: { token: 'fake-waive-token', ttlMinutes: '10' } },
+  { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: '10' } },
   // CONFIG-05 — ttlMinutes 0. Boundary AT the exclusive lower bound: 0 is excluded
   // (validator `ttlMinutes > 0` ⟺ schema `exclusiveMinimum: 0`).
-  { ...validLanguages, waiver: { token: 'fake-waive-token', ttlMinutes: 0 } },
+  { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: 0 } },
   // CONFIG-05 — ttlMinutes negative. Boundary ACROSS the exclusive lower bound.
-  { ...validLanguages, waiver: { token: 'fake-waive-token', ttlMinutes: -5 } },
-  // CONFIG-05 — per-discipline waiver key is STILL rejected (COVENANT-10 §2 reservation).
-  // Enforced by the discipline-entry unknown-key gate; a `waiver` key on an entry must throw.
+  { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: -5 } },
+  // CONFIG-05 — per-discipline witness key is STILL rejected (COVENANT-10 §2 reservation).
+  // Enforced by the discipline-entry unknown-key gate; a `witness` key on an entry must throw.
   {
     ...validLanguages,
-    disciplines: [{ id: 'per-discipline-waiver', forbid: 'x', waiver: { ttlMinutes: 5 } }],
+    disciplines: [{ id: 'per-discipline-witness', forbid: 'x', witness: { ttlMinutes: 5 } }],
   },
 ];
 

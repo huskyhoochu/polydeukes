@@ -40,13 +40,13 @@ value. If every such mutation still leaves the test green, it verifies nothing.
 
 Polydeukes is a discipline framework whose value is deterministic judgment, so its dangerous bug is
 **fail-open**: a covenant that upholds when it should break, an unparseable input that slips through
-as valid, an escape hatch that opens without evidence. Tests guarding those paths matter more here
+as valid, a valve that opens without evidence. Tests guarding those paths matter more here
 than anywhere else, and they must assert the exact outcome — the specific exit code (`2`, not
 "non-zero"), the specific verdict, the specific telemetry event — because a fail-open hole often
 shows up as *nearly* the right answer.
 
 Over-blocking is the mirror failure and it is not the safe one. A judge that blocks unrelated work
-pushes people to the waiver, and a waiver used daily is a gate that is already off — this repository
+pushes people to the witness valve, and a valve opened daily is a gate that is already off — this repository
 narrowed its own protection surface after measuring 2,414 bypasses against 14 real blocks. So a test
 asserting that an ordinary operation still *passes* carries the same weight as one asserting a
 violation blocks, and both belong in the suite.

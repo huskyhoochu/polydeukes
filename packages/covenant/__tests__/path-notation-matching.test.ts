@@ -90,10 +90,10 @@ describe('pathMatchesProtected — the resolved pass adds interior "." and ".." 
     expect(pathMatchesProtected('../dist', PROTECTED_DIR)).toBe(false);
   });
 
-  it('a bare ".." names nothing, so moving around the filesystem needs no waiver', () => {
+  it('a bare ".." names nothing, so moving around the filesystem needs no witness', () => {
     // `cd ..`, `git -C .. status`, `mv notes.md ..`. An earlier attempt treated a lone `..`
     // as an ancestor of everything and blocked all of them; the only valve is a human-typed
-    // waiver, so an over-block here is a gate people learn to switch off.
+    // witness, so an over-block here is a gate people learn to switch off.
     expect(pathMatchesProtected('..', PROTECTED_HOOKS)).toBe(false);
     expect(pathMatchesProtected('..', PROTECTED_FILE)).toBe(false);
     expect(pathMatchesProtected('../..', PROTECTED_DIR)).toBe(false);

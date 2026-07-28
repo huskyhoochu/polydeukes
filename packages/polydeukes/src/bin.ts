@@ -16,21 +16,21 @@
 import { closeSync, openSync, readSync, writeSync } from 'node:fs';
 import { runCovenantCheck } from './covenant-check.js';
 
-/** Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. */
-function openTtyPrompt(): (() => string | null) | undefined {
+/**
+ * Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. The runner
+ * composes the prompt text (it is the side that knows what broke); this shim only writes
+ * it and reads the line back.
+ */
+function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
   let fd: number;
   try {
     fd = openSync('/dev/tty', 'r+');
   } catch {
     return undefined;
   }
-  return () => {
+  return (prompt) => {
     try {
-      writeSync(
-        fd,
-        'covenant: a staged change matches a protected surface.\n' +
-          'type the waiver token to bypass this commit once (enter to refuse): ',
-      );
+      writeSync(fd, prompt);
       const buffer = Buffer.alloc(4096);
       const bytes = readSync(fd, buffer, 0, buffer.length, null);
       return buffer
@@ -40,7 +40,13 @@ function openTtyPrompt(): (() => string | null) | undefined {
     } catch {
       return null;
     } finally {
-      closeSync(fd);
+      try {
+        closeSync(fd);
+      } catch {
+        // A second consultation would land on an already-closed fd; an EBADF thrown
+        // from this finally would override the `return null` above and escape the
+        // seam (PR #41 review). The valve caches its verdict, so this is defensive.
+      }
     }
   };
 }

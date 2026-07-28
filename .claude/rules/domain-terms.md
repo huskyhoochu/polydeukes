@@ -18,6 +18,7 @@ in code, package names, CLI, comments, and commit messages.
 | **Ledger** | `@polydeukes/ledger` | record / verify | `pdks ledger {start,verify,finish}` | Work tracking; completion authority moves from "I'm done" to "the actions passed." |
 | **Memory** | `@polydeukes/memory` | recall / ingest | `pdks memory search` | Searchable record of decisions and dead ends. Local SQLite + FTS5. |
 | **Verify** | `@polydeukes/verify` | refute / attest | `pdks verify` | Multi-agent adversarial verification — judgments check each other rather than self-report. |
+| **Witness** | `ttlWitness` / config `witness:` | witness | — | The human valve on a blocked judgment, sudo-style: the check computes "is an accountable human present, right now", and the human supplies that pass condition in person (session: the token typed first-line-alone; commit: the TTY answer). Consulted only AFTER a verdict blocked — recorded as `witnessed`, would-block only, never silent. |
 
 `core` and `adapter-*` packages keep their plain names.
 
@@ -31,6 +32,8 @@ in code, package names, CLI, comments, and commit messages.
    - ❌ `harness` → ✅ `discipline framework`
    - ❌ `kb` → ✅ `memory`
    - ❌ `rule` → ✅ `discipline` (user-facing surfaces: folder names, config keys, CLI, docs)
+   - ❌ `waive` / `waiver` → ✅ `witness` (COVENANT-17: what we built is sudo — the human
+     supplies the pass condition — not an inspection given up; `waive` says the latter)
 
    If an internal compatibility alias is unavoidable, confine it to a comment — never an exported name.
 

@@ -347,7 +347,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// escape hatch seam (COVENANT-03, PRD §4.3) — dummy bodies again, no real
+// witness seam (COVENANT-03, PRD §4.3) — dummy bodies again, no real
 // self-mod artifact needed here (that round trip lives in self-mod.test.ts).
 // ---------------------------------------------------------------------------
 
@@ -370,15 +370,15 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
     expect(results).toEqual([{ label: 'unjudgeable-entry', exitCode: 0, event: 'skipped' }]);
   });
 
-  it('never consults the escape hatch — a skip has no verdict to waive', async () => {
-    // The structurally adjacent bypass branch runs first for body-bearing registrations,
-    // so nothing but this pins that a skip short-circuits ahead of it. Mutation caught:
-    // the skip branch moved below the hatch, which would turn a live waiver into
-    // `bypassed` rows for entries that were never judged.
+  it('never consults the witness — a skip has no verdict to witness', async () => {
+    // A skip never reaches runCovenant, and the witness lives inside runCovenant —
+    // so this pins that a skip short-circuits before the spawn-and-witness path entirely.
+    // Mutation caught: skip handling folded into the body path, which would turn a live
+    // witness into `witnessed` rows for entries that were never judged.
     let consulted = false;
     const registration = {
       ...skipRegistration(() => 'src/a.ts'),
-      escapeHatch: () => {
+      witness: () => {
         consulted = true;
         return true;
       },
@@ -414,18 +414,19 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   });
 });
 
-describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
-  it('a matched registration with an escapeHatch predicate returning true is bypassed: no spawn, exitCode 0, one bypassed record', async () => {
-    // P0: the hatch must pre-empt spawning entirely (measured control, not a body-level
-    // decision). Mutation caught: the hatch evaluated but ignored (body still spawns),
-    // or the bypass not logged as the distinct 'bypassed' event.
-    const outFile = join(dir, 'should-not-exist.txt');
+describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
+  it('a matched registration whose body breaks with a witness predicate returning true is witnessed: the body still spawns, exitCode 0, one witnessed record', async () => {
+    // P0: the witness relaxes a real break AFTER the body reported it (COVENANT-17 §4.3) —
+    // measured control, not a body-level decision. Mutation caught: the witness evaluated
+    // but ignored (the block stands), the bypass not logged as the distinct 'witnessed'
+    // event, or the old routing-time timing skipping the spawn.
+    const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
-      escapeHatch: () => true,
+      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      witness: () => true,
     };
 
     const result = await dispatchCovenants({
@@ -435,17 +436,17 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(existsSync(outFile)).toBe(false);
+    expect(existsSync(outFile)).toBe(true);
     const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
-    expect(record?.event).toBe('bypassed');
+    expect(record?.event).toBe('witnessed');
     expect(record?.label).toBe('sample-covenant');
     expect(record?.subject).toBe('sub/protected/file.txt');
   });
 
-  it('a matched registration with an escapeHatch predicate returning false spawns the body normally', async () => {
-    // Mutation caught: a hatch seam that always skips spawning regardless of the
+  it('a matched registration with a witness predicate returning false spawns the body normally', async () => {
+    // Mutation caught: a witness seam that always skips spawning regardless of the
     // predicate's return value (fail-open in the wrong direction).
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
@@ -453,7 +454,7 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
       body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
-      escapeHatch: () => false,
+      witness: () => false,
     };
 
     const result = await dispatchCovenants({
@@ -469,8 +470,8 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
     expect(parseRecordLine(lines[0])?.event).toBe('passed');
   });
 
-  it('an escapeHatch predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
-    // P0 fail-open invariant (PRD §4.3/§7: "hatch throw -> false, never bypass"). Mutation
+  it('a witness predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
+    // P0 fail-open invariant (PRD §4.3/§7: "witness throw -> false, never bypass"). Mutation
     // caught: a try/catch around the predicate that resolves to true on error instead of
     // false, or an unhandled throw that escapes as a rejected dispatchCovenants promise
     // (asserted here by awaiting directly, per the async-not-toThrow discipline).
@@ -480,7 +481,7 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
       body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
-      escapeHatch: () => {
+      witness: () => {
         throw new Error('boom');
       },
     };
@@ -498,8 +499,8 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
     expect(parseRecordLine(lines[0])?.event).toBe('blocked');
   });
 
-  it('two matched registrations, first hatched and second a normal exit-0 body, both resolve (run-all preserved)', async () => {
-    // P0 run-all invariant carried into the hatch seam: a hatched registration must not
+  it('two matched registrations, first witness-bearing and second a normal exit-0 body, both resolve (run-all preserved)', async () => {
+    // P0 run-all invariant carried into the witness seam: a witness-bearing registration must not
     // stop other matched registrations from running. Mutation caught: an early return
     // after the first bypass that skips evaluating/running the rest of the matches.
     const outFileB = join(dir, 'body-b-ran.txt');
@@ -508,7 +509,7 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
       label: 'covenant-a',
       protectedPaths: ['sub/protected/file.txt'],
       body: { command: process.execPath, args: ['-e', 'process.exit(1)'] },
-      escapeHatch: () => true,
+      witness: () => true,
     };
     const regB: CovenantRegistration = {
       label: 'covenant-b',
@@ -527,7 +528,7 @@ describe('dispatchCovenants — escape hatch seam (PRD §4.3)', () => {
     const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(2);
     const records = lines.map((l) => parseRecordLine(l));
-    expect(records.map((r) => r?.event)).toEqual(['bypassed', 'passed']);
+    expect(records.map((r) => r?.event)).toEqual(['witnessed', 'passed']);
     expect(records.map((r) => r?.label)).toEqual(['covenant-a', 'covenant-b']);
   });
 });

@@ -43,7 +43,7 @@ describe('§5.1 exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
   });
 
   it('a body exiting 1 (non-blocking break report) is translated up to wrapper exitCode 2', async () => {
@@ -57,7 +57,7 @@ describe('§5.1 exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1 });
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1, event: 'blocked' });
   });
 
   it('a body exiting 2 (body-side fail-closed) stays wrapper exitCode 2', async () => {
@@ -72,7 +72,7 @@ describe('§5.1 exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 2 });
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 2, event: 'blocked' });
   });
 
   it('an uninterpretable body exit code (3) is fail-closed to wrapper exitCode 2', async () => {
@@ -86,7 +86,7 @@ describe('§5.1 exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 3 });
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 3, event: 'blocked' });
   });
 
   it('a nonexistent executable (spawn failure) resolves to exitCode 2 and bodyExitCode null without throwing', async () => {
@@ -101,7 +101,7 @@ describe('§5.1 exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: null });
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: null, event: 'blocked' });
   });
 });
 
@@ -196,7 +196,7 @@ describe('§5.3 per-call logging', () => {
       telemetryPath: missingDirTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
   });
 });
 
@@ -218,7 +218,7 @@ describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
       telemetryPath: nestedTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
     const lines = readTelemetryLines(nestedTelemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
@@ -247,7 +247,7 @@ describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
       telemetryPath: impossibleTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0 });
+    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
   });
 });
 
@@ -277,6 +277,6 @@ describe('CONFIG-06b §4.1 a body module that does not exist', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1 });
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1, event: 'blocked' });
   });
 });

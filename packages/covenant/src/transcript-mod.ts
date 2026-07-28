@@ -2,7 +2,7 @@
  * `judgeTranscriptModification` — the transcript-mod covenant's pure judge (COVENANT-07c,
  * zero I/O) plus the registration factory that routes on it.
  *
- * The session transcript is the TTL waiver's evidence source, so a write to it must break.
+ * The session transcript is the TTL witness's evidence source, so a write to it must break.
  * Declaring it a protected path did that, but it also made its home directory a protected
  * *ancestor*, and every daily spelling that passes through home (`cd ~`, `cd /home/<user>`,
  * an edit whose content merely carries a bare `~`) broke with it (PRD §1). This judge is the
@@ -22,7 +22,7 @@
  * Both axes are judged, since this covenant is the sole registrant for its subject. The Bash
  * axis walks shell-mod's ladder per simple command, with one deliberate divergence: there is
  * **no opaque-mention clause** here, so `cat $HOME/<tail>` reaches the read-only allowlist
- * and passes — reading a session must never need a waiver. The tool axis reads the call's own
+ * and passes — reading a session must never need a witness. The tool axis reads the call's own
  * `fileChange` evidence when it proves a target, and falls back to self-mod's conservative
  * `args` traversal when it does not. Tool names and arg names are injected values, never
  * source literals.
@@ -327,7 +327,7 @@ export function judgeTranscriptModification(
  * `TranscriptModRegistrationSpec` — the assembly values baked into the registration (PRD §2).
  *
  * `bodyCommand` / `bodyModulePath` locate the CLI body; `shellTools`, `commandArgs`, and
- * `mutatingTools` are the surfaces, serialized into its argv; `escapeHatch` is the TTL waiver
+ * `mutatingTools` are the surfaces, serialized into its argv; `witness` is the TTL witness
  * valve, passed through untouched. `home` is optional — an absent one is simply not
  * transported, leaving the body to judge the absolute spelling only.
  */
@@ -339,7 +339,7 @@ export type TranscriptModRegistrationSpec = {
   shellTools: string[];
   commandArgs: string[];
   mutatingTools: string[];
-  escapeHatch?: CovenantRegistration['escapeHatch'];
+  witness?: CovenantRegistration['witness'];
 };
 
 /**
@@ -380,6 +380,6 @@ export function transcriptModRegistration(
         ...spec.mutatingTools.flatMap((tool) => ['--mutating-tool', tool]),
       ],
     },
-    ...(spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {}),
+    ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
   };
 }

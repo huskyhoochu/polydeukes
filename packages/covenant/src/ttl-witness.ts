@@ -1,13 +1,13 @@
 /**
- * `ttlWaiverHatch` — a time-boxed waiver predicate (COVENANT-06, PRD §4.1–4.2).
+ * `ttlWitness` — a time-boxed witness predicate (COVENANT-06, PRD §4.1–4.2).
  *
- * The second predicate on the escape-hatch seam, replacing the session-global env
- * valve's "forget to disarm" failure mode with built-in expiry. A human types the
- * agreed token into the conversation; the waiver holds for `ttlMs` from that user
- * message's timestamp, then blocking resumes automatically — no stored state, every
- * dispatch re-judges against the injected clock.
+ * The second predicate on the witness seam, replacing the session-global env valve's
+ * "forget to disarm" failure mode with built-in expiry. A human types the agreed token
+ * into the conversation; the witness holds for `ttlMs` from that user message's
+ * timestamp, then blocking resumes automatically — no stored state, every dispatch
+ * re-judges against the injected clock.
  *
- * Invoking the waiver is distinct from talking about it (COVENANT-15): the token must
+ * Invoking the witness is distinct from talking about it (COVENANT-15): the token must
  * stand alone on the utterance's first line, so quoting or asking about it never opens
  * the valve. Only the token's *placement* is constrained — its value is free, and this
  * module never inspects its shape.
@@ -16,8 +16,8 @@
 import type { CanonicalTranscript, CovenantInput } from '@polydeukes/core';
 import { resolveFailMode } from '@polydeukes/core';
 
-/** Configuration for {@link ttlWaiverHatch}. */
-export type TtlWaiverSpec = {
+/** Configuration for {@link ttlWitness}. */
+export type TtlWitnessSpec = {
   /**
    * The agreed phrase a human types on the first line of a message, alone. Any value
    * works — the defence is provenance, not secrecy, so the phrase is never checked for
@@ -36,7 +36,7 @@ export type TtlWaiverSpec = {
  * Build a predicate that returns `true` iff some user message carries the token
  * within the TTL window (PRD §4.2).
  *
- * A message waives only when all hold: it comes from `transcript.findUserMessages()`
+ * A message witnesses only when all hold: it comes from `transcript.findUserMessages()`
  * (no other text surface is consulted — an AI-synthesised token never counts), the
  * first line of its `text` equals the token once trimmed, its `timestampMs` is
  * present, and `0 <= now() - timestampMs <= ttlMs` (closed interval; a future
@@ -46,11 +46,11 @@ export type TtlWaiverSpec = {
  *
  * Validation is a factory-time concern: a trimmed-empty token or a non-finite /
  * non-positive `ttlMs` throws here; the returned predicate itself never throws.
- * The input is unused (same convention as `envEscapeHatch` — the valve keys on
+ * The input is unused (same convention as `envWitness` — the valve keys on
  * session evidence, not the payload). Pure: no I/O, no state, no mutation.
  */
-export function ttlWaiverHatch(
-  spec: TtlWaiverSpec,
+export function ttlWitness(
+  spec: TtlWitnessSpec,
 ): (input: CovenantInput, transcript: CanonicalTranscript) => boolean {
   const { token: rawToken, ttlMs, now = Date.now } = spec;
   // Normalise once, at assembly: the first line is compared trimmed, so a token
@@ -58,7 +58,7 @@ export function ttlWaiverHatch(
   // pass validation and then silently never open.
   const token = rawToken.trim();
   if (token.length === 0) {
-    throw new TypeError('ttlWaiverHatch: token must be non-empty after trimming');
+    throw new TypeError('ttlWitness: token must be non-empty after trimming');
   }
   // A token containing a line break is structurally inert: the judgment compares the
   // FIRST LINE of an utterance, which by construction never contains one, so such a
@@ -66,10 +66,10 @@ export function ttlWaiverHatch(
   // silently refuse every utterance. Rejecting it here is validation of viability,
   // not interpretation of the phrase (the value stays free otherwise).
   if (/[\r\n]/.test(token)) {
-    throw new TypeError('ttlWaiverHatch: token must not contain line breaks');
+    throw new TypeError('ttlWitness: token must not contain line breaks');
   }
   if (!(Number.isFinite(ttlMs) && ttlMs > 0)) {
-    throw new TypeError('ttlWaiverHatch: ttlMs must be a finite positive number');
+    throw new TypeError('ttlWitness: ttlMs must be a finite positive number');
   }
   return (_input, transcript) => {
     // One clock read per judgment: every message in this dispatch is measured
@@ -77,7 +77,7 @@ export function ttlWaiverHatch(
     // a message's position in the transcript.
     const judgedAt = now();
     return transcript.findUserMessages().some((message) => {
-      // The first line only, compared whole: an utterance invokes the waiver, it does
+      // The first line only, compared whole: an utterance invokes the witness, it does
       // not merely mention it (COVENANT-15 §4.1). `split` keeps a leading blank line as
       // an empty first element, so a token below it never matches, and `trim` absorbs
       // both surrounding spaces and the trailing `\r` of a CRLF transport — CRLF only:

@@ -417,7 +417,7 @@ describe('§5.2 top-level $schema key (CONFIG-03 core opening)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// CONFIG-05 — waiver validator-only behavior (PRD §4.2 / §4.3 fixtures 12–13).
+// CONFIG-05 — witness validator-only behavior (PRD §4.2 / §4.3 fixtures 12–13).
 //
 // These cases are validator-only — a JSON Schema cannot express them, so they
 // live here and NOT in config-schema-contract.test.ts. Rationale: Infinity and
@@ -430,8 +430,8 @@ describe('§5.2 top-level $schema key (CONFIG-03 core opening)', () => {
 // the ResolvedConfig object shape, which the schema-contract file (accept/reject
 // only) does not exercise.
 // ---------------------------------------------------------------------------
-describe('§4.2 waiver — validator-only non-finite ttlMinutes rejection', () => {
-  it('rejects ttlMinutes Infinity, naming the waiver.ttlMinutes field path', () => {
+describe('§4.2 witness — validator-only non-finite ttlMinutes rejection', () => {
+  it('rejects ttlMinutes Infinity, naming the witness.ttlMinutes field path', () => {
     // §4.2: `!(Number.isFinite(ttlMinutes) && ttlMinutes > 0)` rejects Infinity even
     // though Infinity > 0 is true — finiteness is the gate. A JSON Schema cannot express
     // this (Infinity is outside the JSON number system), so only defineConfig guards it.
@@ -439,70 +439,70 @@ describe('§4.2 waiver — validator-only non-finite ttlMinutes rejection', () =
     // letting Infinity slip through.
     const error = expectConfigValidationError({
       ...validTwoLanguageConfig,
-      waiver: { token: 'fake-waive-token', ttlMinutes: Number.POSITIVE_INFINITY },
+      witness: { token: 'fake-witness-token', ttlMinutes: Number.POSITIVE_INFINITY },
     });
-    expect(error.message).toContain('waiver.ttlMinutes');
+    expect(error.message).toContain('witness.ttlMinutes');
   });
 
-  it('rejects ttlMinutes NaN, naming the waiver.ttlMinutes field path', () => {
+  it('rejects ttlMinutes NaN, naming the witness.ttlMinutes field path', () => {
     // §4.2: NaN fails both Number.isFinite and the `> 0` comparison. The YAML `.nan`
     // path can produce it, so defineConfig is the sole guard. Mutation caught: a check
     // that only compares `ttlMinutes > 0` — NaN comparisons are false, but a mutant that
     // reverses to `!(ttlMinutes <= 0)` would wrongly admit NaN.
     const error = expectConfigValidationError({
       ...validTwoLanguageConfig,
-      waiver: { token: 'fake-waive-token', ttlMinutes: Number.NaN },
+      witness: { token: 'fake-witness-token', ttlMinutes: Number.NaN },
     });
-    expect(error.message).toContain('waiver.ttlMinutes');
+    expect(error.message).toContain('witness.ttlMinutes');
   });
 });
 
-describe('§4.2 waiver — field-path-named error messages', () => {
-  it('names waiver.token when the token is whitespace-only', () => {
+describe('§4.2 witness — field-path-named error messages', () => {
+  it('names witness.token when the token is whitespace-only', () => {
     // §4.2: `token.trim().length === 0` rejects a whitespace-only token, and the message
-    // must name the field path (waiver.token) so the author can locate the offending key.
+    // must name the field path (witness.token) so the author can locate the offending key.
     // Mutation caught: a trim() dropped from the emptiness check, admitting '   '.
     const error = expectConfigValidationError({
       ...validTwoLanguageConfig,
-      waiver: { token: '   ', ttlMinutes: 10 },
+      witness: { token: '   ', ttlMinutes: 10 },
     });
-    expect(error.message).toContain('waiver.token');
+    expect(error.message).toContain('witness.token');
   });
 
-  it('names waiver.ttlMinutes when ttlMinutes is zero', () => {
+  it('names witness.ttlMinutes when ttlMinutes is zero', () => {
     // §4.2 boundary AT the exclusive lower bound: 0 is excluded (`ttlMinutes > 0`), and
     // the message names the field path. Mutation caught: `> 0` weakened to `>= 0`, which
     // would admit 0.
     const error = expectConfigValidationError({
       ...validTwoLanguageConfig,
-      waiver: { token: 'fake-waive-token', ttlMinutes: 0 },
+      witness: { token: 'fake-witness-token', ttlMinutes: 0 },
     });
-    expect(error.message).toContain('waiver.ttlMinutes');
+    expect(error.message).toContain('witness.ttlMinutes');
   });
 });
 
-describe('§4.1 waiver — verbatim pass-through and absence in ResolvedConfig', () => {
-  it('passes a valid waiver through verbatim with no unit conversion', () => {
-    // AC §5.1 + §4.2: the ResolvedConfig carries `waiver` as `{ token, ttlMinutes }`
+describe('§4.1 witness — verbatim pass-through and absence in ResolvedConfig', () => {
+  it('passes a valid witness through verbatim with no unit conversion', () => {
+    // AC §5.1 + §4.2: the ResolvedConfig carries `witness` as `{ token, ttlMinutes }`
     // UNCHANGED — no minutes→ms conversion (that is the consumer's arithmetic, not core's).
     // Same verbatim pattern as `disciplines`. Mutation caught: a compile step converting
     // ttlMinutes to milliseconds (10 → 600000), or renaming the field to ttlMs.
     const resolved = defineConfig({
       ...validTwoLanguageConfig,
-      waiver: { token: 'fake-waive-token', ttlMinutes: 10 },
+      witness: { token: 'fake-witness-token', ttlMinutes: 10 },
     });
 
-    expect(resolved.waiver).toEqual({ token: 'fake-waive-token', ttlMinutes: 10 });
+    expect(resolved.witness).toEqual({ token: 'fake-witness-token', ttlMinutes: 10 });
     // Explicitly pin "no unit conversion": ttlMinutes stays 10, never 600000 (ms).
-    expect(resolved.waiver?.ttlMinutes).toBe(10);
+    expect(resolved.witness?.ttlMinutes).toBe(10);
   });
 
-  it('does not fabricate a waiver key when the config omits waiver', () => {
-    // §4.1 / AC §5.1: a waiver-less config must resolve with NO `waiver` key at all —
+  it('does not fabricate a witness key when the config omits witness', () => {
+    // §4.1 / AC §5.1: a witness-less config must resolve with NO `witness` key at all —
     // absent stays absent (same no-fabrication rule as `disciplines`). Mutation caught:
-    // a default-fill assigning `waiver: {...}` or `waiver: undefined` when the key is absent.
+    // a default-fill assigning `witness: {...}` or `witness: undefined` when the key is absent.
     const resolved = defineConfig(validTwoLanguageConfig);
 
-    expect('waiver' in resolved).toBe(false);
+    expect('witness' in resolved).toBe(false);
   });
 });

@@ -19,7 +19,7 @@ languages:
 #
 # Judge SOURCES are deliberately NOT here. They live in the commit surface's own additive
 # list (adapters.git.protectedPaths below): a session edit of a source is the work itself
-# (blocking it here measured 2,414 waiver bypasses against 14 real discipline blocks),
+# (blocking it here measured 2,414 valve openings against 14 real discipline blocks),
 # while the commit that PROMOTES it into history is the checkpoint a human answers for.
 #
 # Child-process blind spot, on record (CONFIG-08 AC): `pnpm build` rewrites dist and
@@ -52,18 +52,21 @@ protectedPaths:
   - 'packages/adapter-claude-code/dist'
   - 'packages/adapter-git/dist'
 
-# The time-boxed valve. A human types this token into the conversation and the waiver
-# holds for ttlMinutes from that message, then blocking resumes on its own — replacing
-# an env valve whose "armed until you remember to disarm" shape measured 562 bypasses
-# in a single day. The token is not a secret: the defence is provenance, not
-# confidentiality. Only a real human utterance carries the transcript marking the
-# predicate admits, and no agent can forge that marking.
+# The time-boxed witness. A human types this token into the conversation and the
+# witness window holds for ttlMinutes from that message, then blocking resumes on its
+# own — replacing an env valve whose "armed until you remember to disarm" shape
+# measured 562 bypasses in a single day. Since COVENANT-17 the valve stands AFTER the
+# verdict: the judge always runs, and only a judgment that actually blocked can be
+# witnessed open — recorded as `witnessed`, would-block only, never silent. The token
+# is not a secret: the defence is provenance, not confidentiality. Only a real human
+# utterance carries the transcript marking the predicate admits, and no agent can
+# forge that marking.
 #
 # The token must stand alone on the message's first line: mentioning it mid-sentence is
 # talking about the valve, not opening it (COVENANT-15). Any value works — placement is
 # what is judged, never the phrase's shape.
-waiver:
-  token: 'pdks waive'
+witness:
+  token: 'pdks witness'
   ttlMinutes: 10
 
 # Adapter namespaces (CONFIG-07): each adapter owns its own vocabulary; the core passes
@@ -72,7 +75,7 @@ waiver:
 #
 # enforce: block — restored 2026-07-28 (CONFIG-08, executing the 2026-07-26 §5.1
 # decision). A staged change to a protected path stops the commit unless a human answers
-# the TTY prompt with the waiver token; an agent-spawned commit has no TTY and cannot.
+# the TTY prompt with the witness token; an agent-spawned commit has no TTY and cannot.
 # The session surface (the hook) stays blocking either way; an unjudgeable run (missing
 # config, or a judge body that was never built) still fails closed even here. A body that
 # exists but is stale is NOT covered — it exits with whatever its old logic returns, and no
@@ -106,11 +109,13 @@ adapters:
 
 disciplines:
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3).'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3). waiver? joined after COVENANT-17 renamed the valve to witness — the retired vocabulary must not regrow. the one except is the old-key rejection contract test, whose literals ARE the contract: as a file this branch CREATES, delta judgment sees every line as added, so without the except any commit re-creating it (cherry-pick, revert-restore) trips its own discipline forever (PR #41 review).'
     in:
       - 'packages/*/src/**'
       - 'packages/*/__tests__/**'
-    forbid: '\b(guard|harness|kb)\b'
+    except:
+      - 'packages/core/__tests__/config-witness-key.test.ts'
+    forbid: '\b(guard|harness|kb|waiver?)\b'
   - id: 'hooks-stay-armed'
     why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself.'
     forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b'

@@ -58,7 +58,7 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   it('an append redirect through the "~" spelling breaks — audit B2 itself', () => {
     // Mutation caught: no home-spelling normalization at all — raw segments ['~', ...]
     // never equal ['home', 'u', ...], so the measured B2 forgery (appending a fake human
-    // utterance the TTL waiver then reads) sails through exactly as it does today.
+    // utterance the TTL witness then reads) sails through exactly as it does today.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -185,7 +185,7 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
     // Review finding: whole-path equality reads the candidate as one string, and no splitter
     // separates `-o` or `>>` from the path fused to it. Under the protected-path routing this
     // covenant replaces, the offset-tolerant comparison caught these; equality alone loses
-    // them, and every one is a write that overwrites the file the waiver reads.
+    // them, and every one is a write that overwrites the file the witness reads.
     for (const command of [
       `curl -so${TRANSCRIPT} https://example.test/forged.jsonl`,
       `wget -O${TRANSCRIPT} https://example.test/forged.jsonl`,
@@ -221,7 +221,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
     // The daily friction of the withdrawn 07b registration, at the sharp end: cd and mv
     // are NOT read-only entries, so no absolution can rescue a false mention — an
     // ancestor-matching mutant blocks these at the backstop with no valve but the
-    // human-typed waiver.
+    // human-typed witness.
     expect(judgeTranscriptModification(shellCall('cd ~'), baseSpec())).toEqual({ upheld: true });
     expect(judgeTranscriptModification(shellCall('cd $HOME'), baseSpec())).toEqual({
       upheld: true,
@@ -254,7 +254,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('reads of the transcript uphold in every spelling (read-only absolution, no opaque-mention clause)', () => {
-    // Reading a session must never need a waiver. The `$HOME` read is the deliberate
+    // Reading a session must never need a witness. The `$HOME` read is the deliberate
     // divergence from shell-mod's ladder: there is NO opaque-mention block clause here,
     // so a fully-normalized opaque spelling under a read-only head is a proven read.
     // Mutation caught: shell-mod's clause (c) copied over, re-blocking `cat $HOME/<tail>`.
@@ -298,7 +298,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
 
   it('an untokenizable line not naming the transcript upholds, and empty toolCalls upholds', () => {
     // Mutation caught: a tokenize failure defaulting to break regardless of content
-    // (every malformed line would need the waiver), and a degenerate input breaking
+    // (every malformed line would need the witness), and a degenerate input breaking
     // instead of vacuously upholding.
     expect(judgeTranscriptModification(shellCall('echo "unclosed'), baseSpec())).toEqual({
       upheld: true,
@@ -424,7 +424,7 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
     // Deleting the evidence source is a modification of the surface (CORE-06 makes
     // deletion first-class), and with no args the evidence is the only signal. Mutation
     // caught: the evidence comparison keyed on kinds carrying `post` (create/modify),
-    // silently skipping delete — the waiver's data source removed unjudged.
+    // silently skipping delete — the witness's data source removed unjudged.
     const verdict = judgeTranscriptModification(
       inputWithCall({
         name: 'Write',
@@ -609,13 +609,13 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
     expect(reg.matches?.(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`))).toBeNull();
   });
 
-  it('escapeHatch passes through when provided and stays absent when omitted', () => {
-    // Mutation caught: the factory dropping the hatch (the TTL waiver valve silently
+  it('witness passes through when provided and stays absent when omitted', () => {
+    // Mutation caught: the factory dropping the witness (the TTL witness valve silently
     // stops applying to this registration) or manufacturing one when none was given.
-    const hatch = () => true;
+    const witness = () => true;
 
-    expect(transcriptModRegistration(regSpec({ escapeHatch: hatch })).escapeHatch).toBe(hatch);
-    expect(transcriptModRegistration(regSpec()).escapeHatch).toBeUndefined();
+    expect(transcriptModRegistration(regSpec({ witness: witness })).witness).toBe(witness);
+    expect(transcriptModRegistration(regSpec()).witness).toBeUndefined();
   });
 });
 
@@ -739,7 +739,7 @@ describe('transcript-mod-body CLI (COVENANT-07c)', () => {
 
   it('a "$HOME" read yields exit 0 (default read-only allowlist with zero allowlist flags)', () => {
     // Mutation caught: the body defaulting to an EMPTY allowlist when no allowlist flag
-    // is given — every read of the session would then need the waiver (the friction
+    // is given — every read of the session would then need the witness (the friction
     // this ladder deliberately removed).
     const result = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
       input: JSON.stringify(shellCall(`cat $HOME/${TRANSCRIPT_TAIL}`)),

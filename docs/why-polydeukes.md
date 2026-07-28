@@ -109,17 +109,20 @@ This is the concrete answer to "agreed enforcement, not control": the rule does 
 soften because the author found it inconvenient; it softens exactly where it can see.
 
 That valve is time-boxed, and its shape carries the same argument. A human types an
-agreed token into the conversation; judgments are waived for a configured window, then
-blocking resumes on its own. Nobody has to remember to close it. The token is not a
-secret — it sits in plain sight in the config file — because the defense is not
-confidentiality but provenance: a waiver counts only when the token arrives in a message
-the transcript marks as human-typed, and that mark is one an agent cannot forge. The AI
-can read the token and still cannot open the valve for itself. Consent has an author, and
-the mechanism can tell who it was.
+agreed token into the conversation; for a configured window a judgment that blocked can
+be witnessed open, then blocking resumes on its own. Nobody has to remember to close it.
+The valve stands after the verdict, never instead of it: the judge always runs, a call
+that would have passed consults nothing, and so a `witnessed` record always names a real
+block a present human answered for — sudo, not an exemption. The token is not a secret —
+it sits in plain sight in the config file — because the defense is not confidentiality
+but provenance: a witness counts only when the token arrives in a message the transcript
+marks as human-typed, and that mark is one an agent cannot forge. The AI can read the
+token and still cannot open the valve for itself. Consent has an author, and the
+mechanism can tell who it was.
 
 Provenance alone was not enough, and finding that out cost us a day. Matching the token
 anywhere in a message meant that *discussing* the valve opened it — a question about when
-the waiver expires carried the token, and the window silently extended. Speech about a
+the witness expires carried the token, and the window silently extended. Speech about a
 thing had become an instance of it. The fix was to narrow what counts as invocation: the
 token must stand alone on the first line, so quoting it is a mention and typing it is an
 act. The general lesson is one a discipline framework should expect to keep relearning —
@@ -205,7 +208,7 @@ v0.1 gate the log held 1,020 verdicts, and the interesting number was the unflat
 one: bypasses had grown tenfold, 56 to 552, because the escape valve, once armed for a
 single legitimate edit, stayed armed around everything else in the session. The log did
 not soften that. It indicted the framework's own valve, and on that number alone a
-time-boxed waiver was promoted to the head of the next milestone. That is the stance
+time-boxed witness valve was promoted to the head of the next milestone. That is the stance
 working end to end: the framework improves because the evidence says so, not because
 anyone — including its authors — claims so. The ledger and adversarial verify extend
 the same standard to completion claims and review judgments; they are still on the
@@ -216,7 +219,7 @@ demands a *precedent* rather than forbidding a mutation. The edit is legitimate;
 refused is arriving without the procedure that should have preceded it (measure the
 dependency version before writing it). Two threads worth prose here: (1) it answers a
 question the other principles don't — not "what does the rule forbid" but "what does it
-require", enforcing order rather than prohibition; (2) unlike the waiver, its evidence
+require", enforcing order rather than prohibition; (2) unlike the witness, its evidence
 lives on a surface the AI controls, so forgery is structurally possible — and it holds
 anyway, because the cheapest way through the gate is to actually call the tool, which is
 precisely the behavior the discipline wanted. A rule whose evasion costs more than its
@@ -268,13 +271,21 @@ valve — with one concrete translation per surface it runs on. **And the level 
 the observer.** A commit-time verdict is not a new change but a second observation of the
 same one, so how strictly that observation is enforced — block or advise — is the
 observer's own setting, never part of the judge's shared vocabulary. Advise turns a
-verdict that could only be passed by typing a waiver into a backstop that measures
+verdict that could only be witnessed open by a typed token into a backstop that measures
 instead of blocking.
 
 <!-- Standing rule: add one paragraph per milestone round from the dogfooding journal
      (passes / blocks / bypasses + what the numbers changed); never rewrite past rounds.
      The journal is the primary source — this section quotes it, never precedes it.
      v0.2 round is still unwritten (the milestone gate runs it); add the paragraph then.
+
+     Parked candidate (COVENANT-17, 2026-07-29): measured history is never renamed. The
+     witness rename swept every living surface, but the dated v0.1 post kept its
+     bypassed-numbers as published and gained an editor's note instead — reference docs
+     speak only the present, dated posts speak only their moment. One public sentence on
+     that split belongs here when the evidence section next opens; pairs with the v0.2
+     round paragraph (the witnessed/blocked ratio after the valve moved behind the
+     verdict is that round's headline number).
      This section is the whitepaper's proof and should stay current. -->
 
 ## Where it stands

@@ -5,7 +5,7 @@ import type { CanonicalTranscript } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // CORE-04 RED phase (§5.2). The dispatcher seam wiring — `spec.transcript` and the
-// 2-arg `escapeHatch(input, transcript)` signature — does not exist yet, so this file is
+// 2-arg `witness(input, transcript)` signature — does not exist yet, so this file is
 // RED by construction. The behaviours asserted here become the GREEN contract.
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
@@ -39,50 +39,50 @@ afterEach(() => {
 });
 
 describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
-  it('injects spec.transcript as the second hatch argument: a 2-arg hatch that keys on a marker user message bypasses the spawn', async () => {
-    // P0: the transcript must actually reach the hatch's second parameter. The hatch
-    // returns true only when it observes the marker message, so a bypass proves the
-    // injected transcript (not undefined, not noop) was passed. Mutation caught: the
-    // dispatcher calling the hatch with one argument only, or passing the wrong object.
-    const outFile = join(dir, 'should-not-exist.txt');
+  it('injects spec.transcript as the second witness argument: a 2-arg witness that keys on a marker user message opens the valve after the verdict', async () => {
+    // P0: the transcript must actually reach the witness's second parameter. The witness
+    // returns true only when it observes the marker message, so a relaxed block proves
+    // the injected transcript (not undefined, not noop) was passed. Mutation caught: the
+    // dispatcher calling the witness with one argument only, or passing the wrong object.
+    const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
-      escapeHatch: (_input, transcript) =>
-        transcript.findUserMessages().some((m) => m.text === 'WAIVER-MARKER'),
+      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      witness: (_input, transcript) =>
+        transcript.findUserMessages().some((m) => m.text === 'WITNESS-MARKER'),
     };
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
       registrations: [reg],
       telemetryPath,
-      transcript: transcriptWithUserMessages(['WAIVER-MARKER']),
+      transcript: transcriptWithUserMessages(['WITNESS-MARKER']),
     });
 
     expect(result.exitCode).toBe(0);
-    expect(existsSync(outFile)).toBe(false);
+    expect(existsSync(outFile)).toBe(true);
     const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
-    expect(record?.event).toBe('bypassed');
+    expect(record?.event).toBe('witnessed');
     expect(record?.label).toBe('sample-covenant');
   });
 
-  it('defaults to noopTranscript when spec.transcript is omitted: a 2-arg hatch receives a real CanonicalTranscript object (both queries callable), not undefined', async () => {
+  it('defaults to noopTranscript when spec.transcript is omitted: a 2-arg witness receives a real CanonicalTranscript object (both queries callable), not undefined', async () => {
     // P0: the injection-absent default must be an object satisfying the interface, so a
-    // 2-arg hatch never crashes on undefined. The hatch calls BOTH queries (proving the
-    // shape) and bypasses only when findUserMessages() is empty — true for the noop
-    // default. Mutation caught: passing undefined as the second argument (hatch throws →
-    // no bypass → body spawns), or defaulting to a non-empty transcript.
-    const outFile = join(dir, 'should-not-exist.txt');
+    // 2-arg witness never crashes on undefined. The witness calls BOTH queries (proving the
+    // shape) and opens only when findUserMessages() is empty — true for the noop
+    // default. Mutation caught: passing undefined as the second argument (witness throws →
+    // no bypass → the block stands), or defaulting to a non-empty transcript.
+    const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
-      escapeHatch: (_input, transcript) =>
+      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      witness: (_input, transcript) =>
         transcript.findSubagentInvocations().length === 0 &&
         transcript.findUserMessages().length === 0,
     };
@@ -94,23 +94,23 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(existsSync(outFile)).toBe(false);
+    expect(existsSync(outFile)).toBe(true);
     const lines = readTelemetryLines(telemetryPath);
     expect(lines).toHaveLength(1);
-    expect(parseRecordLine(lines[0])?.event).toBe('bypassed');
+    expect(parseRecordLine(lines[0])?.event).toBe('witnessed');
   });
 
-  it('a 2-arg hatch that throws is treated as no bypass: the body spawns and the call is blocked (fail-closed unchanged)', async () => {
-    // P0 fail-closed regression (PRD §4.3: a throwing hatch is never a bypass), now with
+  it('a 2-arg witness that throws is treated as no bypass: the body spawns and the call is blocked (fail-closed unchanged)', async () => {
+    // P0 fail-closed regression (PRD §4.3: a throwing witness is never a bypass), now with
     // the widened 2-arg signature. Mutation caught: the seam widening dropping the
-    // try/catch, or a throwing hatch resolving to bypass instead of a normal spawn.
+    // try/catch, or a throwing witness resolving to bypass instead of a normal spawn.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
       body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
-      escapeHatch: (_input, _transcript) => {
+      witness: (_input, _transcript) => {
         throw new Error('boom');
       },
     };
@@ -119,7 +119,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
       stdinPayload: JSON.stringify(input),
       registrations: [reg],
       telemetryPath,
-      transcript: transcriptWithUserMessages(['WAIVER-MARKER']),
+      transcript: transcriptWithUserMessages(['WITNESS-MARKER']),
     });
 
     expect(result.exitCode).toBe(2);
@@ -129,9 +129,9 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     expect(parseRecordLine(lines[0])?.event).toBe('blocked');
   });
 
-  it('verdict parity: injecting a transcript does not change matching/spawn/verdict for a registration without escapeHatch', async () => {
+  it('verdict parity: injecting a transcript does not change matching/spawn/verdict for a registration without witness', async () => {
     // Invariant (PRD §5.2/§7, verdict unchanged): the seam carries no verdict weight for
-    // a hatch-less registration. A blocking body must yield the same exitCode 2 whether
+    // a witness-less registration. A blocking body must yield the same exitCode 2 whether
     // or not spec.transcript is supplied. Mutation caught: the transcript wiring altering
     // the match/spawn path for registrations that never consult it.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });

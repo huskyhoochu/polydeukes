@@ -90,7 +90,7 @@ describe('COVENANT-13b §5.2(3) transcriptFromJsonl — a clean result marks the
     // P0 the gate must still be openable. If the join never finds a result, every call
     // collapses to succeeded false and NO amount of actually running the required tool
     // opens a context-family gate — the over-blocking failure that pushes people onto the
-    // waiver. The second call pins the other end of the error-flag axis: `is_error: false`
+    // witness. The second call pins the other end of the error-flag axis: `is_error: false`
     // is a REPORTED success, not an error. Mutation caught: the join never wired up; or the
     // outcome derived from key PRESENCE (`'is_error' in block`) instead of its value, which
     // turns every explicitly-successful call into a failure.

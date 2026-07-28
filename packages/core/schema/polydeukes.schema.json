@@ -33,7 +33,7 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/discipline" }
     },
-    "waiver": { "$ref": "#/$defs/waiver" }
+    "witness": { "$ref": "#/$defs/witness" }
   },
   "$defs": {
     "languageProfile": {
@@ -69,8 +69,8 @@
         }
       }
     },
-    "waiver": {
-      "description": "TTL waiver settings — the agreed token and validity window (minutes) consumed by the covenant escape-hatch assembly (CONFIG-05).",
+    "witness": {
+      "description": "TTL witness settings — the agreed token and validity window (minutes) consumed by the covenant valve assembly (CONFIG-05).",
       "type": "object",
       "additionalProperties": false,
       "required": ["token", "ttlMinutes"],

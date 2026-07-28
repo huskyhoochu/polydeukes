@@ -97,6 +97,13 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 Archiving happens **when the PR merges**, never merely when acceptance criteria pass:
 
 - Check the ticket ✅ in `_docs/roadmap.md` (and update any downstream rows the work informed).
+- **Check the acceptance criteria themselves — every box, in both places they live** (the PRD
+  and, when the ticket came from a sub-roadmap, that document's criteria list). Next to each,
+  name *which run showed it*: a test file, a spawn, a command's output. Ticking a roadmap row
+  while its own criteria stay `- [ ]` is what makes an archived ticket read as "completed
+  without verification", and it also destroys the only record of how it was verified. A
+  criterion that did NOT pass does not get a tick — it gets a line saying so and a
+  destination, exactly like a review finding.
 - Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to
   `done` (with merge date + PR number), keep the 4-key frontmatter. Archived PRDs are immutable.
 - Report which roadmap tickets the merge unlocked.

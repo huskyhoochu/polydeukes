@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // found, missing, and unjudgeable. An unjudgeable entry compiles into a SKIP
 // registration: no body, so the dispatcher records one `skipped` instead of spawning.
 // Assembly never throws — one entry's failure used to take down every registration and
-// the waiver valve with it, leaving no in-session recovery.
+// the witness valve with it, leaving no in-session recovery.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 
 const ROOT = '/repo';
@@ -65,7 +65,7 @@ afterEach(() => {
 
 describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a skip registration', () => {
   it('skips when the evaluator does not recognize the evidence key', () => {
-    // Was a throw. The throw took down every sibling registration AND the waiver valve,
+    // Was a throw. The throw took down every sibling registration AND the witness valve,
     // so a single typo left no way to edit the config that caused it.
     const [registration] = compileDisciplineRegistrations(
       contextSpec([typoEntry], {
@@ -173,17 +173,15 @@ describe('compileDisciplineRegistrations — a skip registration stays a first-c
     expect(registration.label).toBe('dep-needs-view');
   });
 
-  it('carries the escape hatch like any other registration', () => {
-    // Not because a skip needs waiving — the dispatcher answers `skipped` before it ever
-    // reaches the hatch — but because the registration shape stays uniform, which is what
+  it('carries the witness like any other registration', () => {
+    // Not because a skip needs witnessing — the dispatcher answers `skipped` before it ever
+    // reaches the witness — but because the registration shape stays uniform, which is what
     // lets the dispatcher treat skips as ordinary matches rather than a second kind.
-    const escapeHatch = () => true;
-    const [registration] = compileDisciplineRegistrations(
-      contextSpec([commandEntry], { escapeHatch }),
-    );
+    const witness = () => true;
+    const [registration] = compileDisciplineRegistrations(contextSpec([commandEntry], { witness }));
 
     expectSkip(registration);
-    expect(registration.escapeHatch).toBe(escapeHatch);
+    expect(registration.witness).toBe(witness);
   });
 
   it('leaves every sibling entry judged as usual', () => {

@@ -398,7 +398,7 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
 
 // Assembly no longer fails closed by throwing — an unresolvable evidence spec becomes a
 // skip registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5). The
-// throw took every sibling registration and the waiver valve down with it.
+// throw took every sibling registration and the witness valve down with it.
 
 describe('compileDisciplineRegistrations — existing families carry no precedent flags (AC 9)', () => {
   it('forbid, immutable, and forbidCommand registrations get neither precedent flag', () => {
