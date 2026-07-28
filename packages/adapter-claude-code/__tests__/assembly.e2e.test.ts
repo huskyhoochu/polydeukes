@@ -939,6 +939,15 @@ describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-
   const DISCIPLINE_SCOPE = 'lib/**/*.ts';
   const FAIL_CLOSED_LABEL = 'hook';
   const UNRELATED_TARGET = 'docs/example.md';
+  const SCOPED_TARGET = 'lib/a.ts';
+  /** A write whose target cannot be derived — the class the shell-unjudgeable backstop owns. */
+  const OPAQUE_WRITE = 'echo x > $F';
+  const DELTA_ENTRIES = [{ id: 'no-todo', forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE }];
+  /** Evidence this surface cannot read without a transcript: compiles to a body-less skip. */
+  const PRECEDENT_ID = 'needs-precedent';
+  const PRECEDENT_ENTRIES = [
+    { id: PRECEDENT_ID, requirePrecedent: { tool: 'WebFetch' }, in: DISCIPLINE_SCOPE },
+  ];
 
   const eventsAndLabels = () => readRecords(telemetryPath).records.map((r) => [r.event, r.label]);
 
@@ -949,7 +958,11 @@ describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-
    * directory of per-file symlinks minus `omitBody`: symlinking that directory wholesale
    * would make the omission impossible, and copying it would drag node_modules along.
    */
-  function mirroredRoot(omitBody: string | null, declareDisciplines = true): string {
+  function mirroredRoot(
+    omitBody: string | null,
+    declareDisciplines = true,
+    entries: unknown[] = DELTA_ENTRIES,
+  ): string {
     const root = mkdtempSync(join(tmpRoot, 'mirror-'));
     mkdirSync(join(root, '.claude', 'hooks'), { recursive: true });
     cpSync(hookPath, join(root, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
@@ -980,9 +993,7 @@ describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-
           languages: { typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' } },
           telemetry: { logPath: telemetryPath },
           protectedPaths: [COMMON_ENTRY],
-          ...(declareDisciplines
-            ? { disciplines: [{ id: 'no-todo', forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE }] }
-            : {}),
+          ...(declareDisciplines ? { disciplines: entries } : {}),
         },
         null,
         2,
@@ -1064,6 +1075,39 @@ describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-
 
     expect(result.status).toBe(0);
     expect(eventsAndLabels()).toEqual([['passed', 'adapter-claude-code']]);
+  });
+
+  it('an uncomputable shell write is still recorded skipped when NO disciplines are declared (exit 0)', () => {
+    // F1, and the reason the pin directly above could not see it: that one sends an Edit,
+    // which routes nowhere either way, so a `passed` row reads as correct. The compiler
+    // appends the shell-unjudgeable backstop regardless of entry count, so an assembly that
+    // decides for itself not to call it when the list is empty deletes the one record this
+    // class produces — today this exact call answers `passed`, reporting a clean judgment of
+    // a write whose target was never determined. That is the silence COVENANT-10b was
+    // written to end, restored for every repository that declares no disciplines. Mutation
+    // caught: the spawn question answered at the assembly by entry count.
+    const result = runHookFromRoot(mirroredRoot(null, false), bashPayload(OPAQUE_WRITE));
+
+    expect(result.status).toBe(0);
+    expect(eventsAndLabels()).toEqual([['skipped', 'shell-unjudgeable']]);
+  });
+
+  it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0)', () => {
+    // F2's session twin — one cause, one disposition on both surfaces. The payload carries
+    // NO transcript on purpose: without a session to read, this entry's evidence can never
+    // be found, so it compiles to a skip with no body and nothing will be spawned. Demanding
+    // the built body anyway closes the call — today exit 2 with a hook row naming
+    // discipline-body.js. The skipped row is the load-bearing half: it proves the compiler
+    // still ran and the entry still reached a registration, so a fix that stops compiling
+    // whenever the body is absent cannot pass. Mutation caught: the umbrella corrected and
+    // the hook left reading entry count, which is how one fact acquires two answers.
+    const result = runHookFromRoot(
+      mirroredRoot('discipline-body.js', true, PRECEDENT_ENTRIES),
+      writePayload(SCOPED_TARGET, 'export const y = 2;\n'),
+    );
+
+    expect(result.status).toBe(0);
+    expect(eventsAndLabels()).toEqual([['skipped', PRECEDENT_ID]]);
   });
 
   it('a payload carrying NO transcript is untouched by a missing transcript-mod body (exit 0)', () => {

@@ -42,6 +42,9 @@ const DISCIPLINE_BODY = 'discipline-body.js';
 const SHELL_MOD_BODY = 'shell-mod-body.js';
 /** The label the umbrella's fail-closed catch records under — never a judge's label. */
 const FAIL_CLOSED_LABEL = 'covenant-check';
+/** A discipline whose evidence this surface cannot speak — it compiles to a body-less skip. */
+const PRECEDENT_ID = 'needs-precedent';
+const PRECEDENT_TOOL = 'WebFetch';
 /** The recovery command a locked-out operator must be told (§4.2). */
 const RECOVERY_COMMAND = 'pnpm build';
 /** The real built dist — the "body present" end of the axis. */
@@ -117,6 +120,25 @@ function stageProtectedChange(enforce: string): void {
 function stageCleanScopedChange(enforce: string): void {
   writeConfig({
     disciplines: [{ id: DISCIPLINE_ID, forbid: { added: FORBIDDEN_TOKEN }, in: DISCIPLINE_SCOPE }],
+    adapters: { git: { enforce } },
+  });
+  write(SCOPED_SOURCE, 'export const y = 1;\n');
+  git('add', SCOPED_SOURCE, 'polydeukes.config.json');
+  git('commit', '--quiet', '-m', 'initial');
+  write(SCOPED_SOURCE, 'export const y = 2;\n');
+  git('add', SCOPED_SOURCE);
+}
+
+/**
+ * Stage a scoped change under a config whose ONLY discipline is a requirePrecedent entry.
+ * This surface injects neither a transcript nor an evaluator, so that entry always compiles
+ * to a skip carrying no body — measured: one `skipped` row, identical at both enforce levels.
+ */
+function stagePrecedentScopedChange(enforce: string): void {
+  writeConfig({
+    disciplines: [
+      { id: PRECEDENT_ID, requirePrecedent: { tool: PRECEDENT_TOOL }, in: DISCIPLINE_SCOPE },
+    ],
     adapters: { git: { enforce } },
   });
   write(SCOPED_SOURCE, 'export const y = 1;\n');
@@ -271,6 +293,28 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     ]);
   });
 
+  it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0)', async () => {
+    // F2, the review's second finding. Declaring a discipline is not the same as spawning
+    // one: this entry's evidence vocabulary is one the commit surface does not speak, so it
+    // compiles to a skip with no body and nothing will ever run. An assembly that reads
+    // `disciplines.length > 0` as "a body is needed" fails the commit closed over a file it
+    // was never going to execute — today exactly that, exit 2 with a covenant-check row.
+    // The skipped row is the load-bearing half: it proves the compiler was still called and
+    // the entry still reached a registration, so a "fix" that simply stops compiling when
+    // the body is absent cannot pass this. Mutation caught: the spawn question answered at
+    // the assembly, where the answer is not known.
+    stagePrecedentScopedChange('advise');
+
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist: distWithout(DISCIPLINE_BODY),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(rows()).toEqual([['skipped', PRECEDENT_ID]]);
+  });
+
   it('block with the REAL dist injected still blocks through a self-mod verdict, not a fail-closed', async () => {
     // The control for the block case above: same level, same staging, only the dist differs.
     // A valid injected dist must reach the real judge and the rows must carry the JUDGE's
@@ -306,6 +350,27 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
       repoRoot,
       telemetryPath,
       covenantDist: REAL_COVENANT_DIST,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(rows()).toEqual([['passed', DISCIPLINE_ID]]);
+  });
+
+  it('a body runs out of a distWithout() mirror too — passed is the only unforgeable proof', async () => {
+    // F3, fixture honesty. Every over-block pin above reads `advised` rows out of a mirror,
+    // and `advised` is forgeable: a body that dies at import also exits 1, so a mirror that
+    // stopped producing runnable bodies would leave those pins green while the surface
+    // judged nothing at all. Only `passed` cannot be forged — a module that never loaded
+    // can only exit 1. The sibling control proves execution out of the REAL dist, which is
+    // a different object; this proves it out of the fixture the pins actually use. Mutation
+    // caught: the mirror reverted to copies (relative imports resolve inside the fixture
+    // directory and die), or an entry the per-file mirroring mishandles.
+    stageCleanScopedChange('advise');
+
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist: distWithout(SHELL_MOD_BODY),
     });
 
     expect(result.exitCode).toBe(0);

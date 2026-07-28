@@ -196,26 +196,27 @@ try {
             escapeHatch,
           }),
         ]),
-    // Composed inside the emptiness check for the same reason as the transcript body: a
-    // config declaring no disciplines never spawns this judge, so its absence must not
-    // close the call.
-    ...(disciplines.length === 0
-      ? []
-      : covenant.compileDisciplineRegistrations({
-          disciplines,
-          rootDir: repoRoot,
-          bodyCommand: process.execPath,
-          bodyModulePath: provenBodyPath(covenantDist, 'discipline-body.js'),
-          shellTools: SHELL_TOOLS,
-          commandArgs: COMMAND_ARGS,
-          escapeHatch,
-          // Context-family evidence is evaluated here, at assembly: a spawned body cannot
-          // hold a transcript, and passing a path would leak JSONL knowledge into covenant
-          // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
-          // `tool` vocabulary; core owns `command`, which the compiler judges directly.
-          transcript,
-          evaluatePrecedent: adapter.evaluatePrecedent,
-        })),
+    // The body path is passed as a thunk, so the proof fires only where the compiler
+    // actually composes a body. Entry count cannot stand in for that: an entry may compile
+    // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
+    // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
+    // for zero entries — gating the call itself would drop that record and turn an
+    // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
+    ...covenant.compileDisciplineRegistrations({
+      disciplines,
+      rootDir: repoRoot,
+      bodyCommand: process.execPath,
+      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
+      shellTools: SHELL_TOOLS,
+      commandArgs: COMMAND_ARGS,
+      escapeHatch,
+      // Context-family evidence is evaluated here, at assembly: a spawned body cannot
+      // hold a transcript, and passing a path would leak JSONL knowledge into covenant
+      // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
+      // `tool` vocabulary; core owns `command`, which the compiler judges directly.
+      transcript,
+      evaluatePrecedent: adapter.evaluatePrecedent,
+    }),
   ];
 
   const { exitCode } = await adapter.runAdapterPath({

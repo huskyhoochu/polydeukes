@@ -177,12 +177,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const escapeHatch =
       enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
 
-    // Command-family entries never reach the commit surface (see the registration comment
-    // below), so this — not the raw config list — is the set that decides whether any
-    // discipline registration exists, and therefore whether that body is ever spawned.
-    const compiledDisciplines = (config.disciplines ?? []).filter(
-      (entry) => entry.forbidCommand === undefined,
-    );
+    const disciplines = config.disciplines ?? [];
 
     const registrations: CovenantRegistration[] = [
       {
@@ -210,21 +205,21 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       // the same disposition on both surfaces, and the scope gate comes free with the
       // routing every registration already carries.
       //
-      // The body path is composed INSIDE this condition, not above it: the proof belongs
-      // to the act of producing a path, so a surface that composes no path for a body
-      // must not be closed by that body's absence (PRD §4.2 corollary). A repository
-      // declaring no disciplines never spawns this judge.
-      ...(compiledDisciplines.length === 0
-        ? []
-        : compileDisciplineRegistrations({
-            disciplines: compiledDisciplines,
-            rootDir: spec.repoRoot,
-            bodyCommand: process.execPath,
-            bodyModulePath: provenBodyPath(covenantDist, 'discipline-body.js'),
-            shellTools: [],
-            commandArgs: [],
-            escapeHatch,
-          })),
+      // The body path is passed as a thunk, so the proof fires only where the compiler
+      // actually composes a body (CONFIG-06b §4.2 corollary). Entry count cannot stand in
+      // for that: an entry may compile to a body-less skip — every `requirePrecedent` one
+      // does here, since this surface injects neither transcript nor evaluator — and the
+      // compiler appends the body-less `shell-unjudgeable` backstop even for zero entries,
+      // so gating the call itself would drop that record.
+      ...compileDisciplineRegistrations({
+        disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
+        rootDir: spec.repoRoot,
+        bodyCommand: process.execPath,
+        bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
+        shellTools: [],
+        commandArgs: [],
+        escapeHatch,
+      }),
     ];
 
     let blocked = false;

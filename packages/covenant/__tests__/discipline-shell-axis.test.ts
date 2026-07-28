@@ -673,3 +673,100 @@ describe('review-round regressions (PR #36) — body pre-read failure', () => {
     expect(result.status).toBe(2);
   });
 });
+
+// ===========================================================================
+// CONFIG-06b review (PR #39) — WHERE the body path is resolved. The assembly
+// roots tried to answer "will a body ever be spawned?" with
+// `disciplines.length === 0 ? [] : compile(...)`, and only the compiler can
+// answer it: skipping the call deletes the backstop below, and making the call
+// whenever entries exist demands a body for configs whose entries all compile
+// to body-less skips. `bodyModulePath` therefore accepts a resolver, consumed
+// at the single site that composes a body — so the call always happens and the
+// existence proof fires only where a body really is composed.
+// ===========================================================================
+
+describe('compileDisciplineRegistrations — the body path is resolved only where a body is composed', () => {
+  const LAZY_BODY_PATH = '/repo/lazy-discipline-body.js';
+  const STRING_BODY_PATH = '/repo/legacy-discipline-body.js';
+  const precedentEntry = {
+    id: 'needs-precedent',
+    in: ['packages/**/*.ts'],
+    requirePrecedent: { tool: 'WebFetch' },
+  } as DisciplineEntry;
+
+  /** A resolver that counts its own calls — the observation this whole contract turns on. */
+  function countingResolver(): { resolve: () => string; calls: () => number } {
+    let calls = 0;
+    return {
+      resolve: () => {
+        calls += 1;
+        return LAZY_BODY_PATH;
+      },
+      calls: () => calls,
+    };
+  }
+
+  it('is left unresolved when no discipline is declared, and the backstop is still emitted', () => {
+    // The two halves of F1 in one assertion. An assembly root that answers the spawn
+    // question itself has to skip this call to avoid resolving a path it does not need —
+    // and skipping it drops the shell-unjudgeable backstop, which is appended regardless
+    // of entry count, so an uncomputable shell write in a config with no disciplines goes
+    // from `skipped` to silence. Mutation caught: the resolver normalized once at the top
+    // of the compiler (the obvious refactor), which resolves a path for a call that
+    // composes no body at all and hands the assembly root its excuse back.
+    const resolver = countingResolver();
+
+    const regs = compileDisciplineRegistrations(specWith([], { bodyModulePath: resolver.resolve }));
+
+    expect(resolver.calls()).toBe(0);
+    expect(regs.map((reg) => [reg.label, reg.body === undefined])).toEqual([
+      ['shell-unjudgeable', true],
+    ]);
+  });
+
+  it('is left unresolved for an entry that compiles to a body-less skip', () => {
+    // F2. Entry count is not the question either: a requirePrecedent entry with no
+    // transcript and no evaluator injected — the commit surface's own shape — compiles to
+    // a skip that carries no body, so nothing will ever be spawned for it. Demanding the
+    // built body anyway fails the whole run closed over a file it was never going to run.
+    // Mutation caught: resolution moved to the head of the entry loop rather than to the
+    // one branch that composes a body.
+    const resolver = countingResolver();
+
+    const regs = compileDisciplineRegistrations(
+      specWith([precedentEntry], { bodyModulePath: resolver.resolve }),
+    );
+    const reg = regs.find((r) => r.label === precedentEntry.id);
+
+    expect(resolver.calls()).toBe(0);
+    expect(reg?.skip).toBeDefined();
+    expect(reg?.body).toBeUndefined();
+  });
+
+  it('is resolved for a body-bearing entry and its result becomes the body module arg', () => {
+    // The other end: laziness must not become never. A delta entry composes a real body, so
+    // the resolver runs and what it returns is the module the dispatcher will spawn.
+    // Mutation caught: the resolver accepted and stored but never called (the function
+    // object itself lands in args[0] and every discipline spawn dies), or called for its
+    // side effect while a stale path is passed on.
+    const resolver = countingResolver();
+
+    const regs = compileDisciplineRegistrations(
+      specWith([deltaEntry], { bodyModulePath: resolver.resolve }),
+    );
+
+    expect(resolver.calls()).toBe(1);
+    expect(bodyRegOf(regs, deltaEntry.id)?.body?.args?.[0]).toBe(LAZY_BODY_PATH);
+  });
+
+  it('still accepts a plain string path, passed through unchanged', () => {
+    // Back-compat: every existing caller and fixture hands a string, so widening the field
+    // must not make the resolver form mandatory. Mutation caught: the string branch dropped
+    // during the widening, which would break every assembly root and test at once.
+    const regs = compileDisciplineRegistrations(
+      specWith([deltaEntry], { bodyModulePath: STRING_BODY_PATH }),
+    );
+
+    expect(bodyRegOf(regs, deltaEntry.id)?.body?.args?.[0]).toBe(STRING_BODY_PATH);
+  });
+});

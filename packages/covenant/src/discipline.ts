@@ -58,7 +58,14 @@ export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
   rootDir: string;
   bodyCommand: string;
-  bodyModulePath: string;
+  /**
+   * The judge body's module path, or a way to obtain it. A thunk is resolved ONLY where a
+   * body is actually composed, so a spec whose entries all compile to body-less skips —
+   * and one with no entries at all, which still yields the shell-unjudgeable backstop —
+   * never asks for it. Assembly roots that prove the file exists as they compose the path
+   * pass a thunk, so proving and spawning cover the same set (CONFIG-06b §4.2).
+   */
+  bodyModulePath: string | (() => string);
   shellTools: string[];
   commandArgs: string[];
   escapeHatch?: CovenantRegistration['escapeHatch'];
@@ -638,12 +645,16 @@ export function compileDisciplineRegistrations(
         ? []
         : [outcome.kind === 'found' ? '--precedent-found' : '--precedent-missing'];
 
+    // Resolved here and nowhere else: this is the only return that composes a body, so a
+    // thunk fires exactly when one is spawned. Normalizing the union at the top of this
+    // function instead would resolve a path for calls that compose nothing, handing the
+    // assembly root back the over-block this seam exists to remove.
     return {
       ...routing,
       body: {
         command: spec.bodyCommand,
         args: [
-          spec.bodyModulePath,
+          typeof spec.bodyModulePath === 'function' ? spec.bodyModulePath() : spec.bodyModulePath,
           '--discipline',
           JSON.stringify(entry),
           '--root-dir',
