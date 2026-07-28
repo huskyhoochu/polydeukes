@@ -58,7 +58,14 @@ export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
   rootDir: string;
   bodyCommand: string;
-  bodyModulePath: string;
+  /**
+   * The judge body's module path, or a way to obtain it. A thunk is resolved ONLY where a
+   * body is actually composed, so a spec whose entries all compile to body-less skips —
+   * and one with no entries at all, which still yields the shell-unjudgeable backstop —
+   * never asks for it. Assembly roots that prove the file exists as they compose the path
+   * pass a thunk, so proving and spawning cover the same set (CONFIG-06b §4.2).
+   */
+  bodyModulePath: string | (() => string);
   shellTools: string[];
   commandArgs: string[];
   escapeHatch?: CovenantRegistration['escapeHatch'];
@@ -593,6 +600,18 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
+  // Memoized rather than called per entry: the thunk stats the filesystem, and every body
+  // in one compilation names the same module. Still lazy — a compilation that composes no
+  // body never assigns this (which is the whole point of the seam).
+  let resolvedBodyPath: string | undefined;
+  const bodyModulePath = (): string => {
+    if (resolvedBodyPath === undefined) {
+      resolvedBodyPath =
+        typeof spec.bodyModulePath === 'function' ? spec.bodyModulePath() : spec.bodyModulePath;
+    }
+    return resolvedBodyPath;
+  };
+
   const judged = spec.disciplines.map((entry) => {
     const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
 
@@ -638,12 +657,16 @@ export function compileDisciplineRegistrations(
         ? []
         : [outcome.kind === 'found' ? '--precedent-found' : '--precedent-missing'];
 
+    // Asked here and nowhere else: this is the only return that composes a body, so the
+    // path is obtained exactly when one is spawned. Resolving at the top of this function
+    // instead would ask for a path on calls that compose nothing, handing the assembly
+    // root back the over-block this seam exists to remove.
     return {
       ...routing,
       body: {
         command: spec.bodyCommand,
         args: [
-          spec.bodyModulePath,
+          bodyModulePath(),
           '--discipline',
           JSON.stringify(entry),
           '--root-dir',

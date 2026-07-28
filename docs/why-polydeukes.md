@@ -181,6 +181,17 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      of scope on exactly that reasoning, and an audit walked through seven spellings of a
      protected file. Nothing about the promise had to change to close them. -->
 
+<!-- Parked candidate (2026-07-28, CONFIG-06b): a gate is only as honest as its signal
+     vocabulary. A judge that never ran exited with the same code a judge that found a
+     violation returns, so "the checker is broken" arrived wearing the face of "the checker
+     found something" — and at the advisory level that dressed-up nothing passed, recorded
+     as a verdict nobody had reached. No downstream translation could tell them apart; the
+     number was all there was. Ambiguity has to be removed while the information still
+     exists, which meant proving the judge is there before spawning it. And prove exactly
+     what you are about to run, never a fixed inventory: a gate that closes over a judge it
+     was never going to spawn is the kind of inconvenience that sends people to the
+     override, and an override reached for daily stops being an exception. -->
+
 ### 3. Evidence, not self-report
 
 **Nothing is trusted because someone — human or AI — says so.** Every covenant verdict

@@ -76,7 +76,11 @@ list (`adapters.git.protectedPaths`), so a session edit is free and the commit t
 is judged. The commit surface runs at `adapters.git.enforce: block`: a commit staging a
 protected change stops unless a human answers the TTY prompt with the waiver token (an
 agent-spawned commit has no TTY and cannot). The session surface always blocks, and an
-unjudgeable run (missing/invalid config, stale dist) fails closed at either level.
+unjudgeable run (missing/invalid config, or a judge body that was never built) fails closed at
+either level. Each surface proves a body exists as it composes that body's path, so the proof
+covers exactly what the run would spawn — a body this surface never registers is not required
+to be present. A body that *is* present but stale carries no such signal: it exits with
+whatever its old logic returns, which no exit code distinguishes from a fresh judgment.
 
 What blocks and why:
 

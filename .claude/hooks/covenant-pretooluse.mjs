@@ -27,7 +27,7 @@
  * `waiver` block stays valid and simply arms no valve at all.
  */
 
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -40,6 +40,21 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // root config file (CONFIG-03); only agent vocabulary and dist import paths
 // remain in this file.
 // ---------------------------------------------------------------------------
+
+/**
+ * Compose a judge body path and prove it exists (CONFIG-06b §4.2). A body module that was
+ * never built makes node exit 1 — the same code a real break verdict returns — so nothing
+ * downstream can separate an unjudgeable run from a judged one. The proof therefore belongs
+ * to the act of composing the path, and a body this assembly composes no path for is never
+ * proven: the throw lands in the fail-closed catch below, one blocked record and exit 2.
+ */
+function provenBodyPath(distDir, fileName) {
+  const modulePath = join(distDir, fileName);
+  if (!existsSync(modulePath)) {
+    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
+  }
+  return modulePath;
+}
 
 const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
 const SHELL_TOOLS = ['Bash'];
@@ -124,10 +139,14 @@ try {
           ttlMs: config.waiver.ttlMinutes * 60_000,
         });
 
-  const selfModBody = join(repoRoot, 'packages/covenant/dist/self-mod-body.js');
-  const shellModBody = join(repoRoot, 'packages/covenant/dist/shell-mod-body.js');
-  const disciplineBody = join(repoRoot, 'packages/covenant/dist/discipline-body.js');
-  const transcriptModBody = join(repoRoot, 'packages/covenant/dist/transcript-mod-body.js');
+  // Only the two unconditional registrations compose their paths here. The transcript-mod
+  // and discipline bodies are composed inside the conditions that decide whether their
+  // registrations exist at all — proving a body this run will never spawn would close a
+  // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
+  const covenantDist = join(repoRoot, 'packages/covenant/dist');
+  const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
+  const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
+  const disciplines = config.disciplines ?? [];
   const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
 
   const registrations = [
@@ -170,18 +189,24 @@ try {
             // only — an inert spelling closure looks identical to a passing call.
             home: process.env.HOME ?? homedir(),
             bodyCommand: process.execPath,
-            bodyModulePath: transcriptModBody,
+            bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
             shellTools: SHELL_TOOLS,
             commandArgs: COMMAND_ARGS,
             mutatingTools: MUTATING_TOOLS,
             escapeHatch,
           }),
         ]),
+    // The body path is passed as a thunk, so the proof fires only where the compiler
+    // actually composes a body. Entry count cannot stand in for that: an entry may compile
+    // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
+    // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
+    // for zero entries — gating the call itself would drop that record and turn an
+    // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
     ...covenant.compileDisciplineRegistrations({
-      disciplines: config.disciplines ?? [],
+      disciplines,
       rootDir: repoRoot,
       bodyCommand: process.execPath,
-      bodyModulePath: disciplineBody,
+      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
       escapeHatch,
@@ -193,6 +218,21 @@ try {
       evaluatePrecedent: adapter.evaluatePrecedent,
     }),
   ];
+
+  // This file is tracked; the dist it composes against is not. A checkout that has not
+  // been rebuilt therefore pairs a new hook with an old compiler, and an old compiler
+  // stores the body-path thunk itself where a string belongs. `spawn` does not reject a
+  // non-string argv entry — it stringifies it — so the judge would be spawned on the
+  // thunk's own source text, exit 1, and be recorded as a VERDICT under a discipline's
+  // label. That is the exact confusion this ticket exists to remove, arriving through the
+  // build-skew door. Assert the shape and let the fail-closed catch answer instead.
+  for (const registration of registrations) {
+    if (registration.body !== undefined && typeof registration.body.args[0] !== 'string') {
+      throw new Error(
+        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
+      );
+    }
+  }
 
   const { exitCode } = await adapter.runAdapterPath({
     rawPayload,
