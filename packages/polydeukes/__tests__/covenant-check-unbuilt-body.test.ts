@@ -272,12 +272,11 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
 
   it('a dist missing the discipline body is left alone when no disciplines are declared (exit 0)', async () => {
     // The same over-block one level subtler than the sibling above. A config with no
-    // `disciplines` compiles zero registrations, so this surface never spawns that body —
-    // but the path for it is composed unconditionally, and a proof attached to that
-    // composition closes a commit over a body it was never going to run. A config
-    // declaring no disciplines is the common shape, not an exotic one. Mutation caught:
-    // the discipline body's path composed outside the condition that decides whether any
-    // discipline registration exists at all.
+    // `disciplines` still compiles one registration — the body-less `shell-unjudgeable`
+    // backstop — so this surface never spawns that body, and demanding it closes a commit
+    // over a judge it was never going to run. A config declaring no disciplines is the
+    // common shape, not an exotic one. Mutation caught: the body path obtained eagerly
+    // rather than at the one place the compiler composes a body.
     stageProtectedChange('advise');
 
     const result = await runCovenantCheck({
@@ -365,6 +364,13 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     // a different object; this proves it out of the fixture the pins actually use. Mutation
     // caught: the mirror reverted to copies (relative imports resolve inside the fixture
     // directory and die), or an entry the per-file mirroring mishandles.
+    //
+    // What this proves is the MIRRORING MECHANISM, not every body that rides it. The
+    // self-mod axis the `advised` pins read cannot be proven the same way here: self-mod
+    // routes by protectedPaths, so a matched call always breaks and `passed/self-mod` is
+    // unreachable, while the body's own break reason goes to inherited fd 2 rather than
+    // through a spyable `process.stderr.write`. One omitted symlink is the only difference
+    // between the mirrors, so a mechanism that runs one body runs the others.
     stageCleanScopedChange('advise');
 
     const result = await runCovenantCheck({

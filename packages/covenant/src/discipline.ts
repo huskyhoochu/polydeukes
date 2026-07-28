@@ -600,6 +600,18 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
+  // Memoized rather than called per entry: the thunk stats the filesystem, and every body
+  // in one compilation names the same module. Still lazy — a compilation that composes no
+  // body never assigns this (which is the whole point of the seam).
+  let resolvedBodyPath: string | undefined;
+  const bodyModulePath = (): string => {
+    if (resolvedBodyPath === undefined) {
+      resolvedBodyPath =
+        typeof spec.bodyModulePath === 'function' ? spec.bodyModulePath() : spec.bodyModulePath;
+    }
+    return resolvedBodyPath;
+  };
+
   const judged = spec.disciplines.map((entry) => {
     const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
 
@@ -645,16 +657,16 @@ export function compileDisciplineRegistrations(
         ? []
         : [outcome.kind === 'found' ? '--precedent-found' : '--precedent-missing'];
 
-    // Resolved here and nowhere else: this is the only return that composes a body, so a
-    // thunk fires exactly when one is spawned. Normalizing the union at the top of this
-    // function instead would resolve a path for calls that compose nothing, handing the
-    // assembly root back the over-block this seam exists to remove.
+    // Asked here and nowhere else: this is the only return that composes a body, so the
+    // path is obtained exactly when one is spawned. Resolving at the top of this function
+    // instead would ask for a path on calls that compose nothing, handing the assembly
+    // root back the over-block this seam exists to remove.
     return {
       ...routing,
       body: {
         command: spec.bodyCommand,
         args: [
-          typeof spec.bodyModulePath === 'function' ? spec.bodyModulePath() : spec.bodyModulePath,
+          bodyModulePath(),
           '--discipline',
           JSON.stringify(entry),
           '--root-dir',

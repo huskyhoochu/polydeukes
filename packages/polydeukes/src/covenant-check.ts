@@ -222,6 +222,20 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       }),
     ];
 
+    // The commit surface resolves the compiler through the installed package, so a
+    // workspace whose dist predates the lazy body-path convention hands back the thunk
+    // itself where a string belongs. `spawn` stringifies rather than rejects it, which
+    // would spawn the judge on the thunk's own source text and record the exit 1 as a
+    // verdict under a discipline's label — the confusion this ticket removes, arriving
+    // through the build-skew door. Assert the shape and let the fail-closed catch answer.
+    for (const registration of registrations) {
+      if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
+        throw new Error(
+          `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
+        );
+      }
+    }
+
     let blocked = false;
     let advisedCount = 0;
     for (const change of changes) {

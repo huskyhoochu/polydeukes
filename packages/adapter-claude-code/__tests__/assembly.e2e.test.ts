@@ -1066,11 +1066,11 @@ describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-
 
   it('a config declaring NO disciplines is untouched by a missing discipline body (exit 0)', () => {
     // The session-surface twin of the umbrella's zero-discipline pin. Compiling an empty
-    // discipline list yields no registration, so this body is never spawned — composing
-    // its path anyway would close every call in a repository that simply declares no
-    // disciplines, which is the ordinary config shape rather than an exotic one. Mutation
-    // caught: the discipline body's path composed above the emptiness check on this
-    // surface only, leaving the two surfaces with different answers to one fact.
+    // discipline list still yields the body-less `shell-unjudgeable` backstop and nothing
+    // that spawns this body, so demanding it would close every call in a repository that
+    // simply declares no disciplines — the ordinary config shape, not an exotic one.
+    // Mutation caught: the body path obtained eagerly on this surface only, leaving the
+    // two surfaces with different answers to one fact.
     const result = runHookFromRoot(mirroredRoot('discipline-body.js', false));
 
     expect(result.status).toBe(0);

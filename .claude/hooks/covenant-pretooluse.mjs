@@ -219,6 +219,21 @@ try {
     }),
   ];
 
+  // This file is tracked; the dist it composes against is not. A checkout that has not
+  // been rebuilt therefore pairs a new hook with an old compiler, and an old compiler
+  // stores the body-path thunk itself where a string belongs. `spawn` does not reject a
+  // non-string argv entry — it stringifies it — so the judge would be spawned on the
+  // thunk's own source text, exit 1, and be recorded as a VERDICT under a discipline's
+  // label. That is the exact confusion this ticket exists to remove, arriving through the
+  // build-skew door. Assert the shape and let the fail-closed catch answer instead.
+  for (const registration of registrations) {
+    if (registration.body !== undefined && typeof registration.body.args[0] !== 'string') {
+      throw new Error(
+        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
+      );
+    }
+  }
+
   const { exitCode } = await adapter.runAdapterPath({
     rawPayload,
     telemetryPath,
