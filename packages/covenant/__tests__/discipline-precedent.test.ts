@@ -74,7 +74,11 @@ function triggeredInput(): CovenantInput {
   ]);
 }
 
-type TranscriptToolCallish = { name: string; args: Record<string, unknown> };
+// `succeeded` is stated on every call fixture below because COVENANT-13b made a
+// successful execution part of what evidence means: an outcome-less call is refused
+// before any pattern is consulted, which would let each negative here pass for the wrong
+// reason. The outcome axis itself is pinned in discipline-precedent-anchor.test.ts.
+type TranscriptToolCallish = { name: string; args: Record<string, unknown>; succeeded?: boolean };
 
 /** Stub the canonical-transcript seam with a fixed tool-call history. */
 function transcriptWithToolCalls(calls: TranscriptToolCallish[]): CanonicalTranscript {
@@ -282,7 +286,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     // delegating command to the absent seam (throw), or transporting missing regardless
     // of the transcript (evidence could never open the gate).
     const transcript = transcriptWithToolCalls([
-      { name: 'Bash', args: { command: 'npm view react version' } },
+      { name: 'Bash', args: { command: 'npm view react version' }, succeeded: true },
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
@@ -293,7 +297,9 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   it('transports --precedent-missing when no shell command matches', () => {
     // P0 transport, missing direction: unrelated shell history is not evidence.
     // Mutation caught: the pattern test dropped (any Bash call at all counts as found).
-    const transcript = transcriptWithToolCalls([{ name: 'Bash', args: { command: 'git status' } }]);
+    const transcript = transcriptWithToolCalls([
+      { name: 'Bash', args: { command: 'git status' }, succeeded: true },
+    ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
     expect(reg.body?.args).toContain('--precedent-missing');
@@ -305,7 +311,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     // by the injected shellTools before reading command args. Mutation caught: the name
     // filter dropped — any tool whose args happen to carry the string would open the gate.
     const transcript = transcriptWithToolCalls([
-      { name: 'NotShell', args: { command: 'npm view react version' } },
+      { name: 'NotShell', args: { command: 'npm view react version' }, succeeded: true },
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
@@ -317,7 +323,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     // Mutation caught: the compiler scanning every arg value of a shell call (a mention
     // of the pattern in an unrelated arg would forge the evidence).
     const transcript = transcriptWithToolCalls([
-      { name: 'Bash', args: { script: 'npm view react version' } },
+      { name: 'Bash', args: { script: 'npm view react version' }, succeeded: true },
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
@@ -336,7 +342,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
       requirePrecedent: { command: 'npm (view|info) ' },
     } as DisciplineEntry;
     const transcript = transcriptWithToolCalls([
-      { name: 'Bash', args: { command: 'npm info react' } },
+      { name: 'Bash', args: { command: 'npm info react' }, succeeded: true },
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([regexEntry], { transcript }));
 
@@ -429,7 +435,7 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
     // Mutation caught: an "optimization" skipping the spawn when evidence exists
     // (the gate's checks would vanish from the telemetry record).
     const transcript = transcriptWithToolCalls([
-      { name: 'Bash', args: { command: 'npm view react version' } },
+      { name: 'Bash', args: { command: 'npm view react version' }, succeeded: true },
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 

@@ -19,6 +19,12 @@ import type { CanonicalTranscript } from '@polydeukes/core';
  * - anything else: `undefined` — outside this adapter's vocabulary, including the core's
  *   own `command` key, which the covenant compiler evaluates itself.
  *
+ * Both vocabularies require the call to have RUN and reported success (COVENANT-13b
+ * §4.4): a call the covenant blocked, one the human refused, and one that simply failed
+ * carry the same outcome, and none of them did the work the discipline demands. The spawn
+ * axis therefore reads the joined tool calls — the spawn query carries no outcome —
+ * identifying a spawn by the same field the transcript provider does.
+ *
  * A malformed value of a known key (non-string, non-compiling pattern) is also
  * `undefined`: the adapter cannot evaluate it, and assembly must fail loud. Answering
  * `false` instead would make the gate permanently unsatisfiable — no amount of actually
@@ -33,7 +39,9 @@ export function evaluatePrecedent(
     if (typeof kind !== 'string') {
       return undefined;
     }
-    return transcript.findSubagentInvocations(kind).length > 0;
+    return transcript
+      .findToolCalls()
+      .some((call) => call.succeeded === true && call.args.subagent_type === kind);
   }
 
   if ('tool' in evidence) {
@@ -47,7 +55,9 @@ export function evaluatePrecedent(
     } catch {
       return undefined;
     }
-    return transcript.findToolCalls().some((call) => matcher.test(call.name));
+    return transcript
+      .findToolCalls()
+      .some((call) => call.succeeded === true && matcher.test(call.name));
   }
 
   return undefined;

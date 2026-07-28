@@ -16,15 +16,38 @@ import { transcriptFromJsonl } from '../src/transcript.ts';
 const SPAWN_KIND = 'tdd-implementer';
 const MCP_TOOL = 'mcp__context7__get-library-docs';
 
-/** An assistant entry carrying the given content blocks, as one JSONL line. */
-function transcriptWith(blocks: unknown[]) {
+/**
+ * An assistant entry carrying the given content blocks, followed by a clean result for
+ * each — since COVENANT-13b evidence means a call that RAN and succeeded, so a resultless
+ * call proves nothing and every fixture here would answer false for the wrong reason. The
+ * outcome axis itself is pinned in precedent-execution.test.ts; these calls are plain
+ * successes so each assertion below stays about the vocabulary it names.
+ */
+function transcriptWith(blocks: { id: string }[]) {
   return transcriptFromJsonl(
-    JSON.stringify({
-      type: 'assistant',
-      message: { role: 'assistant', content: blocks },
-      timestamp: '2026-07-26T02:00:00.000Z',
-      uuid: 'a-1',
-    }),
+    [
+      {
+        type: 'assistant',
+        message: { role: 'assistant', content: blocks },
+        timestamp: '2026-07-26T02:00:00.000Z',
+        uuid: 'a-1',
+      },
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: blocks.map((block) => ({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: 'ok',
+          })),
+        },
+        timestamp: '2026-07-26T02:00:01.000Z',
+        uuid: 'u-1',
+      },
+    ]
+      .map((entry) => JSON.stringify(entry))
+      .join('\n'),
   );
 }
 

@@ -22,10 +22,19 @@ export type SubagentInvocation = { kind: string };
 export type TranscriptUserMessage = { text: string; timestampMs?: number };
 
 /**
- * One tool call observed in the session (COVENANT-13 §4.2). Both fields are
+ * One tool call observed in the session (COVENANT-13 §4.2). `name` and `args` are
  * adapter-supplied values — the core knows the query vocabulary, never a tool's name.
+ *
+ * `succeeded` is three-valued (COVENANT-13b §4.1): `true` = it ran and reported success,
+ * `false` = it ran and reported an error, was blocked, or was refused, and absent = the
+ * provider cannot observe results at all. A consumer that treats the call as evidence
+ * accepts only `true`, so the latter two share a disposition while staying diagnosable.
  */
-export type TranscriptToolCall = { name: string; args: Record<string, unknown> };
+export type TranscriptToolCall = {
+  name: string;
+  args: Record<string, unknown>;
+  succeeded?: boolean;
+};
 
 /**
  * `CanonicalTranscript` — what a covenant may ask about the session (PRD §4.1).
@@ -65,7 +74,10 @@ export const noopTranscript: CanonicalTranscript = {
  *
  * `findToolCalls` projects each call down to `{ name, args }` only: since CORE-06 a
  * call element also carries `fileChange` evidence, and evidence is judgment input, not
- * session history — the two vocabularies stay separate (COVENANT-13 §4.2).
+ * session history — the two vocabularies stay separate (COVENANT-13 §4.2). `succeeded`
+ * stays absent for the same reason it is left three-valued: these calls are the ones
+ * being judged right now, so they have not run, and a call can never be its own
+ * precedent (COVENANT-13b §4.1).
  */
 export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
   return {
