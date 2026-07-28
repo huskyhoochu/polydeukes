@@ -7,7 +7,7 @@
  * fail-closed — an unknown flag, a flag missing its value, a repeated single-valued flag, or
  * zero valid (non-empty) entries in any required list exits 2, so a misassembled judge never
  * degrades into universal uphold. The read-only allowlist is not injectable here: reading a
- * session must never need a waiver, so it is always {@link DEFAULT_READ_ONLY_COMMANDS}.
+ * session must never need a witness, so it is always {@link DEFAULT_READ_ONLY_COMMANDS}.
  */
 
 import { readFileSync } from 'node:fs';

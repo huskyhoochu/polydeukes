@@ -69,7 +69,7 @@ export type CompileDisciplinesSpec = {
   bodyModulePath: string | (() => string);
   shellTools: string[];
   commandArgs: string[];
-  escapeHatch?: CovenantRegistration['escapeHatch'];
+  witness?: CovenantRegistration['witness'];
   transcript?: CanonicalTranscript;
   evaluatePrecedent?: (
     evidence: Record<string, unknown>,
@@ -390,7 +390,7 @@ export function judgeDiscipline(
         // Since evidence became an execution there are several ways a user who DID run the
         // command still lands here — the line failed as a whole, or the match sat somewhere
         // other than a command's start. Without the hint those cases are indistinguishable
-        // from never having run it, and the natural next move is the waiver.
+        // from never having run it, and the natural next move is the witness.
         reason: `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)}). only a call that ran and succeeded counts, matched at the start of a simple command — if it was part of a chain or a compound that failed, run it on its own`,
       };
     }
@@ -537,7 +537,7 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
   } catch {
     // An injected seam that throws is an unusable evaluator, not a verdict. Letting it
     // escape would brick assembly exactly as the throws this function replaced did — the
-    // dispatcher wraps `matches` and `escapeHatch` for the same reason.
+    // dispatcher wraps `matches` and `witness` for the same reason.
     return {
       kind: 'unjudgeable',
       reason: `precedent evaluator threw on evidence ${JSON.stringify(evidence)}`,
@@ -646,7 +646,7 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
  * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead
  * (COVENANT-13 §4.5): routing is kept, so the no-op stays visible in `gain`, but there is
  * no body to spawn. Assembly never throws — one bad entry taking down its siblings, both
- * meta-covenants, and the waiver valve left no way to fix the config that caused it.
+ * meta-covenants, and the witness valve left no way to fix the config that caused it.
  *
  * A non-compilable pattern also skips, but routes to nothing: the pattern IS the
  * definition of what the entry matches, so a broken one leaves no match to record. Its
@@ -669,7 +669,7 @@ export function compileDisciplineRegistrations(
   };
 
   const judged = spec.disciplines.map((entry) => {
-    const hatch = spec.escapeHatch !== undefined ? { escapeHatch: spec.escapeHatch } : {};
+    const witness = spec.witness !== undefined ? { witness: spec.witness } : {};
 
     // A silent skip is how a discipline goes inert while its verdict still reads passed —
     // the failure this project already shipped once with a `^` anchor.
@@ -688,7 +688,7 @@ export function compileDisciplineRegistrations(
         label: entry.id,
         protectedPaths: [],
         matches: () => null,
-        ...hatch,
+        ...witness,
         skip: { reason: fault },
       };
     }
@@ -697,7 +697,7 @@ export function compileDisciplineRegistrations(
       label: entry.id,
       protectedPaths: [],
       matches: buildMatches(entry, spec),
-      ...hatch,
+      ...witness,
     };
 
     const outcome =

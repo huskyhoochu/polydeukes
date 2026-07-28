@@ -98,10 +98,10 @@ export type PolydeukesConfig = {
   /** user-declared disciplines — validated here, compiled by the covenant package */
   disciplines?: DisciplineEntry[];
   /**
-   * TTL waiver values for the covenant escape-hatch seam (CONFIG-05) — consumed at
+   * TTL witness values for the covenant valve seam (CONFIG-05) — consumed at
    * assembly time, validated here
    */
-  waiver?: {
+  witness?: {
     /**
      * the agreed phrase a human types alone on a message's first line — quoting it
      * mid-sentence is a mention, not an invocation (COVENANT-15). Non-empty after
@@ -139,8 +139,8 @@ export type ResolvedConfig = {
   };
   /** validated discipline data, passed through verbatim (absent stays absent) */
   disciplines?: DisciplineEntry[];
-  /** validated waiver data, passed through verbatim (absent stays absent) */
-  waiver?: {
+  /** validated witness data, passed through verbatim (absent stays absent) */
+  witness?: {
     token: string;
     ttlMinutes: number;
   };
@@ -168,11 +168,11 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   'adapters',
   'telemetry',
   'disciplines',
-  'waiver',
+  'witness',
 ]);
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
-const WAIVER_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
+const WITNESS_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
 const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'id',
   'why',
@@ -468,20 +468,20 @@ export function defineConfig(config: unknown): ResolvedConfig {
     }
   }
 
-  let waiver: { token: string; ttlMinutes: number } | undefined;
-  if (config.waiver !== undefined) {
-    if (!isPlainObject(config.waiver)) {
-      throw new ConfigValidationError('waiver must be an object');
+  let witness: { token: string; ttlMinutes: number } | undefined;
+  if (config.witness !== undefined) {
+    if (!isPlainObject(config.witness)) {
+      throw new ConfigValidationError('witness must be an object');
     }
-    rejectUnknownKeys(config.waiver, WAIVER_KEYS, 'waiver');
-    const { token, ttlMinutes } = config.waiver;
+    rejectUnknownKeys(config.witness, WITNESS_KEYS, 'witness');
+    const { token, ttlMinutes } = config.witness;
     if (typeof token !== 'string' || token.trim().length === 0) {
-      throw new ConfigValidationError('waiver.token must be a non-empty string after trimming');
+      throw new ConfigValidationError('witness.token must be a non-empty string after trimming');
     }
     if (typeof ttlMinutes !== 'number' || !(Number.isFinite(ttlMinutes) && ttlMinutes > 0)) {
-      throw new ConfigValidationError('waiver.ttlMinutes must be a finite number greater than 0');
+      throw new ConfigValidationError('witness.ttlMinutes must be a finite number greater than 0');
     }
-    waiver = { token, ttlMinutes };
+    witness = { token, ttlMinutes };
   }
 
   return {
@@ -492,6 +492,6 @@ export function defineConfig(config: unknown): ResolvedConfig {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },
     ...(disciplines !== undefined && { disciplines }),
-    ...(waiver !== undefined && { waiver }),
+    ...(witness !== undefined && { witness }),
   };
 }

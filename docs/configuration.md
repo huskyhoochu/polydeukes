@@ -106,9 +106,11 @@ adapters:
 | `protectedPaths` | string array | `[]` | Additive protection scope judged by the commit surface only |
 
 - **`block`** — a staged change that breaks a covenant blocks the commit (exit 2). The
-  only way through is the waiver valve: a human answering the TTY prompt with the full
-  token. An absent namespace, an absent `adapters` map, or an absent `enforce` key all
-  mean `block` — not writing the key selects the strictest level.
+  only way through is the witness valve: a human answering the TTY prompt with the full
+  token. The prompt names what it asks the human to witness — the broken registration,
+  the matched entry, and the fact that the one answer covers the whole commit. An absent
+  namespace, an absent `adapters` map, or an absent `enforce` key all mean `block` — not
+  writing the key selects the strictest level.
 - **`advise`** — the commit surface becomes a backstop without a block: a verdict on a
   staged change is recorded as an `advised` telemetry event and the commit proceeds
   (exit 0) with one advisory line on stderr. No TTY prompt fires. Only the verdict is
@@ -148,24 +150,33 @@ telemetry:
   logPath: '.polydeukes/roi.log'   # default when omitted; keep it gitignored
 ```
 
-Every judgment — passed, blocked, bypassed, advised, or skipped — appends one record.
+Every judgment — passed, blocked, witnessed, advised, or skipped — appends one record.
 Telemetry is fail-open by design: a logging failure never changes a verdict.
 
-### `waiver` (optional)
+### `witness` (optional)
 
 ```yaml
-waiver:
-  token: 'covenant waive'   # the phrase a human types in the conversation
-  ttlMinutes: 10            # validity window, in minutes, from that message
+witness:
+  token: 'covenant witness'   # the phrase a human types in the conversation
+  ttlMinutes: 10              # validity window, in minutes, from that message
 ```
 
-The values of the time-boxed escape valve, consumed where the covenants are assembled.
-When a covenant blocks a legitimate edit, a human types the agreed token into the
-conversation; judgments are waived for `ttlMinutes` from that message's timestamp, then
-blocking resumes automatically. Both keys are required when the section is present: the
-token must be non-empty after trimming, the window a finite number greater than zero.
+The values of the time-boxed human valve, consumed where the covenants are assembled.
+The valve is sudo, not an exemption: the one property a deterministic gate can compute
+about a judgment chain is "is an accountable human present, right now", and the witness
+is that human supplying the pass condition in person. When a covenant blocks a
+legitimate edit, a human types the agreed token into the conversation; blocked judgments
+can be witnessed open for `ttlMinutes` from that message's timestamp, then blocking
+resumes automatically. Both keys are required when the section is present: the token
+must be non-empty after trimming, the window a finite number greater than zero.
 
-**The token must stand alone on the message's first line.** Invoking the waiver is
+**The valve stands after the verdict, never instead of it.** The judge body always runs.
+A call that would have passed anyway never consults the valve, so an open window changes
+nothing about clean work — and a `witnessed` telemetry row therefore always names a real
+block a human answered for, never a ritual. Only a judgment that actually blocked can be
+witnessed open.
+
+**The token must stand alone on the message's first line.** Invoking the witness is
 distinct from talking about it: a message that quotes, questions, or explains the token
 mid-sentence — or wraps it in backticks — does not open the valve, while a first line
 carrying the token alone does, with any following lines free for the work itself.
@@ -173,7 +184,7 @@ carrying the token alone does, with any following lines free for the work itself
 A message that invokes — the token alone on the first line, the rest free:
 
 ```
-covenant waive
+covenant witness
 
 now fix the hook file
 ```
@@ -181,16 +192,16 @@ now fix the hook file
 A message that merely mentions — the valve stays shut:
 
 ```
-so when does `covenant waive` expire?
+so when does `covenant witness` expire?
 ```
 
 The token's value is free — any phrase works, and it is never checked for a prefix or a
 command shape. Only its placement is constrained.
 
-The token is not a secret — the defense is provenance, not secrecy. A waiver counts only
+The token is not a secret — the defense is provenance, not secrecy. A witness counts only
 when the token arrives in a message positively identified as human-typed in the session
-transcript, so an AI that knows the token still cannot forge one. Waived judgments are
-recorded as `bypassed`, never silent.
+transcript, so an AI that knows the token still cannot forge one. Witnessed judgments are
+recorded as `witnessed`, never silent.
 
 ### `disciplines` (optional)
 
@@ -301,7 +312,7 @@ The kind of change matters at the trigger. With `when` present, a deletion never
 — deleting adds no content. With `when` absent, deletion triggers like any other change in
 scope, since the declared scope is the whole mutation.
 
-**The cheap way through is the honest one.** Unlike the waiver, this evidence lives on the
+**The cheap way through is the honest one.** Unlike the witness, this evidence lives on the
 AI's own surface, so it is not forgery-proof. It does not need to be: the least effortful
 way to open this gate is to actually call the tool, and that is exactly the behaviour the
 discipline exists to induce.
@@ -312,8 +323,9 @@ escape layer for the few rules data cannot express.
 ## What enforcement looks like
 
 A violating tool call or shell command is **blocked (exit 2)** before it runs, with the
-discipline's `id` in the telemetry record. The sanctioned valve is an explicit bypass,
-recorded as `bypassed` — never silent. On the commit surface under
+discipline's `id` in the telemetry record. The sanctioned valve is the witness — a human
+supplying the pass condition on a judgment that actually blocked, recorded as
+`witnessed` — never silent. On the commit surface under
 `adapters.git.enforce: advise`, a verdict is recorded as `advised` and the commit
 proceeds — a backstop that measures instead of blocking. A missing, ambiguous, or
 invalid config blocks every call until it is fixed: the system fails closed, because a

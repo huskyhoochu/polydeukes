@@ -156,13 +156,13 @@ describe('§5.2 integrity', () => {
 describe('§5.3 gain', () => {
   // Fixed, deterministic 3-label × 3-event distribution over 100 records so per-label
   // counts can be asserted exactly (not just "> 0"). label A: 20/10/5, label B: 15/10/5,
-  // label C: 15/10/10 → passed 50 + blocked 30 + bypassed 20 = 100. (`advised: 0` slots
+  // label C: 15/10/10 → passed 50 + blocked 30 + witnessed 20 = 100. (`advised: 0` slots
   // arrived with the CONFIG-06 fourth event and `skipped: 0` with the COVENANT-13 fifth —
   // zero records each, exact counts unchanged.)
   const distribution: Record<string, Record<TelemetryRecord['event'], number>> = {
-    'covenant-a': { passed: 20, blocked: 10, bypassed: 5, advised: 0, skipped: 0 },
-    'covenant-b': { passed: 15, blocked: 10, bypassed: 5, advised: 0, skipped: 0 },
-    'covenant-c': { passed: 15, blocked: 10, bypassed: 10, advised: 0, skipped: 0 },
+    'covenant-a': { passed: 20, blocked: 10, witnessed: 5, advised: 0, skipped: 0 },
+    'covenant-b': { passed: 15, blocked: 10, witnessed: 5, advised: 0, skipped: 0 },
+    'covenant-c': { passed: 15, blocked: 10, witnessed: 10, advised: 0, skipped: 0 },
   };
 
   function buildDistributionRecords(): TelemetryRecord[] {
@@ -178,7 +178,7 @@ describe('§5.3 gain', () => {
   }
 
   it('a 100-record simulation (fixed 3-label × 3-event distribution) aggregates to total 100 with exact per-label counts', () => {
-    // Mutation caught: total that sums only 2/3 events (e.g. forgets bypassed), or
+    // Mutation caught: total that sums only 2/3 events (e.g. forgets witnessed), or
     // per-label counters that share a single accumulator across labels.
     const records = buildDistributionRecords();
     for (const record of records) {
@@ -192,9 +192,9 @@ describe('§5.3 gain', () => {
     expect(summary.counts).toEqual(distribution);
   });
 
-  it('runGain() output mentions every label and marks bypassed distinctly', () => {
+  it('runGain() output mentions every label and marks witnessed distinctly', () => {
     // Business-meaningful substring checks only — exact formatting is GREEN's choice.
-    // Mutation caught: runGain that omits a label entirely, or that folds bypassed
+    // Mutation caught: runGain that omits a label entirely, or that folds witnessed
     // into passed/blocked without a distinguishable marker.
     const records = buildDistributionRecords();
     for (const record of records) {
@@ -206,7 +206,7 @@ describe('§5.3 gain', () => {
     for (const label of Object.keys(distribution)) {
       expect(output).toContain(label);
     }
-    expect(output).toMatch(/bypassed/i);
+    expect(output).toMatch(/witnessed/i);
   });
 
   it('one corrupt line is skipped and reported as skipped=1 while the rest aggregate normally', () => {
@@ -217,7 +217,7 @@ describe('§5.3 gain', () => {
     // Inject a corrupt line directly (not a valid 4-field TSV record).
     const priorContent = readFileSync(logPath, 'utf-8');
     writeFileSync(logPath, `${priorContent}not a record\n`);
-    appendRecord(logPath, { ...baseRecord, event: 'bypassed' });
+    appendRecord(logPath, { ...baseRecord, event: 'witnessed' });
 
     const { records, skipped } = readRecords(logPath);
 

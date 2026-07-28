@@ -69,7 +69,7 @@ describe('CONFIG-06 §4.3 advised — aggregation', () => {
     expect(summary.counts['commit-self-mod']).toEqual({
       passed: 1,
       blocked: 0,
-      bypassed: 0,
+      witnessed: 0,
       advised: 2,
       skipped: 0,
     });

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // runner as covenant-check.test.ts; imported from the package entry point.
 //   runCovenantCheck({ repoRoot, telemetryPath?, ttyPrompt? }): Promise<{ exitCode }>
 // Under adapters.git.enforce advise the runner MUST: pass a protected-path commit (exit 0),
-// record it as `advised`, NEVER assemble the TTY-valve hatch (ttyPrompt never called), and
+// record it as `advised`, NEVER assemble the TTY-valve witness (ttyPrompt never called), and
 // emit exactly one stderr advisory line. Fail-closed paths (validator throw) stay exit 2.
 // The advised outcome does NOT exist yet, so these are RED by construction.
 import { runCovenantCheck } from '../src/index.ts';
@@ -19,7 +19,7 @@ import { runCovenantCheck } from '../src/index.ts';
 // absolute tmp paths and safe to author.
 // ---------------------------------------------------------------------------
 
-const WAIVER_TOKEN = 'i-accept-this-commit-covenant';
+const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
 
 let repoRoot: string;
 let telemetryPath: string;
@@ -63,18 +63,18 @@ afterEach(() => {
 describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
   it('exit 0 (not 2) with an advised record and the TTY valve NEVER consulted for a protected-path commit', async () => {
     // §4.6 core: under advise a protected-path commit is recorded and passed, and the
-    // hatch is structurally not assembled — even with a waiver configured and a ttyPrompt
-    // that would return the exact token, the prompt is never called (so `bypassed` cannot
-    // occur under advise). Mutation caught: advise threaded but the hatch still assembled
+    // witness is structurally not assembled — even with a witness configured and a ttyPrompt
+    // that would return the exact token, the prompt is never called (so `witnessed` cannot
+    // occur under advise). Mutation caught: advise threaded but the witness still assembled
     // (prompt fires), or the verdict still mapped to exit 2.
     writeConfig({
       protectedPaths: ['secret.txt'],
-      waiver: { token: WAIVER_TOKEN, ttlMinutes: 5 },
+      witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
       adapters: { git: { enforce: 'advise' } },
     });
     write('secret.txt', 'sensitive\n');
     git('add', 'secret.txt', 'polydeukes.config.json');
-    const ttyPrompt = vi.fn(() => WAIVER_TOKEN);
+    const ttyPrompt = vi.fn(() => WITNESS_TOKEN);
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath, ttyPrompt });
 
@@ -82,7 +82,7 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
     expect(ttyPrompt).not.toHaveBeenCalled();
     const { records } = readRecords(telemetryPath);
     expect(records.some((record) => record.event === 'advised')).toBe(true);
-    expect(records.some((record) => record.event === 'bypassed')).toBe(false);
+    expect(records.some((record) => record.event === 'witnessed')).toBe(false);
   });
 
   it('emits exactly one stderr advisory line mentioning the commit is allowed', async () => {

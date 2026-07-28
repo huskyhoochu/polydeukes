@@ -8,7 +8,7 @@ protocol (stdin-JSON in, exit code out) with per-call file-change evidence, the 
 schema + published JSON Schema, the fail-open/fail-closed policy table, and the
 canonical-transcript seam; `packages/covenant` — the execution wrapper, the Bash analysis core,
 the path-routing dispatcher with its `matches` content-predicate seam, the self-mod / shell-mod /
-transcript-mod meta-covenants, the TTL-waiver hatch, the added-direction delta layer, and the
+transcript-mod meta-covenants, the TTL-witness valve, the added-direction delta layer, and the
 discipline library that compiles `disciplines:` config entries into registrations;
 `packages/adapter-claude-code` — PreToolUse payload → covenant input IR, virtual post-state
 evidence, the JSONL transcript provider, and the adapter's precedent-evidence vocabulary;
@@ -67,14 +67,14 @@ footnote pointing at it. This keeps the roadmap a plan rather than a defect list
 A PreToolUse hook (`.claude/hooks/`, registered in `.claude/settings.json`) judges every
 Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's pre-commit spawns `pdks covenant
 check` over the staged diff — two observations of the same promises. Protection-policy data
-(protectedPaths / disciplines / adapters / waiver) lives in `polydeukes.config.yaml`, which
+(protectedPaths / disciplines / adapters / witness) lives in `polydeukes.config.yaml`, which
 documents each entry's why inline; the hook only assembles it. Protected: gate definitions (the
 hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, the generated `.git/hooks`),
 the five packages' gitignored `dist`, the root config itself, and the live session transcript.
 Package sources are NOT on the session list — they live in the commit surface's own additive
 list (`adapters.git.protectedPaths`), so a session edit is free and the commit that stages it
 is judged. The commit surface runs at `adapters.git.enforce: block`: a commit staging a
-protected change stops unless a human answers the TTY prompt with the waiver token (an
+protected change stops unless a human answers the TTY prompt with the witness token (an
 agent-spawned commit has no TTY and cannot). The session surface always blocks, and an
 unjudgeable run (missing/invalid config, or a judge body that was never built) fails closed at
 either level. Each surface proves a body exists as it composes that body's path, so the proof
@@ -103,13 +103,17 @@ What blocks and why:
 - **Disciplines** declared in the config judge beyond path mention (delta / command / context
   families) — read `polydeukes.config.yaml` for the live set and each entry's why.
 - Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored):
-  `passed` / `blocked` / `bypassed` / `advised` / `skipped`.
+  `passed` / `blocked` / `witnessed` / `advised` / `skipped` (rows older than COVENANT-17 say
+  `bypassed`; the reader folds them into `witnessed`, one-way).
 
-The sanctioned valve is the **TTL waiver**: a human types the token from the config's `waiver:`
-block so it stands alone on the message's FIRST line; the valve holds for `ttlMinutes`, then
-blocking resumes on its own (recorded as `bypassed`, never silent). A mid-sentence mention does
-not arm it, and only a real human utterance counts — an agent can never open the valve for
-itself.
+The sanctioned valve is the **TTL witness**: a human types the token from the config's
+`witness:` block so it stands alone on the message's FIRST line; the window holds for
+`ttlMinutes`, then blocking resumes on its own. Since COVENANT-17 the valve stands AFTER the
+verdict — the judge body always runs, and only a judgment that actually blocked can be
+witnessed open (recorded as `witnessed`, would-block only, never silent). A clean call never
+consults the valve, so a `witnessed` row always names a real block a human answered for. A
+mid-sentence mention does not arm it, and only a real human utterance counts — an agent can
+never open the valve for itself.
 
 Recovery and rewiring:
 
@@ -117,6 +121,13 @@ Recovery and rewiring:
   mentions no protected path, so it is never blocked). When the hook gains a reference to a NEW
   dist symbol: build first, rewire second — the reverse order crashes assembly and blocks every
   call, including the recovery build.
+- **When a change RENAMES what the hook or config names** (a dist symbol, a config key), no
+  build order is safe alone — dist, hook, and config must land together. Sequence it: package
+  sources first (session-free), then swap the hook and the root config in one window under the
+  witness valve, then build. Beware test suites whose `beforeAll` rebuilds dist (`turbo run
+  build` — the covenant five and both adapter e2e suites): run one after renaming sources and
+  the session locks on the spot, every mutating call refused. Recovery is a human editing the
+  two protected files in their own terminal — measured live, 2026-07-28 (COVENANT-17).
 - **Reassembling the hook cuts your own valve.** The composition root is itself protected, so a
   broken rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired
   hook by spawning it against real payloads *before* relying on it, and never remove the current

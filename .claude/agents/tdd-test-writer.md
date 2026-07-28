@@ -46,7 +46,7 @@ than anywhere else, and they must assert the exact outcome — the specific exit
 shows up as *nearly* the right answer.
 
 Over-blocking is the mirror failure and it is not the safe one. A judge that blocks unrelated work
-pushes people to the waiver, and a waiver used daily is a gate that is already off — this repository
+pushes people to the witness valve, and a valve opened daily is a gate that is already off — this repository
 narrowed its own protection surface after measuring 2,414 bypasses against 14 real blocks. So a test
 asserting that an ordinary operation still *passes* carries the same weight as one asserting a
 violation blocks, and both belong in the suite.

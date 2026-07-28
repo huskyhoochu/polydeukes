@@ -83,7 +83,7 @@ describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
 
   it('returns [] for an unknown kind', () => {
     // Boundary: a kind that never occurred must yield the empty result, not all spawns
-    // (fail-open vector for a waiver consumer) and not undefined.
+    // (fail-open vector for a witness consumer) and not undefined.
     const input = inputWith([{ kind: 'writer-kind' }], []);
 
     const transcript = transcriptFromInput(input);
@@ -93,7 +93,7 @@ describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
 
   it('exposes input.userMessages in order via findUserMessages() with timestampMs absent', () => {
     // PRD §4.2/§2 contract: the IR carries no timestamps, so an absent timestampMs
-    // (= freshness unprovable) is the signal a waiver consumer will fail-closed on.
+    // (= freshness unprovable) is the signal a witness consumer will fail-closed on.
     // The key must be OMITTED, not present with an undefined value, so key-presence
     // checks and JSON round-trips agree about absence. Mutation caught: a fabricated
     // timestamp (Date.now()) injected, a present-but-undefined key, or order lost.
@@ -131,7 +131,7 @@ describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
 describe('§5.1 noopTranscript — always-empty default', () => {
   it('returns [] from both queries, with and without a kind argument', () => {
     // PRD §4.2: the injection-absent default answers "nothing happened", which lets a
-    // waiver consumer converge to fail-closed. Mutation caught: a default that returns a
+    // witness consumer converge to fail-closed. Mutation caught: a default that returns a
     // non-empty stub, or that ignores the kind argument and returns something.
     expect(noopTranscript.findSubagentInvocations()).toEqual([]);
     expect(noopTranscript.findSubagentInvocations('writer-kind')).toEqual([]);

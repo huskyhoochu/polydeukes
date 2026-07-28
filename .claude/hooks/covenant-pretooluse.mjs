@@ -11,20 +11,23 @@
  * no longer inlined here — it is read from the root data config via the umbrella
  * loader (`loadConfig`), which also attaches the config file to its own surface.
  *
- * The escape hatch is the TTL waiver (COVENANT-06) judged over the JSONL transcript
- * provider (ADAPTER-04), configured from the root config's `waiver` block (CONFIG-05).
- * The env valve it replaces had no expiry: armed once, it stayed open for the rest of
- * the session and measured 562 bypasses in a single day. A waiver is typed by a human
- * into the conversation and lapses on its own, so "forgot to disarm" stops existing as
- * a failure mode. Its defence is provenance rather than secrecy — only a real human
- * utterance carries the transcript marking `findUserMessages()` admits, and no agent
- * can forge that marking, which is why the token is safe to keep in plain config.
+ * The valve is the TTL witness (COVENANT-06, renamed and moved behind the verdict by
+ * COVENANT-17) judged over the JSONL transcript provider (ADAPTER-04), configured from
+ * the root config's `witness` block (CONFIG-05). The env valve it replaced had no
+ * expiry: armed once, it stayed open for the rest of the session and measured 562
+ * bypasses in a single day. A witness is typed by a human into the conversation and
+ * lapses on its own, so "forgot to disarm" stops existing as a failure mode. Its
+ * defence is provenance rather than secrecy — only a real human utterance carries the
+ * transcript marking `findUserMessages()` admits, and no agent can forge that marking,
+ * which is why the token is safe to keep in plain config. Since COVENANT-17 the valve
+ * stands AFTER the verdict: the judge body always spawns, and only an outcome that
+ * translated to blocked consults the witness — `witnessed` rows are would-block only.
  *
  * fail-closed: ANY failure here — unbuilt dist, import error, unreadable stdin, a
  * missing or invalid config file — exits 2 (blocking). A dead hook that exits
  * non-blocking would be the cheapest bypass vector. Recovery from an unbuilt clone is
  * `pnpm build` (mentions no protected path, so it is never blocked). A config with no
- * `waiver` block stays valid and simply arms no valve at all.
+ * `witness` block stays valid and simply arms no valve at all.
  */
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
@@ -106,7 +109,7 @@ try {
   }
 
   // The live transcript is the evidence channel the context family reads AND the one
-  // the waiver reads, so erasing or forging it disables every context discipline while
+  // the witness reads, so erasing or forging it disables every context discipline while
   // opening or shutting the human valve on the same file. It lives outside the
   // repository, so no config `protectedPaths` entry can reach it — and since
   // COVENANT-07c it does NOT join this list either. A file deep under HOME makes HOME
@@ -119,24 +122,24 @@ try {
   // `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data, reads absolved by the
   // read-only allowlist, and ancestor destruction outside the repository declared out
   // of observation scope (07c §2: the agent's own deny policy owns what no repo-scoped
-  // judge can). The waiver valve applies to it like any other registration.
+  // judge can). The witness valve applies to it like any other registration.
   const protectedPaths = core.normalizeProtectedPaths({
     protectedPaths: config.protectedPaths ?? [],
   });
 
-  // One waiver predicate shared by every registration: a waiver is a session-wide
-  // permission the human granted, not a per-covenant one. Absent `waiver` config leaves
-  // this undefined, and the dispatcher then has no bypass path at all. The predicate
-  // receives the transcript as its second argument from the dispatcher (CORE-04 seam),
-  // which is why the transcript is injected below rather than captured here.
-  const escapeHatch =
-    config.waiver === undefined
+  // One witness predicate shared by every registration: a witness is a session-wide
+  // permission the human granted, not a per-covenant one. Absent `witness` config leaves
+  // this undefined, and no verdict can be witnessed open at all. The predicate receives
+  // the transcript as its second argument from the dispatcher (CORE-04 seam), which is
+  // why the transcript is injected below rather than captured here.
+  const witness =
+    config.witness === undefined
       ? undefined
-      : covenant.ttlWaiverHatch({
-          token: config.waiver.token,
+      : covenant.ttlWitness({
+          token: config.witness.token,
           // Minutes are the human-facing unit in config; the predicate takes milliseconds.
           // Core passes the value through verbatim, so the conversion belongs to assembly.
-          ttlMs: config.waiver.ttlMinutes * 60_000,
+          ttlMs: config.witness.ttlMinutes * 60_000,
         });
 
   // Only the two unconditional registrations compose their paths here. The transcript-mod
@@ -157,7 +160,7 @@ try {
         command: process.execPath,
         args: [selfModBody, ...pathArgs, ...MUTATING_TOOLS.flatMap((t) => ['--mutating-tool', t])],
       },
-      escapeHatch,
+      witness,
     },
     {
       label: 'shell-mod',
@@ -171,7 +174,7 @@ try {
           ...COMMAND_ARGS.flatMap((a) => ['--command-arg', a]),
         ],
       },
-      escapeHatch,
+      witness,
     },
     // The transcript's own registration (COVENANT-07c). Routing is the matches
     // predicate, never path mention, so the home directory cannot become a protected
@@ -193,7 +196,7 @@ try {
             shellTools: SHELL_TOOLS,
             commandArgs: COMMAND_ARGS,
             mutatingTools: MUTATING_TOOLS,
-            escapeHatch,
+            witness,
           }),
         ]),
     // The body path is passed as a thunk, so the proof fires only where the compiler
@@ -209,7 +212,7 @@ try {
       bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
-      escapeHatch,
+      witness,
       // Context-family evidence is evaluated here, at assembly: a spawned body cannot
       // hold a transcript, and passing a path would leak JSONL knowledge into covenant
       // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/

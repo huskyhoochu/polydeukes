@@ -253,7 +253,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     // nothing tells "prove each path you produce" apart from "check a fixed list of four
     // filenames". The commit surface has no shell axis and never spawns this body; a list
     // check would fail the commit closed over a file it was never going to run, which is
-    // the failure that sends people to the waiver. Mutation caught: the existence proof
+    // the failure that sends people to the witness. Mutation caught: the existence proof
     // written as a manifest over the dist rather than as the path constructor itself.
     stageProtectedChange('advise');
 

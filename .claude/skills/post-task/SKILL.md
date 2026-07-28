@@ -78,5 +78,5 @@ Emit this before proceeding to the PR (or the final commit):
 - Public docs: <section filled / sentence added / candidate noted: <what> | "none">
 ```
 
-The user may waive a run via the literal phrase `skip post-task` in their **most recent**
-message. Self-waiving is forbidden.
+The user may exempt a run via the literal phrase `skip post-task` in their **most recent**
+message. Self-granted exemptions are forbidden.

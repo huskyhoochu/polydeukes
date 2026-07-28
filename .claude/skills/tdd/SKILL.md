@@ -51,9 +51,9 @@ recorded in `_docs/knowledge/`.
 
 Every field must be grounded in tool output from this turn (not memory); empty results are valid
 ("no matches"), a missing block is not. The knowledge scan command runs *in this turn* — paste
-matching filenames, do not synthesize. The user may waive via the literal phrase `skip preflight`
-or `no context7 needed` in their **most recent** message (an earlier waiver does not carry forward).
-Self-waiving is forbidden. AUDIT-only entry (`audit <path>`) skips Pre-flight because no production
+matching filenames, do not synthesize. The user may exempt the block via the literal phrase
+`skip preflight` or `no context7 needed` in their **most recent** message (an earlier exemption
+does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry (`audit <path>`) skips Pre-flight because no production
 code is produced.
 
 ### 1. RED — delegate to `tdd-test-writer`

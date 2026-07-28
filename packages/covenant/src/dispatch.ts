@@ -24,7 +24,7 @@ import {
 } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
-import { runCovenant, translateExitCode } from './run-covenant.js';
+import { runCovenant } from './run-covenant.js';
 
 /**
  * `CovenantRegistration` — one registered covenant (PRD §4.1).
@@ -33,9 +33,11 @@ import { runCovenant, translateExitCode } from './run-covenant.js';
  * globs); an empty array never matches, and empty-string entries are ignored (an
  * empty `''` would match every input). `body` is the CORE-01 protocol
  * executable the dispatcher spawns via {@link runCovenant} when a protected path is
- * mentioned. `escapeHatch`, when present, is evaluated only for a *matched*
- * registration, receiving the injected transcript seam as its second argument
- * (CORE-04): a `true` return bypasses the spawn (measured as `bypassed`).
+ * mentioned. `witness`, when present, is consulted only after a *matched*
+ * registration's body has run and broken (COVENANT-17 §4.3), receiving the injected
+ * transcript seam as its second argument (CORE-04) and a `{ label, subject }` context
+ * naming what broke as its third: a `true` return relaxes that block (measured as
+ * `witnessed`).
  * `matches`, when present, replaces path-mention routing with a content predicate
  * (COVENANT-10 §4.4): a non-null return routes (the string becomes the telemetry
  * subject), null does not, and a throw is a fail-closed match with subject `'-'`.
@@ -45,12 +47,16 @@ import { runCovenant, translateExitCode } from './run-covenant.js';
  * declared evidence vocabulary could not be resolved — so a match records one `skipped`
  * and upholds instead of spawning. Judging it anyway would block every matched input
  * with no legitimate pass path; throwing at assembly would take down every sibling
- * registration and the waiver valve with it.
+ * registration and the witness valve with it.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
-  escapeHatch?: (input: CovenantInput, transcript: CanonicalTranscript) => boolean;
+  witness?: (
+    input: CovenantInput,
+    transcript: CanonicalTranscript,
+    context: { label: string; subject: string },
+  ) => boolean;
   matches?: (input: CovenantInput) => string | null;
 } & (
   | { body: { command: string; args?: string[] }; skip?: never }
@@ -171,18 +177,21 @@ export function matchRegistrations(
  * with the original raw payload forwarded verbatim; the verdict is `2` if any body
  * blocks, else `0`. No matches passes vacuously with zero spawns and zero telemetry.
  *
- * escape hatch (PRD §4.3): for a matched registration whose `escapeHatch` predicate
- * returns `true`, the spawn is skipped, one `bypassed` record is appended, and the
- * registration contributes `0` — run-all is preserved (the remaining matches still run).
- * The hatch receives the injected `spec.transcript` (CORE-04 seam, `noopTranscript`
- * when omitted) as its second argument. A predicate that throws counts as no bypass
- * (the body spawns normally): an uncertain hatch never leaks toward fail-open.
+ * witness (COVENANT-17 §4.3): the dispatcher only BINDS the witness's arguments — the
+ * parsed input, the injected `spec.transcript` (CORE-04 seam, `noopTranscript` when
+ * omitted), and a `{ label, subject }` context naming the registration and its matched
+ * path — and hands the thunk to {@link runCovenant}, which consults it after the spawn
+ * and only when the body's outcome translated to `blocked`. So the body always runs: a
+ * matched registration that upholds is never witnessed, and a `true` return relaxes a
+ * real break into `0` / `witnessed`. A predicate that throws opens nothing (the block
+ * stands): an uncertain witness never leaks toward fail-open.
  *
  * enforce (CONFIG-06 §4.5): `spec.enforce` is threaded into every {@link runCovenant}
  * call — the level axis lives in the wrapper's translation table. The dispatcher's own
- * fail-closed (unparseable or unjudgeable payload) is outside that axis and never
- * softens. Each results entry surfaces its telemetry `event` (`bypassed` on the hatch
- * path, the translated event on the body path).
+ * fail-closed (unparseable or unjudgeable payload) is outside that axis and outside the
+ * valve too (zero spawns, so no verdict to relax). Each results entry surfaces the
+ * telemetry `event` the wrapper recorded, never a recomputed one — the valve is impure,
+ * and a recompute would consult it twice for one verdict.
  */
 export async function dispatchCovenants(spec: {
   stdinPayload: string;
@@ -240,7 +249,7 @@ export async function dispatchCovenants(spec: {
         });
         continue;
       }
-      // Nothing to judge and nothing to waive — the hatch exists for a verdict, and a
+      // Nothing to judge and nothing to witness — the valve exists for a verdict, and a
       // skip has none. Recording it keeps the no-op visible in `gain` (PRD §4.5).
       appendRecordFailOpen(spec.telemetryPath, {
         event: 'skipped',
@@ -251,24 +260,11 @@ export async function dispatchCovenants(spec: {
       continue;
     }
 
-    let bypass = false;
-    try {
-      bypass = registration.escapeHatch?.(parsed.value, transcript) === true;
-    } catch {
-      // A throwing hatch counts as no bypass — the body spawns normally (fail-closed).
-      bypass = false;
-    }
-    if (bypass) {
-      appendRecordFailOpen(spec.telemetryPath, {
-        event: 'bypassed',
-        label: registration.label,
-        subject: mentionedPath,
-      });
-      results.push({ label: registration.label, exitCode: EXIT_UPHOLD, event: 'bypassed' });
-      continue;
-    }
-
-    const { exitCode, bodyExitCode } = await runCovenant({
+    // Bound here, consulted in the wrapper: the context is what the umbrella prompt
+    // needs to name what broke, and the local alias keeps the thunk independent of the
+    // registration object it was read from.
+    const witness = registration.witness;
+    const { exitCode, event } = await runCovenant({
       command: registration.body.command,
       args: registration.body.args,
       stdinPayload: spec.stdinPayload,
@@ -276,10 +272,16 @@ export async function dispatchCovenants(spec: {
       subject: mentionedPath,
       telemetryPath: spec.telemetryPath,
       enforce: spec.enforce,
+      ...(witness !== undefined
+        ? {
+            witness: () =>
+              witness(parsed.value, transcript, {
+                label: registration.label,
+                subject: mentionedPath,
+              }),
+          }
+        : {}),
     });
-    // Recomputed from the pure translation table — identical to the event the wrapper
-    // logged, without widening runCovenant's resolved shape.
-    const { event } = translateExitCode(bodyExitCode, spec.enforce);
     results.push({ label: registration.label, exitCode, event });
   }
 

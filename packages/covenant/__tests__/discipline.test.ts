@@ -311,19 +311,19 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     expect(regs[1].label).toBe('hooks-armed');
   });
 
-  it('passes the escapeHatch through to each registration when provided', () => {
-    // P1: the per-entry registration is the natural seat for a per-discipline hatch. Mutation
-    // caught: the escapeHatch field dropped during compilation (would strip a configured
+  it('passes the witness through to each registration when provided', () => {
+    // P1: the per-entry registration is the natural seat for a per-discipline witness. Mutation
+    // caught: the witness field dropped during compilation (would strip a configured
     // bypass and silently harden every discipline).
-    const hatch: NonNullable<CovenantRegistration['escapeHatch']> = () => false;
-    const regs = compileDisciplineRegistrations({ ...specWith([forbidEntry]), escapeHatch: hatch });
+    const witness: NonNullable<CovenantRegistration['witness']> = () => false;
+    const regs = compileDisciplineRegistrations({ ...specWith([forbidEntry]), witness: witness });
 
-    expect(regs[0].escapeHatch).toBe(hatch);
+    expect(regs[0].witness).toBe(witness);
   });
 
   it('compiles a non-compilable pattern into a skip registration instead of throwing', () => {
     // A broken pattern used to halt assembly, taking every sibling registration and the
-    // waiver valve down with it — leaving no way to edit the config that caused it. It
+    // witness valve down with it — leaving no way to edit the config that caused it. It
     // now skips alone, and routes to nothing, since the pattern that would define its
     // matches is the broken one. Mutation caught: the throw restored, or a body emitted
     // that would crash at judge time.

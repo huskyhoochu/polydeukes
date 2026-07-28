@@ -126,7 +126,7 @@ describe('COVENANT-13b §4.4 evaluatePrecedent — subagent evidence requires a 
     // crashed) must not poison the kind for the rest of the session. Mutation caught: an
     // evaluator that finds the first spawn of the required kind and returns ITS outcome —
     // the gate would then stay shut however many times the subagent is spawned and finishes,
-    // and the only way forward would be the waiver. The rejected spawn is deliberately
+    // and the only way forward would be the witness. The rejected spawn is deliberately
     // FIRST, because with the success first that mutation would answer true and hide.
     const transcript = transcriptOf([
       assistantEntry('a-1', [spawnBlock('toolu_01', SPAWN_KIND)]),

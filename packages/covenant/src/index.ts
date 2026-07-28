@@ -10,7 +10,7 @@
  * that routes protected-path mentions to their registered covenant bodies.
  * COVENANT-03 lands the self-mod meta-covenant — the dispatcher's first real
  * registrant: a pure judge + CLI body that block mutating tool calls on protected
- * paths, plus the escape-hatch seam whose bypasses are measured as `bypassed`.
+ * paths, plus the witness seam whose openings are measured as `witnessed`.
  * COVENANT-04d lands the shell-mod meta-covenant — the Bash-axis mirror: a pure
  * judge + CLI body that assemble the tokenizer and detection rules into a verdict,
  * with a read-only allowlist as the friction valve.
@@ -42,7 +42,7 @@ export {
   judgeDiscipline,
 } from './discipline.js';
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
-export { envEscapeHatch } from './escape-hatch.js';
+export { envWitness } from './env-witness.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';
 export { redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';
@@ -58,4 +58,4 @@ export {
   type TranscriptModRegistrationSpec,
   transcriptModRegistration,
 } from './transcript-mod.js';
-export { type TtlWaiverSpec, ttlWaiverHatch } from './ttl-waiver.js';
+export { type TtlWitnessSpec, ttlWitness } from './ttl-witness.js';

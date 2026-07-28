@@ -13,7 +13,7 @@ import { transcriptFromJsonl, transcriptFromJsonlFile } from '../src/transcript.
 // file and in the adapter — never in core (CORE-04 §5.3 isolation gate).
 // ---------------------------------------------------------------------------
 
-const TOKEN = 'PDKS-WAIVER-42';
+const TOKEN = 'PDKS-WITNESS-42';
 
 /** A real human-typed entry: origin.kind === 'human', string content, ISO timestamp. */
 function humanEntry(content: string, timestamp?: string) {
@@ -108,7 +108,7 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   it('excludes user entries whose content is an array of tool_result blocks', () => {
     // P0 fail-closed: tool_result injections (3,400+ real entries) are not human utterances.
     // Mutation caught: the "content must be a plain string" check dropped, letting an array
-    // content through — a huge non-human surface would then flow into the waiver.
+    // content through — a huge non-human surface would then flow into the witness.
     const jsonl = toJsonl([toolResultEntry(`smuggled ${TOKEN}`)]);
 
     expect(transcriptFromJsonl(jsonl).findUserMessages()).toEqual([]);
@@ -118,7 +118,7 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
     // P0 forgery vector: task-notification is an AI-controlled surface. A token smuggled
     // there must NOT count as a human utterance. Mutation caught: the origin.kind==="human"
     // allowlist relaxed to "origin present" or "any user entry" — the single most dangerous
-    // fail-open hole in this file (a subagent could then self-issue waivers).
+    // fail-open hole in this file (a subagent could then self-issue witnesses).
     const jsonl = toJsonl([
       taskNotificationEntry(`<task-notification>${TOKEN}</task-notification>`),
     ]);
@@ -137,7 +137,7 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
 
   it('keeps a human entry with an absent/unparseable timestamp, exposing timestampMs undefined', () => {
     // P1 fact-only supplier: a missing or non-ISO timestamp must NOT drop the message — it
-    // is kept with timestampMs undefined so the waiver consumer applies its own fail-closed
+    // is kept with timestampMs undefined so the witness consumer applies its own fail-closed
     // rule. Mutation caught: the entry being dropped when timestamp is absent, or Date.parse
     // NaN being written through as a number instead of collapsed to undefined.
     const jsonl = toJsonl([
@@ -270,7 +270,7 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
 
   it('answers undefined for a nonexistent file — absence, not an empty session', () => {
     // Valve-off-not-valve-open still holds: undefined leaves the dispatcher on its noop
-    // default, so the waiver stays shut either way. What changed is that an unreadable
+    // default, so the witness stays shut either way. What changed is that an unreadable
     // file no longer impersonates a session that has said nothing. The two demand
     // opposite dispositions from the context family — judge an empty session, skip an
     // absent one — and collapsing them blocked in-scope edits for the rest of a session
@@ -299,7 +299,7 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
       expect(transcript?.findUserMessages()).toEqual([]);
       expect(transcript?.findToolCalls()).toEqual([]);
       // The success branch of the file wrapper is only exercised here, so all three
-      // queries are pinned — `subagent` is the waiver's sibling evidence vocabulary.
+      // queries are pinned — `subagent` is the witness's sibling evidence vocabulary.
       expect(transcript?.findSubagentInvocations()).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });

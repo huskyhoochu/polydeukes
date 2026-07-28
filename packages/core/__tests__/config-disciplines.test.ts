@@ -159,12 +159,12 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
 });
 
 // ===========================================================================
-// AC §5.1 — unknown keys (deferred-axis enforcement — enforce/waiver rejected)
+// AC §5.1 — unknown keys (deferred-axis enforcement — enforce/witness rejected)
 // ===========================================================================
 
 describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred-axis)', () => {
   it('rejects an entry carrying an unknown `enforce` key, naming that key', () => {
-    // P0 deferred-axis enforcement (user decision ①): the enforce/waiver surface keys are
+    // P0 deferred-axis enforcement (user decision ①): the enforce/witness surface keys are
     // NOT accepted — silent ignore would be a fail-open accident (CONFIG-04 §3 precedent).
     // Mutation caught: the per-entry additionalProperties=false gate removed.
     const error = expectConfigValidationError(
@@ -174,14 +174,14 @@ describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred
     expect(error.message).toContain('enforce');
   });
 
-  it('rejects an entry carrying an unknown `waiver` key, naming that key', () => {
-    // P0 deferred-axis enforcement partner: per-discipline waiver is a future axis and must
+  it('rejects an entry carrying an unknown `witness` key, naming that key', () => {
+    // P0 deferred-axis enforcement partner: per-discipline witness is a future axis and must
     // be refused now, not silently dropped.
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'has-waiver', forbid: 'x', waiver: 'PDKS-1' }]),
+      withDisciplines([{ id: 'has-witness', forbid: 'x', witness: 'PDKS-1' }]),
     );
 
-    expect(error.message).toContain('waiver');
+    expect(error.message).toContain('witness');
   });
 });
 

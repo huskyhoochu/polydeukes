@@ -17,7 +17,7 @@ export type SubagentInvocation = { kind: string };
  * One user message observed in the session (PRD §4.1).
  *
  * `timestampMs` is epoch milliseconds. Its absence means the source cannot prove
- * freshness — the fail-closed signal a waiver consumer must treat as "not fresh".
+ * freshness — the fail-closed signal a witness consumer must treat as "not fresh".
  */
 export type TranscriptUserMessage = { text: string; timestampMs?: number };
 
@@ -54,7 +54,7 @@ export type CanonicalTranscript = {
 
 /**
  * The injection-absent default (PRD §4.2): every query answers "nothing happened".
- * A waiver consumer naturally converges to fail-closed — no evidence, no skip — and
+ * A witness consumer naturally converges to fail-closed — no evidence, no skip — and
  * so does a precedent consumer (no evidence, gate stays shut).
  */
 export const noopTranscript: CanonicalTranscript = {
@@ -68,7 +68,7 @@ export const noopTranscript: CanonicalTranscript = {
  *
  * Exposes `subagentSpawns` as invocations (filtered when a kind is given) and
  * `userMessages` with `timestampMs` omitted — the bare IR cannot prove freshness,
- * and that absence is the *correct* fail-closed signal for a waiver consumer.
+ * and that absence is the *correct* fail-closed signal for a witness consumer.
  * Order preserved; the input is never mutated, and every query returns fresh
  * objects so consumers never hold live aliases into the shared IR.
  *

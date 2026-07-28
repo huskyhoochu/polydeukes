@@ -12,12 +12,13 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /**
- * The five telemetry events. `bypassed` is a first-class event, not a flag on `passed`;
- * `advised` is a violation verdict an advise-level observer recorded but let through;
- * `skipped` is a discipline a surface could not judge at all (no evidence channel) —
- * a no-op that shows up in the data instead of vanishing.
+ * The five telemetry events. `witnessed` is a first-class event, not a flag on `passed`:
+ * a break a human stood behind by supplying the pass condition themselves. `advised` is a
+ * violation verdict an advise-level observer recorded but let through; `skipped` is a
+ * discipline a surface could not judge at all (no evidence channel) — a no-op that shows
+ * up in the data instead of vanishing.
  */
-export type TelemetryEvent = 'passed' | 'blocked' | 'bypassed' | 'advised' | 'skipped';
+export type TelemetryEvent = 'passed' | 'blocked' | 'witnessed' | 'advised' | 'skipped';
 
 /**
  * `TelemetryRecord` — one measured covenant outcome (PRD §4.1).
@@ -42,10 +43,22 @@ const TAB = '\t';
 const VALID_EVENTS: readonly TelemetryEvent[] = [
   'passed',
   'blocked',
-  'bypassed',
+  'witnessed',
   'advised',
   'skipped',
 ];
+
+/**
+ * The event name `witnessed` was written under before the rename — a read-only migration
+ * seam, never a value this module emits.
+ *
+ * It exists because the collected log predates the rename: those rows are the sample the
+ * milestone journal round argues from, and dropping them as corrupt would delete the
+ * measurement instead of migrating it. Compatibility runs one way only — {@link
+ * formatRecordLine} has no path back to this name — and the match is the exact literal, so
+ * a genuinely corrupt field is still rejected rather than coerced into a fabricated record.
+ */
+const LEGACY_WITNESSED_EVENT = 'bypassed';
 
 /**
  * Replace tab/newline/carriage-return with single spaces (PRD §4.1 line integrity).
@@ -72,8 +85,9 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for the wrong field count, an event outside the four valid events, or an
- * empty line — a malformed line is rejected, never coerced into a bogus record.
+ * `null` for the wrong field count, an event outside the five valid events, or an
+ * empty line — a malformed line is rejected, never coerced into a bogus record. The one
+ * exception is {@link LEGACY_WITNESSED_EVENT}, which reads back as `witnessed`.
  */
 export function parseRecordLine(line: string): TelemetryRecord | null {
   const trimmed = line.replace(/\n$/, '');
@@ -87,11 +101,12 @@ export function parseRecordLine(line: string): TelemetryRecord | null {
   }
 
   const [timestamp, event, label, subject] = fields;
-  if (!VALID_EVENTS.includes(event as TelemetryEvent)) {
+  const resolved = event === LEGACY_WITNESSED_EVENT ? 'witnessed' : event;
+  if (!VALID_EVENTS.includes(resolved as TelemetryEvent)) {
     return null;
   }
 
-  return { timestamp, event: event as TelemetryEvent, label, subject };
+  return { timestamp, event: resolved as TelemetryEvent, label, subject };
 }
 
 /**
@@ -178,7 +193,7 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
   const counts: Record<string, Record<TelemetryEvent, number>> = {};
   for (const record of records) {
     if (!(record.label in counts)) {
-      counts[record.label] = { passed: 0, blocked: 0, bypassed: 0, advised: 0, skipped: 0 };
+      counts[record.label] = { passed: 0, blocked: 0, witnessed: 0, advised: 0, skipped: 0 };
     }
     counts[record.label][record.event] += 1;
   }
@@ -188,7 +203,7 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
 /**
  * Render a {@link GainSummary} into human-readable lines (pure).
  *
- * Each label is mentioned with its passed/blocked/bypassed/advised/skipped counts; each
+ * Each label is mentioned with its passed/blocked/witnessed/advised/skipped counts; each
  * is a distinct column, never folded into another (PRD §4.4). A non-zero corrupt-line
  * count is reported rather than hidden — silent skipping would mask log corruption.
  *
@@ -204,7 +219,7 @@ function renderGain(summary: GainSummary, skipped: number): string {
   const lines = [`total ${summary.total}`];
   for (const [label, counts] of Object.entries(summary.counts)) {
     lines.push(
-      `${label}: passed=${counts.passed} blocked=${counts.blocked} bypassed=${counts.bypassed} advised=${counts.advised} skipped=${counts.skipped}`,
+      `${label}: passed=${counts.passed} blocked=${counts.blocked} witnessed=${counts.witnessed} advised=${counts.advised} skipped=${counts.skipped}`,
     );
   }
   if (skipped > 0) {

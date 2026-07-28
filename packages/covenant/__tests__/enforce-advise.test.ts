@@ -121,16 +121,16 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
     expect(result.results).toEqual([{ label: 'sample-covenant', exitCode: 0, event: 'advised' }]);
   });
 
-  it('results carry event bypassed on the escape-hatch path (enforce omitted)', () => {
+  it('results carry event witnessed on the witness path (enforce omitted)', () => {
     // §4.5: the existing bypass path must also expose event — the umbrella observes the
     // event through results. Mutation caught: the event field wired only on the body path
     // and left off the bypass path. (Sync body: assertion is the awaited result below.)
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
-      label: 'bypass-covenant',
+      label: 'witness-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(join(dir, 'nope.txt'), 0) },
-      escapeHatch: () => true,
+      body: { command: process.execPath, args: echoToFileScript(join(dir, 'body-ran.txt'), 1) },
+      witness: () => true,
     };
 
     return dispatchCovenants({
@@ -139,9 +139,9 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
       telemetryPath,
     }).then((result) => {
       expect(result.exitCode).toBe(0);
-      expect(existsSync(join(dir, 'nope.txt'))).toBe(false);
+      expect(existsSync(join(dir, 'body-ran.txt'))).toBe(true);
       expect(result.results).toEqual([
-        { label: 'bypass-covenant', exitCode: 0, event: 'bypassed' },
+        { label: 'witness-covenant', exitCode: 0, event: 'witnessed' },
       ]);
     });
   });

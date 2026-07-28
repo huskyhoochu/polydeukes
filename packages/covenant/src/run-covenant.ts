@@ -27,6 +27,9 @@ type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
  * validated (that is the body's fail-closed `parseInput`). `subject` defaults to the
  * `-` sentinel in telemetry when absent. `telemetryPath` is always an explicit argument.
  * `enforce` selects the translation column (CONFIG-06): absent defaults to `block`.
+ * `witness` is the valve axis (COVENANT-17 §4.3) — a zero-arg thunk whose arguments the
+ * caller has already bound, consulted only once the body has run and its outcome
+ * translated to `blocked`.
  */
 export type RunCovenantSpec = {
   command: string;
@@ -36,6 +39,7 @@ export type RunCovenantSpec = {
   subject?: string;
   telemetryPath: string;
   enforce?: 'block' | 'advise';
+  witness?: () => boolean;
 };
 
 /**
@@ -85,21 +89,39 @@ function spawnBody(command: string, args: string[], stdinPayload: string): Promi
   });
 }
 
+/** Consult the valve, counting a throw as closed — an uncertain valve never opens (PRD §7-3). */
+function witnessOpens(witness: () => boolean): boolean {
+  try {
+    return witness() === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Run a covenant body through the wrapper (PRD §4).
  *
- * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the raw `bodyExitCode`
- * for observation (`null` when the body left no code) — the telemetry event is a pure
- * function of both ({@link translateExitCode}), so callers needing it recompute rather
- * than widen this shape. Logging is fail-open (PRD §4.3)
+ * The order is spawn → translate → valve (COVENANT-17 §4.3): the body always runs, and
+ * only a `blocked` translation has anything for the valve to relax into
+ * `0` / `witnessed`. Whatever that leaves is recorded ONCE — one call, one row — so a
+ * witnessed break never leaves a `blocked` row beside its `witnessed` one.
+ *
+ * Resolves with the wrapper's final `exitCode` (`0` or `2`), the raw `bodyExitCode` for
+ * observation (`null` when the body left no code), and the telemetry `event` that was
+ * recorded. The event is surfaced rather than left to callers: the valve is impure, so
+ * recomputing the event would consult it a second time. Logging is fail-open (PRD §4.3)
  * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and
  * never throws. The gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,
-): Promise<{ exitCode: WrapperExitCode; bodyExitCode: number | null }> {
+): Promise<{ exitCode: WrapperExitCode; bodyExitCode: number | null; event: TelemetryEvent }> {
   const bodyExitCode = await spawnBody(spec.command, spec.args ?? [], spec.stdinPayload);
-  const { exitCode, event } = translateExitCode(bodyExitCode, spec.enforce);
+  const verdict = translateExitCode(bodyExitCode, spec.enforce);
+  const { exitCode, event }: { exitCode: WrapperExitCode; event: TelemetryEvent } =
+    verdict.event === 'blocked' && spec.witness !== undefined && witnessOpens(spec.witness)
+      ? { exitCode: EXIT_UPHOLD, event: 'witnessed' }
+      : verdict;
 
   appendRecordFailOpen(spec.telemetryPath, {
     event,
@@ -107,5 +129,5 @@ export async function runCovenant(
     subject: spec.subject ?? '-',
   });
 
-  return { exitCode, bodyExitCode };
+  return { exitCode, bodyExitCode, event };
 }

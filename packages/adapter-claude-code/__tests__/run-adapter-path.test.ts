@@ -331,7 +331,7 @@ describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 record
       });
     }
 
-    // 2× bypassed (escape hatch: downstream records bypassed, exit 0, results non-empty)
+    // 2× witnessed (witness: downstream records witnessed, exit 0, results non-empty)
     for (let i = 0; i < 2; i++) {
       await runAdapterPath({
         rawPayload: validRaw,
@@ -339,7 +339,7 @@ describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 record
         dispatch: stubDispatchingRegistrations(telemetryPath, [
           {
             label: 'edit-covenant',
-            event: 'bypassed',
+            event: 'witnessed',
             subject: 'packages/covenant/src/dispatch.ts',
           },
         ]),
@@ -372,7 +372,7 @@ describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 record
     expect(byEvent('passed')).toBe(4);
     // 2 matched-blocked + 2 translate-fail-adapter-blocked = 4 blocked
     expect(byEvent('blocked')).toBe(4);
-    expect(byEvent('bypassed')).toBe(2);
+    expect(byEvent('witnessed')).toBe(2);
   });
 
   it('runGain distinguishes the adapter label from covenant labels (separate denominators)', async () => {
@@ -394,8 +394,8 @@ describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 record
     });
 
     const report = runGain(telemetryPath);
-    expect(report).toContain(`${ADAPTER_LABEL}: passed=1 blocked=0 bypassed=0`);
-    expect(report).toContain('edit-covenant: passed=0 blocked=1 bypassed=0');
+    expect(report).toContain(`${ADAPTER_LABEL}: passed=1 blocked=0 witnessed=0`);
+    expect(report).toContain('edit-covenant: passed=0 blocked=1 witnessed=0');
   });
 });
 

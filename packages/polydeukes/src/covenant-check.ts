@@ -13,9 +13,9 @@
  * and `gain` reads a per-file subject rather than one opaque batch line.
  *
  * The valve is a TTY prompt (PRD §4.4 decision A): the injected `ttyPrompt` seam returns
- * the line a human typed at the terminal, compared against the config waiver token in
+ * the line a human typed at the terminal, compared against the config witness token in
  * FULL (COVENANT-15 — substring acceptance is forbidden). The seam's absence models a
- * non-interactive environment (CI, an AI-spawned git commit): no prompt, no bypass —
+ * non-interactive environment (CI, an AI-spawned git commit): no prompt, no witness —
  * the valve is structurally reachable only by a human at a terminal, which is the
  * commit-surface translation of "only a human utterance opens the session valve". The
  * answer is cached so one commit prompts at most once, and nothing is ever persisted —
@@ -54,27 +54,37 @@ export type CovenantCheckSpec = {
   /** Overrides the resolved covenant dist directory (tests and assembly injection). */
   covenantDist?: string;
   /**
-   * TTY valve seam: returns the line a human typed, or null for no input. ABSENT means
-   * a non-TTY environment — the valve never opens (AC-3 human-only arming).
+   * TTY valve seam: writes the given prompt and returns the line a human typed, or null
+   * for no input. ABSENT means a non-TTY environment — the valve never opens (AC-3
+   * human-only arming).
    */
-  ttyPrompt?: () => string | null;
+  ttyPrompt?: (prompt: string) => string | null;
 };
 
 /**
- * Build the escape-hatch predicate for the TTY valve, or undefined when no valve can
- * exist (no waiver configured, or no TTY seam — both leave the dispatcher with no
- * bypass path at all). The prompt fires lazily on the first matched registration and
- * its verdict is cached: one commit, at most one prompt, full-token equality only.
+ * Build the witness predicate for the TTY valve, or undefined when no valve can exist
+ * (no witness configured, or no TTY seam — both leave the dispatcher with no way to open
+ * one at all). The valve IS the witness: the judge has already broken, and the human at
+ * the terminal supplies the pass condition themselves, sudo-style. The prompt fires
+ * lazily on the first registration that actually BROKE and names it from the dispatcher's
+ * context (COVENANT-17 §4.5), so the human reads what broke, on what, and how far one
+ * answer reaches. The verdict is cached: one commit, at most one prompt, full-token
+ * equality only — and the token itself is never printed, or typing it from memory would
+ * become copying it off the screen.
  */
-function ttyValveHatch(
-  waiver: { token: string } | undefined,
-  ttyPrompt: (() => string | null) | undefined,
-): CovenantRegistration['escapeHatch'] | undefined {
-  if (waiver === undefined || ttyPrompt === undefined) return undefined;
+function ttyWitnessValve(
+  witness: { token: string } | undefined,
+  ttyPrompt: ((prompt: string) => string | null) | undefined,
+): CovenantRegistration['witness'] | undefined {
+  if (witness === undefined || ttyPrompt === undefined) return undefined;
   let verdict: boolean | undefined;
-  return () => {
+  return (_input, _transcript, context) => {
     if (verdict === undefined) {
-      verdict = ttyPrompt() === waiver.token;
+      const prompt =
+        `covenant: '${context.label}' broke on the staged change to '${context.subject}'.\n` +
+        'answering opens the valve for the whole commit, not just this change.\n' +
+        'type the agreed token in full to open it (enter to refuse): ';
+      verdict = ttyPrompt(prompt) === witness.token;
     }
     return verdict;
   };
@@ -173,9 +183,9 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const covenantDist =
       spec.covenantDist ?? dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
     // Under advise the TTY valve is structurally absent (CONFIG-06 §4.6): a verdict
-    // already passes, so there is nothing to waive and the prompt must never fire.
-    const escapeHatch =
-      enforce === 'advise' ? undefined : ttyValveHatch(config.waiver, spec.ttyPrompt);
+    // already passes, so there is nothing to witness and the prompt must never fire.
+    const witness =
+      enforce === 'advise' ? undefined : ttyWitnessValve(config.witness, spec.ttyPrompt);
 
     const disciplines = config.disciplines ?? [];
 
@@ -191,7 +201,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
             ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
           ],
         },
-        escapeHatch,
+        witness,
       },
       // Command-family entries are excluded: the commit surface has no shell axis (a
       // staged diff carries no commands), so registering them would be spawn waste by
@@ -218,7 +228,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
         bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
         shellTools: [],
         commandArgs: [],
-        escapeHatch,
+        witness,
       }),
     ];
 

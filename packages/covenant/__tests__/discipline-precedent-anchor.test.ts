@@ -288,7 +288,7 @@ describe('COVENANT-13b §4.6 command evidence — the recovery path stays open (
     // really ran and only the grep failed — is refused. That refusal is acceptable ONLY
     // because running the command alone still opens the gate; if it did not, a user who did
     // exactly what the discipline demanded would be blocked with no way forward but the
-    // waiver, and a waiver used daily is a gate already switched off.
+    // witness, and a witness used daily is a gate already switched off.
     //
     // The mutation this is really aimed at: first-match-wins. An evaluator that finds the
     // first call whose command matches and returns ITS outcome answers `missing` here, and

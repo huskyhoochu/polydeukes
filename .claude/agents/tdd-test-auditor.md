@@ -90,7 +90,7 @@ Each has a *why* — use the why to judge edge cases, not the label alone.
   asserting "ambiguous input blocks (exit 2)" guards the framework's core safety property.
 - **Over-block tests**: a test asserting that an ordinary, unrelated operation still *passes* is
   **P0** in covenant code, not a nicety. Fail-open is the dangerous bug, but a judge that blocks
-  unrelated work pushes people to the waiver, and a waiver used daily is a gate already off —
+  unrelated work pushes people to the witness valve, and a valve opened daily is a gate already off —
   this repository narrowed its own protection surface after measuring 2,414 bypasses against 14
   real blocks. Never classify "this asserts nothing is blocked" as low-value.
 

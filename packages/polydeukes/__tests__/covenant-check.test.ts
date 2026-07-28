@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //       runner would require reimplementing the judge, which the single-dispatcher rule
 //       forbids.
 //     - ttyPrompt is the injected TTY-valve seam: a function returning the line a human
-//       typed (the full waiver token to bypass), or null/undefined for no input.
+//       typed (the full witness token to bypass), or null/undefined for no input.
 //     - ABSENCE of ttyPrompt models a non-TTY environment (CI, AI-spawned git): the
 //       valve must never open (PRD §4.4 / AC-3 human-only arming).
 import { runCovenantCheck } from '../src/index.ts';
@@ -26,7 +26,7 @@ import { runCovenantCheck } from '../src/index.ts';
 // absolute tmp paths and safe to author.
 // ---------------------------------------------------------------------------
 
-const WAIVER_TOKEN = 'i-accept-this-commit-covenant';
+const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
 
 let repoRoot: string;
 let telemetryPath: string;
@@ -135,28 +135,31 @@ describe('§5 AC-4 discipline delta family — new violation vs pre-existing deb
   });
 });
 
-describe('§5 AC-3 TTY waiver valve — human-only arming', () => {
+describe('§5 AC-3 TTY witness valve — human-only arming', () => {
   function stageProtectedChange(): void {
-    writeConfig({ protectedPaths: ['secret.txt'], waiver: { token: WAIVER_TOKEN, ttlMinutes: 5 } });
+    writeConfig({
+      protectedPaths: ['secret.txt'],
+      witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
+    });
     write('secret.txt', 'sensitive\n');
     git('add', 'secret.txt', 'polydeukes.config.json');
   }
 
-  it('passes (exit 0) and records bypassed when the TTY seam returns the exact token', async () => {
+  it('passes (exit 0) and records witnessed when the TTY seam returns the exact token', async () => {
     // P0 valve-open path: a full-match token from the injected TTY seam opens the valve
-    // for this one commit AND is measured as bypassed. Mutation caught: the valve not
-    // consulted, or a bypass recorded as passed/blocked (bypassed must be first-class).
+    // for this one commit AND is measured as witnessed. Mutation caught: the valve not
+    // consulted, or a bypass recorded as passed/blocked (witnessed must be first-class).
     stageProtectedChange();
 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      ttyPrompt: () => WAIVER_TOKEN,
+      ttyPrompt: () => WITNESS_TOKEN,
     });
 
     expect(result.exitCode).toBe(0);
     const { records } = readRecords(telemetryPath);
-    expect(records.some((record) => record.event === 'bypassed')).toBe(true);
+    expect(records.some((record) => record.event === 'witnessed')).toBe(true);
   });
 
   it('blocks (exit 2) when the TTY seam returns a partial token (substring, not full match)', async () => {
@@ -168,12 +171,12 @@ describe('§5 AC-3 TTY waiver valve — human-only arming', () => {
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      ttyPrompt: () => WAIVER_TOKEN.slice(0, WAIVER_TOKEN.length - 1),
+      ttyPrompt: () => WITNESS_TOKEN.slice(0, WITNESS_TOKEN.length - 1),
     });
 
     expect(result.exitCode).toBe(2);
     const { records } = readRecords(telemetryPath);
-    expect(records.some((record) => record.event === 'bypassed')).toBe(false);
+    expect(records.some((record) => record.event === 'witnessed')).toBe(false);
   });
 
   it('blocks (exit 2) when the TTY seam returns a wrong token', async () => {
@@ -200,7 +203,7 @@ describe('§5 AC-3 TTY waiver valve — human-only arming', () => {
 
     expect(result.exitCode).toBe(2);
     const { records } = readRecords(telemetryPath);
-    expect(records.some((record) => record.event === 'bypassed')).toBe(false);
+    expect(records.some((record) => record.event === 'witnessed')).toBe(false);
   });
 });
 
@@ -306,14 +309,14 @@ describe('CONFIG-08 §4.2 commit surface — union of common and git-additive pr
     expect(selfModRows()).toEqual([['blocked', 'packages/core/src']]);
   });
 
-  it('opens (exit 0, bypassed) for a git-additive block when the TTY seam returns the token', async () => {
-    // §7 lockout class: the additive registration must carry the SAME escape hatch as
-    // the common one, or every commit staging a judge-chain source becomes un-waivable
+  it('opens (exit 0, witnessed) for a git-additive block when the TTY seam returns the token', async () => {
+    // §7 lockout class: the additive registration must carry the SAME witness as
+    // the common one, or every commit staging a judge-chain source becomes impossible to witness
     // even for the human at the terminal. Mutation caught: the union implemented as a
-    // second registration wired without escapeHatch.
+    // second registration wired without witness.
     writeConfig({
       protectedPaths: ['gatefile.txt'],
-      waiver: { token: WAIVER_TOKEN, ttlMinutes: 5 },
+      witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
       adapters: { git: { enforce: 'block', protectedPaths: ['packages/core/src'] } },
     });
     git('add', 'polydeukes.config.json');
@@ -324,11 +327,11 @@ describe('CONFIG-08 §4.2 commit surface — union of common and git-additive pr
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      ttyPrompt: () => WAIVER_TOKEN,
+      ttyPrompt: () => WITNESS_TOKEN,
     });
 
     expect(result.exitCode).toBe(0);
-    expect(selfModRows()).toEqual([['bypassed', 'packages/core/src']]);
+    expect(selfModRows()).toEqual([['witnessed', 'packages/core/src']]);
   });
 
   it('passes (exit 0) an unrelated staged file when the git namespace carries an additive list', async () => {
