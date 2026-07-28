@@ -245,6 +245,12 @@ them is precedent — the transcript is read for what actually ran and reported 
 That is what keeps the cheapest way through the gate being the thing the discipline
 asks for.
 
+Two consequences are worth knowing before you write one. The outcome is read per command
+LINE, so a chain where the required command ran but a later step failed does not count.
+And the pattern is matched at the start of a simple command, so the same words in an
+argument or a comment do not count either. **In both cases running the command on its own
+opens the gate** — the block message says so.
+
 ```yaml
   - id: 'dependency-needs-npm-view'
     why: 'a dependency version must be measured before it is written.'

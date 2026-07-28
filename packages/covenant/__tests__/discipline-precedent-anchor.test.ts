@@ -99,6 +99,44 @@ describe('COVENANT-13b §4.3 command evidence — anchored at a simple command (
     expect(precedentDecision([shellCall('npm view yaml')])).toBe('found');
   });
 
+  it('refuses a quoted mention that occupies the command position itself', () => {
+    // P0 the forgery the first anchor implementation still let through (PR #40 review).
+    // The tokenizer STRIPS quotes, so `"npm view yaml"` becomes a single word whose text
+    // is `npm view yaml` — and joining that one word produces a string byte-identical to
+    // the join of a genuine three-word run. The earlier fixtures all placed the quoted
+    // mention AFTER a word, so the index was pushed off 0 and the hole never showed.
+    // `|| true` makes the line exit 0 (bash fails to exec a program by that literal name),
+    // so the execution axis passes it too and the anchor is the only thing standing.
+    // Mutation caught: joining raw word text, which cannot distinguish one quoted word
+    // from the several words it spells.
+    expect(precedentDecision([shellCall('"npm view yaml" || true')])).toBe('missing');
+    expect(precedentDecision([shellCall("'npm view yaml' ; true")])).toBe('missing');
+    expect(precedentDecision([shellCall('npm view yaml')])).toBe('found');
+  });
+
+  it('still accepts a quoted argument once the command name is real', () => {
+    // P0 over-block fence paired with the test above: the fix must reject a quoted word in
+    // the COMMAND position without rejecting quoted arguments, which are ordinary usage.
+    // Mutation caught: dropping every space-bearing word (or refusing the whole simple
+    // command), which would silently stop `npm view "some pkg"` from counting.
+    expect(precedentDecision([shellCall('npm view "some pkg"')])).toBe('found');
+  });
+
+  it('accepts a command run inside a shell compound', () => {
+    // P0 over-block found by review. `for`/`while`/`if` bodies are split on `;` like any
+    // other list, so the simple command carries the shell KEYWORD as its first word and the
+    // pattern lands at index 3 — a command that demonstrably ran stops being evidence, and
+    // re-running the same loop never helps. Unlike an assignment prefix this is not a
+    // command in front of a command: `do` and `then` are grammar, not programs. Mutation
+    // caught: anchoring without first stepping past the keyword.
+    expect(precedentDecision([shellCall('for p in yaml zod; do npm view $p version; done')])).toBe(
+      'found',
+    );
+    expect(
+      precedentDecision([shellCall('if [ -f package.json ]; then npm view yaml version; fi')]),
+    ).toBe('found');
+  });
+
   it('refuses a mention parked behind a comment marker', () => {
     // P0 the second mention shape, and it fails a DIFFERENT implementation than the quoted
     // one: the tokenizer does not strip `#` comments, so here the pattern's words are
