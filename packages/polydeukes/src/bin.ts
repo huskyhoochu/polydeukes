@@ -40,7 +40,13 @@ function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
     } catch {
       return null;
     } finally {
-      closeSync(fd);
+      try {
+        closeSync(fd);
+      } catch {
+        // A second consultation would land on an already-closed fd; an EBADF thrown
+        // from this finally would override the `return null` above and escape the
+        // seam (PR #41 review). The valve caches its verdict, so this is defensive.
+      }
     }
   };
 }

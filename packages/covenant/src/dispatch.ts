@@ -261,8 +261,8 @@ export async function dispatchCovenants(spec: {
     }
 
     // Bound here, consulted in the wrapper: the context is what the umbrella prompt
-    // needs to name what broke, and the local alias keeps the thunk independent of the
-    // registration object it was read from.
+    // needs to name what broke. The local alias exists for TypeScript narrowing — a
+    // property access cannot stay narrowed inside the closure below.
     const witness = registration.witness;
     const { exitCode, event } = await runCovenant({
       command: registration.body.command,

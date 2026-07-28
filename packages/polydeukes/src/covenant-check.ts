@@ -67,24 +67,36 @@ export type CovenantCheckSpec = {
  * one at all). The valve IS the witness: the judge has already broken, and the human at
  * the terminal supplies the pass condition themselves, sudo-style. The prompt fires
  * lazily on the first registration that actually BROKE and names it from the dispatcher's
- * context (COVENANT-17 §4.5), so the human reads what broke, on what, and how far one
- * answer reaches. The verdict is cached: one commit, at most one prompt, full-token
- * equality only — and the token itself is never printed, or typing it from memory would
- * become copying it off the screen.
+ * context (COVENANT-17 §4.5) — the label and the MATCHED entry, the same subject the
+ * telemetry row carries, so screen and log never disagree. The human reads what broke,
+ * on what, and how far one answer reaches. The verdict is cached: one commit, at most
+ * one prompt, full-token equality only — and the token itself is never printed, or
+ * typing it from memory would become copying it off the screen.
+ *
+ * Both comparison sides are trimmed, mirroring the session valve: `ttlWitness` trims the
+ * config token at assembly precisely because config validation accepts a padded value,
+ * and it compares the utterance's first line trimmed — without the same normalisation
+ * here, one padded token would open the session surface and permanently shut this one
+ * (PR #41 review). The cache latches CLOSED before the seam is consulted: a throwing
+ * seam must not retry on the next broken registration, or the prompt's own commit-wide
+ * promise becomes a lie (AC §5.3 one commit, at most one prompt).
  */
 function ttyWitnessValve(
   witness: { token: string } | undefined,
   ttyPrompt: ((prompt: string) => string | null) | undefined,
 ): CovenantRegistration['witness'] | undefined {
   if (witness === undefined || ttyPrompt === undefined) return undefined;
+  const token = witness.token.trim();
   let verdict: boolean | undefined;
   return (_input, _transcript, context) => {
     if (verdict === undefined) {
       const prompt =
-        `covenant: '${context.label}' broke on the staged change to '${context.subject}'.\n` +
+        `covenant: '${context.label}' broke on the staged change matching '${context.subject}'.\n` +
         'answering opens the valve for the whole commit, not just this change.\n' +
         'type the agreed token in full to open it (enter to refuse): ';
-      verdict = ttyPrompt(prompt) === witness.token;
+      verdict = false;
+      const answer = ttyPrompt(prompt);
+      verdict = answer !== null && answer.trim() === token;
     }
     return verdict;
   };

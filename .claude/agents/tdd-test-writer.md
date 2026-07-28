@@ -40,7 +40,7 @@ value. If every such mutation still leaves the test green, it verifies nothing.
 
 Polydeukes is a discipline framework whose value is deterministic judgment, so its dangerous bug is
 **fail-open**: a covenant that upholds when it should break, an unparseable input that slips through
-as valid, an escape hatch that opens without evidence. Tests guarding those paths matter more here
+as valid, a valve that opens without evidence. Tests guarding those paths matter more here
 than anywhere else, and they must assert the exact outcome — the specific exit code (`2`, not
 "non-zero"), the specific verdict, the specific telemetry event — because a fail-open hole often
 shows up as *nearly* the right answer.

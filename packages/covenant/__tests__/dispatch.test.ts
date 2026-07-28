@@ -371,10 +371,10 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   });
 
   it('never consults the witness — a skip has no verdict to witness', async () => {
-    // The structurally adjacent bypass branch runs first for body-bearing registrations,
-    // so nothing but this pins that a skip short-circuits ahead of it. Mutation caught:
-    // the skip branch moved below the witness, which would turn a live witness into
-    // `witnessed` rows for entries that were never judged.
+    // A skip never reaches runCovenant, and the witness lives inside runCovenant —
+    // so this pins that a skip short-circuits before the spawn-and-witness path entirely.
+    // Mutation caught: skip handling folded into the body path, which would turn a live
+    // witness into `witnessed` rows for entries that were never judged.
     let consulted = false;
     const registration = {
       ...skipRegistration(() => 'src/a.ts'),
@@ -415,7 +415,7 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
 });
 
 describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
-  it('a matched registration whose body breaks with an witness predicate returning true is witnessed: the body still spawns, exitCode 0, one witnessed record', async () => {
+  it('a matched registration whose body breaks with a witness predicate returning true is witnessed: the body still spawns, exitCode 0, one witnessed record', async () => {
     // P0: the witness relaxes a real break AFTER the body reported it (COVENANT-17 §4.3) —
     // measured control, not a body-level decision. Mutation caught: the witness evaluated
     // but ignored (the block stands), the bypass not logged as the distinct 'witnessed'
@@ -445,7 +445,7 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     expect(record?.subject).toBe('sub/protected/file.txt');
   });
 
-  it('a matched registration with an witness predicate returning false spawns the body normally', async () => {
+  it('a matched registration with a witness predicate returning false spawns the body normally', async () => {
     // Mutation caught: a witness seam that always skips spawning regardless of the
     // predicate's return value (fail-open in the wrong direction).
     const outFile = join(dir, 'body-ran.txt');
@@ -470,7 +470,7 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     expect(parseRecordLine(lines[0])?.event).toBe('passed');
   });
 
-  it('an witness predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
+  it('a witness predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
     // P0 fail-open invariant (PRD §4.3/§7: "witness throw -> false, never bypass"). Mutation
     // caught: a try/catch around the predicate that resolves to true on error instead of
     // false, or an unhandled throw that escapes as a rejected dispatchCovenants promise

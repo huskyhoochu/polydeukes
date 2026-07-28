@@ -122,9 +122,11 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
   });
 
   it('results carry event witnessed on the witness path (enforce omitted)', () => {
-    // §4.5: the existing bypass path must also expose event — the umbrella observes the
-    // event through results. Mutation caught: the event field wired only on the body path
-    // and left off the bypass path. (Sync body: assertion is the awaited result below.)
+    // §4.5: the witnessed outcome must also surface through results — the umbrella
+    // observes the event there. Since COVENANT-17 there is no separate bypass path: the
+    // body spawns, translates to blocked, and the witness relaxes it to `witnessed`.
+    // Mutation caught: the wrapper's event surfaced on plain verdicts but dropped on the
+    // witnessed rewrite. (Sync body: assertion is the awaited result below.)
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'witness-covenant',

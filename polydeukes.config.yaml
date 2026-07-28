@@ -109,10 +109,12 @@ adapters:
 
 disciplines:
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3). waiver? joined after COVENANT-17 renamed the valve to witness — the retired vocabulary must not regrow.'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3). waiver? joined after COVENANT-17 renamed the valve to witness — the retired vocabulary must not regrow. the one except is the old-key rejection contract test, whose literals ARE the contract: as a file this branch CREATES, delta judgment sees every line as added, so without the except any commit re-creating it (cherry-pick, revert-restore) trips its own discipline forever (PR #41 review).'
     in:
       - 'packages/*/src/**'
       - 'packages/*/__tests__/**'
+    except:
+      - 'packages/core/__tests__/config-witness-key.test.ts'
     forbid: '\b(guard|harness|kb|waiver?)\b'
   - id: 'hooks-stay-armed'
     why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself.'

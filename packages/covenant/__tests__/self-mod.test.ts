@@ -463,7 +463,7 @@ describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5
 // ---------------------------------------------------------------------------
 
 describe('envWitness — env-var predicate (COVENANT-03 §4.3)', () => {
-  const TEST_VAR = 'PDKS_TEST_SELF_MOD_ESCAPE_HATCH_VAR';
+  const TEST_VAR = 'PDKS_TEST_SELF_MOD_WITNESS_VAR';
   const dummyInput: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
 
   afterEach(() => {

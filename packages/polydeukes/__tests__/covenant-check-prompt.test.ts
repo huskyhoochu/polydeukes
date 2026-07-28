@@ -212,6 +212,56 @@ describe('COVENANT-17 §4.5 covenant check — the prompt fires only on a blocke
     expect(witnessedSubjects).toContain(SECOND_PROTECTED_ENTRY);
   });
 
+  it('a padded config token still opens on a clean typed answer — both sides trimmed, session parity', async () => {
+    // PR #41 review finding 1: config validation accepts a padded token and stores it
+    // verbatim; ttlWitness trims at assembly for exactly that reason. Without the same
+    // normalisation here, `'  token  '` in the config would reject the human's clean
+    // answer, cache the refusal, and permanently shut the commit surface that the
+    // session surface happily opens. Mutation caught: comparing against the raw token.
+    writeConfig({
+      protectedPaths: [PROTECTED_ENTRY],
+      witness: { token: `  ${WITNESS_TOKEN}  `, ttlMinutes: 5 },
+    });
+    commitConfig();
+    write(PROTECTED_ENTRY, 'sensitive\n');
+    git('add', PROTECTED_ENTRY);
+    const ttyPrompt = vi.fn((_prompt: string) => WITNESS_TOKEN);
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, ttyPrompt });
+
+    expect(result.exitCode).toBe(0);
+    expect(readRecords(telemetryPath).records.some((record) => record.event === 'witnessed')).toBe(
+      true,
+    );
+  });
+
+  it('a throwing prompt seam is consulted once, stays closed, and never re-prompts (exit 2)', async () => {
+    // PR #41 review finding 3: the cache must latch CLOSED before the seam runs. A seam
+    // that throws (EOF, SIGINT, a closed fd) previously left the cache unset, so every
+    // later broken registration re-entered the prompt branch — contradicting the copy's
+    // own commit-wide promise. Two protected changes give the second registration its
+    // chance to re-prompt; the count pins that it never does.
+    writeConfig({
+      protectedPaths: [PROTECTED_ENTRY, SECOND_PROTECTED_ENTRY],
+      witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
+    });
+    commitConfig();
+    write(PROTECTED_ENTRY, 'a\n');
+    write(SECOND_PROTECTED_ENTRY, 'b\n');
+    git('add', PROTECTED_ENTRY, SECOND_PROTECTED_ENTRY);
+    const ttyPrompt = vi.fn((_prompt: string): string | null => {
+      throw new Error('tty seam blew up');
+    });
+
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, ttyPrompt });
+
+    expect(result.exitCode).toBe(2);
+    expect(ttyPrompt).toHaveBeenCalledTimes(1);
+    const { records } = readRecords(telemetryPath);
+    expect(records.some((record) => record.event === 'witnessed')).toBe(false);
+    expect(records.filter((record) => record.event === 'blocked').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('under advise an unjudgeable judge (body exit 2) blocks without ever prompting', async () => {
     // AC §5.2 last item — the CONFIG-06 §4.6 structural absence survives the new timing:
     // under advise the valve is never built, and an unjudgeable outcome still translates
