@@ -139,8 +139,12 @@ function quotedFragmentIsOpaque(fragment: string): boolean {
 // set decides the pairing, so an escaped `"` never closes the string (§2-a A1).
 const DOUBLE_QUOTE_ESCAPES = new Set(['$', '`', '"', '\\']);
 
-/** A quoted span: the content bash would pass, where it ended, and whether it ever closed. */
-type ScannedQuote = { text: string; next: number; closed: boolean };
+/**
+ * A quoted span: the content bash would pass, where it ended, whether it ever closed, and
+ * whether the content is fully decided. `decoded: false` means the scanner reproduced source
+ * spelling it could not translate, so the text is NOT the bytes bash passes.
+ */
+type ScannedQuote = { text: string; next: number; closed: boolean; decoded: boolean };
 
 /**
  * Scan a double-quoted string whose opening `"` sits at `open`. Returns the content bash
@@ -169,12 +173,14 @@ function scanDoubleQuoted(line: string, open: number): ScannedQuote {
       i += 1;
       continue;
     }
-    if (ch === '"') return { text, next: i + 1, closed: true };
+    // Always `decoded`: the escape set above IS bash's whole rule inside double quotes, so
+    // the text is the bytes bash passes with nothing left untranslated.
+    if (ch === '"') return { text, next: i + 1, closed: true, decoded: true };
     text += ch;
     i += 1;
   }
 
-  return { text, next: line.length, closed: false };
+  return { text, next: line.length, closed: false, decoded: true };
 }
 
 // The ANSI-C escapes decoded inside `$'…'`. Deliberately not the whole table: an escape
@@ -188,9 +194,17 @@ const ANSI_C_ESCAPES: Record<string, string> = { n: '\n', t: '\t', "'": "'", '\\
  * read to the end of input and reported `closed: false` (§2-b B1). Decoding is not
  * cosmetic: the word text becomes written-content evidence downstream, so handing back the
  * source spelling would record bytes bash never writes (§2-a A7).
+ *
+ * An escape the table does not carry sets `decoded: false`, and the caller turns that into
+ * opacity. The alternative — keeping the source spelling and calling it decided — asserts
+ * bytes bash never writes AS CONFIDENT EVIDENCE: `$'\x64ist'` would be filed as the literal
+ * `\x64ist` while bash writes `dist`, so a judge reading written content compares a string
+ * that never existed and answers uphold with no unjudgeable row. Completing the table is NOT
+ * the fix — the next unlisted escape reproduces it. Declining to claim knowledge is.
  */
 function scanAnsiCQuoted(line: string, open: number): ScannedQuote {
   let text = '';
+  let decoded = true;
   let i = open + 1;
 
   while (i < line.length) {
@@ -198,16 +212,18 @@ function scanAnsiCQuoted(line: string, open: number): ScannedQuote {
     if (ch === '\\') {
       const next = line[i + 1];
       if (next === undefined) break;
-      text += ANSI_C_ESCAPES[next] ?? `\\${next}`;
+      const replacement = ANSI_C_ESCAPES[next];
+      if (replacement === undefined) decoded = false;
+      text += replacement ?? `\\${next}`;
       i += 2;
       continue;
     }
-    if (ch === "'") return { text, next: i + 1, closed: true };
+    if (ch === "'") return { text, next: i + 1, closed: true, decoded };
     text += ch;
     i += 1;
   }
 
-  return { text, next: line.length, closed: false };
+  return { text, next: line.length, closed: false, decoded };
 }
 
 type ScannedWord = { text: string; opaque: boolean };
@@ -293,22 +309,30 @@ function scanWord(line: string, start: number): ScanResult {
     }
 
     if (ch === '$' && line[i + 1] === "'") {
-      // ANSI-C quoting: bash decodes the escapes and passes a string constant, so the
-      // word is decided — an expansion it is not, and marking it opaque would be wrong.
+      // ANSI-C quoting: bash decodes the escapes and passes a string constant, so a fully
+      // decoded one is decided — an expansion it is not, and marking it opaque would be
+      // wrong. An escape this scanner cannot translate is the opposite case: the text is
+      // source spelling, not the bytes bash passes, so the word's value is NOT known and
+      // saying otherwise files evidence for a string that never existed.
       const quoted = scanAnsiCQuoted(line, i + 1);
       if (!quoted.closed) return unreadFrom(line, i, text + quoted.text);
+      if (!quoted.decoded) opaque = true;
       text += quoted.text;
       i = quoted.next;
       continue;
     }
 
     if (ch === '$' && line[i + 1] === '(') {
-      // Command substitution `$(…)` with nesting — consume to the matching close paren.
-      const end = matchParen(line, i + 1);
-      const chunk = line.slice(i, end);
+      // Command substitution `$(…)` with nesting — consume to the matching close paren. A
+      // substitution that never closes has swallowed the rest of the line into this one
+      // opaque word, so it reports an unread span exactly like an unterminated quote does:
+      // without it the line would answer "fully read" and file no unjudgeable entry.
+      const scan = matchParen(line, i + 1);
+      const chunk = line.slice(i, scan.end);
+      if (!scan.closed) return unreadFrom(line, i, text + chunk);
       text += chunk;
       opaque = true;
-      i = end;
+      i = scan.end;
       continue;
     }
 
@@ -331,8 +355,21 @@ function scanWord(line: string, start: number): ScanResult {
   return { word: { text, opaque }, next: i };
 }
 
-/** Index just past the substitution starting at the `(` position `open`, matching nesting. */
-function matchParen(line: string, open: number): number {
+/**
+ * Where the substitution starting at the `(` position `open` ends, matching nesting, and
+ * whether the scan ever reached that end.
+ *
+ * `closed: false` means the scan ran off the end of input — an unterminated quote inside the
+ * substitution, or a `(` that never balances. Reporting it is not cosmetic: the caller
+ * swallows everything from `open` to end of input into ONE opaque word, so without this flag
+ * a line the scanner demonstrably could not finish reading answers `unread: []` — the
+ * "fully read" signal — and files zero unjudgeable entries. That is a call passing with no
+ * telemetry row at all, which is the defect class COVENANT-10b defines and blocker B7
+ * measured (COVENANT-18 §2-b, top invariant).
+ */
+type ParenScan = { end: number; closed: boolean };
+
+function matchParen(line: string, open: number): ParenScan {
   let depth = 0;
   for (let i = open; i < line.length; i++) {
     const ch = line[i];
@@ -346,13 +383,13 @@ function matchParen(line: string, open: number): number {
     }
     if (ch === "'") {
       const close = line.indexOf("'", i + 1);
-      if (close === -1) return line.length;
+      if (close === -1) return { end: line.length, closed: false };
       i = close;
       continue;
     }
     if (ch === '"') {
       const quoted = scanDoubleQuoted(line, i);
-      if (!quoted.closed) return line.length;
+      if (!quoted.closed) return { end: line.length, closed: false };
       i = quoted.next - 1;
       continue;
     }
@@ -360,10 +397,12 @@ function matchParen(line: string, open: number): number {
     if (ch === '(') depth += 1;
     else if (ch === ')') {
       depth -= 1;
-      if (depth === 0) return i + 1;
+      if (depth === 0) return { end: i + 1, closed: true };
     }
   }
-  return line.length;
+  // Ran off the end with the nesting still open — the same unread condition as an
+  // unterminated quote above, reported the same way.
+  return { end: line.length, closed: false };
 }
 
 /**
@@ -495,9 +534,12 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
     // the inner command's args leak as top-level words and a first-word allowlist could
     // absolve them while the inner write runs.
     if ((ch === '<' || ch === '>') && line[i + 1] === '(') {
-      const end = matchParen(line, i + 1);
-      current.words.push({ text: line.slice(i, end), opaque: true });
-      i = end;
+      const scan = matchParen(line, i + 1);
+      current.words.push({ text: line.slice(i, scan.end), opaque: true });
+      // A substitution that never closes swallowed the rest of the line into that one word,
+      // so the span is recorded rather than left to read as fully parsed.
+      if (!scan.closed) unread.push({ text: line.slice(i), reason: 'unclosed quote' });
+      i = scan.end;
       continue;
     }
 
@@ -511,12 +553,13 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       // word-level branch above does — scanning it as an ordinary word would leak the inner
       // command's arguments to top level, where a first-word allowlist could absolve them.
       if ((line[j] === '<' || line[j] === '>') && line[j + 1] === '(') {
-        const end = matchParen(line, j + 1);
+        const scan = matchParen(line, j + 1);
         current.redirects.push({
           operator: redirect.operator,
-          target: { text: line.slice(j, end), opaque: true },
+          target: { text: line.slice(j, scan.end), opaque: true },
         });
-        i = end;
+        if (!scan.closed) unread.push({ text: line.slice(j), reason: 'unclosed quote' });
+        i = scan.end;
         continue;
       }
       const scanned = scanWord(line, j);

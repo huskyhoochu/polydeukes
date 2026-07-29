@@ -1,6 +1,6 @@
 import type { CanonicalTranscript, CovenantInput, DisciplineEntry } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { type SimpleCommand, tokenizeCommandLine } from '../src/bash-line.js';
+import { type TokenizeResult, tokenizeCommandLine } from '../src/bash-line.js';
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.js';
 import { type CovenantRegistration, matchRegistrations } from '../src/dispatch.js';
 import { deriveShellChanges } from '../src/shell-evidence.js';
@@ -50,18 +50,13 @@ const FALLBACK_MENTION_REASON = 'untokenizable command line mentions protected p
 const FALLBACK_TRANSCRIPT_REASON = 'untokenizable command line names the session transcript';
 
 /**
- * The part-B return shape. Declared here rather than imported because the shipped
- * `TokenizeResult` still carries the `ok` discriminant this ticket removes; the cast keeps
- * the file type-clean while the assertions do the real work.
+ * Read the tokenizer through the contract part B gives it. No local shape and no cast: the
+ * shipped `TokenizeResult` IS `{ commands, unread }` now, so declaring a private twin would
+ * silence the type checker on the very contract this file exists to pin — a green suite
+ * against a signature that had drifted.
  */
-type PartialTokenizeResult = {
-  commands: SimpleCommand[];
-  unread: { text: string; reason: string }[];
-};
-
-/** Read the tokenizer through the contract part B gives it. */
-function tokenize(line: string): PartialTokenizeResult {
-  return tokenizeCommandLine(line) as unknown as PartialTokenizeResult;
+function tokenize(line: string): TokenizeResult {
+  return tokenizeCommandLine(line);
 }
 
 /** A shell-tool call carrying `line` under the injected command-arg key. */
@@ -666,5 +661,103 @@ describe('COVENANT-18 B4 — precedent evidence refuses a partially read command
     // reading `commands` and ignoring `unread`.
     expect(precedentDecision([observedCall(`npm view yaml;echo 'x`)])).toBe('missing');
     expect(precedentDecision([observedCall('npm view yaml;echo x')])).toBe('found');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Review round (PR #44) — two shortfalls against the invariants §2-b enumerated for
+// ITSELF. Neither is a spelling brought in from outside the ticket's declared set: the
+// first breaks "a line with an unread span yields at least one unjudgeable entry", the
+// second files evidence for bytes the scanner never computed.
+// ---------------------------------------------------------------------------
+
+describe('COVENANT-18 §2-b top invariant — a scan that ran off the end says so', () => {
+  it('records a span when a quote inside a command substitution never closes', () => {
+    // Mutation caught: `matchParen` reporting only WHERE it stopped and not WHETHER it
+    // arrived. Its two quote bail-outs run to end of input, and the caller turns that into
+    // one opaque word covering the rest of the line — so without the flag the line answers
+    // `unread: []`, the fully-read signal, and files zero unjudgeable entries. The judge
+    // then skips its opaque-token backstop too, because `echo` is allowlisted, and the call
+    // passes with NO telemetry row at all. That is COVENANT-10b's defect class, the one
+    // blocker B7 measured, reintroduced by A9's own quote-awareness.
+    const line = `echo $(cat 'a) rm -rf>${PROTECTED_DIST}`;
+    const result = tokenizeCommandLine(line);
+
+    expect(result.unread).toHaveLength(1);
+    expect(deriveShellChanges(line).unjudgeable.length).toBeGreaterThan(0);
+    expect(judgeShellModification(shellCall(line), shellSpec()).upheld).toBe(false);
+  });
+
+  it('records the same span for a double-quoted bail-out and for parens that never balance', () => {
+    // Mutation caught: fixing one bail-out and leaving its siblings. `matchParen` has three
+    // ways to run off the end — the single-quote branch, the double-quote branch, and the
+    // loop simply ending with depth still open — and each reaches the same caller.
+    for (const line of [`echo $(cat "a) rm -rf>${PROTECTED_DIST}`, `echo $(cat a`]) {
+      expect(tokenizeCommandLine(line).unread.length, line).toBeGreaterThan(0);
+      expect(deriveShellChanges(line).unjudgeable.length, line).toBeGreaterThan(0);
+    }
+  });
+
+  it('leaves the closed twin fully read, so the flag is not a blanket refusal', () => {
+    // Over-block fence: a substitution that DOES close must stay `unread: []`, or every
+    // command substitution in normal use would report as half-read. Only `unread` is
+    // asserted — this line does file an unjudgeable row, but for an unrelated reason
+    // (its parens read as a subshell marker), so pinning that count here would be pinning
+    // a coincidence.
+    expect(tokenizeCommandLine('echo $(cat a) done').unread).toEqual([]);
+  });
+});
+
+describe('COVENANT-18 §2-a A7 — an escape the table cannot translate is not knowledge', () => {
+  it('marks the word opaque instead of filing source spelling as written content', () => {
+    // Mutation caught: `scanAnsiCQuoted` returning the untranslated spelling while the word
+    // still reads as decided. The word text becomes the `content` of CONFIDENT file-change
+    // evidence, so `$'\x64ist'` would be filed as the literal `\x64ist` while bash writes
+    // `dist` — a judge reading written content then compares a string that never existed and
+    // upholds, with no unjudgeable row to show the question was never answered.
+    //
+    // Completing the escape table is NOT the fix and must not become one: the next unlisted
+    // escape reproduces this exactly. Declining to claim knowledge closes it once.
+    const derivation = deriveShellChanges(`echo $'\\x64ist' > ${UNPROTECTED}`);
+
+    expect(derivation.evidence).toEqual([]);
+    expect(derivation.unjudgeable.length).toBeGreaterThan(0);
+  });
+
+  it('still files real evidence for a string the table fully decodes', () => {
+    // Over-block fence and the other end: opacity must attach to the untranslated escape,
+    // not to `$'…'` as a form. A fully decoded constant is decided, and A7 exists precisely
+    // so that its DECODED bytes reach the evidence axis.
+    const derivation = deriveShellChanges(`echo $'a\\tb' > ${UNPROTECTED}`);
+
+    expect(derivation.evidence).toEqual([
+      { path: UNPROTECTED, content: 'a\tb\n', mode: 'truncate' },
+    ]);
+  });
+});
+
+describe('COVENANT-18 §2-a A6/A5 — the evidence axis accepts what the judging axis does', () => {
+  it('computes a >| write, on the plain and fd-prefixed spellings', () => {
+    // Mutation caught: A6 landing in `scanRedirect` and the detection rules but not in
+    // `STDOUT_WRITE_OPERATORS`. The tokenizer emits `>|` as a write operator and the rules
+    // grade it by the `>` it contains, so an omission here files a fully computable write as
+    // `does not carry stdout` — the evidence axis refusing what the judging axis accepted,
+    // which is a skip row standing in for a fact that was available all along.
+    for (const line of [`echo x >| ${UNPROTECTED}`, `echo x 1>| ${UNPROTECTED}`]) {
+      expect(deriveShellChanges(line).evidence, line).toEqual([
+        { path: UNPROTECTED, content: 'x\n', mode: 'truncate' },
+      ]);
+    }
+  });
+
+  it('sees a directory change hidden behind a leading assignment', () => {
+    // Mutation caught: `movesDirectory` reading `words[0]` while `deriveCommand` reads past
+    // assignments. `FOO=1 cd sub` moves the directory exactly as `cd sub` does, and missing
+    // it is not a silent skip — every relative target on the line would then be resolved
+    // against the repo root and filed as CONFIDENT evidence for a path never touched.
+    const derivation = deriveShellChanges('FOO=1 cd sub && echo x > out.txt');
+
+    expect(derivation.evidence).toEqual([]);
+    expect(derivation.unjudgeable.length).toBeGreaterThan(0);
   });
 });

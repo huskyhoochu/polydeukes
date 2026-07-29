@@ -60,7 +60,11 @@ const DIRECTORY_CHANGE_COMMANDS = new Set(['cd', 'pushd', 'popd']);
 
 // The redirect spellings that carry stdout — the only stream whose bytes this layer can
 // compute. `1>` IS `>` by fd, so demoting it would turn a computable write into a skip.
-const STDOUT_WRITE_OPERATORS = new Set(['>', '>>', '1>', '1>>']);
+// `>|` and `1>|` join the set with A6: the tokenizer emits them as write operators and the
+// detection rules grade them by the `>` they contain, so leaving them out here files a
+// computable write as `does not carry stdout` — the evidence axis refusing a write the
+// judging axis already accepted (COVENANT-18 §2-a A6, completed in review).
+const STDOUT_WRITE_OPERATORS = new Set(['>', '>>', '>|', '1>', '1>>', '1>|']);
 
 // Rules that detect a write with no redirect. The redirect rule is consulted separately,
 // for its fd-reference boundary (`2>&1` is neither a write nor a signal).
@@ -288,9 +292,13 @@ export function deriveShellChanges(commandLine: string): ShellDerivation {
   // A directory change is line-scoped and order-blind: a write before it is as ambiguous
   // as one after, since only execution decides which base each relative target resolves to.
   const movesDirectory = result.commands.some((command) => {
-    const first = command.words[0];
+    // Past leading assignments, like `deriveCommand` — `FOO=1 cd sub` moves the directory
+    // exactly as `cd sub` does. Missing it is not a silent skip: every relative target on
+    // the line would then be resolved against the repo root and filed as CONFIDENT evidence
+    // for a path the command never touched.
+    const name = commandNameWord(command);
     return (
-      first !== undefined && !first.opaque && DIRECTORY_CHANGE_COMMANDS.has(commandBasename(first))
+      name !== undefined && !name.opaque && DIRECTORY_CHANGE_COMMANDS.has(commandBasename(name))
     );
   });
 
