@@ -268,7 +268,14 @@ and remembers what was decided. The two layers compose; they do not compete.
      so is the scope. Commit-only protection is a policy — the checkpoint where work is
      promoted into history; session-only protection is never a policy, only a visibility
      fact (what no commit can see). Scope algebra is additive-only: a config line can
-     widen a surface's watch, never quietly strip one. -->
+     widen a surface's watch, never quietly strip one.
+     Parked candidate (2026-07-30, alternative-benchmark session): AI did not change the
+     essence of software development — it revealed it. While code was expensive, code was
+     easy to mistake for the asset; when AI collapsed the price of code, what stayed
+     valuable was what had always been the asset — judgment, verification, records,
+     discipline. Hype vocabulary has to claim the essence changed in order to sell; a
+     discipline framework sells the invariant. Pairs with STORY.md's second layer
+     (mortal code, immortal record). -->
 
 ## Proven on itself
 
