@@ -39,7 +39,11 @@ later as a confusing failure rather than an obvious one:
 1. **`vitest.config.ts` alias** — map `@polydeukes/core` to its *source*. The exports map points
    at `dist`, so without the alias `pnpm -F <pkg> test` breaks on a clean clone.
 2. **`release-please-config.json` `extra-files`** — the list is explicit, so a new package's
-   version file is not bumped until it is registered.
+   version file is not bumped until it is registered. **If a release PR is already open,
+   editing the config is not enough**: release-please compares release notes, not the file
+   list it would write, so it logs `PR #N remained the same` and leaves the stale branch in
+   place while the workflow still reports success. Close the PR (`gh pr close <N>
+   --delete-branch`) and rerun the workflow so it recomputes from the current config.
 3. **`workspace:^` for internal dependencies** — never a version range.
 
 ## Shared dependency versions go through the pnpm catalog
