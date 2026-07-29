@@ -100,13 +100,16 @@ What blocks and why:
   (`rm packages/core/dist;echo 'x`) — blocks as an `untokenizable command line`. The scan strips
   quotes and backslashes (the shell would too) and reads the resulting line together with its
   metacharacter-split fragments as a union (COVENANT-07d), so closing the glued spellings could
-  not withdraw a spaced one. **It closes only what is decidable from the text**: a glob still
-  hides its target here (`rm packages/core/dist* 'x` passes — the fallback has no opaque-token
-  notion, so the tokenized path's `skipped` disposition does not reach it), and a QUOTED word
-  keeps its metacharacters through successful tokenization, so `bash -c "rm -rf
-  packages/core/dist;echo x"` reaches no mention and is not blocked (it leaves a
-  `skipped shell-unjudgeable` row rather than passing silently — a separate axis, open as
-  COVENANT-07e). Never read tokenizer failure as the safe direction.
+  not withdraw a spaced one. **It closes only what is decidable from the text, and the rest is a
+  declared limit rather than pending work** — a glob keeps its target hidden here
+  (`rm packages/core/dist* 'x`), and a quoted word carries its metacharacters through successful
+  tokenization, so `bash -c "rm -rf packages/core/dist;echo x"` reaches no mention. Both leave a
+  `skipped shell-unjudgeable` row. **That row is the contract, not the block**: predicting a
+  shell command's target from its text is undecidable, so the invariant this axis actually holds
+  is that no call passes unrecorded — a new spelling that lands in `skipped` is this limit
+  showing itself, not a defect to open a ticket for. A spelling that passes with NO row, or with
+  `passed` for a call that was never judged, is the defect class (that was blocker B7). Never
+  read tokenizer failure as the safe direction.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
   absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
