@@ -31,7 +31,12 @@
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
 import type { CovenantRegistration } from './dispatch.js';
-import { pathCandidates, pathSegments, resolveDotSegments } from './mention.js';
+import {
+  pathCandidates,
+  pathSegments,
+  resolveDotSegments,
+  untokenizableLineCandidates,
+} from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.js';
 
@@ -241,7 +246,10 @@ function judgeShellCall(
       // Tokenize failed: the shell would still remove quotes, so strip them before the
       // segment comparison — otherwise the very quoting that broke tokenization defeats the
       // fallback. Over-joining unrelated words only ever widens what breaks, never a hole.
-      if (tokenNamesTranscript(line.replace(/['"]/g, ''), transcript)) {
+      // The fallback-only decomposition then covers the metachar-glued spellings (`<transcript>;echo
+      // x`) that no tokenizer was left to cut apart (COVENANT-07d).
+      const candidates = untokenizableLineCandidates(line.replace(/['"]/g, ''));
+      if (candidates.some((candidate) => tokenNamesTranscript(candidate, transcript))) {
         return `untokenizable command line names the session transcript ${transcript.path}`;
       }
       continue;

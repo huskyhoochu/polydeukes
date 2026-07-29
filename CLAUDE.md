@@ -96,10 +96,10 @@ What blocks and why:
   class of its own, reached before the allowlist, so an allowlisted head (`echo`, `printf`) does
   not save a redirect into a protected path. A line the tokenizer cannot parse falls back to a
   quote-stripped mention scan with no first token to read, so the allowlist cannot vouch for it
-  either: a protected path standing there as its own word blocks as an `untokenizable command
-  line`. **That fallback splits on whitespace only, so a path glued to a shell metacharacter
-  (`rm packages/core/dist;echo 'x`) is not caught and passes** — a measured fail-open, open as
-  COVENANT-07d. Never read tokenizer failure as the safe direction.
+  either: a protected path standing there as its own word — or glued to a shell metacharacter
+  (`rm packages/core/dist;echo 'x`) — blocks as an `untokenizable command line`. The scan reads
+  the dequoted line and its metacharacter-split fragments as a union (COVENANT-07d), so closing
+  the glued spelling could not withdraw a spaced one.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
   absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every

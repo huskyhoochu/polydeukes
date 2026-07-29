@@ -131,6 +131,28 @@ export function pathCandidates(token: string): string[] {
 }
 
 /**
+ * Extract path candidates from a whole command line the tokenizer REFUSED — the fallback-only
+ * counterpart of {@link pathCandidates} (COVENANT-07d §2-c).
+ *
+ * The input precondition is the opposite one. `pathCandidates` receives a word `tokenizeCommandLine`
+ * already cut at every shell operator, so its separator set never needed them; the two
+ * untokenizable-fallback branches (shell-mod's and transcript-mod's) have no tokenizer left and
+ * hand over the raw dequoted line, where nothing consumed those operators and a path glued to one
+ * (`packages/core/dist;echo x`) stayed a single unmatchable segment. So the set here is wider by
+ * exactly what the tokenizer would have eaten — `;` `&` `|` `<` `>` — and a tokenized input never
+ * reaches this function.
+ *
+ * The line itself stays a candidate alongside the fragments: the union is what keeps a protected
+ * path whose own segment carries an operator (`pkg/a&b/dist`) matchable, and an added form can
+ * only add a match, never withdraw one (COVENANT-07b's shape). `:` stays out for the reason
+ * {@link pathCandidates} records — shattering URLs over-blocks — so a colon-joined list is one
+ * candidate here too.
+ */
+export function untokenizableLineCandidates(line: string): string[] {
+  return [line, ...line.split(/[;&|<>]+/).filter((fragment) => fragment !== '')];
+}
+
+/**
  * Recursively test whether any string value inside `value` matches `path` by path-segment
  * containment (ancestor / descendant / equal). Each string is split into path candidates,
  * each tested via {@link pathMatchesProtected}. Only string values are scanned; keys,
