@@ -36,6 +36,11 @@ human in a hurry — can quietly remove.
      written with the edit tool and sailed through when delivered by a heredoc — not
      forgiven, simply never judged. The fix's shape is the story: what can be computed is
      judged, and what cannot leaves a recorded "could not judge" instead of silence.
+     CAVEAT (2026-07-29, B7 / COVENANT-07d): do not publish that last sentence as written —
+     it has a live counterexample. When a line fails to tokenize and a protected path is
+     glued to a shell metacharacter, the call reaches no judgment and records `passed`, not
+     "could not judge". Publish this story only once 07d closes, or publish it with the
+     limit named.
      Parked candidate (2026-07-28, COVENANT-07c): protecting one file the cheap way — as a
      path with ancestors — quietly made the whole home directory a protected zone;
      `cd /home/<user>` was refused for two weeks and nobody noticed. The fix was a narrower
