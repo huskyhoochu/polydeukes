@@ -12,7 +12,7 @@
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import { mentionsPath } from './mention.js';
+import { mentionsPath, untokenizableLineCandidates } from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 
 /**
@@ -143,8 +143,9 @@ function judgeCommand(
  * For each `toolCalls[i]` whose `name` exactly equals a non-empty `shellToolNames` entry,
  * every string value under a non-empty `commandArgNames` key is analyzed as a shell line;
  * a shell call with zero such strings breaks (a misassembled arg name must not degrade
- * into universal uphold). A tokenize failure breaks iff the raw line mentions a protected
- * path. Non-shell calls, `subagentSpawns`, and `userMessages` are never judged.
+ * into universal uphold). A tokenize failure breaks iff the dequoted line — or one of its
+ * shell-metacharacter fragments (COVENANT-07d) — mentions a protected path. Non-shell calls,
+ * `subagentSpawns`, and `userMessages` are never judged.
  */
 export function judgeShellModification(
   input: CovenantInput,
@@ -173,13 +174,18 @@ export function judgeShellModification(
     for (const line of lines) {
       const result = tokenizeCommandLine(line);
       if (!result.ok) {
-        // Tokenize failed: the shell would still remove quotes, so a quote-split target like
-        // `sr"c"` becomes `src` on execution. Strip quote characters before the segment-match
-        // so the fallback is not defeated by the very quoting that broke tokenization; this
-        // stays fail-closed (a path named in an untokenizable line breaks). Quote removal here
-        // may over-join unrelated words, which only ever widens what breaks — never a hole.
-        const dequoted = line.replace(/['"]/g, '');
-        const hit = protectedPaths.find((path) => mentionsPath(dequoted, path));
+        // Tokenize failed: the shell would still remove quotes and backslash escapes, so a
+        // split target like `sr"c"` or `sr\c` becomes `src` on execution. Strip both before the
+        // segment-match so the fallback is not defeated by the very escaping that broke
+        // tokenization; this stays fail-closed (a path named in an untokenizable line breaks).
+        // Removal here may over-join unrelated words, which only ever widens what breaks — never
+        // a hole. The fallback-only decomposition then covers the metachar-glued forms
+        // (`…/dist;echo x`) that no tokenizer was left to cut apart (COVENANT-07d).
+        const dequoted = line.replace(/['"\\]/g, '');
+        const candidates = untokenizableLineCandidates(dequoted);
+        const hit = protectedPaths.find((path) =>
+          candidates.some((candidate) => mentionsPath(candidate, path)),
+        );
         if (hit !== undefined) {
           return {
             upheld: false,

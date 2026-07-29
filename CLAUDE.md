@@ -95,15 +95,24 @@ What blocks and why:
   heredocs and herestrings) carry real evidence and block like a `Write` — that is a refusal
   class of its own, reached before the allowlist, so an allowlisted head (`echo`, `printf`) does
   not save a redirect into a protected path. A line the tokenizer cannot parse falls back to a
-  quote-stripped mention scan with no first token to read, so the allowlist cannot vouch for it
-  either: a protected path standing there as its own word blocks as an `untokenizable command
-  line`. **That fallback splits on whitespace only, so a path glued to a shell metacharacter
-  (`rm packages/core/dist;echo 'x`) is not caught and passes** — a measured fail-open, open as
-  COVENANT-07d. Never read tokenizer failure as the safe direction.
+  mention scan with no first token to read, so the allowlist cannot vouch for it either: a
+  protected path standing there as its own word — or glued to a shell metacharacter
+  (`rm packages/core/dist;echo 'x`) — blocks as an `untokenizable command line`. The scan strips
+  quotes and backslashes (the shell would too) and reads the resulting line together with its
+  metacharacter-split fragments as a union (COVENANT-07d), so closing the glued spellings could
+  not withdraw a spaced one. **It closes only what is decidable from the text**: a glob still
+  hides its target here (`rm packages/core/dist* 'x` passes — the fallback has no opaque-token
+  notion, so the tokenized path's `skipped` disposition does not reach it), and a QUOTED word
+  keeps its metacharacters through successful tokenization, so `bash -c "rm -rf
+  packages/core/dist;echo x"` reaches no mention and is not blocked (it leaves a
+  `skipped shell-unjudgeable` row rather than passing silently — a separate axis, open as
+  COVENANT-07e). Never read tokenizer failure as the safe direction.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
   absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
-  spelling, and the home directory is never a protected ancestor. A reader outside that
+  spelling, and the home directory is never a protected ancestor. That read absolution is the
+  tokenized path's — on a line the tokenizer refuses there is no head to vouch for, so an
+  untokenizable read of the transcript blocks like a write does. A reader outside that
   allowlist (`jq`, `bat`) still breaks — the allowlist vouches for the command, not the intent.
   Destroying out-of-repo ancestors is out of observation scope by design — the agent's own deny
   policy owns that ground.
