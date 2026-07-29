@@ -1,6 +1,6 @@
 {
   "name": "polydeukes",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A development discipline framework for building alongside an AI coding partner — deterministic covenants, a verifiable work ledger, local memory, and adversarial verification. Pre-alpha; design stage.",
   "keywords": [
     "harness",
