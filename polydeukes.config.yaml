@@ -1,4 +1,10 @@
-# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+# yaml-language-server: $schema=packages/core/schema/polydeukes.schema.json
+# Repo-relative on purpose: `@polydeukes/core` is a workspace package here, not a root
+# dependency, so `node_modules/@polydeukes/core/...` resolves to nothing and the editor silently
+# loses schema validation. That spelling is unverified for consumers too — the core arrives as a
+# transitive dep of the umbrella, so under pnpm it is not at a consumer's project root either.
+# docs/configuration.md still ships it; the correct consumer form needs a clean-install
+# measurement, not a guess.
 
 languages:
   typescript:

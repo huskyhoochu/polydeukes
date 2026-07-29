@@ -286,6 +286,12 @@ instead of blocking.
      that split belongs here when the evidence section next opens; pairs with the v0.2
      round paragraph (the witnessed/blocked ratio after the valve moved behind the
      verdict is that round's headline number).
+
+     Refined (DOC-gate, 2026-07-29): the preserve/correct line runs *through* a dated
+     post, not around it. Period-correct vocabulary stays (`waiver` was the right word in
+     July); a term already banned when written is corrected; a superseded plan claim keeps
+     its text and gains a note. Preserved is what we believed and measured — corrected is
+     what was wrong on the day it shipped.
      This section is the whitepaper's proof and should stay current. -->
 
 ## Where it stands

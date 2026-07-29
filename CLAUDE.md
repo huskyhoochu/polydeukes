@@ -92,7 +92,14 @@ What blocks and why:
   segments (a union). Globs and `$VAR` are never expanded — sharing one token with a protected
   path they block as opaque; as uncomputable mutation targets they leave a `skipped` telemetry
   row instead of passing silently. Computable shell writes (literal `echo` redirects, clean
-  heredocs and herestrings) carry real evidence and block like a `Write`.
+  heredocs and herestrings) carry real evidence and block like a `Write` — that is a refusal
+  class of its own, reached before the allowlist, so an allowlisted head (`echo`, `printf`) does
+  not save a redirect into a protected path. A line the tokenizer cannot parse falls back to a
+  quote-stripped mention scan with no first token to read, so the allowlist cannot vouch for it
+  either: a protected path standing there as its own word blocks as an `untokenizable command
+  line`. **That fallback splits on whitespace only, so a path glued to a shell metacharacter
+  (`rm packages/core/dist;echo 'x`) is not caught and passes** — a measured fail-open, open as
+  COVENANT-07d. Never read tokenizer failure as the safe direction.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
   absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
@@ -101,7 +108,10 @@ What blocks and why:
   Destroying out-of-repo ancestors is out of observation scope by design — the agent's own deny
   policy owns that ground.
 - **Disciplines** declared in the config judge beyond path mention (delta / command / context
-  families) — read `polydeukes.config.yaml` for the live set and each entry's why.
+  families) — read `polydeukes.config.yaml` for the live set and each entry's why. The context
+  family judges session history, so the commit surface — which injects no transcript — always
+  lands it as `skipped`. That family has no second layer behind it, and the absence is a
+  permanent condition of the surface rather than a gap to close.
 - Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored):
   `passed` / `blocked` / `witnessed` / `advised` / `skipped` (rows older than COVENANT-17 say
   `bypassed`; the reader folds them into `witnessed`, one-way).

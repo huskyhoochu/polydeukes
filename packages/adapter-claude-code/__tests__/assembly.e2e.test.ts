@@ -116,8 +116,9 @@ function bashPayload(command: string) {
 }
 
 describe('context family across the session boundary (COVENANT-13 §4.5)', () => {
-  // The live config's `dependency-needs-npm-view` entry is scoped to package manifests,
-  // which are NOT protected paths — so these payloads reach the context family alone,
+  // The live config's `manifest-needs-npm-view` entry is scoped to package manifests, which
+  // are not protected AT THE SESSION SURFACE this suite drives (CONFIG-08 put them on the
+  // commit surface's additive list) — so these payloads reach the context family alone,
   // with no meta-covenant verdict mixed in. Until now the whole family was exercised by
   // hand at assembly time and pinned by nothing; the first review found it inert on the
   // very cases it exists for, and the third found the session boundary mishandled.
