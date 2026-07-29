@@ -22,6 +22,64 @@ in code, package names, CLI, comments, and commit messages.
 
 `core` and `adapter-*` packages keep their plain names.
 
+## Judgment vocabulary
+
+These five words are the telemetry contract. A row in `.polydeukes/roi.log` carries exactly
+one of them, and tests, docs, and CLI output must use the same word for the same event.
+
+| Verdict | Means |
+|---------|-------|
+| `passed` | The call was judged and upheld the covenant. |
+| `blocked` | The call was judged and broke it. |
+| `witnessed` | A **blocked** verdict a human opened in person. Never silent, never a clean call — the valve is consulted only after a block. |
+| `advised` | The commit surface at `enforce: advise` recorded a break without stopping it. |
+| `skipped` | The call reached a registration that could not judge it (no evidence channel, or a shell line whose target is not computable). **Not a pass** — it is the recorded absence of a judgment. |
+
+Rows written before `COVENANT-17` say `bypassed`; the reader folds them into `witnessed`,
+one-way. Never write `bypassed` in new code.
+
+## Discipline families
+
+A `disciplines:` entry belongs to exactly one family, decided by which predicate key it
+carries. The family determines what evidence the judgment needs.
+
+| Family | Key | Judges |
+|--------|-----|--------|
+| **delta** | `forbid` | Added-direction content of a file change. Existing debt is forgiven; only new occurrences break. |
+| **command** | `forbidCommand` | The command line itself. No file evidence needed. |
+| **context** | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one. Needs a transcript channel; without one the entry records `skipped`. |
+| **path** | (protected paths) | Whole-path mention or mutation target. |
+
+`when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
+nothing else.
+
+## Surfaces and axes
+
+**Two surfaces observe the same promises.** The **session surface** (PreToolUse hook) judges a
+declared tool call before it runs; the **commit surface** (`pdks covenant check` under
+lefthook) re-observes the same change as a staged diff. A commit-time verdict is a second
+observation, not a new change — which is why `enforce` belongs to the observer, not to the
+shared judgment vocabulary.
+
+**Three axes reach the judge.** The **tool axis** (Edit/Write/…) carries proven `fileChange`
+evidence. The **shell axis** (Bash) carries a command line whose target is often not
+computable before execution. The **transcript** is the session's own record, judged by
+whole-path equality rather than as a protected ancestor.
+
+## Meta-covenants
+
+Three registrations protect the judging chain itself: **self-mod** (mutations to protected
+paths through the tool axis), **shell-mod** (the same through the shell axis), and
+**transcript-mod** (writes to the live session transcript). They are covenants like any
+other — the vocabulary above applies to them unchanged.
+
+## Declared limit vs defect
+
+A **declared limit** is a case the judge cannot decide and says so — it leaves a `skipped` row
+and passes. A **defect** is a call that passes with no row at all, or is recorded `passed`
+while never judged. The two look alike in a diff and are opposite in meaning; the telemetry row
+is what separates them. (Why the shell axis has limits at all: `CLAUDE.md`.)
+
 ## Term usage rules
 
 1. **Code / package names:** English concept word. `@polydeukes/covenant`, `upholdCovenant()`.

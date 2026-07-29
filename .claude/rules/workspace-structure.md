@@ -68,6 +68,22 @@ tsconfig sets `types: ["node"]`.
 **Caveat:** TS 7.0 ships **no programmatic compiler API** (planned for 7.1) — avoid depending on
 it in `core` until then.
 
+## Build-graph blind spots
+
+**Turbo's cache does not see the hook file.** A hook or gate artifact outside a package's
+declared inputs stays cached across a change that should invalidate it, so an e2e run can
+validate the previous build. When a change touches the assembly rather than a package's
+sources, verify against a fresh build rather than a cached task.
+
+**An import-only exports map blocks `createRequire`.** A package consumed through
+`createRequire` (as the git adapter's spawn path does) needs a `require` condition in its
+exports map; an `import`-only map fails at runtime while typechecking clean.
+
+**Verify the working tree after any parallel agent run.** Concurrent agents writing the same
+tree have produced corrupted intermediate states that no single agent's output revealed.
+`git status` plus a diff against `HEAD` is the check — the session hook only judges declared
+tool calls, so a child process's writes are outside its observation.
+
 ## npm `keywords` exempt the banned control vocabulary
 
 `domain-terms.md` bans `harness`/`guard`/`kb` from code, docs, and user-facing surfaces. The
