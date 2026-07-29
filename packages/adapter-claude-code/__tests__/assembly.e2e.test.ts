@@ -644,6 +644,10 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     // attributed to the entry id and never the common label. Since the CONFIG-08 review
     // widened covenant-vocabulary to the wildcard pair, adapter-git src is inside two
     // scopes — this pin also proves the widening reached the live config.
+    //
+    // The third row skips for a DIFFERENT reason: it is a context-family entry, and this
+    // run injects no transcript, so its evidence question cannot be asked at all. Two
+    // reasons share one lane, which is why the pin enumerates rather than counts.
     const result = runHook(
       bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
     );
@@ -652,6 +656,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     expect(skippedRows().map((r) => [r.label, r.subject])).toEqual([
       ['covenant-vocabulary', 'packages/adapter-git/src/collect.ts'],
       ['english-only-sources', 'packages/adapter-git/src/collect.ts'],
+      ['adapter-needs-knowledge-read', 'packages/adapter-git/src/collect.ts'],
     ]);
   });
 
@@ -803,7 +808,11 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
 
     expect(result.status).toBe(0);
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['passed']);
-    expect(skippedRows()).toEqual([]);
+    // Every entry that JUDGED this write is absent from the skip lane, and a computable
+    // derivation forbids the common shell-unjudgeable row — that pair is G3'. The one row
+    // left belongs to a context-family entry, which judged nothing: this run injects no
+    // transcript, so its question was unaskable rather than answered a second time.
+    expect(skippedRows().map((r) => r.label)).toEqual(['core-needs-knowledge-read']);
   });
 
   it('an append composing a real on-disk pre still blocks the banned addition (exit 2)', () => {
