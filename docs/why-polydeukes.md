@@ -47,7 +47,15 @@ human in a hurry — can quietly remove.
      path with ancestors — quietly made the whole home directory a protected zone;
      `cd /home/<user>` was refused for two weeks and nobody noticed. The fix was a narrower
      claim, not a wider net: judge exactly one file, by equality, and declare everything
-     outside the project root out of scope. Enforcement earns trust by claiming less. -->
+     outside the project root out of scope. Enforcement earns trust by claiming less.
+     Parked candidate (2026-07-29, COVENANT-18 part A): the same defect was closed on one code
+     path and left standing on its sibling. A backslash glued to a protected path was stripped
+     back off on lines the tokenizer failed to read, but on lines it read successfully the
+     backslash stayed — so the judge was reading bytes the shell would never pass. The story is
+     in how it surfaced: not from a test, but from diffing the verdict of 2,815 real command
+     lines before and after the change. Exactly one line flipped, and treating that flip as an
+     over-block to be reverted would have re-opened the bypass. The discipline sentence is
+     "every changed verdict gets a written reason". -->
 
 ## What it puts on one thin core
 

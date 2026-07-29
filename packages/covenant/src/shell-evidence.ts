@@ -14,6 +14,7 @@
  */
 
 import {
+  commandNameWord,
   isNestedShellCommand,
   type RedirectToken,
   type SimpleCommand,
@@ -229,8 +230,10 @@ function deriveCommand(
 ): void {
   const first = command.words[0];
   // A nested shell re-parses its arguments: a reinterpretation boundary, never parsed into.
-  if (first !== undefined && isNestedShellCommand(commandBasename(first))) {
-    derivation.unjudgeable.push({ reason: `nested shell execution: ${first.text}` });
+  // Read past any leading assignment, or `FOO=1 bash -c …` files nothing at all.
+  const name = commandNameWord(command);
+  if (name !== undefined && isNestedShellCommand(commandBasename(name))) {
+    derivation.unjudgeable.push({ reason: `nested shell execution: ${name.text}` });
     return;
   }
 

@@ -501,8 +501,6 @@ describe('deriveShellChanges — tokenize failure is a recorded common skip (aud
     // (fail-open), or throwing out of the pure function instead of filing the reason.
     const failing = [
       "echo 'x > f.ts", // unclosed quote
-      'echo x > >(tee f.ts)', // process substitution — missing/odd redirect target
-      'cat > f.ts <<$V', // opaque heredoc delimiter
     ];
 
     for (const command of failing) {
@@ -512,6 +510,34 @@ describe('deriveShellChanges — tokenize failure is a recorded common skip (aud
       expect(result.unjudgeable[0].path).toBeUndefined();
       expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('deriveShellChanges — forms COVENANT-18 moved out of the tokenize-failure bucket', () => {
+  it('files a pathless entry for a process-substitution target, now that it tokenizes', () => {
+    // Was a member of the G1 failing-forms list above. §2-a A8 makes the spaced `>(…)`
+    // target readable, so the line reaches precise judgment — where the target is opaque
+    // and its real path (a /dev/fd entry) is knowable only to execution. Mutation caught:
+    // the readable target being taken for a literal filename, which files fiction as fact.
+    const result = deriveShellChanges('echo x > >(tee f.ts)');
+
+    expect(result.evidence).toEqual([]);
+    expect(result.unjudgeable).toHaveLength(1);
+    expect(result.unjudgeable[0].path).toBeUndefined();
+    expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the write target of a "<<$V" heredoc, now that the delimiter no longer fails', () => {
+    // The same list's other migrated member. §2-a A3 deletes the opaque-delimiter refusal
+    // (bash never expands a delimiter), so the `> f.ts` write is read and the entry gains
+    // the path the common bucket could not carry — with no body, the content stays
+    // uncomputed. Mutation caught: the migration turning a recorded skip into silence.
+    const result = deriveShellChanges('cat > f.ts <<$V');
+
+    expect(result.evidence).toEqual([]);
+    expect(result.unjudgeable).toHaveLength(1);
+    expect(result.unjudgeable[0].path).toBe('f.ts');
+    expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
   });
 });
 

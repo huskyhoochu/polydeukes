@@ -2,9 +2,10 @@
  * Bash command-line tokenizer + mutation-target extraction core (COVENANT-04a).
  *
  * Pure functions only — zero I/O, spawn, or logging. A hand-rolled single-pass character
- * scanner recognizes quote state (`'`, `"`, `\`), control operators (`;` `&&` `||` `|` `&`),
- * redirect operators (`>` `>>` `<` `2>` `&>`, attached `>f`), and marks tokens opaque when
- * their static value is unknowable (command substitution, parameter expansion, globs).
+ * scanner recognizes quote state (`'`, `"`, `$'…'`, `\`), control operators
+ * (`;` `&&` `||` `|` `&`), redirect operators (`>` `>>` `>|` `<` `2>` `&>`, attached `>f`),
+ * and marks tokens opaque when their static value is unknowable (command substitution,
+ * parameter expansion, globs).
  *
  * Fail-closed: no input ever throws. An unclosed quote yields `{ ok: false }`; in
  * {@link extractMutations} a tokenize failure becomes one indeterminate entry. Block/allow
@@ -89,14 +90,102 @@ export function isNestedShellCommand(commandName: string): boolean {
   return NESTED_SHELL_COMMANDS.has(commandName);
 }
 
-/** True if a raw (unquoted) fragment carries a dynamic construct whose value is unknowable. */
-function fragmentIsOpaque(fragment: string): boolean {
-  return (
-    fragment.includes('$') ||
-    fragment.includes('`') ||
-    fragment.includes('*') ||
-    fragment.includes('?')
-  );
+// A `NAME=VALUE` assignment word, the prefix bash allows (any number of them) before the
+// command name.
+const ASSIGNMENT_WORD = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+/**
+ * The word that names the command, skipping any leading assignments — undefined when the
+ * command is nothing but assignments (COVENANT-18 §2-a A5).
+ *
+ * Read at the nested-shell boundary only. There an unskipped assignment hides `bash` behind
+ * `FOO=1` and the line passes with confidence; for the read-only allowlist and precedent
+ * evidence the same miss is the conservative direction, so those keep reading `words[0]`.
+ */
+export function commandNameWord(command: SimpleCommand): WordToken | undefined {
+  let i = 0;
+  while (i < command.words.length && ASSIGNMENT_WORD.test(command.words[i].text)) i += 1;
+  return command.words[i];
+}
+
+/**
+ * True if a double-quoted fragment carries a dynamic construct whose value is unknowable.
+ * Only expansion and command substitution run inside double quotes — bash does not glob
+ * there, so `*` and `?` are opacity grounds outside quotes only (COVENANT-18 §2-a A4).
+ */
+function quotedFragmentIsOpaque(fragment: string): boolean {
+  return fragment.includes('$') || fragment.includes('`');
+}
+
+// Inside double quotes bash removes a backslash only before these characters; before
+// anything else it stays literal content (`"a\|b"` is the four bytes `a\|b`). The same
+// set decides the pairing, so an escaped `"` never closes the string (§2-a A1).
+const DOUBLE_QUOTE_ESCAPES = new Set(['$', '`', '"', '\\']);
+
+/**
+ * Scan a double-quoted string whose opening `"` sits at `open`. Returns the content bash
+ * would pass and the index just past the closing quote, or null when it never closes.
+ */
+function scanDoubleQuoted(line: string, open: number): { text: string; next: number } | null {
+  let text = '';
+  let i = open + 1;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '\\') {
+      const next = line[i + 1];
+      // `\`+newline is a line continuation inside double quotes too — both characters go.
+      if (next === '\n') {
+        i += 2;
+        continue;
+      }
+      if (next !== undefined && DOUBLE_QUOTE_ESCAPES.has(next)) {
+        text += next;
+        i += 2;
+        continue;
+      }
+      text += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === '"') return { text, next: i + 1 };
+    text += ch;
+    i += 1;
+  }
+
+  return null;
+}
+
+// The ANSI-C escapes decoded inside `$'…'`. Deliberately not the whole table: an escape
+// that is not listed keeps its backslash, which is bash's own answer for one it does not
+// recognize (measured: `$'\q'` is the two bytes `\q`).
+const ANSI_C_ESCAPES: Record<string, string> = { n: '\n', t: '\t', "'": "'", '\\': '\\' };
+
+/**
+ * Scan an ANSI-C quoted string (`$'…'`) whose opening `'` sits at `open`. Returns the
+ * DECODED bytes and the index just past the closing quote, or null when it never closes.
+ * Decoding is not cosmetic: the word text becomes written-content evidence downstream, so
+ * handing back the source spelling would record bytes bash never writes (§2-a A7).
+ */
+function scanAnsiCQuoted(line: string, open: number): { text: string; next: number } | null {
+  let text = '';
+  let i = open + 1;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '\\') {
+      const next = line[i + 1];
+      if (next === undefined) break;
+      text += ANSI_C_ESCAPES[next] ?? `\\${next}`;
+      i += 2;
+      continue;
+    }
+    if (ch === "'") return { text, next: i + 1 };
+    text += ch;
+    i += 1;
+  }
+
+  return null;
 }
 
 type ScannedWord = { text: string; opaque: boolean };
@@ -153,12 +242,21 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
 
     if (ch === '"') {
       // Double quotes: expansions still apply, so scan for opacity within.
-      const close = line.indexOf('"', i + 1);
-      if (close === -1) return null;
-      const inner = line.slice(i + 1, close);
-      if (fragmentIsOpaque(inner)) opaque = true;
-      text += inner;
-      i = close + 1;
+      const quoted = scanDoubleQuoted(line, i);
+      if (quoted === null) return null;
+      if (quotedFragmentIsOpaque(quoted.text)) opaque = true;
+      text += quoted.text;
+      i = quoted.next;
+      continue;
+    }
+
+    if (ch === '$' && line[i + 1] === "'") {
+      // ANSI-C quoting: bash decodes the escapes and passes a string constant, so the
+      // word is decided — an expansion it is not, and marking it opaque would be wrong.
+      const quoted = scanAnsiCQuoted(line, i + 1);
+      if (quoted === null) return null;
+      text += quoted.text;
+      i = quoted.next;
       continue;
     }
 
@@ -195,8 +293,30 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
 function matchParen(line: string, open: number): number {
   let depth = 0;
   for (let i = open; i < line.length; i++) {
-    if (line[i] === '(') depth += 1;
-    else if (line[i] === ')') {
+    const ch = line[i];
+
+    // Quoting suspends the count: a `)` inside `"[^)]+"` is regex content, not a close paren.
+    // Counting it ends the substitution early and every quote after it pairs one position off
+    // (COVENANT-18 §2-a A9) — the same context-blindness the `"` pairing had before A1.
+    if (ch === '\\') {
+      i += 1;
+      continue;
+    }
+    if (ch === "'") {
+      const close = line.indexOf("'", i + 1);
+      if (close === -1) return line.length;
+      i = close;
+      continue;
+    }
+    if (ch === '"') {
+      const quoted = scanDoubleQuoted(line, i);
+      if (quoted === null) return line.length;
+      i = quoted.next - 1;
+      continue;
+    }
+
+    if (ch === '(') depth += 1;
+    else if (ch === ')') {
       depth -= 1;
       if (depth === 0) return i + 1;
     }
@@ -219,12 +339,20 @@ function scanRedirect(line: string, i: number): { operator: string; length: numb
   let digitEnd = i;
   while (digitEnd < line.length && line[digitEnd] >= '0' && line[digitEnd] <= '9') digitEnd += 1;
   if (digitEnd > i && line[digitEnd] === '>') {
+    // `|` joins the tail set for `N>|`, which bash accepts as a write (`&>|` does not
+    // exist — a syntax error — so the `&>` family below is left alone).
     const tail = line[digitEnd + 1];
-    const end = tail === '>' || tail === '&' ? digitEnd + 2 : digitEnd + 1;
+    const end = tail === '>' || tail === '&' || tail === '|' ? digitEnd + 2 : digitEnd + 1;
     return { operator: line.slice(i, end), length: end - i };
   }
   if (three === '&>>') return { operator: '&>>', length: 3 };
-  if (two === '>>' || two === '&>' || two === '>&') return { operator: two, length: 2 };
+  // `>|` truncates past `noclobber` — a write like `>`, and graded as one by the operator's
+  // `>` (COVENANT-18 §2-a A6).
+  // `<&` is the read-direction twin of `>&` and closes an fd as `<&-`; without it the `-`
+  // never reads as a target and a valid line dies (COVENANT-18 §2-a A10).
+  if (two === '>>' || two === '>|' || two === '&>' || two === '>&' || two === '<&') {
+    return { operator: two, length: 2 };
+  }
   if (ch === '>') return { operator: '>', length: 1 };
   // Heredoc family (04c): longest match first so `<<EOF` is never a lone `<` with an
   // empty (fail-closing) target — `<<<` herestring, `<<-` tab-stripping heredoc, `<<`.
@@ -334,21 +462,34 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
     if (redirect !== null) {
       let j = i + redirect.length;
       while (line[j] === ' ' || line[j] === '\t') j += 1;
+      // A spaced process substitution is the redirect's target (`echo x > >(wc -c)` is
+      // valid bash): consume the whole `(…)` as ONE opaque target, exactly as the attached
+      // word-level branch above does — scanning it as an ordinary word would leak the inner
+      // command's arguments to top level, where a first-word allowlist could absolve them.
+      if ((line[j] === '<' || line[j] === '>') && line[j + 1] === '(') {
+        const end = matchParen(line, j + 1);
+        current.redirects.push({
+          operator: redirect.operator,
+          target: { text: line.slice(j, end), opaque: true },
+        });
+        i = end;
+        continue;
+      }
       const scanned = scanWord(line, j);
       if (scanned === null) return { ok: false, reason: 'unclosed quote' };
       // A redirect with no target is a bash syntax error — fail closed, never a confident
       // empty-string target.
       if (scanned.word.text === '') return { ok: false, reason: 'missing redirect target' };
       if (redirect.operator === '<<' || redirect.operator === '<<-') {
-        // An opaque delimiter makes the body end statically undecidable — fail closed,
-        // like an unclosed quote.
-        if (scanned.word.opaque) return { ok: false, reason: 'opaque heredoc delimiter' };
+        // bash never expands a heredoc delimiter, so the body's end is decidable from the
+        // literal text even for `<<$D` — no fail-closed branch here (§2-a A3).
         pendingHeredocs.push({
           delimiter: scanned.word.text,
           stripTabs: redirect.operator === '<<-',
-          // Quoting decides whether the body expands, and `scanWord` has already removed
-          // the quotes — so the raw character it started on is the only place to read it.
-          literal: line[j] === "'" || line[j] === '"',
+          // A quoting character ANYWHERE in the delimiter makes the body literal
+          // (`<<E"O"F` and `<<\EOF` both stop expansion), and `scanWord` has already
+          // removed those characters — so the raw span is the only place to read it.
+          literal: /['"\\]/.test(line.slice(j, scanned.next)),
           owner: current,
         });
         i = scanned.next;
@@ -401,15 +542,13 @@ export function extractMutations(line: string, rules: MutationRule[]): MutationA
   const indeterminate: Indeterminate[] = [];
 
   for (const command of result.commands) {
-    const first = command.words[0];
-
     // Nested shell = reinterpretation boundary: report indeterminate, do not parse inside.
     // Matched by command basename (`/bin/sh` → `sh`), the same boundary shell-mod's (e)
     // clause uses (SSOT), so a leading-path nested shell is not missed by a raw-text compare.
-    const firstBasename =
-      first !== undefined ? first.text.slice(first.text.lastIndexOf('/') + 1) : '';
-    if (first !== undefined && isNestedShellCommand(firstBasename)) {
-      indeterminate.push({ reason: `nested shell execution: ${first.text}` });
+    const name = commandNameWord(command);
+    const nameBasename = name !== undefined ? name.text.slice(name.text.lastIndexOf('/') + 1) : '';
+    if (name !== undefined && isNestedShellCommand(nameBasename)) {
+      indeterminate.push({ reason: `nested shell execution: ${name.text}` });
       continue;
     }
 
