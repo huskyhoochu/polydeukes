@@ -11,11 +11,19 @@ import {
 } from '../src/transcript-mod.js';
 
 // ---------------------------------------------------------------------------
-// COVENANT-07d (audit B7) — an untokenizable line whose protected path is
-// GLUED to a shell metacharacter must still fail closed. Every value below is
-// an injected fixture value, never a source literal; the protected paths and
-// the defect command lines replay the PRD §2-a probe rows, so the break cases
-// here are the measured bypasses themselves.
+// COVENANT-07d (audit B7) — a line the scanner cannot finish reading, whose
+// protected path is GLUED to a shell metacharacter, must still fail closed.
+// Every value below is an injected fixture value, never a source literal; the
+// protected paths and the defect command lines replay the PRD §2-a probe rows,
+// so the break cases here are the measured bypasses themselves.
+//
+// COVENANT-18 part B moved WHO answers most of these without moving WHETHER
+// they break. These lines now tokenize as far as the unterminated quote, so a
+// protected path in the read half reaches precise judgment and is answered with
+// a precise reason; only material inside an unread span still falls to the
+// mention scan, and that scan is asserted where spans live
+// (partial-results.test.ts). Every verdict below is the verdict 07d pinned —
+// with one approved exception, marked at its fixture.
 // ---------------------------------------------------------------------------
 
 const SHELL_TOOL = 'Bash';
@@ -29,8 +37,11 @@ const TRANSCRIPT = `${HOME}/${TRANSCRIPT_TAIL}`;
 const MUTATING_TOOLS = ['Edit', 'Write', 'NotebookEdit'];
 const METACHARS = [';', '&', '|', '<', '>'];
 
+// The fallback vocabulary, kept as the reason a migrated line must NOT be answered with. Its
+// transcript twin left with the last assertion that named it — every line in this file now
+// carries its transcript mention in the read half, and the span-scoped fallback is asserted
+// where spans live (partial-results.test.ts).
 const FALLBACK_MENTION_REASON = 'untokenizable command line mentions protected path';
-const FALLBACK_TRANSCRIPT_REASON = 'untokenizable command line names the session transcript';
 
 /** A shell-tool call carrying `line` under the injected command-arg key. */
 function shellCall(line: string): CovenantInput {
@@ -66,7 +77,11 @@ function transcriptSpec(): TranscriptModificationSpec {
 describe('judgeShellModification — glued metachar mentions break (COVENANT-07d §2-a)', () => {
   it('a ">"-glued write into a protected descendant breaks', () => {
     // B7, write shape: `hi>…/dist/x.js` hides the descendant target inside one candidate,
-    // so a forge into the judge executable rode an unclosed quote through.
+    // so a forge into the judge executable rode an unclosed quote through. COVENANT-18 §2-b
+    // moved the answer, never the verdict: the unclosed quote no longer discards the line, so
+    // the write reaches the precise rule and is answered with a real target instead of a
+    // mention. Excluding the fallback reason is what proves the read half was judged — a
+    // mutation that drops it still blocks here, and only the reason tells the two apart.
     const verdict = judgeShellModification(
       shellCall(`echo hi>${PROTECTED_DIST}/x.js; echo 'oops`),
       shellSpec(),
@@ -74,8 +89,9 @@ describe('judgeShellModification — glued metachar mentions break (COVENANT-07d
 
     expect(verdict.upheld).toBe(false);
     if (!verdict.upheld) {
-      expect(verdict.reason).toContain(FALLBACK_MENTION_REASON);
+      expect(verdict.reason).toContain('redirect-write');
       expect(verdict.reason).toContain(PROTECTED_DIST);
+      expect(verdict.reason).not.toContain(FALLBACK_MENTION_REASON);
     }
   });
 
@@ -117,9 +133,12 @@ describe('judgeTranscriptModification — glued spellings break (COVENANT-07d §
 
 describe('untokenizable fallback — metachar matrix, both directions (COVENANT-07d §3)', () => {
   it('each metachar glued AFTER the protected path breaks (shell axis)', () => {
-    // Mutation caught: one separator missing from the fallback split set — each of the
-    // five metacharacters reopens its own spelling of B7; every case must also keep the
-    // fallback reason vocabulary and name the protected path it matched.
+    // Mutation caught: one metacharacter not read as a boundary — each of the five reopens
+    // its own spelling of B7. COVENANT-18 §2-b moved which layer answers: the path now stands
+    // in the read half, so the destroy is named by the command head that mentions it rather
+    // than by the fallback naming a line nobody could read. The verdict is B7's own pin and
+    // does not move; asserting the precise vocabulary is what keeps a silent slide back into
+    // the fallback visible.
     for (const meta of METACHARS) {
       const verdict = judgeShellModification(
         shellCall(`rm -rf ${PROTECTED_DIST}${meta}echo 'x`),
@@ -127,7 +146,7 @@ describe('untokenizable fallback — metachar matrix, both directions (COVENANT-
       );
       expect(verdict.upheld).toBe(false);
       if (!verdict.upheld) {
-        expect(verdict.reason).toContain(`${FALLBACK_MENTION_REASON} ${PROTECTED_DIST}`);
+        expect(verdict.reason).toContain(`rm mentions protected path ${PROTECTED_DIST}`);
       }
     }
   });
@@ -145,9 +164,11 @@ describe('untokenizable fallback — metachar matrix, both directions (COVENANT-
   });
 
   it('each metachar glued after the absolute transcript breaks (transcript axis)', () => {
-    // Mutation caught: fixing the shell-mod branch alone — the transcript fallback is a
-    // separate consumer, and left on whitespace-only candidates it keeps failing open;
-    // every case must also keep the fragment-branch vocabulary and name the transcript.
+    // Mutation caught: fixing the shell-mod branch alone — the transcript judge is a separate
+    // consumer with its own equality comparison, and left reading whitespace-cut candidates
+    // it keeps failing open. COVENANT-18 §2-b moved the answering layer here too: the
+    // forgery stands in the read half, so the precise ladder names the head, and the reason
+    // is asserted so a regression back into the fallback cannot hide behind the verdict.
     for (const meta of METACHARS) {
       const verdict = judgeTranscriptModification(
         shellCall(`rm ${TRANSCRIPT}${meta}echo 'x`),
@@ -155,8 +176,7 @@ describe('untokenizable fallback — metachar matrix, both directions (COVENANT-
       );
       expect(verdict.upheld).toBe(false);
       if (!verdict.upheld) {
-        expect(verdict.reason).toContain(FALLBACK_TRANSCRIPT_REASON);
-        expect(verdict.reason).toContain(TRANSCRIPT);
+        expect(verdict.reason).toContain(`rm names the session transcript ${TRANSCRIPT}`);
       }
     }
   });
@@ -165,9 +185,13 @@ describe('untokenizable fallback — metachar matrix, both directions (COVENANT-
 describe('untokenizable fallback — decomposition contract properties (COVENANT-07d §2-c)', () => {
   it('a metachar inside a protected segment still breaks (the raw line stays a candidate)', () => {
     // Mutation caught: a fragments-only replacement of the union — splitting at '&' shatters
-    // the `a&b` segment, so only the raw dequoted line kept alongside the fragments matches.
+    // the `a&b` segment, so only the whole candidate kept alongside the fragments matches.
+    // The fixture is the QUOTED spelling since COVENANT-18 §2-b: unquoted, bash reads
+    // `rm -rf pkg/a&b/dist` as `rm -rf pkg/a` backgrounded plus `b/dist`, so that file is
+    // never a target and the read half is right to pass it. Quoted it is one word, one real
+    // destroy of the path, and the shattering mutation is what this pins.
     const ampPath = 'pkg/a&b/dist';
-    const verdict = judgeShellModification(shellCall(`rm -rf ${ampPath} 'x`), {
+    const verdict = judgeShellModification(shellCall(`rm -rf '${ampPath}'`), {
       ...shellSpec(),
       protectedPaths: [ampPath],
     });
@@ -282,15 +306,18 @@ describe('untokenizable fallback — the ancestor direction widens with the spli
 
 describe('untokenizable fallback — existing blocks stay blocked (COVENANT-07d §2-a pins)', () => {
   it('whitespace-separated mentions in untokenizable lines still break via the fallback', () => {
-    // Mutation caught: the union dropping the raw-line candidates once fragments exist —
-    // the spaced spellings blocked before this ticket and must keep verdict AND vocabulary.
+    // Mutation caught: the spaced spellings losing their block — they blocked before
+    // COVENANT-07d and must keep the verdict through every later change to the layer that
+    // answers them. That layer is now the precise ladder (COVENANT-18 §2-b hands it the read
+    // half), so the vocabulary asserted is the precise one; a case that fell back to the
+    // whole-line scan would still be a block, which is exactly why the reason is pinned.
     const spaced = judgeShellModification(
       shellCall(`rm -rf ${PROTECTED_DIST} ; echo 'x`),
       shellSpec(),
     );
     expect(spaced.upheld).toBe(false);
     if (!spaced.upheld) {
-      expect(spaced.reason).toContain(`${FALLBACK_MENTION_REASON} ${PROTECTED_DIST}`);
+      expect(spaced.reason).toContain(`rm mentions protected path ${PROTECTED_DIST}`);
     }
 
     const anded = judgeShellModification(
@@ -302,14 +329,15 @@ describe('untokenizable fallback — existing blocks stay blocked (COVENANT-07d 
 
   it('the transcript keeps its spaced fallback block', () => {
     // Mutation caught: the same regression on the evidence source — the spaced mention
-    // blocked before this ticket and must keep verdict AND vocabulary.
+    // blocked before COVENANT-07d and must keep the verdict. The vocabulary is the precise
+    // ladder's since COVENANT-18 §2-b, for the reason the shell-axis twin above records.
     const spaced = judgeTranscriptModification(
       shellCall(`rm ${TRANSCRIPT} ; echo 'x`),
       transcriptSpec(),
     );
     expect(spaced.upheld).toBe(false);
     if (!spaced.upheld) {
-      expect(spaced.reason).toContain(FALLBACK_TRANSCRIPT_REASON);
+      expect(spaced.reason).toContain(`rm names the session transcript ${TRANSCRIPT}`);
     }
   });
 });

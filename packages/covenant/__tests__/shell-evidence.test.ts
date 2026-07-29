@@ -491,27 +491,56 @@ describe('deriveShellChanges — per-item unjudgeable edge forms (audit G4/G15/G
 });
 
 // ===========================================================================
-// Audit-round gaps — tokenize failure and target-unknown forms
+// Audit-round gaps — unread spans and target-unknown forms
 // ===========================================================================
 
-describe('deriveShellChanges — tokenize failure is a recorded common skip (audit G1)', () => {
-  it('answers one pathless reasoned entry per failing form, never silence', () => {
-    // (audit G1) §2-a row 14: the line the tokenizer cannot parse is exactly where a
-    // quiet pass would hide. Mutation caught: tokenize failure answering empty/empty
+describe('deriveShellChanges — an unread span is a recorded common skip (audit G1)', () => {
+  it('answers one pathless reasoned entry per unread form, never silence', () => {
+    // (audit G1) §2-a row 14: the span the tokenizer could not read is exactly where a quiet
+    // pass would hide. The title says "unread span" rather than "tokenize failure" since
+    // COVENANT-18 §2-b B2 — the line is now read up to the span, and this form has nothing
+    // readable left after it: the quote swallows the redirect operator, so `f.ts` is content
+    // and no write exists to file. Mutation caught: the span answering empty/empty
     // (fail-open), or throwing out of the pure function instead of filing the reason.
-    const failing = [
-      "echo 'x > f.ts", // unclosed quote
-      'echo x > >(tee f.ts)', // process substitution — missing/odd redirect target
-      'cat > f.ts <<$V', // opaque heredoc delimiter
+    const unread = [
+      "echo 'x > f.ts", // unclosed quote, swallowing the operator behind it
     ];
 
-    for (const command of failing) {
+    for (const command of unread) {
       const result = deriveShellChanges(command);
       expect(result.evidence).toEqual([]);
       expect(result.unjudgeable).toHaveLength(1);
       expect(result.unjudgeable[0].path).toBeUndefined();
       expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('deriveShellChanges — forms COVENANT-18 moved out of the tokenize-failure bucket', () => {
+  it('files a pathless entry for a process-substitution target, now that it tokenizes', () => {
+    // Was a member of the G1 failing-forms list above. §2-a A8 makes the spaced `>(…)`
+    // target readable, so the line reaches precise judgment — where the target is opaque
+    // and its real path (a /dev/fd entry) is knowable only to execution. Mutation caught:
+    // the readable target being taken for a literal filename, which files fiction as fact.
+    const result = deriveShellChanges('echo x > >(tee f.ts)');
+
+    expect(result.evidence).toEqual([]);
+    expect(result.unjudgeable).toHaveLength(1);
+    expect(result.unjudgeable[0].path).toBeUndefined();
+    expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the write target of a "<<$V" heredoc, now that the delimiter no longer fails', () => {
+    // The same list's other migrated member. §2-a A3 deletes the opaque-delimiter refusal
+    // (bash never expands a delimiter), so the `> f.ts` write is read and the entry gains
+    // the path the common bucket could not carry — with no body, the content stays
+    // uncomputed. Mutation caught: the migration turning a recorded skip into silence.
+    const result = deriveShellChanges('cat > f.ts <<$V');
+
+    expect(result.evidence).toEqual([]);
+    expect(result.unjudgeable).toHaveLength(1);
+    expect(result.unjudgeable[0].path).toBe('f.ts');
+    expect(result.unjudgeable[0].reason.length).toBeGreaterThan(0);
   });
 });
 

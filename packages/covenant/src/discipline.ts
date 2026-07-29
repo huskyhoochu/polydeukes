@@ -289,8 +289,12 @@ const SHELL_LIST_KEYWORDS = new Set(['do', 'then', 'else', 'elif']);
  * and folding them in would let anyone forge evidence by writing the command into a
  * document. A word-less command (a bare redirect) joins to the empty string, which a
  * pattern able to match nothing would anchor at index 0 — index 0 is necessary for
- * evidence, never sufficient, so an empty join is skipped. A tokenize failure answers
- * false: this judge cannot say where an unparseable line's commands start.
+ * evidence, never sufficient, so an empty join is skipped. A line carrying an unread span
+ * answers false, exactly as a tokenize failure did before partial results: this judge cannot
+ * say where an unfinished line's commands start. That refusal is kept deliberately, not left
+ * behind by the migration — here `false` means "evidence missing", which BLOCKS, so trusting
+ * the half we read would OPEN a discipline gate. A future change in this one place is
+ * fail-open, the same asymmetry COVENANT-18 §2-a A5 resolved at the nested-shell boundary.
  *
  * A word carrying a space came from quoting, and the tokenizer hands back its text with the
  * quotes removed — so `"npm view yaml"` arrives as ONE word spelling exactly what three
@@ -306,7 +310,7 @@ const SHELL_LIST_KEYWORDS = new Set(['do', 'then', 'else', 'elif']);
  */
 function commandAnchors(command: string, pattern: RegExp): boolean {
   const tokenized = tokenizeCommandLine(command);
-  if (!tokenized.ok) return false;
+  if (tokenized.unread.length > 0) return false;
   return tokenized.commands.some((simple) => {
     const words = simple.words.map((word) => word.text);
     while (words.length > 0 && SHELL_LIST_KEYWORDS.has(words[0])) words.shift();

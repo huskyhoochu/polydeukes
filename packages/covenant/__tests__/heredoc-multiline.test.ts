@@ -21,8 +21,7 @@ describe('§5.1 newline as command separator', () => {
     // (a spurious empty command) both fail this.
     const result = tokenizeCommandLine('echo a\necho b > f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'a'],
       ['echo', 'b'],
@@ -38,8 +37,7 @@ describe('§5.1 newline as command separator', () => {
     const tokens = tokenizeCommandLine('echo hi\nsed -i s/x/y/ t');
 
     expect(result.mutations).toEqual([]);
-    expect(tokens.ok).toBe(true);
-    if (!tokens.ok) return;
+    expect(tokens.unread).toEqual([]);
     expect(tokens.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'hi'],
       ['sed', '-i', 's/x/y/', 't'],
@@ -51,8 +49,7 @@ describe('§5.1 newline as command separator', () => {
     // (bash multi-line string), so it must not split the command.
     const result = tokenizeCommandLine('echo "a\nb"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -137,21 +134,28 @@ describe('§5.1 heredoc recognition and body consumption', () => {
     expect(result.mutations).toEqual([]);
   });
 
-  it('fails closed on an opaque heredoc delimiter "cat <<$(x)" via one indeterminate', () => {
-    // Fail-closed: an opaque delimiter makes the body end undecidable, so the whole
-    // line is { ok: false } and extractMutations yields exactly one indeterminate.
-    const result = extractMutations('cat <<$(x)', [redirectWriteRule]);
+  it('detects the write after a "cat <<$(x)" body — the delimiter is never expanded', () => {
+    // Rewritten in COVENANT-18 (§2-a A3): this case used to be pinned as fail-closed on
+    // an "undecidable" body end. Measured (bash 5.3.9), `bash -n` accepts the line and
+    // execution ends the body at the literal `$(x)` line, so the end IS statically
+    // decidable and the command after it runs — the write this detects.
+    const result = extractMutations('cat <<$(x)\nbody\n$(x)\necho hi > f', [redirectWriteRule]);
 
-    expect(result.mutations).toEqual([]);
-    expect(result.indeterminate).toHaveLength(1);
+    expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
+    expect(result.indeterminate).toEqual([]);
   });
 
-  it('returns { ok: false } directly for an opaque heredoc delimiter', () => {
-    // Same boundary at the tokenizer surface: an opaque delimiter is fail-closed,
-    // equivalent to an unclosed quote.
-    const result = tokenizeCommandLine('cat <<$(x)');
+  it('ends a "cat <<$(x)" body at its literal delimiter line, not at the input end', () => {
+    // Same case at the tokenizer surface, where it used to answer { ok: false }. Mutation
+    // caught: the delimiter's `$(x)` normalized or the body run to EOF — either loses the
+    // following command, which is the fail-open direction a deleted refusal must not open.
+    const result = tokenizeCommandLine('cat <<$(x)\nbody\n$(x)\necho done');
 
-    expect(result.ok).toBe(false);
+    expect(result.unread).toEqual([]);
+    expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
+      ['cat'],
+      ['echo', 'done'],
+    ]);
   });
 });
 
@@ -169,8 +173,7 @@ describe('§5.3 fail-closed no-throw fuzz cases', () => {
     // which no fail-closed contract can catch). A regression here times out the suite.
     const result = tokenizeCommandLine('echo a\recho b > f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'a'],
       ['echo', 'b'],

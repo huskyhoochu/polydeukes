@@ -166,3 +166,53 @@ disciplines:
       - 'packages/*/package.json'
     requirePrecedent:
       tool: 'context7'
+  # Editing a package's sources or tests requires having READ that package's recorded
+  # experience first. The store is flat and its filenames carry the scope
+  # (`<scope>.<type>.<name>.md`), so one entry per scope maps a package tree to the docs
+  # that describe it. dev-log and research only: an adr records a decision and a prd
+  # records a plan, while these two carry what measurement contradicted — the part that is
+  # lost by re-deriving instead of reading, which is the failure this discipline exists for.
+  #
+  # The evidence is a SHELL read, not the agent's file-reading tool. `requirePrecedent`'s
+  # adapter vocabulary (`tool:`) matches a tool NAME and never its arguments, so `tool: Read`
+  # would be satisfied by reading any file at all — a gate that cannot fail is not a gate.
+  # `command:` sees the command line, so it can require that the read name the doc.
+  # `commandAnchors` judges each simple command separately, so a `cd … && grep …` chain
+  # still qualifies, and the quote-stripped word text means the path matches whether or not
+  # the read was issued from inside the knowledge directory.
+  #
+  # `packages/polydeukes` gets no entry. The store's scope vocabulary has no name for the
+  # umbrella, so every pattern written here would be unsatisfiable — and an unsatisfiable
+  # precedent gate is the one shape `evaluatePrecedent` refuses to produce, because no
+  # amount of doing the required work would open it. When the umbrella earns a scope, the
+  # entry follows; until then this is a declared gap, not coverage.
+  #
+  # `foundation.` is deliberately NOT accepted by any of these. It is the cross-cutting
+  # scope, so allowing it would let one read open all four packages at once — the entries
+  # would stop being per-package the moment it was included.
+  #
+  # The commit surface injects no transcript, so this family always lands `skipped` there.
+  # It is a session-surface discipline by nature rather than by omission.
+  - id: 'covenant-needs-knowledge-read'
+    why: 'the covenant package carries the most measured history in the store (37 dev-log and research entries); editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
+    in:
+      - 'packages/covenant/src/**'
+      - 'packages/covenant/__tests__/**'
+    requirePrecedent:
+      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.'
+  - id: 'core-needs-knowledge-read'
+    why: 'the core is the one package every other depends on, so a change made without its recorded boundaries (parse validation, schema equivalence, adapter neutrality) propagates outward before it is noticed.'
+    in:
+      - 'packages/core/src/**'
+      - 'packages/core/__tests__/**'
+    requirePrecedent:
+      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.'
+  - id: 'adapter-needs-knowledge-read'
+    why: 'both adapters translate an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong. one entry covers both because they share the `adapter.` scope.'
+    in:
+      - 'packages/adapter-claude-code/src/**'
+      - 'packages/adapter-claude-code/__tests__/**'
+      - 'packages/adapter-git/src/**'
+      - 'packages/adapter-git/__tests__/**'
+    requirePrecedent:
+      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.'

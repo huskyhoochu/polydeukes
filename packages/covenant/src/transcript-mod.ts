@@ -185,9 +185,14 @@ function argsNameTranscript(value: unknown, transcript: ResolvedTranscript): boo
 
 /**
  * Judge one simple command (PRD §3, order normative). Returns the break reason, or null when
- * the command contributes to uphold.
+ * the command contributes to uphold. `lineFullyRead` is false when the line carried a span
+ * the tokenizer could not read, which withholds clause (e).
  */
-function judgeCommand(command: SimpleCommand, transcript: ResolvedTranscript): string | null {
+function judgeCommand(
+  command: SimpleCommand,
+  transcript: ResolvedTranscript,
+  lineFullyRead: boolean,
+): string | null {
   // (a) Precise rules: a detected mutation whose target is the transcript breaks.
   for (const rule of MUTATION_RULES) {
     for (const target of rule.detect(command)) {
@@ -211,9 +216,12 @@ function judgeCommand(command: SimpleCommand, transcript: ResolvedTranscript): s
 
   // (e) Read-only allowlist: a proven read absolves the mention, in every spelling — but a
   // nested shell (`eval`/`sh -c …`) re-parses its string args, so it is never provably a read.
+  // A line carrying an unread span is refused the same way: reading the session is free, but
+  // only on a line we finished reading (COVENANT-18 §2-b B3).
   const first = command.words[0];
   const firstBasename = first !== undefined ? commandBasename(first) : '';
   if (
+    lineFullyRead &&
     !isNestedShellCommand(firstBasename) &&
     transcript.readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))
   ) {
@@ -241,21 +249,22 @@ function judgeShellCall(
     .filter((value): value is string => typeof value === 'string');
 
   for (const line of lines) {
-    const result = tokenizeCommandLine(line);
-    if (!result.ok) {
-      // Tokenize failed: the shell would still remove quotes and backslash escapes, so strip
-      // both before the comparison — otherwise the very escaping that broke tokenization
-      // defeats the fallback. Over-joining unrelated words only ever widens what breaks, never
-      // a hole. The fallback-only decomposition then covers the metachar-glued spellings
-      // (`<transcript>;echo x`) that no tokenizer was left to cut apart (COVENANT-07d).
-      const candidates = untokenizableLineCandidates(line.replace(/['"\\]/g, ''));
+    const { commands, unread } = tokenizeCommandLine(line);
+    // Each unread span keeps the conservative treatment the whole line used to get, and only
+    // the span gets it (COVENANT-18 §2-b B3): the shell would still remove quotes and
+    // backslash escapes, so strip both before the comparison, or the very escaping that
+    // stopped the scan defeats the scan that replaces it. Over-joining unrelated words only
+    // ever widens what breaks, never a hole. The fallback-only decomposition then covers the
+    // metachar-glued spellings (`<transcript>;echo x`) that no tokenizer was left to cut
+    // apart (COVENANT-07d) — narrowing the span must not narrow the extraction.
+    for (const span of unread) {
+      const candidates = untokenizableLineCandidates(span.text.replace(/['"\\]/g, ''));
       if (candidates.some((candidate) => tokenNamesTranscript(candidate, transcript))) {
         return `untokenizable command line names the session transcript ${transcript.path}`;
       }
-      continue;
     }
-    for (const command of result.commands) {
-      const reason = judgeCommand(command, transcript);
+    for (const command of commands) {
+      const reason = judgeCommand(command, transcript, unread.length === 0);
       if (reason !== null) return reason;
     }
   }
