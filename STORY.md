@@ -61,6 +61,16 @@ And so the two — neither wholly a god nor wholly a man — became, each fillin
 
 The point is that Polydeukes' splitting of his immortality was a **choice, not a sacrifice**. He did not take a loss; he actively chose "an imperfect journey of two over a perfect solitude of one." This, precisely, is the mythic definition of partnership — one side sharing its own privilege so that the two become equals — the opposite of control, where one owns the other. That is why this tool calls the covenants and the verification a "gift" it offers to the AI.
 
+### A second layer — the mortal code and the immortal record
+
+The reading above is the first layer: the twins are the human and the AI. But a myth worth naming a tool after does not exhaust itself in one mapping, and this one carries a second layer inside the work itself.
+
+In any long practice of building, there is a mortal twin and an immortal one as well. **The code is Kastor** — mortal by nature. However finely it is made, every codebase eventually takes the spear: rewritten, replaced, superseded by a better expression of the same intent. **The record is Polydeukes** — the telemetry, the decisions written down, the dead ends kept, the discipline distilled out of each failure. It is the part that does not die, and like its namesake it keeps choosing to split its continuity in half and hand it to the next mortal body of code, so that no death is an erasure.
+
+Read this way, software development is not a march toward an artifact. The artifact is one mortal day of an immortal process — the practice of finding better ways to work and carrying them into whatever gets built next. What must stay unbroken is not the code but the continuity of the record. Keep the record whole, and the code is free to die.
+
+The two layers are not rivals. It is the human and the AI who write that record together — the shared half of immortality passing between them, and on through every mortal expression of their work.
+
 ---
 
 ## 3. How it differs from Google's Gemini
