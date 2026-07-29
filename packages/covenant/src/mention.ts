@@ -134,22 +134,32 @@ export function pathCandidates(token: string): string[] {
  * Extract path candidates from a whole command line the tokenizer REFUSED — the fallback-only
  * counterpart of {@link pathCandidates} (COVENANT-07d §2-c).
  *
- * The input precondition is the opposite one. `pathCandidates` receives a word `tokenizeCommandLine`
- * already cut at every shell operator, so its separator set never needed them; the two
- * untokenizable-fallback branches (shell-mod's and transcript-mod's) have no tokenizer left and
- * hand over the raw dequoted line, where nothing consumed those operators and a path glued to one
- * (`packages/core/dist;echo x`) stayed a single unmatchable segment. So the set here is wider by
- * exactly what the tokenizer would have eaten — `;` `&` `|` `<` `>` — and a tokenized input never
- * reaches this function.
+ * The input precondition is the opposite one. On the tokenized path an operator between two
+ * words has already become a word boundary, so `pathCandidates`' separator set never needed the
+ * operators themselves; the two untokenizable-fallback branches (shell-mod's and transcript-mod's)
+ * have no tokenizer left and hand over the raw line, where nothing consumed those operators and a
+ * path glued to one (`packages/core/dist;echo x`) stayed a single unmatchable segment. So the set
+ * here is wider by exactly what the tokenizer would have eaten — `;` `&` `|` `<` `>`. It is NOT
+ * the case that a tokenized word can never carry one: a QUOTED word keeps its operators
+ * (`bash -c "rm -rf …;echo x"`), which the tokenized path still reads as one candidate — a
+ * separate gap on a separate axis, not one this fallback can answer.
  *
  * The line itself stays a candidate alongside the fragments: the union is what keeps a protected
  * path whose own segment carries an operator (`pkg/a&b/dist`) matchable, and an added form can
  * only add a match, never withdraw one (COVENANT-07b's shape). `:` stays out for the reason
  * {@link pathCandidates} records — shattering URLs over-blocks — so a colon-joined list is one
  * candidate here too.
+ *
+ * Widening a fragment boundary widens the ancestor direction with it: `…?x=1&packages=1` splits
+ * to a bare `packages`, which `segmentsMatch` accepts as a root-anchored ancestor of a protected
+ * `packages/core/dist`. That block is the ancestor rule's known conservatism (the same class as
+ * the `.git` mention over-block), accepted here rather than narrowed — the narrowing that would
+ * spare it also drops a glued ancestor destroy (`rm -rf packages/core;echo x`), which is the
+ * defence this fallback exists to provide.
  */
 export function untokenizableLineCandidates(line: string): string[] {
-  return [line, ...line.split(/[;&|<>]+/).filter((fragment) => fragment !== '')];
+  const fragments = line.split(/[;&|<>]+/).filter((f) => f !== '' && f !== line);
+  return [line, ...fragments];
 }
 
 /**

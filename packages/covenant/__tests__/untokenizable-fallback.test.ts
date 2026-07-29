@@ -212,6 +212,74 @@ describe('untokenizable fallback — decomposition contract properties (COVENANT
   });
 });
 
+describe('untokenizable fallback — escape-glued spellings break (COVENANT-07d review)', () => {
+  // A backslash line continuation is erased by the shell before execution, so a path carrying
+  // one is a real target — and the line it appears in is valid bash, not a typo.
+  const CONTINUED = `rm -rf ${PROTECTED_DIST}\\\n;cat <<$D\nhi\n$D`;
+
+  it('a backslash continuation between the path and the metachar breaks (shell axis)', () => {
+    // Mutation caught: dequoting only quote characters — the fragment then ends in `dist\`
+    // and matches nothing, which is B7 one escape character over.
+    const verdict = judgeShellModification(shellCall(CONTINUED), shellSpec());
+
+    expect(verdict.upheld).toBe(false);
+  });
+
+  it('a backslash planted inside a protected segment breaks (shell axis)', () => {
+    // The shell removes the escape, so `di\st` executes as `dist`; the judge must read the
+    // same path the shell will.
+    const verdict = judgeShellModification(
+      shellCall(`rm -rf packages/core/di\\st;echo 'x`),
+      shellSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+  });
+
+  it('the transcript closes the same escape spellings', () => {
+    // Mutation caught: fixing the shell branch alone — the transcript dequote is its own site.
+    // The second spelling escapes a character INSIDE the transcript path, which the shell
+    // removes — under whole-path equality the judge must compare the same resolved path.
+    const escapedInside = TRANSCRIPT.replace('.claude', '.cla\\ude');
+    for (const line of [`rm ${TRANSCRIPT}\\\n;cat <<$D\nhi\n$D`, `rm ${escapedInside};echo 'x`]) {
+      expect(judgeTranscriptModification(shellCall(line), transcriptSpec()).upheld).toBe(false);
+    }
+  });
+});
+
+describe('untokenizable fallback — the ancestor direction widens with the split (COVENANT-07d review)', () => {
+  it('a bare ancestor segment exposed by a fragment boundary blocks', () => {
+    // Decided behavior, not an accident: the fragment boundary exposes a bare `packages`,
+    // which segmentsMatch accepts as a root-anchored ancestor. Narrowing it would also drop
+    // the glued ancestor destroy below, so the block is accepted and pinned here.
+    const verdict = judgeShellModification(
+      shellCall(`curl https://example.com/a?x=1&packages=1 'y`),
+      shellSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+  });
+
+  it('a glued ancestor destroy breaks — the defence that widening buys', () => {
+    // Mutation caught: accepting fragment candidates only in the descendant direction. This
+    // command deletes the protected dist by deleting its parent.
+    const verdict = judgeShellModification(shellCall(`rm -rf packages/core;echo 'x`), shellSpec());
+
+    expect(verdict.upheld).toBe(false);
+  });
+
+  it('an untokenizable read of the transcript blocks — the fallback has no allowlist', () => {
+    // The tokenizable twin upholds (see the over-block block below). Pinned because it is a
+    // verdict this ticket changed: the allowlist-free fallback owns every untokenizable line.
+    const verdict = judgeTranscriptModification(
+      shellCall(`cat ${TRANSCRIPT};echo 'x`),
+      transcriptSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+  });
+});
+
 describe('untokenizable fallback — existing blocks stay blocked (COVENANT-07d §2-a pins)', () => {
   it('whitespace-separated mentions in untokenizable lines still break via the fallback', () => {
     // Mutation caught: the union dropping the raw-line candidates once fragments exist —

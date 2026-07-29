@@ -243,12 +243,12 @@ function judgeShellCall(
   for (const line of lines) {
     const result = tokenizeCommandLine(line);
     if (!result.ok) {
-      // Tokenize failed: the shell would still remove quotes, so strip them before the
-      // segment comparison — otherwise the very quoting that broke tokenization defeats the
-      // fallback. Over-joining unrelated words only ever widens what breaks, never a hole.
-      // The fallback-only decomposition then covers the metachar-glued spellings (`<transcript>;echo
-      // x`) that no tokenizer was left to cut apart (COVENANT-07d).
-      const candidates = untokenizableLineCandidates(line.replace(/['"]/g, ''));
+      // Tokenize failed: the shell would still remove quotes and backslash escapes, so strip
+      // both before the comparison — otherwise the very escaping that broke tokenization
+      // defeats the fallback. Over-joining unrelated words only ever widens what breaks, never
+      // a hole. The fallback-only decomposition then covers the metachar-glued spellings
+      // (`<transcript>;echo x`) that no tokenizer was left to cut apart (COVENANT-07d).
+      const candidates = untokenizableLineCandidates(line.replace(/['"\\]/g, ''));
       if (candidates.some((candidate) => tokenNamesTranscript(candidate, transcript))) {
         return `untokenizable command line names the session transcript ${transcript.path}`;
       }
