@@ -7,8 +7,9 @@
  * and marks tokens opaque when their static value is unknowable (command substitution,
  * parameter expansion, globs).
  *
- * Fail-closed: no input ever throws. An unclosed quote yields `{ ok: false }`; in
- * {@link extractMutations} a tokenize failure becomes one indeterminate entry. Block/allow
+ * Fail-closed: no input ever throws. A construct the scanner cannot finish reading yields a
+ * partial result — the commands it did read, plus one `unread` span per failure; in
+ * {@link extractMutations} each span becomes one indeterminate entry. Block/allow
  * decisions, read-only allowlists, and real detection rules live in COVENANT-04b/c/d.
  */
 
@@ -44,10 +45,26 @@ export type SimpleCommand = {
   heredocs?: HeredocBody[];
 };
 
-/** The tokenizer's discriminated result — fail-closed on unclosed quotes. */
-export type TokenizeResult =
-  | { ok: true; commands: SimpleCommand[] }
-  | { ok: false; reason: string };
+/**
+ * A span of the line the scanner could not read, with the reason it stopped (COVENANT-18
+ * §2-b B2). `reason` is a telemetry pass-through value: no consumer branches on it, and it
+ * is deliberately not promoted to a discriminated union (§2-f C2).
+ */
+export type UnreadSpan = {
+  text: string;
+  reason: string;
+};
+
+/**
+ * The tokenizer's result: the commands it read, plus one span per failure it hit. A failure
+ * no longer discards the line — the read commands reach precise judgment and only the spans
+ * fall to a consumer's conservative treatment (COVENANT-18 §2-b B2). An empty `unread` is
+ * the "fully read" signal.
+ */
+export type TokenizeResult = {
+  commands: SimpleCommand[];
+  unread: UnreadSpan[];
+};
 
 /** A detected mutation target (path) with the name of the rule that found it. */
 export type MutationTarget = {
@@ -122,11 +139,15 @@ function quotedFragmentIsOpaque(fragment: string): boolean {
 // set decides the pairing, so an escaped `"` never closes the string (§2-a A1).
 const DOUBLE_QUOTE_ESCAPES = new Set(['$', '`', '"', '\\']);
 
+/** A quoted span: the content bash would pass, where it ended, and whether it ever closed. */
+type ScannedQuote = { text: string; next: number; closed: boolean };
+
 /**
  * Scan a double-quoted string whose opening `"` sits at `open`. Returns the content bash
- * would pass and the index just past the closing quote, or null when it never closes.
+ * would pass and the index just past the closing quote; a string that never closes is read
+ * to the end of input and reported `closed: false`, never discarded (§2-b B1).
  */
-function scanDoubleQuoted(line: string, open: number): { text: string; next: number } | null {
+function scanDoubleQuoted(line: string, open: number): ScannedQuote {
   let text = '';
   let i = open + 1;
 
@@ -148,12 +169,12 @@ function scanDoubleQuoted(line: string, open: number): { text: string; next: num
       i += 1;
       continue;
     }
-    if (ch === '"') return { text, next: i + 1 };
+    if (ch === '"') return { text, next: i + 1, closed: true };
     text += ch;
     i += 1;
   }
 
-  return null;
+  return { text, next: line.length, closed: false };
 }
 
 // The ANSI-C escapes decoded inside `$'…'`. Deliberately not the whole table: an escape
@@ -163,11 +184,12 @@ const ANSI_C_ESCAPES: Record<string, string> = { n: '\n', t: '\t', "'": "'", '\\
 
 /**
  * Scan an ANSI-C quoted string (`$'…'`) whose opening `'` sits at `open`. Returns the
- * DECODED bytes and the index just past the closing quote, or null when it never closes.
- * Decoding is not cosmetic: the word text becomes written-content evidence downstream, so
- * handing back the source spelling would record bytes bash never writes (§2-a A7).
+ * DECODED bytes and the index just past the closing quote; a string that never closes is
+ * read to the end of input and reported `closed: false` (§2-b B1). Decoding is not
+ * cosmetic: the word text becomes written-content evidence downstream, so handing back the
+ * source spelling would record bytes bash never writes (§2-a A7).
  */
-function scanAnsiCQuoted(line: string, open: number): { text: string; next: number } | null {
+function scanAnsiCQuoted(line: string, open: number): ScannedQuote {
   let text = '';
   let i = open + 1;
 
@@ -180,21 +202,38 @@ function scanAnsiCQuoted(line: string, open: number): { text: string; next: numb
       i += 2;
       continue;
     }
-    if (ch === "'") return { text, next: i + 1 };
+    if (ch === "'") return { text, next: i + 1, closed: true };
     text += ch;
     i += 1;
   }
 
-  return null;
+  return { text, next: line.length, closed: false };
 }
 
 type ScannedWord = { text: string; opaque: boolean };
 
+/** One scanned word, plus the span it could not read when a quote never closed. */
+type ScanResult = { word: ScannedWord; next: number; unread?: UnreadSpan };
+
+/**
+ * Close a word on an unterminated quote whose opening character sits at `open`: the rest of
+ * the input is consumed, the word is opaque (its value depends on bytes the shell never
+ * received), and the raw span is reported. The backtick branch of {@link scanWord} has
+ * always worked this way; §2-b B1 gives the three quote forms the same treatment.
+ */
+function unreadFrom(line: string, open: number, text: string): ScanResult {
+  return {
+    word: { text, opaque: true },
+    next: line.length,
+    unread: { text: line.slice(open), reason: 'unclosed quote' },
+  };
+}
+
 /**
  * Scan one word starting at `i`, honoring quotes and escapes. Returns the assembled word
- * and the index just past it, or `null` on an unclosed quote (fail-closed signal).
+ * and the index just past it; an unclosed quote also returns the span it could not read.
  */
-function scanWord(line: string, start: number): { word: ScannedWord; next: number } | null {
+function scanWord(line: string, start: number): ScanResult {
   let text = '';
   let opaque = false;
   let i = start;
@@ -234,7 +273,10 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
     if (ch === "'") {
       // Single quotes: literal content, no expansion — never contributes opacity.
       const close = line.indexOf("'", i + 1);
-      if (close === -1) return null;
+      // The dequoted content JOINS the word in progress rather than starting a new one:
+      // `pack'ages/…` is one shell word, and splitting it leaves two halves that each
+      // match nothing (§2-b B1).
+      if (close === -1) return unreadFrom(line, i, text + line.slice(i + 1));
       text += line.slice(i + 1, close);
       i = close + 1;
       continue;
@@ -243,7 +285,7 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
     if (ch === '"') {
       // Double quotes: expansions still apply, so scan for opacity within.
       const quoted = scanDoubleQuoted(line, i);
-      if (quoted === null) return null;
+      if (!quoted.closed) return unreadFrom(line, i, text + quoted.text);
       if (quotedFragmentIsOpaque(quoted.text)) opaque = true;
       text += quoted.text;
       i = quoted.next;
@@ -254,7 +296,7 @@ function scanWord(line: string, start: number): { word: ScannedWord; next: numbe
       // ANSI-C quoting: bash decodes the escapes and passes a string constant, so the
       // word is decided — an expansion it is not, and marking it opaque would be wrong.
       const quoted = scanAnsiCQuoted(line, i + 1);
-      if (quoted === null) return null;
+      if (!quoted.closed) return unreadFrom(line, i, text + quoted.text);
       text += quoted.text;
       i = quoted.next;
       continue;
@@ -310,7 +352,7 @@ function matchParen(line: string, open: number): number {
     }
     if (ch === '"') {
       const quoted = scanDoubleQuoted(line, i);
-      if (quoted === null) return line.length;
+      if (!quoted.closed) return line.length;
       i = quoted.next - 1;
       continue;
     }
@@ -415,11 +457,13 @@ function consumeHeredocBodies(line: string, start: number, pending: PendingHered
 }
 
 /**
- * Tokenize one shell line into simple commands (PRD §4.1). Fail-closed: an unclosed quote
- * returns `{ ok: false }` instead of throwing.
+ * Tokenize one shell line into simple commands (PRD §4.1). Never throws, and never discards
+ * what it read: a construct it cannot finish reading is recorded as an `unread` span and the
+ * scan carries on (COVENANT-18 §2-b B2).
  */
 export function tokenizeCommandLine(line: string): TokenizeResult {
   const commands: SimpleCommand[] = [];
+  const unread: UnreadSpan[] = [];
   let current: SimpleCommand = { words: [], redirects: [] };
   // Heredoc delimiters queued on the current line, consumed in order at the next newline.
   let pendingHeredocs: PendingHeredoc[] = [];
@@ -476,10 +520,21 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
         continue;
       }
       const scanned = scanWord(line, j);
-      if (scanned === null) return { ok: false, reason: 'unclosed quote' };
-      // A redirect with no target is a bash syntax error — fail closed, never a confident
-      // empty-string target.
-      if (scanned.word.text === '') return { ok: false, reason: 'missing redirect target' };
+      if (scanned.unread !== undefined) {
+        // The target position ran into an unterminated quote: record the span and drop the
+        // redirect rather than claim a target nobody could read.
+        unread.push(scanned.unread);
+        i = scanned.next;
+        continue;
+      }
+      // A redirect with no target is a bash syntax error, but a LOCAL one: everything past
+      // the operator is still readable, so the span is recorded and the scan resumes there
+      // instead of throwing the line away (§2-b B2).
+      if (scanned.word.text === '') {
+        unread.push({ text: line.slice(i, j), reason: 'missing redirect target' });
+        i = j;
+        continue;
+      }
       if (redirect.operator === '<<' || redirect.operator === '<<-') {
         // bash never expands a heredoc delimiter, so the body's end is decidable from the
         // literal text even for `<<$D` — no fail-closed branch here (§2-a A3).
@@ -514,7 +569,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
     }
 
     const scanned = scanWord(line, i);
-    if (scanned === null) return { ok: false, reason: 'unclosed quote' };
+    if (scanned.unread !== undefined) unread.push(scanned.unread);
     current.words.push(scanned.word);
     i = scanned.next;
   }
@@ -523,23 +578,20 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
 
   // Drop empty commands produced by leading/trailing/adjacent operators (e.g. ";;").
   const nonEmpty = commands.filter((c) => c.words.length > 0 || c.redirects.length > 0);
-  return { ok: true, commands: nonEmpty };
+  return { commands: nonEmpty, unread };
 }
 
 /**
  * Extract mutation targets from a shell line via injected rules (PRD §4.2). A simple command
  * contributes an indeterminate entry when it is a nested-shell call OR contains any opaque
  * word (in which case its rules are still applied, but an undecidable structure is present);
- * a tokenize failure yields exactly one indeterminate entry. Never throws.
+ * each unread span yields one more. Never throws.
  */
 export function extractMutations(line: string, rules: MutationRule[]): MutationAnalysis {
   const result = tokenizeCommandLine(line);
-  if (!result.ok) {
-    return { mutations: [], indeterminate: [{ reason: result.reason }] };
-  }
 
   const mutations: MutationTarget[] = [];
-  const indeterminate: Indeterminate[] = [];
+  const indeterminate: Indeterminate[] = result.unread.map((span) => ({ reason: span.reason }));
 
   for (const command of result.commands) {
     // Nested shell = reinterpretation boundary: report indeterminate, do not parse inside.

@@ -21,8 +21,7 @@ describe('§5.1 newline as command separator', () => {
     // (a spurious empty command) both fail this.
     const result = tokenizeCommandLine('echo a\necho b > f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'a'],
       ['echo', 'b'],
@@ -38,8 +37,7 @@ describe('§5.1 newline as command separator', () => {
     const tokens = tokenizeCommandLine('echo hi\nsed -i s/x/y/ t');
 
     expect(result.mutations).toEqual([]);
-    expect(tokens.ok).toBe(true);
-    if (!tokens.ok) return;
+    expect(tokens.unread).toEqual([]);
     expect(tokens.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'hi'],
       ['sed', '-i', 's/x/y/', 't'],
@@ -51,8 +49,7 @@ describe('§5.1 newline as command separator', () => {
     // (bash multi-line string), so it must not split the command.
     const result = tokenizeCommandLine('echo "a\nb"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -154,8 +151,7 @@ describe('§5.1 heredoc recognition and body consumption', () => {
     // following command, which is the fail-open direction a deleted refusal must not open.
     const result = tokenizeCommandLine('cat <<$(x)\nbody\n$(x)\necho done');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['cat'],
       ['echo', 'done'],
@@ -177,8 +173,7 @@ describe('§5.3 fail-closed no-throw fuzz cases', () => {
     // which no fail-closed contract can catch). A regression here times out the suite.
     const result = tokenizeCommandLine('echo a\recho b > f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['echo', 'a'],
       ['echo', 'b'],

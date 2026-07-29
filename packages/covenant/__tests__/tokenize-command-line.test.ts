@@ -9,8 +9,7 @@ describe('§5.1 quote preservation', () => {
     // produce more than one command and lose the literal semicolon inside the word.
     const result = tokenizeCommandLine("echo 'a; b' > f");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -21,8 +20,7 @@ describe('§5.1 quote preservation', () => {
   it('keeps a double-quoted string with an internal space as one word', () => {
     const result = tokenizeCommandLine('echo "x y"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -33,8 +31,7 @@ describe('§5.1 quote preservation', () => {
   it('respects a backslash escape so the escaped separator does not split words', () => {
     const result = tokenizeCommandLine('echo a\\;b');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -49,8 +46,7 @@ describe('§5.1 command splitting on control operators', () => {
     // operator treated as a word instead of a separator.
     const result = tokenizeCommandLine('a && b | c; d');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(4);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([
       ['a'],
@@ -65,8 +61,7 @@ describe('§5.1 command splitting on control operators', () => {
     // into the preceding or following word, corrupting command boundaries.
     const result = tokenizeCommandLine('a & b');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands.map((c) => c.words.map((w) => w.text))).toEqual([['a'], ['b']]);
   });
 });
@@ -75,8 +70,7 @@ describe('§5.1 redirect operator separation', () => {
   it('separates a spaced redirect operator (">") from its target word', () => {
     const result = tokenizeCommandLine('echo hi > f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -92,8 +86,7 @@ describe('§5.1 redirect operator separation', () => {
     // would fold ">f" into a plain word instead of an operator + target pair.
     const result = tokenizeCommandLine('echo hi >f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '>', target: { text: 'f', opaque: false } },
     ]);
@@ -106,8 +99,7 @@ describe('§5.1 redirect operator separation', () => {
   it('recognizes the append operator ">>"', () => {
     const result = tokenizeCommandLine('echo hi >> f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '>>', target: { text: 'f', opaque: false } },
     ]);
@@ -116,8 +108,7 @@ describe('§5.1 redirect operator separation', () => {
   it('recognizes the file-descriptor redirect "2>"', () => {
     const result = tokenizeCommandLine('cmd 2> err.log');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '2>', target: { text: 'err.log', opaque: false } },
     ]);
@@ -126,8 +117,7 @@ describe('§5.1 redirect operator separation', () => {
   it('recognizes the combined stdout+stderr redirect "&>"', () => {
     const result = tokenizeCommandLine('cmd &> all.log');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '&>', target: { text: 'all.log', opaque: false } },
     ]);
@@ -138,8 +128,7 @@ describe('§5.1 redirect operator separation', () => {
     // target plus a phantom ">" redirect, silently turning an append into a truncate.
     const result = tokenizeCommandLine('cmd 2>> err.log');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '2>>', target: { text: 'err.log', opaque: false } },
     ]);
@@ -148,8 +137,7 @@ describe('§5.1 redirect operator separation', () => {
   it('recognizes the combined append form "&>>"', () => {
     const result = tokenizeCommandLine('cmd &>> all.log');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '&>>', target: { text: 'all.log', opaque: false } },
     ]);
@@ -160,8 +148,7 @@ describe('§5.1 redirect operator separation', () => {
     // word — bash sends fd 12 to f, and the command receives no "12" operand.
     const result = tokenizeCommandLine('tee 12> f');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words).toEqual([{ text: 'tee', opaque: false }]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '12>', target: { text: 'f', opaque: false } },
@@ -175,8 +162,7 @@ describe('§5.1 redirect operator separation', () => {
     // stays inside an opaque token.
     const result = tokenizeCommandLine('cmd >(tee f)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([]);
     expect(result.commands[0].words).toEqual([
       { text: 'cmd', opaque: false },
@@ -190,8 +176,7 @@ describe('§5.1 redirect operator separation', () => {
     // first-word allowlist would absolve the whole line while bash runs the inner write.
     const result = tokenizeCommandLine('cat <(sed -i s/a/b/ p)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([]);
     expect(result.commands[0].words).toEqual([
       { text: 'cat', opaque: false },
@@ -204,8 +189,7 @@ describe('§5.1 redirect operator separation', () => {
     // bogus second command ["2"] off a plain stderr redirect.
     const result = tokenizeCommandLine('cmd 1>&2');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([{ text: 'cmd', opaque: false }]);
     expect(result.commands[0].redirects).toEqual([
@@ -218,16 +202,14 @@ describe('§5.1 opacity detection', () => {
   it('marks a command-substitution token "$(echo f)" as opaque', () => {
     const result = tokenizeCommandLine('cat $(echo f)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '$(echo f)', opaque: true });
   });
 
   it('marks a backtick command-substitution token as opaque', () => {
     const result = tokenizeCommandLine('cat `echo f`');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '`echo f`', opaque: true });
   });
 
@@ -236,8 +218,7 @@ describe('§5.1 opacity detection', () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional bash expansion fixture
     const result = tokenizeCommandLine('cat ${FILE}');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional bash expansion fixture
     expect(result.commands[0].words[1]).toEqual({ text: '${FILE}', opaque: true });
   });
@@ -245,24 +226,21 @@ describe('§5.1 opacity detection', () => {
   it('marks a bare variable reference "$var" as opaque', () => {
     const result = tokenizeCommandLine('cat $var');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '$var', opaque: true });
   });
 
   it('marks a glob token containing "*" as opaque', () => {
     const result = tokenizeCommandLine('cat *.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '*.txt', opaque: true });
   });
 
   it('marks a plain literal token as not opaque', () => {
     const result = tokenizeCommandLine('cat plain.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: 'plain.txt', opaque: false });
   });
 
@@ -271,29 +249,33 @@ describe('§5.1 opacity detection', () => {
     // quote characters) instead of respecting single-quote's no-expansion semantics.
     const result = tokenizeCommandLine("cat '$var'");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '$var', opaque: false });
   });
 });
 
 describe('§5.1 tokenization failure (fail-closed)', () => {
-  it('returns { ok: false } for an unclosed single quote instead of throwing', () => {
+  // COVENANT-18 §2-b B2 replaced the `{ ok: false }` discriminant with an `unread` span list,
+  // so each case below asserts the span instead of the discarded line. The claim is the same
+  // one it always was — this input is NOT read cleanly — and a non-empty list is what carries
+  // it now.
+  it('reports an unread span for an unclosed single quote instead of throwing', () => {
     expect(() => tokenizeCommandLine("echo 'oops")).not.toThrow();
     const result = tokenizeCommandLine("echo 'oops");
-    expect(result.ok).toBe(false);
+    expect(result.unread).toHaveLength(1);
   });
 
-  it('returns { ok: false } for an unclosed double quote instead of throwing', () => {
+  it('reports an unread span for an unclosed double quote instead of throwing', () => {
     expect(() => tokenizeCommandLine('echo "oops')).not.toThrow();
     const result = tokenizeCommandLine('echo "oops');
-    expect(result.ok).toBe(false);
+    expect(result.unread).toHaveLength(1);
   });
 
-  it('returns { ok: false } for a redirect with no target (bash would syntax-error)', () => {
+  it('reports an unread span for a redirect with no target (bash would syntax-error)', () => {
     // Mutation caught: emitting a confident, non-opaque empty-string target — a clean-looking
     // result for a line whose parse actually failed to find a target.
     const result = tokenizeCommandLine('echo hi >');
-    expect(result.ok).toBe(false);
+    expect(result.unread).toHaveLength(1);
+    expect(result.commands[0].redirects).toEqual([]);
   });
 });

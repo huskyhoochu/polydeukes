@@ -82,12 +82,14 @@ export function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): b
 
 /**
  * Judge one simple command (PRD §4.1(a)–(f), order normative). Returns the break reason,
- * or null when the command contributes to uphold.
+ * or null when the command contributes to uphold. `lineFullyRead` is false when the line
+ * carried a span the tokenizer could not read, which withholds clause (e).
  */
 function judgeCommand(
   command: SimpleCommand,
   protectedPaths: string[],
   readOnlyEntries: string[][],
+  lineFullyRead: boolean,
 ): string | null {
   // (a) Precise rules: a detected mutation whose target carries a protected path breaks.
   for (const rule of MUTATION_RULES) {
@@ -123,10 +125,13 @@ function judgeCommand(
 
   // (e) Read-only allowlist: a proven read absolves the mention — but a nested shell
   // (`eval`/`sh -c …`) re-parses its string args, so it can never be proven read-only even
-  // if it was injected into the allowlist. Its mention falls through to the backstop.
+  // if it was injected into the allowlist. Its mention falls through to the backstop. A line
+  // carrying an unread span is refused the same way: what the scanner never read could be
+  // anything, so no head vouches for it (COVENANT-18 §2-b B3).
   const first = command.words[0];
   const firstBasename = first !== undefined ? commandBasename(first) : '';
   if (
+    lineFullyRead &&
     !isNestedShellCommand(firstBasename) &&
     readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))
   ) {
@@ -143,9 +148,10 @@ function judgeCommand(
  * For each `toolCalls[i]` whose `name` exactly equals a non-empty `shellToolNames` entry,
  * every string value under a non-empty `commandArgNames` key is analyzed as a shell line;
  * a shell call with zero such strings breaks (a misassembled arg name must not degrade
- * into universal uphold). A tokenize failure breaks iff the dequoted line — or one of its
- * shell-metacharacter fragments (COVENANT-07d) — mentions a protected path. Non-shell calls,
- * `subagentSpawns`, and `userMessages` are never judged.
+ * into universal uphold). A span the tokenizer could not read breaks iff the dequoted span —
+ * or one of its shell-metacharacter fragments (COVENANT-07d) — mentions a protected path,
+ * and is answered before the commands so that a mention only the span can see is named as
+ * one. Non-shell calls, `subagentSpawns`, and `userMessages` are never judged.
  */
 export function judgeShellModification(
   input: CovenantInput,
@@ -172,17 +178,17 @@ export function judgeShellModification(
       };
     }
     for (const line of lines) {
-      const result = tokenizeCommandLine(line);
-      if (!result.ok) {
-        // Tokenize failed: the shell would still remove quotes and backslash escapes, so a
-        // split target like `sr"c"` or `sr\c` becomes `src` on execution. Strip both before the
-        // segment-match so the fallback is not defeated by the very escaping that broke
-        // tokenization; this stays fail-closed (a path named in an untokenizable line breaks).
-        // Removal here may over-join unrelated words, which only ever widens what breaks — never
-        // a hole. The fallback-only decomposition then covers the metachar-glued forms
-        // (`…/dist;echo x`) that no tokenizer was left to cut apart (COVENANT-07d).
-        const dequoted = line.replace(/['"\\]/g, '');
-        const candidates = untokenizableLineCandidates(dequoted);
+      const { commands, unread } = tokenizeCommandLine(line);
+      // Each unread span keeps the conservative treatment the whole line used to get, and
+      // only the span gets it (COVENANT-18 §2-b B3): the shell would still remove quotes and
+      // backslash escapes, so a split target like `sr"c"` or `sr\c` becomes `src` on
+      // execution — strip both before the segment-match, or the very escaping that stopped
+      // the scan defeats the scan that replaces it. Removal may over-join unrelated words,
+      // which only ever widens what breaks, never a hole. The fallback-only decomposition
+      // then covers the metachar-glued forms (`…/dist;echo x`) that no tokenizer was left to
+      // cut apart (COVENANT-07d) — narrowing the span must not narrow the extraction.
+      for (const span of unread) {
+        const candidates = untokenizableLineCandidates(span.text.replace(/['"\\]/g, ''));
         const hit = protectedPaths.find((path) =>
           candidates.some((candidate) => mentionsPath(candidate, path)),
         );
@@ -192,10 +198,9 @@ export function judgeShellModification(
             reason: `untokenizable command line mentions protected path ${hit}`,
           };
         }
-        continue;
       }
-      for (const command of result.commands) {
-        const reason = judgeCommand(command, protectedPaths, readOnlyEntries);
+      for (const command of commands) {
+        const reason = judgeCommand(command, protectedPaths, readOnlyEntries, unread.length === 0);
         if (reason !== null) return { upheld: false, reason };
       }
     }

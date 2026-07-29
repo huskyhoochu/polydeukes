@@ -216,23 +216,27 @@ describe('COVENANT-13b §4.3 command evidence — anchored at a simple command (
 // AC 8 — an untokenizable command line is not evidence
 // ===========================================================================
 
-describe('COVENANT-13b §4.3 command evidence — tokenize failure (AC 8)', () => {
+describe('COVENANT-13b §4.3 command evidence — an unread span (AC 8)', () => {
   it('refuses a command line with an unclosed quote, judging it rather than skipping the entry', () => {
-    // P0 fail-closed direction: the parse failed, so nothing about this line is known —
-    // including whether the pattern sits at a command's start. Note the raw string BEGINS
-    // with the pattern, so the shipped whole-string judge calls this evidence today; only a
-    // tokenize-first implementation refuses it. The assertion is `missing`, not merely
-    // "not found": a tokenize failure must not escalate into "this entry cannot be
-    // evaluated", because a skip registration passes the edit through without judging it.
-    // Mutation caught: the failure swallowed as a skip, or `ok: false` treated as evidence.
+    // P0 fail-closed direction. Since COVENANT-18 §2-b B4 the scanner DOES read this line's
+    // first half, and this consumer still refuses it — deliberately, because its polarity is
+    // inverted: everywhere else `false` withholds a block, but here it means "evidence
+    // missing", which blocks. Trusting the half we read would OPEN a discipline gate on a
+    // line nobody could finish reading. Note the raw string BEGINS with the pattern, so a
+    // whole-string judge calls this evidence; only a tokenize-first one refuses it. The
+    // assertion is `missing`, not merely "not found": the refusal must not escalate into
+    // "this entry cannot be evaluated", because a skip registration passes the edit through
+    // unjudged. Mutation caught: the refusal swallowed as a skip, or the read commands
+    // trusted for anchoring while a span is still unread.
     expect(precedentDecision([shellCall('npm view "yaml')])).toBe('missing');
   });
 
   it('lets a clean sibling call still supply the evidence', () => {
-    // P0 over-block fence: one unparseable line anywhere in a long session must not poison
-    // the scan. Mutation caught: the evaluator returning false at the first `ok: false`
-    // instead of skipping that call, which would make a single stray quote somewhere in the
-    // session permanently unopenable — and nothing in the telemetry would say why.
+    // P0 over-block fence: one half-read line anywhere in a long session must not poison
+    // the scan. Mutation caught: the evaluator returning false at the first line carrying a
+    // span instead of moving on to the next call, which would make a single stray quote
+    // somewhere in the session permanently unopenable — and nothing in the telemetry would
+    // say why.
     expect(precedentDecision([shellCall('npm view "yaml'), shellCall('npm view react')])).toBe(
       'found',
     );

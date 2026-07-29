@@ -120,7 +120,7 @@ describe('§5.2 clean input with no rules', () => {
   });
 });
 
-describe('§5.2/§5.3 tokenize failure surfaces as indeterminate, not a throw', () => {
+describe('§5.2/§5.3 an unread span surfaces as indeterminate, not a throw', () => {
   it('an unclosed quote line is reported via indeterminate rather than thrown', () => {
     expect(() => extractMutations("echo 'oops", [])).not.toThrow();
     const result = extractMutations("echo 'oops", []);

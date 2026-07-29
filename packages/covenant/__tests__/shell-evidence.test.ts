@@ -491,19 +491,22 @@ describe('deriveShellChanges — per-item unjudgeable edge forms (audit G4/G15/G
 });
 
 // ===========================================================================
-// Audit-round gaps — tokenize failure and target-unknown forms
+// Audit-round gaps — unread spans and target-unknown forms
 // ===========================================================================
 
-describe('deriveShellChanges — tokenize failure is a recorded common skip (audit G1)', () => {
-  it('answers one pathless reasoned entry per failing form, never silence', () => {
-    // (audit G1) §2-a row 14: the line the tokenizer cannot parse is exactly where a
-    // quiet pass would hide. Mutation caught: tokenize failure answering empty/empty
+describe('deriveShellChanges — an unread span is a recorded common skip (audit G1)', () => {
+  it('answers one pathless reasoned entry per unread form, never silence', () => {
+    // (audit G1) §2-a row 14: the span the tokenizer could not read is exactly where a quiet
+    // pass would hide. The title says "unread span" rather than "tokenize failure" since
+    // COVENANT-18 §2-b B2 — the line is now read up to the span, and this form has nothing
+    // readable left after it: the quote swallows the redirect operator, so `f.ts` is content
+    // and no write exists to file. Mutation caught: the span answering empty/empty
     // (fail-open), or throwing out of the pure function instead of filing the reason.
-    const failing = [
-      "echo 'x > f.ts", // unclosed quote
+    const unread = [
+      "echo 'x > f.ts", // unclosed quote, swallowing the operator behind it
     ];
 
-    for (const command of failing) {
+    for (const command of unread) {
       const result = deriveShellChanges(command);
       expect(result.evidence).toEqual([]);
       expect(result.unjudgeable).toHaveLength(1);

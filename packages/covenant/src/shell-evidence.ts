@@ -278,12 +278,12 @@ function deriveCommand(
 /**
  * Derive the file changes one shell command line proves (§2-a).
  *
- * Never throws: a line the tokenizer cannot parse is exactly where a quiet pass would
- * hide, so it answers one unjudgeable entry carrying the failure reason.
+ * Never throws: a span the tokenizer could not read is exactly where a quiet pass would
+ * hide, so each one answers an unjudgeable entry carrying its reason — and the commands
+ * around it still contribute their real evidence (COVENANT-18 §2-b B4).
  */
 export function deriveShellChanges(commandLine: string): ShellDerivation {
   const result = tokenizeCommandLine(commandLine);
-  if (!result.ok) return { evidence: [], unjudgeable: [{ reason: result.reason }] };
 
   // A directory change is line-scoped and order-blind: a write before it is as ambiguous
   // as one after, since only execution decides which base each relative target resolves to.
@@ -294,7 +294,13 @@ export function deriveShellChanges(commandLine: string): ShellDerivation {
     );
   });
 
-  const derivation: ShellDerivation = { evidence: [], unjudgeable: [] };
+  // A line with any unread span files at least one entry, whatever the commands around it
+  // derive: that row is the `skipped shell-unjudgeable` telemetry the shell axis contracts
+  // for, and a partial success that swallowed it would be a call passing unrecorded.
+  const derivation: ShellDerivation = {
+    evidence: [],
+    unjudgeable: result.unread.map((span) => ({ reason: span.reason })),
+  };
   for (const command of result.commands) deriveCommand(command, movesDirectory, derivation);
   return derivation;
 }

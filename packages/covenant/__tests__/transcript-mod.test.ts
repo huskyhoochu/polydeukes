@@ -162,9 +162,11 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
     expect(verdict.upheld).toBe(false);
   });
 
-  it('an untokenizable line carrying the "~" spelling breaks (dequoted fallback)', () => {
-    // Mutation caught: a tokenize failure defaulting to uphold — an unclosed quote next to
-    // the forgery must fail closed when the dequoted line names the transcript.
+  it('a half-read line carrying the "~" spelling breaks (§4.1 home resolution)', () => {
+    // Mutation caught: an unread span defaulting to uphold — an unclosed quote sitting next
+    // to the forgery must not save it. Since COVENANT-18 §2-b B3 the forgery itself is in
+    // the READ half, so the home spelling has to resolve in precise judgment, not only in
+    // the span scan that used to answer for the whole line.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL} "unclosed`),
       baseSpec(),
@@ -296,8 +298,8 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
     expect(verdict).toEqual({ upheld: true });
   });
 
-  it('an untokenizable line not naming the transcript upholds, and empty toolCalls upholds', () => {
-    // Mutation caught: a tokenize failure defaulting to break regardless of content
+  it('a half-read line not naming the transcript upholds, and empty toolCalls upholds', () => {
+    // Mutation caught: an unread span defaulting to break regardless of content
     // (every malformed line would need the witness), and a degenerate input breaking
     // instead of vacuously upholding.
     expect(judgeTranscriptModification(shellCall('echo "unclosed'), baseSpec())).toEqual({

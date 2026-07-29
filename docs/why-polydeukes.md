@@ -43,6 +43,11 @@ human in a hurry — can quietly remove.
      honest claim is that it leaves a "could not judge" row rather than that everything is
      judged. The near-miss is itself story material: writing the behavior down falsified the
      headline claim before publication.
+     Parked candidate (2026-07-29, COVENANT-18): a check has two ends, and testing one of them
+     proves nothing. We added a rule and confirmed it blocked — then found the first probe had
+     never reached the judgment at all, because the very thing that made it harmless to run also
+     made it invisible to routing. A gate nobody can open by doing the required work looks
+     identical, from the outside, to a gate that works.
      Parked candidate (2026-07-28, COVENANT-07c): protecting one file the cheap way — as a
      path with ancestors — quietly made the whole home directory a protected zone;
      `cd /home/<user>` was refused for two weeks and nobody noticed. The fix was a narrower

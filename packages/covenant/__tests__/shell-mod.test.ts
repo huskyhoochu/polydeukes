@@ -166,10 +166,11 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('a tokenize failure whose raw line mentions the protected path breaks (§4.1 step 2)', () => {
-    // Mutation caught: a tokenize failure defaulting to uphold regardless of content —
-    // an unclosed quote must fail closed *when the raw line names the protected path*,
-    // or an unparseable command becomes a bypass vector.
+  it('a line left half-read still breaks on the path its read half names (§4.1 step 2)', () => {
+    // Mutation caught: an unread span defaulting to uphold regardless of content. Since
+    // COVENANT-18 §2-b B3 the read half reaches precise judgment, so what fails closed here
+    // is clause (e): `cat` would normally be absolved, and the span withholds that — what
+    // the scanner never read could be anything, so no head vouches for the line.
     const verdict = judgeShellModification(shellCall(`cat ${PROTECTED} "unclosed`), baseSpec());
 
     expect(verdict.upheld).toBe(false);

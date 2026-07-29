@@ -66,9 +66,10 @@ export type CovenantRegistration = {
 /**
  * Collect path candidates from every string value inside `value` (PRD §4.2). Each string is
  * tokenized quote-aware (via the shared tokenizer) so quote/escape splits collapse to the
- * word the shell would see; each resulting word text is a candidate. A tokenize failure
- * surfaces as `failed = true` so the caller can route fail-closed rather than fall back to a
- * raw-substring scan.
+ * word the shell would see; each resulting word text is a candidate. An unread span surfaces
+ * as `failed = true` so the caller can route fail-closed rather than fall back to a
+ * raw-substring scan — the candidates the same line's read commands contribute add routing
+ * precision, they never withdraw that flag (COVENANT-18 §2-b B4).
  */
 function collectPathCandidates(value: unknown): { candidates: string[]; failed: boolean } {
   const candidates: string[] = [];
@@ -77,10 +78,7 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
   const walk = (node: unknown): void => {
     if (typeof node === 'string') {
       const result = tokenizeCommandLine(node);
-      if (!result.ok) {
-        failed = true;
-        return;
-      }
+      if (result.unread.length > 0) failed = true;
       for (const command of result.commands) {
         // Split each tokenized word the same way mentionsPath does, so a path fused to
         // another lexeme (`--dest=path`) still surfaces as its own candidate.
@@ -110,7 +108,7 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
  * A registration matches when any of its `protectedPaths` is an ancestor/descendant/equal of
  * a path candidate extracted from any string value reachable at any depth inside
  * `input.toolCalls[].args`; candidates are quote-aware tokenizer words, so a quote-split
- * write still routes. A tokenize failure with a non-empty `protectedPaths` routes fail-closed
+ * write still routes. An unread span with a non-empty `protectedPaths` routes fail-closed
  * (the registration matches on its first protected path) rather than silently miss.
  * `subagentSpawns` and `userMessages` never participate. `mentionedPath` is the first
  * protected path (in array order) that mentions. Result preserves registration order, at most

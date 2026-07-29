@@ -94,28 +94,33 @@ What blocks and why:
   row instead of passing silently. Computable shell writes (literal `echo` redirects, clean
   heredocs and herestrings) carry real evidence and block like a `Write` — that is a refusal
   class of its own, reached before the allowlist, so an allowlisted head (`echo`, `printf`) does
-  not save a redirect into a protected path. A line the tokenizer cannot parse falls back to a
-  mention scan with no first token to read, so the allowlist cannot vouch for it either: a
-  protected path standing there as its own word — or glued to a shell metacharacter
-  (`rm packages/core/dist;echo 'x`) — blocks as an `untokenizable command line`. The scan strips
-  quotes and backslashes (the shell would too) and reads the resulting line together with its
-  metacharacter-split fragments as a union (COVENANT-07d), so closing the glued spellings could
-  not withdraw a spaced one. **It closes only what is decidable from the text, and the rest is a
-  declared limit rather than pending work** — a glob keeps its target hidden here
-  (`rm packages/core/dist* 'x`), and a quoted word carries its metacharacters through successful
-  tokenization, so `bash -c "rm -rf packages/core/dist;echo x"` reaches no mention. Both leave a
-  `skipped shell-unjudgeable` row. **That row is the contract, not the block**: predicting a
-  shell command's target from its text is undecidable, so the invariant this axis actually holds
-  is that no call passes unrecorded — a new spelling that lands in `skipped` is this limit
-  showing itself, not a defect to open a ticket for. A spelling that passes with NO row, or with
-  `passed` for a call that was never judged, is the defect class (that was blocker B7). Never
-  read tokenizer failure as the safe direction.
+  not save a redirect into a protected path. **A line the scanner cannot finish reading is not
+  discarded** (COVENANT-18): it yields the commands it did read plus one `unread` span per
+  failure. The read half reaches precise judgment, the span alone falls to the mention scan, and
+  the line loses its allowlist absolution for as long as a span is open — what was never read
+  could be anything, so no head vouches for it. So `rm packages/core/dist;echo 'x` blocks as
+  `rm mentions protected path …`, `cat packages/core/dist;echo 'x` blocks too, and the fully-read
+  `cat packages/core/dist/index.js` still passes. The span scan strips quotes and backslashes
+  (the shell would too) and reads the span together with its metacharacter-split fragments as a
+  union (COVENANT-07d), so closing the glued spellings could not withdraw a spaced one. **It
+  closes only what is decidable from the text, and the rest is a declared limit rather than
+  pending work** — a glob keeps its target hidden here (`rm packages/core/dist* 'x` passes,
+  leaving two rows), and a quoted word carries its metacharacters through successful
+  tokenization, so `bash -c "rm -rf packages/core/dist;echo x"` reaches no mention (one row,
+  `nested shell execution`). All of them leave a `skipped shell-unjudgeable` row. **That row is
+  the contract, not the block**: predicting a shell command's target from its text is
+  undecidable, so the invariant this axis actually holds is that no call passes unrecorded — a
+  new spelling that lands in `skipped` is this limit showing itself, not a defect to open a
+  ticket for. A spelling that passes with NO row, or with `passed` for a call that was never
+  judged, is the defect class (that was blocker B7). Never read a scan that stopped early as the
+  safe direction.
 - **The transcript** has its own `transcript-mod` registration judging whole-path *equality*,
   never an ancestor: forged writes block in every spelling (`~`, `$HOME`, `${HOME}`, `~<user>`,
   absolute), reading it with an allowlisted head (`cat`, `tail`, `grep`, …) passes in every
   spelling, and the home directory is never a protected ancestor. That read absolution is the
-  tokenized path's — on a line the tokenizer refuses there is no head to vouch for, so an
-  untokenizable read of the transcript blocks like a write does. A reader outside that
+  a line read all the way through: a line still carrying an unread span keeps its head but not
+  its vouching power, so `cat <transcript>;echo 'x` blocks like a write does while `tail -f
+  <transcript>` passes. A reader outside that
   allowlist (`jq`, `bat`) still breaks — the allowlist vouches for the command, not the intent.
   Destroying out-of-repo ancestors is out of observation scope by design — the agent's own deny
   policy owns that ground.

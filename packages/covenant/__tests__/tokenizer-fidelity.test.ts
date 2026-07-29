@@ -26,8 +26,7 @@ describe('A1 — escaped quotes inside a double-quoted string', () => {
     // line ends up { ok: false } — the single defect behind most of the measured blind spot.
     const result = tokenizeCommandLine('echo "say \\"hi\\""');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -41,8 +40,7 @@ describe('A1 — escaped quotes inside a double-quoted string', () => {
     // word count and both ends pins the pairing without fixing the pattern's own escapes.
     const result = tokenizeCommandLine('grep -rn "a\\|from \\"x\\"" src/');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     const texts = result.commands[0].words.map((w) => w.text);
     expect(texts).toHaveLength(4);
@@ -57,18 +55,20 @@ describe('A1 — escaped quotes inside a double-quoted string', () => {
     // stripped one silently rewrites the grep pattern above.
     const result = tokenizeCommandLine('echo "a\\|b"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: 'a\\|b', opaque: false });
   });
 
   it('still fails when the only closing quote on the line is an escaped one', () => {
     // Mutation caught: applying the escape rule while extracting the text but falling back
     // to indexOf for the failure decision — `\"` would close the string and a line bash
-    // rejects for an unexpected EOF would tokenize clean.
+    // rejects for an unexpected EOF would tokenize clean. Restated in COVENANT-18 §2-b B2's
+    // vocabulary: the failure is now a recorded span instead of a discarded line, so the
+    // claim "this quote never closes" is carried by a non-empty `unread`. The judge-surface
+    // half of this case is below — a protected path inside such a span still blocks.
     const result = tokenizeCommandLine('echo "a\\"');
 
-    expect(result).toEqual({ ok: false, reason: 'unclosed quote' });
+    expect(result.unread).toEqual([{ text: '"a\\"', reason: 'unclosed quote' }]);
   });
 });
 
@@ -79,16 +79,14 @@ describe('A2 — a backslash-quoted heredoc delimiter', () => {
     // literal:false tells a consumer the body it sees is not the text bash writes.
     const result = tokenizeCommandLine('cat <<\\EOF\n$D\nEOF');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: '$D\n', literal: true }]);
   });
 
   it("keeps a single-quoted `<<'EOF'` delimiter literal", () => {
     const result = tokenizeCommandLine("cat <<'EOF'\n$D\nEOF");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: '$D\n', literal: true }]);
   });
 
@@ -97,8 +95,7 @@ describe('A2 — a backslash-quoted heredoc delimiter', () => {
     // `<<EOF` body prints the value of `$D`, so its text is not what bash writes.
     const result = tokenizeCommandLine('cat <<EOF\n$D\nEOF');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: '$D\n', literal: false }]);
   });
 });
@@ -110,8 +107,7 @@ describe('A3 — a heredoc delimiter is never expanded', () => {
     // variable's value — the body end is statically decidable, so the failure is a wrong model.
     const result = tokenizeCommandLine('cat <<$DELIM\ninside\n$DELIM');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: 'inside\n', literal: false }]);
   });
 
@@ -121,8 +117,7 @@ describe('A3 — a heredoc delimiter is never expanded', () => {
     // bash reads a bare `DELIM` line as body text.
     const result = tokenizeCommandLine('cat <<$DELIM\nDELIM\n$DELIM');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: 'DELIM\n', literal: false }]);
   });
 
@@ -132,8 +127,7 @@ describe('A3 — a heredoc delimiter is never expanded', () => {
     // body at the literal `$(x)` line, so the same static decision holds for both spellings.
     const result = tokenizeCommandLine('cat <<$(x)\ninside\n$(x)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: 'inside\n', literal: false }]);
   });
 });
@@ -145,8 +139,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
     // value and calling it unknowable blocks a call whose target is fully decided.
     const result = tokenizeCommandLine('echo "*.txt"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '*.txt', opaque: false });
   });
 
@@ -155,8 +148,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
     // glob character the opacity scan reads.
     const result = tokenizeCommandLine('echo "a?b"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: 'a?b', opaque: false });
   });
 
@@ -165,8 +157,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
     // reading knows, and A4 must not reach it.
     const result = tokenizeCommandLine('echo *.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '*.txt', opaque: true });
   });
 
@@ -176,8 +167,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
     // `$X/dist` as if it were a decided path.
     const result = tokenizeCommandLine('echo "$X/dist"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '$X/dist', opaque: true });
   });
 
@@ -186,8 +176,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
     // double quotes too, so only `*` and `?` may lose their opacity there.
     const result = tokenizeCommandLine('echo "`id`"');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '`id`', opaque: true });
   });
 });
@@ -239,8 +228,7 @@ describe('A5 — a leading assignment does not occupy the command name', () => {
     // assertion is deliberately shape-free — the text may live in any field.
     const result = tokenizeCommandLine(`FOO=${protectedPathFixture} bash -c "x"`);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(JSON.stringify(result.commands[0])).toContain(protectedPathFixture);
   });
 });
@@ -251,8 +239,7 @@ describe('A6 — the noclobber-override write operator `>|`', () => {
     // whole line fails. Measured: `>|` truncates and writes even under `set -o noclobber`.
     const result = tokenizeCommandLine('echo x >| out.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -267,8 +254,7 @@ describe('A6 — the noclobber-override write operator `>|`', () => {
     // Mutation caught: matching `>|` only when whitespace follows it.
     const result = tokenizeCommandLine('echo x >|out.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '>|', target: { text: 'out.txt', opaque: false } },
     ]);
@@ -288,10 +274,13 @@ describe('A6 — the noclobber-override write operator `>|`', () => {
 
   it('still fails on `>|` with no target', () => {
     // The opposite end: the new operator must be subject to the empty-target check the old
-    // ones are. Mutation caught: an operator added to the table but exempted from it.
+    // ones are. Mutation caught: an operator added to the table but exempted from it — which
+    // COVENANT-18 §2-b B2 would now show as a confident redirect carrying an empty target
+    // instead of a recorded span, so both are asserted.
     const result = tokenizeCommandLine('echo x >|');
 
-    expect(result).toEqual({ ok: false, reason: 'missing redirect target' });
+    expect(result.unread).toEqual([{ text: '>|', reason: 'missing redirect target' }]);
+    expect(result.commands[0].redirects).toEqual([]);
   });
 });
 
@@ -302,8 +291,7 @@ describe("A7 — ANSI-C quoting `$'…'`", () => {
     // opaque: ANSI-C quoting produces a string constant, not an expansion.
     const result = tokenizeCommandLine("echo $'Here\\'s Johnny'");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -317,8 +305,7 @@ describe("A7 — ANSI-C quoting `$'…'`", () => {
     // back to reading the `$` as an expansion, which marks a decided empty word unknowable.
     const result = tokenizeCommandLine("echo $''");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
       { text: '', opaque: false },
@@ -334,8 +321,7 @@ describe('A8 — process substitution in redirect-target position', () => {
     // first-word allowlist would vouch for arguments it never saw.
     const result = tokenizeCommandLine('echo abc > >(wc -c)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -351,8 +337,7 @@ describe('A8 — process substitution in redirect-target position', () => {
     // is equally valid bash (measured), so a one-sided fix leaves half the form failing.
     const result = tokenizeCommandLine('wc -c < <(echo hi)');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '<', target: { text: '<(echo hi)', opaque: true } },
     ]);
@@ -385,8 +370,7 @@ describe('A1 (audit round) — the escaped backslash the pairing must survive', 
     // and bash reduces `\\` to a single backslash (the byte a fileChange would record).
     const result = tokenizeCommandLine('echo "a\\\\" b');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -404,8 +388,7 @@ describe('A2 (audit round) — a quoting character anywhere in the delimiter wor
     // dequoted `EOF` — so position is irrelevant and the quotes leave the delimiter text.
     const result = tokenizeCommandLine('cat <<E"O"F\n$D\nEOF');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].heredocs).toEqual([{ body: '$D\n', literal: true }]);
   });
 });
@@ -418,8 +401,7 @@ describe('A6 (audit round) — the fd-prefixed noclobber-override forms', () => 
     // fallback, where no precise target and no fileChange evidence is ever computed.
     const result = tokenizeCommandLine('echo x 2>| err.txt');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].redirects).toEqual([
       { operator: '2>|', target: { text: 'err.txt', opaque: false } },
     ]);
@@ -435,8 +417,7 @@ describe('A7 (audit round) — escape decoding, and the branch it must not reach
     // a downstream fileChange would carry as written content.
     const result = tokenizeCommandLine("echo $'a\\nb' $'a\\tb'");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -453,8 +434,7 @@ describe('A7 (audit round) — escape decoding, and the branch it must not reach
     // line into the fallback, where an allowlisted head can no longer absolve anything.
     const result = tokenizeCommandLine("echo 'a\\' b");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([
       { text: 'echo', opaque: false },
@@ -472,8 +452,7 @@ describe('A8 (audit round) — the read-direction target must not leak its inner
     // operand land in `words` behind a leading `cat` the allowlist would vouch for.
     const result = tokenizeCommandLine(`cat < <(sed -i s/a/b/ ${protectedPathFixture})`);
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands).toHaveLength(1);
     expect(result.commands[0].words).toEqual([{ text: 'cat', opaque: false }]);
     expect(result.commands[0].redirects).toEqual([
@@ -569,6 +548,25 @@ describe('judgeShellModification — lines migrating out of the untokenizable fa
       expect(verdict.reason).not.toContain(fallbackMentionReason);
     }
   });
+
+  it('still breaks a protected path standing inside the escaped-quote span A1 leaves', () => {
+    // The judge-surface half of the A1 case that keeps failing (the line whose only closing
+    // quote is escaped). The span is what COVENANT-18 §2-b B2 hands back instead of a
+    // discarded line, so this is where "the new shape did not weaken the old verdict" is
+    // decided. Precise judgment cannot answer here — the decoded word ends in the quote
+    // character, so its last segment no longer matches — and the span's own conservative
+    // scan is what blocks. Mutation caught: the narrowed fallback dropped once the tokenizer
+    // stopped failing, which turns this line from a block into a silent pass.
+    const verdict = judgeShellModification(
+      shellCall(`echo "${protectedPathFixture}\\"`),
+      shellSpec(),
+    );
+
+    expect(verdict.upheld).toBe(false);
+    if (!verdict.upheld) {
+      expect(verdict.reason).toContain(`${fallbackMentionReason} ${protectedPathFixture}`);
+    }
+  });
 });
 
 describe('deriveShellChanges — the recording surface part A moves lines across', () => {
@@ -641,8 +639,7 @@ describe('A9 — paren matching honors quote state', () => {
     // is the residual A1 class: a scanning primitive that ignores context.
     const result = tokenizeCommandLine('diff <(grep -oE "https?://[^)]+" a.md | sort) b.md');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     const texts = result.commands[0].words.map((w) => w.text);
     expect(texts[0]).toBe('diff');
     expect(texts[1]).toBe('<(grep -oE "https?://[^)]+" a.md | sort)');
@@ -654,8 +651,7 @@ describe('A9 — paren matching honors quote state', () => {
     // double quotes only.
     const result = tokenizeCommandLine("echo $(grep -c 'x)y' f) done");
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     const words = result.commands[0].words;
     expect(words[1]).toEqual({ text: "$(grep -c 'x)y' f)", opaque: true });
     expect(words[2].text).toBe('done');
@@ -667,8 +663,7 @@ describe('A9 — paren matching honors quote state', () => {
     // line into one opaque word and hide any protected path standing after it.
     const result = tokenizeCommandLine('echo $(id) after');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     expect(result.commands[0].words[1]).toEqual({ text: '$(id)', opaque: true });
     expect(result.commands[0].words[2].text).toBe('after');
   });
@@ -718,8 +713,7 @@ describe('A10 — the read-direction `<&` operator', () => {
     // lone `<` whose target scan stops on `&`, so a valid line dies as a missing target.
     const result = tokenizeCommandLine('exec {FD[0]}<&- {FD[1]}>&-');
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.unread).toEqual([]);
     const ops = result.commands[0].redirects.map((r) => `${r.operator}${r.target.text}`);
     expect(ops).toEqual(['<&-', '>&-']);
   });
