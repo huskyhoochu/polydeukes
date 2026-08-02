@@ -3,11 +3,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// DIST-01 §3-c RED phase — the session surface's assembled entry point, the exact
-// counterpart of runCovenantCheck on the commit surface. It does NOT exist yet, so
-// every case below is RED by construction.
+// DIST-01 §3-c — the session surface's assembled entry point, the exact counterpart of
+// runCovenantCheck on the commit surface.
 //
-// Contract asserted (the implementer matches this named export):
+// Contract asserted:
 //   runClaudeCodeHook({ repoRoot, rawPayload?, telemetryPath?, covenantDist? })
 //     : Promise<{ exitCode: 0 | 2 }>
 //   - NEVER throws: every failure branch translates to { exitCode: 2 } inside, and a
@@ -175,6 +174,32 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
     ).resolves.toEqual({ exitCode: 2 });
 
     expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it('falls back to <repoRoot>/.polydeukes/roi.log when neither the spec nor the env names a path', async () => {
+    // The case above pins the ENV term of the precedence chain; this one pins the LAST
+    // term's existence. Every other case in this file injects telemetryPath, so deleting
+    // `?? join(spec.repoRoot, '.polydeukes', 'roi.log')` would leave the whole suite green
+    // — while production runs exactly that branch, since the delegator passes no path and
+    // the hook normally runs with no env var set. A config failure would then write its
+    // blocked row nowhere and the fail-closed exit would leave no record (PR #46 review).
+    vi.stubEnv('POLYDEUKES_TELEMETRY_PATH', undefined);
+    writeFileSync(
+      join(repoRoot, 'polydeukes.config.json'),
+      JSON.stringify({ languages: 'not-an-object' }),
+    );
+
+    await expect(
+      runClaudeCodeHook({
+        repoRoot,
+        rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
+      }),
+    ).resolves.toEqual({ exitCode: 2 });
+
+    const fallback = readRecords(join(repoRoot, '.polydeukes', 'roi.log')).records;
+    expect(fallback.map((record) => [record.event, record.label, record.subject])).toEqual([
+      ['blocked', FAIL_CLOSED_LABEL, '-'],
+    ]);
   });
 
   it('resolves { exitCode: 2 } and records ONE hook blocked row when the covenant dist lacks the self-mod body', async () => {

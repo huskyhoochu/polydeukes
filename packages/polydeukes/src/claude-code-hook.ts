@@ -48,7 +48,7 @@ import {
   transcriptModRegistration,
   ttlWitness,
 } from '@polydeukes/covenant';
-import { loadConfig } from './index.js';
+import { loadConfig } from './load-config.js';
 
 /** `runClaudeCodeHook` input (DIST-01 §3-c) — the `CovenantCheckSpec` shape, session side. */
 export type ClaudeCodeHookSpec = {
@@ -86,16 +86,27 @@ export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exi
   // Env-first telemetry precedence (E2E contract), settled BEFORE any failure branch: a
   // config that never loads still has somewhere to write its one blocked row. The config
   // value applies after the load succeeds.
-  const envTelemetryPath = process.env.POLYDEUKES_TELEMETRY_PATH;
-  let telemetryPath =
-    spec.telemetryPath ?? envTelemetryPath ?? join(spec.repoRoot, '.polydeukes', 'roi.log');
-
+  //
+  // Computed INSIDE the try even though it must run first, because `join` throws on a
+  // non-string repoRoot and this function's contract is that nothing escapes it — a rejection
+  // would exit a delegator non-blocking, which is the cheapest bypass there is. A throw here
+  // leaves `telemetryPath` undefined, which the catch tolerates: there is no root to write a
+  // row under anyway (PR #46 review).
+  let telemetryPath: string | undefined;
   try {
+    const envTelemetryPath = process.env.POLYDEUKES_TELEMETRY_PATH;
+    telemetryPath =
+      spec.telemetryPath ?? envTelemetryPath ?? join(spec.repoRoot, '.polydeukes', 'roi.log');
+
     // Discovery + parse + validation are the loader's job; a throw here (absent, ambiguous,
     // unparseable, or invalid config) falls into the fail-closed catch.
     const { config } = loadConfig(spec.repoRoot);
     telemetryPath =
       spec.telemetryPath ?? envTelemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
+    // Settled for the rest of the happy path. The `let` above exists so the catch can still
+    // record when a failure lands before this point; a closure cannot narrow it, so the
+    // dispatch seam below takes this const instead.
+    const logPath = telemetryPath;
 
     const rawPayload = spec.rawPayload ?? readFileSync(0, 'utf-8');
 
@@ -248,17 +259,21 @@ export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exi
 
     return await runAdapterPath({
       rawPayload,
-      telemetryPath,
+      telemetryPath: logPath,
       dispatch: (stdinPayload) =>
-        dispatchCovenants({ stdinPayload, registrations, telemetryPath, transcript }),
+        dispatchCovenants({ stdinPayload, registrations, telemetryPath: logPath, transcript }),
     });
   } catch (error) {
     process.stderr.write(
       `covenant hook failed closed: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     // Honor the one-call-one-record invariant with a blocked record under the assembly's own
-    // label (COVENANT-07 §4.3) — never a judge's, since no judge answered.
-    appendRecordFailOpen(telemetryPath, { event: 'blocked', label: 'hook', subject: '-' });
+    // label (COVENANT-07 §4.3) — never a judge's, since no judge answered. `undefined` means
+    // the failure landed before a path could even be composed (a non-string repoRoot), where
+    // there is nowhere to write and nothing to attribute the row to.
+    if (telemetryPath !== undefined) {
+      appendRecordFailOpen(telemetryPath, { event: 'blocked', label: 'hook', subject: '-' });
+    }
     return { exitCode: 2 };
   }
 }

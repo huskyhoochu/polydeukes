@@ -403,6 +403,15 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
       });
 
       expect(result.status).toBe(2);
+      // The exit code alone cannot say WHY. Since the delegator resolves the judge by
+      // package name, a fixture tree that cannot reach the install graph dies
+      // ERR_MODULE_NOT_FOUND at the same exit 2 this case asserts — green for the wrong
+      // reason, pinning module resolution instead of the loader's refusal to default a
+      // missing config. The fail-closed row is what separates them: it exists only when
+      // the assembly loaded and then refused (PR #46 review).
+      expect(
+        readRecords(telemetryPath).records.map((record) => [record.event, record.label]),
+      ).toEqual([['blocked', 'hook']]);
     } finally {
       rmSync(configlessRoot, { recursive: true, force: true });
     }
