@@ -314,6 +314,15 @@ instead of blocking.
      round paragraph (the witnessed/blocked ratio after the valve moved behind the
      verdict is that round's headline number).
 
+     Parked candidate (DIST-01, 2026-08-02): dogfooding turned into product verification.
+     Until now the hook judging this repository was a prototype of an unshipped product —
+     266 lines of assembly living inside the repo, which any other project would have had
+     to copy by hand and repoint. That assembly moved into the package, so this
+     repository's hook is a 36-line delegator calling the same entry point a consumer
+     installs. The claim in this section sharpens accordingly: from "the authors get
+     blocked by their own rules" to "the code that blocks us is the code you install".
+     Add it with the v0.2.6 round, once something is actually installable.
+
      Refined (DOC-gate, 2026-07-29): the preserve/correct line runs *through* a dated
      post, not around it. Period-correct vocabulary stays (`waiver` was the right word in
      July); a term already banned when written is corrected; a superseded plan claim keeps

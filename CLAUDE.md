@@ -76,7 +76,9 @@ A PreToolUse hook (`.claude/hooks/`, registered in `.claude/settings.json`) judg
 Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's pre-commit spawns `pdks covenant
 check` over the staged diff — two observations of the same promises. Protection-policy data
 (protectedPaths / disciplines / adapters / witness) lives in `polydeukes.config.yaml`, which
-documents each entry's why inline; the hook only assembles it. Protected: gate definitions (the
+documents each entry's why inline. Since DIST-01 the hook assembles nothing — it is a delegator
+calling `runClaudeCodeHook`, the packaged entry point a consumer project installs, so what we are
+judged by every day is the shipped artifact itself. Protected: gate definitions (the
 hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, the generated `.git/hooks`),
 the five packages' gitignored `dist`, the root config itself, and the live session transcript.
 Package sources are NOT on the session list — they live in the commit surface's own additive
@@ -163,10 +165,18 @@ Recovery and rewiring:
   build` — the covenant five and both adapter e2e suites): run one after renaming sources and
   the session locks on the spot, every mutating call refused. Recovery is a human editing the
   two protected files in their own terminal — measured live, 2026-07-28 (COVENANT-17).
-- **Reassembling the hook cuts your own valve.** The composition root is itself protected, so a
-  broken rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired
-  hook by spawning it against real payloads *before* relying on it, and never remove the current
-  valve until the replacement is proven.
+- **Rewiring the hook cuts your own valve.** The delegator is itself protected, so a broken
+  rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired hook by
+  spawning it against real payloads *before* relying on it, and never remove the current valve
+  until the replacement is proven. (Since DIST-01 the assembly it calls lives in
+  `packages/polydeukes/src` and is session-free; only the delegator and the dist are protected
+  here.)
+- **A dist SYMBOL rename has a window-free path — take it.** Export the new name AND keep the old
+  one as an alias, build, swap the hook, then drop the alias and build again. Neither
+  "build first" nor "hook first" is safe on its own, because each leaves an interval where the
+  hook names something dist does not carry, and **the witness valve cannot rescue that interval**:
+  an assembly crash lands before any verdict, so the valve is never consulted. The bridge removes
+  the interval instead of surviving it — measured live, 2026-08-02 (DIST-01).
 
 The measured history behind these rules — narrowing decisions, bypass profiles, per-ticket
 evolution — lives in the local knowledge store; maintainers, see `CLAUDE.local.md` for pointers.

@@ -113,6 +113,9 @@ importers:
 
   packages/polydeukes:
     dependencies:
+      '@polydeukes/adapter-claude-code':
+        specifier: workspace:^
+        version: link:../adapter-claude-code
       '@polydeukes/adapter-git':
         specifier: workspace:^
         version: link:../adapter-git

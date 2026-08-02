@@ -18,6 +18,7 @@ import { ConfigValidationError, defineConfig, isPlainObject } from '@polydeukes/
 import { parseDocument } from 'yaml';
 
 export type { ResolvedConfig } from '@polydeukes/core';
+export { type ClaudeCodeHookSpec, runClaudeCodeHook } from './claude-code-hook.js';
 export { type CovenantCheckSpec, runCovenantCheck } from './covenant-check.js';
 
 /** The three accepted config filenames, checked directly under the given rootDir. */
