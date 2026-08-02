@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //   - NEVER throws: every failure branch translates to { exitCode: 2 } inside, and a
 //     failure leaves one blocked row at the telemetry path the run already knows —
 //     which for a CONFIG failure is the default path, computed BEFORE config load
-//     (env-first, then <repoRoot>/.polydeukes/roi.log; the current hook's order).
+//     (env-first, then <repoRoot>/.polydeukes/roi.log) and INSIDE the try, so a
+//     non-string repoRoot cannot escape as a rejection either.
 //     Asserted via .resolves — an async not.toThrow is a no-op (testing-fixtures).
 //   - rawPayload absent means read fd 0; every test here injects it (the seam exists
 //     for exactly this). The stdin default is exercised by the AC-1/2 real-hook
@@ -38,7 +39,9 @@ const PROTECTED_FILE = 'gate/inner.txt';
 /**
  * The label the session assembly's fail-closed catch records under — never a judge's
  * label. Origin: the current hook's fail-closed record (.claude/hooks/
- * covenant-pretooluse.mjs), which DIST-01 moves verbatim (§5-e: no judgment change).
+ * covenant-pretooluse.mjs before DIST-01 moved it), carried over verbatim — §5-e: no
+ * judgment change. The live definition is src/claude-code-hook.ts; the delegator that
+ * file replaced the hook with holds no telemetry logic at all.
  */
 const FAIL_CLOSED_LABEL = 'hook';
 /** The label runAdapterPath records under — the funnel supplement and payload faults. */
@@ -154,9 +157,11 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
     // The audit's finding, closed here: a copy of runCovenantCheck's shape hands
     // recordFailClosed(spec.telemetryPath) an undefined in the config-failure window
     // and the row silently vanishes — a fail-closed exit that leaves no record. The
-    // current hook computes the default path BEFORE any load (env-first, then
-    // <repoRoot>/.polydeukes/roi.log; covenant-pretooluse.mjs 67-68) so a config
-    // failure still has somewhere to write. That order is the contract. The env
+    // entry point computes the default path BEFORE any load (env-first, then
+    // <repoRoot>/.polydeukes/roi.log — src/claude-code-hook.ts, the try's first
+    // statement) so a config failure still has somewhere to write. That order is the
+    // contract, and its other half is that the computation stays INSIDE the try so a
+    // non-string repoRoot cannot escape as a rejection (PR #46 review). The env
     // seam points the default at a tmp file so this repository's log stays clean.
     // Mutation caught: the telemetry default resolved only after config load, or the
     // env-first precedence dropped (either leaves this env path empty).
@@ -199,6 +204,29 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
     const fallback = readRecords(join(repoRoot, '.polydeukes', 'roi.log')).records;
     expect(fallback.map((record) => [record.event, record.label, record.subject])).toEqual([
       ['blocked', FAIL_CLOSED_LABEL, '-'],
+    ]);
+  });
+
+  it('writes to the path the CONFIG names once the load succeeds', async () => {
+    // The THIRD term of the precedence chain, and the only one no case reached: the two
+    // default-path cases above break the config on purpose, so they never get past the load,
+    // and every other case injects telemetryPath. Deleting the post-load reassignment
+    // entirely would leave the whole suite green while the `telemetry.logPath` config key
+    // stopped working for consumers — a regression this repository could never observe,
+    // since its own runs always set the env (PR #46 review).
+    vi.stubEnv('POLYDEUKES_TELEMETRY_PATH', undefined);
+    const configured = join(repoRoot, 'nested', 'configured-roi.log');
+    writeConfig({ telemetry: { logPath: configured } });
+
+    await expect(
+      runClaudeCodeHook({
+        repoRoot,
+        rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
+      }),
+    ).resolves.toEqual({ exitCode: 0 });
+
+    expect(readRecords(configured).records.map((record) => [record.event, record.label])).toEqual([
+      ['passed', ADAPTER_LABEL],
     ]);
   });
 

@@ -377,8 +377,10 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
     //
     // Harness note: the real hook resolves repoRoot purely from its own file location
     // (`.claude/hooks/../..`) with no env override. To exercise a configless rootDir at
-    // the E2E level we copy the hook into a temp tree whose `packages` is a symlink back
-    // to the real repo (so the dist imports still resolve) but which has NO config file.
+    // the E2E level we copy the hook into a temp tree that has NO config file. Since
+    // DIST-01 the delegator resolves the judge by package NAME, so what makes that copy
+    // runnable is the `node_modules` link below, not the `packages` one — the latter is
+    // kept because loadConfig and the discipline globs still anchor on this tree.
     // This is the most faithful configless-root spawn the current harness supports; if a
     // future hook gains a repoRoot seam this can collapse to a plain env override.
     const configlessRoot = mkdtempSync(join(tmpdir(), 'pdks-configless-'));

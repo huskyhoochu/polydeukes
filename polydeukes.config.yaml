@@ -53,8 +53,8 @@ protectedPaths:
   - '.lefthook-local'
   # The delegator resolves the judge by package NAME (DIST-01), so Node's ancestor walk
   # decides which code actually judges this session — the trust surface moved from a fixed
-  # path to the install graph. Both entries below sit on that walk and neither is covered by
-  # another: a stub planted in either replaces the judge outright, and every call then passes
+  # path to the install graph. Both entries below sit on that walk: a stub planted in either
+  # replaces the judge outright, and every call then passes
   # with NO telemetry row at all — the defect class, not a declared limit (reproduced
   # 2026-08-02). `.claude/hooks/node_modules` needs no entry of its own; the `.claude/hooks`
   # entry above is already its ancestor. Ancestors ABOVE the repository stay out of

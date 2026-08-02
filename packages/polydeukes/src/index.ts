@@ -13,6 +13,15 @@
  * here would be instantiated by every consumer of any other export — which is exactly how
  * the session adapter ended up on the commit surface's load path (PR #46 review). Keep
  * definitions in their own modules and let importers reach them directly.
+ *
+ * The mirror of that coupling is still open, deliberately. The commit surface's `bin.ts`
+ * reaches `runCovenantCheck` directly and so never loads the session adapter, but the session
+ * delegator can only enter through this barrel — `exports` publishes `"."` alone — so every
+ * session call also instantiates `covenant-check.js` and with it `@polydeukes/adapter-git`.
+ * A workspace missing only that dist therefore fails closed with no telemetry row, which is
+ * inside the limit DIST-01 §3-d declares rather than a defect. Closing it means publishing a
+ * subpath and pointing the delegator at it — a distribution-API decision that belongs with
+ * `pdks init`, since the hook it generates is this delegator's copy (DIST-02).
  * See https://github.com/huskyhoochu/polydeukes
  */
 
