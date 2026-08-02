@@ -13,8 +13,10 @@ discipline library that compiles `disciplines:` config entries into registration
 `packages/adapter-claude-code` — PreToolUse payload → covenant input IR, virtual post-state
 evidence, the JSONL transcript provider, and the adapter's precedent-evidence vocabulary;
 `packages/adapter-git` — staged diff → the same IR (the second adapter, zero core changes);
-`packages/polydeukes` (umbrella) — the `pdks` bin (`covenant check`) and the `loadConfig`
-discovery loader. Details live in the code and the archived PRDs (the merged contracts). The
+`packages/polydeukes` (umbrella) — the `pdks` bin (`covenant check`), the `loadConfig`
+discovery loader, and **both surfaces' composition roots** (`runCovenantCheck` for the commit
+surface, `runClaudeCodeHook` for the session one), since assembly needs an adapter and the
+covenant package at once and only the umbrella may depend sideways. Details live in the code and the archived PRDs (the merged contracts). The
 design docs own everything not yet implemented; when a design doc and shipped code disagree,
 neither side wins by default — triage against the archived PRD: it may be a stale doc, or a
 code bug to fix.
@@ -76,9 +78,14 @@ A PreToolUse hook (`.claude/hooks/`, registered in `.claude/settings.json`) judg
 Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's pre-commit spawns `pdks covenant
 check` over the staged diff — two observations of the same promises. Protection-policy data
 (protectedPaths / disciplines / adapters / witness) lives in `polydeukes.config.yaml`, which
-documents each entry's why inline; the hook only assembles it. Protected: gate definitions (the
+documents each entry's why inline. Since DIST-01 the hook assembles nothing — it is a delegator
+calling `runClaudeCodeHook`, the packaged entry point a consumer project installs, so what we are
+judged by every day is the shipped artifact itself. Protected: gate definitions (the
 hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, the generated `.git/hooks`),
-the five packages' gitignored `dist`, the root config itself, and the live session transcript.
+the five packages' gitignored `dist`, the root config itself, the live session transcript, and
+— since the delegator resolves the judge by NAME — **the `node_modules` directories that
+resolution walks**, because a stub planted on that walk replaces the judge outright and every
+call then passes with no telemetry row at all.
 Package sources are NOT on the session list — they live in the commit surface's own additive
 list (`adapters.git.protectedPaths`), so a session edit is free and the commit that stages it
 is judged. The commit surface runs at `adapters.git.enforce: block`: a commit staging a
@@ -163,10 +170,19 @@ Recovery and rewiring:
   build` — the covenant five and both adapter e2e suites): run one after renaming sources and
   the session locks on the spot, every mutating call refused. Recovery is a human editing the
   two protected files in their own terminal — measured live, 2026-07-28 (COVENANT-17).
-- **Reassembling the hook cuts your own valve.** The composition root is itself protected, so a
-  broken rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired
-  hook by spawning it against real payloads *before* relying on it, and never remove the current
-  valve until the replacement is proven.
+- **Rewiring the hook cuts your own valve.** The delegator is itself protected, so a broken
+  rewire can leave no way in — recovery becomes a human `git checkout`. Verify a rewired hook by
+  spawning it against real payloads *before* relying on it, and never remove the current valve
+  until the replacement is proven. (Since DIST-01 the assembly it calls lives in
+  `packages/polydeukes/src` and is session-free. What the session surface still holds here is
+  the delegator, the dist it loads, and the `node_modules` path it resolves that dist through —
+  three links of one chain, not one file.)
+- **A dist SYMBOL rename has a window-free path — take it.** Export the new name AND keep the old
+  one as an alias, build, swap the hook, then drop the alias and build again. Neither
+  "build first" nor "hook first" is safe on its own, because each leaves an interval where the
+  hook names something dist does not carry, and **the witness valve cannot rescue that interval**:
+  an assembly crash lands before any verdict, so the valve is never consulted. The bridge removes
+  the interval instead of surviving it — measured live, 2026-08-02 (DIST-01).
 
 The measured history behind these rules — narrowing decisions, bypass profiles, per-ticket
 evolution — lives in the local knowledge store; maintainers, see `CLAUDE.local.md` for pointers.

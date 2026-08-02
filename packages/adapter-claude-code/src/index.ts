@@ -14,6 +14,12 @@ import { parsePayloadEnvelope } from './payload-envelope.js';
 export { collectFileChanges } from './file-changes.js';
 export { evaluatePrecedent } from './precedent.js';
 export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
+export {
+  COMMAND_ARGS,
+  MUTATING_TOOLS,
+  SHELL_TOOLS,
+  transcriptPathFromPayload,
+} from './session-vocabulary.js';
 export { transcriptFromJsonl, transcriptFromJsonlFile } from './transcript.js';
 export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
 

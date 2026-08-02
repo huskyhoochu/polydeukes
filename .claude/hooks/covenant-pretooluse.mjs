@@ -1,265 +1,36 @@
 #!/usr/bin/env node
 /**
- * Polydeukes dogfooding assembly — the PreToolUse covenant hook (composition root).
+ * Polydeukes dogfooding delegator — the PreToolUse covenant hook (DIST-01).
  *
- * This is the one place where the adapter (Claude Code vocabulary) and the covenant
- * package (dispatcher + judge bodies) meet: packages stay one-way (each depends only
- * on core), so their composition lives here, outside the package graph. Wiring shape:
- * COVENANT-03 §4.4 + COVENANT-04d §4.5 registrations consumed through ADAPTER-03 §4.1
- * runAdapterPath, with dispatchCovenants bound to the injected dispatch seam. Since
- * CONFIG-03 the protection-policy data (protectedPaths / disciplines) is
- * no longer inlined here — it is read from the root data config via the umbrella
- * loader (`loadConfig`), which also attaches the config file to its own surface.
+ * Assembly no longer lives here. It moved into the `polydeukes` umbrella as
+ * `runClaudeCodeHook`, so this repository consumes the same entry point a consumer
+ * project would — the hook a user installs is this file, and nothing in it is
+ * specific to this checkout. That is what makes the session surface shippable, and
+ * it is also why this repository stays the first consumer of what it ships: the
+ * verdicts we meet every day are the shipped artifact being exercised.
  *
- * The valve is the TTL witness (COVENANT-06, renamed and moved behind the verdict by
- * COVENANT-17) judged over the JSONL transcript provider (ADAPTER-04), configured from
- * the root config's `witness` block (CONFIG-05). The env valve it replaced had no
- * expiry: armed once, it stayed open for the rest of the session and measured 562
- * bypasses in a single day. A witness is typed by a human into the conversation and
- * lapses on its own, so "forgot to disarm" stops existing as a failure mode. Its
- * defence is provenance rather than secrecy — only a real human utterance carries the
- * transcript marking `findUserMessages()` admits, and no agent can forge that marking,
- * which is why the token is safe to keep in plain config. Since COVENANT-17 the valve
- * stands AFTER the verdict: the judge body always spawns, and only an outcome that
- * translated to blocked consults the witness — `witnessed` rows are would-block only.
+ * `repoRoot` comes from this file's own location, never `process.cwd()`. A hook is
+ * spawned with whatever working directory the agent happened to hold, and the e2e
+ * harnesses spawn copies of this file from fixture trees; both need the root that
+ * CONTAINS the hook, which is always `../..` from here.
  *
- * fail-closed: ANY failure here — unbuilt dist, import error, unreadable stdin, a
- * missing or invalid config file — exits 2 (blocking). A dead hook that exits
- * non-blocking would be the cheapest bypass vector. Recovery from an unbuilt clone is
- * `pnpm build` (mentions no protected path, so it is never blocked). A config with no
- * `witness` block stays valid and simply arms no valve at all.
+ * fail-closed: `runClaudeCodeHook` translates every failure it can reach into exit 2
+ * with one blocked record. This catch answers only for what it cannot reach — the
+ * package failing to resolve or load at all (an uninstalled or unbuilt clone), where
+ * no telemetry writer exists yet. Recovery is `pnpm install && pnpm build` (neither
+ * mentions a protected path, so neither is ever blocked).
  */
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// ---------------------------------------------------------------------------
-// Assembly wiring. Agent/tool vocabulary is injected HERE — never in package
-// source (CORE-01 grep gate's counterpart). Protection-policy DATA lives in the
-// root config file (CONFIG-03); only agent vocabulary and dist import paths
-// remain in this file.
-// ---------------------------------------------------------------------------
-
-/**
- * Compose a judge body path and prove it exists (CONFIG-06b §4.2). A body module that was
- * never built makes node exit 1 — the same code a real break verdict returns — so nothing
- * downstream can separate an unjudgeable run from a judged one. The proof therefore belongs
- * to the act of composing the path, and a body this assembly composes no path for is never
- * proven: the throw lands in the fail-closed catch below, one blocked record and exit 2.
- */
-function provenBodyPath(distDir, fileName) {
-  const modulePath = join(distDir, fileName);
-  if (!existsSync(modulePath)) {
-    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
-  }
-  return modulePath;
-}
-
-const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
-const SHELL_TOOLS = ['Bash'];
-const COMMAND_ARGS = ['command'];
-
-// Env-first telemetry precedence (E2E contract); the config value applies after load.
-const envTelemetryPath = process.env.POLYDEUKES_TELEMETRY_PATH;
-let telemetryPath = envTelemetryPath ?? join(repoRoot, '.polydeukes', 'roi.log');
-
-let core;
 try {
-  core = await import(pathToFileURL(join(repoRoot, 'packages/core/dist/index.js')).href);
-  const covenant = await import(
-    pathToFileURL(join(repoRoot, 'packages/covenant/dist/index.js')).href
-  );
-  const adapter = await import(
-    pathToFileURL(join(repoRoot, 'packages/adapter-claude-code/dist/index.js')).href
-  );
-  const umbrella = await import(
-    pathToFileURL(join(repoRoot, 'packages/polydeukes/dist/index.js')).href
-  );
-
-  // Discovery + parse + validation are the loader's job; a throw here (absent,
-  // ambiguous, unparseable, or invalid config) falls into the fail-closed catch.
-  const { config } = umbrella.loadConfig(repoRoot);
-  telemetryPath = envTelemetryPath ?? resolve(repoRoot, config.telemetry.logPath);
-
-  const rawPayload = readFileSync(0, 'utf-8');
-
-  // The transcript path travels in the raw payload only — up-translation drops it, so
-  // it is read here and nowhere else. Every failure narrows to `undefined`, which leaves
-  // the dispatcher on its `noopTranscript` default: lost evidence closes the valve
-  // rather than opening it (ADAPTER-04 §4.4).
-  let transcript;
-  let transcriptPath;
-  try {
-    const parsed = JSON.parse(rawPayload);
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      typeof parsed.transcript_path === 'string'
-    ) {
-      transcriptPath = parsed.transcript_path;
-      transcript = adapter.transcriptFromJsonlFile(transcriptPath);
-    }
-  } catch {
-    // A payload this hook cannot parse is still dispatched: runAdapterPath owns that
-    // verdict (one blocked record). Only the valve is forfeited here.
-  }
-
-  // The live transcript is the evidence channel the context family reads AND the one
-  // the witness reads, so erasing or forging it disables every context discipline while
-  // opening or shutting the human valve on the same file. It lives outside the
-  // repository, so no config `protectedPaths` entry can reach it — and since
-  // COVENANT-07c it does NOT join this list either. A file deep under HOME makes HOME
-  // itself a protected ANCESTOR, which measured as the COVENANT-13 over-block:
-  // `cd /home/<user>` refused for two weeks, and the 07b attempt to register the home
-  // spellings alongside only widened that to `echo $HOME` and every edit whose content
-  // carried a bare `~`. Assembly knows the path AND the home value, so assembly
-  // registers a dedicated `matches` predicate over that ONE file instead
-  // (transcript-mod, below): equality-only — never an ancestor — with the
-  // `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data, reads absolved by the
-  // read-only allowlist, and ancestor destruction outside the repository declared out
-  // of observation scope (07c §2: the agent's own deny policy owns what no repo-scoped
-  // judge can). The witness valve applies to it like any other registration.
-  const protectedPaths = core.normalizeProtectedPaths({
-    protectedPaths: config.protectedPaths ?? [],
-  });
-
-  // One witness predicate shared by every registration: a witness is a session-wide
-  // permission the human granted, not a per-covenant one. Absent `witness` config leaves
-  // this undefined, and no verdict can be witnessed open at all. The predicate receives
-  // the transcript as its second argument from the dispatcher (CORE-04 seam), which is
-  // why the transcript is injected below rather than captured here.
-  const witness =
-    config.witness === undefined
-      ? undefined
-      : covenant.ttlWitness({
-          token: config.witness.token,
-          // Minutes are the human-facing unit in config; the predicate takes milliseconds.
-          // Core passes the value through verbatim, so the conversion belongs to assembly.
-          ttlMs: config.witness.ttlMinutes * 60_000,
-        });
-
-  // Only the two unconditional registrations compose their paths here. The transcript-mod
-  // and discipline bodies are composed inside the conditions that decide whether their
-  // registrations exist at all — proving a body this run will never spawn would close a
-  // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
-  const covenantDist = join(repoRoot, 'packages/covenant/dist');
-  const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
-  const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
-  const disciplines = config.disciplines ?? [];
-  const pathArgs = protectedPaths.flatMap((p) => ['--protected-path', p]);
-
-  const registrations = [
-    {
-      label: 'self-mod',
-      protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [selfModBody, ...pathArgs, ...MUTATING_TOOLS.flatMap((t) => ['--mutating-tool', t])],
-      },
-      witness,
-    },
-    {
-      label: 'shell-mod',
-      protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [
-          shellModBody,
-          ...pathArgs,
-          ...SHELL_TOOLS.flatMap((t) => ['--shell-tool', t]),
-          ...COMMAND_ARGS.flatMap((a) => ['--command-arg', a]),
-        ],
-      },
-      witness,
-    },
-    // The transcript's own registration (COVENANT-07c). Routing is the matches
-    // predicate, never path mention, so the home directory cannot become a protected
-    // ancestor. No transcript in the payload means nothing to protect — the valve and
-    // the context family already forfeited on the same absence.
-    ...(transcriptPath === undefined
-      ? []
-      : [
-          covenant.transcriptModRegistration({
-            transcriptPath,
-            // The env value first, since that is what the judged shell expands `~` and
-            // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
-            // HOME is unset, so a hook spawned without an environment (a service manager,
-            // `env -i`) keeps judging the home spellings instead of silently going absolute-
-            // only — an inert spelling closure looks identical to a passing call.
-            home: process.env.HOME ?? homedir(),
-            bodyCommand: process.execPath,
-            bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
-            shellTools: SHELL_TOOLS,
-            commandArgs: COMMAND_ARGS,
-            mutatingTools: MUTATING_TOOLS,
-            witness,
-          }),
-        ]),
-    // The body path is passed as a thunk, so the proof fires only where the compiler
-    // actually composes a body. Entry count cannot stand in for that: an entry may compile
-    // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
-    // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
-    // for zero entries — gating the call itself would drop that record and turn an
-    // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
-    ...covenant.compileDisciplineRegistrations({
-      disciplines,
-      rootDir: repoRoot,
-      bodyCommand: process.execPath,
-      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
-      shellTools: SHELL_TOOLS,
-      commandArgs: COMMAND_ARGS,
-      witness,
-      // Context-family evidence is evaluated here, at assembly: a spawned body cannot
-      // hold a transcript, and passing a path would leak JSONL knowledge into covenant
-      // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/
-      // `tool` vocabulary; core owns `command`, which the compiler judges directly.
-      transcript,
-      evaluatePrecedent: adapter.evaluatePrecedent,
-    }),
-  ];
-
-  // This file is tracked; the dist it composes against is not. A checkout that has not
-  // been rebuilt therefore pairs a new hook with an old compiler, and an old compiler
-  // stores the body-path thunk itself where a string belongs. `spawn` does not reject a
-  // non-string argv entry — it stringifies it — so the judge would be spawned on the
-  // thunk's own source text, exit 1, and be recorded as a VERDICT under a discipline's
-  // label. That is the exact confusion this ticket exists to remove, arriving through the
-  // build-skew door. Assert the shape and let the fail-closed catch answer instead.
-  for (const registration of registrations) {
-    if (registration.body !== undefined && typeof registration.body.args[0] !== 'string') {
-      throw new Error(
-        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
-      );
-    }
-  }
-
-  const { exitCode } = await adapter.runAdapterPath({
-    rawPayload,
-    telemetryPath,
-    dispatch: (stdinPayload) =>
-      covenant.dispatchCovenants({ stdinPayload, registrations, telemetryPath, transcript }),
-  });
+  const { runClaudeCodeHook } = await import('polydeukes');
+  const { exitCode } = await runClaudeCodeHook({ repoRoot });
   process.exit(exitCode);
 } catch (error) {
   console.error(`covenant hook failed closed: ${error?.message ?? error}`);
-  // If core imported before the failure, honor the one-call-one-record invariant with a
-  // blocked record (COVENANT-07 §4.3). If core import itself failed, no record is possible.
-  if (core?.appendRecord) {
-    try {
-      mkdirSync(dirname(telemetryPath), { recursive: true });
-      core.appendRecord(telemetryPath, {
-        timestamp: new Date().toISOString(),
-        event: 'blocked',
-        label: 'hook',
-        subject: '-',
-      });
-    } catch {
-      // A telemetry failure must never convert the blocking exit into a bypass.
-    }
-  }
   process.exit(2);
 }

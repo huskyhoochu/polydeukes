@@ -16,8 +16,12 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
   `pdks` CLI entry point — since ADAPTER-git the bin is real, with `covenant check` (the
   pre-commit judgment runner) as its only subcommand. Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
-  file-I/O-free). Only umbrella-role logic (discovery, assembly-facing loading, the CLI)
-  belongs here; area logic still goes in scoped `@polydeukes/*` packages. The loader feeds the
+  file-I/O-free). Since DIST-01 it also owns **both surfaces' composition roots** —
+  `runCovenantCheck` (commit) and `runClaudeCodeHook` (session) — because assembly needs an
+  adapter AND covenant at once, which no sibling may depend on. That is the umbrella's structural
+  privilege, not a convenience: it is the only package allowed to reach sideways. Only
+  umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in
+  scoped `@polydeukes/*` packages. The loader feeds the
   judges, so it is protected — but at different surfaces (CONFIG-08): its `dist` is on the
   common list (a gitignored judge executable no commit can show), while its `src` **and its
   `package.json`** (the manifest the commit surface resolves the `pdks` bin through) are on the

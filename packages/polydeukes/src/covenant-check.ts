@@ -43,7 +43,7 @@ import {
   compileDisciplineRegistrations,
   dispatchCovenants,
 } from '@polydeukes/covenant';
-import { loadConfig } from './index.js';
+import { loadConfig } from './load-config.js';
 
 /** `runCovenantCheck` input (ADAPTER-git §4.3 — the contract covenant-check tests pin). */
 export type CovenantCheckSpec = {

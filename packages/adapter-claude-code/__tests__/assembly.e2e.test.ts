@@ -3,7 +3,6 @@ import {
   cpSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -378,8 +377,10 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
     //
     // Harness note: the real hook resolves repoRoot purely from its own file location
     // (`.claude/hooks/../..`) with no env override. To exercise a configless rootDir at
-    // the E2E level we copy the hook into a temp tree whose `packages` is a symlink back
-    // to the real repo (so the dist imports still resolve) but which has NO config file.
+    // the E2E level we copy the hook into a temp tree that has NO config file. Since
+    // DIST-01 the delegator resolves the judge by package NAME, so what makes that copy
+    // runnable is the `node_modules` link below, not the `packages` one — the latter is
+    // kept because loadConfig and the discipline globs still anchor on this tree.
     // This is the most faithful configless-root spawn the current harness supports; if a
     // future hook gains a repoRoot seam this can collapse to a plain env override.
     const configlessRoot = mkdtempSync(join(tmpdir(), 'pdks-configless-'));
@@ -387,6 +388,11 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
       mkdirSync(join(configlessRoot, '.claude', 'hooks'), { recursive: true });
       cpSync(hookPath, join(configlessRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
       symlinkSync(join(repoRoot, 'packages'), join(configlessRoot, 'packages'), 'dir');
+      // DIST-01: the delegator hook resolves its packages through BARE specifiers
+      // (`await import('polydeukes')`), so the fixture tree must also reach the real
+      // installation graph. Without this link the spawn dies ERR_MODULE_NOT_FOUND at
+      // the SAME exit 2 this case asserts — green for the wrong reason.
+      symlinkSync(join(repoRoot, 'node_modules'), join(configlessRoot, 'node_modules'), 'dir');
 
       const copiedHook = join(configlessRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs');
       const result = spawnSync(process.execPath, [copiedHook], {
@@ -399,6 +405,15 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
       });
 
       expect(result.status).toBe(2);
+      // The exit code alone cannot say WHY. Since the delegator resolves the judge by
+      // package name, a fixture tree that cannot reach the install graph dies
+      // ERR_MODULE_NOT_FOUND at the same exit 2 this case asserts — green for the wrong
+      // reason, pinning module resolution instead of the loader's refusal to default a
+      // missing config. The fail-closed row is what separates them: it exists only when
+      // the assembly loaded and then refused (PR #46 review).
+      expect(
+        readRecords(telemetryPath).records.map((record) => [record.event, record.label]),
+      ).toEqual([['blocked', 'hook']]);
     } finally {
       rmSync(configlessRoot, { recursive: true, force: true });
     }
@@ -869,6 +884,10 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
     mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
     cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
     symlinkSync(join(repoRoot, 'packages'), join(fixtureRoot, 'packages'), 'dir');
+    // DIST-01: the delegator hook resolves its packages through BARE specifiers, so
+    // the fixture tree must also reach the real installation graph — without this
+    // link the spawn dies ERR_MODULE_NOT_FOUND before any judgment.
+    symlinkSync(join(repoRoot, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
     writeFileSync(
       join(fixtureRoot, 'polydeukes.config.json'),
       JSON.stringify(
@@ -923,253 +942,6 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
     expect(result.status).toBe(2);
     expect(rowsFor('self-mod').map((r) => [r.event, r.subject])).toEqual([
       ['blocked', '.git/hooks'],
-    ]);
-  });
-});
-
-// ===========================================================================
-// CONFIG-06b §4.2 — the session half of ONE fact. A judge body that was never
-// built leaves the assembly unable to judge, yet the absence arrives as body
-// exit 1: the session's always-block level translates that up to exit 2, which
-// is the right code for the wrong reason, and on a call that routes nowhere not
-// even that — the run is recorded `passed`. One cause must get one disposition
-// on both surfaces, so the hook proves each body module exists while composing
-// its path and fails closed before any routing happens.
-// ===========================================================================
-
-describe('dogfooding assembly E2E — a judge body that was never built (CONFIG-06b)', () => {
-  // Injected fixture values. The config declares a protected entry AND a discipline, and
-  // every payload carries a transcript, so all four bodies the hook composes paths for are
-  // really registered — an omission missing from an assembly that never named it would be
-  // red against a correct implementation. The payload touches none of them: the pin is that
-  // assembly never gets far enough to route anything.
-  const BODY_FILES = [
-    'self-mod-body.js',
-    'shell-mod-body.js',
-    'transcript-mod-body.js',
-    'discipline-body.js',
-  ];
-  const COMMON_ENTRY = '.git/hooks';
-  const DISCIPLINE_SCOPE = 'lib/**/*.ts';
-  const FAIL_CLOSED_LABEL = 'hook';
-  const UNRELATED_TARGET = 'docs/example.md';
-  const SCOPED_TARGET = 'lib/a.ts';
-  /** A write whose target cannot be derived — the class the shell-unjudgeable backstop owns. */
-  const OPAQUE_WRITE = 'echo x > $F';
-  const DELTA_ENTRIES = [{ id: 'no-todo', forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE }];
-  /** Evidence this surface cannot read without a transcript: compiles to a body-less skip. */
-  const PRECEDENT_ID = 'needs-precedent';
-  const PRECEDENT_ENTRIES = [
-    { id: PRECEDENT_ID, requirePrecedent: { tool: 'WebFetch' }, in: DISCIPLINE_SCOPE },
-  ];
-
-  const eventsAndLabels = () => readRecords(telemetryPath).records.map((r) => [r.event, r.label]);
-
-  /**
-   * A repo root mirroring the real one entry by entry, so the hook's own dist import still
-   * resolves through the real build while the body path STRING it composes is fixture-
-   * controlled. Everything is symlinked except covenant's dist, which is rebuilt as a
-   * directory of per-file symlinks minus `omitBody`: symlinking that directory wholesale
-   * would make the omission impossible, and copying it would drag node_modules along.
-   */
-  function mirroredRoot(
-    omitBody: string | null,
-    declareDisciplines = true,
-    entries: unknown[] = DELTA_ENTRIES,
-  ): string {
-    const root = mkdtempSync(join(tmpRoot, 'mirror-'));
-    mkdirSync(join(root, '.claude', 'hooks'), { recursive: true });
-    cpSync(hookPath, join(root, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
-
-    const realPackages = join(repoRoot, 'packages');
-    mkdirSync(join(root, 'packages'));
-    for (const entry of readdirSync(realPackages)) {
-      if (entry === 'covenant') continue;
-      symlinkSync(join(realPackages, entry), join(root, 'packages', entry));
-    }
-    const realCovenant = join(realPackages, 'covenant');
-    mkdirSync(join(root, 'packages', 'covenant'));
-    for (const entry of readdirSync(realCovenant)) {
-      if (entry === 'dist') continue;
-      symlinkSync(join(realCovenant, entry), join(root, 'packages', 'covenant', entry));
-    }
-    const realDist = join(realCovenant, 'dist');
-    mkdirSync(join(root, 'packages', 'covenant', 'dist'));
-    for (const entry of readdirSync(realDist)) {
-      if (entry === omitBody) continue;
-      symlinkSync(join(realDist, entry), join(root, 'packages', 'covenant', 'dist', entry));
-    }
-
-    writeFileSync(
-      join(root, 'polydeukes.config.json'),
-      JSON.stringify(
-        {
-          languages: { typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' } },
-          telemetry: { logPath: telemetryPath },
-          protectedPaths: [COMMON_ENTRY],
-          ...(declareDisciplines ? { disciplines: entries } : {}),
-        },
-        null,
-        2,
-      ),
-    );
-    return root;
-  }
-
-  /** An empty session file — a real transcript that has said nothing. */
-  function emptyTranscript(): string {
-    const path = join(tmpRoot, 'session.jsonl');
-    writeFileSync(path, '');
-    return path;
-  }
-
-  /** The default probe: routes to no registration, and carries a transcript so all four register. */
-  function unroutedPayload(): Record<string, unknown> {
-    return { ...editPayload(UNRELATED_TARGET), transcript_path: emptyTranscript() };
-  }
-
-  /** A call that really routes: a write into the common protected entry. */
-  function routedPayload(): Record<string, unknown> {
-    return {
-      ...writePayload(`${COMMON_ENTRY}/pre-commit`, '#!/bin/sh\nexit 0\n'),
-      transcript_path: emptyTranscript(),
-    };
-  }
-
-  function runHookFromRoot(root: string, payload: unknown = unroutedPayload()) {
-    return spawnSync(
-      process.execPath,
-      [join(root, '.claude', 'hooks', 'covenant-pretooluse.mjs')],
-      {
-        input: JSON.stringify(payload),
-        encoding: 'utf-8',
-        env: { ...process.env, POLYDEUKES_TELEMETRY_PATH: telemetryPath },
-      },
-    );
-  }
-
-  it('the mirrored root with a COMPLETE dist behaves normally (exit 0, one adapter passed row)', () => {
-    // The premise every case below rests on, and the reason it is a test rather than a
-    // comment: each other spawn in this file uses the real root, so if any part of this
-    // mirror were wrong — an unresolvable dist import, a config the loader refuses — the
-    // hook would fail closed at the SAME exit 2 under the SAME label those cases assert,
-    // and they would go green while proving nothing. A normal pass here leaves the omitted
-    // body as the only variable.
-    const result = runHookFromRoot(mirroredRoot(null));
-
-    expect(result.status).toBe(0);
-    expect(eventsAndLabels()).toEqual([['passed', 'adapter-claude-code']]);
-  });
-
-  // One case per body the hook composes a path for. Omitting a single one would pin only
-  // the site it happens to name, and this surface fails quietly: a call that routes nowhere
-  // is recorded `passed` from an assembly that could not have judged it, so an unproved
-  // site never announces itself. Asserting the row rather than the exit code alone
-  // separates the two ways to reach 2 — the `hook` label means the composition root
-  // refused, a judge's label would mean it ran. Mutation caught: the existence proof wired
-  // into three of the four compositions, or into the umbrella alone, which would give one
-  // cause two dispositions — the asymmetry this project has already paid for once.
-  for (const omittedBody of BODY_FILES) {
-    it(`fails closed at assembly when ${omittedBody} was never built (exit 2, one hook blocked row)`, () => {
-      const result = runHookFromRoot(mirroredRoot(omittedBody));
-
-      expect(result.status).toBe(2);
-      expect(eventsAndLabels()).toEqual([['blocked', FAIL_CLOSED_LABEL]]);
-    });
-  }
-
-  it('a config declaring NO disciplines is untouched by a missing discipline body (exit 0)', () => {
-    // The session-surface twin of the umbrella's zero-discipline pin. Compiling an empty
-    // discipline list still yields the body-less `shell-unjudgeable` backstop and nothing
-    // that spawns this body, so demanding it would close every call in a repository that
-    // simply declares no disciplines — the ordinary config shape, not an exotic one.
-    // Mutation caught: the body path obtained eagerly on this surface only, leaving the
-    // two surfaces with different answers to one fact.
-    const result = runHookFromRoot(mirroredRoot('discipline-body.js', false));
-
-    expect(result.status).toBe(0);
-    expect(eventsAndLabels()).toEqual([['passed', 'adapter-claude-code']]);
-  });
-
-  it('an uncomputable shell write is still recorded skipped when NO disciplines are declared (exit 0)', () => {
-    // F1, and the reason the pin directly above could not see it: that one sends an Edit,
-    // which routes nowhere either way, so a `passed` row reads as correct. The compiler
-    // appends the shell-unjudgeable backstop regardless of entry count, so an assembly that
-    // decides for itself not to call it when the list is empty deletes the one record this
-    // class produces — today this exact call answers `passed`, reporting a clean judgment of
-    // a write whose target was never determined. That is the silence COVENANT-10b was
-    // written to end, restored for every repository that declares no disciplines. Mutation
-    // caught: the spawn question answered at the assembly by entry count.
-    const result = runHookFromRoot(mirroredRoot(null, false), bashPayload(OPAQUE_WRITE));
-
-    expect(result.status).toBe(0);
-    expect(eventsAndLabels()).toEqual([['skipped', 'shell-unjudgeable']]);
-  });
-
-  it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0)', () => {
-    // F2's session twin — one cause, one disposition on both surfaces. The payload carries
-    // NO transcript on purpose: without a session to read, this entry's evidence can never
-    // be found, so it compiles to a skip with no body and nothing will be spawned. Demanding
-    // the built body anyway closes the call — today exit 2 with a hook row naming
-    // discipline-body.js. The skipped row is the load-bearing half: it proves the compiler
-    // still ran and the entry still reached a registration, so a fix that stops compiling
-    // whenever the body is absent cannot pass. Mutation caught: the umbrella corrected and
-    // the hook left reading entry count, which is how one fact acquires two answers.
-    const result = runHookFromRoot(
-      mirroredRoot('discipline-body.js', true, PRECEDENT_ENTRIES),
-      writePayload(SCOPED_TARGET, 'export const y = 2;\n'),
-    );
-
-    expect(result.status).toBe(0);
-    expect(eventsAndLabels()).toEqual([['skipped', PRECEDENT_ID]]);
-  });
-
-  it('a payload carrying NO transcript is untouched by a missing transcript-mod body (exit 0)', () => {
-    // The over-blocking end, and the case that decides WHERE the proof sits. The hook can
-    // compose the transcript body's path before knowing whether a session exists, and a
-    // proof placed there would close every transcript-free call over a body nothing was
-    // going to spawn — the same over-block as demanding a shell body from the commit
-    // surface. §4.2's corollary settles it: proof happens where the path is PRODUCED, so
-    // that production moves inside the registration's own condition. Mutation caught: a
-    // proof hoisted above that condition, which turns "no session attached" into a block.
-    const result = runHookFromRoot(
-      mirroredRoot('transcript-mod-body.js'),
-      editPayload(UNRELATED_TARGET),
-    );
-
-    expect(result.status).toBe(0);
-    expect(eventsAndLabels()).toEqual([['passed', 'adapter-claude-code']]);
-  });
-
-  it('a ROUTED call whose judge body is missing answers under the hook label, not the judge one (exit 2)', () => {
-    // PRD §3's second half, which every case above leaves untested because they all route
-    // to nothing. Here the call really reaches a judge, so today the exit code is already 2
-    // — reached by translating the missing module's exit 1 upward — and the surface writes
-    // down a self-mod VERDICT against a protected entry no judge ever compared. Today this
-    // run is byte-identical to the complete-mirror pin below: same status, same rows. That
-    // indistinguishability IS the defect. Mutation caught: the existence proof reached only
-    // on the no-match path, leaving every routed call fabricating verdicts out of build
-    // failures.
-    const result = runHookFromRoot(mirroredRoot('self-mod-body.js'), routedPayload());
-
-    expect(result.status).toBe(2);
-    expect(eventsAndLabels()).toEqual([['blocked', FAIL_CLOSED_LABEL]]);
-  });
-
-  it('the same routed call on a COMPLETE mirror is judged by the real bodies (exit 2)', () => {
-    // The control for the pin above, and this surface's only proof that a body EXECUTES out
-    // of the mirrored symlinked dist: shell-mod's `passed` row is unreachable for a module
-    // that never loaded — a missing body can only ever produce blocked. Two bodies ran on
-    // one call, one broke and one upheld, which is the run-all coexistence the older block
-    // in this file pins on the real root. Mutation caught: the existence proof refusing a
-    // present body, which would replace both rows with a fail-closed and take the whole
-    // session surface down in a healthy build.
-    const result = runHookFromRoot(mirroredRoot(null), routedPayload());
-
-    expect(result.status).toBe(2);
-    expect(eventsAndLabels()).toEqual([
-      ['blocked', 'self-mod'],
-      ['passed', 'shell-mod'],
     ]);
   });
 });

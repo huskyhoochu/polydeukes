@@ -11,6 +11,10 @@ export default defineConfig({
     alias: {
       '@polydeukes/core': resolve(import.meta.dirname, '../core/src/index.ts'),
       '@polydeukes/covenant': resolve(import.meta.dirname, '../covenant/src/index.ts'),
+      '@polydeukes/adapter-claude-code': resolve(
+        import.meta.dirname,
+        '../adapter-claude-code/src/index.ts',
+      ),
       '@polydeukes/adapter-git': resolve(import.meta.dirname, '../adapter-git/src/index.ts'),
     },
   },

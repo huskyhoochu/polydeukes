@@ -54,6 +54,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@polydeukes/adapter-claude-code": "workspace:^",
     "@polydeukes/adapter-git": "workspace:^",
     "@polydeukes/core": "workspace:^",
     "@polydeukes/covenant": "workspace:^",
