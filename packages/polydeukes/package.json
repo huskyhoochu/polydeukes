@@ -35,6 +35,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./claude-code": {
+      "types": "./dist/claude-code-hook.d.ts",
+      "import": "./dist/claude-code-hook.js"
     }
   },
   "files": [

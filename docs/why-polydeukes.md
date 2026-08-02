@@ -275,7 +275,17 @@ and remembers what was decided. The two layers compose; they do not compete.
      valuable was what had always been the asset — judgment, verification, records,
      discipline. Hype vocabulary has to claim the essence changed in order to sell; a
      discipline framework sells the invariant. Pairs with STORY.md's second layer
-     (mortal code, immortal record). -->
+     (mortal code, immortal record).
+     Parked candidate (2026-08-02, DIST-02 session): the disciplines are taste — the same
+     philosophical class as a linter's line width — but taste about the PROCESS, not the
+     artifact. A linter judges the final text; Polydeukes judges the trajectory (was the
+     doc read before the edit, was the version measured before it was written). The layer
+     beneath that taste is not taste: the meta-covenants that stop the judging chain from
+     deleting itself, and the record contract that makes any of it checkable. Measured —
+     97% of blocks were meta-covenants; user disciplines caught 14. And the trend toward
+     giving models more freedom argues FOR the process layer, not against it: a model that
+     self-regulates well still cannot prove to a third party that it did. Only the record
+     can, which is why the ledger outlives the rules. -->
 
 ## Proven on itself
 

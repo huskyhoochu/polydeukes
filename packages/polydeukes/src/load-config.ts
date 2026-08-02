@@ -16,8 +16,12 @@ import type { ResolvedConfig } from '@polydeukes/core';
 import { ConfigValidationError, defineConfig, isPlainObject } from '@polydeukes/core';
 import { parseDocument } from 'yaml';
 
-/** The three accepted config filenames, checked directly under the given rootDir. */
-const CONFIG_FILENAMES = [
+/**
+ * The three accepted config filenames, checked directly under the given rootDir. Exported
+ * for the scaffold (DIST-02 §3-a): its existence check has to see exactly what discovery
+ * sees, or it would create a second spelling and make every later load ambiguous.
+ */
+export const CONFIG_FILENAMES = [
   'polydeukes.config.yaml',
   'polydeukes.config.yml',
   'polydeukes.config.json',

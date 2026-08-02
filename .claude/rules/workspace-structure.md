@@ -13,8 +13,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
 ## Package roles
 
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
-  `pdks` CLI entry point — since ADAPTER-git the bin is real, with `covenant check` (the
-  pre-commit judgment runner) as its only subcommand. Since CONFIG-03 it owns the config discovery loader
+  `pdks` CLI entry point — since ADAPTER-git the bin is real. Two subcommands: `covenant
+  check` (the pre-commit judgment runner) and, since DIST-02, `init claude-code` (the
+  session-surface installer). Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
   file-I/O-free). Since DIST-01 it also owns **both surfaces' composition roots** —
   `runCovenantCheck` (commit) and `runClaudeCodeHook` (session) — because assembly needs an

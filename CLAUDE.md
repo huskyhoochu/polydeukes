@@ -80,7 +80,10 @@ check` over the staged diff — two observations of the same promises. Protectio
 (protectedPaths / disciplines / adapters / witness) lives in `polydeukes.config.yaml`, which
 documents each entry's why inline. Since DIST-01 the hook assembles nothing — it is a delegator
 calling `runClaudeCodeHook`, the packaged entry point a consumer project installs, so what we are
-judged by every day is the shipped artifact itself. Protected: gate definitions (the
+judged by every day is the shipped artifact itself. Since DIST-02 it enters through the package's
+session subpath rather than its barrel (barrel re-exports are eager, so the barrel would load the
+commit surface and its git adapter on every session call), and `pdks init claude-code` generates
+this same delegator for a consumer project. Protected: gate definitions (the
 hook wiring, `.claude/settings.json`, `lefthook.yml`, `biome.json`, the generated `.git/hooks`),
 the five packages' gitignored `dist`, the root config itself, the live session transcript, and
 — since the delegator resolves the judge by NAME — **the `node_modules` directories that

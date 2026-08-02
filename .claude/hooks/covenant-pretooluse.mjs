@@ -9,6 +9,10 @@
  * it is also why this repository stays the first consumer of what it ships: the
  * verdicts we meet every day are the shipped artifact being exercised.
  *
+ * The session subpath, never the package barrel (DIST-02 §3-c). Barrel re-exports are
+ * eager, so entering through `polydeukes` would load the commit surface and its git
+ * adapter on every session call. `pdks init claude-code` generates this same import.
+ *
  * `repoRoot` comes from this file's own location, never `process.cwd()`. A hook is
  * spawned with whatever working directory the agent happened to hold, and the e2e
  * harnesses spawn copies of this file from fixture trees; both need the root that
@@ -27,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 try {
-  const { runClaudeCodeHook } = await import('polydeukes');
+  const { runClaudeCodeHook } = await import('polydeukes/claude-code');
   const { exitCode } = await runClaudeCodeHook({ repoRoot });
   process.exit(exitCode);
 } catch (error) {
