@@ -1,10 +1,10 @@
 # polydeukes
 
-**English** · [한국어](./README.ko.md)
+**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/polydeukes/README.ko.md)
 
 > The unscoped umbrella: the `pdks` CLI entry point and the config discovery loader — the one place where the framework's pieces are assembled for the surfaces a repository actually runs.
 
-**Pre-alpha.** Not yet published to npm. This package reserves the unscoped `polydeukes` name and sits above the scoped `@polydeukes/*` modules as the only one allowed to assemble them — every other dependency stays one-way, through the core alone.
+**Alpha.** This package reserves the unscoped `polydeukes` name and sits above the scoped `@polydeukes/*` modules as the only one allowed to assemble them — every other dependency stays one-way, through the core alone.
 
 ## What lives here
 

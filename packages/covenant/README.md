@@ -1,10 +1,10 @@
 # @polydeukes/covenant
 
-**English** · [한국어](./README.ko.md)
+**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/covenant/README.ko.md)
 
 > Deterministic edit- and command-time blocks. A covenant is not a fence around the AI — it is a promise the human and the AI share, enforced by exit codes instead of etiquette.
 
-**Pre-alpha.** Not yet published to npm. This package is already self-hosting: the repository develops itself under these covenants (self-dogfooding since 2026-07-14), and every call they judge lands in the ROI telemetry.
+**Alpha.** This package is already self-hosting: the repository develops itself under these covenants (self-dogfooding since 2026-07-14), and every call they judge lands in the ROI telemetry.
 
 ## What lives here
 

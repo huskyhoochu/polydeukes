@@ -1,10 +1,10 @@
 # @polydeukes/adapter-git
 
-**English** · [한국어](./README.ko.md)
+**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/adapter-git/README.ko.md)
 
 > The boundary where git's vocabulary is translated away. A staged diff becomes the agent-neutral covenant input IR at commit time — the same judgment for every hand, AI or human.
 
-**Pre-alpha.** Not yet published to npm. This is the second adapter, and its existence is itself the proof of IR neutrality: it fills the same per-call `fileChange` evidence the Claude Code adapter fills — from git blobs instead of virtual applies — and the core consumed both without a single changed line.
+**Alpha.** This is the second adapter, and its existence is itself the proof of IR neutrality: it fills the same per-call `fileChange` evidence the Claude Code adapter fills — from git blobs instead of virtual applies — and the core consumed both without a single changed line.
 
 ## What lives here
 

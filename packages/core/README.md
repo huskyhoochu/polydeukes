@@ -1,10 +1,10 @@
 # @polydeukes/core
 
-**English** · [한국어](./README.ko.md)
+**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/core/README.ko.md)
 
 > The thin, domain- and agent-agnostic core of Polydeukes — a development *discipline* framework for building alongside an AI coding partner.
 
-**Pre-alpha.** Not yet published to npm. The API surface may move between milestones; for anything not landed here, the repository's design docs are the source of truth.
+**Alpha.** The API surface may move between milestones; for anything not landed here, the repository's design docs are the source of truth.
 
 ## What lives here
 

@@ -1,10 +1,10 @@
 # @polydeukes/adapter-claude-code
 
-**English** · [한국어](./README.ko.md)
+**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/adapter-claude-code/README.ko.md)
 
 > The boundary where Claude Code's vocabulary is translated away. PreToolUse hook payloads become the agent-neutral covenant input IR before anything reaches the core.
 
-**Pre-alpha.** Not yet published to npm. Agent and tool literals live *here* by design — this package exists so they never reach the core, which is how the core's agent-neutrality stays a testable claim rather than a slogan.
+**Alpha.** Agent and tool literals live *here* by design — this package exists so they never reach the core, which is how the core's agent-neutrality stays a testable claim rather than a slogan.
 
 ## What lives here
 
