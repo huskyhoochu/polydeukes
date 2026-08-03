@@ -331,7 +331,7 @@ instead of blocking.
      repository's hook is a 36-line delegator calling the same entry point a consumer
      installs. The claim in this section sharpens accordingly: from "the authors get
      blocked by their own rules" to "the code that blocks us is the code you install".
-     Add it with the v0.2.6 round, once something is actually installable.
+     Add it with the v0.3.0 round, once something is actually installable.
 
      Refined (DOC-gate, 2026-07-29): the preserve/correct line runs *through* a dated
      post, not around it. Period-correct vocabulary stays (`waiver` was the right word in
