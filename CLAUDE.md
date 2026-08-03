@@ -54,13 +54,15 @@ Runtime is pinned: **Node ≥24, pnpm@10.32.1** (`.nvmrc` = 24). Use pnpm, never
 
 **Path-scoped rules carry the rest.** `.claude/rules/` holds the constraints a file's own source
 does not explain, each auto-loading for its `paths` — so they are not repeated here.
-`domain-terms` (vocabulary, including the five verdicts and the four discipline families),
-`workspace-structure` (layout, catalog, build-graph blind spots), and `inference-boundaries`
-(what the code may infer, and why guessing is where an infinite domain enters) cover
-`packages/**`; `judging-paths-and-shells`, `evidence-and-ir`, `config-and-schema`, and
-`testing-fixtures` scope to the judge, the adapters, the config, and the test trees.
-`claims-and-criteria` covers docs and PRDs — how to write a criterion that can be satisfied and
-a number that survives reuse.
+They are cut two ways. **By tree:** `domain-terms` (vocabulary, including the five verdicts and
+the four discipline families), `workspace-structure` (layout, catalog, build-graph blind spots),
+and `inference-boundaries` (what the code may infer, and why guessing is where an infinite
+domain enters) cover `packages/**`; `judging-paths-and-shells`, `evidence-and-ir`,
+`config-and-schema`, and `testing-fixtures` scope to the judge, the adapters, the config, and
+the test trees. **By activity:** `claims-and-criteria` for docs and PRDs — how to write a
+criterion that can be satisfied and a number that survives reuse; `delegation-and-review` for
+what a subagent or a review round hands back; `current-state-only` wherever prose is written,
+source comments included.
 
 ## How this project is developed
 

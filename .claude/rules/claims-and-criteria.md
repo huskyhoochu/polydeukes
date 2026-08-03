@@ -39,14 +39,6 @@ reshapes the call before making it, and the reshaped call passes legitimately wi
 that anything was avoided. Cite the dogfooding ratios with that bias stated; the reproduction
 is in `foundation.dev-log.preemptive-shaping-leaves-no-row.md`.
 
-## Describe what is, not what was left out
-
-No "deliberately not included", no "this alternative was rejected", no marker written to stop a
-future session re-opening a decision. The intent is to prevent re-litigation and the effect is
-the opposite: it makes an absence into a documented entity that keeps arguing for itself. A
-decision that was made leaves its result and nothing else. Commit messages and PR bodies are
-outside this — describing what changed is not marking an absence.
-
 ## A claim ages with the thing it measured
 
 An archived PRD's evidence is true for the terrain it was measured on. When the terrain
@@ -59,15 +51,3 @@ To defer an item, write what it covers (a finite enumeration) and what counts as
 the opening condition when there is one — "when one real instance is filed" is finite;
 "later" is not. **An item whose domain cannot be enumerated cannot be deferred** — it will be
 recycled forever as a reason to reopen a decision. Discard it and record why.
-
-## Verify what a subagent reports, not that it reported
-
-Delegated audits have returned summaries whose counts disagreed with their own tables, and
-tables with rows for files that did not exist. Recount from the table, and spot-check that the
-cited location exists, before acting on any delegated finding.
-
-## Correct fixes compose into dead code
-
-Two independently correct changes can leave a branch that nothing reaches. After a review
-round lands several fixes, re-read the combined path rather than each diff — the defect is in
-the composition, and no individual review would have caught it.

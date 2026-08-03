@@ -84,11 +84,6 @@ sources, verify against a fresh build rather than a cached task.
 `createRequire` (as the git adapter's spawn path does) needs a `require` condition in its
 exports map; an `import`-only map fails at runtime while typechecking clean.
 
-**Verify the working tree after any parallel agent run.** Concurrent agents writing the same
-tree have produced corrupted intermediate states that no single agent's output revealed.
-`git status` plus a diff against `HEAD` is the check — the session hook only judges declared
-tool calls, so a child process's writes are outside its observation.
-
 ## npm `keywords` exempt the banned control vocabulary
 
 `domain-terms.md` bans `harness`/`guard`/`kb` from code, docs, and user-facing surfaces. The
