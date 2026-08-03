@@ -13,7 +13,8 @@ discipline library that compiles `disciplines:` config entries into registration
 `packages/adapter-claude-code` — PreToolUse payload → covenant input IR, virtual post-state
 evidence, the JSONL transcript provider, and the adapter's precedent-evidence vocabulary;
 `packages/adapter-git` — staged diff → the same IR (the second adapter, zero core changes);
-`packages/polydeukes` (umbrella) — the `pdks` bin (`covenant check`), the `loadConfig`
+`packages/polydeukes` (umbrella) — the `pdks` bin (`covenant check` and `init claude-code`,
+the session-surface installer), the `loadConfig`
 discovery loader, and **both surfaces' composition roots** (`runCovenantCheck` for the commit
 surface, `runClaudeCodeHook` for the session one), since assembly needs an adapter and the
 covenant package at once and only the umbrella may depend sideways. Details live in the code and the archived PRDs (the merged contracts). The

@@ -353,6 +353,85 @@ describe('DIST-02 §3-a / AC-11 already-ambiguous tree — a precondition failur
   });
 });
 
+describe('DIST-02 §3-a — settings that parse but carry the wrong shape are a precondition failure', () => {
+  // Parsing is not the only read that can fail. The merge indexes hooks.PreToolUse as an
+  // array of objects, so a file that is valid JSON in some OTHER shape fails mid-merge —
+  // after the config, the ignore line and the hook are on disk. Review of PR #48 reproduced
+  // both variants; the second is worse than a partial tree because it does not throw at all.
+  function settingsTreeWith(body: string): string {
+    mkdirSync(join(projectRoot, dirname(SETTINGS_REL)), { recursive: true });
+    writeFileSync(join(projectRoot, SETTINGS_REL), body);
+    return body;
+  }
+
+  it('throws and writes NOTHING when hooks.PreToolUse is an object rather than an array', () => {
+    const body = settingsTreeWith('{"hooks":{"PreToolUse":{"matcher":"Bash","hooks":[]}}}\n');
+
+    expect(() => init()).toThrow(/settings\.json/);
+
+    expect(existsSync(join(projectRoot, CONFIG_REL))).toBe(false);
+    expect(existsSync(join(projectRoot, GITIGNORE_REL))).toBe(false);
+    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
+    expect(read(SETTINGS_REL)).toBe(body);
+  });
+
+  it('throws and writes NOTHING when a PreToolUse entry is null', () => {
+    const body = settingsTreeWith('{"hooks":{"PreToolUse":[null]}}\n');
+
+    expect(() => init()).toThrow(/settings\.json/);
+
+    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
+    expect(read(SETTINGS_REL)).toBe(body);
+  });
+
+  it('throws and writes NOTHING when the settings root is a JSON array', () => {
+    // The silent variant: merging into an array assigns a non-index property, and
+    // JSON.stringify drops it. Before the shape check this run exited 0, reported all four
+    // artifacts as created, and left the registration nowhere — the judge would never spawn
+    // and no telemetry row would ever say so.
+    const body = settingsTreeWith('[]\n');
+
+    expect(() => init()).toThrow(/settings\.json/);
+
+    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
+    expect(read(SETTINGS_REL)).toBe(body);
+  });
+});
+
+describe('DIST-02 §3-g — preflight proves the subpath the generated hook imports', () => {
+  /** A fake install of `polydeukes` whose manifest carries the given exports map. */
+  function installFake(exports: unknown): void {
+    const dir = join(projectRoot, 'node_modules', 'polydeukes');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(projectRoot, 'package.json'), '{"name":"probe","private":true}\n');
+    writeFileSync(
+      join(dir, 'package.json'),
+      `${JSON.stringify({ name: 'polydeukes', version: '0.0.0', exports }, null, 2)}\n`,
+    );
+  }
+
+  it('refuses an installed package that does not expose the session subpath', () => {
+    // findPackageJSON locates a package but does not apply its exports map, so a version
+    // predating the subpath passes a bare-name check while the generated hook's own import
+    // fails on every call. That tree cannot be opened with the witness token either: the
+    // assembly crash lands before any verdict, so the valve is never consulted.
+    installFake({ '.': { import: './dist/index.js' } });
+
+    expect(() => initClaudeCode({ projectRoot })).toThrow(/claude-code/);
+
+    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
+    expect(existsSync(join(projectRoot, CONFIG_REL))).toBe(false);
+  });
+
+  it('refuses an installed package whose subpath target was never built', () => {
+    installFake({ './claude-code': { import: './dist/claude-code-hook.js' } });
+
+    expect(() => initClaudeCode({ projectRoot })).toThrow(/claude-code/);
+
+    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
+  });
+});
+
 describe('DIST-02 §3-a — an unreadable settings file is a precondition failure', () => {
   it('throws naming the settings file and writes NOTHING when it cannot be parsed', () => {
     // Everything that can fail on READING is settled before anything is written (§5-d

@@ -54,11 +54,12 @@ function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
 const args = process.argv.slice(2);
 
 if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
-  // Imported here rather than at the top because ESM imports are eager: the installer
-  // reaches the session adapter's vocabulary, and `covenant check` — which lefthook spawns
-  // on every commit — must not load it to judge a staged diff (PR #46 review).
-  const { initClaudeCode } = await import('./init-claude-code.js');
   try {
+    // Imported inside the try, not above it: ESM imports are eager, so the installer stays
+    // off `covenant check`'s load path (lefthook spawns that on every commit and it must not
+    // pull the session adapter in — PR #46 review). A rejected import outside the try would
+    // reach node's unhandled-rejection exit 1, the exact crash this bin refuses to make.
+    const { initClaudeCode } = await import('./init-claude-code.js');
     const { created, skipped } = initClaudeCode({ projectRoot: process.cwd() });
     for (const path of created) {
       process.stdout.write(`created ${path}\n`);

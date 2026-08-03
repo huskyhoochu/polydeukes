@@ -114,11 +114,14 @@ export function scaffoldProject(projectRoot: string): ScaffoldReport {
     report.created.push(CONFIG_FILENAMES[0]);
   }
 
-  // The entry is judged as a whole line: every near spelling (commented out, slashless,
-  // root-anchored, a deeper path) CONTAINS this one, so a substring test would skip the
-  // append and leave the consumer committing their own telemetry. Appending is also the
-  // only safe write — a `.gitignore` rewritten wholesale takes every entry the consumer
-  // already relies on with it.
+  // The entry is judged as a whole line. A substring test would treat a commented-out line
+  // or a deeper path (`.polydeukes/roi.log`) as coverage and skip the append, leaving the
+  // consumer committing their own telemetry — the failure that matters. Whole-line equality
+  // errs the other way instead: a project already ignoring the directory under a different
+  // spelling (`.polydeukes`, `/.polydeukes/`) gets a second, redundant entry. A duplicate
+  // ignore rule costs a line; a missing one costs the consumer's telemetry. Appending is
+  // also the only safe write — a `.gitignore` rewritten wholesale takes every entry the
+  // consumer already relies on with it.
   const gitignorePath = join(projectRoot, GITIGNORE);
   const existing = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf-8') : '';
   if (existing.split('\n').some((line) => line.trim() === TELEMETRY_IGNORE_LINE)) {

@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
 import { MUTATING_TOOLS, SHELL_TOOLS } from '@polydeukes/adapter-claude-code';
+import { isPlainObject } from '@polydeukes/core';
 import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
 
 /** The published entry point the generated hook loads the judge through (§3-c). */
@@ -98,9 +99,27 @@ export type InitClaudeCodeSpec = {
  */
 function resolveFromProjectRoot(projectRoot: string): void {
   // Absence throws here rather than returning undefined (Node 24.18); the branch guards the
-  // documented `string | undefined` return. The caller turns either into install guidance.
-  if (findPackageJSON('polydeukes', join(projectRoot, 'package.json')) === undefined) {
+  // documented `string | undefined` return.
+  const manifestPath = findPackageJSON('polydeukes', join(projectRoot, 'package.json'));
+  if (manifestPath === undefined) {
     throw new Error('polydeukes is not installed where this project can reach it');
+  }
+
+  // Locating the package is not the question — `findPackageJSON` does not apply its exports
+  // map, so a version predating the session subpath, or one whose dist was never built,
+  // passes a bare-name check while the generated hook fails on every call. That tree cannot
+  // be reopened with the witness token either, because an assembly crash lands before any
+  // verdict (PR #48 review).
+  const manifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  const subpath =
+    isPlainObject(manifest) && isPlainObject(manifest.exports)
+      ? manifest.exports[`./${HOOK_SPECIFIER.split('/')[1]}`]
+      : undefined;
+  const target = isPlainObject(subpath) ? subpath.import : undefined;
+  if (typeof target !== 'string' || !existsSync(join(dirname(manifestPath), target))) {
+    throw new Error(
+      `the installed polydeukes does not expose '${HOOK_SPECIFIER}' — update or rebuild it`,
+    );
   }
 }
 
@@ -133,14 +152,46 @@ function readSettings(projectRoot: string): SettingsFile {
   if (!existsSync(settingsPath)) {
     return {};
   }
+  let parsed: unknown;
   try {
-    return JSON.parse(readFileSync(settingsPath, 'utf-8')) as SettingsFile;
+    parsed = JSON.parse(readFileSync(settingsPath, 'utf-8'));
   } catch (error) {
     throw new Error(
       `cannot parse ${SETTINGS_RELATIVE} in ${projectRoot} — fix it and re-run ` +
         `(${error instanceof Error ? error.message : String(error)})`,
     );
   }
+
+  // Syntax is not shape. The merge indexes `hooks.PreToolUse` as an array of objects, so a
+  // file valid in some other shape fails mid-merge, after the scaffold and the hook are on
+  // disk — and an array at the root does not fail at all: `JSON.stringify` drops the
+  // non-index property, so the run reports success with the registration nowhere (PR #48
+  // review). Both are read failures, so both belong here.
+  const shape = settingsShapeError(parsed);
+  if (shape !== undefined) {
+    throw new Error(`${SETTINGS_RELATIVE} in ${projectRoot} ${shape} — fix it and re-run`);
+  }
+  return parsed as SettingsFile;
+}
+
+/** The one shape the merge can extend, or a phrase naming how this file departs from it. */
+function settingsShapeError(parsed: unknown): string | undefined {
+  if (!isPlainObject(parsed)) {
+    return 'must be a JSON object';
+  }
+  if (parsed.hooks !== undefined && !isPlainObject(parsed.hooks)) {
+    return 'has a "hooks" key that is not an object';
+  }
+  const preToolUse = isPlainObject(parsed.hooks) ? parsed.hooks.PreToolUse : undefined;
+  if (preToolUse === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(preToolUse)) {
+    return 'has a "hooks.PreToolUse" key that is not an array';
+  }
+  return preToolUse.every(isPlainObject)
+    ? undefined
+    : 'has a "hooks.PreToolUse" entry that is not an object';
 }
 
 /**
@@ -185,12 +236,15 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
   const resolvePolydeukes = spec.resolvePolydeukes ?? resolveFromProjectRoot;
   try {
     resolvePolydeukes(spec.projectRoot);
-  } catch {
+  } catch (error) {
     // The message names the package because the user's next action is installing it — the
-    // seam's own message cannot be relied on to say so.
+    // seam's own message cannot be relied on to say so. The original is carried through
+    // rather than discarded: "not exposed" and "not installed" need different actions, and
+    // an experimental resolver can fail for reasons that are neither (PR #48 review).
     throw new Error(
-      `cannot resolve 'polydeukes' from ${spec.projectRoot} — install it there first ` +
-        "(e.g. 'npm install --save-dev polydeukes'), then run this command again",
+      `cannot use 'polydeukes' from ${spec.projectRoot} — install or update it there first ` +
+        "(e.g. 'npm install --save-dev polydeukes'), then run this command again: " +
+        `${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
