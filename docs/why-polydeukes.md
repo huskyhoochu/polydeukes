@@ -354,4 +354,9 @@ the name — a twin who split his immortality to make his brother his equal — 
      demanded verification, an inconvenient present. Once that discipline has cut the
      variance of AI work below a manageable threshold, what remains in the hand is
      imagination — finally free to be delegated. Discipline was the means; the freed
-     imagination is the gift. Candidate for this closing section or STORY.md. -->
+     imagination is the gift. Candidate for this closing section or STORY.md.
+
+     Parked candidate (2026-08-03, DIST-03): merging a release PR IS the npm publish.
+     The pipeline reaches the registry only through the same e2e a consumer's first ten
+     minutes replays — pack, clean install, init, live judgments. The install CTA opens
+     the moment the first release lands. -->

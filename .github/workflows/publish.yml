@@ -1,0 +1,55 @@
+# npm publish pipeline (DIST-03; research: foundation.research.release-automation §adoption 3).
+#
+# release-please owns versions, tags, CHANGELOG, and the GitHub Release; this workflow owns
+# ONLY the registry upload. The `release published` trigger makes merging a release PR the
+# publish action itself — no separate human step to forget. `workflow_dispatch` is the manual
+# valve: the bootstrap publish (nothing is on npm yet) and any retry run through it; npm
+# rejects an already-published version, so a re-run cannot double-publish.
+#
+# The verification gate stands BEFORE the upload and its failure propagates (PRD §5
+# invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
+# tarball that ships broken contents or fails a real install never reaches the registry.
+#
+# Provenance lives HERE, not in the five manifests: every package.json sits on the commit
+# surface's protected list, so a manifest edit costs a witness prompt while a workflow flag
+# costs nothing. `--no-git-checks` because a release event checks out the tag (detached
+# HEAD), which pnpm publish otherwise refuses.
+name: publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance — the attestation binds the tarballs to this run
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version input: pnpm/action-setup reads the root manifest's pinned packageManager.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      # The publish gate: unit suites plus the two DIST-03 e2e suites (tarball contents,
+      # clean-environment install → init → live judgments).
+      - run: pnpm -r test
+
+      # The root package is private and skips itself; the five workspace packages publish
+      # in dependency order with workspace:/catalog: specifiers rewritten to real versions.
+      - run: pnpm -r publish --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

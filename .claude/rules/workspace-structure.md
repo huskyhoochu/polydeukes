@@ -37,9 +37,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUD
 
 ## New-package scaffold checklist
 
-Three registrations are enumerated, not inferred, so a new package silently misses them. All
-three have been forgotten at least once (ADAPTER-01, CONFIG-03, ADAPTER-git), each time surfacing
-later as a confusing failure rather than an obvious one:
+Four registrations are enumerated, not inferred, so a new package silently misses them. The
+first three have each been forgotten at least once (ADAPTER-01, CONFIG-03, ADAPTER-git), each
+time surfacing later as a confusing failure rather than an obvious one:
 
 1. **`vitest.config.ts` alias** — map `@polydeukes/core` to its *source*. The exports map points
    at `dist`, so without the alias `pnpm -F <pkg> test` breaks on a clean clone.
@@ -50,6 +50,10 @@ later as a confusing failure rather than an obvious one:
    place while the workflow still reports success. Close the PR (`gh pr close <N>
    --delete-branch`) and rerun the workflow so it recomputes from the current config.
 3. **`workspace:^` for internal dependencies** — never a version range.
+4. **`PACKAGE_DIRS` in the publish e2e suites** — `packages/polydeukes/__tests__/`
+   `publish-pack.e2e.test.ts` and `clean-install.e2e.test.ts` enumerate the publishable
+   packages (DIST-03). A package absent from that list publishes with unverified tarball
+   contents and no clean-install coverage.
 
 ## Shared dependency versions go through the pnpm catalog
 
