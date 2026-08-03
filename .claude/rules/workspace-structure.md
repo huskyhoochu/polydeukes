@@ -51,6 +51,11 @@ later as a confusing failure rather than an obvious one:
    --delete-branch`) and rerun the workflow so it recomputes from the current config.
 3. **`workspace:^` for internal dependencies** — never a version range.
 
+The publish e2e suites (`packages/polydeukes/__tests__/publish-pack.e2e.test.ts`,
+`clean-install.e2e.test.ts`) need no registration: they derive their package set from the
+non-private `packages/*` manifests — the same domain `pnpm -r publish` acts on — so a new
+package is covered the moment it exists.
+
 ## Shared dependency versions go through the pnpm catalog
 
 Versions shared across packages are defined **once** in `pnpm-workspace.yaml` under `catalog:`

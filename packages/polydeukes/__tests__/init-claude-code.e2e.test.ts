@@ -2,7 +2,6 @@ import { execSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // DIST-02 AC-6/AC-7 — the generated artifacts EXECUTE: initClaudeCode installs into a
 // throwaway tree wired to the real install graph by symlink, and the generated hook is
@@ -16,6 +15,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // distWithout) is NOT copied a fourth time: this file's mirror interposes one level up, on
 // the umbrella's node_modules, a subject none of those copies touch.
 import { initClaudeCode } from '../src/init-claude-code.ts';
+import { telemetryRows } from './helpers';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaRoot = resolve(import.meta.dirname, '..');
@@ -131,13 +131,7 @@ function spawnGeneratedHook(payload: unknown, opts?: { preserveSymlinks?: boolea
 }
 
 /** Every telemetry row as [event, label, subject] — the label separates who answered. */
-function rows(): [string, string, string][] {
-  return readRecords(telemetryPath).records.map((record) => [
-    record.event,
-    record.label,
-    record.subject,
-  ]);
-}
+const rows = () => telemetryRows(telemetryPath);
 
 /** One Write payload, projectRoot-relative — the proven-mutation-target branch. */
 function writePayload(filePath: string, content: string) {

@@ -23,6 +23,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  actions: write # the publish hand-off below dispatches another workflow
 
 jobs:
   release-please:
@@ -59,3 +60,16 @@ jobs:
           git push --force origin "refs/tags/$TAG"
           # Prove it took: objecttype must read `tag`, not `commit`.
           test "$(git for-each-ref "refs/tags/$TAG" --format='%(objecttype)')" = tag
+
+      # The Release above is created with GITHUB_TOKEN, and GitHub starts no workflow for
+      # events that token raises — a `release: published` trigger alone would never fire
+      # (PR #49 review). workflow_dispatch is the documented exception, so the release
+      # hands off explicitly, pinned to the tag so the published tree is exactly the
+      # released one.
+      - name: Dispatch the publish workflow on the release tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run publish.yml --ref "$TAG"

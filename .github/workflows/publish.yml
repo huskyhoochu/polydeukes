@@ -1,0 +1,71 @@
+# npm publish pipeline (DIST-03; research: foundation.research.release-automation §adoption 3).
+#
+# release-please owns versions, tags, CHANGELOG, and the GitHub Release; this workflow owns
+# ONLY the registry upload. Merging a release PR is still the publish action, but the live
+# wiring is the explicit hand-off: the Release is created with GITHUB_TOKEN, GitHub starts
+# no workflow for events that token raises (PR #49 review), so release-please.yml
+# dispatches this workflow on the release tag. The `release published` trigger stays for
+# Releases a human creates directly; `workflow_dispatch` is also the manual valve for the
+# bootstrap publish and retries — npm rejects an already-published version, and pnpm skips
+# versions already on the registry, so a re-run after a partial upload publishes only what
+# is missing.
+#
+# The verification gate stands BEFORE the upload and its failure propagates (PRD §5
+# invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
+# tarball that ships broken contents or fails a real install never reaches the registry.
+#
+# Provenance lives HERE, not in the five manifests: every package.json sits on the commit
+# surface's protected list, so a manifest edit costs a witness prompt while a workflow flag
+# costs nothing. `--no-git-checks` because a release event checks out the tag (detached
+# HEAD), which pnpm publish otherwise refuses.
+name: publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance — the attestation binds the tarballs to this run
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The full history so the tag-integrity check below can see the release tags.
+          fetch-depth: 0
+
+      # No version input: pnpm/action-setup reads the root manifest's pinned packageManager.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      # Refuse a tree that is not exactly a release tag: a dispatch from a branch HEAD
+      # would upload unreleased commits under the released version, and provenance would
+      # sign the mismatch (PR #49 review).
+      - name: Verify HEAD is exactly the tagged release
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          test "$TAG" = "v$(node -p 'require("./package.json").version')"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      # The publish gate: unit suites plus the two DIST-03 e2e suites (tarball contents,
+      # clean-environment install → init → live judgments).
+      - run: pnpm -r test
+
+      # The root package is private and skips itself; the five workspace packages publish
+      # in dependency order with workspace:/catalog: specifiers rewritten to real versions.
+      - run: pnpm -r publish --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
