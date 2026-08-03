@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //     can take a body away, and the real-dist cases below lean on that asymmetry
 //     instead of fighting it.
 import { runClaudeCodeHook } from '../src/index.ts';
+import { telemetryRows } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -96,13 +97,7 @@ function distWithout(bodyFileName: string): string {
  * MATCHED protected entry, never the judged file path
  * (covenant.dev-log.telemetry-subject-is-matched-entry).
  */
-function rows(): [string, string, string][] {
-  return readRecords(telemetryPath).records.map((record) => [
-    record.event,
-    record.label,
-    record.subject,
-  ]);
-}
+const rows = () => telemetryRows(telemetryPath);
 
 /** One Edit payload targeting `absoluteTarget` (its pre-state must exist on disk). */
 function editPayload(absoluteTarget: string): string {

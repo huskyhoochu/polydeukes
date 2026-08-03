@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,8 +14,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 
-/** The five publishable package directories (§3-a) — the finite set this ticket closes. */
-const PACKAGE_DIRS = ['core', 'covenant', 'adapter-claude-code', 'adapter-git', 'polydeukes'];
+/**
+ * The publishable package directories (§3-a) — derived from the same domain
+ * `pnpm -r publish` acts on (workspace packages whose manifest is not private), so a
+ * new package enters this suite the moment it exists instead of waiting on a checklist
+ * (review of PR #49).
+ */
+const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
+  const manifest = JSON.parse(
+    readFileSync(join(repoRoot, 'packages', dir, 'package.json'), 'utf-8'),
+  ) as { private?: boolean };
+  return manifest.private !== true;
+});
 
 /** §3-a presence enumeration — every tarball must carry these. */
 const REQUIRED_ENTRIES = ['package/package.json', 'package/README.md', 'package/LICENSE'];
@@ -42,7 +52,9 @@ beforeAll(() => {
 }, 240_000);
 
 afterAll(() => {
-  rmSync(packRoot, { recursive: true, force: true });
+  // Guard: a beforeAll failure leaves packRoot undefined, and rmSync(undefined) would
+  // bury the real error under ERR_INVALID_ARG_TYPE (review of PR #49).
+  if (packRoot) rmSync(packRoot, { recursive: true, force: true });
 });
 
 /** `pnpm pack` one package into its own destination; the single `.tgz` there is the result. */

@@ -1,7 +1,6 @@
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // DIST-01 RED phase — CONFIG-06b's session half, ported from the e2e mirroredRoot
 // block (assembly.e2e.test.ts). That technique's premise is retired by this ticket:
@@ -14,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // lives in run-claude-code-hook.test.ts as the §3-c AC-7 pin. runClaudeCodeHook does not
 // exist yet, so every case below is RED by construction.
 import { runClaudeCodeHook } from '../src/index.ts';
+import { telemetryRows } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -73,13 +73,7 @@ function distWithout(omitBody: string | null): string {
 }
 
 /** Every telemetry row as [event, label, subject] — the label separates who answered. */
-function rows(): [string, string, string][] {
-  return readRecords(telemetryPath).records.map((record) => [
-    record.event,
-    record.label,
-    record.subject,
-  ]);
-}
+const rows = () => telemetryRows(telemetryPath);
 
 /** One PreToolUse payload string with the session envelope around `toolInput`. */
 function payload(

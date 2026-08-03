@@ -1,10 +1,14 @@
 # npm publish pipeline (DIST-03; research: foundation.research.release-automation §adoption 3).
 #
 # release-please owns versions, tags, CHANGELOG, and the GitHub Release; this workflow owns
-# ONLY the registry upload. The `release published` trigger makes merging a release PR the
-# publish action itself — no separate human step to forget. `workflow_dispatch` is the manual
-# valve: the bootstrap publish (nothing is on npm yet) and any retry run through it; npm
-# rejects an already-published version, so a re-run cannot double-publish.
+# ONLY the registry upload. Merging a release PR is still the publish action, but the live
+# wiring is the explicit hand-off: the Release is created with GITHUB_TOKEN, GitHub starts
+# no workflow for events that token raises (PR #49 review), so release-please.yml
+# dispatches this workflow on the release tag. The `release published` trigger stays for
+# Releases a human creates directly; `workflow_dispatch` is also the manual valve for the
+# bootstrap publish and retries — npm rejects an already-published version, and pnpm skips
+# versions already on the registry, so a re-run after a partial upload publishes only what
+# is missing.
 #
 # The verification gate stands BEFORE the upload and its failure propagates (PRD §5
 # invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
@@ -31,6 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The full history so the tag-integrity check below can see the release tags.
+          fetch-depth: 0
 
       # No version input: pnpm/action-setup reads the root manifest's pinned packageManager.
       - uses: pnpm/action-setup@v4
@@ -39,6 +46,15 @@ jobs:
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
+
+      # Refuse a tree that is not exactly a release tag: a dispatch from a branch HEAD
+      # would upload unreleased commits under the released version, and provenance would
+      # sign the mismatch (PR #49 review).
+      - name: Verify HEAD is exactly the tagged release
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          test "$TAG" = "v$(node -p 'require("./package.json").version')"
 
       - run: pnpm install --frozen-lockfile
 

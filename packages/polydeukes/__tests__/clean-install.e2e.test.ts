@@ -13,23 +13,32 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { readRecords } from '@polydeukes/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { telemetryRows } from './helpers';
 
 // DIST-03 AC-3/AC-4/AC-5 — the clean-install e2e (§3-c). The consumer tree's only inputs
-// are the five tarballs this suite packs and the public registry (yaml, picomatch): the
+// are the tarballs this suite packs and the public registry (yaml, picomatch): the
 // install graph is real, which is precisely what the symlink trees of init-claude-code.e2e
-// could not fake (§5 invariant 4). The `readRecords` import above is the repo-side
-// assertion reader (vitest aliases it to core's source); every SPAWNED process below
-// resolves through the tarball install alone.
+// could not fake (§5 invariant 4). The telemetryRows helper reads rows repo-side (vitest
+// aliases core to source); every SPAWNED process below resolves through the tarball
+// install alone.
 //
 // Pack helpers are file-local (the init-claude-code.e2e precedent): publish-pack.e2e.test.ts
 // carries its own copy so each suite runs standalone.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 
-/** The five publishable package directories (§3-a) — the tarball set the consumer installs. */
-const PACKAGE_DIRS = ['core', 'covenant', 'adapter-claude-code', 'adapter-git', 'polydeukes'];
+/**
+ * The publishable package directories — derived from the same domain `pnpm -r publish`
+ * acts on (workspace packages whose manifest is not private), so a new package enters
+ * this suite the moment it exists instead of waiting on a checklist (review of PR #49).
+ */
+const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
+  const manifest = JSON.parse(
+    readFileSync(join(repoRoot, 'packages', dir, 'package.json'), 'utf-8'),
+  ) as { private?: boolean };
+  return manifest.private !== true;
+});
 const UMBRELLA_DIR = 'polydeukes';
 
 /** The artifacts `pdks init claude-code` generates, as consumer-root-relative paths. */
@@ -101,8 +110,10 @@ beforeAll(() => {
 }, 600_000);
 
 afterAll(() => {
-  rmSync(packRoot, { recursive: true, force: true });
-  rmSync(consumerRoot, { recursive: true, force: true });
+  // Guard: a beforeAll failure leaves these undefined, and rmSync(undefined) would bury
+  // the real error under ERR_INVALID_ARG_TYPE (review of PR #49).
+  if (packRoot) rmSync(packRoot, { recursive: true, force: true });
+  if (consumerRoot) rmSync(consumerRoot, { recursive: true, force: true });
 });
 
 /** `pnpm pack` one package into its own destination; the single `.tgz` there is the result. */
@@ -156,13 +167,7 @@ function spawnConsumerHook(payload: unknown): SpawnSyncReturns<string> {
 }
 
 /** Every telemetry row in the consumer tree as [event, label, subject]. */
-function rows(): [string, string, string][] {
-  return readRecords(join(consumerRoot, TELEMETRY_REL)).records.map((record) => [
-    record.event,
-    record.label,
-    record.subject,
-  ]);
-}
+const rows = () => telemetryRows(join(consumerRoot, TELEMETRY_REL));
 
 /** One Write payload, consumer-root-relative — the proven-mutation-target branch. */
 function writePayload(filePath: string, content: string) {
@@ -315,6 +320,10 @@ describe('DIST-03 AC-5 — the core schema resolves from the installed tree', ()
     const resolved = consumerRequire.resolve(CORE_SCHEMA_SPECIFIER);
 
     expect(existsSync(resolved)).toBe(true);
+    // Pin the stable tail so a schema file move fails here instead of silently
+    // invalidating what DOCS-01 wrote down (review of PR #49); the machine-specific
+    // head stays unpinned.
+    expect(resolved.endsWith('/@polydeukes/core/schema/polydeukes.schema.json')).toBe(true);
     // The measured consumer-side form — DIST-03 §7 hands this line to DOCS-01.
     console.info(`AC-5 measured: ${CORE_SCHEMA_SPECIFIER} resolves to ${resolved}`);
   }, 60_000);
