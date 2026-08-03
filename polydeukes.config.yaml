@@ -127,6 +127,12 @@ adapters:
       - 'packages/adapter-claude-code/package.json'
       - 'packages/adapter-git/package.json'
       - 'package.json'
+      # The release path's gate definitions (PR #49 review F3): publish.yml holds the
+      # registry credential reference and the pre-upload gate, release-please.yml the
+      # hand-off that dispatches it, ci.yml the PR-time gate — rewiring any of them ships
+      # code around the gate without touching a single src line. Session edits stay free;
+      # the commit that promotes one into history is what a human answers for.
+      - '.github/workflows'
 
 disciplines:
   - id: 'covenant-vocabulary'
