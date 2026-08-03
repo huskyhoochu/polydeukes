@@ -90,7 +90,19 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   the launch as needing separate user approval. In the args, pass the PRD's invariants and
   severity framing as review context (the finder/verifier agents honor it). Findings land
   in-session; triage them the project's way: reviewer confidence is hypothesis strength,
-  not a verdict — judge each finding against the PRD text. (A human typing `/code-review`
+  not a verdict — judge each finding against the PRD text.
+- **Two constraints belong in the args, and a review without them leans one way.** A finding
+  always arrives as "here is how it breaks", so accepting one is free and declining one costs
+  an argument. Left alone that gradient adds a check every round.
+  - **Finite domain.** A finding must name a code path or an enumerated list. One that
+    samples an infinite input space — three invented malformed files out of all possible
+    malformed files — is not a defect report, and closing it writes code for inputs nobody
+    has seen. Ask for the measured instance; absent one, the finding is a hypothesis.
+  - **What the fix costs.** Every check takes something from whoever installed this: a file
+    they can no longer edit freely, a command that now refuses, a default that assumes they
+    are the threat. A finding that names only the risk has reported half of itself. This
+    product's disciplines are self-imposed, so a fix that removes the owner's choice is a
+    regression even when the risk is real. (A human typing `/code-review`
   still runs Claude Code's own version; the two drift independently — the fork's header
   comment records the divergences.)
 - Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run

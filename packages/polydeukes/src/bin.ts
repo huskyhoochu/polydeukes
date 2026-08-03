@@ -13,9 +13,7 @@
  * the valve is structurally unreachable (AC-3 human-only arming).
  */
 
-import { spawnSync } from 'node:child_process';
 import { closeSync, openSync, readSync, writeSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { runCovenantCheck } from './covenant-check.js';
 
 /**
@@ -53,33 +51,6 @@ function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
   };
 }
 
-/**
- * Refuse to install anywhere but the directory the host will call the project root.
- *
- * The generated registration spawns `$CLAUDE_PROJECT_DIR/.claude/hooks/…`, a path the HOST
- * expands — so installing into a subdirectory writes a tree whose registration names a hook
- * that is not there, and the installer would report success over it. That cannot be repaired
- * by resolving the path differently; the two roots simply have to be the same directory.
- *
- * The git top level is the proxy, and a mismatch refuses rather than guesses (PR #48 review).
- * Outside a work tree there is nothing better to compare against, so `cwd` stands — a
- * declared limit, not a check that passed.
- */
-function installRootOrRefuse(): string {
-  const cwd = process.cwd();
-  const git = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf-8' });
-  const top = git.status === 0 ? git.stdout.trim() : '';
-  if (top === '' || resolve(top) === resolve(cwd)) {
-    return cwd;
-  }
-  process.stderr.write(
-    `pdks init claude-code failed: run it from the project root (${top}), not ${cwd} — ` +
-      'the generated registration resolves $CLAUDE_PROJECT_DIR, so a hook installed deeper ' +
-      'is never spawned\n',
-  );
-  process.exit(2);
-}
-
 const args = process.argv.slice(2);
 
 if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
@@ -89,7 +60,7 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
     // pull the session adapter in — PR #46 review). A rejected import outside the try would
     // reach node's unhandled-rejection exit 1, the exact crash this bin refuses to make.
     const { initClaudeCode } = await import('./init-claude-code.js');
-    const { created, skipped } = initClaudeCode({ projectRoot: installRootOrRefuse() });
+    const { created, skipped } = initClaudeCode({ projectRoot: process.cwd() });
     for (const path of created) {
       process.stdout.write(`created ${path}\n`);
     }
