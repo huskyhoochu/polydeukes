@@ -54,6 +54,9 @@ languages:
 #   .claude/hooks, .claude/settings.json — the gate definitions themselves. Editing them
 #     does not evade a judgment, it removes the judgment; the session surface is the only
 #     layer that can watch it happen.
+#   .claude/settings.local.json — the local override of the same registration. The host
+#     documents disableAllHooks as settable here and local settings win over project ones,
+#     so one line in this file switches the session surface off entirely.
 #   node_modules, .claude/node_modules — the resolution path. The generated hook loads the
 #     judge by package NAME, so every directory Node's ancestor walk can answer from decides
 #     which code judges this session. A stub planted on that walk replaces the judge outright
@@ -61,6 +64,7 @@ languages:
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
+  - '.claude/settings.local.json'
   - 'node_modules'
   - '.claude/node_modules'
 

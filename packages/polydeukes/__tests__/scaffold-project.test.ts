@@ -33,15 +33,20 @@ const CONFIG_JSON = 'polydeukes.config.json';
 /** The telemetry-directory ignore line (§3-a, carried over from core.prd.config-schema §4.3). */
 const GITIGNORE_LINE = '.polydeukes/';
 /**
- * §3-d minimum protection set for a generated config. The first two are the gate
+ * §3-d minimum protection set for a generated config. The first three are the gate
  * definitions the session layer creates; the last two are the resolution-path entries
  * this ticket inherits — the generated hook resolves the judge by package NAME, so a
  * stub planted on Node's ancestor node_modules walk replaces the judge outright and
  * every call then passes with NO telemetry row at all (the defect class, blocker B7).
+ *
+ * `settings.local.json` earns its place by measurement, not symmetry: the host documents
+ * `disableAllHooks` as settable there, and local settings override project ones, so one
+ * line in a file nobody watched would switch the session surface off entirely.
  */
 const MINIMUM_PROTECTED_PATHS = [
   '.claude/hooks',
   '.claude/settings.json',
+  '.claude/settings.local.json',
   'node_modules',
   '.claude/node_modules',
 ];

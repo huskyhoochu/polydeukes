@@ -95,6 +95,11 @@ function readSettings(): SettingsFile {
   return JSON.parse(read(SETTINGS_REL)) as SettingsFile;
 }
 
+/** The settings file as written, for cases where it may not parse into the merged shape. */
+function readSettingsText(): string {
+  return read(SETTINGS_REL);
+}
+
 /** PreToolUse command entries referencing the generated delegator, counted. */
 function delegatorRegistrations(): number {
   return (readSettings().hooks?.PreToolUse ?? [])
@@ -353,48 +358,25 @@ describe('DIST-02 §3-a / AC-11 already-ambiguous tree — a precondition failur
   });
 });
 
-describe('DIST-02 §3-a — settings that parse but carry the wrong shape are a precondition failure', () => {
-  // Parsing is not the only read that can fail. The merge indexes hooks.PreToolUse as an
-  // array of objects, so a file that is valid JSON in some OTHER shape fails mid-merge —
-  // after the config, the ignore line and the hook are on disk. Review of PR #48 reproduced
-  // both variants; the second is worse than a partial tree because it does not throw at all.
-  function settingsTreeWith(body: string): string {
+describe('DIST-02 §3-a — the run never reports success without the registration', () => {
+  it('throws when the written settings file does not carry the registration', () => {
+    // The one outcome this installer must never produce is a successful-looking run whose
+    // judge never spawns. The merge can drop the entry without failing: a settings file
+    // whose root is an array takes the assignment as a non-index property and
+    // JSON.stringify discards it, so before the read-back this exited 0 and reported all
+    // four artifacts created (PR #48 review).
+    //
+    // The fixture is one witness, not an enumeration — the assertion is on the code path
+    // (every write is read back), so it holds for whatever else arrives without this suite
+    // having to guess at malformed shapes. What is NOT claimed: that such a run leaves zero
+    // files. The check fires after the scaffold and the hook are on disk, and a partial tree
+    // is the accepted cost of keeping the question finite.
     mkdirSync(join(projectRoot, dirname(SETTINGS_REL)), { recursive: true });
-    writeFileSync(join(projectRoot, SETTINGS_REL), body);
-    return body;
-  }
+    writeFileSync(join(projectRoot, SETTINGS_REL), '[]\n');
 
-  it('throws and writes NOTHING when hooks.PreToolUse is an object rather than an array', () => {
-    const body = settingsTreeWith('{"hooks":{"PreToolUse":{"matcher":"Bash","hooks":[]}}}\n');
+    expect(() => init()).toThrow(/registration/);
 
-    expect(() => init()).toThrow(/settings\.json/);
-
-    expect(existsSync(join(projectRoot, CONFIG_REL))).toBe(false);
-    expect(existsSync(join(projectRoot, GITIGNORE_REL))).toBe(false);
-    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
-    expect(read(SETTINGS_REL)).toBe(body);
-  });
-
-  it('throws and writes NOTHING when a PreToolUse entry is null', () => {
-    const body = settingsTreeWith('{"hooks":{"PreToolUse":[null]}}\n');
-
-    expect(() => init()).toThrow(/settings\.json/);
-
-    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
-    expect(read(SETTINGS_REL)).toBe(body);
-  });
-
-  it('throws and writes NOTHING when the settings root is a JSON array', () => {
-    // The silent variant: merging into an array assigns a non-index property, and
-    // JSON.stringify drops it. Before the shape check this run exited 0, reported all four
-    // artifacts as created, and left the registration nowhere — the judge would never spawn
-    // and no telemetry row would ever say so.
-    const body = settingsTreeWith('[]\n');
-
-    expect(() => init()).toThrow(/settings\.json/);
-
-    expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
-    expect(read(SETTINGS_REL)).toBe(body);
+    expect(readSettingsText()).not.toContain(HOOK_FILENAME);
   });
 });
 

@@ -130,6 +130,16 @@ type SettingsFile = {
   hooks?: { PreToolUse?: SettingsMatcherEntry[] } & Record<string, unknown>;
 } & Record<string, unknown>;
 
+/**
+ * Is our PreToolUse command already in this settings object? Asked twice — before the merge
+ * to stay idempotent, and after the write to prove the file took it.
+ */
+function carriesRegistration(settings: SettingsFile): boolean {
+  return (settings.hooks?.PreToolUse ?? []).some((entry) =>
+    (entry?.hooks ?? []).some((hook) => hook?.command === HOOK_COMMAND),
+  );
+}
+
 /** Write the delegator unless one is already there, recording which happened. */
 function writeHookFile(projectRoot: string, report: ScaffoldReport): void {
   const hookPath = join(projectRoot, HOOK_RELATIVE);
@@ -162,36 +172,7 @@ function readSettings(projectRoot: string): SettingsFile {
     );
   }
 
-  // Syntax is not shape. The merge indexes `hooks.PreToolUse` as an array of objects, so a
-  // file valid in some other shape fails mid-merge, after the scaffold and the hook are on
-  // disk — and an array at the root does not fail at all: `JSON.stringify` drops the
-  // non-index property, so the run reports success with the registration nowhere (PR #48
-  // review). Both are read failures, so both belong here.
-  const shape = settingsShapeError(parsed);
-  if (shape !== undefined) {
-    throw new Error(`${SETTINGS_RELATIVE} in ${projectRoot} ${shape} — fix it and re-run`);
-  }
   return parsed as SettingsFile;
-}
-
-/** The one shape the merge can extend, or a phrase naming how this file departs from it. */
-function settingsShapeError(parsed: unknown): string | undefined {
-  if (!isPlainObject(parsed)) {
-    return 'must be a JSON object';
-  }
-  if (parsed.hooks !== undefined && !isPlainObject(parsed.hooks)) {
-    return 'has a "hooks" key that is not an object';
-  }
-  const preToolUse = isPlainObject(parsed.hooks) ? parsed.hooks.PreToolUse : undefined;
-  if (preToolUse === undefined) {
-    return undefined;
-  }
-  if (!Array.isArray(preToolUse)) {
-    return 'has a "hooks.PreToolUse" key that is not an array';
-  }
-  return preToolUse.every(isPlainObject)
-    ? undefined
-    : 'has a "hooks.PreToolUse" entry that is not an object';
 }
 
 /**
@@ -203,10 +184,7 @@ function settingsShapeError(parsed: unknown): string | undefined {
 function mergeSettings(projectRoot: string, settings: SettingsFile, report: ScaffoldReport): void {
   const settingsPath = join(projectRoot, SETTINGS_RELATIVE);
   const preToolUse = settings.hooks?.PreToolUse ?? [];
-  const registered = preToolUse.some((entry) =>
-    (entry.hooks ?? []).some((hook) => hook.command === HOOK_COMMAND),
-  );
-  if (registered) {
+  if (carriesRegistration(settings)) {
     // Not rewriting is the point: a re-serialization would rewrite a consumer's formatting
     // on every run, which is an overwrite by another name.
     report.skipped.push(SETTINGS_RELATIVE);
@@ -221,6 +199,19 @@ function mergeSettings(projectRoot: string, settings: SettingsFile, report: Scaf
     ],
   };
   writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+
+  // Read the registration back rather than assuming the write carried it. The one outcome
+  // this installer must never produce is a successful-looking run whose judge never spawns,
+  // and the merge can drop the entry without failing — a settings file whose root is an
+  // array takes the assignment as a non-index property and `JSON.stringify` discards it
+  // (PR #48 review). Checking the file instead of the shapes that reach it keeps the
+  // question finite: one code path, asked after every write, whatever arrived.
+  if (!carriesRegistration(JSON.parse(readFileSync(settingsPath, 'utf-8')) as SettingsFile)) {
+    throw new Error(
+      `${SETTINGS_RELATIVE} in ${projectRoot} did not take the PreToolUse registration — ` +
+        'the judge would never be spawned. Fix that file and re-run',
+    );
+  }
   report.created.push(SETTINGS_RELATIVE);
 }
 
