@@ -34,6 +34,19 @@ size next to the figure. A ratio needs its denominator restated at every reuse â
 28% was tracked as a friction metric across three journal rounds before anyone asked what the
 denominator counted, and it was not what everyone assumed.
 
+**`passed` is an upper bound and `blocked` a lower one.** An agent that predicts a block
+reshapes the call before making it, and the reshaped call passes legitimately with no record
+that anything was avoided. Cite the dogfooding ratios with that bias stated; the reproduction
+is in `foundation.dev-log.preemptive-shaping-leaves-no-row.md`.
+
+## Describe what is, not what was left out
+
+No "deliberately not included", no "this alternative was rejected", no marker written to stop a
+future session re-opening a decision. The intent is to prevent re-litigation and the effect is
+the opposite: it makes an absence into a documented entity that keeps arguing for itself. A
+decision that was made leaves its result and nothing else. Commit messages and PR bodies are
+outside this â€” describing what changed is not marking an absence.
+
 ## A claim ages with the thing it measured
 
 An archived PRD's evidence is true for the terrain it was measured on. When the terrain
