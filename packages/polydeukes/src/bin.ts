@@ -52,8 +52,34 @@ function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
 }
 
 const args = process.argv.slice(2);
+
+if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
+  try {
+    // Imported inside the try, not above it: ESM imports are eager, so the installer stays
+    // off `covenant check`'s load path (lefthook spawns that on every commit and it must not
+    // pull the session adapter in — PR #46 review). A rejected import outside the try would
+    // reach node's unhandled-rejection exit 1, the exact crash this bin refuses to make.
+    const { initClaudeCode } = await import('./init-claude-code.js');
+    const { created, skipped } = initClaudeCode({ projectRoot: process.cwd() });
+    for (const path of created) {
+      process.stdout.write(`created ${path}\n`);
+    }
+    for (const path of skipped) {
+      process.stdout.write(`skipped ${path} (already present)\n`);
+    }
+    process.exit(0);
+  } catch (error) {
+    // A precondition failure leaves zero files (DIST-02 §5-d invariant 2); the message
+    // names what the user has to do before running this again.
+    process.stderr.write(
+      `pdks init claude-code failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exit(2);
+  }
+}
+
 if (args.length !== 2 || args[0] !== 'covenant' || args[1] !== 'check') {
-  process.stderr.write('usage: pdks covenant check\n');
+  process.stderr.write('usage: pdks covenant check | pdks init claude-code\n');
   process.exit(2);
 }
 
