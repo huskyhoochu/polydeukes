@@ -72,8 +72,10 @@ No import, and no configuration namespace of its own.
   calls*. A command that spawns a process which then writes files — a test runner, a build
   — is judged on the command, not on what the child did. The commit surface is the second
   observation that covers the same ground for tracked files.
-- **A tool that produces no post-state carries no evidence.** `NotebookEdit` is the shipped
-  instance: it takes part in judgment through its arguments, not through `fileChange`.
+- **Evidence exists only where a post-state can be computed.** All four mutating tools
+  contribute one, notebooks included — a `NotebookEdit` yields cell-level `modify` evidence.
+  What yields nothing is a payload this adapter cannot resolve: an unreadable or unparseable
+  notebook, a cell it cannot name, an edit mode it does not know.
 - **An evidence-free call falls back to the conservative judgment** — the call's arguments
   are compared for a mention rather than a proven target.
 - **Out-of-repository ancestors stay out of scope.** A path above the project root is not

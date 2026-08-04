@@ -5,9 +5,8 @@
 > **The protocol every covenant speaks** — the input IR, the verdict shape, the config
 > schema, and the telemetry collector.
 >
-> Alpha. A transitive dependency of the umbrella: you do not install it, and unless you are
-> writing your own judge body, you do not import it. The consumer entry point is
-> [`polydeukes`](./polydeukes.md).
+> Alpha. A transitive dependency of the umbrella: you do not install it and you do not import
+> it. The consumer entry point is [`polydeukes`](./polydeukes.md).
 
 ## What this package owns
 
@@ -30,9 +29,9 @@ can check. Every other package depends on this one; this one depends on none of 
 
 ## The judged protocol
 
-This is the contract a judge body speaks, and the one part of this package a consumer can
-legitimately reach for. Writing a custom judge body means reading `CovenantInput` from
-stdin and answering with an exit code.
+This is the contract the shipped judge bodies speak: a body reads a `CovenantInput` from
+stdin and answers with an exit code. Every row in `.polydeukes/roi.log` traces back to one
+of these verdicts, so this vocabulary is what a blocked row is written in.
 
 ```ts
 type CovenantInput = {
@@ -89,7 +88,8 @@ Three places, all of them indirect.
   a default pnpm layout it does not resolve from a consumer's top-level `node_modules`,
   because the core arrives as a transitive dependency; the working spellings are in
   [configuration.md's IDE section](../configuration.md#ide-support).
-- **The protocol above**, if you write your own judge body.
+- **The protocol above** — reading a `blocked` row means reading the vocabulary a body
+  answered in.
 
 Everything else here is reached through `polydeukes`.
 

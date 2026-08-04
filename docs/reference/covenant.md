@@ -31,7 +31,7 @@ determines whether it can be judged on a given surface.
 | Family | Key | Judges | Evidence needed |
 |---|---|---|---|
 | delta | `forbid` | Added-direction content of a file change. Existing debt is forgiven; only new occurrences break | File change |
-| path | `immutable` | Modification of an existing file. Creation passes | File change |
+| path | `immutable` | Any change to a file that already exists — modification or deletion alike. Creation passes | File change |
 | command | `forbidCommand` | The command line itself | None |
 | context | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one | A transcript |
 
@@ -81,9 +81,14 @@ No import. The umbrella assembles this package for both surfaces.
 - **The context family cannot be judged without a session.** On the commit surface there is
   none, so a matching `requirePrecedent` entry always records `skipped`. That is a permanent
   condition of that surface.
+- **The command family is absent from the commit surface, and absent without a row.**
+  `forbidCommand` entries are filtered out before compilation there, since a staged diff
+  carries no command line to judge. Unlike the context family this leaves nothing in
+  `.polydeukes/roi.log`, so the log cannot separate a command discipline that never
+  triggered from one that was never registered on that surface.
 - **An unjudgeable entry compiles to a skip registration** — routing intact, no body. A
   pattern that does not compile skips the same way. Assembly therefore never throws: one
-  unresolvable entry cannot take down its siblings, both meta-covenants, and the valve,
+  unresolvable entry cannot take down its siblings, the meta-covenants, and the valve,
   which would leave no way to fix the config that caused it.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected

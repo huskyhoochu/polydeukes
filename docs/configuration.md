@@ -28,13 +28,16 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 - **More than one found** → error naming the collisions. Ambiguity never picks a winner.
 - **Parse error, or a custom YAML tag** → error naming the file. Custom tags are rejected
   even though the parser cannot execute them — config data stays uncomputable by contract.
-- **Schema violation** → error naming the key and the file. Unknown keys are rejected at
-  the level the core owns — the top level and every container the core defines — so a typo
-  like `protectedPath:` for `protectedPaths:`, or `adaptors:` for `adapters:`, is caught
-  here. Inside an adapter namespace the vocabulary belongs to that adapter: the core passes
-  the contents through verbatim, and the adapter's own validator rejects what it does not
-  recognise, naming the full field path (see
-  [`adapters`](#adapters-optional)).
+- **Schema violation** → error naming the key and the file. Unknown keys are rejected
+  wherever the core owns the vocabulary — the top level, and the fixed keys inside a
+  discipline entry — so `protectedPath:` for `protectedPaths:`, or `adaptors:` for
+  `adapters:`, is caught here. Two maps stay open, because their keys are your values
+  rather than the core's: language names under `languages`, and adapter names under
+  `adapters`. A misspelt adapter name is accepted and its block simply goes unread, which
+  leaves that adapter on its defaults — check the name against the adapter's own reference.
+  Inside a namespace the vocabulary belongs to that adapter: the core passes contents
+  through verbatim, and the adapter's own validator rejects what it does not recognise,
+  naming the full field path (see [`adapters`](#adapters-optional)).
 
 ## IDE support
 
@@ -305,8 +308,11 @@ object carrying exactly one evidence key) and passes the value through verbatim,
 that owns the word validates and judges it. The Claude Code adapter brings two: `subagent` (exact
 match on a spawn kind) and `tool` (a regex over tool names) — so "query the docs tool before
 touching this" is expressible today. Both follow the same execution rule as `command`. An evidence
-key no assembled adapter recognizes fails closed at assembly, so a typo can never pass itself off as
-adapter vocabulary.
+key no assembled adapter recognizes cannot be judged, so the entry compiles to a skip registration:
+routing stays, the body is dropped, assembly names the fault once on stderr, and every matching
+change afterwards records `skipped` rather than a verdict. A typo therefore never passes itself off
+as adapter vocabulary — but it does leave the discipline inert, and the `skipped` rows are where
+that shows.
 
 `when` (optional) is the trigger: an added-direction delta regex, combinable with
 `requirePrecedent` and with nothing else. When it is absent, every change inside `in`

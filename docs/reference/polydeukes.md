@@ -34,7 +34,8 @@ spawns.
 | Situation | Result |
 |---|---|
 | Staged changes break nothing | exit `0` |
-| A staged change breaks a covenant, `enforce: block` | Prompts once on `/dev/tty` for the witness token; an unanswered or wrong answer exits `2` |
+| A staged change breaks a covenant, `enforce: block`, config has a `witness` block | Prompts once on `/dev/tty` for the witness token; an unanswered or wrong answer exits `2` |
+| The same, with no `witness` block in the config | exit `2` with no prompt — the valve is built from that block, so without it nothing can open a block |
 | A staged change breaks a covenant, `enforce: advise` | One advisory line on stderr, exit `0`, recorded `advised` |
 | Empty staging area | exit `0` — an explicit pass, not a skipped run |
 | No config, more than one config, or an invalid one | exit `2` |
@@ -74,13 +75,15 @@ Three codes exist, and they live at two layers. **What a consumer's hook observe
 | Code | Constant | Emitted by | Means |
 |---|---|---|---|
 | `0` | `EXIT_UPHOLD` | Judge body, wrapper, bin | The promise was upheld — the call or commit proceeds |
-| `1` | `EXIT_BREAK_NON_BLOCKING` | Judge body only | A break reported as a signal. The wrapper translates it into `2`; it never reaches the surface |
+| `1` | `EXIT_BREAK_NON_BLOCKING` | Judge body only | A break reported as a signal. The wrapper translates it — into `2` under `enforce: block`, into `0` + an `advised` row under `advise`. It never reaches the surface either way |
 | `2` | `EXIT_BREAK_BLOCKING` | Wrapper, bin, fail-closed paths | The call or commit is refused |
 
-The asymmetry is the protocol's responsibility boundary. A covenant body decides *whether*
-a promise was broken and says so with `0` or `1`; deciding what a break *costs* belongs to
-the wrapper, which is where `1` becomes `2`. A body can therefore be run, tested, and
-reasoned about without knowing whether the surface it runs under blocks or advises.
+The asymmetry is the protocol's responsibility boundary. A covenant body decides *whether* a
+promise was broken and says so with `0` or `1`; deciding what a break *costs* belongs to the
+wrapper, and that is the one place `enforce` is read. A body can therefore be run, tested, and
+reasoned about without knowing whether the surface it runs under blocks or advises. Only the
+verdict relaxes: every unjudgeable outcome — a body exit of `2` or higher, a signal death —
+stays `2` at either level.
 
 **Everything unjudgeable resolves to `2`.** A missing config, an invalid one, an
 unparseable payload, a judge body that was never built — each fails closed. The one

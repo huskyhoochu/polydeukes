@@ -36,10 +36,12 @@ umbrella.
 | A binary blob yields null content | Rather than lossily decoded bytes |
 | The unborn first commit narrows to all-added | Rather than throwing |
 
-Translation produces one tool call per change, under the adapter-owned names
-`staged-write` and `staged-delete`, each carrying its own `fileChange` evidence. **The
-session collections are honestly empty** — the commit surface has no session, and a key is
-never fabricated to look like one.
+Translation produces one tool call per change, under the adapter-owned names `staged-write`
+and `staged-delete`. A deletion always carries its evidence. A write carries it unless the
+staged blob was binary — there is no text to compare, so the call arrives with no
+`fileChange` at all and is judged on its path alone, the same as any unproven call.
+**The session collections are honestly empty** — the commit surface has no session, and a
+key is never fabricated to look like one.
 
 **The namespace is this adapter's own vocabulary.** The core validates only the container
 shape — one settings object per adapter — and passes the contents through verbatim, so the
