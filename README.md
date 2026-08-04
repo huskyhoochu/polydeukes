@@ -63,16 +63,22 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
 | [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design-principles whitepaper (skeleton, being expanded in public) |
+| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code`) and the manually wired commit surface |
+| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | The fail-closed states and how to recover, reading verdicts, and the witness valve |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
-## CLI (planned)
+## CLI
+
+Shipped today:
 
 ```sh
-$ pdks verify              # run verification actions
-$ pdks ledger start <id>   # start a unit of work
-$ pdks covenant check      # check the covenants
+$ pdks init claude-code    # wire the session surface into a project
+$ pdks covenant check      # judge the staged diff (the pre-commit entry point)
 ```
+
+Planned — each arrives with its package: `pdks verify` (adversarial verification) and
+`pdks ledger start <id>` (work tracking).
 
 `pdks` is an alias for `polydeukes`.
 

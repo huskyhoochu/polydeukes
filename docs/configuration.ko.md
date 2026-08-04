@@ -37,17 +37,34 @@
 
 ## IDE 지원
 
-발행된 JSON Schema(`@polydeukes/core/schema.json`)가 편집기 자동완성과 검증을 제공합니다.
-첫 줄에서 참조하세요.
+발행된 JSON Schema가 편집기 자동완성과 검증을 제공합니다. 스키마 파일은 우산의 **전이**
+의존성인 `@polydeukes/core` 안에 실려 오는데, pnpm의 기본 엄격 레이아웃에서 전이
+의존성은 프로젝트 최상위 `node_modules`에 노출되지 않습니다(2026-08-03 실측으로 이
+파일은 `node_modules/.pnpm/…` 아래에서만 해소됩니다). 따라서 `node_modules` 상대 경로의
+`$schema` 줄은 기본 pnpm 설치에서 해소되지 않으며, `pdks init claude-code`가 생성
+설정에 `$schema` 줄을 넣지 않는 이유도 이것입니다. 모든 소비자 레이아웃에서 해소되는
+단일 철자가 없습니다.
+
+동작하는 형태는 둘입니다. 버전 고정 공개 URL은 모든 레이아웃에서 해소됩니다(`v0.2.0`
+태그와 `main`에서 확인했고, 태그는 설치한 릴리스로 바꾸세요).
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
+```
+
+상대 경로는 `@polydeukes/core`가 `node_modules` 최상위에 실재하는 레이아웃에서만
+동작합니다. npm의 평면 레이아웃은 그 자리에 끌어올리고, pnpm 프로젝트도
+`@polydeukes/core`를 직접 의존성으로 선언하는 순간 같은 효과를 얻습니다.
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
 ```
 
-JSON 설정이라면 표준 최상위 키를 대신 씁니다. 이 키는 수락되고 무시됩니다.
+JSON 설정이라면 표준 최상위 키를 대신 씁니다. 이 키는 로더에게 수락되고 무시되며, 값은
+위와 같은 둘입니다.
 
 ```json
-{ "$schema": "node_modules/@polydeukes/core/schema/polydeukes.schema.json" }
+{ "$schema": "https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json" }
 ```
 
 ## 레퍼런스

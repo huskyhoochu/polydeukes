@@ -34,17 +34,35 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 
 ## IDE support
 
-The published JSON Schema (`@polydeukes/core/schema.json`) gives autocompletion and
-validation in editors. Reference it from the first line:
+The published JSON Schema gives autocompletion and validation in editors. The schema file
+ships inside `@polydeukes/core` — a *transitive* dependency of the umbrella — and under
+pnpm's default strict layout transitive dependencies are not exposed at your project's
+top-level `node_modules` (measured 2026-08-03: the file resolves only under
+`node_modules/.pnpm/…`). A `node_modules`-relative `$schema` line therefore does not
+resolve in a default pnpm install, which is also why `pdks init claude-code` writes no
+`$schema` line into the generated config: there is no one spelling that resolves in every
+consumer layout.
+
+Two forms work. The version-pinned public URL resolves in every layout (verified against
+the `v0.2.0` tag and `main` — swap the tag for the release you installed):
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
+```
+
+The relative path works only in layouts where `@polydeukes/core` is present at the top
+level of `node_modules` — npm's flat layout hoists it there, and a pnpm project gets the
+same effect the moment it declares `@polydeukes/core` as a direct dependency:
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
 ```
 
-For a JSON config, use the standard top-level key instead — it is accepted and ignored:
+For a JSON config, use the standard top-level key instead — it is accepted and ignored by
+the loader, with the same two values:
 
 ```json
-{ "$schema": "node_modules/@polydeukes/core/schema/polydeukes.schema.json" }
+{ "$schema": "https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json" }
 ```
 
 ## Reference

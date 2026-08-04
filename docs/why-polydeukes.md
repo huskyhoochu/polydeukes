@@ -95,6 +95,11 @@ file joins the protection surface automatically, and so does the loader that rea
 Every link in the judging chain is judged, or the chain is decoration.
 
 <!-- TODO: link each remaining area to its doc/package as it ships. -->
+<!-- Parked candidate (2026-08-04, DOCS-01): the two-surface usage model — the session
+     surface is for a project developed WITH an AI partner, the commit surface for a human
+     developing ALONE applying discipline to themselves; no general reason to wire both.
+     The commit surface is the strongest proof the covenant is self-discipline, not AI
+     control — a surface with no AI in the loop at all. -->
 
 ## Three design principles
 
