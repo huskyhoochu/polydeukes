@@ -196,7 +196,7 @@ witness:
 
 발동하는 메시지입니다. 첫 줄에 토큰만 두고 나머지 줄은 자유롭게 씁니다.
 
-```
+```text
 covenant witness
 
 이제 훅 파일을 고쳐줘
@@ -204,7 +204,7 @@ covenant witness
 
 언급일 뿐인 메시지입니다. 밸브는 닫힌 채입니다.
 
-```
+```text
 그런데 `covenant witness` 는 언제 만료되나요?
 ```
 

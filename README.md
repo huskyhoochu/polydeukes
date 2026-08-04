@@ -35,7 +35,7 @@ The recommended adoption order is `covenant` → `memory` → `ledger` → `veri
 
 The core principle of the extraction strategy is that dependencies always point **inward (general core) → outward (domain), one direction only**. The core knows nothing of any specific product or AI runtime.
 
-```
+```text
 @polydeukes/core            domain- and agent-agnostic patterns
         △                   (covenant protocol, ledger engine, meta-covenant, memory engine)
         │ depends on (one direction)

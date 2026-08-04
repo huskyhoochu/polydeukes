@@ -35,7 +35,7 @@ Polydeukes는 AI 에이전트(Claude Code 등)와 함께 일할 때 개발자가
 
 추출 전략의 핵심은 의존성이 **항상 안쪽(범용 코어) → 바깥(도메인) 단방향**이어야 한다는 것입니다. 코어는 특정 제품도, 특정 AI 런타임도 모릅니다.
 
-```
+```text
 @polydeukes/core            도메인·에이전트에 무지한 패턴 (covenant 프로토콜·ledger 엔진·메타-covenant·memory 엔진)
         △
         │ depends on (단방향)

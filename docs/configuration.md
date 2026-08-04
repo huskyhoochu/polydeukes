@@ -202,7 +202,7 @@ carrying the token alone does, with any following lines free for the work itself
 
 A message that invokes — the token alone on the first line, the rest free:
 
-```
+```text
 covenant witness
 
 now fix the hook file
@@ -210,7 +210,7 @@ now fix the hook file
 
 A message that merely mentions — the valve stays shut:
 
-```
+```text
 so when does `covenant witness` expire?
 ```
 

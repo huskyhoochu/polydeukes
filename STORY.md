@@ -94,6 +94,7 @@ Google holds the *name* of the constellation; we hold *why it was set in the sky
 So while we cannot use the word `Gemini` — it has already become the name of one tech giant — we instead **claim the deeper, lesser-known scene of the same myth that they walked past**: a name that speaks of sharing rather than fusing, of a gift rather than a merger. The Dioskouroi were always more than a pair of twins. The whole point of their story is what one of them *did* with being a twin.
 
 > *Sources:*
+>
 > - *Google, ["How Google's AI model Gemini got its name"](https://blog.google/innovation-and-ai/products/google-gemini-ai-name-meaning/) (May 2024) — the official name story.*
 > - *Google, ["Announcing Google DeepMind"](https://deepmind.google/blog/announcing-google-deepmind) (April 2023) — the merger of DeepMind and Google Brain.*
 > - *NASA, [Project Gemini](https://www.nasa.gov/specials/gemini_gallery) (1961–66) — the two-person program that bridged Mercury and Apollo.*

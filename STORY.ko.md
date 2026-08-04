@@ -94,6 +94,7 @@ AI는 길들여야 할 가축도 아니고 부려야 할 노예도 아니어서,
 그래서 우리는 `Gemini`라는 단어를 쓸 수 없지만 — 이미 한 거대 기업의 이름이 되었으니 — 오히려 **그들이 지나쳐 간, 같은 신화의 더 깊고 덜 알려진 장면을 차지**하게 됩니다. 융합이 아니라 나눔을, 합병이 아니라 선물을 말하는 이름으로서 말입니다. 디오스쿠로이는 언제나 한 쌍의 쌍둥이 그 이상이었습니다 — 그 이야기의 핵심은, 둘 중 하나가 쌍둥이라는 사실로 *무엇을 했는가*에 있으니까요.
 
 > *출처:*
+>
 > - *구글, ["How Google's AI model Gemini got its name"](https://blog.google/innovation-and-ai/products/google-gemini-ai-name-meaning/) (2024년 5월) — 공식 작명 비화.*
 > - *구글, ["Announcing Google DeepMind"](https://deepmind.google/blog/announcing-google-deepmind) (2023년 4월) — DeepMind와 Google Brain의 통합 발표.*
 > - *NASA, [Project Gemini](https://www.nasa.gov/specials/gemini_gallery) (1961–66) — 머큐리와 아폴로를 잇던 2인승 계획.*
