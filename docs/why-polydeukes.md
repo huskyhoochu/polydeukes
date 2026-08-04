@@ -76,7 +76,7 @@ human in a hurry — can quietly remove.
 - **verify** *(on the roadmap)* — judgments are not taken at their word; they check each
   other adversarially.
 
-Three properties of the shipped layer are worth stating plainly, because each removes a
+Four properties of the shipped layer are worth stating plainly, because each removes a
 reason adoption usually fails.
 
 **Debt is amnestied.** A discipline judges only what an edit *adds*. Pre-existing
@@ -94,12 +94,15 @@ is still judged.
 file joins the protection surface automatically, and so does the loader that reads it.
 Every link in the judging chain is judged, or the chain is decoration.
 
+**The two surfaces are for two different people.** The session surface is for a project
+developed with an AI partner — it judges tool calls as they are declared. The commit
+surface is for a human developing alone — it judges the staged diff at the moment work
+becomes history, with no AI anywhere in the loop, and there is no general reason to wire
+both in one project. That second surface is the sharpest proof of the framing: strip the
+AI away entirely, and what remains is a developer choosing to stand under their own
+declared discipline. See [Installing Polydeukes](./installation.md) for the two paths.
+
 <!-- TODO: link each remaining area to its doc/package as it ships. -->
-<!-- Parked candidate (2026-08-04, DOCS-01): the two-surface usage model — the session
-     surface is for a project developed WITH an AI partner, the commit surface for a human
-     developing ALONE applying discipline to themselves; no general reason to wire both.
-     The commit surface is the strongest proof the covenant is self-discipline, not AI
-     control — a surface with no AI in the loop at all. -->
 
 ## Three design principles
 
