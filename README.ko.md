@@ -63,16 +63,23 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 |------|------|
 | [`STORY.md`](./STORY.md) | 이름의 유래와 설계 철학 (창업자 서사) |
 | [`docs/why-polydeukes.ko.md`](./docs/why-polydeukes.ko.md) | 왜 폴리데우케스인가? — 설계 원칙 백서 (골격, 공개적으로 확장 중) |
+| [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code`)과 수동 배선 커밋 표면 |
+| [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md) | fail-closed 상태들과 회복 절차, 판정 기록 읽는 법, 증인(witness) 밸브 |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.ko.md) | 빌드 인 퍼블릭 시리즈 — 마일스톤마다 한 편, v0.1(약속(covenant) 코어 + 측정)부터 시작 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 마일스톤별 릴리스 노트 |
 
-## CLI (예정)
+## CLI
+
+`pdks` bin에는 오늘 서브커맨드 둘이 실려 있습니다(v0.3.0 릴리스로 출판되며, 그 전의 npm
+버전은 이름 선점용 스텁입니다).
 
 ```sh
-$ pdks verify              # 검증 액션 실행
-$ pdks ledger start <id>   # 작업 시작
-$ pdks covenant check      # 약속(covenant) 점검
+$ pdks init claude-code    # 프로젝트에 세션 표면을 배선
+$ pdks covenant check      # staged diff 판정 (pre-commit 진입점)
 ```
+
+예정 — 각자의 패키지와 함께 옵니다. `pdks verify`(적대 검증), `pdks ledger start <id>`(작업
+추적).
 
 `pdks`는 `polydeukes`의 별칭입니다.
 
