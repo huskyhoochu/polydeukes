@@ -292,17 +292,17 @@ opens the gate** — the block message says so.
       command: 'npm view '
 ```
 
-The evidence vocabulary is layered. `command` is the core's own key — a shell call is a
-surface every agent shares — and the core validates it fully, rejecting an empty string or
-a pattern that does not compile. It is matched **at the start of a simple command**, not
-anywhere in the command line, so `echo "npm view yaml"` and a mention parked behind a `#`
-are not evidence while `cd pkg && npm view yaml` is. Every other key belongs to an adapter:
-the core checks the container only (a flat object carrying exactly one evidence key) and
-passes the value through verbatim, and the adapter that owns the word validates and judges
-it. The Claude Code adapter brings two: `subagent` (exact match on a spawn kind) and `tool`
-(a regex over tool names) — so "query the docs tool before touching this" is expressible
-today. Both follow the same execution rule as `command`. An evidence key no assembled adapter recognizes fails
-closed at assembly, so a typo can never pass itself off as adapter vocabulary.
+The evidence vocabulary is layered. `command` is the core's own key — a shell call is a surface
+every agent shares — and the core validates it fully, rejecting an empty string or a pattern that
+does not compile. It is matched **at the start of a simple command**, not anywhere in the command
+line, so `echo "npm view yaml"` and a mention parked behind a `#` are not evidence while `cd pkg &&
+npm view yaml` is. Every other key belongs to an adapter: the core checks the container only (a flat
+object carrying exactly one evidence key) and passes the value through verbatim, and the adapter
+that owns the word validates and judges it. The Claude Code adapter brings two: `subagent` (exact
+match on a spawn kind) and `tool` (a regex over tool names) — so "query the docs tool before
+touching this" is expressible today. Both follow the same execution rule as `command`. An evidence
+key no assembled adapter recognizes fails closed at assembly, so a typo can never pass itself off as
+adapter vocabulary.
 
 `when` (optional) is the trigger: an added-direction delta regex, combinable with
 `requirePrecedent` and with nothing else. When it is absent, every change inside `in`

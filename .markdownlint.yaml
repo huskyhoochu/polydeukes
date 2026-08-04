@@ -2,27 +2,26 @@
 # alike). Rules below are OFF where the default disagrees with an established convention of
 # this repository, not to hide defects; everything else stays at its default severity.
 
-# Narrative documents (STORY, CLAUDE.local, parts of docs/) run long unwrapped lines by
-# choice, and hard-wrap width differs per file. Line length is a per-file authorial call.
-MD013: false
+# Prose wraps at 100 columns. Tables, code blocks, and headings are exempt — their width
+# is content, not formatting — and a line that has no break point past the limit (a long
+# URL) passes under the rule's default mode.
+MD013:
+  line_length: 100
+  tables: false
+  code_blocks: false
+  headings: false
 
 # release-please generates asterisk bullet lists into CHANGELOG.md next to hand-written
 # dash lists; a single style cannot cover generated + authored content.
 MD004: false
 
-# Emphasis marker choice (*…* vs _…_) is authorial, and dated build-in-public posts keep
-# the form they shipped with.
-MD049: false
+# Emphasis is spelled with asterisks throughout (underscore forms render identically and
+# are converted on sight).
+MD049:
+  style: asterisk
 
 # Tables use compact separator rows (|---|---|) with padded content cells throughout.
 MD060: false
-
-# $-prefixed command blocks without captured output are intentional in the READMEs.
-MD014: false
-
-# Bold lead-in paragraphs (guide property paragraphs, dated editor's notes) are a
-# deliberate device, not headings.
-MD036: false
 
 # release-please output separates its sections with double blank lines.
 MD012:

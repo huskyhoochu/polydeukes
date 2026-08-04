@@ -2,24 +2,54 @@
 
 **English** · [한국어](./README.ko.md)
 
-> A development *discipline* framework for building alongside an AI coding partner.
-> Deterministic covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one thin core.
+> A development *discipline* framework for building alongside an AI coding partner. Deterministic
+> covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
+> thin core.
 
-**Status: alpha.** The first units have landed in `@polydeukes/core` (covenant protocol, ROI telemetry, config loader, fail-open/fail-closed policy table, and the canonical-transcript query seam), `@polydeukes/covenant` (the run_covenant wrapper, heredoc-aware multi-line Bash analysis with its write-detection rules (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod meta-covenant with its witness seam, the shell-mod meta-covenant that assembles the detection rules into a Bash-axis judge with a read-only allowlist, and the TTL witness — a time-boxed valve judged over the transcript seam, consulted only after a verdict blocked), and `@polydeukes/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state parser that computes Edit/Write/MultiEdit apply-results without touching disk, and the JSONL transcript provider that feeds the TTL witness real human-typed messages), `@polydeukes/adapter-git` (the commit-surface adapter: staged diff → covenant input IR, filling the same agent-neutral per-call `fileChange` evidence — a discriminated union where deletion is first-class — from HEAD/staged blobs — the second adapter, proving IR neutrality with zero core changes), and the umbrella `polydeukes` package (the `loadConfig` discovery loader plus the first real `pdks` subcommand: `pdks covenant check`, the pre-commit judgment entry point whose witness valve, at the `block` level, is a TTY prompt only a human at a terminal can answer — the level itself is the git adapter's namespace setting `adapters.git.enforce: block | advise`, `advise` records a verdict as an `advised` event and lets the commit proceed, and the same namespace's `adapters.git.protectedPaths` is the commit surface's additive protection scope — judged on top of the shared list, never read by the session surface); everything else is still blueprint. This repository holds that early core plus the architecture blueprint and the reasoning behind it. What follows is a description of what is being built.
+**Status: alpha.** The first units have landed in `@polydeukes/core` (covenant protocol, ROI
+telemetry, config loader, fail-open/fail-closed policy table, and the canonical-transcript query
+seam), `@polydeukes/covenant` (the run_covenant wrapper, heredoc-aware multi-line Bash analysis with
+its write-detection rules (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
+meta-covenant with its witness seam, the shell-mod meta-covenant that assembles the detection rules
+into a Bash-axis judge with a read-only allowlist, and the TTL witness — a time-boxed valve judged
+over the transcript seam, consulted only after a verdict blocked), and
+`@polydeukes/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
+adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state parser
+that computes Edit/Write/MultiEdit apply-results without touching disk, and the JSONL transcript
+provider that feeds the TTL witness real human-typed messages), `@polydeukes/adapter-git` (the
+commit-surface adapter: staged diff → covenant input IR, filling the same agent-neutral per-call
+`fileChange` evidence — a discriminated union where deletion is first-class — from HEAD/staged blobs
+— the second adapter, proving IR neutrality with zero core changes), and the umbrella `polydeukes`
+package (the `loadConfig` discovery loader plus the first real `pdks` subcommand: `pdks covenant
+check`, the pre-commit judgment entry point whose witness valve, at the `block` level, is a TTY
+prompt only a human at a terminal can answer — the level itself is the git adapter's namespace
+setting `adapters.git.enforce: block | advise`, `advise` records a verdict as an `advised` event and
+lets the commit proceed, and the same namespace's `adapters.git.protectedPaths` is the commit
+surface's additive protection scope — judged on top of the shared list, never read by the session
+surface); everything else is still blueprint. This repository holds that early core plus the
+architecture blueprint and the reasoning behind it. What follows is a description of what is being
+built.
 
 ---
 
 ## What it is
 
-Polydeukes externalizes the discipline a developer applies to themselves — test first, verify before committing, record decisions, don't repeat the same mistake — into deterministic machinery, rather than prompt-level requests, and shares that machinery with an AI partner.
+Polydeukes externalizes the discipline a developer applies to themselves — test first, verify before
+committing, record decisions, don't repeat the same mistake — into deterministic machinery, rather
+than prompt-level requests, and shares that machinery with an AI partner.
 
-The framing is partnership, not control. A covenant is not a fence that cages the AI; it is a shared promise that applies equally to the human and the AI. The origin of the name and the philosophy behind it are in [`STORY.md`](./STORY.md).
+The framing is partnership, not control. A covenant is not a fence that cages the AI; it is a shared
+promise that applies equally to the human and the AI. The origin of the name and the philosophy
+behind it are in [`STORY.md`](./STORY.md).
 
-The design starts from an AI development harness embedded in a real production monorepo — the very "harness engineering" framing this project sets out to reclaim — and from an analysis of whether that machinery can be extracted into a general framework.
+The design starts from an AI development harness embedded in a real production monorepo — the very
+"harness engineering" framing this project sets out to reclaim — and from an analysis of whether
+that machinery can be extracted into a general framework.
 
 ## Structure — a thin core plus independent packages
 
-Not all-or-nothing: install only the pieces you need. Each package depends only on the core and knows nothing of the others.
+Not all-or-nothing: install only the pieces you need. Each package depends only on the core and
+knows nothing of the others.
 
 | Package | Role |
 |---------|------|
@@ -29,11 +59,15 @@ Not all-or-nothing: install only the pieces you need. Each package depends only 
 | `@polydeukes/memory` | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
 | `@polydeukes/verify` | A multi-agent adversarial verification orchestrator |
 
-The recommended adoption order is `covenant` → `memory` → `ledger` → `verify`. `covenant` and `memory` pay off immediately regardless of project size, while `ledger` and `verify` shine at the scale of multiple worktrees and team workflows.
+The recommended adoption order is `covenant` → `memory` → `ledger` → `verify`. `covenant` and
+`memory` pay off immediately regardless of project size, while `ledger` and `verify` shine at the
+scale of multiple worktrees and team workflows.
 
 ## Design blueprint (in brief)
 
-The core principle of the extraction strategy is that dependencies always point **inward (general core) → outward (domain), one direction only**. The core knows nothing of any specific product or AI runtime.
+The core principle of the extraction strategy is that dependencies always point **inward (general
+core) → outward (domain), one direction only**. The core knows nothing of any specific product or AI
+runtime.
 
 ```text
 @polydeukes/core            domain- and agent-agnostic patterns
@@ -51,11 +85,17 @@ create-polydeukes           externalizes domain-specific values into templates/c
 
 Three separations:
 
-- **Language ⊥ agent** — language coupling (test commands, path globs for TS/Python/Go) goes in `polydeukes.config.yaml`; AI-runtime coupling (transcript schema) goes in `adapter-*`. The two are orthogonal.
-- **Essential vs incidental** — "verification is decided by exit code" is essential; "that command happens to be vitest" is incidental (config). "Knowledge is a local SQLite file" is essential; "that file happens to live on S3" is incidental (a sync adapter).
-- **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then feed it back in a closed loop. Prove "it produces safer code" with data.
+- **Language ⊥ agent** — language coupling (test commands, path globs for TS/Python/Go) goes in
+  `polydeukes.config.yaml`; AI-runtime coupling (transcript schema) goes in `adapter-*`. The two are
+  orthogonal.
+- **Essential vs incidental** — "verification is decided by exit code" is essential; "that command
+  happens to be vitest" is incidental (config). "Knowledge is a local SQLite file" is essential;
+  "that file happens to live on S3" is incidental (a sync adapter).
+- **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then
+  feed it back in a closed loop. Prove "it produces safer code" with data.
 
-Three verified gaps to close before extraction: the Bash bypass route around self-protection, the `status` leak in completion judgment, and the dormant measurement infrastructure.
+Three verified gaps to close before extraction: the Bash bypass route around self-protection, the
+`status` leak in completion judgment, and the dormant measurement infrastructure.
 
 ## Documents
 
@@ -74,8 +114,8 @@ The `pdks` bin carries two subcommands today (published with the v0.3.0 release;
 npm versions are a name-reservation stub):
 
 ```sh
-$ pdks init claude-code    # wire the session surface into a project
-$ pdks covenant check      # judge the staged diff (the pre-commit entry point)
+pdks init claude-code    # wire the session surface into a project
+pdks covenant check      # judge the staged diff (the pre-commit entry point)
 ```
 
 Planned — each arrives with its package: `pdks verify` (adversarial verification) and
