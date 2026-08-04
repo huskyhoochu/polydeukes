@@ -29,8 +29,12 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 - **Parse error, or a custom YAML tag** → error naming the file. Custom tags are rejected
   even though the parser cannot execute them — config data stays uncomputable by contract.
 - **Schema violation** → error naming the key and the file. Unknown keys are rejected at
-  every level, so a typo (`protectedPath:` for `protectedPaths:`) can never silently
-  disarm a protection.
+  the level the core owns — the top level and every container the core defines — so a typo
+  like `protectedPath:` for `protectedPaths:`, or `adaptors:` for `adapters:`, is caught
+  here. Inside an adapter namespace the vocabulary belongs to that adapter: the core passes
+  the contents through verbatim, and the adapter's own validator rejects what it does not
+  recognise, naming the full field path (see
+  [`adapters`](#adapters-optional)).
 
 ## IDE support
 

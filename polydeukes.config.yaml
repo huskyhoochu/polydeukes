@@ -1,69 +1,26 @@
 # yaml-language-server: $schema=packages/core/schema/polydeukes.schema.json
-# Repo-relative on purpose: `@polydeukes/core` is a workspace package here, not a root
-# dependency, so `node_modules/@polydeukes/core/...` resolves to nothing and the editor silently
-# loses schema validation. That spelling is unverified for consumers too — the core arrives as a
-# transitive dep of the umbrella, so under pnpm it is not at a consumer's project root either.
-# docs/configuration.md still ships it; the correct consumer form needs a clean-install
-# measurement, not a guess.
+# Repo-relative because the core is a workspace package here. Consumer spellings are in
+# docs/configuration.md — under pnpm the core is a transitive dep, not a project-root one.
 
 languages:
   typescript:
     productionGlob: 'packages/*/src/**/*.ts'
     testCmd: 'pnpm --filter {scope} test'
 
-# The COMMON protection list — read by every observer that can see an entry (narrowed
-# 2026-07-26; split per surface 2026-07-28, CONFIG-08). Two kinds of entries belong here:
-#
-#   1. Gate definitions — files whose edit disarms a check rather than passing it, at
-#      whichever surface can see them. The hook wiring IS the session surface;
-#      lefthook.yml IS the commit surface; biome.json sets the bar the commit surface
-#      holds things to; the generated .git/hooks scripts are the commit gate's installed
-#      form (git-untracked, so the session surface is the ONE layer that can watch them —
-#      on the commit surface that entry is structurally vacuous, by nature not mistake).
-#   2. What only one layer can see — the gitignored judge executables (dist): a commit
-#      never shows them, and a poisoned judge disarms every covenant without a trace.
-#
-# Judge SOURCES are deliberately NOT here. They live in the commit surface's own additive
-# list (adapters.git.protectedPaths below): a session edit of a source is the work itself
-# (blocking it here measured 2,414 valve openings against 14 real discipline blocks),
-# while the commit that PROMOTES it into history is the checkpoint a human answers for.
-#
-# Child-process blind spot, on record (CONFIG-08 AC): `pnpm build` rewrites dist and
-# `lefthook install` regenerates .git/hooks through child-process fs writes. The session
-# surface judges tool declarations, not child writes, and both targets are
-# gitignored/untracked, so neither layer observes either command. That is the nature of
-# the observation scope (same class as COVENANT-14 §2.1), named here so it is never
-# mistaken for coverage.
-#
-# The root config attaches itself (CONFIG-03) for the same reason. The live session
-# transcript is defended too, but NOT from this list and never as a path: assembly builds it
-# its own equality-judging registration (COVENANT-07c), because a file living deep under HOME
-# turns HOME itself into a protected ancestor and every daily spelling that passes through it
-# breaks. Do not "restore" a transcript entry here — that is the over-block, not the defence.
+# The COMMON list, read by both surfaces. Two kinds only: gate definitions (a file whose
+# edit disarms a check rather than passing it) and what a commit can never show (the
+# gitignored dist). Judge SOURCES live in the commit list below instead.
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
   - 'lefthook.yml'
   - 'biome.json'
   - '.git/hooks'
-  # lefthook's local-override surface: a lefthook-local.yml (or .lefthook-local/) can
-  # skip the covenant command outright, and it is never staged — the same disarm class
-  # as .git/hooks, one file over (PR #38 review F4).
+  # A lefthook-local file skips the covenant command and is never staged.
   - 'lefthook-local.yml'
   - '.lefthook-local'
-  # The delegator resolves the judge by package NAME (DIST-01), so Node's ancestor walk
-  # decides which code actually judges this session — the trust surface moved from a fixed
-  # path to the install graph. Both entries below sit on that walk: a stub planted in either
-  # replaces the judge outright, and every call then passes
-  # with NO telemetry row at all — the defect class, not a declared limit (reproduced
-  # 2026-08-02). `.claude/hooks/node_modules` needs no entry of its own; the `.claude/hooks`
-  # entry above is already its ancestor. Ancestors ABOVE the repository stay out of
-  # observation scope, the same boundary the transcript registration keeps.
-  #
-  # The second entry is deliberate redundancy, not an oversight: segment matching means the
-  # first entry ALREADY catches `.claude/node_modules` (measured — both spellings block with
-  # subject `node_modules`). It is spelled out so the defence survives a future narrowing of
-  # how segments are compared, which is exactly the axis COVENANT-07's history keeps moving.
+  # The delegator resolves the judge by package NAME, so Node's ancestor walk decides what
+  # judges this session. A stub planted here replaces the judge with no telemetry row at all.
   - 'node_modules'
   - '.claude/node_modules'
   # The judge executables, unseeable by the commit surface because they are gitignored.
@@ -73,41 +30,16 @@ protectedPaths:
   - 'packages/adapter-claude-code/dist'
   - 'packages/adapter-git/dist'
 
-# The time-boxed witness. A human types this token into the conversation and the
-# witness window holds for ttlMinutes from that message, then blocking resumes on its
-# own — replacing an env valve whose "armed until you remember to disarm" shape
-# measured 562 bypasses in a single day. Since COVENANT-17 the valve stands AFTER the
-# verdict: the judge always runs, and only a judgment that actually blocked can be
-# witnessed open — recorded as `witnessed`, would-block only, never silent. The token
-# is not a secret: the defence is provenance, not confidentiality. Only a real human
-# utterance carries the transcript marking the predicate admits, and no agent can
-# forge that marking.
-#
-# The token must stand alone on the message's first line: mentioning it mid-sentence is
-# talking about the valve, not opening it (COVENANT-15). Any value works — placement is
-# what is judged, never the phrase's shape.
+# The valve: this token alone on a message's first line opens a blocked judgment for
+# ttlMinutes. Not a secret — the defence is provenance, and no agent can forge the
+# transcript marking a human utterance carries.
 witness:
   token: 'pdks witness'
   ttlMinutes: 10
 
-# Adapter namespaces (CONFIG-07): each adapter owns its own vocabulary; the core passes
-# contents through verbatim. Both keys below are the git adapter's vocabulary — CONFIG-06
-# opened `enforce`, CONFIG-08 opened `protectedPaths`.
-#
-# enforce: block — restored 2026-07-28 (CONFIG-08, executing the 2026-07-26 §5.1
-# decision). A staged change to a protected path stops the commit unless a human answers
-# the TTY prompt with the witness token; an agent-spawned commit has no TTY and cannot.
-# The session surface (the hook) stays blocking either way; an unjudgeable run (missing
-# config, or a judge body that was never built) still fails closed even here. A body that
-# exists but is stale is NOT covered — it exits with whatever its old logic returns, and no
-# exit code separates that from a fresh judgment (CONFIG-06b).
-#
-# protectedPaths (additive): the commit surface's OWN observation scope, judged on top of
-# the common list above. These are the judgment chain's sources — loader, validator,
-# judge bodies, and both adapters (the archived invariant names the whole chain: config,
-# loader, hook, core, covenant, adapter). Editing them in a session is the work itself
-# and stays free; committing them is the promotion a human vouches for. The session
-# surface never reads this list — the level is the observer's, and so is the scope.
+# The git adapter's own vocabulary. `protectedPaths` here is ADDITIVE and commit-only —
+# the judgment chain's sources and manifests, free to edit in a session, vouched for at the
+# commit that promotes them. `.github/workflows` is the release path's gate definition.
 adapters:
   git:
     enforce: block
@@ -117,26 +49,17 @@ adapters:
       - 'packages/polydeukes/src'
       - 'packages/adapter-claude-code/src'
       - 'packages/adapter-git/src'
-      # The chain's resolution manifests (PR #38 review F2): the commit surface locates
-      # its judge bodies through packages/covenant/package.json's exports, and lefthook
-      # reaches the pdks bin through the root manifest's devDependency — repointing
-      # either replaces the judge without touching a single src line.
       - 'packages/core/package.json'
       - 'packages/covenant/package.json'
       - 'packages/polydeukes/package.json'
       - 'packages/adapter-claude-code/package.json'
       - 'packages/adapter-git/package.json'
       - 'package.json'
-      # The release path's gate definitions (PR #49 review F3): publish.yml holds the
-      # registry credential reference and the pre-upload gate, release-please.yml the
-      # hand-off that dispatches it, ci.yml the PR-time gate — rewiring any of them ships
-      # code around the gate without touching a single src line. Session edits stay free;
-      # the commit that promotes one into history is what a human answers for.
       - '.github/workflows'
 
 disciplines:
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. widened from three named src trees to the wildcard pair after PR #38 review found the two trees CONFIG-08 itself edits were unwatched (audit M3). waiver? joined after COVENANT-17 renamed the valve to witness — the retired vocabulary must not regrow. the one except is the old-key rejection contract test, whose literals ARE the contract: as a file this branch CREATES, delta judgment sees every line as added, so without the except any commit re-creating it (cherry-pick, revert-restore) trips its own discipline forever (PR #41 review).'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. the one except is the old-key rejection contract test, whose literals ARE the contract — delta judgment reads every line of a re-created file as added, so without it any commit restoring that file trips its own discipline.'
     in:
       - 'packages/*/src/**'
       - 'packages/*/__tests__/**'
@@ -164,15 +87,9 @@ disciplines:
       - 'packages/core/src/**'
       - 'packages/core/schema/**'
     forbid: '\b(vitest|pytest|go test)\b'
-  # Two entries over one scope: a manifest edit needs BOTH a measured version and read
-  # docs. `requirePrecedent` takes exactly one key, so a pair of requirements is written
-  # as a pair of disciplines.
-  #
-  # Neither carries a `when` (rewritten 2026-07-26). Three review rounds went into a regex
-  # answering "is this string a new dependency version" — a semantic question asked
-  # syntactically, which leaked both ways every time: it missed ranges, tags and protocol
-  # forms, and once widened it caught `workspace:` and the `engines` field. Editing a
-  # manifest at all is rare enough that scope alone is the cheaper, honest trigger.
+  # A manifest edit needs BOTH a measured version and read docs, and `requirePrecedent`
+  # takes exactly one key — hence two entries. No `when`: "is this a new version" is a
+  # semantic question a regex leaked both ways on, so scope alone is the trigger.
   - id: 'manifest-needs-npm-view'
     why: 'a dependency version must be measured before it is written; training knowledge is not evidence of what npm currently resolves.'
     in:
@@ -187,33 +104,10 @@ disciplines:
       - 'packages/*/package.json'
     requirePrecedent:
       tool: 'context7'
-  # Editing a package's sources or tests requires having READ that package's recorded
-  # experience first. The store is flat and its filenames carry the scope
-  # (`<scope>.<type>.<name>.md`), so one entry per scope maps a package tree to the docs
-  # that describe it. dev-log and research only: an adr records a decision and a prd
-  # records a plan, while these two carry what measurement contradicted — the part that is
-  # lost by re-deriving instead of reading, which is the failure this discipline exists for.
-  #
-  # The evidence is a SHELL read, not the agent's file-reading tool. `requirePrecedent`'s
-  # adapter vocabulary (`tool:`) matches a tool NAME and never its arguments, so `tool: Read`
-  # would be satisfied by reading any file at all — a gate that cannot fail is not a gate.
-  # `command:` sees the command line, so it can require that the read name the doc.
-  # `commandAnchors` judges each simple command separately, so a `cd … && grep …` chain
-  # still qualifies, and the quote-stripped word text means the path matches whether or not
-  # the read was issued from inside the knowledge directory.
-  #
-  # `packages/polydeukes` gets no entry. The store's scope vocabulary has no name for the
-  # umbrella, so every pattern written here would be unsatisfiable — and an unsatisfiable
-  # precedent gate is the one shape `evaluatePrecedent` refuses to produce, because no
-  # amount of doing the required work would open it. When the umbrella earns a scope, the
-  # entry follows; until then this is a declared gap, not coverage.
-  #
-  # `foundation.` is deliberately NOT accepted by any of these. It is the cross-cutting
-  # scope, so allowing it would let one read open all four packages at once — the entries
-  # would stop being per-package the moment it was included.
-  #
-  # The commit surface injects no transcript, so this family always lands `skipped` there.
-  # It is a session-surface discipline by nature rather than by omission.
+  # Editing a package's sources requires having READ its recorded experience. The evidence
+  # is a SHELL read: `tool:` matches a name and never its arguments, so it would be
+  # satisfied by reading anything. `foundation.` is excluded on purpose — one read would
+  # open all four packages. This family always lands `skipped` on the commit surface.
   - id: 'covenant-needs-knowledge-read'
     why: 'the covenant package carries the most measured history in the store (37 dev-log and research entries); editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
     in:

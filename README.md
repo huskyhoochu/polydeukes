@@ -105,6 +105,8 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 | [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design-principles whitepaper (skeleton, being expanded in public) |
 | [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code`) and the manually wired commit surface |
 | [`docs/troubleshooting.md`](./docs/troubleshooting.md) | The fail-closed states and how to recover, reading verdicts, and the witness valve |
+| [`docs/configuration.md`](./docs/configuration.md) | Config reference — every key, the discipline families, and what enforcement looks like |
+| [`docs/reference/`](./docs/reference/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
