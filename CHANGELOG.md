@@ -12,6 +12,15 @@ below is grouped under `[Unreleased]`. The v0.1 MVP milestone is complete and wi
 become the first tagged release; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.3.0](https://github.com/huskyhoochu/polydeukes/compare/v0.2.0...v0.3.0) (2026-08-04)
+
+
+### Features
+
+* **polydeukes:** add pdks init claude-code (DIST-02) ([#48](https://github.com/huskyhoochu/polydeukes/issues/48)) ([91f1fbf](https://github.com/huskyhoochu/polydeukes/commit/91f1fbf95f54dafcbb4f6a337b73929dd3c459fd))
+* **polydeukes:** add the npm publishing pipeline (DIST-03) ([#49](https://github.com/huskyhoochu/polydeukes/issues/49)) ([5742e18](https://github.com/huskyhoochu/polydeukes/commit/5742e1824e5e87928a576482eead171ae8ca33b1))
+* **polydeukes:** move the session assembly into a packaged entry point (DIST-01) ([#46](https://github.com/huskyhoochu/polydeukes/issues/46)) ([9e85504](https://github.com/huskyhoochu/polydeukes/commit/9e85504a3d729ceebe5af19652b50e9e97c2b2ac))
+
 ## [0.2.0](https://github.com/huskyhoochu/polydeukes/compare/v0.1.0...v0.2.0) (2026-07-29)
 
 
