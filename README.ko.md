@@ -85,6 +85,8 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 | [`docs/why-polydeukes.ko.md`](./docs/why-polydeukes.ko.md) | 왜 폴리데우케스인가? — 설계 원칙 백서 (골격, 공개적으로 확장 중) |
 | [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code`)과 수동 배선 커밋 표면 |
 | [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md) | fail-closed 상태들과 회복 절차, 판정 기록 읽는 법, 증인(witness) 밸브 |
+| [`docs/configuration.ko.md`](./docs/configuration.ko.md) | 설정 레퍼런스 — 전체 키와 규율(discipline) 가족, 집행이 어떤 모습인지 |
+| [`docs/reference/`](./docs/reference/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 다섯이 각각 소유하는 것 |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.ko.md) | 빌드 인 퍼블릭 시리즈 — 마일스톤마다 한 편, v0.1(약속(covenant) 코어 + 측정)부터 시작 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 마일스톤별 릴리스 노트 |
 
