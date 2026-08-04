@@ -2,15 +2,17 @@
 
 **English** · [한국어](./troubleshooting.ko.md)
 
-> Alpha. Eight states cover what ships today — four ways a fail-closed gate stops
-> everything, and four things worth knowing when a judgment surprises you. Each entry is
+> Alpha. Nine states cover what ships today — five ways a fail-closed system refuses to
+> proceed, and four things worth knowing when a judgment surprises you. Each entry is
 > symptom → cause → recovery.
 
 The one principle behind half of this page: **a gate that cannot judge blocks rather than
-guesses.** A missing config, an ambiguous config, an invalid config, and an unresolvable
-judge all fail closed, because a dead gate that waves things through is the cheapest bypass
-of all. The recovery is never to disable the gate — it is to give it back what it needs to
-judge.
+guesses.** A missing config, an ambiguous config, an invalid config, an installer that
+cannot prove resolution, and a judge that cannot be loaded all fail closed, because a dead
+gate that waves things through is the cheapest bypass of all. The recovery is never to
+disable the gate — it is to give it back what it needs to judge. And run that recovery
+**from your own terminal**: inside a session the repair commands are judged by the very
+gate they repair, and while no config is loaded there is no witness valve to open.
 
 ## Every call is blocked and there is no config
 
@@ -24,9 +26,9 @@ Discovery looks for exactly these, in this order: `polydeukes.config.yaml`,
 defaults — silent defaults would mean silently unprotected.
 
 **Recovery.** Restore the file from git. On the session path,
-`pnpm exec pdks init claude-code` recreates only what is missing and touches nothing that
-exists; on the commit path the config is hand-written — the
-[install guide](./installation.md)'s commit-surface section has a starting point.
+`pnpm exec pdks init claude-code` recreates the missing artifacts; on the commit path the
+config is hand-written — the [install guide](./installation.md)'s commit-surface section
+has a starting point.
 
 ## More than one config file
 
@@ -44,9 +46,11 @@ hand first — the loader will not choose for you.
 violations, the exact key.
 
 **Cause.** One of: a YAML parse error; a custom YAML tag (rejected even though the parser
-cannot execute it — config data stays uncomputable by contract); an unknown key at any
-level (a typo like `protectedPath:` can never silently disarm a protection); or an empty
-`languages` block, the schema's one required entry.
+cannot execute it — config data stays uncomputable by contract); an unknown key (a typo
+like `protectedPath:` is rejected with the full field path — with one open ground: an
+adapter namespace's *name* is not validated, so `adapters.gti:` for `adapters.git:` loads
+clean and its entries are simply never read; that one spelling you check yourself); or an
+empty `languages` block, the schema's one required entry.
 
 **Recovery.** Fix the named key in the named file. The error is specific on purpose — no
 rewrite-and-hope needed.
@@ -63,6 +67,22 @@ installs where it is invoked).
 
 **Recovery.** `pnpm add -D polydeukes` in the project you meant, then re-run from that
 root. Zero files were written, so there is no partial state to clean up.
+
+## The judge cannot be loaded
+
+**Symptom.** Every call exits 2 with `covenant hook failed closed: Cannot find package
+'polydeukes'` — or an error naming a judge-body file that does not exist.
+
+**Cause.** The hook is wired but the package it delegates to is gone or incomplete: the
+dependency was removed, the tree is a fresh clone that was never installed, or (in a
+source clone of this repository) the judge's build output is missing. The installer's
+preflight prevents *wiring* a project into this state, but nothing prevents a wired
+project from entering it later.
+
+**Recovery.** From your own terminal, reinstall the dependency (`pnpm install`, or
+`pnpm add -D polydeukes` if it was removed). In a source clone, run the build. The hook
+file itself needs no repair — it is a delegator, and it recovers the moment the package
+resolves again.
 
 ## Reading a verdict
 

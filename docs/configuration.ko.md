@@ -41,11 +41,11 @@
 의존성인 `@polydeukes/core` 안에 실려 오는데, pnpm의 기본 엄격 레이아웃에서 전이
 의존성은 프로젝트 최상위 `node_modules`에 노출되지 않습니다(2026-08-03 실측으로 이
 파일은 `node_modules/.pnpm/…` 아래에서만 해소됩니다). 따라서 `node_modules` 상대 경로의
-`$schema` 줄은 기본 pnpm 설치에서 해소되지 않으며, `pdks init claude-code`가 생성
-설정에 `$schema` 줄을 넣지 않는 이유도 이것입니다. 모든 소비자 레이아웃에서 해소되는
-단일 철자가 없습니다.
+`$schema` 줄은 기본 pnpm 설치에서 해소되지 않습니다. `pdks init claude-code`가 생성
+설정에 `$schema` 줄을 넣지 않는 이유도 같습니다. 모든 소비자 레이아웃에서 해소되는 단일
+**파일 경로** 철자가 없고, 틀린 줄은 편집기 검증을 소리 없이 잃게 하기 때문입니다.
 
-동작하는 형태는 둘입니다. 버전 고정 공개 URL은 모든 레이아웃에서 해소됩니다(`v0.2.0`
+동작하는 형태는 둘입니다. 버전 고정 공개 URL은 설치 레이아웃과 무관합니다(`v0.2.0`
 태그와 `main`에서 확인했고, 태그는 설치한 릴리스로 바꾸세요).
 
 ```yaml
@@ -53,8 +53,8 @@
 ```
 
 상대 경로는 `@polydeukes/core`가 `node_modules` 최상위에 실재하는 레이아웃에서만
-동작합니다. npm의 평면 레이아웃은 그 자리에 끌어올리고, pnpm 프로젝트도
-`@polydeukes/core`를 직접 의존성으로 선언하는 순간 같은 효과를 얻습니다.
+동작합니다. 자기 레이아웃이 그런지는 한 번 보면 압니다. 프로젝트에
+`node_modules/@polydeukes/core/schema/`가 있으면 이 줄이 해소됩니다.
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json

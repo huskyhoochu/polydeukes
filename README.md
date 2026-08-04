@@ -70,7 +70,8 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 
 ## CLI
 
-Shipped today:
+The `pdks` bin carries two subcommands today (published with the v0.3.0 release; earlier
+npm versions are a name-reservation stub):
 
 ```sh
 $ pdks init claude-code    # wire the session surface into a project

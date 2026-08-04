@@ -39,20 +39,21 @@ ships inside `@polydeukes/core` — a *transitive* dependency of the umbrella �
 pnpm's default strict layout transitive dependencies are not exposed at your project's
 top-level `node_modules` (measured 2026-08-03: the file resolves only under
 `node_modules/.pnpm/…`). A `node_modules`-relative `$schema` line therefore does not
-resolve in a default pnpm install, which is also why `pdks init claude-code` writes no
-`$schema` line into the generated config: there is no one spelling that resolves in every
-consumer layout.
+resolve in a default pnpm install. `pdks init claude-code` writes no `$schema` line into
+the generated config for the same reason: no single *file-path* spelling resolves in every
+consumer layout, and a wrong line loses editor validation silently.
 
-Two forms work. The version-pinned public URL resolves in every layout (verified against
-the `v0.2.0` tag and `main` — swap the tag for the release you installed):
+Two forms work. The version-pinned public URL is independent of any install layout
+(verified against the `v0.2.0` tag and `main` — swap the tag for the release you
+installed):
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
 ```
 
-The relative path works only in layouts where `@polydeukes/core` is present at the top
-level of `node_modules` — npm's flat layout hoists it there, and a pnpm project gets the
-same effect the moment it declares `@polydeukes/core` as a direct dependency:
+The relative path works only in a layout where `@polydeukes/core` is present at the top
+level of `node_modules`. Whether yours is one is a one-look check — if
+`node_modules/@polydeukes/core/schema/` exists in your project, the line resolves:
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json

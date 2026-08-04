@@ -49,15 +49,16 @@ package resolves there **before writing anything** — if it does not (say, the 
 was skipped), it prints the install command and exits 2 with zero files written, never a
 half-wired tree.
 
-Four artifacts, none ever overwritten — whatever already exists is reported and left alone,
-so re-running is always safe:
+Four artifacts, none ever overwritten. What exists is reported and kept — the hook and the
+config are left alone, the settings file is merged, and `.gitignore` is only ever appended
+to — so re-running is always safe:
 
 | Artifact | What it is |
 |---|---|
 | `.claude/hooks/covenant-pretooluse.mjs` | The hook — a thin delegator that loads the judge from the installed package. Upgrading the package upgrades the judge; this file never changes. |
 | `.claude/settings.json` | The PreToolUse registration for editing tools and shell calls. **Merged, never replaced** — your other hooks and permissions stay. |
 | `polydeukes.config.yaml` | The starter protection policy: a placeholder `languages` block, a minimum `protectedPaths` list, and the witness block. The comments in the file explain why each entry is there. |
-| `.gitignore` | One appended entry, `.polydeukes/` — telemetry is local observation data and never belongs in history. |
+| `.gitignore` | An appended ignore rule for `.polydeukes/`, with its comment line — telemetry is local observation data and never belongs in history. |
 
 ## First edit — `languages`
 
@@ -81,7 +82,7 @@ the config invalid, and an invalid config blocks every call. Edit it, don't dele
 ## The commit surface — developing by yourself
 
 This path is for applying your own discipline to your own commits — no AI tool involved.
-It has no installer today; the wiring is three small manual steps.
+It has no installer today; the wiring is two small manual steps.
 
 **First, the config.** Create `polydeukes.config.yaml` at the project root (there is no
 generator on this path — the file is yours from the first line):
@@ -138,11 +139,17 @@ With plain **`.git/hooks`** (make it executable):
 ./node_modules/.bin/pdks covenant check
 ```
 
-Two things to know about this surface:
+Three things to know about this surface:
 
 - **The valve is a TTY prompt.** At the default `block` level, a commit that stages a
   protected change stops at a prompt only a human at a terminal can answer. Configure your
   hook runner so it does not swallow that prompt (lefthook needs `interactive: true`).
+- **Two discipline families judge here.** A staged diff carries file changes and nothing
+  else, so protection lists and the delta and path families (`forbid`, `immutable`) judge
+  in full. A command-family entry (`forbidCommand`) has no command line to read in a
+  staged diff and is not assembled on this surface, and a context-family entry
+  (`requirePrecedent`) is recorded as `skipped` — declare those two where an AI partner's
+  session exists to be judged.
 - **The commit surface has its own additive scope.** Paths that are fine to edit freely
   but whose promotion into history deserves a judged checkpoint go under the adapter
   namespace, judged on top of the shared list:

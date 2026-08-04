@@ -70,7 +70,8 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 
 ## CLI
 
-오늘 출하된 것.
+`pdks` bin에는 오늘 서브커맨드 둘이 실려 있습니다(v0.3.0 릴리스로 출판되며, 그 전의 npm
+버전은 이름 선점용 스텁입니다).
 
 ```sh
 $ pdks init claude-code    # 프로젝트에 세션 표면을 배선
