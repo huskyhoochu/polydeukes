@@ -7,9 +7,8 @@
 서식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 이 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/lang/ko/)을 준수한다.
 
-이 프로젝트는 **pre-alpha**다. 아직 배포된 버전이 없으므로 아래 모든 변경은 `[Unreleased]`로
-묶는다. v0.1 MVP 마일스톤은 완료되었으며 첫 태그 릴리스가 된다. 아직 구현되지 않은 모든
-것은 설계 문서가 정본이다.
+이 프로젝트는 **알파(alpha)**다. 릴리스는 release-please가 태그하고, 첫 npm 출판은
+v0.3.0과 함께 이뤄진다. 아직 구현되지 않은 모든 것은 설계 문서가 정본이다.
 
 ## [Unreleased]
 

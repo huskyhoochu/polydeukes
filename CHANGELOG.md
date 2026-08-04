@@ -7,9 +7,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-This project is **pre-alpha**: no version has been published yet, so every change
-below is grouped under `[Unreleased]`. The v0.1 MVP milestone is complete and will
-become the first tagged release; the design docs remain the source of truth for
+This project is **alpha**. Releases are tagged by release-please, and the first npm
+publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
 ## [0.2.0](https://github.com/huskyhoochu/polydeukes/compare/v0.1.0...v0.2.0) (2026-07-29)

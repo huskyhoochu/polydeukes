@@ -2,7 +2,7 @@
 
 **English** · [한국어](./configuration.ko.md)
 
-> Pre-alpha. This reference describes the config surface as shipped today (schema v2,
+> Alpha. This reference describes the config surface as shipped today (schema v2,
 > loader, and the four built-in discipline predicates). Fields and predicates will grow;
 > what is written here is tested and enforced now.
 

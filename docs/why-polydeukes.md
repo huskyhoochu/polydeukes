@@ -64,7 +64,7 @@ human in a hurry — can quietly remove.
 
 ## What it puts on one thin core
 
-- **covenant** *(shipped, pre-alpha)* — deterministic blocks on edits and commands,
+- **covenant** *(shipped, alpha)* — deterministic blocks on edits and commands,
   defined as promises both sides accept. Breaking one is loud, bypassing one is recorded,
   and the block applies to the human exactly as much as to the AI. Two surfaces judge
   today: session tool calls and git commits. See
@@ -350,7 +350,7 @@ instead of blocking.
 
 ## Where it stands
 
-Polydeukes is pre-alpha, built in public, one verifiable unit at a time. The story behind
+Polydeukes is alpha, built in public, one verifiable unit at a time. The story behind
 the name — a twin who split his immortality to make his brother his equal — is told in
 [STORY.md](../STORY.md). The build log lives in
 [docs/build-in-public](./build-in-public/).
