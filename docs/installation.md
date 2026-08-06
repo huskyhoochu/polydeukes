@@ -49,15 +49,16 @@ package resolves there **before writing anything** — if it does not (say, the 
 was skipped), it prints the install command and exits 2 with zero files written, never a
 half-wired tree.
 
-Four artifacts, none ever overwritten. What exists is reported and kept — the hook and the
-config are left alone, the settings file is merged, and `.gitignore` is only ever appended
-to — so re-running is always safe:
+Five artifacts, none ever overwritten. What exists is reported and kept — the hook, the
+config, and the discipline file are left alone, the settings file is merged, and
+`.gitignore` is only ever appended to — so re-running is always safe:
 
 | Artifact | What it is |
 |---|---|
 | `.claude/hooks/covenant-pretooluse.mjs` | The hook — a thin delegator that loads the judge from the installed package. Upgrading the package upgrades the judge; this file never changes. |
 | `.claude/settings.json` | The PreToolUse registration for editing tools and shell calls. **Merged, never replaced** — your other hooks and permissions stay. |
 | `polydeukes.config.yaml` | The starter protection policy: a placeholder `languages` block, a minimum `protectedPaths` list, and the witness block. The comments in the file explain why each entry is there. |
+| `.claude/rules/polydeukes.md` | A scoped discipline file telling your AI partner that `pdks docs` exists and which topic answers what. It carries `paths` frontmatter, so it loads when a Polydeukes path is in play rather than sitting in every session's context. |
 | `.gitignore` | An appended ignore rule for `.polydeukes/`, with its comment line — telemetry is local observation data and never belongs in history. |
 
 ## First edit — `languages`

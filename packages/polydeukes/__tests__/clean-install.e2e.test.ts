@@ -7,12 +7,13 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TOPICS } from '../src/docs-query.ts';
 import { telemetryRows } from './helpers';
@@ -375,6 +376,37 @@ describe('DOCS-02 AC-7 — the bundled docs answer from the installed tree', () 
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain('nonexistent-topic');
+  }, 60_000);
+
+  it('answers even when the packages only the commit surface needs are gone', () => {
+    // The bootstrap direction: `pdks docs install` is what an agent runs to find out how to
+    // install and build, so it has to answer in a tree where the build has not happened.
+    // Mutation caught: `runCovenantCheck` imported at the top of bin.ts — ESM imports are
+    // eager, so the git adapter, the core, and the judge would all have to resolve before
+    // argv is even read, and this query would die at node's exit 1 with a module-resolution
+    // stack trace instead of the documented 0 or 2. Moving the package aside reproduces the
+    // unbuilt/pruned tree without needing one.
+    // Resolved through the umbrella's own realpath, never the consumer root: under pnpm the
+    // scoped packages are transitive and never surface at the top level (the DIST-03
+    // measurement), so they live beside the umbrella inside the store.
+    const umbrellaDir = dirname(
+      realpathSync(join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json')),
+    );
+    const adapterDir = join(dirname(umbrellaDir), '@polydeukes', 'adapter-git');
+    if (!existsSync(adapterDir)) {
+      throw new Error(`the layout this case moves aside is not where it expected: ${adapterDir}`);
+    }
+    const stashed = join(packRoot, 'adapter-git-stashed');
+    renameSync(adapterDir, stashed);
+    try {
+      const result = spawnDocs('install');
+
+      expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+      expect(result.stdout).toContain('# Installing Polydeukes');
+    } finally {
+      // Restored for the cases below, which spawn the same tree.
+      renameSync(stashed, adapterDir);
+    }
   }, 60_000);
 
   it('refuses a two-argument form with the usage line', () => {

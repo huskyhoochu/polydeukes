@@ -16,7 +16,6 @@
 import { closeSync, openSync, readSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runCovenantCheck } from './covenant-check.js';
 
 /**
  * Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. The runner
@@ -90,6 +89,13 @@ if (args[0] === 'docs' && args.length <= 2) {
     // location — never from the working directory, which is whatever shell invoked us.
     const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
     const { text } = queryDocs({ docsRoot, topic: args[1] });
+    // A reader that goes away mid-write (a killed pager, `grep -q`, a caller closing its
+    // capture) makes the stream emit `error` — an EventEmitter event, so it fires outside
+    // the frame this try guards and would reach node's default handler: exit 1 and a raw
+    // stack trace, the one disposition this bin never produces. The docs answer is not a
+    // verdict, so a reader that stopped listening is not something to report; end at the
+    // same code an unanswerable query uses.
+    process.stdout.on('error', () => process.exit(2));
     // stdout is a pipe whenever this is captured or redirected, and a piped write is
     // asynchronous — exiting on the next line would discard whatever is still buffered.
     // The whole answer IS the deliverable here (a truncated document is one an agent
@@ -114,6 +120,13 @@ if (args.length !== 2 || args[0] !== 'covenant' || args[1] !== 'check') {
 }
 
 try {
+  // Loaded here rather than at the top of the file. This runner statically pulls in the
+  // git adapter, the core, and the judge, so a top-level import made every subcommand
+  // wait on all three resolving — and `docs` is the one that has to answer in a tree
+  // where they do not, since a package installed but never built is exactly the state
+  // `pdks docs install` is asked about. The catch below already answers for whatever
+  // this import cannot do, at the same exit 2 it answers everything else with.
+  const { runCovenantCheck } = await import('./covenant-check.js');
   const { exitCode } = await runCovenantCheck({
     repoRoot: process.cwd(),
     ttyPrompt: openTtyPrompt(),

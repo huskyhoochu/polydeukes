@@ -17,7 +17,7 @@
  * query exits 2 for one topic, and nothing on the consumer's side explains why.
  */
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const packageRoot = resolve(import.meta.dirname, '..');
@@ -34,6 +34,12 @@ const BUNDLED = [
   'reference/adapter-claude-code.md',
   'reference/adapter-git.md',
 ];
+
+// Cleared first so the output equals the list above by construction. Nothing else in the
+// build removes anything from `dist`, and turbo restores the whole directory on a cache hit,
+// so a member renamed or dropped from `BUNDLED` would otherwise leave its previous copy
+// behind — and `pnpm pack` would ship a document this package no longer claims to carry.
+rmSync(join(packageRoot, 'dist', 'docs'), { recursive: true, force: true });
 
 for (const relative of BUNDLED) {
   const destination = join(packageRoot, 'dist', 'docs', relative);

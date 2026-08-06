@@ -88,6 +88,11 @@ document no longer carries, an unknown topic — each names what was missing on 
 exits `2`. A partially written answer is one an agent reads as the document and quotes
 onward, so there is no such state.
 
+The bundle carries the English text only. Answers are returned verbatim, so the
+`[한국어](./X.ko.md)` link at the top of each document points at a mirror that lives in the
+[repository](https://github.com/huskyhoochu/polydeukes/tree/main/docs) rather than inside
+the package.
+
 `pdks init claude-code` writes a discovery file that points an AI partner at this
 subcommand; see the artifact table above.
 

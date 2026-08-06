@@ -114,6 +114,10 @@ judging; a web search answers from whichever release it indexed.
 
 Run \`pdks docs\` for the topic list, \`pdks docs <topic>\` for one section.
 
+A local install puts the bin in \`node_modules/.bin\`, which a plain shell does not have on
+PATH. If \`pdks\` is not found, run \`./node_modules/.bin/pdks docs <topic>\` — or your package
+manager's exec form — from the project root.
+
 | Before you | Run |
 | --- | --- |
 ${TOPICS.map((topic) => `| ${DOCS_TOPIC_PURPOSE[topic]} | \`pdks docs ${topic}\` |`).join('\n')}
@@ -291,7 +295,12 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
 
   const report = scaffoldProject(spec.projectRoot);
   writeIfAbsent(spec.projectRoot, HOOK_RELATIVE, GENERATED_HOOK, report);
-  writeIfAbsent(spec.projectRoot, DISCOVERY_RELATIVE, GENERATED_DISCOVERY, report);
   mergeSettings(spec.projectRoot, settings, report);
+  // Written last, after the registration the hook needs to ever be spawned. Every write
+  // between the hook file and that registration widens the window where a throw leaves a
+  // delegator nothing invokes — a tree that looks installed and is judged by nothing. This
+  // artifact is the one whose absence costs only discoverability, so it goes where a
+  // failure costs least.
+  writeIfAbsent(spec.projectRoot, DISCOVERY_RELATIVE, GENERATED_DISCOVERY, report);
   return report;
 }

@@ -153,5 +153,10 @@ export function queryDocs(spec: QueryDocsSpec): { text: string } {
 
   const entry = TOPIC_MAP[spec.topic];
   const body = entry.sections.map((section) => readSection(spec.docsRoot, section)).join('\n');
-  return { text: `${body}\nSee also: ${entry.seeAlso}\n` };
+  // Resolved against the bundle, not printed as the bare relative name. The reference layer
+  // ships but no topic reads it, so this line is the only way to reach those five documents —
+  // and a reader given `reference/core.md` has to guess where the bundle lives before it can
+  // open anything. A path a file-read tool can take is the difference between a pointer and
+  // a dead end, and a dead end sends the reader back to the web search this command replaces.
+  return { text: `${body}\nSee also: ${join(spec.docsRoot, entry.seeAlso)}\n` };
 }
