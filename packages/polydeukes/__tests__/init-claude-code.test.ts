@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { TOPICS } from '../src/docs-query.ts';
 // DIST-02 §3-a/§3-b/§3-g — the session-registration layer: preflight, then the shared
 // scaffold (scaffold-project.test.ts owns that layer's own contract), then the generated
 // hook and the .claude/settings.json merge.
@@ -40,12 +41,16 @@ import { initClaudeCode } from '../src/init-claude-code.ts';
 // payloads is AC-6's symlink-tree e2e, a later phase of this cycle.
 // ---------------------------------------------------------------------------
 
-/** The four §3-a artifacts as projectRoot-relative paths — the report vocabulary. */
+/**
+ * The five artifacts as projectRoot-relative paths — the report vocabulary: DIST-02
+ * §3-a's four plus DOCS-02 §3-e's discovery file.
+ */
 const HOOK_REL = '.claude/hooks/covenant-pretooluse.mjs';
 const SETTINGS_REL = '.claude/settings.json';
 const CONFIG_REL = 'polydeukes.config.yaml';
 const GITIGNORE_REL = '.gitignore';
-const ARTIFACTS = [HOOK_REL, SETTINGS_REL, CONFIG_REL, GITIGNORE_REL];
+const DISCOVERY_REL = '.claude/rules/polydeukes.md';
+const ARTIFACTS = [HOOK_REL, SETTINGS_REL, CONFIG_REL, GITIGNORE_REL, DISCOVERY_REL];
 /** The sibling config spelling used by the AC-11 already-ambiguous fixture. */
 const CONFIG_YML_SIBLING = 'polydeukes.config.yml';
 /** How OUR settings registration is recognized: its command names the delegator file. */
@@ -128,12 +133,14 @@ afterEach(() => {
 });
 
 describe('DIST-02 §3-a / AC-1 initClaudeCode — absent-project creation', () => {
-  it('creates all four artifacts on an empty tree and reports each as created', () => {
+  it('creates all five artifacts on an empty tree and reports each as created', () => {
     // Mutation caught: any §3-a artifact dropped. No hook file = nothing ever judges; no
     // settings registration = the hook exists but never spawns (zero verdicts, zero
     // rows); no config = fail-closed blocks every call; no ignore line = every consumer
-    // commits its telemetry. The registration count pins that the created settings file
-    // actually carries our entry, not an empty object that merely exists.
+    // commits its telemetry; no discovery file = the query surface ships but no agent
+    // ever learns to call it (DOCS-02 §3-e). The registration count pins that the
+    // created settings file actually carries our entry, not an empty object that merely
+    // exists.
     const result = init();
 
     for (const rel of ARTIFACTS) {
@@ -189,7 +196,7 @@ describe('DIST-02 §3-a / AC-1 initClaudeCode — absent-project creation', () =
 });
 
 describe('DIST-02 §3-a / AC-2 non-destructive idempotence', () => {
-  it('leaves all four artifacts byte-identical on a second run and reports zero created', () => {
+  it('leaves all five artifacts byte-identical on a second run and reports zero created', () => {
     // Mutation caught: any writer that appends or rewrites on re-run — the likeliest
     // being the ignore line appended unconditionally, growing .gitignore by one line per
     // run. The skipped report is the other half of the §3-a stdout contract: a silent
@@ -438,5 +445,49 @@ describe('DIST-02 §3-a — an unreadable settings file is a precondition failur
     expect(existsSync(join(projectRoot, GITIGNORE_REL))).toBe(false);
     expect(existsSync(join(projectRoot, HOOK_REL))).toBe(false);
     expect(read(SETTINGS_REL)).toBe(handEdited);
+  });
+});
+
+describe('DOCS-02 §3-e / AC-8 the discovery file — the fifth artifact', () => {
+  it('writes a discovery file whose command forms match the shipped query surface', () => {
+    // Mutation caught: the template instructing a form that does not exist — §3-e names
+    // the cost: one failed call and the agent never asks again. `pdks docs` is the
+    // §3-b spelling, and every §3-c topic name must appear as itself (word-boundary:
+    // `install`, not merely inside `installation`) so a topic rename cannot leave the
+    // file pointing at a query that exits 2.
+    init();
+
+    const discovery = read(DISCOVERY_REL);
+    expect(discovery).toContain('pdks docs');
+    for (const topic of TOPICS) {
+      expect(discovery, topic).toMatch(new RegExp(`\\b${topic}\\b`));
+    }
+  });
+
+  it('carries paths frontmatter so the file loads contextually, never resident', () => {
+    // Mutation caught: the frontmatter block dropped. Without `paths` the host loads
+    // the file into EVERY session — §3-e chose a scoped discipline file over the
+    // consumer's resident instructions exactly to avoid that standing context cost.
+    init();
+
+    const discovery = read(DISCOVERY_REL);
+    expect(discovery.startsWith('---\n')).toBe(true);
+    expect(discovery).toMatch(/(^|\n)paths:/);
+  });
+
+  it('leaves a pre-existing discovery file untouched and reports it skipped', () => {
+    // Mutation caught: the fifth writer regenerating over a consumer-edited file. The
+    // byte-identity re-run case above only proves an IDENTICAL regeneration, so this
+    // fixture diverges from generated output — an unconditional rewrite breaks here
+    // (the invariant-5 shape the hook and config cases pin for their own artifacts).
+    const custom = '# consumer-tuned discovery text\n';
+    mkdirSync(join(projectRoot, dirname(DISCOVERY_REL)), { recursive: true });
+    writeFileSync(join(projectRoot, DISCOVERY_REL), custom);
+
+    const result = init();
+
+    expect(read(DISCOVERY_REL)).toBe(custom);
+    expect(result.skipped).toContain(DISCOVERY_REL);
+    expect(result.created).toContain(HOOK_REL);
   });
 });

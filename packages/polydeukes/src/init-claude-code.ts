@@ -2,8 +2,9 @@
  * `initClaudeCode` — the session-surface installer (DIST-02 §3-a/§3-b/§3-g).
  *
  * One command wires a project into the session surface: prove the package resolves, run the
- * shared project-side scaffold ({@link scaffoldProject}), then add the registration this
- * distribution path owns — the delegator hook file and its `.claude/settings.json` entry.
+ * shared project-side scaffold ({@link scaffoldProject}), then add what this distribution
+ * path owns — the delegator hook file, its `.claude/settings.json` registration, and the
+ * discipline file that tells an agent the docs query exists (DOCS-02 §3-e).
  *
  * Preflight comes first and nothing is written before it clears (§5-d invariant 2). A
  * generated hook whose import can never resolve blocks every call through its own
@@ -20,6 +21,8 @@ import { findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
 import { MUTATING_TOOLS, SHELL_TOOLS } from '@polydeukes/adapter-claude-code';
 import { isPlainObject } from '@polydeukes/core';
+import { TOPICS } from './docs-query.js';
+import { CONFIG_FILENAMES } from './load-config.js';
 import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
 
 /** The published entry point the generated hook loads the judge through (§3-c). */
@@ -27,6 +30,7 @@ const HOOK_SPECIFIER = 'polydeukes/claude-code';
 /** The registration artifacts, as `projectRoot`-relative paths (the report vocabulary). */
 const HOOK_RELATIVE = '.claude/hooks/covenant-pretooluse.mjs';
 const SETTINGS_RELATIVE = '.claude/settings.json';
+const DISCOVERY_RELATIVE = '.claude/rules/polydeukes.md';
 /**
  * The command the host spawns, and the string our registration is recognized by: the same
  * command already present means already registered (§3-a). A registration keyed on anything
@@ -75,6 +79,44 @@ try {
   console.error(\`covenant hook failed closed: \${error?.message ?? error}\`);
   process.exit(2);
 }
+`;
+
+/** What a session is about to do, per topic — the correspondence §3-e asks the file to carry. */
+const DOCS_TOPIC_PURPOSE: Record<(typeof TOPICS)[number], string> = {
+  install: 'install Polydeukes, or wire another surface into this project',
+  config: 'edit `polydeukes.config.*` — every key and what reads it',
+  discipline: 'add or change a `disciplines` entry',
+  covenant: 'explain a verdict, or why a surface failed closed',
+  witness: 'open a blocked call in person',
+};
+
+/**
+ * The generated discipline file (DOCS-02 §3-e) — the discovery path that gets the query
+ * surface called. A query an agent never learns about is a query that does not exist, and
+ * the alternative place to say so is the consumer's own resident instructions, which are
+ * theirs to write. One scoped file costs nothing while it waits: `paths` frontmatter keeps
+ * it out of context until a Polydeukes path is in play.
+ *
+ * Both the command forms and the topic names come from the shipped surface itself — a file
+ * naming a query that exits 2 fails the agent once, and it never calls the command again.
+ */
+const GENERATED_DISCOVERY = `---
+paths:
+${CONFIG_FILENAMES.map((name) => `  - "${name}"`).join('\n')}
+  - ".claude/**"
+---
+
+# Polydeukes — query the installed docs
+
+This project is judged by Polydeukes, and the matching documentation ships inside the
+installed package. \`pdks docs\` answers offline, from the same version that does the
+judging; a web search answers from whichever release it indexed.
+
+Run \`pdks docs\` for the topic list, \`pdks docs <topic>\` for one section.
+
+| Before you | Run |
+| --- | --- |
+${TOPICS.map((topic) => `| ${DOCS_TOPIC_PURPOSE[topic]} | \`pdks docs ${topic}\` |`).join('\n')}
 `;
 
 /** `initClaudeCode` input (DIST-02 §3-g) — the target tree and the preflight seam. */
@@ -140,16 +182,21 @@ function carriesRegistration(settings: SettingsFile): boolean {
   );
 }
 
-/** Write the delegator unless one is already there, recording which happened. */
-function writeHookFile(projectRoot: string, report: ScaffoldReport): void {
-  const hookPath = join(projectRoot, HOOK_RELATIVE);
-  if (existsSync(hookPath)) {
-    report.skipped.push(HOOK_RELATIVE);
+/** Write one generated artifact unless it is already there, recording which happened. */
+function writeIfAbsent(
+  projectRoot: string,
+  relative: string,
+  contents: string,
+  report: ScaffoldReport,
+): void {
+  const path = join(projectRoot, relative);
+  if (existsSync(path)) {
+    report.skipped.push(relative);
     return;
   }
-  mkdirSync(dirname(hookPath), { recursive: true });
-  writeFileSync(hookPath, GENERATED_HOOK);
-  report.created.push(HOOK_RELATIVE);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, contents);
+  report.created.push(relative);
 }
 
 /**
@@ -243,7 +290,8 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
   const settings = readSettings(spec.projectRoot);
 
   const report = scaffoldProject(spec.projectRoot);
-  writeHookFile(spec.projectRoot, report);
+  writeIfAbsent(spec.projectRoot, HOOK_RELATIVE, GENERATED_HOOK, report);
+  writeIfAbsent(spec.projectRoot, DISCOVERY_RELATIVE, GENERATED_DISCOVERY, report);
   mergeSettings(spec.projectRoot, settings, report);
   return report;
 }

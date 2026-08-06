@@ -14,6 +14,8 @@
  */
 
 import { closeSync, openSync, readSync, writeSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runCovenantCheck } from './covenant-check.js';
 
 /**
@@ -78,8 +80,36 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
   }
 }
 
+if (args[0] === 'docs' && args.length <= 2) {
+  try {
+    // Imported inside the try for the same reason `init` is: the query core and the
+    // markdown behind it have no business on `covenant check`'s load path, which lefthook
+    // spawns on every commit.
+    const { queryDocs } = await import('./docs-query.js');
+    // The bundle ships beside this file, so the docs root comes from the module's own
+    // location — never from the working directory, which is whatever shell invoked us.
+    const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
+    const { text } = queryDocs({ docsRoot, topic: args[1] });
+    // stdout is a pipe whenever this is captured or redirected, and a piped write is
+    // asynchronous — exiting on the next line would discard whatever is still buffered.
+    // The whole answer IS the deliverable here (a truncated document is one an agent
+    // quotes onward as if complete), so the exit waits for the flush. Awaiting rather
+    // than exiting from the callback also keeps this branch from falling through into
+    // the covenant runner below while the write drains.
+    await new Promise<void>((settle) => {
+      process.stdout.write(text, () => settle());
+    });
+    process.exit(0);
+  } catch (error) {
+    // stdout stays at zero bytes on this path (DOCS-02 §3-b): what cannot be answered is
+    // never answered halfway.
+    process.stderr.write(`pdks docs: ${error instanceof Error ? error.message : String(error)}\n`);
+    process.exit(2);
+  }
+}
+
 if (args.length !== 2 || args[0] !== 'covenant' || args[1] !== 'check') {
-  process.stderr.write('usage: pdks covenant check | pdks init claude-code\n');
+  process.stderr.write('usage: pdks covenant check | pdks init claude-code | pdks docs [topic]\n');
   process.exit(2);
 }
 
