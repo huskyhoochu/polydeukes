@@ -7,13 +7,15 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { TOPICS } from '../src/docs-query.ts';
 import { telemetryRows } from './helpers';
 
 // DIST-03 AC-3/AC-4/AC-5 — the clean-install e2e (§3-c). The consumer tree's only inputs
@@ -326,5 +328,96 @@ describe('DIST-03 AC-5 — the core schema resolves from the installed tree', ()
     expect(resolved.endsWith('/@polydeukes/core/schema/polydeukes.schema.json')).toBe(true);
     // The measured consumer-side form — DIST-03 §7 hands this line to DOCS-01.
     console.info(`AC-5 measured: ${CORE_SCHEMA_SPECIFIER} resolves to ${resolved}`);
+  }, 60_000);
+});
+
+describe('DOCS-02 AC-7 — the bundled docs answer from the installed tree', () => {
+  /**
+   * Spawn the consumer's own `pdks`, the binary a user's PATH reaches. cwd is the consumer
+   * root and the tree sits outside this repository, so an answer cannot have come from the
+   * working copy of `docs/` — only from what the tarball installed.
+   */
+  function spawnDocs(...args: string[]): SpawnSyncReturns<string> {
+    return spawnSync(join(consumerRoot, 'node_modules', '.bin', 'pdks'), ['docs', ...args], {
+      cwd: consumerRoot,
+      encoding: 'utf-8',
+    });
+  }
+
+  it.each([...TOPICS])('answers %s from the tarball install alone', (topic) => {
+    // The Exit Criteria clause this ticket exists to close, measured on the real install
+    // graph. Mutation caught: a bundle member missing from the tarball, a docs root
+    // resolved from the working directory instead of the module's own location, or a
+    // topic in the map with no shipped document behind it — all three pass the repo-side
+    // unit suite, where `docs/` is one directory away.
+    const result = spawnDocs(topic);
+
+    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+    expect(result.stdout.trim().length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('lists every topic when called with no argument', () => {
+    // §3-b's discovery form on the shipped artifact: an agent learns what it may ask ONLY
+    // from this listing, so a topic missing here is one that is never queried.
+    const result = spawnDocs();
+
+    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+    for (const topic of TOPICS) {
+      expect(result.stdout, topic).toMatch(new RegExp(`\\b${topic}\\b`));
+    }
+  }, 60_000);
+
+  it('refuses an unknown topic with exit 2 and an empty stdout', () => {
+    // §3-b's failure direction end to end. Mutation caught: the bin answering a bad topic
+    // with a partial document, or exiting 0 on an error path — a half-written answer is
+    // one an agent reads as the document and quotes onward.
+    const result = spawnDocs('nonexistent-topic');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('nonexistent-topic');
+  }, 60_000);
+
+  it('answers even when the packages only the commit surface needs are gone', () => {
+    // The bootstrap direction: `pdks docs install` is what an agent runs to find out how to
+    // install and build, so it has to answer in a tree where the build has not happened.
+    // Mutation caught: `runCovenantCheck` imported at the top of bin.ts — ESM imports are
+    // eager, so the git adapter, the core, and the judge would all have to resolve before
+    // argv is even read, and this query would die at node's exit 1 with a module-resolution
+    // stack trace instead of the documented 0 or 2. Moving the package aside reproduces the
+    // unbuilt/pruned tree without needing one.
+    // Resolved through the umbrella's own realpath, never the consumer root: under pnpm the
+    // scoped packages are transitive and never surface at the top level (the DIST-03
+    // measurement), so they live beside the umbrella inside the store.
+    const umbrellaDir = dirname(
+      realpathSync(join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json')),
+    );
+    const adapterDir = join(dirname(umbrellaDir), '@polydeukes', 'adapter-git');
+    if (!existsSync(adapterDir)) {
+      throw new Error(`the layout this case moves aside is not where it expected: ${adapterDir}`);
+    }
+    const stashed = join(packRoot, 'adapter-git-stashed');
+    renameSync(adapterDir, stashed);
+    try {
+      const result = spawnDocs('install');
+
+      expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+      expect(result.stdout).toContain('# Installing Polydeukes');
+    } finally {
+      // Restored for the cases below, which spawn the same tree.
+      renameSync(stashed, adapterDir);
+    }
+  }, 60_000);
+
+  it('refuses a two-argument form with the usage line', () => {
+    // The argv half of §3-b, which no unit test reaches: `docs` is the bin's first form
+    // taking a variable argument count, so the arity bound lives only here. Mutation
+    // caught: the bound dropped — `pdks docs install extra` would then answer as though
+    // the trailing word were not there.
+    const result = spawnDocs('install', 'extra');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('usage:');
   }, 60_000);
 });

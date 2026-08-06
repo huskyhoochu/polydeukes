@@ -259,6 +259,20 @@ call and the gate's whole justification failed. Evidence now means a call that r
 reported success. Whichever section takes this, it should say that cheap-evasion is a
 property a judge has to earn, not one a design gets for free. -->
 
+<!-- Parked candidate (DOCS-02, 2026-08-06): the first outside instance of this principle's
+gap, reached independently. Meta's Astryx ships an agent-ready design system whose CLI serves
+its own documentation offline, and whose installer writes a component index plus behavioral
+rules — "always run bootstrap on each branch", "always run `component --dense` before
+modifying a component" — into the consumer's AGENTS.md/CLAUDE.md. The convergence is worth
+naming rather than stepping around: we arrived at `pdks docs [topic]` on our own and the
+surface is nearly identical, down to the no-argument topic listing. What differs is the last
+step. Those rules are instructions, and nothing observes whether the agent followed them; the
+same sentence in a `disciplines` entry is a judgment that leaves a telemetry row. This makes
+the principle concrete against something a reader can go and look at — writing a discipline
+down and enforcing one are different acts, and the shipped state of the art is the first.
+Must not read as a competitive swipe: Astryx solved discovery better than we had, and we
+adopted that lesson rather than arguing with it (DOCS-02 §3-e exists because of it). -->
+
 ## What Polydeukes is not
 
 It is not an agent runtime. Frameworks that build and run agents — sessions, sandboxes,

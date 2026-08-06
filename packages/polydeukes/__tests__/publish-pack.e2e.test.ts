@@ -31,6 +31,25 @@ const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
 const REQUIRED_ENTRIES = ['package/package.json', 'package/README.md', 'package/LICENSE'];
 const DIST_PREFIX = 'package/dist/';
 
+/** The package whose tarball carries the docs bundle (DOCS-02 §3-a). */
+const UMBRELLA_DIR = 'polydeukes';
+const DOCS_PREFIX = 'package/dist/docs/';
+/**
+ * The DOCS-02 §3-a bundle, enumerated. That table is the source of truth and this is its
+ * second copy on purpose: the copy step reads its own list, so a test deriving the list
+ * from the same place would go green on a bundle that silently lost a member.
+ */
+const BUNDLED_DOCS = [
+  'installation.md',
+  'configuration.md',
+  'troubleshooting.md',
+  'reference/polydeukes.md',
+  'reference/core.md',
+  'reference/covenant.md',
+  'reference/adapter-claude-code.md',
+  'reference/adapter-git.md',
+];
+
 /** §3-a absence enumeration — development-only files that must never ship. */
 const FORBIDDEN_PREFIXES = ['package/src/', 'package/__tests__/'];
 const FORBIDDEN_ENTRIES = [
@@ -130,6 +149,31 @@ describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => 
     for (const forbidden of FORBIDDEN_ENTRIES) {
       expect(entries).not.toContain(forbidden);
     }
+  }, 30_000);
+});
+
+describe('DOCS-02 AC-1 — the umbrella tarball carries the docs bundle', () => {
+  it('ships the eight English documents under dist/docs', () => {
+    // Mutation caught: the copy step dropped from the build script, a member lost from its
+    // list, or `dist/docs` excluded from what npm packs. Any of those installs a package
+    // whose `pdks docs` exits 2 for the missing topic, and nothing consumer-side explains
+    // why — §3-a names that the symptom this enumeration exists to prevent.
+    const entries = tarEntries(UMBRELLA_DIR);
+
+    for (const relative of BUNDLED_DOCS) {
+      expect(entries).toContain(`${DOCS_PREFIX}${relative}`);
+    }
+  }, 30_000);
+
+  it('ships no Korean mirror in the bundle', () => {
+    // The absence half, breaking in the opposite direction: a copy step widened into a
+    // directory sweep pulls in the mirrors, the whitepaper, and the build-in-public posts.
+    // The presence test above stays green through exactly that mutation.
+    const entries = tarEntries(UMBRELLA_DIR);
+    const bundled = entries.filter((entry) => entry.startsWith(DOCS_PREFIX));
+
+    expect(bundled.filter((entry) => entry.endsWith('.ko.md'))).toEqual([]);
+    expect(bundled).toHaveLength(BUNDLED_DOCS.length);
   }, 30_000);
 });
 

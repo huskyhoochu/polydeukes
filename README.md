@@ -112,13 +112,18 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 
 ## CLI
 
-The `pdks` bin carries two subcommands today (published with the v0.3.0 release; earlier
+The `pdks` bin carries three subcommands today (published with the v0.3.0 release; earlier
 npm versions are a name-reservation stub):
 
 ```sh
 pdks init claude-code    # wire the session surface into a project
 pdks covenant check      # judge the staged diff (the pre-commit entry point)
+pdks docs [topic]        # read the bundled documentation, offline
 ```
+
+The documentation ships inside the package, so `pdks docs` answers from the same version
+that does the judging — no network, and no drift between what a search engine indexed and
+what is installed.
 
 Planned — each arrives with its package: `pdks verify` (adversarial verification) and
 `pdks ledger start <id>` (work tracking).

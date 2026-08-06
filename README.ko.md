@@ -92,13 +92,17 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 
 ## CLI
 
-`pdks` bin에는 오늘 서브커맨드 둘이 실려 있습니다(v0.3.0 릴리스로 출판되며, 그 전의 npm
+`pdks` bin에는 오늘 서브커맨드 셋이 실려 있습니다(v0.3.0 릴리스로 출판되며, 그 전의 npm
 버전은 이름 선점용 스텁입니다).
 
 ```sh
 pdks init claude-code    # 프로젝트에 세션 표면을 배선
 pdks covenant check      # staged diff 판정 (pre-commit 진입점)
+pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
 ```
+
+문서는 패키지 안에 함께 실립니다. 그래서 `pdks docs`는 판정을 수행하는 바로 그 판본의 답을
+돌려줍니다. 검색 엔진이 색인한 판본과 설치된 판본이 어긋나는 일이 없습니다.
 
 예정 — 각자의 패키지와 함께 옵니다. `pdks verify`(적대 검증), `pdks ledger start <id>`(작업
 추적).

@@ -83,8 +83,13 @@ is what separates them. (Why the shell axis has limits at all: `CLAUDE.md`.)
 ## Term usage rules
 
 1. **Code / package names:** English concept word. `@polydeukes/covenant`, `upholdCovenant()`.
-2. **Docs / narrative:** concept word, with context where helpful — "a covenant (a promise both agree to share)".
-3. **CLI:** the subcommands in the table above are canonical. `pdks` aliases `polydeukes`. Most verbs are area subcommands (`pdks <area> <verb>`); `gain` is the exception — a root verb (`pdks gain`) because it aggregates across every area.
+2. **Docs / narrative:** concept word, with context where helpful — "a covenant (a promise both
+   agree to share)".
+3. **CLI:** the subcommands in the table above are canonical. `pdks` aliases `polydeukes`. Most
+   verbs are area subcommands (`pdks <area> <verb>`); `gain` and `docs` are the exceptions — root
+   verbs (`pdks gain`, `pdks docs [topic]`) because neither belongs to one area. `gain` aggregates
+   measurements every area writes; `docs` reads the documentation bundled into the package, and
+   its topic names are a query vocabulary rather than domain terms.
 4. **Never use these words** in any code, doc, or user-facing surface — use the concept term instead:
    - ❌ `guard` → ✅ `covenant`
    - ❌ `harness` → ✅ `discipline framework`

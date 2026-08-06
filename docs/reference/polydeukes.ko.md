@@ -20,8 +20,8 @@
 
 ## 서브커맨드
 
-실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 서브커맨드 둘은 정확히 두 단어
-형태만 받습니다. 플래그도 옵션도 없습니다.
+실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 어디에도 플래그와 옵션이 없습니다.
+서브커맨드 둘은 정확히 두 단어 형태만 받고, `docs`는 토픽 하나를 선택으로 받습니다.
 
 ### `pdks covenant check`
 
@@ -46,13 +46,14 @@ git 어댑터로 스테이징 영역을 수집하고, 약속(covenant) 입력 IR
 ### `pdks init claude-code`
 
 세션 표면 설치기입니다. **무엇을 쓰기 전에** 자기가 호출된 디렉터리에서 `polydeukes`가
-해소되는지 먼저 증명하고, 그다음 산출물 넷을 만듭니다.
+해소되는지 먼저 증명하고, 그다음 산출물 다섯을 만듭니다.
 
 | 산출물 | 방식 |
 |---|---|
 | `.claude/hooks/covenant-pretooluse.mjs` | 생성. 설치된 패키지에서 판정기를 적재하는 위임자입니다 |
 | `.claude/settings.json` | 병합. PreToolUse 등록을 파일이 이미 담고 있는 것 위에 더합니다 |
 | `polydeukes.config.yaml` | 생성. 자리표시자 `languages` 블록을 담은 출발 정책입니다 |
+| `.claude/rules/polydeukes.md` | 생성. 웹을 검색하는 대신 [`pdks docs`](#pdks-docs-topic)에 물으라고 AI 파트너에게 일러 줍니다 |
 | `.gitignore` | 덧붙이기. `.polydeukes/` 한 줄입니다 |
 
 이미 있는 것은 무엇도 덮어쓰지 않습니다. 실재하는 산출물은 건너뛴 것으로 보고하고 그대로
@@ -60,10 +61,43 @@ git 어댑터로 스테이징 영역을 수집하고, 약속(covenant) 입력 IR
 종료 `2`를 냅니다. 패키지가 해소되지 않는 경우, 설정 철자가 둘 공존하는 경우, settings
 파일을 파싱할 수 없는 경우가 여기 듭니다. 반쯤 배선된 트리는 남지 않습니다.
 
+### `pdks docs [topic]`
+
+오프라인 문서 열람기입니다. 가이드와 이 레퍼런스 층이 패키지 안에 함께 실리므로, 답은
+네트워크가 아니라 설치된 판본에서 나옵니다.
+
+| 호출 | 결과 |
+|---|---|
+| `pdks docs` | 토픽 목록을 stdout에 쓰고 종료 `0` |
+| `pdks docs <topic>` | 그 토픽의 절과 뒤따르는 `See also:` 한 줄, 종료 `0` |
+| `pdks docs <모르는 토픽>` | 아는 토픽을 stderr에 열거하고 종료 `2` |
+| `pdks docs a b` | usage 한 줄을 stderr에 쓰고 종료 `2` |
+
+| 토픽 | 무엇에서 답하는가 |
+|---|---|
+| `install` | [installation](../installation.ko.md) 전문 |
+| `config` | [configuration](../configuration.ko.md)의 레퍼런스 절 |
+| `discipline` | [configuration](../configuration.ko.md)의 `disciplines` 절 |
+| `covenant` | [configuration](../configuration.ko.md)의 강제가 어떤 모습인지 다루는 절 |
+| `witness` | [configuration](../configuration.ko.md)의 `witness` 절에 이어 [troubleshooting](../troubleshooting.ko.md)의 밸브 절 |
+
+**실패는 어느 경우에나 stdout을 0바이트로 둡니다.** 동봉 문서가 없는 경우, 문서가 그 표제를
+더는 담지 않는 경우, 모르는 토픽인 경우 모두 무엇이 없었는지 stderr에 이름을 적고 종료 `2`를
+냅니다. 절반만 쓰인 답은 에이전트가 그것을 문서로 읽고 그대로 인용하게 만들므로, 그런 상태를
+두지 않습니다.
+
+동봉되는 본문은 영어뿐입니다. 답은 원문 그대로 돌아오므로, 각 문서 머리의
+`[한국어](./X.ko.md)` 링크는 패키지 안이 아니라
+[저장소](https://github.com/huskyhoochu/polydeukes/tree/main/docs)의 미러를 가리킵니다.
+이 표의 링크도 그리로 갑니다.
+
+`pdks init claude-code`가 만드는 발견 파일이 AI 파트너를 이 서브커맨드로 보냅니다. 위의
+산출물 표에 있습니다.
+
 ### 그 밖의 인자 형태
 
-정확한 두 형태가 아닌 것은 `usage: pdks covenant check | pdks init claude-code`를 stderr에
-쓰고 종료 `2`를 냅니다.
+이 형태들이 아닌 것은 `usage: pdks covenant check | pdks init claude-code | pdks docs [topic]`을
+stderr에 쓰고 종료 `2`를 냅니다.
 
 ## 종료 코드
 

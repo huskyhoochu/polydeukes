@@ -21,8 +21,8 @@ you do not install and do not import.
 
 ## Subcommands
 
-The bin is `pdks`, with `polydeukes` as an alias. Both subcommands take an exact two-word
-form and nothing else — no flags, no options.
+The bin is `pdks`, with `polydeukes` as an alias. There are no flags and no options
+anywhere: two subcommands take an exact two-word form, and `docs` takes an optional topic.
 
 ### `pdks covenant check`
 
@@ -48,13 +48,14 @@ permanent condition of the commit surface, not a fault.
 ### `pdks init claude-code`
 
 The session-surface installer. It proves that `polydeukes` resolves from the directory it
-was invoked in **before writing anything**, then creates four artifacts:
+was invoked in **before writing anything**, then creates five artifacts:
 
 | Artifact | Kind |
 |---|---|
 | `.claude/hooks/covenant-pretooluse.mjs` | Created — a delegator that loads the judge from the installed package |
 | `.claude/settings.json` | Merged — the PreToolUse registration is added to whatever the file already carries |
 | `polydeukes.config.yaml` | Created — the starter policy, with a placeholder `languages` block |
+| `.claude/rules/polydeukes.md` | Created — tells the AI partner to ask [`pdks docs`](#pdks-docs-topic) instead of searching the web |
 | `.gitignore` | Appended — one line for `.polydeukes/` |
 
 Nothing existing is overwritten: an artifact already present is reported as skipped and left
@@ -62,10 +63,44 @@ alone, so a re-run is a no-op. A precondition failure — the package not resolv
 coexisting config spellings, an unparseable settings file — writes zero files and exits `2`,
 never a half-wired tree.
 
+### `pdks docs [topic]`
+
+The offline documentation reader. The guides and this reference layer ship inside the
+package, so the answer comes from the installed version rather than from the network.
+
+| Call | Result |
+|---|---|
+| `pdks docs` | The topic list on stdout, exit `0` |
+| `pdks docs <topic>` | That topic's section, followed by a `See also:` line, exit `0` |
+| `pdks docs <unknown>` | The known topics named on stderr, exit `2` |
+| `pdks docs a b` | The usage line on stderr, exit `2` |
+
+| Topic | Answers from |
+|---|---|
+| `install` | [installation](../installation.md), in full |
+| `config` | [configuration](../configuration.md) — the Reference section |
+| `discipline` | [configuration](../configuration.md) — the `disciplines` section |
+| `covenant` | [configuration](../configuration.md) — What enforcement looks like |
+| `witness` | [configuration](../configuration.md)'s `witness` section, then [troubleshooting](../troubleshooting.md)'s valve section |
+
+**Every failure leaves stdout at zero bytes.** A missing bundled document, a heading the
+document no longer carries, an unknown topic — each names what was missing on stderr and
+exits `2`. A partially written answer is one an agent reads as the document and quotes
+onward, so there is no such state.
+
+The bundle carries the English text only. Answers are returned verbatim, so the
+`[한국어](./X.ko.md)` link at the top of each document points at a mirror that lives in the
+[repository](https://github.com/huskyhoochu/polydeukes/tree/main/docs) rather than inside
+the package.
+
+`pdks init claude-code` writes a discovery file that points an AI partner at this
+subcommand; see the artifact table above.
+
 ### Any other argument form
 
-Anything that is not one of the two exact forms writes
-`usage: pdks covenant check | pdks init claude-code` to stderr and exits `2`.
+Anything that is not one of these forms writes
+`usage: pdks covenant check | pdks init claude-code | pdks docs [topic]` to stderr and
+exits `2`.
 
 ## Exit codes
 
