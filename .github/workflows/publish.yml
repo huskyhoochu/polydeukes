@@ -42,10 +42,12 @@ jobs:
       # No version input: pnpm/action-setup reads the root manifest's pinned packageManager.
       - uses: pnpm/action-setup@v4
 
+      # No registry-url: that option writes an .npmrc referencing NODE_AUTH_TOKEN, which
+      # crashes npm when the env is absent. Auth is OIDC trusted publishing — each of the
+      # five packages names this repo + workflow file on its npmjs.com access page.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
 
       # Refuse a tree that is not exactly a release tag: a dispatch from a branch HEAD
       # would upload unreleased commits under the released version, and provenance would
@@ -67,5 +69,3 @@ jobs:
       # The root package is private and skips itself; the five workspace packages publish
       # in dependency order with workspace:/catalog: specifiers rewritten to real versions.
       - run: pnpm -r publish --provenance --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
