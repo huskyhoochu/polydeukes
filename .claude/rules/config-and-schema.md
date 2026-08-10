@@ -25,8 +25,9 @@ trigger is "editing this file at all".
 `^` without the `m` flag anchors to the whole string. The delta and context families scan a
 file's whole content as one string, so a line-shaped pattern written with `^` matches only
 the first line and the discipline silently stops firing — write `(^|\n)` there. The command
-family judges per line, so `^` means start of a line on that axis. Any anchored pattern
-needs a fixture with the violation on a later line.
+family judges the union of each line and the whole string, so `^` means start of a line on
+that axis and a pattern spanning a line boundary still matches. Any anchored pattern needs
+a fixture with the violation on a later line.
 
 ## A predicate belongs to the layer that knows the answer
 

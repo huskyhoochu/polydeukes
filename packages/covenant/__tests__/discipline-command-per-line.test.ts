@@ -1,10 +1,11 @@
 import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// CONFIG-09 §4.1 / AC-1 — the command family judges per LINE: the command string is
-// split on '\n' and the pattern is tested against each line, so a '^' anchor means
-// "start of a line" instead of silently meaning "start of the whole string". Both
-// judgment paths (judgeDiscipline and the compiled matches closure) must share that
-// unit — if they diverge, a violation never spawns or a spawn carries no violation.
+// CONFIG-09 §4.1 / AC-1 — the command family judges the UNION of two units: each line
+// (split on /\r?\n/, so a '^' anchor means "start of a line" instead of silently meaning
+// "start of the whole string") and the whole string (so a pattern spanning a line
+// boundary keeps every match it had before the line unit existed). Both judgment paths
+// (judgeDiscipline and the compiled matches closure) must share that unit — if they
+// diverge, a violation never spawns or a spawn carries no violation.
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
@@ -32,8 +33,8 @@ const anchoredEntry: DisciplineEntry = {
   forbidCommand: '(^|[;&|(]\\s*)yarn\\b',
 };
 
-// A pattern whose only possible match STRADDLES a line boundary (\s+ would have to
-// consume the \n) — under the per-line contract it can never match anything.
+// A pattern whose only possible match STRADDLES a line boundary (\s+ has to consume
+// the \n) — only the whole-string half of the union can see it.
 const straddlingEntry: DisciplineEntry = {
   id: 'straddling',
   forbidCommand: 'setup\\s+yarn',
@@ -82,13 +83,19 @@ describe('judgeDiscipline — command family judges per line (CONFIG-09 §4.1)',
     expect(judgeDiscipline(anchoredEntry, input, judgeOpts).upheld).toBe(false);
   });
 
-  it('does not match a pattern that only spans the line boundary (the judged unit is the line)', () => {
-    // P0 declared contract (§4.1): a pattern spanning lines matches nothing, because no
-    // single line contains it. Today the whole-string test lets \s+ consume the \n and
-    // break. Mutation caught: joining lines (with \n, space, or ;) before testing.
+  it('still breaks a pattern that spans the line boundary (whole-string half of the union)', () => {
+    // P0 widening-only invariant (§6): every match the whole-string unit had before the
+    // line unit existed is preserved — the live `git branch\b.*\s-D\b` entry relies on
+    // `\s` consuming a continuation newline (review F0). Mutation caught: dropping the
+    // whole-string half and judging lines only.
     const input = inputWithToolCall('Bash', { command: 'echo setup\nyarn install' });
 
-    expect(judgeDiscipline(straddlingEntry, input, judgeOpts)).toEqual({ upheld: true });
+    const verdict = judgeDiscipline(straddlingEntry, input, judgeOpts);
+
+    expect(verdict.upheld).toBe(false);
+    if (verdict.upheld === false) {
+      expect(verdict.reason).toContain('straddling');
+    }
   });
 
   it('breaks when the violation sits on the THIRD line (every line is visited)', () => {
@@ -121,13 +128,13 @@ describe('compileDisciplineRegistrations — matches uses the same line unit (CO
     expect(reg.matches?.(input)).toBe('-');
   });
 
-  it('matches returns null when the pattern only matches across the line boundary', () => {
-    // P0 the mirror divergence: routing on the whole string would spawn a body that
-    // (judging per line) upholds — a spawn without a violation. Mutation caught: the
-    // matches closure left on the whole-string unit in the other direction.
+  it('matches returns "-" when the pattern only matches across the line boundary', () => {
+    // P0 the mirror agreement: the judge above breaks this input via the whole-string
+    // half, so routing must see it too — a null here would be a violation without a
+    // spawn. Mutation caught: the matches closure judging lines only.
     const reg = compileOne(straddlingEntry);
     const input = inputWithToolCall('Bash', { command: 'echo setup\nyarn install' });
 
-    expect(reg.matches?.(input)).toBeNull();
+    expect(reg.matches?.(input)).toBe('-');
   });
 });

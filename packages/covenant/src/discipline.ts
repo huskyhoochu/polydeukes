@@ -217,17 +217,18 @@ function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): stri
 }
 
 /**
- * True when a command-family pattern matches any LINE of the command (CONFIG-09 §4.1).
+ * True when a command-family pattern matches the command (CONFIG-09 §4.1).
  *
- * The judged unit is the line, so a `^` anchor means "start of a line" instead of anchoring
- * to the whole string and silently missing a violation on a later line. `\r` is stripped
- * with the split, or a CRLF command would leave it on every line and disarm an
- * end-of-line-sensitive pattern. A pattern that only matches across a line boundary matches
- * nothing — the declared cost of making the line the unit. Both judgment paths call this,
- * so routing and judgment can never see different units.
+ * The match is the union of two units. Each LINE is tested (split on `/\r?\n/`, so a `^`
+ * anchor means "start of a line" instead of silently anchoring to the whole string, and a
+ * CRLF ending cannot disarm an end-of-line pattern), and the WHOLE string is tested (so a
+ * pattern whose match spans a line boundary — a `\s` consuming the newline of a
+ * continuation — keeps every match it had before the line unit existed). The union only
+ * ever widens the candidate set. Both judgment paths call this, so routing and judgment
+ * can never see different units.
  */
 function commandLineMatches(command: string, pattern: RegExp): boolean {
-  return command.split(/\r?\n/).some((line) => pattern.test(line));
+  return pattern.test(command) || command.split(/\r?\n/).some((line) => pattern.test(line));
 }
 
 /** What the input's shell commands prove, and what they only signal (COVENANT-10b §2-a). */

@@ -73,14 +73,15 @@ export function loadConfig(rootDir: string): LoadedConfig {
   // uncomputable, so it cannot lie).
   const document = parseDocument(source);
   const problems = [...document.errors, ...document.warnings];
-  if (problems.length === 1) {
-    throw new Error(`failed to parse ${configPath}: ${problems[0].message}`);
-  }
-  if (problems.length > 1) {
+  if (problems.length > 0) {
     // Every problem in one message: reporting only the first costs one fix-rerun loop
-    // per hidden problem. Each parser message already carries its own position.
-    const enumerated = problems.map((problem) => `  - ${problem.message}`).join('\n');
-    throw new Error(`failed to parse ${configPath}: ${problems.length} problems\n${enumerated}`);
+    // per hidden problem. Each parser message already carries its own position; a lone
+    // problem keeps the direct message shape.
+    const detail =
+      problems.length === 1
+        ? problems[0].message
+        : `${problems.length} problems\n${problems.map((problem) => `  - ${problem.message}`).join('\n')}`;
+    throw new Error(`failed to parse ${configPath}: ${detail}`);
   }
   const parsed: unknown = document.toJS();
 
