@@ -13,6 +13,16 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.3.0](https://github.com/huskyhoochu/polydeukes/compare/v0.2.0...v0.3.0) (2026-08-10)
+
+
+### Features
+
+* **polydeukes:** add pdks init claude-code (DIST-02) ([#48](https://github.com/huskyhoochu/polydeukes/issues/48)) ([91f1fbf](https://github.com/huskyhoochu/polydeukes/commit/91f1fbf95f54dafcbb4f6a337b73929dd3c459fd))
+* **polydeukes:** add the npm publishing pipeline (DIST-03) ([#49](https://github.com/huskyhoochu/polydeukes/issues/49)) ([5742e18](https://github.com/huskyhoochu/polydeukes/commit/5742e1824e5e87928a576482eead171ae8ca33b1))
+* **polydeukes:** bundle the docs and answer them offline (DOCS-02) ([#52](https://github.com/huskyhoochu/polydeukes/issues/52)) ([e5b2229](https://github.com/huskyhoochu/polydeukes/commit/e5b2229db443c93cbdba44e30c8800e2e39eb979))
+* **polydeukes:** move the session assembly into a packaged entry point (DIST-01) ([#46](https://github.com/huskyhoochu/polydeukes/issues/46)) ([9e85504](https://github.com/huskyhoochu/polydeukes/commit/9e85504a3d729ceebe5af19652b50e9e97c2b2ac))
+
 ## [0.2.0](https://github.com/huskyhoochu/polydeukes/compare/v0.1.0...v0.2.0) (2026-07-29)
 
 
