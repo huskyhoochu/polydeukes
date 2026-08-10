@@ -216,6 +216,21 @@ function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): stri
   return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
 }
 
+/**
+ * True when a command-family pattern matches the command (CONFIG-09 §4.1).
+ *
+ * The match is the union of two units. Each LINE is tested (split on `/\r?\n/`, so a `^`
+ * anchor means "start of a line" instead of silently anchoring to the whole string, and a
+ * CRLF ending cannot disarm an end-of-line pattern), and the WHOLE string is tested (so a
+ * pattern whose match spans a line boundary — a `\s` consuming the newline of a
+ * continuation — keeps every match it had before the line unit existed). The union only
+ * ever widens the candidate set. Both judgment paths call this, so routing and judgment
+ * can never see different units.
+ */
+function commandLineMatches(command: string, pattern: RegExp): boolean {
+  return pattern.test(command) || command.split(/\r?\n/).some((line) => pattern.test(line));
+}
+
 /** What the input's shell commands prove, and what they only signal (COVENANT-10b §2-a). */
 export type ShellSignals = {
   evidence: { toolName: string; change: ShellChange }[];
@@ -374,7 +389,7 @@ export function judgeDiscipline(
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
     for (const command of shellCommands(input, opts)) {
-      if (pattern.test(command)) {
+      if (commandLineMatches(command, pattern)) {
         return {
           upheld: false,
           reason: `discipline '${entry.id}' broken: command matches forbidden pattern`,
@@ -417,7 +432,8 @@ function buildMatches(
   };
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
-    return (input) => (shellCommands(input, opts).some((c) => pattern.test(c)) ? '-' : null);
+    return (input) =>
+      shellCommands(input, opts).some((c) => commandLineMatches(c, pattern)) ? '-' : null;
   }
   if (entry.immutable !== undefined) {
     return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;

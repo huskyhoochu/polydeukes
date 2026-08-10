@@ -44,8 +44,9 @@ export type LoadedConfig = {
  * (no upward walk). Every failure branch throws — silent defaults are forbidden:
  * zero files found (message names all three candidates), two or more found (message
  * names the collisions), a parse error or unresolved custom tag (safe core schema —
- * config data is never executable), or a `ConfigValidationError` from core
- * `defineConfig()` (re-thrown with file-path context, keeping the error type).
+ * config data is never executable; every problem the parser found is enumerated in the
+ * one message), or a `ConfigValidationError` from core `defineConfig()` (re-thrown with
+ * file-path context, keeping the error type).
  *
  * Before returning, the discovered `configPath` is appended to
  * `config.protectedPaths` unless already present — the config file itself joins the
@@ -73,7 +74,14 @@ export function loadConfig(rootDir: string): LoadedConfig {
   const document = parseDocument(source);
   const problems = [...document.errors, ...document.warnings];
   if (problems.length > 0) {
-    throw new Error(`failed to parse ${configPath}: ${problems[0].message}`);
+    // Every problem in one message: reporting only the first costs one fix-rerun loop
+    // per hidden problem. Each parser message already carries its own position; a lone
+    // problem keeps the direct message shape.
+    const detail =
+      problems.length === 1
+        ? problems[0].message
+        : `${problems.length} problems\n${problems.map((problem) => `  - ${problem.message}`).join('\n')}`;
+    throw new Error(`failed to parse ${configPath}: ${detail}`);
   }
   const parsed: unknown = document.toJS();
 

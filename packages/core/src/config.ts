@@ -328,6 +328,11 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
     if (predicate === 'forbid') {
       const forbid = entry.forbid;
       if (typeof forbid === 'string') {
+        // An empty pattern matches at every position, so the entry would break every
+        // in-scope change — rejected like every sibling pattern field.
+        if (forbid.length === 0) {
+          throw new ConfigValidationError(`${location} forbid must be a non-empty string pattern`);
+        }
         rejectUncompilableRegex(forbid, `${location} forbid`);
       } else if (isPlainObject(forbid)) {
         // Only the { added } direction exists before COVENANT-12.
@@ -335,6 +340,11 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
         if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
           throw new ConfigValidationError(
             `${location} forbid object must have exactly one key 'added' with a string pattern`,
+          );
+        }
+        if (forbid.added.length === 0) {
+          throw new ConfigValidationError(
+            `${location} forbid.added must be a non-empty string pattern`,
           );
         }
         rejectUncompilableRegex(forbid.added, `${location} forbid.added`);
@@ -352,6 +362,13 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
     } else if (predicate === 'forbidCommand') {
       if (typeof entry.forbidCommand !== 'string') {
         throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
+      }
+      if (entry.forbidCommand.length === 0) {
+        // An empty pattern matches every command line — one typo would block every
+        // shell call the entry sees.
+        throw new ConfigValidationError(
+          `${location} forbidCommand must be a non-empty string pattern`,
+        );
       }
       rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
     } else {
@@ -374,29 +391,9 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
 }
 
 /**
- * Validate parsed unknown data as a {@link PolydeukesConfig} and return a
- * {@link ResolvedConfig} with defaults filled and templates compiled (PRD §4.3).
- * Pure — no file I/O.
- *
- * Throws {@link ConfigValidationError} (naming the offending field path) when the top level
- * is not a plain object, any object level carries an unknown key, `languages` is
- * missing/empty, any language's `productionGlob` is missing/empty, any `testCmd` is not a
- * non-empty string template, `telemetry.logPath` is not a string, `protectedPaths` carries a
- * non-string element, or `adapters` is not a map of plain-object namespaces.
+ * Validate the `languages` map and compile each profile's `{scope}` template (PRD §4.1).
  */
-export function defineConfig(config: unknown): ResolvedConfig {
-  if (!isPlainObject(config)) {
-    throw new ConfigValidationError('config must be a plain object');
-  }
-  rejectUnknownKeys(config, TOP_LEVEL_KEYS, 'config');
-
-  // `$schema` is an IDE schema reference (CONFIG-03): accepted, type-checked, and
-  // ignored — it never appears in the resolution output.
-  if (config.$schema !== undefined && typeof config.$schema !== 'string') {
-    throw new ConfigValidationError('$schema must be a string');
-  }
-
-  const languages = config.languages;
+function validateLanguages(languages: unknown): Record<string, ResolvedLanguageProfile> {
   if (!isPlainObject(languages) || Object.keys(languages).length === 0) {
     throw new ConfigValidationError('languages must be a non-empty object');
   }
@@ -428,65 +425,113 @@ export function defineConfig(config: unknown): ResolvedConfig {
       testCmd: compileTestCmd(profile.testCmd),
     };
   }
+  return resolvedLanguages;
+}
 
-  if (config.protectedPaths !== undefined && !isStringArray(config.protectedPaths)) {
+/** Validate `protectedPaths` — an array of non-empty strings; the data passes through verbatim. */
+function validateProtectedPaths(protectedPaths: unknown): string[] {
+  if (!isStringArray(protectedPaths)) {
     throw new ConfigValidationError('protectedPaths must be an array of strings');
   }
+  // An empty element carries no path meaning and would ride along unnoticed next to
+  // valid siblings.
+  if (protectedPaths.some((path) => path.length === 0)) {
+    throw new ConfigValidationError('protectedPaths must not contain an empty string');
+  }
+  return protectedPaths;
+}
 
-  let adapters: Record<string, Record<string, unknown>> | undefined;
-  if (config.adapters !== undefined) {
-    // Array first: the removed directory-list form deserves a migration hint, not a
-    // generic type error — and an EMPTY array must land here too, never pass as a map.
-    if (Array.isArray(config.adapters) || !isPlainObject(config.adapters)) {
-      throw new ConfigValidationError(
-        'adapters must be an object map of adapter namespaces — the directory-list form ' +
-          'was removed; move directories to protectedPaths',
-      );
+/**
+ * Validate the `adapters` map (CONFIG-07 layering) — each namespace is a plain object whose
+ * contents belong to that adapter's own validator, so they pass through verbatim.
+ */
+function validateAdapters(adapters: unknown): Record<string, Record<string, unknown>> {
+  // Array first: the removed directory-list form deserves a migration hint, not a
+  // generic type error — and an EMPTY array must land here too, never pass as a map.
+  if (Array.isArray(adapters) || !isPlainObject(adapters)) {
+    throw new ConfigValidationError(
+      'adapters must be an object map of adapter namespaces — the directory-list form ' +
+        'was removed; move directories to protectedPaths',
+    );
+  }
+  for (const [name, namespace] of Object.entries(adapters)) {
+    if (!isPlainObject(namespace)) {
+      throw new ConfigValidationError(`adapters.${name} must be an object`);
     }
-    for (const [name, namespace] of Object.entries(config.adapters)) {
-      if (!isPlainObject(namespace)) {
-        throw new ConfigValidationError(`adapters.${name} must be an object`);
-      }
-    }
-    adapters = config.adapters as Record<string, Record<string, unknown>>;
+  }
+  return adapters as Record<string, Record<string, unknown>>;
+}
+
+/** Validate the `telemetry` section and return its `logPath` (absent stays undefined). */
+function validateTelemetry(telemetry: unknown): string | undefined {
+  if (!isPlainObject(telemetry)) {
+    throw new ConfigValidationError('telemetry must be an object');
+  }
+  rejectUnknownKeys(telemetry, TELEMETRY_KEYS, 'telemetry');
+  if (telemetry.logPath === undefined) {
+    return undefined;
+  }
+  if (typeof telemetry.logPath !== 'string') {
+    throw new ConfigValidationError('telemetry.logPath must be a string');
+  }
+  if (telemetry.logPath.trim().length === 0) {
+    throw new ConfigValidationError('telemetry.logPath must be a non-empty string after trimming');
+  }
+  return telemetry.logPath;
+}
+
+/** Validate the `witness` section (CONFIG-05) — both values are consumed at assembly time. */
+function validateWitness(witness: unknown): { token: string; ttlMinutes: number } {
+  if (!isPlainObject(witness)) {
+    throw new ConfigValidationError('witness must be an object');
+  }
+  rejectUnknownKeys(witness, WITNESS_KEYS, 'witness');
+  const { token, ttlMinutes } = witness;
+  if (typeof token !== 'string' || token.trim().length === 0) {
+    throw new ConfigValidationError('witness.token must be a non-empty string after trimming');
+  }
+  if (typeof ttlMinutes !== 'number' || !(Number.isFinite(ttlMinutes) && ttlMinutes > 0)) {
+    throw new ConfigValidationError('witness.ttlMinutes must be a finite number greater than 0');
+  }
+  return { token, ttlMinutes };
+}
+
+/**
+ * Validate parsed unknown data as a {@link PolydeukesConfig} and return a
+ * {@link ResolvedConfig} with defaults filled and templates compiled (PRD §4.3).
+ * Pure — no file I/O.
+ *
+ * Throws {@link ConfigValidationError} (naming the offending field path) when the top level
+ * is not a plain object, any object level carries an unknown key, `languages` is
+ * missing/empty, any language's `productionGlob` is missing/empty, any `testCmd` is not a
+ * non-empty string template, `telemetry.logPath` is not a non-empty string after trimming,
+ * `protectedPaths` carries a non-string or empty element, or `adapters` is not a map of
+ * plain-object namespaces.
+ */
+export function defineConfig(config: unknown): ResolvedConfig {
+  if (!isPlainObject(config)) {
+    throw new ConfigValidationError('config must be a plain object');
+  }
+  rejectUnknownKeys(config, TOP_LEVEL_KEYS, 'config');
+
+  // `$schema` is an IDE schema reference (CONFIG-03): accepted, type-checked, and
+  // ignored — it never appears in the resolution output.
+  if (config.$schema !== undefined && typeof config.$schema !== 'string') {
+    throw new ConfigValidationError('$schema must be a string');
   }
 
+  const resolvedLanguages = validateLanguages(config.languages);
+  const protectedPaths =
+    config.protectedPaths !== undefined ? validateProtectedPaths(config.protectedPaths) : undefined;
+  const adapters = config.adapters !== undefined ? validateAdapters(config.adapters) : undefined;
   const disciplines =
     config.disciplines !== undefined ? validateDisciplines(config.disciplines) : undefined;
-
-  let logPath: string | undefined;
-  if (config.telemetry !== undefined) {
-    if (!isPlainObject(config.telemetry)) {
-      throw new ConfigValidationError('telemetry must be an object');
-    }
-    rejectUnknownKeys(config.telemetry, TELEMETRY_KEYS, 'telemetry');
-    if (config.telemetry.logPath !== undefined) {
-      if (typeof config.telemetry.logPath !== 'string') {
-        throw new ConfigValidationError('telemetry.logPath must be a string');
-      }
-      logPath = config.telemetry.logPath;
-    }
-  }
-
-  let witness: { token: string; ttlMinutes: number } | undefined;
-  if (config.witness !== undefined) {
-    if (!isPlainObject(config.witness)) {
-      throw new ConfigValidationError('witness must be an object');
-    }
-    rejectUnknownKeys(config.witness, WITNESS_KEYS, 'witness');
-    const { token, ttlMinutes } = config.witness;
-    if (typeof token !== 'string' || token.trim().length === 0) {
-      throw new ConfigValidationError('witness.token must be a non-empty string after trimming');
-    }
-    if (typeof ttlMinutes !== 'number' || !(Number.isFinite(ttlMinutes) && ttlMinutes > 0)) {
-      throw new ConfigValidationError('witness.ttlMinutes must be a finite number greater than 0');
-    }
-    witness = { token, ttlMinutes };
-  }
+  const logPath = config.telemetry !== undefined ? validateTelemetry(config.telemetry) : undefined;
+  const witness = config.witness !== undefined ? validateWitness(config.witness) : undefined;
 
   return {
     languages: resolvedLanguages,
-    ...(config.protectedPaths !== undefined && { protectedPaths: config.protectedPaths }),
+    ...(protectedPaths !== undefined && { protectedPaths }),
     ...(adapters !== undefined && { adapters }),
     telemetry: {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,

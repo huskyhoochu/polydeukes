@@ -95,7 +95,8 @@ that ignores scope (`pnpm test`) is equally valid.
 
 Raw path patterns whose files the covenants protect from modification — by editor tools
 and by shell commands alike (`sed -i`, `tee`, redirects, heredocs, parent-directory
-moves). Entries are normalized (trimmed, deduplicated) at resolve time.
+moves). Entries are normalized (trimmed, deduplicated) at resolve time. An empty-string
+entry is rejected at load time — it carries no path meaning.
 
 ```yaml
 protectedPaths:
@@ -177,7 +178,9 @@ telemetry:
 ```
 
 Every judgment — passed, blocked, witnessed, advised, or skipped — appends one record.
-Telemetry is fail-open by design: a logging failure never changes a verdict.
+Telemetry is fail-open by design: a logging failure never changes a verdict. The path
+itself is still validated at load time — an empty or whitespace-only `logPath` is
+rejected.
 
 ### `witness` (optional)
 
@@ -262,7 +265,11 @@ new files is allowed.
 
 **`forbidCommand` — command family.** Blocks shell commands matching the pattern, even
 when the command mentions no protected path. This is how gate-disarming commands are
-caught.
+caught. A multi-line command is judged twice over — the pattern is tested against each
+line and against the whole string, so `^` means the start of a line while a pattern
+spanning a line boundary still matches (the whole-content caution further down applies
+to the delta and context families). An empty pattern is rejected at load time, here and
+on `forbid` alike — it would match every command.
 
 ```yaml
   - id: 'hooks-stay-armed'

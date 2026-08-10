@@ -19,7 +19,7 @@
     "protectedPaths": {
       "description": "Raw protected path patterns — normalization happens at resolve time.",
       "type": "array",
-      "items": { "type": "string" }
+      "items": { "type": "string", "minLength": 1 }
     },
     "adapters": {
       "description": "Adapter namespaces — keys are adapter names, values are each adapter's own settings object (contents not validated by the core schema).",
@@ -64,8 +64,10 @@
       "additionalProperties": false,
       "properties": {
         "logPath": {
-          "description": "Telemetry log path. Defaults to .polydeukes/roi.log when omitted.",
-          "type": "string"
+          "description": "Telemetry log path. Defaults to .polydeukes/roi.log when omitted. Must be non-empty after trimming.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
         }
       }
     },
@@ -136,13 +138,13 @@
             "forbid": {
               "description": "Delta family — string shorthand is equivalent to { added }.",
               "anyOf": [
-                { "type": "string", "format": "regex" },
+                { "type": "string", "minLength": 1, "format": "regex" },
                 {
                   "type": "object",
                   "additionalProperties": false,
                   "required": ["added"],
                   "properties": {
-                    "added": { "type": "string", "format": "regex" }
+                    "added": { "type": "string", "minLength": 1, "format": "regex" }
                   }
                 }
               ]
@@ -172,6 +174,7 @@
             "forbidCommand": {
               "description": "Command family — regex over shell command strings.",
               "type": "string",
+              "minLength": 1,
               "format": "regex"
             }
           }
