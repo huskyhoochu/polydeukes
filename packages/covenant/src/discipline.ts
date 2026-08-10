@@ -216,6 +216,20 @@ function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): stri
   return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
 }
 
+/**
+ * True when a command-family pattern matches any LINE of the command (CONFIG-09 §4.1).
+ *
+ * The judged unit is the line, so a `^` anchor means "start of a line" instead of anchoring
+ * to the whole string and silently missing a violation on a later line. `\r` is stripped
+ * with the split, or a CRLF command would leave it on every line and disarm an
+ * end-of-line-sensitive pattern. A pattern that only matches across a line boundary matches
+ * nothing — the declared cost of making the line the unit. Both judgment paths call this,
+ * so routing and judgment can never see different units.
+ */
+function commandLineMatches(command: string, pattern: RegExp): boolean {
+  return command.split(/\r?\n/).some((line) => pattern.test(line));
+}
+
 /** What the input's shell commands prove, and what they only signal (COVENANT-10b §2-a). */
 export type ShellSignals = {
   evidence: { toolName: string; change: ShellChange }[];
@@ -374,7 +388,7 @@ export function judgeDiscipline(
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
     for (const command of shellCommands(input, opts)) {
-      if (pattern.test(command)) {
+      if (commandLineMatches(command, pattern)) {
         return {
           upheld: false,
           reason: `discipline '${entry.id}' broken: command matches forbidden pattern`,
@@ -417,7 +431,8 @@ function buildMatches(
   };
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
-    return (input) => (shellCommands(input, opts).some((c) => pattern.test(c)) ? '-' : null);
+    return (input) =>
+      shellCommands(input, opts).some((c) => commandLineMatches(c, pattern)) ? '-' : null;
   }
   if (entry.immutable !== undefined) {
     return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;

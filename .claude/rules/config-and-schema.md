@@ -22,9 +22,11 @@ trigger is "editing this file at all".
 
 ## A line anchor silently disarms a multi-line pattern
 
-`^` without the `m` flag anchors to the whole string, so a violation on the second line of a
-multi-line command never matches. Nothing fails loudly — the discipline just stops firing.
-Any anchored pattern needs a fixture with the violation on a later line.
+`^` without the `m` flag anchors to the whole string. The delta and context families scan a
+file's whole content as one string, so a line-shaped pattern written with `^` matches only
+the first line and the discipline silently stops firing — write `(^|\n)` there. The command
+family judges per line, so `^` means start of a line on that axis. Any anchored pattern
+needs a fixture with the violation on a later line.
 
 ## A predicate belongs to the layer that knows the answer
 

@@ -262,7 +262,9 @@ new files is allowed.
 
 **`forbidCommand` — command family.** Blocks shell commands matching the pattern, even
 when the command mentions no protected path. This is how gate-disarming commands are
-caught.
+caught. A multi-line command is judged line by line — the pattern is tested against each
+line, so `^` here means the start of a line (the whole-content caution further down
+applies to the delta family only).
 
 ```yaml
   - id: 'hooks-stay-armed'

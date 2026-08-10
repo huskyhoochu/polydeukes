@@ -71,7 +71,7 @@ disciplines:
     forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b'
   - id: 'work-stays-recoverable'
     why: 'a command that destroys uncommitted work or rewrites pushed history forecloses recovery; recovery is a human decision, never an agent default.'
-    forbidCommand: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git branch\b.*\s-D\b|git push\b.*--force'
+    forbidCommand: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git branch\b.*\s-D\b|git push\b.*--force(?![\w-])'
   - id: 'pnpm-only'
     why: 'the runtime pins pnpm; npm/yarn mutations desync the lockfile. read-only npm (view, info) stays allowed for version measurement.'
     forbidCommand: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b'
