@@ -1,6 +1,6 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // DIST-01 RED phase — CONFIG-06b's session half, ported from the e2e mirroredRoot
 // block (assembly.e2e.test.ts). That technique's premise is retired by this ticket:
@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // lives in run-claude-code-hook.test.ts as the §3-c AC-7 pin. runClaudeCodeHook does not
 // exist yet, so every case below is RED by construction.
 import { runClaudeCodeHook } from '../src/index.ts';
-import { telemetryRows } from './helpers';
+import { distWithout as sharedDistWithout, telemetryRows, writeConfigAt } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -39,37 +39,22 @@ const DISCIPLINE_BODY = 'discipline-body.js';
 const DELTA_ENTRIES = [{ id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts' }];
 /** A write whose target cannot be derived — the class the backstop registration owns. */
 const OPAQUE_WRITE = 'echo x > $F';
-/** The real built dist — the mirror source for distWithout(). */
-const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
 
 let repoRoot: string;
 let telemetryPath: string;
 
 /** Minimal valid config (languages is required) plus the caller's extra keys. */
 function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
+  writeConfigAt(repoRoot, telemetryPath, extra);
 }
 
 /**
- * A covenant dist mirroring the real build entry-by-entry, minus `omitBody` — `null`
- * omits nothing and is the COMPLETE mirror the control cases run on, so the one
- * omitted symlink stays the only difference between a green run and a red one.
+ * This suite's dist fixtures. `null` omits nothing and is the COMPLETE mirror the control
+ * cases run on, so the one omitted symlink stays the only difference between a green run
+ * and a red one.
  */
 function distWithout(omitBody: string | null): string {
-  const fixtureDist = join(repoRoot, 'covenant-dist-fixture');
-  mkdirSync(fixtureDist, { recursive: true });
-  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
-    if (entry === omitBody) continue;
-    symlinkSync(join(REAL_COVENANT_DIST, entry), join(fixtureDist, entry));
-  }
-  return fixtureDist;
+  return sharedDistWithout(repoRoot, omitBody);
 }
 
 /** Every telemetry row as [event, label, subject] — the label separates who answered. */

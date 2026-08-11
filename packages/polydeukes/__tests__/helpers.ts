@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 
 /**
@@ -20,6 +20,55 @@ export function telemetryRows(telemetryPath: string): [string, string, string][]
 
 /** The default `languages.typescript.productionGlob` every check suite's config carries. */
 export const DEFAULT_PRODUCTION_GLOB = 'lib/**/*.ts';
+
+/** The real built covenant dist — the "body present" end of the unbuilt-body axis. */
+export const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
+
+/**
+ * A covenant dist under `repoRoot` mirroring the real build entry-by-entry, with at most
+ * ONE judge body omitted — the state a source-side addition leaves behind when nobody
+ * rebuilt. Every other file is present, so only a per-FILE existence proof tells this
+ * apart from a good build. Pass `null` to omit nothing (the control end of the axis).
+ *
+ * The entries are SYMLINKS, not copies: Node resolves a module to its real path before
+ * looking up `node_modules`, so a symlinked body still reaches the real build's
+ * dependencies and actually runs. A copied body cannot — it dies at import with
+ * ERR_MODULE_NOT_FOUND, which is body exit 1, which `advise` records as a verdict. That
+ * would make every "present body" row a fabricated judgment and leave the fixture green
+ * even if body execution broke entirely.
+ */
+export function distWithout(repoRoot: string, omitBody: string | null): string {
+  const fixtureDist = join(repoRoot, 'covenant-dist-fixture');
+  mkdirSync(fixtureDist, { recursive: true });
+  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
+    if (entry === omitBody) continue;
+    symlinkSync(join(REAL_COVENANT_DIST, entry), join(fixtureDist, entry));
+  }
+  return fixtureDist;
+}
+
+/**
+ * Write `polydeukes.config.json` into `repoRoot`: the minimal valid config (`languages`
+ * is required) plus the caller's keys.
+ *
+ * Separate from {@link createCheckRepo} because the session-surface suites need this
+ * writer without the git repository around it — they drive the hook, which never reads
+ * git. Both surfaces' fixtures therefore share one definition of what a minimal config
+ * looks like, so a schema change lands here once.
+ */
+export function writeConfigAt(
+  repoRoot: string,
+  telemetryPath: string,
+  extra: Record<string, unknown>,
+  productionGlob: string = DEFAULT_PRODUCTION_GLOB,
+): void {
+  const config = {
+    languages: { typescript: { productionGlob, testCmd: 'echo {scope}' } },
+    telemetry: { logPath: telemetryPath },
+    ...extra,
+  };
+  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
+}
 
 /** A throwaway git repository plus the three writers the check suites drive it with. */
 export type CheckRepo = {
@@ -67,14 +116,8 @@ export function createCheckRepo(
     writeFileSync(absolute, content);
   };
 
-  const writeConfig = (extra: Record<string, unknown>): void => {
-    const config = {
-      languages: { typescript: { productionGlob, testCmd: 'echo {scope}' } },
-      telemetry: { logPath: telemetryPath },
-      ...extra,
-    };
-    writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-  };
+  const writeConfig = (extra: Record<string, unknown>): void =>
+    writeConfigAt(repoRoot, telemetryPath, extra, productionGlob);
 
   git('init', '--quiet');
   git('config', 'user.email', 'test@polydeukes.local');

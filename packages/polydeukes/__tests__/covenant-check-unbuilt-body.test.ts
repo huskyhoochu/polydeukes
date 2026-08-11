@@ -1,5 +1,3 @@
-import { mkdirSync, readdirSync, symlinkSync } from 'node:fs';
-import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // CONFIG-06b §4.1/§4.2 RED phase. A judge body that was never built makes a run
@@ -19,7 +17,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ignores this package's vitest alias, so without it the umbrella always points at the real
 // build, where a body file cannot be removed.
 import { runCovenantCheck } from '../src/index.ts';
-import { type CheckRepo, createCheckRepo } from './helpers.ts';
+import {
+  type CheckRepo,
+  createCheckRepo,
+  REAL_COVENANT_DIST,
+  distWithout as sharedDistWithout,
+} from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -46,8 +49,6 @@ const PRECEDENT_ID = 'needs-precedent';
 const PRECEDENT_TOOL = 'WebFetch';
 /** The recovery command a locked-out operator must be told (§4.2). */
 const RECOVERY_COMMAND = 'pnpm build';
-/** The real built dist — the "body present" end of the axis. */
-const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
 
 let repo: CheckRepo;
 let repoRoot: string;
@@ -56,27 +57,9 @@ let git: CheckRepo['git'];
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
-/**
- * A covenant dist mirroring the real build entry-by-entry with exactly ONE judge body
- * omitted — the state a source-side addition leaves behind when nobody rebuilt. Every
- * other file is present, so only a per-FILE existence proof tells this apart from a good
- * build.
- *
- * The entries are SYMLINKS, not copies: Node resolves a module to its real path before
- * looking up `node_modules`, so a symlinked body still reaches the real build's
- * dependencies and actually runs. A copied body cannot — it dies at import with
- * ERR_MODULE_NOT_FOUND, which is body exit 1, which `advise` records as a verdict. That
- * would make every "present body" row here a fabricated judgment and leave the fixture
- * green even if body execution broke entirely. Same mirroring the session e2e uses.
- */
+/** This suite's dist fixtures, all rooted at the current throwaway repository. */
 function distWithout(bodyFileName: string): string {
-  const fixtureDist = join(repoRoot, 'covenant-dist-fixture');
-  mkdirSync(fixtureDist, { recursive: true });
-  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
-    if (entry === bodyFileName) continue;
-    symlinkSync(join(REAL_COVENANT_DIST, entry), join(fixtureDist, entry));
-  }
-  return fixtureDist;
+  return sharedDistWithout(repoRoot, bodyFileName);
 }
 
 /** Every telemetry row as [event, label] — the label separates a verdict from a fail-closed. */
