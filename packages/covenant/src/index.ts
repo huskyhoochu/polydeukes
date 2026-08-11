@@ -17,6 +17,14 @@
  */
 
 export {
+  type BaselineSnapshot,
+  findUnattributed,
+  readBaseline,
+  readBaselineWindowStart,
+  snapshotBaseline,
+  writeBaseline,
+} from './baseline.js';
+export {
   extractMutations,
   type Indeterminate,
   type MutationAnalysis,

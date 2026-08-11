@@ -48,9 +48,9 @@ vocabulary below applies to them unchanged.
 | shell-mod | Shell | The same, through a command line. A command mentioning a protected path passes only if its leading word proves it read-only |
 | transcript-mod | Transcript | Writes to the live session transcript, judged by whole-path **equality** — never as a protected ancestor |
 
-**Five verdict words** are the telemetry contract. A row in `.polydeukes/roi.log` carries
-exactly one of them, and the CLI, the docs, and the tests use the same word for the same
-event. How to read a row is in
+**Six words** are the telemetry contract — five verdicts and one observation. A row in
+`.polydeukes/roi.log` carries exactly one of them, and the CLI, the docs, and the tests use
+the same word for the same event. How to read a row is in
 [troubleshooting](../troubleshooting.md#reading-a-verdict).
 
 | Verdict | Means |
@@ -60,6 +60,14 @@ event. How to read a row is in
 | `witnessed` | A **blocked** verdict a human opened in person. Never silent, never a clean call |
 | `advised` | The commit surface at `enforce: advise` recorded a break without stopping it |
 | `skipped` | The call reached a registration that could not judge it. **Not a pass** — the recorded absence of a judgment |
+| `unattributed` | A protected entry's on-disk state moved and no judgment row explains it. **Not a verdict** — no call is blocked or passed by it; the session surface writes it after comparing state against a stored baseline |
+
+`unattributed` answers a question the other five cannot. They are all written by a judge
+about a call it was handed, so a write that arrives without a declared call — through an
+interpreter, a test runner's child process, a script that assembles the path from its own
+arguments — leaves no row at all. The comparison observes the result rather than the
+spelling, so it records that write after the fact. It never blocks: the write already
+happened, and the comparison fails open on both sides of the verdict.
 
 ## Where the consumer touches it
 

@@ -27,7 +27,7 @@
  * mentions no protected path, so it is never blocked).
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -40,13 +40,18 @@ import {
   transcriptFromJsonlFile,
   transcriptPathFromPayload,
 } from '@polydeukes/adapter-claude-code';
-import { appendRecordFailOpen, normalizeProtectedPaths } from '@polydeukes/core';
+import { appendRecordFailOpen, normalizeProtectedPaths, readRecords } from '@polydeukes/core';
 import {
   type CovenantRegistration,
   compileDisciplineRegistrations,
   dispatchCovenants,
+  findUnattributed,
+  readBaseline,
+  readBaselineWindowStart,
+  snapshotBaseline,
   transcriptModRegistration,
   ttlWitness,
+  writeBaseline,
 } from '@polydeukes/covenant';
 import { loadConfig } from './load-config.js';
 
@@ -77,12 +82,117 @@ function provenBodyPath(distDir: string, fileName: string): string {
   return modulePath;
 }
 
+/** The label every post-hoc state comparison row carries (COVENANT-14 §2-d). */
+const BASELINE_LABEL = 'baseline';
+
+/**
+ * Compare the protected entries' on-disk state against the stored baseline and record what
+ * moved with no judgment explaining it (COVENANT-14 §2-f).
+ *
+ * Runs at hook call START, before this call's own judgment rows land, so the window it reads
+ * is the one the previous comparison left open. Returns the record count as of right now —
+ * where the NEXT window opens, which {@link updateBaseline} persists at call end.
+ *
+ * The comparison records, it never blocks: no row it writes and no failure it hits changes
+ * a verdict or an exit code, which is why every caller keeps it outside the judgment path.
+ */
+function compareBaseline(spec: {
+  repoRoot: string;
+  telemetryPath: string;
+  entries: string[];
+}): number {
+  const baselinePath = join(spec.repoRoot, '.polydeukes', 'baseline.json');
+  // Read before any row of this comparison lands, so the rows this call is about to write
+  // cannot fall inside the window they would then explain away.
+  const { records } = readRecords(spec.telemetryPath);
+  const previous = readBaseline(baselinePath);
+
+  if (previous === null) {
+    // Absence and corruption are the same signal (§2-e). The baseline file is deliberately
+    // NOT on the protection list — protecting it would need a comparison of its own — so its
+    // disappearance has to stay legible in the log instead.
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'unattributed',
+      label: BASELINE_LABEL,
+      subject: baselinePath,
+    });
+    return records.length;
+  }
+
+  const changed = findUnattributed({
+    previous,
+    current: snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
+    // The window is the rows since the previous comparison. Reading the whole log would make
+    // one judged edit an alibi for that entry for the rest of the session.
+    records: records.slice(readBaselineWindowStart(baselinePath) ?? 0),
+  });
+
+  // One row per changed entry — an aggregate row could not say WHICH gate definition moved.
+  for (const entry of changed) {
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'unattributed',
+      label: BASELINE_LABEL,
+      subject: entry,
+    });
+  }
+
+  return records.length;
+}
+
+/**
+ * Re-establish the baseline at hook call END (COVENANT-14 §5).
+ *
+ * At call end rather than right after the comparison: refreshing at comparison time would
+ * miss whatever this call's own judged writes changed, leaving detection permanently one
+ * call behind. `windowStart` is the count {@link compareBaseline} took, so the next window
+ * spans everything from this call's comparison onward — this call's own judgment rows
+ * included, since they are exactly what explains the state it just wrote down.
+ */
+function updateBaseline(spec: { repoRoot: string; entries: string[] }, windowStart: number): void {
+  const dotDir = join(spec.repoRoot, '.polydeukes');
+  mkdirSync(dotDir, { recursive: true });
+  writeBaseline(
+    join(dotDir, 'baseline.json'),
+    snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
+    windowStart,
+  );
+}
+
+/**
+ * Where the comparison writes and what it observes, or `undefined` (COVENANT-14 §6).
+ *
+ * The domain is derived from config rather than enumerated here, and the telemetry path is
+ * resolved by the same precedence the judgment uses so both land in one log. A config that
+ * does not load leaves NO domain, so there is nothing to compare and nothing to re-establish
+ * — the judgment path already answers that failure fail-closed, and a comparison row on top
+ * of it would report the same absence twice under a label that judges nothing.
+ */
+function comparisonSpec(
+  spec: ClaudeCodeHookSpec,
+): { repoRoot: string; telemetryPath: string; entries: string[] } | undefined {
+  let config: ReturnType<typeof loadConfig>['config'];
+  try {
+    config = loadConfig(spec.repoRoot).config;
+  } catch {
+    return undefined;
+  }
+
+  return {
+    repoRoot: spec.repoRoot,
+    telemetryPath:
+      spec.telemetryPath ??
+      process.env.POLYDEUKES_TELEMETRY_PATH ??
+      resolve(spec.repoRoot, config.telemetry.logPath),
+    entries: normalizeProtectedPaths({ protectedPaths: config.protectedPaths }),
+  };
+}
+
 /**
  * Judge one declared tool call before it runs (DIST-01 §3-c). Async because the dispatcher
  * spawns covenant bodies (CORE-01) — a synchronous runner would mean reimplementing the
  * judge, which the single-dispatcher principle forbids.
  */
-export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
+async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
   // Env-first telemetry precedence (E2E contract), settled BEFORE any failure branch: a
   // config that never loads still has somewhere to write its one blocked row. The config
   // value applies after the load succeeds.
@@ -276,4 +386,43 @@ export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exi
     }
     return { exitCode: 2 };
   }
+}
+
+/**
+ * The session-surface entry point: the post-hoc state comparison wrapped around the judgment
+ * (COVENANT-14 §2-f).
+ *
+ * The comparison sits OUTSIDE {@link judgeHookCall}'s fail-closed try on both ends. Inside
+ * it, a comparison failure would become a blocked call — the opposite of a mechanism whose
+ * whole purpose is to record rather than stop — so each side carries its own catch and
+ * neither can reach the verdict. Observation is fail-open, the direction
+ * `appendRecordFailOpen` already established: the worst outcome is a missing datum.
+ *
+ * Order is the contract. The comparison runs first, so it reads the window the previous call
+ * left and its rows land ahead of this call's judgment; the re-establishment runs last, so
+ * this call's own judged writes are folded in rather than alarmed on next time.
+ */
+export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
+  let comparison: ReturnType<typeof comparisonSpec>;
+  let windowStart = 0;
+  try {
+    comparison = comparisonSpec(spec);
+    if (comparison !== undefined) {
+      windowStart = compareBaseline(comparison);
+    }
+  } catch {
+    // fail-open: a comparison that could not run leaves the judgment exactly as it was.
+  }
+
+  const result = await judgeHookCall(spec);
+
+  try {
+    if (comparison !== undefined) {
+      updateBaseline(comparison, windowStart);
+    }
+  } catch {
+    // fail-open: an unwritable baseline costs the next call's detection, never this verdict.
+  }
+
+  return result;
 }

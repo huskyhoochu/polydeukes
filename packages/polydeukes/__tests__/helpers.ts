@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
+import { expect } from 'vitest';
 
 /**
  * Every telemetry row at `telemetryPath` as `[event, label, subject]` — the three-column
@@ -17,6 +18,18 @@ export function telemetryRows(telemetryPath: string): [string, string, string][]
     record.subject,
   ]);
 }
+
+/**
+ * The row the session surface's state comparison leaves on its FIRST call in a repository
+ * (COVENANT-14 §2-e): the baseline file is absent, so it is re-established and the absence
+ * is recorded, subject = the baseline file. Every suite here builds a fresh repoRoot per
+ * case, so every case's first hook call carries it ahead of that call's judgment rows.
+ */
+export const BASELINE_FIRST_RUN_ROW: [string, string, unknown] = [
+  'unattributed',
+  'baseline',
+  expect.stringMatching(/baseline\.json$/),
+];
 
 /** The default `languages.typescript.productionGlob` every check suite's config carries. */
 export const DEFAULT_PRODUCTION_GLOB = 'lib/**/*.ts';

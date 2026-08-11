@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TOPICS } from '../src/docs-query.ts';
-import { telemetryRows } from './helpers';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
 
 // DIST-03 AC-3/AC-4/AC-5 — the clean-install e2e (§3-c). The consumer tree's only inputs
 // are the tarballs this suite packs and the public registry (yaml, picomatch): the
@@ -168,7 +168,11 @@ function spawnConsumerHook(payload: unknown): SpawnSyncReturns<string> {
   });
 }
 
-/** Every telemetry row in the consumer tree as [event, label, subject]. */
+/**
+ * Every telemetry row in the consumer tree as [event, label, subject]. Each spawn clears
+ * `.polydeukes/` first, so every row list opens with the state comparison's first-run row
+ * (COVENANT-14 §2-e).
+ */
 const rows = () => telemetryRows(join(consumerRoot, TELEMETRY_REL));
 
 /** One Write payload, consumer-root-relative — the proven-mutation-target branch. */
@@ -224,7 +228,7 @@ describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () =>
     const result = spawnConsumerHook(writePayload(CLEAN_TARGET, 'hello\n'));
 
     expect(result.status, `hook stderr: ${result.stderr}`).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   }, 60_000);
 
   it('a Write one segment past a protected entry passes: the generated list matches segments, not prefixes', () => {
@@ -235,7 +239,7 @@ describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () =>
     const result = spawnConsumerHook(writePayload(NEAR_MISS_TARGET, '{}'));
 
     expect(result.status, `hook stderr: ${result.stderr}`).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   }, 60_000);
 
   it('a Bash sed -i on the generated settings registration blocks on the shell axis: exit 2', () => {
@@ -249,6 +253,7 @@ describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () =>
 
     expect(result.status).toBe(2);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['passed', 'self-mod', SETTINGS_REL],
       ['blocked', 'shell-mod', SETTINGS_REL],
     ]);
@@ -264,6 +269,7 @@ describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () =>
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(SETTINGS_REL);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', SETTINGS_REL],
       ['passed', 'shell-mod', SETTINGS_REL],
     ]);
@@ -300,6 +306,7 @@ describe('DIST-03 AC-4 — the witness valve spawns live in the generated tree',
 
     expect(result.status, `hook stderr: ${result.stderr}`).toBe(0);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['witnessed', 'self-mod', SETTINGS_REL],
       ['passed', 'shell-mod', SETTINGS_REL],
     ]);

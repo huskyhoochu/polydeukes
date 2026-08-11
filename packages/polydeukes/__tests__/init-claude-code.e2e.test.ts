@@ -15,7 +15,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // distWithout) is NOT copied a fourth time: this file's mirror interposes one level up, on
 // the umbrella's node_modules, a subject none of those copies touch.
 import { initClaudeCode } from '../src/init-claude-code.ts';
-import { telemetryRows } from './helpers';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaRoot = resolve(import.meta.dirname, '..');
@@ -130,7 +130,11 @@ function spawnGeneratedHook(payload: unknown, opts?: { preserveSymlinks?: boolea
   );
 }
 
-/** Every telemetry row as [event, label, subject] — the label separates who answered. */
+/**
+ * Every telemetry row as [event, label, subject] — the label separates who answered.
+ * Each case wires a fresh projectRoot, so every row list opens with the state
+ * comparison's first-run row (COVENANT-14 §2-e).
+ */
 const rows = () => telemetryRows(telemetryPath);
 
 /** One Write payload, projectRoot-relative — the proven-mutation-target branch. */
@@ -157,7 +161,7 @@ describe('DIST-02 §3-b / AC-6 — the generated hook judges real payloads', () 
     );
 
     expect(result.status).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('blocks a Write into the generated settings registration: exit 2, reason on stderr, self-mod row', () => {
@@ -175,6 +179,7 @@ describe('DIST-02 §3-b / AC-6 — the generated hook judges real payloads', () 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(SETTINGS_REL);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', SETTINGS_REL],
       ['passed', 'shell-mod', SETTINGS_REL],
     ]);
@@ -195,7 +200,7 @@ describe('DIST-02 §3-c / AC-7 — subpath isolation: the session never loads th
     });
 
     expect(result.status).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('a clean Write still passes when the git adapter carries NO dist (exit 0, adapter row)', () => {
@@ -212,7 +217,7 @@ describe('DIST-02 §3-c / AC-7 — subpath isolation: the session never loads th
     });
 
     expect(result.status).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('a protected Write in the same distless tree still blocks as a VERDICT, not a crash', () => {
@@ -229,6 +234,7 @@ describe('DIST-02 §3-c / AC-7 — subpath isolation: the session never loads th
 
     expect(result.status).toBe(2);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', SETTINGS_REL],
       ['passed', 'shell-mod', SETTINGS_REL],
     ]);

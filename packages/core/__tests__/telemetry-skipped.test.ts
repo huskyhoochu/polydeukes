@@ -76,6 +76,7 @@ describe('COVENANT-13 §4.5 skipped — aggregation', () => {
       witnessed: 0,
       advised: 0,
       skipped: 2,
+      unattributed: 0,
     });
   });
 });

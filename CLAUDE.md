@@ -89,6 +89,13 @@ What blocks and why:
   permanent condition of that surface.
 - Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored):
   `passed` / `blocked` / `witnessed` / `advised` / `skipped`.
+- **A sixth word is written by nobody's judgment.** The session surface compares the protected
+  entries' on-disk state against a stored baseline at each hook call, and an entry that moved
+  with no judgment row explaining it lands one `unattributed` row (COVENANT-14). It observes
+  results rather than spellings, so an indirect write — an interpreter, a test runner's child
+  process — is recorded even though no declared call carried it. It records and never blocks:
+  the write already happened, and the comparison is fail-open on both ends of the verdict.
+  A rebuild that no judgment explains is a true positive, not noise.
 
 The sanctioned valve is the **TTL witness**: a human types the config's token so it stands alone
 on the message's FIRST line, and the window holds for `ttlMinutes`. The valve stands AFTER the

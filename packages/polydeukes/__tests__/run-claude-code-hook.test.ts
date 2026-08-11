@@ -24,7 +24,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //     can take a body away, and the real-dist cases below lean on that asymmetry
 //     instead of fighting it.
 import { runClaudeCodeHook } from '../src/index.ts';
-import { distWithout as sharedDistWithout, telemetryRows, writeConfigAt } from './helpers';
+import {
+  BASELINE_FIRST_RUN_ROW,
+  distWithout as sharedDistWithout,
+  telemetryRows,
+  writeConfigAt,
+} from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -76,6 +81,10 @@ function distWithout(bodyFileName: string): string {
  * cannot (a crashed assembly and a real block both exit 2). The subject is the
  * MATCHED protected entry, never the judged file path
  * (covenant.dev-log.telemetry-subject-is-matched-entry).
+ *
+ * Every case with a loadable config opens with {@link BASELINE_FIRST_RUN_ROW}: this
+ * repoRoot is fresh, so the state comparison finds no baseline and records the absence
+ * before the judgment answers (COVENANT-14 §2-e).
  */
 const rows = () => telemetryRows(telemetryPath);
 
@@ -200,7 +209,11 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
       }),
     ).resolves.toEqual({ exitCode: 0 });
 
+    // The state comparison resolves the telemetry path by the same precedence, so its
+    // first-run row lands in the configured log too — a comparison that fell back to the
+    // default path would split one call's records across two files.
     expect(readRecords(configured).records.map((record) => [record.event, record.label])).toEqual([
+      ['unattributed', 'baseline'],
       ['passed', ADAPTER_LABEL],
     ]);
   });
@@ -223,7 +236,7 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 });
 
@@ -243,7 +256,7 @@ describe('DIST-01 §3-e parity shape — the assembled session judgment', () => 
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('blocks (exit 2) an Edit targeting a file under a protected entry, subject = matched entry', async () => {
@@ -266,6 +279,7 @@ describe('DIST-01 §3-e parity shape — the assembled session judgment', () => 
 
     expect(result.exitCode).toBe(2);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', PROTECTED_ENTRY],
       ['passed', 'shell-mod', PROTECTED_ENTRY],
     ]);
@@ -298,7 +312,7 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('a config declaring NO disciplines is untouched by a missing discipline body (exit 0)', async () => {
@@ -318,7 +332,7 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0, one skipped row)', async () => {
@@ -344,6 +358,6 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['skipped', PRECEDENT_ID, SCOPED_TARGET]]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['skipped', PRECEDENT_ID, SCOPED_TARGET]]);
   });
 });
