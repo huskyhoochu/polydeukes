@@ -8,6 +8,7 @@
  * See https://github.com/huskyhoochu/polydeukes
  */
 
+import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from './exit-codes.js';
 import { isPlainObject } from './is-plain-object.js';
 
 export {
@@ -22,6 +23,11 @@ export {
   type ResolvedLanguageProfile,
 } from './config.js';
 export {
+  EXIT_BREAK_BLOCKING,
+  EXIT_BREAK_NON_BLOCKING,
+  EXIT_UPHOLD,
+} from './exit-codes.js';
+export {
   type FailMode,
   type FailureKind,
   failModeToExitCode,
@@ -29,7 +35,6 @@ export {
 } from './fail-policy.js';
 export { isPlainObject } from './is-plain-object.js';
 export { normalizeProtectedPaths } from './protected-paths.js';
-
 export {
   aggregateGain,
   appendRecord,
@@ -50,24 +55,6 @@ export {
   type TranscriptUserMessage,
   transcriptFromInput,
 } from './transcript.js';
-
-/**
- * exit-code semantics of the covenant protocol (PRD §4.1).
- *
- * The three codes are distinct and ordered by severity. The covenant *body* only
- * ever emits `0` (uphold) or `1` (break, non-blocking); translating a break into the
- * blocking `2` is the wrapper's job (COVENANT-01), never the core's. The sole place
- * the core itself reaches for `2` is the fail-closed parse path below.
- */
-
-/** Promise upheld — no violation, the edit/push passes. */
-export const EXIT_UPHOLD = 0;
-
-/** Violation reported as a non-blocking signal. The covenant body's break code. */
-export const EXIT_BREAK_NON_BLOCKING = 1;
-
-/** Violation blocked — the edit/push is refused. Reserved for the wrapper / fail-closed. */
-export const EXIT_BREAK_BLOCKING = 2;
 
 /**
  * `FileChange` — one file's mutation evidence around the judged call (CORE-06 §4.1).

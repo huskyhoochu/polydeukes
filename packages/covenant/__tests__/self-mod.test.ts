@@ -8,7 +8,6 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.js';
 import { dispatchCovenants } from '../src/dispatch.js';
-import { envWitness } from '../src/env-witness.js';
 import { judgeSelfModification } from '../src/self-mod.js';
 import { readTelemetryLines } from './helpers.js';
 
@@ -459,39 +458,6 @@ describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5
 });
 
 // ---------------------------------------------------------------------------
-// envWitness (COVENANT-03 §4.3)
-// ---------------------------------------------------------------------------
-
-describe('envWitness — env-var predicate (COVENANT-03 §4.3)', () => {
-  const TEST_VAR = 'PDKS_TEST_SELF_MOD_WITNESS_VAR';
-  const dummyInput: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
-
-  afterEach(() => {
-    delete process.env[TEST_VAR];
-  });
-
-  it('returns false when the named env var is set to the empty string', () => {
-    // Boundary case: an empty string is "set" in the shell sense but must not count as
-    // a truthy witness. Mutation caught: a `!== undefined` check instead of a non-empty
-    // string check.
-    process.env[TEST_VAR] = '';
-
-    expect(envWitness(TEST_VAR)(dummyInput)).toBe(false);
-  });
-
-  it('returns false when the named env var is unset', () => {
-    // Unset and empty-string take different paths through the non-empty check, and the
-    // E2E case that used to cover the unset direction was pruned with it — re-pinned here
-    // (review round 2) so the pair-wise deletion leaves no gap. Mutation caught: a witness
-    // that treats absence as consent (`undefined` falling into the truthy arm), silently
-    // bypassing every covenant registered with a witness.
-    delete process.env[TEST_VAR];
-
-    expect(envWitness(TEST_VAR)(dummyInput)).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // COVENANT-03 §5.2 (body CLI) + §5.3 (dispatcher E2E) — real compiled artifact.
 // ---------------------------------------------------------------------------
 
@@ -716,7 +682,10 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
       old_string: 'a',
       new_string: 'b',
     });
-    const reg = selfModRegistration('self-mod', envWitness(TEST_VAR));
+    // The valve is an inline predicate, not a shipped one: what this case pins is the
+    // dispatcher wiring a registration's witness and recording `witnessed`, so any
+    // predicate that answers true exercises it.
+    const reg = selfModRegistration('self-mod', () => process.env[TEST_VAR] === 'set');
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),

@@ -1,7 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // ADAPTER-git §4.3 — the assembled `pdks covenant check` runner. Tested here as a
@@ -19,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //     - ABSENCE of ttyPrompt models a non-TTY environment (CI, AI-spawned git): the
 //       valve must never open (PRD §4.4 / AC-3 human-only arming).
 import { runCovenantCheck } from '../src/index.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -28,43 +25,28 @@ import { runCovenantCheck } from '../src/index.ts';
 
 const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
 
+let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
-}
-
-function write(relPath: string, content: string): void {
-  const absolute = join(repoRoot, relPath);
-  mkdirSync(dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-}
-
-/** Minimal valid config (languages is required) plus the caller's extra keys. */
-function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-}
+let git: CheckRepo['git'];
+let write: CheckRepo['write'];
+let writeConfig: CheckRepo['writeConfig'];
 
 beforeEach(() => {
-  repoRoot = mkdtempSync(join(tmpdir(), 'pdks-check-'));
-  telemetryPath = join(repoRoot, 'roi.log');
-  git('init', '--quiet');
-  git('config', 'user.email', 'test@polydeukes.local');
-  git('config', 'user.name', 'Polydeukes Test');
-  git('config', 'commit.gpgsign', 'false');
+  repo = createCheckRepo('pdks-check-');
+  ({ repoRoot, telemetryPath, git, write, writeConfig } = repo);
 });
 
 afterEach(() => {
-  rmSync(repoRoot, { recursive: true, force: true });
+  repo.cleanup();
 });
+
+/** Rows written by the protected-paths meta-covenant (never by the fail-closed handler). */
+function selfModRows(): [string, string][] {
+  return readRecords(telemetryPath)
+    .records.filter((record) => record.label === 'self-mod')
+    .map((record) => [record.event, record.subject]);
+}
 
 describe('§5 AC-2 same-judge blocking on a protected path', () => {
   it('blocks (exit 2) when a staged change touches a protectedPaths file', async () => {
@@ -262,13 +244,6 @@ describe('§5 AC-7 fail-closed and empty-staging boundaries', () => {
 // ---------------------------------------------------------------------------
 
 describe('CONFIG-08 §4.2 commit surface — union of common and git-additive protected paths', () => {
-  /** Rows written by the protected-paths meta-covenant (never by the fail-closed handler). */
-  function selfModRows(): [string, string][] {
-    return readRecords(telemetryPath)
-      .records.filter((record) => record.label === 'self-mod')
-      .map((record) => [record.event, record.subject]);
-  }
-
   it('blocks (exit 2) via a self-mod verdict when a staged file sits under a git-additive path', async () => {
     // §5 commit-block AC: 'packages/core/src' is listed ONLY in adapters.git, so this
     // block proves the union reached the judge. Mutation caught: the additive list never
@@ -400,12 +375,6 @@ describe('CONFIG-08 §4.2 commit surface — union of common and git-additive pr
 });
 
 describe('CONFIG-08 §4.2 the union is normalized as ONE list (consumer-side normalization)', () => {
-  function selfModRows(): [string, string][] {
-    return readRecords(telemetryPath)
-      .records.filter((record) => record.label === 'self-mod')
-      .map((record) => [record.event, record.subject]);
-  }
-
   it('judges normally (one verdict, exit 2) when the same path is listed in BOTH lists', async () => {
     // §4.2: dedupe belongs to the normalizer, and the union must survive a cross-list
     // duplicate — first-occurrence dedupe, one registration, one verdict per staged

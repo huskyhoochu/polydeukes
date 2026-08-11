@@ -1,7 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // COVENANT-13 §4.5 RED phase — AC 10, umbrella layer only. The commit surface
@@ -17,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // records can never carry it at runtime until GREEN. The schema also still rejects
 // `requirePrecedent`, so every config below currently fails validation (exit 2).
 import { runCovenantCheck } from '../src/index.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -46,30 +43,12 @@ const docsEntry = {
   requirePrecedent: { command: 'memory search ' },
 };
 
+let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
-}
-
-function write(relPath: string, content: string): void {
-  const absolute = join(repoRoot, relPath);
-  mkdirSync(dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-}
-
-/** Minimal valid config (languages is required) plus the caller's extra keys. */
-function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-}
+let git: CheckRepo['git'];
+let write: CheckRepo['write'];
+let writeConfig: CheckRepo['writeConfig'];
 
 /** Commit the config alone first: loadConfig protects its own file (CONFIG-03 rule 6). */
 function commitConfig(): void {
@@ -84,16 +63,12 @@ function skippedRecords(): { label: string; subject: string }[] {
 }
 
 beforeEach(() => {
-  repoRoot = mkdtempSync(join(tmpdir(), 'pdks-check-skipped-'));
-  telemetryPath = join(repoRoot, 'roi.log');
-  git('init', '--quiet');
-  git('config', 'user.email', 'test@polydeukes.local');
-  git('config', 'user.name', 'Polydeukes Test');
-  git('config', 'commit.gpgsign', 'false');
+  repo = createCheckRepo('pdks-check-skipped-');
+  ({ repoRoot, telemetryPath, git, write, writeConfig } = repo);
 });
 
 afterEach(() => {
-  rmSync(repoRoot, { recursive: true, force: true });
+  repo.cleanup();
 });
 
 describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surface', () => {

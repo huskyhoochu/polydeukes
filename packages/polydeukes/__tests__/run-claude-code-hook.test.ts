@@ -1,6 +1,6 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // DIST-01 §3-c — the session surface's assembled entry point, the exact counterpart of
@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //     can take a body away, and the real-dist cases below lean on that asymmetry
 //     instead of fighting it.
 import { runClaudeCodeHook } from '../src/index.ts';
-import { telemetryRows } from './helpers';
+import { distWithout as sharedDistWithout, telemetryRows, writeConfigAt } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -56,38 +56,18 @@ const PRECEDENT_ID = 'needs-precedent';
 const PRECEDENT_TOOL = 'WebFetch';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
 const SCOPED_TARGET = 'lib/a.ts';
-/** The real built dist — the mirror source for distWithout(). */
-const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
 
 let repoRoot: string;
 let telemetryPath: string;
 
 /** Minimal valid config (languages is required) plus the caller's extra keys. */
 function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
+  writeConfigAt(repoRoot, telemetryPath, extra, DISCIPLINE_SCOPE);
 }
 
-/**
- * A covenant dist mirroring the real build entry-by-entry with exactly ONE judge body
- * omitted — the state a checkout nobody rebuilt leaves behind. Symlinks, not copies:
- * a symlinked body resolves its imports out of the real build and actually runs
- * (the covenant-check-unbuilt-body precedent, verbatim).
- */
+/** This suite's dist fixtures, all rooted at the current throwaway directory. */
 function distWithout(bodyFileName: string): string {
-  const fixtureDist = join(repoRoot, 'covenant-dist-fixture');
-  mkdirSync(fixtureDist, { recursive: true });
-  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
-    if (entry === bodyFileName) continue;
-    symlinkSync(join(REAL_COVENANT_DIST, entry), join(fixtureDist, entry));
-  }
-  return fixtureDist;
+  return sharedDistWithout(repoRoot, bodyFileName);
 }
 
 /**

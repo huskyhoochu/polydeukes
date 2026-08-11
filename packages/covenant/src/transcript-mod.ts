@@ -35,6 +35,7 @@ import {
   pathCandidates,
   pathSegments,
   resolveDotSegments,
+  someStringValue,
   untokenizableLineCandidates,
 } from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
@@ -171,16 +172,7 @@ function tokenNamesTranscript(token: string, transcript: ResolvedTranscript): bo
 
 /** True iff any string value inside `value`, at any depth, names the transcript. */
 function argsNameTranscript(value: unknown, transcript: ResolvedTranscript): boolean {
-  if (typeof value === 'string') {
-    return tokenNamesTranscript(value, transcript);
-  }
-  if (Array.isArray(value)) {
-    return value.some((item) => argsNameTranscript(item, transcript));
-  }
-  if (typeof value === 'object' && value !== null) {
-    return Object.values(value).some((item) => argsNameTranscript(item, transcript));
-  }
-  return false;
+  return someStringValue(value, (token) => tokenNamesTranscript(token, transcript));
 }
 
 /**

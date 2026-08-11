@@ -298,6 +298,13 @@ and remembers what was decided. The two layers compose; they do not compete.
      discipline. Hype vocabulary has to claim the essence changed in order to sell; a
      discipline framework sells the invariant. Pairs with STORY.md's second layer
      (mortal code, immortal record).
+     Parked candidate (2026-08-12, CLEANUP-01): "can the agent just delegate its way around
+     the discipline?" — measured answer: no, and not because of a policy. A discipline whose
+     evidence is the session record cannot be satisfied by a subagent, because the subagent
+     writes a different record and the judge reads one. The escape hatch is closed by the
+     shape of the evidence, not by a rule forbidding it. State the cost in the same breath:
+     the same structure makes those paths undelegatable, so the human-facing session does
+     that work itself.
      Parked candidate (2026-08-02, DIST-02 session): the disciplines are taste — the same
      philosophical class as a linter's line width — but taste about the PROCESS, not the
      artifact. A linter judges the final text; Polydeukes judges the trajectory (was the

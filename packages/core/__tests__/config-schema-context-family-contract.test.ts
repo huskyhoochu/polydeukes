@@ -1,9 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
 import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
+import { validate, validLanguages } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // COVENANT-13 §4.1 (last item) — schema ⟺ defineConfig equivalence for the
@@ -17,27 +14,9 @@ import { defineConfig } from '../src/index.ts';
 // Dev-log gate (core.dev-log.schema-equivalence-blind-without-fixture): every
 // constraint of the NEW schema node gets its own invalid fixture — the
 // equivalence is only enforced where a fixture exists (`why: 123` precedent).
-// New fixtures live in this NEW file (adapters-contract precedent) because the
-// RED phase must not modify existing test files. Dummy commands are FAKE
-// (`fake-runner`/`fake-probe`) so the core grep gate stays satisfied.
+// Dummy commands are FAKE (`fake-runner`/`fake-probe`) so the core grep gate
+// stays satisfied.
 // ---------------------------------------------------------------------------
-
-const schemaPath = fileURLToPath(new URL('../schema/polydeukes.schema.json', import.meta.url));
-const schemaSource = readFileSync(schemaPath, 'utf8');
-const schema = JSON.parse(schemaSource) as Record<string, unknown>;
-
-const ajv = new Ajv2020({ allErrors: true, strict: false });
-// Arm format validation ('regex' etc.) so the schema's pattern fields — including the new
-// `command` and `when` — are actually enforced on the schema side.
-addFormats(ajv);
-const validate = ajv.compile(schema);
-
-// A valid single-language config the discipline fixtures attach to.
-const validLanguages = {
-  languages: {
-    typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
-  },
-};
 
 /** Attach one disciplines array to the valid base config. */
 function withDisciplines(disciplines: unknown): unknown {

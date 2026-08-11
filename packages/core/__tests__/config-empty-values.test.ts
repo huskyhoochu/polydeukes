@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { validLanguages } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // CONFIG-09 §4.2 / AC-3 — empty-string rejection in the five spots where
@@ -11,12 +12,6 @@ import { ConfigValidationError, defineConfig } from '../src/index.ts';
 // testCmd bodies are deliberately FAKE runner strings ('fake-runner {scope}')
 // so the core grep gate stays satisfied even inside fixtures.
 // ---------------------------------------------------------------------------
-
-const validLanguages = {
-  languages: {
-    typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
-  },
-};
 
 // Shared assertion for the invalid-path tests: asserts the concrete error instance
 // (not just "did it throw") and returns it so callers can assert on the message.

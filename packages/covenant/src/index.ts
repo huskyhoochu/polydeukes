@@ -42,7 +42,6 @@ export {
   judgeDiscipline,
 } from './discipline.js';
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
-export { envWitness } from './env-witness.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';
 export { redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';

@@ -51,14 +51,20 @@ function transcriptWith(blocks: { id: string }[]) {
   );
 }
 
-/** A subagent spawn: a tool_use block identified by input.subagent_type. */
-function spawnBlock(kind: string) {
-  return { type: 'tool_use', id: 's1', name: 'Task', input: { subagent_type: kind } };
+/**
+ * A subagent spawn: a tool_use block identified by input.subagent_type.
+ *
+ * The caller supplies `id` (matching precedent-execution.test.ts): transcriptWith stamps
+ * one tool_result per block keyed on it, and the join in transcript.ts keeps the FIRST
+ * result per id — so two blocks sharing a literal would hand one outcome to both.
+ */
+function spawnBlock(id: string, kind: string) {
+  return { type: 'tool_use', id, name: 'Task', input: { subagent_type: kind } };
 }
 
-/** A plain tool call with the given tool name. */
-function toolBlock(name: string) {
-  return { type: 'tool_use', id: 't1', name, input: {} };
+/** A plain tool call with the given tool name. `id` is the caller's, as above. */
+function toolBlock(id: string, name: string) {
+  return { type: 'tool_use', id, name, input: {} };
 }
 
 // ===========================================================================
@@ -70,7 +76,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
     // P0 gate-opening path: requirePrecedent subagent evidence is satisfied by a real
     // spawn of that kind. Mutation caught: the evaluator reading the wrong query (tool
     // names instead of spawn kinds) or inverting the found/missing verdict.
-    const transcript = transcriptWith([spawnBlock(SPAWN_KIND)]);
+    const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
     expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(true);
   });
@@ -80,7 +86,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
     // subagent evidence is an equality check, never a pattern. Mutation caught: the
     // tool-side regex matcher reused for subagent, letting 'tdd' or 'tdd-.*' claim a
     // 'tdd-implementer' spawn as evidence — a fail-open widening of the gate.
-    const transcript = transcriptWith([spawnBlock(SPAWN_KIND)]);
+    const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
     expect(evaluatePrecedent({ subagent: 'tdd' }, transcript)).toBe(false);
     expect(evaluatePrecedent({ subagent: 'tdd-.*' }, transcript)).toBe(false);
@@ -92,7 +98,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
     // unknown keys and makes assembly throw. Mutation caught: undefined answered for a
     // miss, turning every unsatisfied discipline into an assembly crash instead of a
     // block verdict.
-    const transcript = transcriptWith([spawnBlock('code-reviewer')]);
+    const transcript = transcriptWith([spawnBlock('toolu_spawn', 'code-reviewer')]);
 
     expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(false);
   });
@@ -104,7 +110,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
     // worse than a crash — a gate no amount of actually spawning the subagent could ever
     // open, with nothing diagnosing why. Mutation caught: a non-string value coerced into
     // a comparison (fail-open), or collapsed to a judged miss (permanently shut gate).
-    const transcript = transcriptWith([spawnBlock(SPAWN_KIND)]);
+    const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
     expect(evaluatePrecedent({ subagent: 123 }, transcript)).toBeUndefined();
   });
@@ -121,7 +127,10 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex
     // string. Mutation caught: the evaluator comparing with === (subagent semantics
     // leaking into tool), silently making every regex-valued discipline unsatisfiable —
     // a permanent block with no legitimate pass path.
-    const transcript = transcriptWith([toolBlock('Bash'), toolBlock(MCP_TOOL)]);
+    const transcript = transcriptWith([
+      toolBlock('toolu_bash', 'Bash'),
+      toolBlock('toolu_mcp', MCP_TOOL),
+    ]);
 
     expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(true);
     expect(evaluatePrecedent({ tool: 'mcp__.*__get-library-docs' }, transcript)).toBe(true);
@@ -131,7 +140,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex
     // P0 gate stays closed without evidence, and the miss is a judged false, not the
     // unknown-key signal. Mutation caught: an inverted or always-true match, or
     // undefined-for-miss crashing assembly instead of blocking the edit.
-    const transcript = transcriptWith([toolBlock('Bash')]);
+    const transcript = transcriptWith([toolBlock('toolu_bash', 'Bash')]);
 
     expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(false);
   });
@@ -143,7 +152,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex
     // failure. Answering `false` would instead bury a broken pattern as a gate that can
     // never open. Mutation caught: the RegExp construction left unguarded, or the
     // malformed pattern collapsed to a judged miss.
-    const transcript = transcriptWith([toolBlock(MCP_TOOL)]);
+    const transcript = transcriptWith([toolBlock('toolu_mcp', MCP_TOOL)]);
 
     let verdict: boolean | undefined;
     expect(() => {
@@ -163,8 +172,81 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — vocabulary boundary', () => {
     // compileDisciplineRegistrations throw on an unrecognized key. Mutation caught: the
     // evaluator answering false for a typo'd key, silently converting a misconfigured
     // discipline into a permanent, unexplained block instead of a loud assembly failure.
-    const transcript = transcriptWith([spawnBlock(SPAWN_KIND), toolBlock(MCP_TOOL)]);
+    const transcript = transcriptWith([
+      spawnBlock('toolu_spawn', SPAWN_KIND),
+      toolBlock('toolu_mcp', MCP_TOOL),
+    ]);
 
     expect(evaluatePrecedent({ bogus: 'x' }, transcript)).toBeUndefined();
+  });
+});
+
+// ===========================================================================
+// CLEANUP-01 §4.4 (F9-3) — each fixture call needs its own call id
+// ===========================================================================
+
+const SHELL_TOOL = 'Bash';
+const SHELL_PATTERN = '^Bash$';
+const MCP_FAILURE_CONTENT = 'Error: MCP server "context7" request failed: fetch failed';
+
+/**
+ * The two entries transcriptWith builds, with each result's outcome chosen by the caller.
+ * Real transcripts carry no duplicate tool_use_id within one file, so the id collision this
+ * exposes is a fixture artifact — which is why it stays invisible until a fixture mixes
+ * outcomes, and why this one is built for discrimination rather than realism.
+ */
+function transcriptWithOutcomes(blocks: { id: string }[], failed: boolean[]) {
+  return transcriptFromJsonl(
+    [
+      {
+        type: 'assistant',
+        message: { role: 'assistant', content: blocks },
+        timestamp: '2026-08-12T02:00:00.000Z',
+        uuid: 'a-1',
+      },
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: blocks.map((block, index) =>
+            failed[index]
+              ? {
+                  type: 'tool_result',
+                  tool_use_id: block.id,
+                  is_error: true,
+                  content: MCP_FAILURE_CONTENT,
+                }
+              : { type: 'tool_result', tool_use_id: block.id, content: 'ok' },
+          ),
+        },
+        timestamp: '2026-08-12T02:00:01.000Z',
+        uuid: 'u-1',
+      },
+    ]
+      .map((entry) => JSON.stringify(entry))
+      .join('\n'),
+  );
+}
+
+describe("COVENANT-13b §4.4 evaluatePrecedent — this file's fixture helpers under mixed outcomes", () => {
+  it('attributes each outcome to its own call when one of two sibling tool calls failed', () => {
+    // P0 the latent fixture defect CLEANUP-01 F9-3 closes: toolBlock pins `id` to the
+    // literal 't1', so two toolBlock calls in one transcript collide on one id. The join in
+    // transcript.ts keeps the FIRST result per id, so the failure landing first stamps
+    // `succeeded: false` onto BOTH calls — the shell call that really returned ok reads as
+    // failed and its gate can never open, while the reverse order would stamp `true` onto
+    // the failed MCP call and open a gate on a query that returned nothing. Every other
+    // fixture here succeeds, which is what keeps the misattribution invisible. Mutation
+    // caught: the helpers reverting to a fixed id — with distinct ids both assertions hold;
+    // with the shared id the second one flips.
+    const transcript = transcriptWithOutcomes(
+      [toolBlock('toolu_mcp', MCP_TOOL), toolBlock('toolu_bash', SHELL_TOOL)],
+      [true, false],
+    );
+
+    // The failed call is not evidence, even though its name matches the pattern.
+    expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(false);
+    // Its successful sibling is evidence, and the failure beside it does not taint it.
+    expect(evaluatePrecedent({ tool: SHELL_PATTERN }, transcript)).toBe(true);
   });
 });

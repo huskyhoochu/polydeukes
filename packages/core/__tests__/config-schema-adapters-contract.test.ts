@@ -1,9 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
 import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
+import { validate, validLanguages } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // CONFIG-07 §4.3 — schema ⟺ defineConfig equivalence for the `adapters`
@@ -16,27 +13,8 @@ import { defineConfig } from '../src/index.ts';
 // One fixture per §4.3 constraint. Invalid: array (old form), string,
 // namespace value string, namespace value array. Valid: empty map, one
 // namespace with arbitrary content (absent is already covered by the existing
-// contract file). Dummy commands are FAKE (`fake-runner`) so the core grep gate
-// stays satisfied even inside fixtures.
-//
-// New fixtures live in this NEW file (not the existing contract file) because
-// the RED phase must not modify existing test files.
+// contract file).
 // ---------------------------------------------------------------------------
-
-const schemaPath = fileURLToPath(new URL('../schema/polydeukes.schema.json', import.meta.url));
-const schemaSource = readFileSync(schemaPath, 'utf8');
-const schema = JSON.parse(schemaSource) as Record<string, unknown>;
-
-const ajv = new Ajv2020({ allErrors: true, strict: false });
-addFormats(ajv);
-const validate = ajv.compile(schema);
-
-// A valid single-language config the adapters fixtures attach to.
-const validLanguages = {
-  languages: {
-    typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
-  },
-};
 
 const VALID_CONFIGS: readonly unknown[] = [
   // §4.3 valid ⑥ — empty namespace map.
