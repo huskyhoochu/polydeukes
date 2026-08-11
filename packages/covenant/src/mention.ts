@@ -163,20 +163,33 @@ export function untokenizableLineCandidates(line: string): string[] {
 }
 
 /**
+ * True when `predicate` holds for any string value inside `value`, at any depth.
+ *
+ * Arrays and plain objects are walked by value; keys are never scanned, and non-string
+ * primitives never match. Short-circuits on the first hit — the walk answers an existence
+ * question, so a caller that needs every match wants its own traversal.
+ */
+export function someStringValue(value: unknown, predicate: (text: string) => boolean): boolean {
+  if (typeof value === 'string') {
+    return predicate(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => someStringValue(item, predicate));
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value).some((item) => someStringValue(item, predicate));
+  }
+  return false;
+}
+
+/**
  * Recursively test whether any string value inside `value` matches `path` by path-segment
  * containment (ancestor / descendant / equal). Each string is split into path candidates,
  * each tested via {@link pathMatchesProtected}. Only string values are scanned; keys,
  * numbers, and other primitives never match.
  */
 export function mentionsPath(value: unknown, path: string): boolean {
-  if (typeof value === 'string') {
-    return pathCandidates(value).some((candidate) => pathMatchesProtected(candidate, path));
-  }
-  if (Array.isArray(value)) {
-    return value.some((item) => mentionsPath(item, path));
-  }
-  if (typeof value === 'object' && value !== null) {
-    return Object.values(value).some((item) => mentionsPath(item, path));
-  }
-  return false;
+  return someStringValue(value, (text) =>
+    pathCandidates(text).some((candidate) => pathMatchesProtected(candidate, path)),
+  );
 }

@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { mkdirSync, readdirSync, symlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // CONFIG-06b §4.1/§4.2 RED phase. A judge body that was never built makes a run
@@ -21,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ignores this package's vitest alias, so without it the umbrella always points at the real
 // build, where a body file cannot be removed.
 import { runCovenantCheck } from '../src/index.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -50,30 +49,12 @@ const RECOVERY_COMMAND = 'pnpm build';
 /** The real built dist — the "body present" end of the axis. */
 const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
 
+let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
-}
-
-function write(relPath: string, content: string): void {
-  const absolute = join(repoRoot, relPath);
-  mkdirSync(dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-}
-
-/** Minimal valid config (languages is required) plus the caller's extra keys. */
-function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-}
+let git: CheckRepo['git'];
+let write: CheckRepo['write'];
+let writeConfig: CheckRepo['writeConfig'];
 
 /**
  * A covenant dist mirroring the real build entry-by-entry with exactly ONE judge body
@@ -149,16 +130,12 @@ function stagePrecedentScopedChange(enforce: string): void {
 }
 
 beforeEach(() => {
-  repoRoot = mkdtempSync(join(tmpdir(), 'pdks-check-unbuilt-'));
-  telemetryPath = join(repoRoot, 'roi.log');
-  git('init', '--quiet');
-  git('config', 'user.email', 'test@polydeukes.local');
-  git('config', 'user.name', 'Polydeukes Test');
-  git('config', 'commit.gpgsign', 'false');
+  repo = createCheckRepo('pdks-check-unbuilt-', DISCIPLINE_SCOPE);
+  ({ repoRoot, telemetryPath, git, write, writeConfig } = repo);
 });
 
 afterEach(() => {
-  rmSync(repoRoot, { recursive: true, force: true });
+  repo.cleanup();
   vi.restoreAllMocks();
 });
 

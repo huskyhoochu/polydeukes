@@ -1,11 +1,10 @@
 /**
  * `ttlWitness` — a time-boxed witness predicate (COVENANT-06, PRD §4.1–4.2).
  *
- * The second predicate on the witness seam, replacing the session-global env valve's
- * "forget to disarm" failure mode with built-in expiry. A human types the agreed token
- * into the conversation; the witness holds for `ttlMs` from that user message's
- * timestamp, then blocking resumes automatically — no stored state, every dispatch
- * re-judges against the injected clock.
+ * The predicate on the witness seam. Expiry is built in rather than left to the human
+ * to disarm: a human types the agreed token into the conversation, the witness holds
+ * for `ttlMs` from that user message's timestamp, then blocking resumes automatically
+ * — no stored state, every dispatch re-judges against the injected clock.
  *
  * Invoking the witness is distinct from talking about it (COVENANT-15): the token must
  * stand alone on the utterance's first line, so quoting or asking about it never opens
@@ -46,8 +45,8 @@ export type TtlWitnessSpec = {
  *
  * Validation is a factory-time concern: a trimmed-empty token or a non-finite /
  * non-positive `ttlMs` throws here; the returned predicate itself never throws.
- * The input is unused (same convention as `envWitness` — the valve keys on
- * session evidence, not the payload). Pure: no I/O, no state, no mutation.
+ * The input is unused: the valve keys on session evidence, not on the payload being
+ * judged. Pure: no I/O, no state, no mutation.
  */
 export function ttlWitness(
   spec: TtlWitnessSpec,
@@ -83,6 +82,12 @@ export function ttlWitness(
       // both surrounding spaces and the trailing `\r` of a CRLF transport — CRLF only:
       // a lone `\r` with no `\n` is not treated as a line break, so such a message
       // fails closed (refused), never open.
+      //
+      // `trim` covers the whole Unicode space class, so a token padded with NBSP, an
+      // ideographic space, or a BOM opens the valve exactly as an ASCII-padded one does.
+      // That latitude is intentional: this seam defends provenance, not secrecy — the
+      // token is read only from `findUserMessages()`, so no AI-synthesised padding
+      // reaches it, while a human's IME or clipboard routinely supplies these.
       const [firstLine = ''] = message.text.split('\n');
       if (firstLine.trim() !== token) return false;
       if (message.timestampMs === undefined) {

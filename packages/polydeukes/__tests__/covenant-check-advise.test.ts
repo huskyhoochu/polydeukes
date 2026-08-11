@@ -1,7 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // CONFIG-06 §4.6 RED phase. The `covenant check` runner's advise behavior. Same assembled
@@ -12,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // emit exactly one stderr advisory line. Fail-closed paths (validator throw) stay exit 2.
 // The advised outcome does NOT exist yet, so these are RED by construction.
 import { runCovenantCheck } from '../src/index.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -21,42 +18,20 @@ import { runCovenantCheck } from '../src/index.ts';
 
 const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
 
+let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
-}
-
-function write(relPath: string, content: string): void {
-  const absolute = join(repoRoot, relPath);
-  mkdirSync(dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-}
-
-/** Minimal valid config (languages is required) plus the caller's extra keys. */
-function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-}
+let git: CheckRepo['git'];
+let write: CheckRepo['write'];
+let writeConfig: CheckRepo['writeConfig'];
 
 beforeEach(() => {
-  repoRoot = mkdtempSync(join(tmpdir(), 'pdks-check-advise-'));
-  telemetryPath = join(repoRoot, 'roi.log');
-  git('init', '--quiet');
-  git('config', 'user.email', 'test@polydeukes.local');
-  git('config', 'user.name', 'Polydeukes Test');
-  git('config', 'commit.gpgsign', 'false');
+  repo = createCheckRepo('pdks-check-advise-');
+  ({ repoRoot, telemetryPath, git, write, writeConfig } = repo);
 });
 
 afterEach(() => {
-  rmSync(repoRoot, { recursive: true, force: true });
+  repo.cleanup();
   vi.restoreAllMocks();
 });
 

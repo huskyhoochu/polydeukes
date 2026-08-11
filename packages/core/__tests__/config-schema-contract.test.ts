@@ -1,9 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
 import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
+import { schema, validate, validLanguages } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Equivalence contract (PRD §4.4 / §5.3): the hand-written JSON Schema and the
@@ -18,35 +15,13 @@ import { defineConfig } from '../src/index.ts';
 // so they are covered by config.test.ts alone, not this file.
 //
 // COVENANT-10 §4.1 / AC §5.1 (last item): `disciplines` fixtures extend the same
-// equivalence harness. The schema uses `format: 'regex'` for the pattern fields, so
-// the Ajv instance is armed with ajv-formats (already a devDependency) — otherwise
-// format keywords are ignored and the non-compilable-regex fixtures would drift.
+// equivalence contract, asserted through the shared helpers.
 //
 // Dummy commands are FAKE (`fake-runner`, never vitest/pytest/go test) so the
 // core grep gate stays satisfied even inside fixtures. `guard|harness|kb` appears
 // only inside a discipline forbid pattern — that is discipline DATA (AC §5.7 exempts
 // pattern literals from the vocabulary gate).
 // ---------------------------------------------------------------------------
-
-// The schema artifact — hand-written, published at core/schema/polydeukes.schema.json.
-// It does not exist yet: in the RED phase this import path resolves to nothing and
-// this whole file is EXPECTED to fail here.
-const schemaPath = fileURLToPath(new URL('../schema/polydeukes.schema.json', import.meta.url));
-const schemaSource = readFileSync(schemaPath, 'utf8');
-const schema = JSON.parse(schemaSource) as Record<string, unknown>;
-
-const ajv = new Ajv2020({ allErrors: true, strict: false });
-// Arm format validation ('regex' etc.) so the schema's `format: regex` pattern fields
-// are actually enforced — required for the discipline regex-compilability fixtures.
-addFormats(ajv);
-const validate = ajv.compile(schema);
-
-// A valid single-language config the discipline fixtures attach to.
-const validLanguages = {
-  languages: {
-    typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
-  },
-};
 
 // Shared fixtures — JSON-representable only.
 const VALID_CONFIGS: readonly unknown[] = [

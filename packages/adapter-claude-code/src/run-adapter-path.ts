@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { appendRecordFailOpen, EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '@polydeukes/core';
 import { collectFileChanges } from './file-changes.js';
-import { buildCovenantInput } from './index.js';
+import { buildCovenantInput } from './up-translate.js';
 
 /**
  * `DispatchOutcome` — structural mirror of the dispatcher's return (PRD §4.2).

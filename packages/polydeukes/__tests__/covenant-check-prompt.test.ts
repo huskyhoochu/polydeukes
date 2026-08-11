@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // COVENANT-17 §4.5 RED phase — the commit-surface TTY valve moves behind the verdict and
@@ -17,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The widened seam signature does not exist yet — transient type drift until GREEN; vitest
 // transpiles without typechecking.
 import { runCovenantCheck } from '../src/index.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -37,30 +36,12 @@ const SELF_MOD_LABEL = 'self-mod';
 /** The judge body filename the commit surface composes for that registration (CONFIG-06b). */
 const SELF_MOD_BODY = 'self-mod-body.js';
 
+let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8' });
-}
-
-function write(relPath: string, content: string): void {
-  const absolute = join(repoRoot, relPath);
-  mkdirSync(dirname(absolute), { recursive: true });
-  writeFileSync(absolute, content);
-}
-
-/** Minimal valid config (languages is required) plus the caller's extra keys. */
-function writeConfig(extra: Record<string, unknown>): void {
-  const config = {
-    languages: {
-      typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' },
-    },
-    telemetry: { logPath: telemetryPath },
-    ...extra,
-  };
-  writeFileSync(join(repoRoot, 'polydeukes.config.json'), JSON.stringify(config, null, 2));
-}
+let git: CheckRepo['git'];
+let write: CheckRepo['write'];
+let writeConfig: CheckRepo['writeConfig'];
 
 /** Commit the config first so the staged batch is the target change alone. */
 function commitConfig(): void {
@@ -69,16 +50,12 @@ function commitConfig(): void {
 }
 
 beforeEach(() => {
-  repoRoot = mkdtempSync(join(tmpdir(), 'pdks-check-prompt-'));
-  telemetryPath = join(repoRoot, 'roi.log');
-  git('init', '--quiet');
-  git('config', 'user.email', 'test@polydeukes.local');
-  git('config', 'user.name', 'Polydeukes Test');
-  git('config', 'commit.gpgsign', 'false');
+  repo = createCheckRepo('pdks-check-prompt-', DISCIPLINE_SCOPE);
+  ({ repoRoot, telemetryPath, git, write, writeConfig } = repo);
 });
 
 afterEach(() => {
-  rmSync(repoRoot, { recursive: true, force: true });
+  repo.cleanup();
   vi.restoreAllMocks();
 });
 
