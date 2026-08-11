@@ -19,10 +19,6 @@ protectedPaths:
   # A lefthook-local file skips the covenant command and is never staged.
   - 'lefthook-local.yml'
   - '.lefthook-local'
-  # The delegator resolves the judge by package NAME, so Node's ancestor walk decides what
-  # judges this session. A stub planted here replaces the judge with no telemetry row at all.
-  - 'node_modules'
-  - '.claude/node_modules'
   # The judge executables, unseeable by the commit surface because they are gitignored.
   - 'packages/core/dist'
   - 'packages/covenant/dist'

@@ -57,10 +57,9 @@ day is the shipped artifact itself; `pdks init claude-code` generates the same d
 consumer project.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.git/hooks`), the five packages' gitignored `dist`, the root config, the live
-session transcript, and the `node_modules` directories the delegator's by-NAME resolution walks
-(a stub planted there replaces the judge with no telemetry row at all). Package sources are on
-the commit surface's own list instead (`adapters.git.protectedPaths`): a session edit is free,
+`biome.json`, `.git/hooks`), the five packages' gitignored `dist`, the root config, and the live
+session transcript. Package sources are on the commit surface's own list instead
+(`adapters.git.protectedPaths`): a session edit is free,
 and the commit that stages it stops unless a human answers the TTY prompt with the witness
 token. Both surfaces fail **closed** on an unjudgeable run (missing/invalid config, or a judge
 body that was never built); a stale-but-present body carries no such signal.
@@ -108,10 +107,10 @@ Recovery and rewiring:
   (the covenant five and both adapter e2e suites): run one after renaming sources and the
   session locks, every mutating call refused, until a human edits the two protected files in
   their own terminal.
-- **Rewiring the hook cuts your own valve** — the delegator, the dist it loads, and the
-  `node_modules` path it resolves through are three links of one protected chain. Verify a
-  rewired hook against real payloads *before* relying on it, and never remove the current valve
-  until the replacement is proven; otherwise recovery is a human `git checkout`.
+- **Rewiring the hook cuts your own valve** — the delegator and the dist it loads are two links
+  of one protected chain. Verify a rewired hook against real payloads *before* relying on it,
+  and never remove the current valve until the replacement is proven; otherwise recovery is a
+  human `git checkout`.
 - **A dist SYMBOL rename has a window-free path — take it**: export the new name AND keep the
   old as an alias, build, swap the hook, drop the alias, build again. Any other order leaves an
   interval where the hook names something dist does not carry, and the witness valve cannot

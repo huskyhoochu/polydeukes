@@ -56,15 +56,9 @@ languages:
 #     layer that can watch it happen.
 #
 # A minimum. Add entries as you find you want them.
-#   node_modules, .claude/node_modules — the resolution path. The generated hook loads the
-#     judge by package NAME, so every directory Node's ancestor walk can answer from decides
-#     which code judges this session. A stub planted on that walk replaces the judge outright
-#     and every call then passes with no telemetry row at all.
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
-  - 'node_modules'
-  - '.claude/node_modules'
 
 # The time-boxed witness — the human valve on a blocked verdict. A human types this token so
 # it stands alone on a message's FIRST line, the window holds for ttlMinutes, then blocking

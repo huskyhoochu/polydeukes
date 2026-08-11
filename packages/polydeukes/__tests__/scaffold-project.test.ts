@@ -33,18 +33,11 @@ const CONFIG_JSON = 'polydeukes.config.json';
 /** The telemetry-directory ignore line (§3-a, carried over from core.prd.config-schema §4.3). */
 const GITIGNORE_LINE = '.polydeukes/';
 /**
- * §3-d minimum protection set for a generated config. The first two are the gate
- * definitions the session layer creates; the last two are the resolution-path entries
- * this ticket inherits — the generated hook resolves the judge by package NAME, so a
- * stub planted on Node's ancestor node_modules walk replaces the judge outright and
- * every call then passes with NO telemetry row at all (the defect class, blocker B7).
+ * §3-d minimum protection set for a generated config — the gate definitions the session
+ * layer creates. A generated list ships as a minimum a consumer adds to, so an entry
+ * belongs here only when editing that path removes a judgment rather than failing one.
  */
-const MINIMUM_PROTECTED_PATHS = [
-  '.claude/hooks',
-  '.claude/settings.json',
-  'node_modules',
-  '.claude/node_modules',
-];
+const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json'];
 /** A minimal valid sibling config — languages is the schema's only required key. */
 const VALID_SIBLING_YML = [
   'languages:',
