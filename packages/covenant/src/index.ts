@@ -20,7 +20,7 @@ export {
   type BaselineSnapshot,
   findUnattributed,
   readBaseline,
-  readBaselineWindowStart,
+  type StoredBaseline,
   snapshotBaseline,
   writeBaseline,
 } from './baseline.js';

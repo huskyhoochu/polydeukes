@@ -297,10 +297,11 @@ describe('COVENANT-14 §3.3 noise defence — a quiet session stays quiet', () =
 
 describe('COVENANT-14 §3.4 fail-open — a comparison failure never touches the judgment', () => {
   it('an unreadable protected entry leaves the exit code and judgment rows of a comparison-free run', async () => {
-    // §6: no comparison failure propagates — the worst outcome of observation is a
-    // missing datum, never a blocked workflow. Mutation caught: the comparator's
-    // exception escaping into the fail-closed judgment catch, turning an EACCES on a
-    // fixture directory into exit 2 with a hook blocked row.
+    // An unreadable entry is absorbed by the walk rather than thrown — absence is a state,
+    // so a permission-denied entry hashes like a vanished one. This pins that the absorption
+    // reaches the surface: exit code and judgment rows match a comparison-free run.
+    // Mutation caught: the walk propagating EACCES instead of folding it, which the outer
+    // catch would then swallow silently — detection dark with the log looking healthy.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -314,5 +315,18 @@ describe('COVENANT-14 §3.4 fail-open — a comparison failure never touches the
       ['passed', ADAPTER_LABEL, '-'],
       ['passed', ADAPTER_LABEL, '-'],
     ]);
+  }, 30_000);
+
+  it('a baseline directory that is really a file leaves the verdict untouched', async () => {
+    // The §6 invariant needs a failure that actually THROWS, and the comparator resolves
+    // every shape it knows to a value — so the throwing seam is the re-establishment's
+    // mkdir, which hits ENOTDIR when `.polydeukes` is occupied by a file. That is a real
+    // state (a stray write, a botched restore), not a constructed one. Mutation caught: the
+    // call-end catch removed, letting an unwritable baseline reject the hook's promise —
+    // which exits the delegator non-blocking, the cheapest bypass there is.
+    writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
+    writeFileSync(join(repoRoot, '.polydeukes'), 'not a directory\n');
+
+    await expect(hookCall(ordinaryPayload())).resolves.toEqual({ exitCode: 0 });
   }, 30_000);
 });

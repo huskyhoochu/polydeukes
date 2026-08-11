@@ -47,7 +47,6 @@ import {
   dispatchCovenants,
   findUnattributed,
   readBaseline,
-  readBaselineWindowStart,
   snapshotBaseline,
   transcriptModRegistration,
   ttlWitness,
@@ -100,14 +99,14 @@ function compareBaseline(spec: {
   repoRoot: string;
   telemetryPath: string;
   entries: string[];
-}): number {
+}): void {
   const baselinePath = join(spec.repoRoot, '.polydeukes', 'baseline.json');
   // Read before any row of this comparison lands, so the rows this call is about to write
   // cannot fall inside the window they would then explain away.
   const { records } = readRecords(spec.telemetryPath);
-  const previous = readBaseline(baselinePath);
+  const stored = readBaseline(baselinePath);
 
-  if (previous === null) {
+  if (stored === null) {
     // Absence and corruption are the same signal (§2-e). The baseline file is deliberately
     // NOT on the protection list — protecting it would need a comparison of its own — so its
     // disappearance has to stay legible in the log instead.
@@ -116,15 +115,16 @@ function compareBaseline(spec: {
       label: BASELINE_LABEL,
       subject: baselinePath,
     });
-    return records.length;
+    return;
   }
 
   const changed = findUnattributed({
-    previous,
+    previous: stored.entries,
     current: snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
-    // The window is the rows since the previous comparison. Reading the whole log would make
-    // one judged edit an alibi for that entry for the rest of the session.
-    records: records.slice(readBaselineWindowStart(baselinePath) ?? 0),
+    records,
+    // The cut travels with the hashes it belongs to, from the one read above. Rows older
+    // than it were already spent explaining the state that snapshot recorded.
+    cutAt: stored.cutAt,
   });
 
   // One row per changed entry — an aggregate row could not say WHICH gate definition moved.
@@ -135,8 +135,6 @@ function compareBaseline(spec: {
       subject: entry,
     });
   }
-
-  return records.length;
 }
 
 /**
@@ -144,17 +142,22 @@ function compareBaseline(spec: {
  *
  * At call end rather than right after the comparison: refreshing at comparison time would
  * miss whatever this call's own judged writes changed, leaving detection permanently one
- * call behind. `windowStart` is the count {@link compareBaseline} took, so the next window
- * spans everything from this call's comparison onward — this call's own judgment rows
- * included, since they are exactly what explains the state it just wrote down.
+ * call behind.
+ *
+ * The cut is stamped HERE, beside the snapshot, not at the comparison that opened the call.
+ * Both describe the same instant — everything this call did is already folded into the
+ * hashes — so the rows explaining it belong before the cut. Stamping the earlier instant
+ * instead would re-admit this call's own judgment rows into the next window, where they
+ * would attribute a change they had nothing to do with: a call that merely MENTIONED a
+ * protected entry would then absolve any tamper that followed it.
  */
-function updateBaseline(spec: { repoRoot: string; entries: string[] }, windowStart: number): void {
+function updateBaseline(spec: { repoRoot: string; entries: string[] }): void {
   const dotDir = join(spec.repoRoot, '.polydeukes');
   mkdirSync(dotDir, { recursive: true });
   writeBaseline(
     join(dotDir, 'baseline.json'),
     snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
-    windowStart,
+    new Date().toISOString(),
   );
 }
 
@@ -404,11 +407,10 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
  */
 export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
   let comparison: ReturnType<typeof comparisonSpec>;
-  let windowStart = 0;
   try {
     comparison = comparisonSpec(spec);
     if (comparison !== undefined) {
-      windowStart = compareBaseline(comparison);
+      compareBaseline(comparison);
     }
   } catch {
     // fail-open: a comparison that could not run leaves the judgment exactly as it was.
@@ -418,7 +420,7 @@ export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exi
 
   try {
     if (comparison !== undefined) {
-      updateBaseline(comparison, windowStart);
+      updateBaseline(comparison);
     }
   } catch {
     // fail-open: an unwritable baseline costs the next call's detection, never this verdict.

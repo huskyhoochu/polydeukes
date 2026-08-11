@@ -11,23 +11,25 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { TelemetryRecord } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// COVENANT-14 §2-b/§2-c RED phase — the baseline comparator, split as the PRD directs:
-// a pure attribution core plus I/O points, the telemetry.ts precedent.
+// COVENANT-14 §2-b/§2-c — the baseline comparator, split as the PRD directs: a pure
+// attribution core plus I/O points, the telemetry.ts precedent.
 //
-// Contract asserted (module does not exist yet — RED by construction):
+// The contract these fix:
 //   snapshotBaseline({ rootDir, entries }): Record<string, string>
 //     - one hash per protected ENTRY (full content hashing, §2-b): every file under the
 //       entry folded in sorted order; absence is a state (a missing file or a missing
-//       entry changes the hash, never throws).
-//   findUnattributed({ previous, current, records }): string[]
+//       entry changes the hash, never throws). An entry names a file or a directory.
+//   findUnattributed({ previous, current, records, cutAt }): string[]
 //     - pure: the entries whose hash changed AND that no window row with event
 //       passed/blocked/witnessed/advised and subject === entry explains (§2-c).
 //       Attribution is ENTRY-granular — the same granularity the dispatcher records
 //       (covenant.dev-log.telemetry-subject-is-matched-entry), which is what makes the
-//       join well-defined at all.
-//   writeBaseline(path, snapshot): void / readBaseline(path): Record<string, string> | null
-//     - the baseline file I/O (§2-e): an absent or corrupt file reads as null (the
-//       re-establish signal), never a throw — observation is fail-open, not fail-closed.
+//       join well-defined at all. `cutAt` bounds the window by time, and only entries the
+//       previous baseline already watched are compared.
+//   writeBaseline(path, snapshot, cutAt) / readBaseline(path): StoredBaseline | null
+//     - the baseline file I/O (§2-e): hashes and cut in ONE parse; an absent or corrupt
+//       file reads as null (the re-establish signal), never a throw — observation is
+//       fail-open, not fail-closed.
 import {
   findUnattributed,
   readBaseline,
@@ -170,12 +172,20 @@ describe('COVENANT-14 §2-b snapshotBaseline — full content hashing over a fix
   });
 });
 
-describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots', () => {
-  /** One window row; the label is free (§2-c joins on subject + event, never label). */
-  function row(event: TelemetryRecord['event'], subject: string): TelemetryRecord {
-    return { timestamp: '2026-08-12T12:00:00Z', event, label: 'self-mod', subject };
-  }
+/**
+ * One window row; the label is free (§2-c joins on subject + event, never label). The
+ * timestamp defaults to a fixed instant because most cases do not exercise the cut — the
+ * ones that do pass it explicitly.
+ */
+function row(
+  event: TelemetryRecord['event'],
+  subject: string,
+  timestamp = '2026-08-12T12:00:00.000Z',
+): TelemetryRecord {
+  return { timestamp, event, label: 'self-mod', subject };
+}
 
+describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots', () => {
   it('a changed entry with an empty window is unattributed', () => {
     // Mutation caught: the diff inverted (reporting unchanged entries) or the change
     // detection deleted — the detection direction of AC §3.1.
@@ -284,6 +294,50 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
 
     expect([...result].sort()).toEqual([ENTRY_A, ENTRY_B]);
   });
+
+  it('an entry the config no longer lists is dropped, not reported', () => {
+    // The domain moves when the config does. An entry removed from `protectedPaths` is
+    // absent from `current`, and the comparison has nothing to say about a path it no
+    // longer watches. Mutation caught: diffing over the union of both sides, which turns
+    // every deregistration into a permanent alarm nobody can clear.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b1' },
+      current: { [ENTRY_A]: 'a1' },
+      records: [],
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('an entry the config newly lists is not an alarm on its first comparison', () => {
+    // The other direction of the same axis: a newly registered entry has no previous hash,
+    // so `current !== previous` is trivially true and the first comparison after a config
+    // edit would report it. That row is indistinguishable from a real tamper, and a
+    // mechanism that cries wolf when the owner edits their own policy teaches them to
+    // ignore it. Mutation caught: comparing against `undefined` instead of asking whether
+    // the entry was watched before.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'a1' },
+      current: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b1' },
+      records: [],
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('a newly listed entry IS compared from the next comparison onward', () => {
+    // The forgiveness above is one-shot, not permanent. Once an entry carries a previous
+    // hash, a change to it reports like any other. Mutation caught: the new-entry branch
+    // written as a standing exemption, which would leave every entry added after the first
+    // run permanently unwatched — the config edit becoming a way to opt out of observation.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b1' },
+      current: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b2' },
+      records: [],
+    });
+
+    expect(result).toEqual([ENTRY_B]);
+  });
 });
 
 describe('COVENANT-14 §2-e baseline file I/O — absence and corruption read as null', () => {
@@ -295,7 +349,7 @@ describe('COVENANT-14 §2-e baseline file I/O — absence and corruption read as
 
     writeBaseline(path, snapshot);
 
-    expect(readBaseline(path)).toEqual(snapshot);
+    expect(readBaseline(path)?.entries).toEqual(snapshot);
   });
 
   it('an absent baseline file reads as null, never a throw', () => {
@@ -322,5 +376,80 @@ describe('COVENANT-14 §2-e baseline file I/O — absence and corruption read as
     writeFileSync(path, '42');
 
     expect(readBaseline(path)).toBeNull();
+  });
+});
+
+describe('COVENANT-14 §2-c the attribution window is cut by time, not by position', () => {
+  const path = () => join(rootDir, 'baseline.json');
+
+  it('readBaseline returns the snapshot AND the cut together, from one parse', () => {
+    // The window bound and the hashes it will be compared against must come from the same
+    // read. Mutation caught: two separate parses of the file (the shape this replaced) —
+    // a write landing between them pairs one call's hashes with another call's cut, and
+    // the mismatch is invisible in every log.
+    writeBaseline(path(), { [ENTRY_A]: 'h1' }, '2026-08-12T12:00:00.000Z');
+
+    expect(readBaseline(path())).toEqual({
+      entries: { [ENTRY_A]: 'h1' },
+      cutAt: '2026-08-12T12:00:00.000Z',
+    });
+  });
+
+  it('the cut survives a truncated telemetry log', () => {
+    // A positional index into the records array (the shape this replaced) points past the
+    // end once the log is trimmed or rotated, emptying the window for every later call and
+    // making every legitimate judgment stop attributing. A timestamp does not move when
+    // rows are removed. Mutation caught: the cut stored as a count.
+    writeBaseline(path(), { [ENTRY_A]: 'h1' }, '2026-08-12T12:00:00.000Z');
+    const { cutAt } = readBaseline(path()) ?? {};
+    const survivingRow = row('passed', ENTRY_A, '2026-08-12T12:00:05.000Z');
+
+    // One row survived a truncation that removed everything before it.
+    const window = [survivingRow].filter((record) => record.timestamp >= (cutAt ?? ''));
+
+    expect(window).toEqual([survivingRow]);
+  });
+
+  it('a row written before the cut no longer attributes', () => {
+    // The point of the cut: a judgment already spent on a previous comparison must not
+    // explain the next change too. Mutation caught: the cut dropped, which makes one
+    // judged edit an alibi for that entry for the rest of the session.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'h1' },
+      current: { [ENTRY_A]: 'h2' },
+      records: [row('passed', ENTRY_A, '2026-08-12T11:59:00.000Z')],
+      cutAt: '2026-08-12T12:00:00.000Z',
+    });
+
+    expect(result).toEqual([ENTRY_A]);
+  });
+
+  it('a row written at or after the cut still attributes', () => {
+    // The other end of the same axis. A cut that also excludes the rows it should admit
+    // turns every judged edit into an alarm — the noise failure is as bad as the miss.
+    // Mutation caught: a strict `>` on a row whose timestamp equals the cut.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'h1' },
+      current: { [ENTRY_A]: 'h2' },
+      records: [row('passed', ENTRY_A, '2026-08-12T12:00:00.000Z')],
+      cutAt: '2026-08-12T12:00:00.000Z',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('an absent cut admits the whole window rather than none of it', () => {
+    // A baseline written before this field existed, or one whose cut failed to parse. The
+    // safe direction is to attribute MORE, not less: over-attributing costs one missed row
+    // in a session that is already anomalous, while under-attributing floods an ordinary
+    // session with alarms and trains the reader to ignore them.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'h1' },
+      current: { [ENTRY_A]: 'h2' },
+      records: [row('passed', ENTRY_A, '2026-08-12T11:00:00.000Z')],
+      cutAt: undefined,
+    });
+
+    expect(result).toEqual([]);
   });
 });

@@ -21,6 +21,16 @@ import type { TelemetryEvent, TelemetryRecord } from '@polydeukes/core';
 export type BaselineSnapshot = Record<string, string>;
 
 /**
+ * The baseline file's contents: the entry hashes plus the instant the attribution window
+ * opens at. Named for the file rather than the concept — `Baseline` already belongs to the
+ * delta family, where it means a file's prior CONTENT, not a protection snapshot.
+ *
+ * The two fields travel together because they are read together — pairing one comparison's
+ * hashes with another's cut would silently mis-attribute, undetectably.
+ */
+export type StoredBaseline = { entries: BaselineSnapshot; cutAt?: string };
+
+/**
  * The four verdict words that explain a change (§2-c). `blocked` is among them because a
  * block stops the call, not what it already wrote — alarming on that residue would be
  * duplicate reporting. `skipped` and `unattributed` are absent by construction: a recorded
@@ -91,44 +101,63 @@ export function snapshotBaseline(spec: { rootDir: string; entries: string[] }): 
  *
  * Attribution is asked per entry, never per window: "the window holds an attributing row"
  * and "THIS entry's change has one" are different claims, and answering the first is the
- * fail-open shape this repository already shipped once. `records` is the window since the
- * previous comparison — a row older than that has already been spent.
+ * fail-open shape this repository already shipped once.
+ *
+ * The window is cut by `cutAt` — rows at or after that instant, which are the ones written
+ * since the previous comparison. Cutting by time rather than by a record count keeps the
+ * bound meaningful when the log is trimmed or rotated; a positional index would point past
+ * the end and empty the window for every later call. An absent cut admits every row: over-
+ * attributing costs one missed alarm in a session that is already anomalous, while under-
+ * attributing floods an ordinary one and teaches the reader to ignore the alarm entirely.
+ *
+ * Only entries the previous baseline already watched are compared. An entry the config just
+ * added has no prior hash, and reporting it would make editing one's own policy look
+ * identical to a tamper; an entry the config dropped is simply no longer watched.
  */
 export function findUnattributed(spec: {
   previous: BaselineSnapshot;
   current: BaselineSnapshot;
   records: TelemetryRecord[];
+  cutAt?: string;
 }): string[] {
+  const cutAt = spec.cutAt;
   const attributed = new Set(
     spec.records
+      .filter((record) => cutAt === undefined || record.timestamp >= cutAt)
       .filter((record) => ATTRIBUTING_EVENTS.includes(record.event))
       .map((record) => record.subject),
   );
 
   return Object.keys(spec.current).filter(
-    (entry) => spec.current[entry] !== spec.previous[entry] && !attributed.has(entry),
+    (entry) =>
+      entry in spec.previous &&
+      spec.current[entry] !== spec.previous[entry] &&
+      !attributed.has(entry),
   );
 }
 
 /**
  * Write the baseline file (§2-e).
  *
- * `windowStart` is the telemetry record count at the moment of this comparison, so the next
- * comparison reads only the rows appended since. Without it the whole log is the window and
- * one judged edit absolves that entry for the rest of the session.
+ * `cutAt` is the instant this comparison ran, so the next one attributes from rows written
+ * at or after it. Written at call END, so the rows explaining what this call itself changed
+ * fall before the cut — the snapshot beside them already absorbed those changes.
  */
-export function writeBaseline(
-  path: string,
-  snapshot: BaselineSnapshot,
-  windowStart: number = 0,
-): void {
-  writeFileSync(path, JSON.stringify({ entries: snapshot, windowStart }));
+export function writeBaseline(path: string, snapshot: BaselineSnapshot, cutAt?: string): void {
+  writeFileSync(path, JSON.stringify({ entries: snapshot, cutAt }));
 }
 
-/** Parse the baseline file, or `null` when it is absent, corrupt, or the wrong shape. */
-function parseBaselineFile(
-  path: string,
-): { entries: BaselineSnapshot; windowStart: number } | null {
+/**
+ * Read the baseline — entries and window cut in ONE parse — or `null` (§2-e).
+ *
+ * One parse rather than two: reading the hashes and the cut separately lets a concurrent
+ * write land between them, pairing one comparison's state with another's window bound. That
+ * mismatch changes which entries are attributed and leaves no trace anywhere.
+ *
+ * Absence and corruption are the same signal — re-establish and record — so neither throws.
+ * Observation is fail-open: the worst outcome is a missing datum, never a blocked call.
+ */
+export function readBaseline(path: string): StoredBaseline | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(path, 'utf-8'));
@@ -142,7 +171,7 @@ function parseBaselineFile(
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     return null;
   }
-  const { entries, windowStart } = parsed as { entries?: unknown; windowStart?: unknown };
+  const { entries, cutAt } = parsed as { entries?: unknown; cutAt?: unknown };
   if (typeof entries !== 'object' || entries === null || Array.isArray(entries)) {
     return null;
   }
@@ -150,26 +179,10 @@ function parseBaselineFile(
     return null;
   }
 
+  // An unparseable cut degrades to absent, which admits the whole window — the same safe
+  // direction {@link findUnattributed} takes, rather than a bound nobody can trust.
   return {
     entries: entries as BaselineSnapshot,
-    windowStart: typeof windowStart === 'number' ? windowStart : 0,
+    cutAt: typeof cutAt === 'string' ? cutAt : undefined,
   };
-}
-
-/**
- * Read the baseline snapshot, or `null` (§2-e).
- *
- * Absence and corruption are the same signal — re-establish and record — so neither throws.
- * Observation is fail-open: the worst outcome is a missing datum, never a blocked call.
- */
-export function readBaseline(path: string): BaselineSnapshot | null {
-  return parseBaselineFile(path)?.entries ?? null;
-}
-
-/**
- * The telemetry record count the previous comparison recorded, or `null` alongside an
- * unreadable baseline. This is where the attribution window is cut.
- */
-export function readBaselineWindowStart(path: string): number | null {
-  return parseBaselineFile(path)?.windowStart ?? null;
 }
