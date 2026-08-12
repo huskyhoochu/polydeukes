@@ -40,7 +40,12 @@ import {
   transcriptFromJsonlFile,
   transcriptPathFromPayload,
 } from '@polydeukes/adapter-claude-code';
-import { appendRecordFailOpen, normalizeProtectedPaths, readRecords } from '@polydeukes/core';
+import {
+  appendRecordFailOpen,
+  DEFAULT_TELEMETRY_LOG_PATH,
+  normalizeProtectedPaths,
+  readRecords,
+} from '@polydeukes/core';
 import {
   type CovenantRegistration,
   compileDisciplineRegistrations,
@@ -209,7 +214,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
   try {
     const envTelemetryPath = process.env.POLYDEUKES_TELEMETRY_PATH;
     telemetryPath =
-      spec.telemetryPath ?? envTelemetryPath ?? join(spec.repoRoot, '.polydeukes', 'roi.log');
+      spec.telemetryPath ?? envTelemetryPath ?? join(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
 
     // Discovery + parse + validation are the loader's job; a throw here (absent, ambiguous,
     // unparseable, or invalid config) falls into the fail-closed catch.

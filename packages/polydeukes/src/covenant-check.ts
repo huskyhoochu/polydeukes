@@ -22,9 +22,10 @@
  * a state file would be an agent-forgeable surface (PRD §7).
  *
  * fail-closed: a missing/invalid config, an unbuilt judge body, or a collector failure
- * exits 2 with one blocked record when a telemetry path is known. An empty staging area
- * is an explicit pass (nothing to judge — the dispatcher precedent of zero matches, zero
- * records).
+ * exits 2 with one blocked record. The telemetry path is settled before the first failure
+ * branch can be taken (ADAPTER-git-b §4.1), so the record has somewhere to land even when
+ * the config that names its path never loaded. An empty staging area is an explicit pass
+ * (nothing to judge — the dispatcher precedent of zero matches, zero records).
  */
 
 import { existsSync } from 'node:fs';
@@ -37,7 +38,11 @@ import {
   STAGED_DELETE,
   STAGED_WRITE,
 } from '@polydeukes/adapter-git';
-import { appendRecord, normalizeProtectedPaths } from '@polydeukes/core';
+import {
+  appendRecordFailOpen,
+  DEFAULT_TELEMETRY_LOG_PATH,
+  normalizeProtectedPaths,
+} from '@polydeukes/core';
 import {
   type CovenantRegistration,
   compileDisciplineRegistrations,
@@ -49,7 +54,12 @@ import { loadConfig } from './load-config.js';
 export type CovenantCheckSpec = {
   /** Repository root — config discovery and staged collection both anchor here. */
   repoRoot: string;
-  /** Overrides the config's telemetry log path (tests and assembly injection). */
+  /**
+   * Overrides where telemetry is written (tests and assembly injection) — the first term
+   * of the precedence, ahead of the config's `telemetry.logPath` and of the default this
+   * runner settles before the config loads (ADAPTER-git-b §4.1). Absent, both of those
+   * apply in that order.
+   */
   telemetryPath?: string;
   /** Overrides the resolved covenant dist directory (tests and assembly injection). */
   covenantDist?: string;
@@ -119,19 +129,24 @@ function provenBodyPath(distDir: string, fileName: string): string {
   return modulePath;
 }
 
-/** One blocked record for a run that failed closed before any dispatch could judge. */
+/**
+ * One blocked record for a run that failed closed before any dispatch could judge.
+ *
+ * The write goes through `appendRecordFailOpen` rather than the mkdir-free `appendRecord`:
+ * a repository that has never been judged has no `.polydeukes/` directory — the shape
+ * `pdks init` leaves every consumer in — and the raw append would fail open on ENOENT,
+ * turning the very first fail-closed run into an unrecorded block. The wrapper carries both
+ * the parent-directory guarantee and the fail-open contract, so a telemetry failure still
+ * never softens the blocking exit. An undefined path is tolerated here because a non-string
+ * `repoRoot` leaves no root to write a row under.
+ */
 function recordFailClosed(telemetryPath: string | undefined): void {
   if (telemetryPath === undefined) return;
-  try {
-    appendRecord(telemetryPath, {
-      timestamp: new Date().toISOString(),
-      event: 'blocked',
-      label: 'covenant-check',
-      subject: '-',
-    });
-  } catch {
-    // A telemetry failure must never soften the blocking exit (session-hook precedent).
-  }
+  appendRecordFailOpen(telemetryPath, {
+    event: 'blocked',
+    label: 'covenant-check',
+    subject: '-',
+  });
 }
 
 /**
@@ -141,17 +156,28 @@ function recordFailClosed(telemetryPath: string | undefined): void {
  * principle forbids.
  */
 export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }> {
+  // Telemetry precedence settled BEFORE the failure branch (session-hook precedent): a config
+  // that never loads still has somewhere to write its one blocked row, and the config value
+  // replaces the provisional default once the load succeeds. The provisional default spells
+  // itself with the loader's own constant, so both terms converge on one source.
+  //
+  // Computed INSIDE the try even though it must run first, because `join` throws on a
+  // non-string repoRoot and that throw must not escape as a rejection. It leaves
+  // `telemetryPath` undefined, which the catch tolerates: there is no root to write a row
+  // under anyway.
+  let telemetryPath: string | undefined;
   let config: ReturnType<typeof loadConfig>['config'];
   try {
+    telemetryPath = spec.telemetryPath ?? join(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
     ({ config } = loadConfig(spec.repoRoot));
+    telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
   } catch (error) {
     process.stderr.write(
       `covenant check failed closed: ${error instanceof Error ? error.message : String(error)}\n`,
     );
-    recordFailClosed(spec.telemetryPath);
+    recordFailClosed(telemetryPath);
     return { exitCode: 2 };
   }
-  const telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
 
   let changes: ReturnType<typeof collectStagedChanges>;
   try {
