@@ -39,14 +39,15 @@
     "./claude-code": {
       "types": "./dist/claude-code-hook.d.ts",
       "import": "./dist/claude-code-hook.js"
-    }
+    },
+    "./schema.json": "./dist/schema/polydeukes.schema.json"
   },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/copy-docs.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-docs.mjs && node scripts/copy-schema.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "pnpm run build"

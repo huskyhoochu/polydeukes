@@ -203,8 +203,13 @@ needs no second dependency.
 |---|---|
 | `polydeukes` | The barrel — `loadConfig`, `runCovenantCheck`, `runClaudeCodeHook`, their spec types, `ResolvedConfig` |
 | `polydeukes/claude-code` | `runClaudeCodeHook` and `ClaudeCodeHookSpec` alone |
+| `polydeukes/schema.json` | The config JSON Schema, copied from the core at build time |
 
 The generated hook delegator imports the subpath, not the barrel. ESM imports are eager, so
 importing the barrel would load the commit-surface runner — and the git adapter behind it —
 on every session tool call that will never use them. The subpath is the session surface's
 own entry point, and the barrel is for programmatic consumers.
+
+`polydeukes/schema.json` is for code that reads the schema. A `$schema` line names the file
+path instead — an editor reads that string statically, so no module resolver runs on it. Both
+spellings are in [configuration.md's IDE section](../configuration.md#ide-support).

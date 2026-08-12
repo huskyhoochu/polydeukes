@@ -198,8 +198,14 @@ type ClaudeCodeHookSpec = {
 |---|---|
 | `polydeukes` | 배럴입니다. `loadConfig`와 `runCovenantCheck`, `runClaudeCodeHook`, 각 스펙 타입, `ResolvedConfig` |
 | `polydeukes/claude-code` | `runClaudeCodeHook`과 `ClaudeCodeHookSpec` 둘뿐입니다 |
+| `polydeukes/schema.json` | 설정 JSON Schema입니다. 빌드 시점에 코어에서 복사됩니다 |
 
 생성된 훅 위임자는 배럴이 아니라 서브패스를 불러옵니다. ESM 임포트는 즉시 적재라서, 배럴을
 부르면 쓰지도 않을 커밋 표면 실행기와 그 뒤의 git 어댑터가 세션 도구 호출마다 따라
 올라옵니다. 서브패스가 세션 표면의 진입점이고 배럴은 프로그램으로 부르는 소비자의
 것입니다.
+
+`polydeukes/schema.json`은 스키마를 읽는 코드가 쓰는 경로입니다. `$schema` 줄은 대신 파일
+경로를 적습니다. 편집기가 그 문자열을 정적으로 읽으므로 모듈 해석기가 돌지 않기
+때문입니다. 두 철자 모두 [configuration.md의 IDE 절](../configuration.ko.md#ide-지원)에
+있습니다.

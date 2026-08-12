@@ -301,7 +301,16 @@ measurement, not the protection, and a gate you cannot count is a gate you canno
 Worth telling because it names a bias in how anyone audits their own checks: we verify that
 the block happens, and the block happening is what makes us stop looking. Pairs with the
 sibling framing already parked here (COVENANT-18: a check has two ends) — the end that
-behaves correctly is where the untested half hides. -->
+behaves correctly is where the untested half hides.
+     Parked candidate (2026-08-12, DIST-05): the covenant stopped the AI writing this
+     feature, and the way it was resolved is the thesis in miniature. A delegated
+     implementer was blocked from editing a manifest until someone had actually checked the
+     registry; it ran the check, stayed blocked (its evidence lived in a transcript the
+     judge does not read), and reported the block rather than opening the valve — which it
+     could not do for itself, by design. The edit landed once a human-driven session
+     supplied the same evidence. Worth telling because the usual objection to enforcement
+     is that it slows the work down: here it did, by one command, and the promise held in
+     the one direction that matters — the party being bound could not release itself. -->
 
 ## What Polydeukes is not
 

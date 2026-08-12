@@ -41,37 +41,27 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 
 ## IDE support
 
-The published JSON Schema gives autocompletion and validation in editors. The schema file
-ships inside `@polydeukes/core` — a *transitive* dependency of the umbrella — and under
-pnpm's default strict layout transitive dependencies are not exposed at your project's
-top-level `node_modules` (measured 2026-08-03: the file resolves only under
-`node_modules/.pnpm/…`). A `node_modules`-relative `$schema` line therefore does not
-resolve in a default pnpm install. `pdks init claude-code` writes no `$schema` line into
-the generated config for the same reason: no single *file-path* spelling resolves in every
-consumer layout, and a wrong line loses editor validation silently.
-
-Two forms work. The version-pinned public URL is independent of any install layout
-(verified against the `v0.2.0` tag and `main` — swap the tag for the release you
-installed):
+The JSON Schema gives autocompletion and validation in editors. It ships inside the
+`polydeukes` package you installed, so one spelling reaches it from any project root:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
+# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
 
-The relative path works only in a layout where `@polydeukes/core` is present at the top
-level of `node_modules`. Whether yours is one is a one-look check — if
-`node_modules/@polydeukes/core/schema/` exists in your project, the line resolves:
+`pdks init claude-code` writes that line as the first line of the config it generates. The
+directive is honored at the head of the document, and the loader never reads it — it is a
+YAML comment.
 
-```yaml
-# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
-```
-
-For a JSON config, use the standard top-level key instead — it is accepted and ignored by
-the loader, with the same two values:
+For a JSON config, use the standard top-level key instead. The loader accepts it and drops
+it from the resolved config:
 
 ```json
-{ "$schema": "https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json" }
+{ "$schema": "node_modules/polydeukes/dist/schema/polydeukes.schema.json" }
 ```
+
+The value is a **file path**, not a module specifier: `$schema` is a static string an
+editor reads, so no module resolver runs on it. Code that reads the schema at runtime uses
+the package subpath `polydeukes/schema.json` instead.
 
 ## Reference
 

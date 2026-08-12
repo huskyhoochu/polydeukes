@@ -86,6 +86,14 @@ declared inputs stays cached across a change that should invalidate it, so an e2
 validate the previous build. When a change touches the assembly rather than a package's
 sources, verify against a fresh build rather than a cached task.
 
+**The umbrella build reads two directories outside its own package** — `docs/` (bundled into
+`dist/docs` by `copy-docs.mjs`, DOCS-02) and `packages/core/schema/` (copied to `dist/schema`
+by `copy-schema.mjs`, DIST-05, so a consumer's `$schema` line reaches a file inside the
+package it installed). Both are declared in `packages/polydeukes/turbo.json` `inputs` with
+`$TURBO_ROOT$`. A copy step added without its input declaration ships a stale asset on every
+cache hit, and CI never sees it — CI runs with a cold cache. Any new copy step goes in that
+list at the same time.
+
 **An import-only exports map blocks `createRequire`.** A package consumed through
 `createRequire` (as the git adapter's spawn path does) needs a `require` condition in its
 exports map; an `import`-only map fails at runtime while typechecking clean.

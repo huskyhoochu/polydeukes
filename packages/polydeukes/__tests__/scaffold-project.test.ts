@@ -33,6 +33,13 @@ const CONFIG_JSON = 'polydeukes.config.json';
 /** The telemetry-directory ignore line (§3-a, carried over from core.prd.config-schema §4.3). */
 const GITIGNORE_LINE = '.polydeukes/';
 /**
+ * DIST-05 AC-5 — the `$schema` line the generated config opens with. The value is a
+ * consumer-root-relative FILE path because `$schema` is a static string an editor reads;
+ * a module specifier never reaches a resolver from there (DIST-05 §3-b).
+ */
+const SCHEMA_LINE =
+  '# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json';
+/**
  * §3-d minimum protection set for a generated config — the gate definitions the session
  * layer creates. A generated list ships as a minimum a consumer adds to, so an entry
  * belongs here only when editing that path removes a judgment rather than failing one.
@@ -216,5 +223,36 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
     expect(lines).toContain('coverage/');
     expect(lines).toContain('/.polydeukes/');
     expect(lines).toContain('.polydeukes/roi.log');
+  });
+});
+
+describe('DIST-05 AC-5 — the generated config points an editor at the shipped schema', () => {
+  it('opens with the exact yaml-language-server $schema line', () => {
+    // Mutation caught: any spelling drift in the value — the `@polydeukes/core` path the
+    // docs carried before this ticket, a module specifier (`polydeukes/schema.json`), an
+    // absolute path, or a GitHub raw URL. Every one of those is still a plausible-looking
+    // comment that yaml-language-server silently ignores or fails to fetch, so nothing in
+    // the consumer's editor reports the mistake: validation just never happens. The line
+    // must also be FIRST — the directive is only honored at the head of the document, so
+    // a line pushed below a banner comment is inert in the same silent way.
+    scaffoldProject(projectRoot);
+
+    expect(read(CONFIG_CANONICAL).split('\n')[0]).toBe(SCHEMA_LINE);
+  });
+
+  it('still passes loadConfig with the $schema line present', () => {
+    // DIST-05 §5 invariant 4, asserted rather than assumed: the line is a YAML comment and
+    // the loader must not see it. Mutation caught: the line emitted as a document KEY
+    // (`$schema: node_modules/...`) instead of a comment — the schema forbids unknown
+    // top-level properties, so validation would reject the config the scaffold itself just
+    // wrote, and the fail-closed session surface would block every call right after
+    // install. The header-line assertion above passes for a mapping key too, since the
+    // comment marker is one character.
+    scaffoldProject(projectRoot);
+
+    expect(() => loadConfig(projectRoot)).not.toThrow();
+    expect(loadConfig(projectRoot).config.protectedPaths).toEqual(
+      expect.arrayContaining(MINIMUM_PROTECTED_PATHS),
+    );
   });
 });
