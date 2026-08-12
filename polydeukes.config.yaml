@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=packages/core/schema/polydeukes.schema.json
-# Repo-relative because the core is a workspace package here. Consumer spellings are in
-# docs/configuration.md — under pnpm the core is a transitive dep, not a project-root one.
+# Repo-relative because the core is a workspace package here, so this points at the one
+# source. A consumer installs the umbrella and names its bundled copy instead — that
+# spelling is in docs/configuration.md.
 
 languages:
   typescript:
