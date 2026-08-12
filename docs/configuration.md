@@ -42,15 +42,11 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 ## IDE support
 
 The JSON Schema gives autocompletion and validation in editors. It ships inside the
-`polydeukes` package you installed, so one spelling reaches it from any project root:
+`polydeukes` package, so the line names a path into your own `node_modules`:
 
 ```yaml
 # yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
-
-`pdks init claude-code` writes that line as the first line of the config it generates. The
-directive is honored at the head of the document, and the loader never reads it — it is a
-YAML comment.
 
 For a JSON config, use the standard top-level key instead. The loader accepts it and drops
 it from the resolved config:
@@ -59,7 +55,26 @@ it from the resolved config:
 { "$schema": "node_modules/polydeukes/dist/schema/polydeukes.schema.json" }
 ```
 
-The value is a **file path**, not a module specifier: `$schema` is a static string an
+**The path is resolved against the directory your config sits in**, not against a project
+root the editor infers. The spelling above is right when the two are the same place. When
+they are not — a config in a monorepo sub-package whose dependencies installed at the
+workspace root — count the levels up yourself:
+
+```yaml
+# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+```
+
+`pdks init claude-code` writes the line only when the schema is where the plain spelling
+names it. If the generated config has no such line, that is the case above, and the prefix
+is yours to add — an unresolvable path costs you validation without reporting anything.
+
+If you installed `@polydeukes/core` directly rather than the umbrella, name its own copy:
+
+```yaml
+# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+```
+
+Every value here is a **file path**, not a module specifier: `$schema` is a static string an
 editor reads, so no module resolver runs on it. Code that reads the schema at runtime uses
 the package subpath `polydeukes/schema.json` instead.
 

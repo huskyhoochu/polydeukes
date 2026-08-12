@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -227,6 +235,13 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
 });
 
 describe('DIST-05 AC-5 — the generated config points an editor at the shipped schema', () => {
+  /** The schema as the directive's own value spells it, relative to the config's directory. */
+  function installSchemaBeside(root: string): void {
+    const dir = join(root, 'node_modules', 'polydeukes', 'dist', 'schema');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'polydeukes.schema.json'), '{}\n');
+  }
+
   it('opens with the exact yaml-language-server $schema line', () => {
     // Mutation caught: any spelling drift in the value — the `@polydeukes/core` path the
     // docs carried before this ticket, a module specifier (`polydeukes/schema.json`), an
@@ -235,9 +250,33 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
     // the consumer's editor reports the mistake: validation just never happens. The line
     // must also be FIRST — the directive is only honored at the head of the document, so
     // a line pushed below a banner comment is inert in the same silent way.
+    installSchemaBeside(projectRoot);
     scaffoldProject(projectRoot);
 
     expect(read(CONFIG_CANONICAL).split('\n')[0]).toBe(SCHEMA_LINE);
+  });
+
+  it('omits the line when the path it would name does not exist', () => {
+    // An editor resolves a relative `$schema` against the CONFIG FILE's own directory, and
+    // the config is written wherever this command was invoked — so a run inside a monorepo
+    // sub-package, where the install hoisted to the workspace root, would name a path that
+    // is not there. Mutation caught: the directive emitted unconditionally. That line reads
+    // as working configuration, and the failure is silent on both ends — the editor reports
+    // no error for an unresolvable schema, and the user does not audit a line the tool wrote
+    // for them. Writing nothing leaves an absence they can see and fix.
+    scaffoldProject(projectRoot);
+
+    expect(read(CONFIG_CANONICAL)).not.toContain('yaml-language-server');
+  });
+
+  it('still generates a loadable config when the line is omitted', () => {
+    // The omission is one comment line, not a different artifact: everything the scaffold
+    // promises has to survive it. Mutation caught: the conditional dropping the header
+    // comment block with the directive, or emitting a config whose first line is now blank.
+    scaffoldProject(projectRoot);
+
+    expect(() => loadConfig(projectRoot)).not.toThrow();
+    expect(read(CONFIG_CANONICAL).split('\n')[0]).toMatch(/^# Polydeukes protection policy/);
   });
 
   it('still passes loadConfig with the $schema line present', () => {
@@ -248,6 +287,7 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
     // wrote, and the fail-closed session surface would block every call right after
     // install. The header-line assertion above passes for a mapping key too, since the
     // comment marker is one character.
+    installSchemaBeside(projectRoot);
     scaffoldProject(projectRoot);
 
     expect(() => loadConfig(projectRoot)).not.toThrow();

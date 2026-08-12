@@ -44,15 +44,12 @@
 
 ## IDE 지원
 
-JSON Schema가 편집기 자동완성과 검증을 제공합니다. 스키마는 설치한 `polydeukes` 패키지
-안에 실려 오므로, 어느 프로젝트 루트에서든 철자 하나로 닿습니다.
+JSON Schema가 편집기 자동완성과 검증을 제공합니다. 스키마는 `polydeukes` 패키지 안에 실려
+오므로, 이 줄은 프로젝트의 `node_modules`로 들어가는 경로를 적습니다.
 
 ```yaml
 # yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
-
-`pdks init claude-code`가 생성하는 설정은 이 줄을 첫 줄로 씁니다. 이 지시자는 문서 머리에서
-읽히고, 로더는 이 줄을 보지 않습니다. YAML 주석이기 때문입니다.
 
 JSON 설정이라면 표준 최상위 키를 대신 씁니다. 로더가 수락한 뒤 해소 결과에서 뺍니다.
 
@@ -60,8 +57,27 @@ JSON 설정이라면 표준 최상위 키를 대신 씁니다. 로더가 수락�
 { "$schema": "node_modules/polydeukes/dist/schema/polydeukes.schema.json" }
 ```
 
-값은 모듈 지정자가 아니라 **파일 경로**입니다. `$schema`는 편집기가 읽는 정적 문자열이라
-모듈 해석기가 돌지 않습니다. 런타임에 스키마를 읽는 코드는 패키지 서브패스
+**이 경로는 설정 파일이 놓인 디렉터리를 기준으로 해소됩니다.** 편집기가 프로젝트 루트를
+따로 추정하지 않습니다. 둘이 같은 자리면 위 철자가 맞습니다. 다르면, 예를 들어 설정은
+모노레포 하위 패키지에 있고 의존성은 워크스페이스 루트에 설치됐다면, 올라갈 층수를 직접
+세어 붙이십시오.
+
+```yaml
+# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+```
+
+`pdks init claude-code`는 평범한 철자가 가리키는 자리에 스키마가 실제로 있을 때만 이 줄을
+씁니다. 생성된 설정에 이 줄이 없다면 방금 말한 경우이고, 접두는 직접 붙이는 몫입니다.
+해소되지 않는 경로는 아무것도 알리지 않은 채 검증만 잃게 합니다.
+
+우산이 아니라 `@polydeukes/core`를 직접 설치했다면 그쪽 사본을 적습니다.
+
+```yaml
+# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
+```
+
+여기 값은 전부 모듈 지정자가 아니라 **파일 경로**입니다. `$schema`는 편집기가 읽는 정적
+문자열이라 모듈 해석기가 돌지 않습니다. 런타임에 스키마를 읽는 코드는 패키지 서브패스
 `polydeukes/schema.json`을 씁니다.
 
 ## 레퍼런스

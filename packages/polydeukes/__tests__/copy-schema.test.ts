@@ -79,12 +79,15 @@ afterEach(() => {
 
 describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist', () => {
   it('writes dist/schema/polydeukes.schema.json byte-identical to the core source', () => {
-    // Mutation caught: the copy transforming the file on its way through — a re-serialized
-    // JSON.parse/stringify round trip, a rewritten `$schema`, an appended banner comment.
-    // Any of those still produces a file at the right path, so a mere existence check goes
-    // green while the editor validates against a schema that is no longer core's. §5
-    // invariant 2 says the two files may only diverge by a build defect; byte equality is
-    // the only assertion that states it.
+    // Mutation caught: the copy transforming what passes through it — a re-serialized
+    // JSON.parse/stringify round trip, an appended banner comment. Either still produces a
+    // file at the right path, so an existence check goes green while an editor validates
+    // against something that is no longer the schema.
+    //
+    // The fixture supplies the source, so this measures the step in isolation: it says the
+    // bytes in equal the bytes out, not that the step read core's file. That the shipped
+    // copy matches core's own is asserted on the installed tree in clean-install.e2e, where
+    // the two files arrive from separately packed tarballs.
     const source = readFileSync(join(repoRoot, SOURCE_REL));
     const { status, stderr, fixtureRoot } = runInFixture({ source: source.toString('utf-8') });
 
@@ -133,8 +136,9 @@ describe('DIST-05 AC-7 — an absent source schema fails the build', () => {
     // source. A zero-byte `dist/schema/polydeukes.schema.json` is worse than no file — the
     // path the consumer's `$schema` names exists, so the editor loads it and fails to
     // parse, and the earlier good copy from a cached build is gone.
-    const { fixtureRoot } = runInFixture({ source: null });
+    const { status, fixtureRoot } = runInFixture({ source: null });
 
+    expect(status).not.toBe(0);
     expect(() => readFileSync(join(fixtureRoot, 'packages', 'polydeukes', OUTPUT_REL))).toThrow();
   });
 });

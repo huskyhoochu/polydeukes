@@ -61,8 +61,9 @@ const CORE_SCHEMA_SPECIFIER = '@polydeukes/core/schema.json';
 /** DIST-05 AC-2's subpath — the umbrella spelling, for runtime code that reads the schema. */
 const UMBRELLA_SCHEMA_SPECIFIER = 'polydeukes/schema.json';
 /**
- * DIST-05 AC-3's spelling: the consumer-root-relative FILE path a `$schema` line carries.
- * §3-b's consumer row — one string, the same under pnpm, npm, and yarn.
+ * DIST-05 AC-3's spelling: the FILE path a `$schema` line carries, relative to the directory
+ * the config sits in. §3-b's consumer row, measured here on a pnpm install — the one package
+ * manager this suite runs.
  */
 const UMBRELLA_SCHEMA_FILE_REL = 'node_modules/polydeukes/dist/schema/polydeukes.schema.json';
 
