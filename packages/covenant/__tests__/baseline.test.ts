@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //       entry changes the hash, never throws). An entry names a file or a directory.
 //   findUnattributed({ previous, current, records, cutAt }): string[]
 //     - pure: the entries whose hash changed AND that no window row with event
-//       passed/blocked/witnessed/advised and subject === entry explains (§2-c).
+//       witnessed/advised and subject === entry explains (§2-c).
 //       Attribution is ENTRY-granular — the same granularity the dispatcher records
 //       (covenant.dev-log.telemetry-subject-is-matched-entry), which is what makes the
 //       join well-defined at all. `cutAt` bounds the window by time, and only entries the
@@ -205,22 +205,20 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
       current: { [ENTRY_A]: 'h1' },
-      records: [row('passed', ENTRY_A)],
+      records: [row('witnessed', ENTRY_A)],
     });
 
     expect(result).toEqual([]);
   });
 
   it.each([
-    'passed',
-    'blocked',
     'witnessed',
     'advised',
   ] as const)('a %s row with the entry as subject attributes the change (no alarm)', (event) => {
-    // All four verdict words attribute (§2-c — blocked included: a blocked call's
-    // partial write is already reported once). Mutation caught: any one of the four
-    // dropped from the accepted set, turning an explained change into a false alarm
-    // — the over-reporting that teaches readers to ignore the row.
+    // The two words that mean a mutation of a protected entry was judged and let through
+    // anyway — a human opening it in person, or an advise-level surface recording without
+    // stopping. Mutation caught: either dropped from the accepted set, which turns every
+    // sanctioned edit into an alarm and teaches the reader to ignore the row.
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
       current: { [ENTRY_A]: 'h2' },
@@ -256,6 +254,37 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
     expect(result).toEqual([ENTRY_A]);
   });
 
+  it('a passed row does NOT attribute — a judged call that upheld wrote nothing to explain', () => {
+    // On a protected entry, `passed` means the call was judged and did NOT break the
+    // covenant: it mentioned the entry without mutating it. A mention explains no later
+    // change. Mutation caught: `passed` admitted into the accepted set — the leak that let
+    // a read-only call (`cat` on a protected file) absolve every tamper that followed it,
+    // reproduced end to end before this narrowing.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'h1' },
+      current: { [ENTRY_A]: 'h2' },
+      records: [row('passed', ENTRY_A)],
+    });
+
+    expect(result).toEqual([ENTRY_A]);
+  });
+
+  it('a blocked row does NOT attribute — a refused call did not write what followed', () => {
+    // A block stops the call, so a later change is not its doing. Mutation caught:
+    // `blocked` admitted into the accepted set, which turns provoking one block into a
+    // licence for every subsequent write to that entry — the mechanism disarmed by the
+    // very verdict that is supposed to be its strongest signal. The residue a blocked
+    // call really did leave is handled elsewhere: it is present when that same call
+    // compares, and its own re-establishment folds it in.
+    const result = findUnattributed({
+      previous: { [ENTRY_A]: 'h1' },
+      current: { [ENTRY_A]: 'h2' },
+      records: [row('blocked', ENTRY_A)],
+    });
+
+    expect(result).toEqual([ENTRY_A]);
+  });
+
   it('a row about entry A does not absolve a change under entry B', () => {
     // THE §2-c fixture (covenant.dev-log.input-level-evidence-gate-fail-open): "the
     // window has an attributing row" and "THIS entry's change is explained" are
@@ -265,7 +294,7 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b1' },
       current: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b2' },
-      records: [row('blocked', ENTRY_A)],
+      records: [row('witnessed', ENTRY_A)],
     });
 
     expect(result).toEqual([ENTRY_B]);
@@ -277,7 +306,7 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'a1', [ENTRY_B]: 'b1' },
       current: { [ENTRY_A]: 'a2', [ENTRY_B]: 'b2' },
-      records: [row('passed', ENTRY_A)],
+      records: [row('witnessed', ENTRY_A)],
     });
 
     expect(result).toEqual([ENTRY_B]);
@@ -402,7 +431,7 @@ describe('COVENANT-14 §2-c the attribution window is cut by time, not by positi
     // rows are removed. Mutation caught: the cut stored as a count.
     writeBaseline(path(), { [ENTRY_A]: 'h1' }, '2026-08-12T12:00:00.000Z');
     const { cutAt } = readBaseline(path()) ?? {};
-    const survivingRow = row('passed', ENTRY_A, '2026-08-12T12:00:05.000Z');
+    const survivingRow = row('witnessed', ENTRY_A, '2026-08-12T12:00:05.000Z');
 
     // One row survived a truncation that removed everything before it.
     const window = [survivingRow].filter((record) => record.timestamp >= (cutAt ?? ''));
@@ -417,7 +446,7 @@ describe('COVENANT-14 §2-c the attribution window is cut by time, not by positi
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
       current: { [ENTRY_A]: 'h2' },
-      records: [row('passed', ENTRY_A, '2026-08-12T11:59:00.000Z')],
+      records: [row('witnessed', ENTRY_A, '2026-08-12T11:59:00.000Z')],
       cutAt: '2026-08-12T12:00:00.000Z',
     });
 
@@ -431,7 +460,7 @@ describe('COVENANT-14 §2-c the attribution window is cut by time, not by positi
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
       current: { [ENTRY_A]: 'h2' },
-      records: [row('passed', ENTRY_A, '2026-08-12T12:00:00.000Z')],
+      records: [row('witnessed', ENTRY_A, '2026-08-12T12:00:00.000Z')],
       cutAt: '2026-08-12T12:00:00.000Z',
     });
 
@@ -446,7 +475,7 @@ describe('COVENANT-14 §2-c the attribution window is cut by time, not by positi
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
       current: { [ENTRY_A]: 'h2' },
-      records: [row('passed', ENTRY_A, '2026-08-12T11:00:00.000Z')],
+      records: [row('witnessed', ENTRY_A, '2026-08-12T11:00:00.000Z')],
       cutAt: undefined,
     });
 

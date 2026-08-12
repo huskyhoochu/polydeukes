@@ -191,20 +191,48 @@ describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattri
 });
 
 describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', () => {
-  it('a change explained by a prior blocked judgment on the same entry yields no row', async () => {
-    // §2-c: `blocked` attributes — a blocked call's partial write is already
-    // reported once, and alarming again is duplicate reporting, not detection.
-    // Mutation caught: `blocked` dropped from the attributing set, or the window cut
-    // so the previous call's rows are invisible to this comparison.
+  it('the residue a blocked call left raises no alarm on the call after it', async () => {
+    // §2-c: a block stops the call, not what it already wrote (an Edit failing partway
+    // leaves its earlier writes on disk, present before the judgment that refuses the
+    // rest). The blocked call's own comparison reports that residue once, and its
+    // re-establishment at call end absorbs it — so the NEXT call is silent.
+    // Mutation caught: re-establishment moved to comparison time, which would leave every
+    // blocked call's residue to surface again on each following call.
+    writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
+    await hookCall(ordinaryPayload());
+
+    write(PROTECTED_FILE, 'locked: partially written\n');
+    const blocked = await hookCall(editPayload(PROTECTED_FILE));
+    expect(blocked.exitCode).toBe(2);
+
+    await expect(hookCall(ordinaryPayload())).resolves.toEqual({ exitCode: 0 });
+
+    expect(rows()).toEqual([
+      ['unattributed', BASELINE_LABEL, BASELINE_SUBJECT],
+      ['passed', ADAPTER_LABEL, '-'],
+      // The residue existed before this call, so this call's comparison names it — once.
+      ['unattributed', BASELINE_LABEL, PROTECTED_ENTRY],
+      ['blocked', 'self-mod', PROTECTED_ENTRY],
+      ['passed', 'shell-mod', PROTECTED_ENTRY],
+      // Silent: the re-establishment at the blocked call's end absorbed the residue.
+      ['passed', ADAPTER_LABEL, '-'],
+    ]);
+  }, 30_000);
+
+  it('a write AFTER a blocked call is a tamper, not that call residue', async () => {
+    // The other end of the same axis, and the one that decides whether the mechanism can
+    // be disarmed: if a `blocked` row absolved its entry for the whole next window, then
+    // provoking one block would licence every later write to that entry. The call ended,
+    // its snapshot was taken, and anything after it is unexplained.
+    // Mutation caught: attribution reading judgment rows from before the previous
+    // comparison — the leak that let a mere mention absolve a later tamper.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
     const blocked = await hookCall(editPayload(PROTECTED_FILE));
     expect(blocked.exitCode).toBe(2);
 
-    // The residue the blocked call left behind (§2-c: a block stops the call, not
-    // what it already wrote).
-    write(PROTECTED_FILE, 'locked: partially written\n');
+    write(PROTECTED_FILE, 'locked: tampered after the block\n');
     await expect(hookCall(ordinaryPayload())).resolves.toEqual({ exitCode: 0 });
 
     expect(rows()).toEqual([
@@ -212,6 +240,8 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
       ['passed', ADAPTER_LABEL, '-'],
       ['blocked', 'self-mod', PROTECTED_ENTRY],
       ['passed', 'shell-mod', PROTECTED_ENTRY],
+      // The comparison runs at call START, so the alarm precedes this call's own verdict.
+      ['unattributed', BASELINE_LABEL, PROTECTED_ENTRY],
       ['passed', ADAPTER_LABEL, '-'],
     ]);
   }, 30_000);

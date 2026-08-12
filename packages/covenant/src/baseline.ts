@@ -31,12 +31,23 @@ export type BaselineSnapshot = Record<string, string>;
 export type StoredBaseline = { entries: BaselineSnapshot; cutAt?: string };
 
 /**
- * The four verdict words that explain a change (§2-c). `blocked` is among them because a
- * block stops the call, not what it already wrote — alarming on that residue would be
- * duplicate reporting. `skipped` and `unattributed` are absent by construction: a recorded
- * absence of judgment explains nothing, and the alarm must not silence its own successor.
+ * The two verdict words that explain a change (§2-c) — the ones that mean a mutation of a
+ * protected entry was judged and let through anyway.
+ *
+ * `witnessed` is a break a human opened in person; `advised` is one an advise-level surface
+ * recorded without stopping. Both name a write the session knew about, so the change that
+ * follows is accounted for.
+ *
+ * The other four do not attribute, each for its own reason. `passed` means the call was
+ * judged and did NOT break the covenant — on a protected entry that is a mention, not a
+ * mutation, so it explains no later change; admitting it is what let a read-only call
+ * absolve a tamper. `blocked` stops the call, so what follows is not its doing, and
+ * admitting it would make provoking a block a licence for every later write to that entry
+ * (the residue a blocked call really left is present when that same call compares, reported
+ * there once, and folded into its own re-establishment). `skipped` is a recorded absence of
+ * judgment, which explains nothing. `unattributed` must never silence its own successor.
  */
-const ATTRIBUTING_EVENTS: readonly TelemetryEvent[] = ['passed', 'blocked', 'witnessed', 'advised'];
+const ATTRIBUTING_EVENTS: readonly TelemetryEvent[] = ['witnessed', 'advised'];
 
 /**
  * Fold one file's path and content into `hash` (§2-b full content hashing).
