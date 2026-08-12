@@ -161,14 +161,22 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
   // replaces the provisional default once the load succeeds. The provisional default spells
   // itself with the loader's own constant, so both terms converge on one source.
   //
-  // Computed INSIDE the try even though it must run first, because `join` throws on a
+  // Computed INSIDE the try even though it must run first, because `resolve` throws on a
   // non-string repoRoot and that throw must not escape as a rejection. It leaves
   // `telemetryPath` undefined, which the catch tolerates: there is no root to write a row
   // under anyway.
+  //
+  // Both terms compose with `resolve`, never `join`: a relative repoRoot would leave the
+  // provisional path relative and the post-load one absolute, so a run whose config failed
+  // to load would write its row to a different file than the same repository's judgment
+  // rows — and a relative path is re-read against the cwd at append time, which need not
+  // be the cwd this ran under. The bin always passes `process.cwd()`, so the divergence is
+  // reachable only through this exported function, whose `repoRoot` promises no
+  // absoluteness (PR #57 review).
   let telemetryPath: string | undefined;
   let config: ReturnType<typeof loadConfig>['config'];
   try {
-    telemetryPath = spec.telemetryPath ?? join(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
+    telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
     ({ config } = loadConfig(spec.repoRoot));
     telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
   } catch (error) {

@@ -496,11 +496,14 @@ describe('ADAPTER-git-b §4.1 telemetry path precedence — spec, then config, t
     // block at all (scaffold-project.ts writes languages, protectedPaths and witness),
     // so every consumer starts here while this suite's writeConfigAt always fills one —
     // the fixture inherited the producer's redundancy and left this cell unvisited.
-    // The loader fills DEFAULT_TELEMETRY_LOG_PATH (config.ts:537) and the runner resolves
-    // it against repoRoot, landing on the same string the provisional default computes.
-    // Mutation caught: the post-load recomputation dropped entirely. The two values
-    // coincide today, so what this pins is the CODE PATH rather than the value — the
-    // discrimination returns the day the loader's default becomes absolute.
+    // What this pins is the COMPOSITION of two defaults: the loader fills
+    // DEFAULT_TELEMETRY_LOG_PATH (config.ts:537) and the runner resolves it against
+    // repoRoot, and the run must land its rows wherever that composition points.
+    // It kills no mutant of the runner's own precedence — verified by deleting the
+    // post-load recomputation, which this case survives and its sibling above catches,
+    // because both terms compute the same string. Say so rather than claim a mutant:
+    // an assertion cannot pin a code path it cannot distinguish (PR #57 review).
+    // Discrimination returns if either default is ever respelled to differ.
     write(
       'polydeukes.config.json',
       JSON.stringify({
