@@ -13,7 +13,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // lives in run-claude-code-hook.test.ts as the §3-c AC-7 pin. runClaudeCodeHook does not
 // exist yet, so every case below is RED by construction.
 import { runClaudeCodeHook } from '../src/index.ts';
-import { distWithout as sharedDistWithout, telemetryRows, writeConfigAt } from './helpers';
+import {
+  BASELINE_FIRST_RUN_ROW,
+  distWithout as sharedDistWithout,
+  telemetryRows,
+  writeConfigAt,
+} from './helpers';
 
 // ---------------------------------------------------------------------------
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no
@@ -57,7 +62,11 @@ function distWithout(omitBody: string | null): string {
   return sharedDistWithout(repoRoot, omitBody);
 }
 
-/** Every telemetry row as [event, label, subject] — the label separates who answered. */
+/**
+ * Every telemetry row as [event, label, subject] — the label separates who answered.
+ * Each case's repoRoot is fresh, so every row list opens with the state comparison's
+ * first-run row (COVENANT-14 §2-e), which the broken dist below never reaches.
+ */
 const rows = () => telemetryRows(telemetryPath);
 
 /** One PreToolUse payload string with the session envelope around `toolInput`. */
@@ -131,7 +140,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['passed', ADAPTER_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
   it('fails closed (exit 2, one hook blocked row) when the shell-mod body was never built', async () => {
@@ -150,7 +159,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
   it('fails closed when the transcript-mod body was never built and a transcript IS attached', async () => {
@@ -171,7 +180,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
   it('fails closed when the discipline body was never built and a delta discipline IS declared', async () => {
@@ -191,7 +200,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
   it('a ROUTED call whose judge body is missing answers under the hook label, not the judge one', async () => {
@@ -212,7 +221,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
   it('the same routed call on a COMPLETE mirror is judged by the real bodies (exit 2)', async () => {
@@ -234,6 +243,7 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
 
     expect(result.exitCode).toBe(2);
     expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', PROTECTED_ENTRY],
       ['passed', 'shell-mod', PROTECTED_ENTRY],
     ]);
@@ -256,6 +266,6 @@ describe('DIST-01 / CONFIG-06b — an unbuilt judge body fails the session surfa
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([['skipped', 'shell-unjudgeable', '-']]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['skipped', 'shell-unjudgeable', '-']]);
   });
 });

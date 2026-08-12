@@ -207,7 +207,11 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     const result = runHook(editPayload('docs/example.md'));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -309,7 +313,11 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     const result = runHook(bashPayload('git push origin main'));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -342,7 +350,11 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     );
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -696,7 +708,11 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     const result = runHook(bashPayload('pnpm build'));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -707,7 +723,11 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     const result = runHook(bashPayload('ls *.md'));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -810,7 +830,11 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
     const result = runHook(bashPayload('echo x > /tmp/y.ts'));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');
@@ -922,7 +946,11 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
     const result = runHookWithFixtureConfig(editPayload(`${GIT_ADDITIVE_ENTRY}/index.ts`));
 
     expect(result.status).toBe(0);
-    const { records } = readRecords(telemetryPath);
+    // The state comparison's own rows are on a different axis from the judgment (they
+    // block nothing), so the judged-row count is taken over the verdict lane.
+    const records = readRecords(telemetryPath).records.filter(
+      (record) => record.event !== 'unattributed',
+    );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
     expect(records[0].label).toBe('adapter-claude-code');

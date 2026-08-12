@@ -92,7 +92,7 @@ resolves again.
 one record to the telemetry log (`.polydeukes/roi.log` by default, `telemetry.logPath` to
 move it).
 
-**Recovery.** Read the last lines and the five-word vocabulary:
+**Recovery.** Read the last lines and the six-word vocabulary:
 
 | Word | Means |
 |---|---|
@@ -101,6 +101,11 @@ move it).
 | `witnessed` | A blocked verdict a human opened in person. Never silent. |
 | `advised` | Commit surface at `advise` level: a break recorded without stopping the commit. |
 | `skipped` | A registration matched but could not judge — **the recorded absence of a judgment, not a pass.** |
+| `unattributed` | A protected entry changed on disk and no judgment explains it — **an observation, not a verdict.** Nothing was blocked; the write already happened. |
+
+An `unattributed` row names the entry, not the file inside it. Rebuilding a protected `dist`
+without a judged call producing one is expected — it says a write reached that entry outside
+the session's view, which is exactly what the row is for.
 
 ## Opening a blocked call — the witness
 

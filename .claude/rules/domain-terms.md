@@ -24,7 +24,7 @@ in code, package names, CLI, comments, and commit messages.
 
 ## Judgment vocabulary
 
-These five words are the telemetry contract. A row in `.polydeukes/roi.log` carries exactly
+These six words are the telemetry contract. A row in `.polydeukes/roi.log` carries exactly
 one of them, and tests, docs, and CLI output must use the same word for the same event.
 
 | Verdict | Means |
@@ -34,6 +34,7 @@ one of them, and tests, docs, and CLI output must use the same word for the same
 | `witnessed` | A **blocked** verdict a human opened in person. Never silent, never a clean call — the valve is consulted only after a block. |
 | `advised` | The commit surface at `enforce: advise` recorded a break without stopping it. |
 | `skipped` | The call reached a registration that could not judge it (no evidence channel, or a shell line whose target is not computable). **Not a pass** — it is the recorded absence of a judgment. |
+| `unattributed` | A protected entry's on-disk state moved with no judgment row explaining it (COVENANT-14). An observation, not a verdict — it blocks nothing and passes nothing, and it is written by the baseline comparison rather than by a judge. Where `skipped` is an inability the assembly knows up front, this is an attribution failure found after the fact. |
 
 Rows written before `COVENANT-17` say `bypassed`; the reader folds them into `witnessed`,
 one-way. Never write `bypassed` in new code.

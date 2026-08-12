@@ -273,6 +273,23 @@ down and enforcing one are different acts, and the shipped state of the art is t
 Must not read as a competitive swipe: Astryx solved discovery better than we had, and we
 adopted that lesson rather than arguing with it (DOCS-02 §3-e exists because of it). -->
 
+<!-- Parked candidate (COVENANT-14, 2026-08-12): this section's own claim had a hole, and
+closing it is the better story. "Every verdict appends a record" was true and load-bearing —
+but a judge only ever sees calls that were *declared*. A write that arrives another way (a
+script assembling the path from its own arguments, an interpreter, a test runner's child
+process) was never judged at all, so it left no row — not a bypass, an absence. The measured
+instance is in the log: an agent, blocked three times at the tool axis, moved the edit into a
+script and succeeded, and the framework recorded a pass. Two threads for prose: (1) the fix
+is not a better predictor. Guessing what a shell line will write is an infinite domain, and
+this project's own rule forbids criteria of that shape — so the mechanism observes RESULTS
+instead, comparing protected state against a stored baseline and naming what moved with no
+judgment explaining it. Spelling-independent by construction. (2) It records and never
+blocks, because the write already happened, and a mechanism that cannot undo should not
+pretend to gate. The honest framing is that the sixth word exists to admit a blind spot in
+the other five rather than to add a capability. Fits §3 directly — it is the same shape as
+the valve indictment already told here: the log named a gap in the framework's own
+observation, and the gap got a name in the vocabulary instead of a footnote. -->
+
 ## What Polydeukes is not
 
 It is not an agent runtime. Frameworks that build and run agents — sessions, sandboxes,

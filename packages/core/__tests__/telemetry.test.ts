@@ -157,12 +157,34 @@ describe('§5.3 gain', () => {
   // Fixed, deterministic 3-label × 3-event distribution over 100 records so per-label
   // counts can be asserted exactly (not just "> 0"). label A: 20/10/5, label B: 15/10/5,
   // label C: 15/10/10 → passed 50 + blocked 30 + witnessed 20 = 100. (`advised: 0` slots
-  // arrived with the CONFIG-06 fourth event and `skipped: 0` with the COVENANT-13 fifth —
-  // zero records each, exact counts unchanged.)
+  // arrived with the CONFIG-06 fourth event, `skipped: 0` with the COVENANT-13 fifth, and
+  // `unattributed: 0` with the COVENANT-14 sixth — zero records each, exact counts
+  // unchanged.)
   const distribution: Record<string, Record<TelemetryRecord['event'], number>> = {
-    'covenant-a': { passed: 20, blocked: 10, witnessed: 5, advised: 0, skipped: 0 },
-    'covenant-b': { passed: 15, blocked: 10, witnessed: 5, advised: 0, skipped: 0 },
-    'covenant-c': { passed: 15, blocked: 10, witnessed: 10, advised: 0, skipped: 0 },
+    'covenant-a': {
+      passed: 20,
+      blocked: 10,
+      witnessed: 5,
+      advised: 0,
+      skipped: 0,
+      unattributed: 0,
+    },
+    'covenant-b': {
+      passed: 15,
+      blocked: 10,
+      witnessed: 5,
+      advised: 0,
+      skipped: 0,
+      unattributed: 0,
+    },
+    'covenant-c': {
+      passed: 15,
+      blocked: 10,
+      witnessed: 10,
+      advised: 0,
+      skipped: 0,
+      unattributed: 0,
+    },
   };
 
   function buildDistributionRecords(): TelemetryRecord[] {

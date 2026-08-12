@@ -12,13 +12,24 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /**
- * The five telemetry events. `witnessed` is a first-class event, not a flag on `passed`:
+ * The six telemetry events. `witnessed` is a first-class event, not a flag on `passed`:
  * a break a human stood behind by supplying the pass condition themselves. `advised` is a
  * violation verdict an advise-level observer recorded but let through; `skipped` is a
  * discipline a surface could not judge at all (no evidence channel) — a no-op that shows
  * up in the data instead of vanishing.
+ *
+ * `unattributed` is the one observation event among them: a protected entry whose state
+ * changed with no judgment row explaining it. It sits on a different axis from the five
+ * verdicts — `skipped` is an inability known up front, `unattributed` an attribution
+ * failure found after the fact — and it never blocks or passes a call.
  */
-export type TelemetryEvent = 'passed' | 'blocked' | 'witnessed' | 'advised' | 'skipped';
+export type TelemetryEvent =
+  | 'passed'
+  | 'blocked'
+  | 'witnessed'
+  | 'advised'
+  | 'skipped'
+  | 'unattributed';
 
 /**
  * `TelemetryRecord` — one measured covenant outcome (PRD §4.1).
@@ -46,6 +57,7 @@ const VALID_EVENTS: readonly TelemetryEvent[] = [
   'witnessed',
   'advised',
   'skipped',
+  'unattributed',
 ];
 
 /**
@@ -85,7 +97,7 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for the wrong field count, an event outside the five valid events, or an
+ * `null` for the wrong field count, an event outside the six valid events, or an
  * empty line — a malformed line is rejected, never coerced into a bogus record. The one
  * exception is {@link LEGACY_WITNESSED_EVENT}, which reads back as `witnessed`.
  */
@@ -186,14 +198,21 @@ export function readRecords(path: string): { records: TelemetryRecord[]; skipped
 /**
  * Aggregate records into per-label event counts (PRD §4.4, pure).
  *
- * Each label gets its own counter across all five events, so a corrupt or missing
+ * Each label gets its own counter across all six events, so a corrupt or missing
  * event never bleeds counts between labels.
  */
 export function aggregateGain(records: TelemetryRecord[]): GainSummary {
   const counts: Record<string, Record<TelemetryEvent, number>> = {};
   for (const record of records) {
     if (!(record.label in counts)) {
-      counts[record.label] = { passed: 0, blocked: 0, witnessed: 0, advised: 0, skipped: 0 };
+      counts[record.label] = {
+        passed: 0,
+        blocked: 0,
+        witnessed: 0,
+        advised: 0,
+        skipped: 0,
+        unattributed: 0,
+      };
     }
     counts[record.label][record.event] += 1;
   }
@@ -203,9 +222,10 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
 /**
  * Render a {@link GainSummary} into human-readable lines (pure).
  *
- * Each label is mentioned with its passed/blocked/witnessed/advised/skipped counts; each
- * is a distinct column, never folded into another (PRD §4.4). A non-zero corrupt-line
- * count is reported rather than hidden — silent skipping would mask log corruption.
+ * Each label is mentioned with its passed/blocked/witnessed/advised/skipped/unattributed
+ * counts; each is a distinct column, never folded into another (PRD §4.4). A non-zero
+ * corrupt-line count is reported rather than hidden — silent skipping would mask log
+ * corruption.
  *
  * Two different meanings share the word `skipped`: the per-label EVENT column above,
  * and the unparseable-line count below. They are rendered on separate lines and never
@@ -219,7 +239,7 @@ function renderGain(summary: GainSummary, skipped: number): string {
   const lines = [`total ${summary.total}`];
   for (const [label, counts] of Object.entries(summary.counts)) {
     lines.push(
-      `${label}: passed=${counts.passed} blocked=${counts.blocked} witnessed=${counts.witnessed} advised=${counts.advised} skipped=${counts.skipped}`,
+      `${label}: passed=${counts.passed} blocked=${counts.blocked} witnessed=${counts.witnessed} advised=${counts.advised} skipped=${counts.skipped} unattributed=${counts.unattributed}`,
     );
   }
   if (skipped > 0) {
