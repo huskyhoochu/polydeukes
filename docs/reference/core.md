@@ -84,9 +84,9 @@ Three places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
   [configuration.md](../configuration.md).
-- **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath. Under
-  a default pnpm layout it does not resolve from a consumer's top-level `node_modules`,
-  because the core arrives as a transitive dependency; the working spellings are in
+- **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath, for a
+  project that installs this package directly. A consumer of the umbrella names the copy
+  bundled there instead; both spellings are in
   [configuration.md's IDE section](../configuration.md#ide-support).
 - **The protocol above** — reading a `blocked` row means reading the vocabulary a body
   answered in.

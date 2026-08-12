@@ -41,37 +41,42 @@ Discovery is deliberately strict, and every failure refuses loudly instead of gu
 
 ## IDE support
 
-The published JSON Schema gives autocompletion and validation in editors. The schema file
-ships inside `@polydeukes/core` — a *transitive* dependency of the umbrella — and under
-pnpm's default strict layout transitive dependencies are not exposed at your project's
-top-level `node_modules` (measured 2026-08-03: the file resolves only under
-`node_modules/.pnpm/…`). A `node_modules`-relative `$schema` line therefore does not
-resolve in a default pnpm install. `pdks init claude-code` writes no `$schema` line into
-the generated config for the same reason: no single *file-path* spelling resolves in every
-consumer layout, and a wrong line loses editor validation silently.
-
-Two forms work. The version-pinned public URL is independent of any install layout
-(verified against the `v0.2.0` tag and `main` — swap the tag for the release you
-installed):
+The JSON Schema gives autocompletion and validation in editors. It ships inside the
+`polydeukes` package, so the line names a path into your own `node_modules`:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
+# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
 
-The relative path works only in a layout where `@polydeukes/core` is present at the top
-level of `node_modules`. Whether yours is one is a one-look check — if
-`node_modules/@polydeukes/core/schema/` exists in your project, the line resolves:
+For a JSON config, use the standard top-level key instead. The loader accepts it and drops
+it from the resolved config:
+
+```json
+{ "$schema": "node_modules/polydeukes/dist/schema/polydeukes.schema.json" }
+```
+
+**The path is resolved against the directory your config sits in**, not against a project
+root the editor infers. The spelling above is right when the two are the same place. When
+they are not — a config in a monorepo sub-package whose dependencies installed at the
+workspace root — count the levels up yourself:
+
+```yaml
+# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+```
+
+`pdks init claude-code` writes the line only when the schema is where the plain spelling
+names it. If the generated config has no such line, that is the case above, and the prefix
+is yours to add — an unresolvable path costs you validation without reporting anything.
+
+If you installed `@polydeukes/core` directly rather than the umbrella, name its own copy:
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
 ```
 
-For a JSON config, use the standard top-level key instead — it is accepted and ignored by
-the loader, with the same two values:
-
-```json
-{ "$schema": "https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json" }
-```
+Every value here is a **file path**, not a module specifier: `$schema` is a static string an
+editor reads, so no module resolver runs on it. Code that reads the schema at runtime uses
+the package subpath `polydeukes/schema.json` instead.
 
 ## Reference
 

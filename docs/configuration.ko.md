@@ -44,35 +44,41 @@
 
 ## IDE 지원
 
-발행된 JSON Schema가 편집기 자동완성과 검증을 제공합니다. 스키마 파일은 우산의 **전이**
-의존성인 `@polydeukes/core` 안에 실려 오는데, pnpm의 기본 엄격 레이아웃에서 전이
-의존성은 프로젝트 최상위 `node_modules`에 노출되지 않습니다(2026-08-03 실측으로 이
-파일은 `node_modules/.pnpm/…` 아래에서만 해소됩니다). 따라서 `node_modules` 상대 경로의
-`$schema` 줄은 기본 pnpm 설치에서 해소되지 않습니다. `pdks init claude-code`가 생성
-설정에 `$schema` 줄을 넣지 않는 이유도 같습니다. 모든 소비자 레이아웃에서 해소되는 단일
-**파일 경로** 철자가 없고, 틀린 줄은 편집기 검증을 소리 없이 잃게 하기 때문입니다.
-
-동작하는 형태는 둘입니다. 버전 고정 공개 URL은 설치 레이아웃과 무관합니다(`v0.2.0`
-태그와 `main`에서 확인했고, 태그는 설치한 릴리스로 바꾸세요).
+JSON Schema가 편집기 자동완성과 검증을 제공합니다. 스키마는 `polydeukes` 패키지 안에 실려
+오므로, 이 줄은 프로젝트의 `node_modules`로 들어가는 경로를 적습니다.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json
+# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
 
-상대 경로는 `@polydeukes/core`가 `node_modules` 최상위에 실재하는 레이아웃에서만
-동작합니다. 자기 레이아웃이 그런지는 한 번 보면 압니다. 프로젝트에
-`node_modules/@polydeukes/core/schema/`가 있으면 이 줄이 해소됩니다.
+JSON 설정이라면 표준 최상위 키를 대신 씁니다. 로더가 수락한 뒤 해소 결과에서 뺍니다.
+
+```json
+{ "$schema": "node_modules/polydeukes/dist/schema/polydeukes.schema.json" }
+```
+
+**이 경로는 설정 파일이 놓인 디렉터리를 기준으로 해소됩니다.** 편집기가 프로젝트 루트를
+따로 추정하지 않습니다. 둘이 같은 자리면 위 철자가 맞습니다. 다르면, 예를 들어 설정은
+모노레포 하위 패키지에 있고 의존성은 워크스페이스 루트에 설치됐다면, 올라갈 층수를 직접
+세어 붙이십시오.
+
+```yaml
+# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+```
+
+`pdks init claude-code`는 평범한 철자가 가리키는 자리에 스키마가 실제로 있을 때만 이 줄을
+씁니다. 생성된 설정에 이 줄이 없다면 방금 말한 경우이고, 접두는 직접 붙이는 몫입니다.
+해소되지 않는 경로는 아무것도 알리지 않은 채 검증만 잃게 합니다.
+
+우산이 아니라 `@polydeukes/core`를 직접 설치했다면 그쪽 사본을 적습니다.
 
 ```yaml
 # yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
 ```
 
-JSON 설정이라면 표준 최상위 키를 대신 씁니다. 이 키는 로더에게 수락되고 무시되며, 값은
-위와 같은 둘입니다.
-
-```json
-{ "$schema": "https://raw.githubusercontent.com/huskyhoochu/polydeukes/v0.2.0/packages/core/schema/polydeukes.schema.json" }
-```
+여기 값은 전부 모듈 지정자가 아니라 **파일 경로**입니다. `$schema`는 편집기가 읽는 정적
+문자열이라 모듈 해석기가 돌지 않습니다. 런타임에 스키마를 읽는 코드는 패키지 서브패스
+`polydeukes/schema.json`을 씁니다.
 
 ## 레퍼런스
 

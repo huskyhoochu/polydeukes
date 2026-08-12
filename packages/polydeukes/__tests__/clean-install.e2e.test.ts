@@ -58,6 +58,14 @@ const TELEMETRY_REL = '.polydeukes/roi.log';
 const ADAPTER_LABEL = 'adapter-claude-code';
 /** The AC-5 subpath — the consumer-side spelling under measurement for DOCS-01. */
 const CORE_SCHEMA_SPECIFIER = '@polydeukes/core/schema.json';
+/** DIST-05 AC-2's subpath — the umbrella spelling, for runtime code that reads the schema. */
+const UMBRELLA_SCHEMA_SPECIFIER = 'polydeukes/schema.json';
+/**
+ * DIST-05 AC-3's spelling: the FILE path a `$schema` line carries, relative to the directory
+ * the config sits in. §3-b's consumer row, measured here on a pnpm install — the one package
+ * manager this suite runs.
+ */
+const UMBRELLA_SCHEMA_FILE_REL = 'node_modules/polydeukes/dist/schema/polydeukes.schema.json';
 
 let packRoot: string;
 let consumerRoot: string;
@@ -335,6 +343,57 @@ describe('DIST-03 AC-5 — the core schema resolves from the installed tree', ()
     expect(resolved.endsWith('/@polydeukes/core/schema/polydeukes.schema.json')).toBe(true);
     // The measured consumer-side form — DIST-03 §7 hands this line to DOCS-01.
     console.info(`AC-5 measured: ${CORE_SCHEMA_SPECIFIER} resolves to ${resolved}`);
+  }, 60_000);
+});
+
+describe('DIST-05 AC-2/AC-3/AC-4 — the umbrella ships the schema at one consumer spelling', () => {
+  it('the umbrella schema subpath resolves from the installed tree (AC-2, module axis)', () => {
+    // The runtime axis: code that READS the schema reaches it by module specifier, and
+    // resolution is what a `./schema.json` exports entry buys. Mutation caught: the
+    // subpath registered against a path the build does not produce (a `schema/` entry
+    // copied from core's manifest, where the file sits outside `dist/`) — resolution then
+    // throws in every install while the repo-side tree still has the file one directory
+    // over. The realpathed anchor follows the DIST-03 AC-5 case: default resolution
+    // realpaths a loaded module before walking, so the literal symlink path would walk the
+    // consumer root instead of the umbrella's own dependency links.
+    const umbrellaManifest = realpathSync(
+      join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json'),
+    );
+    const resolved = createRequire(umbrellaManifest).resolve(UMBRELLA_SCHEMA_SPECIFIER);
+
+    expect(existsSync(resolved)).toBe(true);
+    expect(resolved.endsWith('/polydeukes/dist/schema/polydeukes.schema.json')).toBe(true);
+  }, 60_000);
+
+  it('the consumer-root-relative file path exists on disk (AC-3, editor axis)', () => {
+    // A DIFFERENT axis from the case above, and the one this ticket exists for. What a
+    // consumer writes on the config's first line is a static string an editor reads: no
+    // module resolver runs, no exports map is consulted, no symlink is realpathed. So the
+    // literal path is walked from the consumer root with existsSync, never resolved.
+    // Mutation caught: the schema shipped ONLY through the exports map — under pnpm's
+    // strict layout `node_modules/polydeukes` is a link into the store and the file is
+    // reachable, but any change that leaves the copy outside `dist/` (or drops it from the
+    // tarball's `files` reach) breaks this path while the module-axis case above stays
+    // green. That is exactly the failure DIST-05 §3-b separates the two rows for.
+    expect(existsSync(join(consumerRoot, UMBRELLA_SCHEMA_FILE_REL))).toBe(true);
+  }, 60_000);
+
+  it('the shipped file is byte-identical to the core schema in the same install (AC-1/AC-4)', () => {
+    // §5 invariant 2 measured on the artifact rather than on the build step: core owns the
+    // one source and the umbrella's copy is derived. Mutation caught: the copy reading a
+    // stale or hand-edited file — a divergence that the byte check in copy-schema.test.ts
+    // cannot see, because that suite feeds the script its own source. Here both files
+    // arrive from tarballs packed in the same run, so any difference is the build's. Byte
+    // equality also carries AC-4: a truncated write, a text-mode copy, or a placeholder
+    // file all leave a file where AC-3 looks, and all three differ from core's bytes.
+    const umbrellaManifest = realpathSync(
+      join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json'),
+    );
+    const coreSchema = createRequire(umbrellaManifest).resolve(CORE_SCHEMA_SPECIFIER);
+
+    expect(
+      readFileSync(join(consumerRoot, UMBRELLA_SCHEMA_FILE_REL)).equals(readFileSync(coreSchema)),
+    ).toBe(true);
   }, 60_000);
 });
 

@@ -86,9 +86,9 @@ function allFileChanges(input: CovenantInput): FileChange[];
 
 - **설정 파일.** 그 스키마가 여기서 정의됩니다. 어휘 레퍼런스는
   [configuration.md](../configuration.ko.md)입니다.
-- **JSON Schema 자산.** `@polydeukes/core/schema.json` exports 서브패스입니다. 기본 pnpm
-  레이아웃에서는 소비자 최상위 `node_modules`에서 해소되지 않습니다. 코어가 전이 의존으로
-  도착하기 때문입니다. 성립하는 철자는
+- **JSON Schema 자산.** `@polydeukes/core/schema.json` exports 서브패스입니다. 이 패키지를
+  직접 설치한 프로젝트가 쓰는 경로입니다. 우산을 설치한 소비자는 그쪽에 동봉된 사본을
+  가리킵니다. 두 철자 모두
   [configuration.md의 IDE 절](../configuration.ko.md#ide-지원)에 있습니다.
 - **위의 프로토콜.** `blocked` 행을 읽는다는 것은 본체가 답한 어휘를 읽는다는 뜻입니다.
 
