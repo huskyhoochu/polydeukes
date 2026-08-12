@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // ADAPTER-git §4.3 — the assembled `pdks covenant check` runner. Tested here as a
@@ -15,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //     - ABSENCE of ttyPrompt models a non-TTY environment (CI, AI-spawned git): the
 //       valve must never open (PRD §4.4 / AC-3 human-only arming).
 import { runCovenantCheck } from '../src/index.ts';
-import { type CheckRepo, createCheckRepo } from './helpers.ts';
+import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -415,5 +416,129 @@ describe('CONFIG-08 §4.2 the union is normalized as ONE list (consumer-side nor
 
     expect(result.exitCode).toBe(2);
     expect(selfModRows()).toEqual([['blocked', 'packages/core/src']]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADAPTER-git-b §4.1 — the telemetry path has three sources with a fixed precedence:
+// spec.telemetryPath, then the config's telemetry.logPath, then the default
+// <repoRoot>/.polydeukes/roi.log settled BEFORE config load. Every case above injects
+// telemetryPath, and the injected term fills the config-failure window by itself —
+// which is why the un-injected calls below are the only place the default and config
+// terms of the precedence are observable at all. The real caller (the pdks bin)
+// injects nothing, so these cases are the shape production actually runs.
+// ---------------------------------------------------------------------------
+
+/** The label the runner's fail-closed catch records under — never a judge's label. */
+const FAIL_CLOSED_LABEL = 'covenant-check';
+
+describe('ADAPTER-git-b §4.1 telemetry path precedence — spec, then config, then default', () => {
+  /** Rows at the DEFAULT path — where the run must write when nobody names a path. */
+  function defaultRows(): [string, string, string][] {
+    return telemetryRows(join(repoRoot, '.polydeukes', 'roi.log'));
+  }
+
+  it('records ONE blocked row at the default path when config validation fails and nothing is injected', async () => {
+    // §5 AC-1/AC-2: a config failure with no injected path must still leave its record —
+    // exactly one blocked/covenant-check/- row at <repoRoot>/.polydeukes/roi.log.
+    // Mutation caught, TWO of them — the surfaces differed on two axes, not one:
+    //   1. the path settled only AFTER loadConfig, so the failure branch hands
+    //      recordFailClosed an undefined and returns silently;
+    //   2. the row written through the mkdir-free appendRecord, which cannot create
+    //      <repoRoot>/.polydeukes and fails open on ENOENT (telemetry.ts:136 — the
+    //      session surface uses appendRecordFailOpen, whose mkdir is the difference).
+    // Either one alone leaves a fail-closed exit 2 with no row: the defect class, not a
+    // declared limit — those leave a skipped row. This fixture's tmp root has no
+    // .polydeukes directory, which is also the shape `pdks init` leaves a consumer in
+    // (its generated config carries no telemetry block either), so axis 2 is what real
+    // callers hit first rather than an invented one.
+    // The full-array toEqual also refuses a doubled catch write (one call, one record).
+    write('polydeukes.config.json', JSON.stringify({ languages: 'not-an-object' }));
+
+    await expect(runCovenantCheck({ repoRoot })).resolves.toEqual({ exitCode: 2 });
+
+    expect(defaultRows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it('writes judgment rows to the path the CONFIG names once the load succeeds (no injection)', async () => {
+    // The post-load term: after a successful load, telemetry.logPath must REPLACE the
+    // provisional default. Mutation caught: the provisional value kept for the whole
+    // run — every consumer's configured log path would stop working while all the
+    // injecting cases above stayed green.
+    writeConfig({ protectedPaths: ['secret.txt'] });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('secret.txt', 'sensitive\n');
+    git('add', 'secret.txt');
+
+    await expect(runCovenantCheck({ repoRoot })).resolves.toEqual({ exitCode: 2 });
+
+    expect(telemetryRows(telemetryPath)).toContainEqual(['blocked', 'self-mod', 'secret.txt']);
+    expect(defaultRows()).toEqual([]);
+  });
+
+  it('writes the config-failure row to the INJECTED path, never the default, when both exist', async () => {
+    // The spec term inside the failure branch: spec.telemetryPath must win over the
+    // provisional default. Mutation caught: the provisional computation dropping the
+    // spec term (default-first), which would scatter every injected suite's fail-closed
+    // rows into <repoRoot>/.polydeukes/roi.log. The existing AC-7 case pins only the
+    // exit code, so this row-location pin is the one that observes the precedence.
+    write('polydeukes.config.json', JSON.stringify({ languages: 'not-an-object' }));
+
+    await expect(runCovenantCheck({ repoRoot, telemetryPath })).resolves.toEqual({ exitCode: 2 });
+
+    expect(telemetryRows(telemetryPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    expect(defaultRows()).toEqual([]);
+  });
+
+  it('resolves the loader-filled default when the config omits the telemetry block', async () => {
+    // The shape `pdks init` actually generates: its scaffolded config has no telemetry
+    // block at all (scaffold-project.ts writes languages, protectedPaths and witness),
+    // so every consumer starts here while this suite's writeConfigAt always fills one —
+    // the fixture inherited the producer's redundancy and left this cell unvisited.
+    // What this pins is the COMPOSITION of two defaults: the loader fills
+    // DEFAULT_TELEMETRY_LOG_PATH (config.ts:537) and the runner resolves it against
+    // repoRoot, and the run must land its rows wherever that composition points.
+    // It kills no mutant of the runner's own precedence — verified by deleting the
+    // post-load recomputation, which this case survives and its sibling above catches,
+    // because both terms compute the same string. Say so rather than claim a mutant:
+    // an assertion cannot pin a code path it cannot distinguish (PR #57 review).
+    // Discrimination returns if either default is ever respelled to differ.
+    write(
+      'polydeukes.config.json',
+      JSON.stringify({
+        languages: { typescript: { productionGlob: 'src/**', testCmd: 'echo {scope}' } },
+        protectedPaths: ['secret.txt'],
+      }),
+    );
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('secret.txt', 'sensitive\n');
+    git('add', 'secret.txt');
+
+    await expect(runCovenantCheck({ repoRoot })).resolves.toEqual({ exitCode: 2 });
+
+    expect(defaultRows()).toContainEqual(['blocked', 'self-mod', 'secret.txt']);
+  });
+
+  it('writes judgment rows to the INJECTED path even when the config names another', async () => {
+    // The spec term on the happy path. Every other case injects a telemetryPath EQUAL
+    // to the config's logPath, so a mutant where the post-load update lets the config
+    // overwrite the injection leaves the whole suite green — the two values coincide
+    // everywhere but here. Mutation caught: exactly that overwrite (the spec term
+    // dropped from the post-load computation).
+    const injectedPath = join(repoRoot, 'injected.log');
+    writeConfig({ protectedPaths: ['secret.txt'] });
+    git('add', 'polydeukes.config.json');
+    git('commit', '--quiet', '-m', 'config');
+    write('secret.txt', 'sensitive\n');
+    git('add', 'secret.txt');
+
+    await expect(runCovenantCheck({ repoRoot, telemetryPath: injectedPath })).resolves.toEqual({
+      exitCode: 2,
+    });
+
+    expect(telemetryRows(injectedPath)).toContainEqual(['blocked', 'self-mod', 'secret.txt']);
+    expect(telemetryRows(telemetryPath)).toEqual([]);
   });
 });

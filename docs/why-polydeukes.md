@@ -290,6 +290,19 @@ the other five rather than to add a capability. Fits §3 directly — it is the 
 the valve indictment already told here: the log named a gap in the framework's own
 observation, and the gap got a name in the vocabulary instead of a footnote. -->
 
+<!-- Parked candidate (ADAPTER-git-b, 2026-08-12): the same claim, holed a second way — and
+this hole is the one that flatters you. The first (COVENANT-14, above) was a call that
+reached no judge. This one WAS judged: the run refused, exited 2, printed why. It simply left
+no record of having refused, because the log's location comes from the config and the thing
+that had failed was loading the config. A refusal is the safe direction, so nothing looked
+wrong from outside — which is why it survived so long: the branch that was silent is the one
+nobody re-checks, since it stops you rather than letting you through. What was lost was the
+measurement, not the protection, and a gate you cannot count is a gate you cannot argue for.
+Worth telling because it names a bias in how anyone audits their own checks: we verify that
+the block happens, and the block happening is what makes us stop looking. Pairs with the
+sibling framing already parked here (COVENANT-18: a check has two ends) — the end that
+behaves correctly is where the untested half hides. -->
+
 ## What Polydeukes is not
 
 It is not an agent runtime. Frameworks that build and run agents — sessions, sandboxes,
