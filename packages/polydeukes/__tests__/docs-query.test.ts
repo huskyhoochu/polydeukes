@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // DOCS-02 §3-b/§3-c/§3-d — the offline docs query core: the five-topic map over the
 // bundled docs and the fence-aware section extractor under it. The bin's argv wiring and
 // the dist/docs copy step are later phases of this cycle; nothing here spawns.
+// DOCS-04 re-points the §3-c map at the split reference document
+// (docs/reference/configuration.md, the six config-key sections promoted to `##`);
+// the five topic names are invariant.
 //
 // Contract asserted (the implementer matches these named exports; both synchronous):
 //   TOPICS: readonly string[] — the five topic names, the finite query domain (§3-c).
@@ -37,6 +40,8 @@ const realDocs = join(repoRoot, 'docs');
 /** The §3-a bundle members queryDocs reads (guides) and the see-also targets (reference). */
 const GUIDE_DOCS = ['installation.md', 'configuration.md', 'troubleshooting.md'];
 const REFERENCE_DOCS = [
+  // DOCS-04: the split configuration reference — a bundle member queryDocs reads directly.
+  'configuration.md',
   'polydeukes.md',
   'core.md',
   'covenant.md',
@@ -44,15 +49,15 @@ const REFERENCE_DOCS = [
   'adapter-git.md',
 ];
 
-/** §3-c heading literals, exactly as the shipped docs spell them. */
-const REFERENCE_HEADING = '## Reference';
-const DISCIPLINES_HEADING = '### `disciplines` (optional)';
-const WITNESS_HEADING = '### `witness` (optional)';
+/**
+ * §3-c heading literals, exactly as the shipped docs spell them. DOCS-04 promotes each
+ * config key to a `##` section of docs/reference/configuration.md, with the
+ * optional/required tag carried in the section's prose rather than the heading.
+ */
+const DISCIPLINES_HEADING = '## `disciplines`';
+const WITNESS_HEADING = '## `witness`';
 const ENFORCEMENT_HEADING = '## What enforcement looks like';
 const BLOCKED_CALL_HEADING = '## Opening a blocked call — the witness';
-
-/** The full text AC-5 pins the install answer against. */
-const installationText = readFileSync(join(realDocs, 'installation.md'), 'utf-8');
 
 /** One markdown document from lines — keeps fence markers readable in fixtures. */
 function md(...rows: string[]): string {
@@ -164,9 +169,10 @@ describe('DOCS-02 §3-d extractSection — the boundary is heading LEVEL', () =>
   });
 
   it('stops before a HIGHER-level heading', () => {
-    // Mutation caught: a terminator scan looking only for the same level. The real
-    // `### disciplines` section ends at a `##`, so this mutant swallows everything to
-    // end of file while every same-level fixture stays green.
+    // Mutation caught: a terminator scan looking only for the same level. A `###`
+    // child section that closes at its parent's next `##` sibling is the shape the
+    // bundled docs carry — this mutant swallows everything to end of file while every
+    // same-level fixture stays green.
     const doc = md('### One', 'body-one', '## Up', 'up-body');
 
     const section = extractSection(doc, '### One');
@@ -177,9 +183,10 @@ describe('DOCS-02 §3-d extractSection — the boundary is heading LEVEL', () =>
   });
 
   it('runs past lower-level child headings to the next same-level one', () => {
-    // Mutation caught: stopping at the next heading of ANY level. The real
-    // `## Reference` holds seven `###` children — this mutant returns only the intro
-    // and drops the entire reference body while still exiting 0.
+    // Mutation caught: stopping at the next heading of ANY level. The split reference
+    // document's key sections carry lower-level children (`adapters.git` under
+    // `adapters`) — this mutant returns only the intro and drops the rest of the
+    // section while still exiting 0.
     const doc = md(
       '## Parent',
       'intro',
@@ -196,18 +203,6 @@ describe('DOCS-02 §3-d extractSection — the boundary is heading LEVEL', () =>
     expect(section).toContain('### Child B');
     expect(section).toContain('b-body');
     expect(section).not.toContain('## Next');
-  });
-
-  it('returns a last section that ends at end of file', () => {
-    // Mutation caught: a terminating heading REQUIRED — the real
-    // `## What enforcement looks like` closes configuration.md, so that mutant throws
-    // (or returns empty) on a section the §3-c map points at.
-    const doc = md('## First', 'first-body', '## Last', 'last-body');
-
-    const section = extractSection(doc, '## Last');
-
-    expect(section).toContain('last-body');
-    expect(section).not.toContain('first-body');
   });
 });
 
@@ -260,20 +255,13 @@ describe('DOCS-02 §3-b/§3-c queryDocs — over a bundle copied from the real d
     // every member of the finite domain must actually resolve. Mutation caught: a topic
     // carried in TOPICS and advertised by the listing but absent from the §3-c map — it
     // would advertise a query that throws, and the per-topic tests below only reach the
-    // five names spelled out in them today.
+    // five names spelled out in them today. The see-also line is stripped before the
+    // length check: it is appended to every answer, so with it in place a heading whose
+    // section body has gone empty would still pass as "resolved".
     const { text } = queryDocs({ docsRoot, topic });
 
-    expect(text.trim().length).toBeGreaterThan(0);
-  });
-
-  it('answers install with the whole installation.md, uncut by fenced # lines', () => {
-    // AC-5. installation.md really carries `# Judged at commit time:` and three more
-    // #-headed lines inside fences; a fence-naive extractor truncates there and still
-    // exits 0. Prefix equality over the real file is the kill: any truncation,
-    // reformat, or prepended banner breaks it (§3-d: the body ships verbatim).
-    const { text } = queryDocs({ docsRoot, topic: 'install' });
-
-    expect(text.startsWith(installationText)).toBe(true);
+    const body = text.slice(0, text.lastIndexOf('\nSee also: '));
+    expect(body.trim().length).toBeGreaterThan(0);
   });
 
   it.each([
@@ -283,42 +271,56 @@ describe('DOCS-02 §3-b/§3-c queryDocs — over a bundle copied from the real d
     ['covenant', 'reference/polydeukes.md'],
     ['witness', 'reference/covenant.md'],
   ] as const)('appends the %s see-also line naming %s', (topic, seeAlso) => {
-    // §3-c's see-also column, pinned as the finite enumeration it is. None of the
-    // three guide docs contains any `reference/` path (measured), so this string can
-    // only come from the see-also line — dropping the line or pointing it at the
-    // wrong reference file both break here.
+    // §3-c's see-also column, pinned as the finite enumeration it is. The pin is the
+    // answer's TAIL, not a containment: a body cross-reference happening to name the
+    // same reference file would satisfy toContain, while only the appended see-also
+    // line — resolved against the bundle — can close the text. Dropping the line or
+    // pointing it at the wrong reference file both break here.
     const { text } = queryDocs({ docsRoot, topic });
 
-    expect(text).toContain(seeAlso);
+    expect(text.endsWith(`See also: ${join(docsRoot, seeAlso)}\n`)).toBe(true);
   });
 
-  it('answers config with the whole ## Reference section, children included', () => {
-    // §3-d both boundary directions on real data. `## Reference` holds seven ###
-    // children: a stops-at-any-heading extractor loses everything from `### languages`
-    // on, and a runs-too-far one drags in `## What enforcement looks like`. The
-    // last-child pins catch the subtler mid-section truncations, and the `## IDE
-    // support` exclusion kills a whole-file fallback.
+  it('answers install with the whole installation.md, verbatim', () => {
+    // The install row's FILE pin. The config test below covers the heading-less
+    // whole-file branch, but nothing else names which document install reads —
+    // review measured that repointing the row at troubleshooting.md left the rest
+    // of the suite green. Prefix equality over the real file is the kill.
+    const installationText = readFileSync(join(realDocs, 'installation.md'), 'utf-8');
+    const { text } = queryDocs({ docsRoot, topic: 'install' });
+
+    expect(text.startsWith(installationText)).toBe(true);
+  });
+
+  it('answers config with the whole reference/configuration.md, verbatim', () => {
+    // DOCS-04 §3-b: config is a whole-file reference carrying no heading. Prefix
+    // equality over the real split document is the kill: a map row still reading the
+    // guide file returns text starting with the guide's own title, a row keeping a
+    // `## Reference` heading throws, and any truncation breaks the prefix. The
+    // exclusions pin the file boundary — the guide's sections stay in the guide.
+    const referenceConfigText = readFileSync(
+      join(realDocs, 'reference', 'configuration.md'),
+      'utf-8',
+    );
     const { text } = queryDocs({ docsRoot, topic: 'config' });
 
-    expect(text.startsWith(REFERENCE_HEADING)).toBe(true);
-    expect(text).toContain('### `languages` (required)');
+    expect(text.startsWith(referenceConfigText)).toBe(true);
     expect(text).toContain(DISCIPLINES_HEADING);
-    expect(text).toContain('Adding a discipline is a data edit');
     expect(text).not.toContain(ENFORCEMENT_HEADING);
     expect(text).not.toContain('## IDE support');
   });
 
-  it('answers discipline with the ### disciplines section, ended by the next ## heading', () => {
-    // §3-d level boundary in the harder direction: after `### disciplines` the next
-    // heading is a HIGHER-level `##`, so a same-level-only scan runs to end of file
-    // and swallows the enforcement section. The witness-section pin kills a start
-    // latched one heading too early.
+  it('answers discipline with the ## `disciplines` section of the split reference', () => {
+    // DOCS-04 §3-b: the key is a `##` section of reference/configuration.md, spelled
+    // without the optional tag — a map row keeping `### `disciplines` (optional)` finds
+    // no such line and throws (§3-d exact equality). `disciplines` is the last key
+    // section, so this exercises the end-of-file form on real data. The token-sentence
+    // exclusion kills a start latched one section early, inside `## `witness``.
     const { text } = queryDocs({ docsRoot, topic: 'discipline' });
 
     expect(text.startsWith(DISCIPLINES_HEADING)).toBe(true);
     expect(text).toContain('Each entry is one discipline');
     expect(text).toContain('Adding a discipline is a data edit');
-    expect(text).not.toContain(ENFORCEMENT_HEADING);
     expect(text).not.toContain('The token must stand alone');
   });
 
@@ -326,19 +328,21 @@ describe('DOCS-02 §3-b/§3-c queryDocs — over a bundle copied from the real d
     // §3-d end-of-file form on real data: `## What enforcement looks like` closes
     // configuration.md, so an extractor requiring a terminating heading dies here.
     // The fails-closed pin is the section's own last sentence — any truncation loses
-    // it — and the disciplines exclusion kills a started-too-early answer.
+    // it — and the IDE-support exclusion kills a started-too-early answer: that is
+    // the guide section immediately before it.
     const { text } = queryDocs({ docsRoot, topic: 'covenant' });
 
     expect(text.startsWith(ENFORCEMENT_HEADING)).toBe(true);
     expect(text).toContain('the system fails closed');
-    expect(text).not.toContain(DISCIPLINES_HEADING);
+    expect(text).not.toContain('## IDE support');
   });
 
-  it('answers witness with the configuration section followed by the troubleshooting section', () => {
-    // §3-c's one two-section topic. Each half's landmark is unique to its own file
-    // across the two joined here (measured), so returning only one half — or swapping
-    // the join order — breaks. Boundary pins: the configuration half stops before
-    // `### disciplines`, the troubleshooting half before `## A blocked commit`.
+  it('answers witness with the reference section followed by the troubleshooting section', () => {
+    // §3-c's one two-section topic; DOCS-04 moves the first half to the split
+    // reference's `## `witness`` section. Each half's landmark is unique to its own
+    // file across the two joined here, so returning only one half — or swapping the
+    // join order — breaks. Boundary pins: the reference half stops before
+    // `## `disciplines``, the troubleshooting half before `## A blocked commit`.
     const { text } = queryDocs({ docsRoot, topic: 'witness' });
 
     expect(text).toContain(WITNESS_HEADING);
@@ -369,26 +373,32 @@ describe('DOCS-02 §3-b/§3-c queryDocs — over a bundle copied from the real d
       expect(() => queryDocs({ docsRoot, topic: '' })).toThrow();
     });
 
+    it('throws naming the heading when the doc renamed it', () => {
+      // §3-d's fail-loud contract at the queryDocs LEVEL, not just extractSection's:
+      // review measured that a readSection swallowing the extractor's throw into empty
+      // text keeps the extractSection unit fixtures green while `pdks docs` hands back
+      // a blank body at exit 0. The rename target is this test's own bundle copy.
+      const path = join(docsRoot, 'reference', 'configuration.md');
+      const renamed = readFileSync(path, 'utf-8').replace(
+        `\n${WITNESS_HEADING}\n`,
+        '\n## `witness` (optional)\n',
+      );
+      writeFileSync(path, renamed);
+
+      expect(() => queryDocs({ docsRoot, topic: 'witness' })).toThrow(/witness/);
+    });
+
     it('throws naming the file when a bundled doc is missing', () => {
       // Mutation caught: a read failure swallowed into an empty answer. A silently
       // incomplete bundle (§3-a's named consumer-side symptom) must surface as the
       // missing path named, not as empty text an AI would read as the document.
-      rmSync(join(docsRoot, 'configuration.md'));
+      // DOCS-04: config reads the split reference document, so that is the file
+      // whose absence must be named.
+      rmSync(join(docsRoot, 'reference', 'configuration.md'));
 
-      expect(() => queryDocs({ docsRoot, topic: 'config' })).toThrow(/configuration\.md/);
-    });
-
-    it('throws naming the heading when the doc renamed it', () => {
-      // §3-d's fail-loud contract at the map level. The rename EXTENDS the heading, so
-      // a startsWith matcher still matches it — only exact-string equality throws
-      // instead of returning the renamed section with full confidence.
-      const renamed = readFileSync(join(docsRoot, 'configuration.md'), 'utf-8').replace(
-        `\n${REFERENCE_HEADING}\n`,
-        '\n## Reference table\n',
+      expect(() => queryDocs({ docsRoot, topic: 'config' })).toThrow(
+        /reference\/configuration\.md/,
       );
-      writeFileSync(join(docsRoot, 'configuration.md'), renamed);
-
-      expect(() => queryDocs({ docsRoot, topic: 'config' })).toThrow(/Reference/);
     });
   });
 });

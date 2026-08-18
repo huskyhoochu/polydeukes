@@ -5,6 +5,8 @@
 > 알파 단계입니다. 이 가이드는 오늘 출하된 설치 경로만 다루고, 여기 적힌 모든 내용은
 > 발행된 패키지의 실측 동작입니다.
 
+이 문서는 시작하기 층입니다. 빈 프로젝트에서 첫 판정까지를 다룹니다.
+
 devDependency 하나, 표면마다 명령 하나면 됩니다. 설치하는 것은 우산(umbrella) 패키지
 `polydeukes` 하나뿐입니다. 코어·판정기·어댑터를 자기 의존성으로 안고 오며, CLI는
 `pdks`(`polydeukes`의 별칭)입니다.
@@ -200,6 +202,6 @@ cat .polydeukes/roi.log
 다섯 가지이고, 방금 일으킨 차단이 마지막 행입니다. 한 번 차단하는 것을 지켜본 관문은
 배선이 확인된 관문입니다.
 
-다음 갈 곳은 둘입니다. 모든 필드와 규율(discipline) 작성법은
-[설정 레퍼런스](./configuration.ko.md)에, 무언가 차단됐는데 이유를 모르겠을 때는
-[문제 해결](./troubleshooting.ko.md)에 있습니다.
+다음 갈 곳은 셋입니다. 설정 파일과 그 배선은 [설정 가이드](./configuration.ko.md)에, 모든
+필드와 규율(discipline) 작성법은 [설정 레퍼런스](./reference/configuration.ko.md)에,
+무언가 차단됐는데 이유를 모르겠을 때는 [문제 해결](./troubleshooting.ko.md)에 있습니다.

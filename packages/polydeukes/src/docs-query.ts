@@ -32,11 +32,11 @@ const TOPIC_MAP: Record<Topic, { sections: readonly SectionRef[]; seeAlso: strin
     seeAlso: 'reference/polydeukes.md',
   },
   config: {
-    sections: [{ file: 'configuration.md', heading: '## Reference' }],
+    sections: [{ file: 'reference/configuration.md' }],
     seeAlso: 'reference/core.md',
   },
   discipline: {
-    sections: [{ file: 'configuration.md', heading: '### `disciplines` (optional)' }],
+    sections: [{ file: 'reference/configuration.md', heading: '## `disciplines`' }],
     seeAlso: 'reference/covenant.md',
   },
   covenant: {
@@ -45,7 +45,7 @@ const TOPIC_MAP: Record<Topic, { sections: readonly SectionRef[]; seeAlso: strin
   },
   witness: {
     sections: [
-      { file: 'configuration.md', heading: '### `witness` (optional)' },
+      { file: 'reference/configuration.md', heading: '## `witness`' },
       { file: 'troubleshooting.md', heading: '## Opening a blocked call — the witness' },
     ],
     seeAlso: 'reference/covenant.md',
@@ -153,10 +153,10 @@ export function queryDocs(spec: QueryDocsSpec): { text: string } {
 
   const entry = TOPIC_MAP[spec.topic];
   const body = entry.sections.map((section) => readSection(spec.docsRoot, section)).join('\n');
-  // Resolved against the bundle, not printed as the bare relative name. The reference layer
-  // ships but no topic reads it, so this line is the only way to reach those five documents —
-  // and a reader given `reference/core.md` has to guess where the bundle lives before it can
-  // open anything. A path a file-read tool can take is the difference between a pointer and
-  // a dead end, and a dead end sends the reader back to the web search this command replaces.
+  // Resolved against the bundle, not printed as the bare relative name. A reader given
+  // `reference/core.md` has to guess where the bundle lives before it can open anything, and
+  // this line is the only way most of the reference layer is reached at all. A path a file-read
+  // tool can take is the difference between a pointer and a dead end, and a dead end sends the
+  // reader back to the web search this command replaces.
   return { text: `${body}\nSee also: ${join(spec.docsRoot, entry.seeAlso)}\n` };
 }

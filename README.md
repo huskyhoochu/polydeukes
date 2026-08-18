@@ -6,29 +6,23 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** The first units have landed in `@polydeukes/core` (covenant protocol, ROI
-telemetry, config loader, fail-open/fail-closed policy table, and the canonical-transcript query
-seam), `@polydeukes/covenant` (the run_covenant wrapper, heredoc-aware multi-line Bash analysis with
-its write-detection rules (redirect/tee/`sed -i`), the path-routing dispatcher, the self-mod
-meta-covenant with its witness seam, the shell-mod meta-covenant that assembles the detection rules
-into a Bash-axis judge with a read-only allowlist, and the TTL witness — a time-boxed valve judged
-over the transcript seam, consulted only after a verdict blocked), and
-`@polydeukes/adapter-claude-code` (PreToolUse payload → covenant input IR up-translation, the
-adapter-path ROI telemetry wiring with its injected dispatch seam, the virtual-post-state parser
-that computes Edit/Write/MultiEdit apply-results without touching disk, and the JSONL transcript
-provider that feeds the TTL witness real human-typed messages), `@polydeukes/adapter-git` (the
-commit-surface adapter: staged diff → covenant input IR, filling the same agent-neutral per-call
-`fileChange` evidence — a discriminated union where deletion is first-class — from HEAD/staged blobs
-— the second adapter, proving IR neutrality with zero core changes), and the umbrella `polydeukes`
-package (the `loadConfig` discovery loader plus the first real `pdks` subcommand: `pdks covenant
-check`, the pre-commit judgment entry point whose witness valve, at the `block` level, is a TTY
-prompt only a human at a terminal can answer — the level itself is the git adapter's namespace
-setting `adapters.git.enforce: block | advise`, `advise` records a verdict as an `advised` event and
-lets the commit proceed, and the same namespace's `adapters.git.protectedPaths` is the commit
-surface's additive protection scope — judged on top of the shared list, never read by the session
-surface); everything else is still blueprint. This repository holds that early core plus the
-architecture blueprint and the reasoning behind it. What follows is a description of what is being
-built.
+**Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol),
+`@polydeukes/covenant` (the judge), the two adapters (`adapter-claude-code`, `adapter-git`), and
+the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
+memory, and verify packages are still blueprint. Three subcommands ship today (published
+with the v0.3.0 release; earlier npm versions are a name-reservation stub):
+
+```sh
+pdks init claude-code    # wire the session surface into a project
+pdks covenant check      # judge the staged diff (the pre-commit entry point)
+pdks docs [topic]        # read the bundled documentation, offline
+```
+
+The documentation ships inside the package, so `pdks docs` answers from the same version that
+does the judging — no network, and no drift between what a search engine indexed and what is
+installed. The [Documents](#documents) table below is the same set plus the narrative layer,
+grouped from getting started to reference. Planned — each arrives with its package: `pdks
+verify` (adversarial verification) and `pdks ledger start <id>` (work tracking).
 
 ---
 
@@ -99,36 +93,36 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 
 ## Documents
 
+Grouped by layer — start at the top layer you need.
+
+### Getting started
+
+| Document | Contents |
+|----------|----------|
+| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code`) and the manually wired commit surface |
+
+### Guides
+
+| Document | Contents |
+|----------|----------|
+| [`docs/configuration.md`](./docs/configuration.md) | Config guide — the file, discovery, IDE wiring, and what enforcement looks like |
+| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | The fail-closed states and how to recover, reading verdicts, and the witness valve |
+
+### Reference
+
+| Document | Contents |
+|----------|----------|
+| [`docs/reference/configuration.md`](./docs/reference/configuration.md) | Configuration reference — every key, its rules, and its pitfalls |
+| [`docs/reference/`](./docs/reference/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
+
+### Why, and the journal
+
 | Document | Contents |
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
 | [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design-principles whitepaper (skeleton, being expanded in public) |
-| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code`) and the manually wired commit surface |
-| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | The fail-closed states and how to recover, reading verdicts, and the witness valve |
-| [`docs/configuration.md`](./docs/configuration.md) | Config reference — every key, the discipline families, and what enforcement looks like |
-| [`docs/reference/`](./docs/reference/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
-
-## CLI
-
-The `pdks` bin carries three subcommands today (published with the v0.3.0 release; earlier
-npm versions are a name-reservation stub):
-
-```sh
-pdks init claude-code    # wire the session surface into a project
-pdks covenant check      # judge the staged diff (the pre-commit entry point)
-pdks docs [topic]        # read the bundled documentation, offline
-```
-
-The documentation ships inside the package, so `pdks docs` answers from the same version
-that does the judging — no network, and no drift between what a search engine indexed and
-what is installed.
-
-Planned — each arrives with its package: `pdks verify` (adversarial verification) and
-`pdks ledger start <id>` (work tracking).
-
-`pdks` is an alias for `polydeukes`.
 
 ## License
 

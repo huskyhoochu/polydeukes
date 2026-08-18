@@ -54,7 +54,7 @@ vocabulary, its validator, and its defaults all live here.
 
 An unknown key, an `enforce` outside the two values, or a `protectedPaths` that is not an
 array of strings each fail fast with the full field path. The writing reference is
-[configuration.md's `adapters` section](../configuration.md#adapters-optional).
+[the configuration reference's `adapters` section](./configuration.md#adapters).
 
 **The additive scope is additive for a reason.** The level belongs to the observer, and so
 does the scope: entries listed here are judged when work becomes history, and the session

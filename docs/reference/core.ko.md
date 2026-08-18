@@ -85,7 +85,7 @@ function allFileChanges(input: CovenantInput): FileChange[];
 셋이고 전부 간접입니다.
 
 - **설정 파일.** 그 스키마가 여기서 정의됩니다. 어휘 레퍼런스는
-  [configuration.md](../configuration.ko.md)입니다.
+  [설정 레퍼런스](./configuration.ko.md)입니다.
 - **JSON Schema 자산.** `@polydeukes/core/schema.json` exports 서브패스입니다. 이 패키지를
   직접 설치한 프로젝트가 쓰는 경로입니다. 우산을 설치한 소비자는 그쪽에 동봉된 사본을
   가리킵니다. 두 철자 모두

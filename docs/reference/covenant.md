@@ -37,7 +37,7 @@ determines whether it can be judged on a given surface.
 
 `when` is a trigger, not a family: it narrows a `requirePrecedent` entry and combines with
 nothing else. The writing guide for these entries — the four predicate forms, the two
-pitfalls — is [configuration.md's `disciplines` section](../configuration.md#disciplines-optional).
+pitfalls — is [the configuration reference's `disciplines` section](./configuration.md#disciplines).
 
 **Three meta-covenants** protect the judging chain. They are covenants like any other; the
 vocabulary below applies to them unchanged.

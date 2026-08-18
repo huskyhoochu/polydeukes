@@ -5,21 +5,24 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
-**상태: 알파(alpha).** 첫 유닛들이 다섯 패키지에 구현되었습니다. `@polydeukes/core`는 약속(covenant) 프로토콜, ROI 텔레메트리, config
-로더, fail-open/fail-closed 정책 테이블, 정규 대화 기록(canonical transcript) 질의 이음새(seam)를 담습니다.
-`@polydeukes/covenant`는 run_covenant 래퍼, heredoc을 인지하는 멀티라인 Bash 분석과 쓰기 탐지 규칙(redirect/tee/`sed
--i`), 경로 라우팅 디스패처, 증인(witness) 이음새를 갖춘 self-mod 메타-약속(covenant), 탐지 규칙을 읽기 전용 allowlist와 함께 Bash 축
-판정으로 조립한 shell-mod 메타-약속(covenant), 그리고 대화 기록 이음새로 판정하며 판정 뒤에만 조회되는 시간제 증인(TTL witness) 밸브까지 갖췄습니다.
-`@polydeukes/adapter-claude-code`는 PreToolUse 페이로드를 약속(covenant) 입력 IR로 바꾸는 번역, 주입형 dispatch seam을
-갖춘 어댑터 경로 ROI 텔레메트리 배선, 디스크를 건드리지 않고 Edit/Write/MultiEdit 적용 결과를 계산하는 가상 사후 상태(virtual post-state)
-파서, 시간제 증인(TTL witness)에 실물 인간 발화를 공급하는 대화 기록(transcript) JSONL 공급자를 담습니다.
-`@polydeukes/adapter-git`은 커밋 표면 어댑터입니다. `staged diff`를 약속(covenant) 입력 IR로 바꾸고 HEAD와 인덱스의 blob으로 같은
-에이전트 중립 호출별 `fileChange` 증거(삭제를 1급으로 표현하는 판별 유니온(discriminated union))를 채우는 제2 어댑터이며, 코어 0줄 수정의 IR
-중립성 증명입니다. umbrella `polydeukes` 패키지는 `loadConfig` 디스커버리 로더와 첫 실물 `pdks` 서브커맨드이자 pre-commit 판정 진입점인
-`pdks covenant check`를 담습니다. `block` 수위에서 그 증인(witness) 밸브는 터미널 앞의 인간만 답할 수 있는 TTY 프롬프트입니다. 수위 자체는
-git 어댑터의 네임스페이스 설정 `adapters.git.enforce: block | advise`이고, `advise`는 판정을 `advised` 이벤트로 기록한 뒤 커밋을
-진행시킵니다. 같은 네임스페이스의 `adapters.git.protectedPaths`는 공통 목록 위에 커밋 표면만 판정하는 가산 관측 범위이며, 세션 표면은 읽지 않습니다.
-나머지는 아직 청사진 단계입니다. 이 저장소는 그 초기 코어와 아키텍처 청사진, 설계 근거를 담고 있습니다. 아래에서 무엇을 만들려는지 설명합니다.
+**상태: 알파(alpha).** 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+프로토콜), `@polydeukes/covenant`(판정기), 어댑터 둘(`adapter-claude-code` ·
+`adapter-git`), 그리고 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지
+`polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘 실린
+서브커맨드는 셋입니다(v0.3.0 릴리스로 출판됐고, 그 전의 npm 버전은 이름 선점용
+스텁입니다).
+
+```sh
+pdks init claude-code    # 프로젝트에 세션 표면을 배선
+pdks covenant check      # staged diff 판정 (pre-commit 진입점)
+pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
+```
+
+문서는 패키지 안에 함께 실립니다. 그래서 `pdks docs`는 판정을 수행하는 바로 그 판본의 답을
+돌려주고, 검색 엔진이 색인한 판본과 설치된 판본이 어긋나는 일이 없습니다. 아래
+[문서](#문서) 표는 같은 집합에 백서·저널을 더해 시작하기부터 레퍼런스까지 층으로
+묶었습니다. 예정된 것도 있습니다. `pdks verify`(적대 검증)와
+`pdks ledger start <id>`(작업 추적)는 각자의 패키지와 함께 옵니다.
 
 ---
 
@@ -79,35 +82,36 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 
 ## 문서
 
+층으로 묶었습니다. 필요한 층에서 바로 시작하면 됩니다.
+
+### 시작하기
+
+| 문서 | 내용 |
+|------|------|
+| [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code`)과 수동 배선 커밋 표면 |
+
+### 가이드
+
+| 문서 | 내용 |
+|------|------|
+| [`docs/configuration.ko.md`](./docs/configuration.ko.md) | 설정 가이드 — 파일과 발견 규칙, IDE 배선, 강제가 어떤 모습인지 |
+| [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md) | fail-closed 상태들과 회복 절차, 판정 기록 읽는 법, 증인(witness) 밸브 |
+
+### 레퍼런스
+
+| 문서 | 내용 |
+|------|------|
+| [`docs/reference/configuration.ko.md`](./docs/reference/configuration.ko.md) | 설정 레퍼런스 — 모든 키와 각 키의 규칙·함정 |
+| [`docs/reference/`](./docs/reference/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 다섯이 각각 소유하는 것 |
+
+### 철학과 저널
+
 | 문서 | 내용 |
 |------|------|
 | [`STORY.md`](./STORY.md) | 이름의 유래와 설계 철학 (창업자 서사) |
 | [`docs/why-polydeukes.ko.md`](./docs/why-polydeukes.ko.md) | 왜 폴리데우케스인가? — 설계 원칙 백서 (골격, 공개적으로 확장 중) |
-| [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code`)과 수동 배선 커밋 표면 |
-| [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md) | fail-closed 상태들과 회복 절차, 판정 기록 읽는 법, 증인(witness) 밸브 |
-| [`docs/configuration.ko.md`](./docs/configuration.ko.md) | 설정 레퍼런스 — 전체 키와 규율(discipline) 가족, 집행이 어떤 모습인지 |
-| [`docs/reference/`](./docs/reference/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 다섯이 각각 소유하는 것 |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.ko.md) | 빌드 인 퍼블릭 시리즈 — 마일스톤마다 한 편, v0.1(약속(covenant) 코어 + 측정)부터 시작 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 마일스톤별 릴리스 노트 |
-
-## CLI
-
-`pdks` bin에는 오늘 서브커맨드 셋이 실려 있습니다(v0.3.0 릴리스로 출판되며, 그 전의 npm
-버전은 이름 선점용 스텁입니다).
-
-```sh
-pdks init claude-code    # 프로젝트에 세션 표면을 배선
-pdks covenant check      # staged diff 판정 (pre-commit 진입점)
-pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
-```
-
-문서는 패키지 안에 함께 실립니다. 그래서 `pdks docs`는 판정을 수행하는 바로 그 판본의 답을
-돌려줍니다. 검색 엔진이 색인한 판본과 설치된 판본이 어긋나는 일이 없습니다.
-
-예정 — 각자의 패키지와 함께 옵니다. `pdks verify`(적대 검증), `pdks ledger start <id>`(작업
-추적).
-
-`pdks`는 `polydeukes`의 별칭입니다.
 
 ## 라이선스
 

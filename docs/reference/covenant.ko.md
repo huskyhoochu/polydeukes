@@ -37,7 +37,7 @@
 
 `when`은 가족이 아니라 방아쇠입니다. `requirePrecedent` 항목의 범위를 좁힐 뿐 다른
 무엇과도 결합하지 않습니다. 이 항목들을 쓰는 가이드는 술어 네 형태와 함정 둘까지
-[configuration.md의 `disciplines` 절](../configuration.ko.md#disciplines-선택)에
+[설정 레퍼런스의 `disciplines` 절](./configuration.ko.md#disciplines)에
 있습니다.
 
 **메타 약속 셋**이 판정 사슬을 지킵니다. 다른 약속과 똑같은 약속이고, 아래 어휘가 그대로

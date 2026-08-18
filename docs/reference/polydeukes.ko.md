@@ -76,10 +76,10 @@ git 어댑터로 스테이징 영역을 수집하고, 약속(covenant) 입력 IR
 | 토픽 | 무엇에서 답하는가 |
 |---|---|
 | `install` | [installation](../installation.ko.md) 전문 |
-| `config` | [configuration](../configuration.ko.md)의 레퍼런스 절 |
-| `discipline` | [configuration](../configuration.ko.md)의 `disciplines` 절 |
+| `config` | [설정 레퍼런스](./configuration.ko.md) 전문 |
+| `discipline` | [설정 레퍼런스](./configuration.ko.md)의 `disciplines` 절 |
 | `covenant` | [configuration](../configuration.ko.md)의 강제가 어떤 모습인지 다루는 절 |
-| `witness` | [configuration](../configuration.ko.md)의 `witness` 절에 이어 [troubleshooting](../troubleshooting.ko.md)의 밸브 절 |
+| `witness` | [설정 레퍼런스](./configuration.ko.md)의 `witness` 절에 이어 [troubleshooting](../troubleshooting.ko.md)의 밸브 절 |
 
 **실패는 어느 경우에나 stdout을 0바이트로 둡니다.** 동봉 문서가 없는 경우, 문서가 그 표제를
 더는 담지 않는 경우, 모르는 토픽인 경우 모두 무엇이 없었는지 stderr에 이름을 적고 종료 `2`를

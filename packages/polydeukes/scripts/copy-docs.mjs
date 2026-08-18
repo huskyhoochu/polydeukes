@@ -28,6 +28,7 @@ const BUNDLED = [
   'installation.md',
   'configuration.md',
   'troubleshooting.md',
+  'reference/configuration.md',
   'reference/polydeukes.md',
   'reference/core.md',
   'reference/covenant.md',

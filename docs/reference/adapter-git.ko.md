@@ -50,7 +50,7 @@ git의 어휘가 번역돼 사라지는 경계입니다. 스테이징된 diff가
 
 미지 키, 두 값 밖의 `enforce`, 문자열 배열이 아닌 `protectedPaths`는 각각 전체 필드
 경로와 함께 즉시 실패합니다. 작성 레퍼런스는
-[configuration.md의 `adapters` 절](../configuration.ko.md#adapters-선택)입니다.
+[설정 레퍼런스의 `adapters` 절](./configuration.ko.md#adapters)입니다.
 
 **가산 범위가 가산인 데는 이유가 있습니다.** 수위가 관측자의 것이듯 범위도 관측자의
 것입니다. 여기 적힌 항목은 작업이 역사가 되는 시점에 판정되고 세션 표면은 그것을 읽지

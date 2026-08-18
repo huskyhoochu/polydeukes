@@ -78,10 +78,10 @@ package, so the answer comes from the installed version rather than from the net
 | Topic | Answers from |
 |---|---|
 | `install` | [installation](../installation.md), in full |
-| `config` | [configuration](../configuration.md) — the Reference section |
-| `discipline` | [configuration](../configuration.md) — the `disciplines` section |
+| `config` | [the configuration reference](./configuration.md), in full |
+| `discipline` | [the configuration reference](./configuration.md) — the `disciplines` section |
 | `covenant` | [configuration](../configuration.md) — What enforcement looks like |
-| `witness` | [configuration](../configuration.md)'s `witness` section, then [troubleshooting](../troubleshooting.md)'s valve section |
+| `witness` | [the configuration reference](./configuration.md)'s `witness` section, then [troubleshooting](../troubleshooting.md)'s valve section |
 
 **Every failure leaves stdout at zero bytes.** A missing bundled document, a heading the
 document no longer carries, an unknown topic — each names what was missing on stderr and

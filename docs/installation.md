@@ -5,6 +5,8 @@
 > Alpha. This guide covers the install paths that ship today, and everything here is the
 > measured behaviour of the published packages.
 
+This is the getting-started layer: from an empty project to a first judged call.
+
 One devDependency, one command per surface. The umbrella package `polydeukes` is the only
 thing you install — it carries the core, the judge, and the adapters as its own
 dependencies, and `pdks` is its CLI (an alias of `polydeukes`).
@@ -203,6 +205,7 @@ Every judgment appends exactly one record — `passed`, `blocked`, `witnessed`, 
 `skipped` — so the block you just caused is the last line. A gate you have watched block
 once is a gate you know is wired.
 
-From here: [the configuration reference](./configuration.md) for every field and for
+From here: [the configuration guide](./configuration.md) for the file and its wiring,
+[the configuration reference](./reference/configuration.md) for every field and for
 writing your own disciplines, and [troubleshooting](./troubleshooting.md) when something
 blocks and you don't know why.

@@ -6,6 +6,9 @@
 > proceed, and four things worth knowing when a judgment surprises you. Each entry is
 > symptom → cause → recovery.
 
+This is the guide layer for recovery: the fail-closed states, reading verdicts, and the
+witness valve.
+
 The one principle behind half of this page: **a gate that cannot judge blocks rather than
 guesses.** A missing config, an ambiguous config, an invalid config, an installer that
 cannot prove resolution, and a judge that cannot be loaded all fail closed, because a dead

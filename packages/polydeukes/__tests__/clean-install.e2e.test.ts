@@ -43,6 +43,18 @@ const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
 });
 const UMBRELLA_DIR = 'polydeukes';
 
+/**
+ * The root manifest's pinned pnpm, propagated into the consumer manifest. The consumer
+ * tree lives in OS tmp where no ancestor carries a `packageManager` field, so a corepack
+ * shim resolving `pnpm` there falls back to its own default — a different pnpm than the
+ * one this repository pins, with its own resolution behaviour (measured on the first
+ * Forgejo CI run: the overrides below went unapplied and the scoped packages resolved
+ * from the registry). One pin, read from the one place it is already declared.
+ */
+const { packageManager } = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8')) as {
+  packageManager: string;
+};
+
 /** The artifacts `pdks init claude-code` generates, as consumer-root-relative paths. */
 const HOOK_REL = '.claude/hooks/covenant-pretooluse.mjs';
 const CONFIG_REL = 'polydeukes.config.yaml';
@@ -83,7 +95,8 @@ beforeAll(() => {
   // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella arrives as
   // a direct file: dependency; the four scoped packages arrive through pnpm.overrides
   // pointing at their tarballs — the rewritten `^` ranges in the umbrella's packed manifest
-  // would otherwise hit the registry, where nothing is published yet.
+  // would otherwise resolve from the registry, where the published 0.3.0 answers them with
+  // a judge that predates the exports this build's hook imports.
   consumerRoot = mkdtempSync(join(tmpdir(), 'pdks-clean-install-consumer-'));
   const overrides = Object.fromEntries(
     PACKAGE_DIRS.filter((dir) => dir !== UMBRELLA_DIR).map((dir) => [
@@ -97,6 +110,7 @@ beforeAll(() => {
       {
         name: 'pdks-clean-install-consumer',
         private: true,
+        packageManager,
         dependencies: { [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}` },
         pnpm: { overrides },
       },
@@ -108,6 +122,20 @@ beforeAll(() => {
   const install = spawnSync('pnpm', ['install'], { cwd: consumerRoot, encoding: 'utf-8' });
   if (install.status !== 0) {
     throw new Error(`pnpm install failed in the consumer tree: ${install.stderr}`);
+  }
+
+  // The overrides are load-bearing, and a resolution that ignores them still exits 0: the
+  // registry answers every `^0.3.0` range, and each spawned case then judges through a
+  // year of missing exports with failures that name the wrong culprit. Refuse the tree
+  // here, naming the package, instead of letting six cases fail on the symptom.
+  const virtualStore = readdirSync(join(consumerRoot, 'node_modules', '.pnpm'));
+  for (const dir of PACKAGE_DIRS.filter((entry) => entry !== UMBRELLA_DIR)) {
+    const storePrefix = `${packageNameOf(dir).replace('/', '+')}@file+`;
+    if (!virtualStore.some((entry) => entry.startsWith(storePrefix))) {
+      throw new Error(
+        `consumer resolved ${packageNameOf(dir)} from the registry, not its packed tarball — pnpm.overrides did not apply`,
+      );
+    }
   }
 
   // AC-3 first half, run once and asserted in its own case below: subsequent cases spawn

@@ -83,7 +83,7 @@ attribution. Calls without evidence are skipped, never substituted for.
 Three places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
-  [configuration.md](../configuration.md).
+  [the configuration reference](./configuration.md).
 - **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath, for a
   project that installs this package directly. A consumer of the umbrella names the copy
   bundled there instead; both spellings are in
