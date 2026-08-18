@@ -13,6 +13,21 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.4.0](https://github.com/b95labs/polydeukes/compare/v0.3.0...v0.4.0) (2026-08-18)
+
+
+### Features
+
+* **core:** tighten config validation and judgment regexes (CONFIG-09) ([#53](https://github.com/b95labs/polydeukes/issues/53)) ([23b85c2](https://github.com/b95labs/polydeukes/commit/23b85c20c6a58e306be829face6868d782b88731))
+* **covenant:** record unattributed state changes on the session surface (COVENANT-14) ([#56](https://github.com/b95labs/polydeukes/issues/56)) ([c63e22d](https://github.com/b95labs/polydeukes/commit/c63e22d269c437d87bed73cf405529fd7c2e8b8a))
+* **polydeukes:** bundle the config schema in the umbrella distribution (DIST-05) ([#58](https://github.com/b95labs/polydeukes/issues/58)) ([279dcb2](https://github.com/b95labs/polydeukes/commit/279dcb2df8c5bc4b5d2802bdf804c6d3bb6b6061))
+
+
+### Bug Fixes
+
+* **polydeukes:** drop node_modules from the default protection list ([546adf0](https://github.com/b95labs/polydeukes/commit/546adf03694d11836b1c430c9f49ccbed17f166c))
+* **polydeukes:** record the commit surface's fail-closed exits (ADAPTER-git-b) ([#57](https://github.com/b95labs/polydeukes/issues/57)) ([819cf3d](https://github.com/b95labs/polydeukes/commit/819cf3d2e054618d2c625df037d35ec9352fa9e1))
+
 ## [0.3.0](https://github.com/huskyhoochu/polydeukes/compare/v0.2.0...v0.3.0) (2026-08-10)
 
 
