@@ -70,7 +70,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 ### 5. PR — create, review, fix
 
 - Commit with a Conventional Commit message (`feat(<pkg>): … (<ID>)`), push the branch, and
-  open a PR against `main` with `gh pr create`.
+  open a PR against `main` with `tea pr create`.
 - **Every commit that stages a protected path stops at a TTY witness prompt**, and an
   agent-spawned commit has no TTY and cannot answer — so a human runs it in their own
   terminal. Say how many prompts are coming before starting, never one at a time.

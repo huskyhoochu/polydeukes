@@ -48,8 +48,9 @@ later as a confusing failure rather than an obvious one:
    version file is not bumped until it is registered. **If a release PR is already open,
    editing the config is not enough**: release-please compares release notes, not the file
    list it would write, so it logs `PR #N remained the same` and leaves the stale branch in
-   place while the workflow still reports success. Close the PR (`gh pr close <N>
-   --delete-branch`) and rerun the workflow so it recomputes from the current config.
+   place while the workflow still reports success. Close the PR (`tea pr close <N>`), delete
+   its head branch (`git push origin --delete <branch>`), and rerun the workflow so it
+   recomputes from the current config.
 3. **`workspace:^` for internal dependencies** — never a version range.
 
 The publish e2e suites (`packages/polydeukes/__tests__/publish-pack.e2e.test.ts`,

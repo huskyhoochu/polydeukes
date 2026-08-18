@@ -1,0 +1,70 @@
+# Milestone-gated release automation — the Forgejo rendering of
+# .github/workflows/release-please.yml (original rationale in that file's header:
+# ONE release PR, merging it IS milestone gate step ③, and the annotated-tag
+# replacement).
+#
+# This workflow ends at the annotated tag. The npm upload belongs to the GitHub
+# mirror: npm trusted publishing (OIDC, provenance) is a github.com property, so
+# .github/workflows/publish.yml runs there, dispatched on the release tag once the
+# mirror has it.
+#
+# Two deliberate differences from the GitHub file:
+#
+# 1. The action is joaquinjsb/gitea-release-please-action — a release-please port that
+#    speaks the Gitea/Forgejo API (googleapis/release-please-action calls api.github.com
+#    shapes this instance does not serve). `github-api-url` and `changelog-host` default
+#    to this instance through the runner's own context, so release-PR bodies and
+#    CHANGELOG commit links point here rather than github.com. The port pushes the
+#    release branch over git, hence the git-username/git-password pair.
+# 2. The annotated-tag replacement survives unchanged: the port also tags through the
+#    Releases API, which records no tagger, date, or message — the same degradation the
+#    GitHub file guards against (measured 2026-07-29 on v0.2.0).
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: node-24
+    steps:
+      # Pinned to a full commit SHA, not the mutable v4 tag: a third-party fork
+      # holding this run's repo-write token is a supply-chain surface, so upgrades
+      # are a deliberate SHA bump. The token itself is the per-run actions token
+      # (repo-scoped, expires with the run) — a standing deploy token would widen
+      # that exposure, not narrow it.
+      - uses: https://github.com/joaquinjsb/gitea-release-please-action@cc782b45391b61346202e55b9fc66fd079289e9d # v4.1.10
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          git-username: forgejo-actions
+          git-password: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # Only runs on the push that merges a release PR; every other push stops above.
+      - name: Check out for tag annotation
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace the lightweight tag with an annotated one
+        if: ${{ steps.release.outputs.release_created }}
+        # Action outputs go through env, never inline into the script (workflow injection).
+        env:
+          TAG: ${{ steps.release.outputs.tag_name }}
+          SHA: ${{ steps.release.outputs.sha }}
+          URL: ${{ steps.release.outputs.html_url }}
+        run: |
+          set -euo pipefail
+          git config user.name 'forgejo-actions[bot]'
+          git config user.email 'forgejo-actions@noreply.gem12'
+          git tag -f -a "$TAG" "$SHA" -m "$TAG
+
+          Release notes: $URL"
+          git push --force origin "refs/tags/$TAG"
+          # Prove it took: objecttype must read `tag`, not `commit`.
+          test "$(git for-each-ref "refs/tags/$TAG" --format='%(objecttype)')" = tag

@@ -1,14 +1,15 @@
 # npm publish pipeline (DIST-03; research: foundation.research.release-automation §adoption 3).
 #
-# release-please owns versions, tags, CHANGELOG, and the GitHub Release; this workflow owns
-# ONLY the registry upload. Merging a release PR is still the publish action, but the live
-# wiring is the explicit hand-off: the Release is created with GITHUB_TOKEN, GitHub starts
-# no workflow for events that token raises (PR #49 review), so release-please.yml
-# dispatches this workflow on the release tag. The `release published` trigger stays for
-# Releases a human creates directly; `workflow_dispatch` is also the manual valve for the
-# bootstrap publish and retries — npm rejects an already-published version, and pnpm skips
-# versions already on the registry, so a re-run after a partial upload publishes only what
-# is missing.
+# This repository is a mirror: development and release automation live on the Forgejo
+# origin, whose release-please (.forgejo/workflows/release-please.yml there) owns
+# versions, tags, and CHANGELOG. This workflow owns ONLY the registry upload, and it
+# stays HERE because npm trusted publishing (OIDC, provenance) recognizes github.com —
+# not a self-hosted forge. The publish action is a human step after the release tag
+# reaches the mirror: `gh workflow run publish.yml --ref <tag>`, or a hand-created
+# GitHub Release on that tag (the `release published` trigger). `workflow_dispatch` is
+# also the manual valve for the bootstrap publish and retries — npm rejects an
+# already-published version, and pnpm skips versions already on the registry, so a
+# re-run after a partial upload publishes only what is missing.
 #
 # The verification gate stands BEFORE the upload and its failure propagates (PRD §5
 # invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a

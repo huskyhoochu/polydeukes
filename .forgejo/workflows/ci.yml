@@ -1,0 +1,31 @@
+# PR-time test gate — the Forgejo rendering of .github/workflows/ci.yml (same gate
+# sequence as publish.yml minus the upload; original rationale in that file's header).
+#
+# Two deliberate differences from the GitHub file. `runs-on: node-24` is this
+# instance's registered runner label (Node 24 preinstalled, so setup-node has no job
+# here). pnpm comes from corepack reading the root manifest's pinned `packageManager` —
+# the same single source pnpm/action-setup reads on the GitHub side.
+#
+# Forgejo reads workflows from the first directory it finds among .forgejo/, .gitea/,
+# and .github/ — this directory existing is what keeps the GitHub files from being
+# picked up here (they name a runner label this instance does not have).
+name: test
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: node-24
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      - run: pnpm -r test
