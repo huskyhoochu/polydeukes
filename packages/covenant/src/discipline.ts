@@ -335,6 +335,23 @@ function commandAnchors(command: string, pattern: RegExp): boolean {
   });
 }
 
+/**
+ * Append an entry's rationale to a break reason (COVENANT-19 §4.1).
+ *
+ * The reason is one line an agent reads off stderr, so a `why` spanning several lines — a YAML
+ * block scalar writes exactly that — folds to spaces before it is appended. Every line break
+ * folds, CR included and not only the CRLF pair: a lone CR reaching a terminal returns the
+ * cursor to column zero, so it would repaint the rationale over the discipline id and path this
+ * reason has already named. A run of breaks folds to one space, which is what a block scalar's
+ * blank line and trailing newline produce. Emptiness is decided AFTER folding: a why of only
+ * breaks or spaces carries no rationale, and appending the separator alone would leave a
+ * dangling ` — why: `. Nothing about a verdict is decided here; the caller has already judged.
+ */
+function withWhy(reason: string, why: string | undefined): string {
+  const folded = why?.replace(/[\r\n]+/g, ' ').trim();
+  return folded === undefined || folded === '' ? reason : `${reason} — why: ${folded}`;
+}
+
 /** Describe the evidence an entry requires, for the break reason. */
 function describePrecedent(requirePrecedent: Record<string, unknown>): string {
   return Object.entries(requirePrecedent)
@@ -352,6 +369,10 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
  * first authoring upholds). Command family: a shell-tool command matching the pattern
  * breaks. No file changes / no targets uphold (defensive re-check of what routing would
  * not have matched).
+ *
+ * Every break reason carries the entry's `why` when it has one (COVENANT-19) — appended by
+ * {@link withWhy} once the verdict is settled, so the rationale reaches the agent reading
+ * stderr without ever entering the judgment.
  */
 export function judgeDiscipline(
   entry: DisciplineEntry,
@@ -367,7 +388,10 @@ export function judgeDiscipline(
       if (verdict.upheld === false) {
         return {
           upheld: false,
-          reason: `discipline '${entry.id}' broken on ${target.path}: ${verdict.reason}`,
+          reason: withWhy(
+            `discipline '${entry.id}' broken on ${target.path}: ${verdict.reason}`,
+            entry.why,
+          ),
         };
       }
     }
@@ -379,7 +403,10 @@ export function judgeDiscipline(
       if (target.change.kind !== 'create') {
         return {
           upheld: false,
-          reason: `discipline '${entry.id}' broken: immutable file ${target.path} mutated`,
+          reason: withWhy(
+            `discipline '${entry.id}' broken: immutable file ${target.path} mutated`,
+            entry.why,
+          ),
         };
       }
     }
@@ -392,7 +419,10 @@ export function judgeDiscipline(
       if (commandLineMatches(command, pattern)) {
         return {
           upheld: false,
-          reason: `discipline '${entry.id}' broken: command matches forbidden pattern`,
+          reason: withWhy(
+            `discipline '${entry.id}' broken: command matches forbidden pattern`,
+            entry.why,
+          ),
         };
       }
     }
@@ -410,7 +440,10 @@ export function judgeDiscipline(
         // command still lands here — the line failed as a whole, or the match sat somewhere
         // other than a command's start. Without the hint those cases are indistinguishable
         // from never having run it, and the natural next move is the witness.
-        reason: `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)}). only a call that ran and succeeded counts, matched at the start of a simple command — if it was part of a chain or a compound that failed, run it on its own`,
+        reason: withWhy(
+          `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)}). only a call that ran and succeeded counts, matched at the start of a simple command — if it was part of a chain or a compound that failed, run it on its own`,
+          entry.why,
+        ),
       };
     }
     return { upheld: true };

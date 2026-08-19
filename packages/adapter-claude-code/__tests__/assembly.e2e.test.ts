@@ -83,6 +83,24 @@ function configuredToken(): string {
   return match[1];
 }
 
+/**
+ * Read one discipline's `why` out of the live root config — textual for the same reason
+ * {@link configuredToken} is: the adapter package gains no dependency on the umbrella
+ * loader to read the repository's own dogfooding data.
+ *
+ * A single-quoted YAML scalar escapes an apostrophe by doubling it, and these values are
+ * prose sentences where an apostrophe is ordinary. Matching `[^']*` would stop at the first
+ * half of such a pair and hand back a prefix, so the assertion using it would silently check
+ * less than it claims (PR #61 review). The pair is consumed here and unescaped on the way
+ * out, which is the whole of the single-quoted grammar.
+ */
+function configuredWhy(id: string): string {
+  const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
+  const match = new RegExp(`- id: '${id}'\\n\\s*why: '((?:[^']|'')*)'`).exec(cfg);
+  if (!match) throw new Error(`why not found for discipline '${id}'`);
+  return match[1].replaceAll("''", "'");
+}
+
 /** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
 function invokingTranscript(): string {
   const path = join(tmpRoot, 'transcript.jsonl');
@@ -307,6 +325,27 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     expect(records.length).toBe(1);
     expect(records[0].label).toBe('hooks-stay-armed');
     expect(records[0].event).toBe('blocked');
+  });
+
+  it("the block message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
+    // What an agent receives, read where it actually receives it. The pure judge is covered
+    // by the covenant package's unit tests; what only this surface exercises is the round
+    // trip — the assembly serializes the whole entry into argv, the body re-parses it, and
+    // the reason is built on the far side. The em dash of the separator crosses that
+    // encoding here, and the sentence asserted comes from the live root config rather than
+    // a fixture, so this asserts the message this repository judges itself by.
+    const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
+
+    expect(result.status).toBe(2);
+    // The whole stream, not fragments of it. Substring checks plus a "no newline" check are
+    // jointly satisfied by any single line containing both pieces, so a body appending the
+    // separator twice — or padding the message — passes all three while shipping something
+    // no one would accept (PR #61 review; the double-append mutant was executed and passed).
+    // Asserting the full line is what makes this surface's test discriminate at all.
+    expect(result.stderr).toBe(
+      `discipline 'hooks-stay-armed' broken: command matches forbidden pattern` +
+        ` — why: ${configuredWhy('hooks-stay-armed')}\n`,
+    );
   });
 
   it('a plain push command passes (exit 0) — the command discipline does not overblock', () => {

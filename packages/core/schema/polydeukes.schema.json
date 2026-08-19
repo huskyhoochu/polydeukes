@@ -96,7 +96,7 @@
       "minLength": 1
     },
     "disciplineWhy": {
-      "description": "Prose rationale, documentation only — never judged.",
+      "description": "Prose rationale — never judged, and carried into the break message.",
       "type": "string"
     },
     "globOrGlobs": {
