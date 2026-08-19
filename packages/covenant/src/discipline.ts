@@ -339,13 +339,16 @@ function commandAnchors(command: string, pattern: RegExp): boolean {
  * Append an entry's rationale to a break reason (COVENANT-19 §4.1).
  *
  * The reason is one line an agent reads off stderr, so a `why` spanning several lines — a YAML
- * block scalar writes exactly that — folds to spaces before it is appended. Emptiness is decided
- * AFTER folding: a why of only newlines or spaces carries no rationale, and appending the
- * separator alone would leave a dangling ` — why: `. Nothing about a verdict is decided here; the
- * caller has already judged.
+ * block scalar writes exactly that — folds to spaces before it is appended. Every line break
+ * folds, CR included and not only the CRLF pair: a lone CR reaching a terminal returns the
+ * cursor to column zero, so it would repaint the rationale over the discipline id and path this
+ * reason has already named. A run of breaks folds to one space, which is what a block scalar's
+ * blank line and trailing newline produce. Emptiness is decided AFTER folding: a why of only
+ * breaks or spaces carries no rationale, and appending the separator alone would leave a
+ * dangling ` — why: `. Nothing about a verdict is decided here; the caller has already judged.
  */
 function withWhy(reason: string, why: string | undefined): string {
-  const folded = why?.replace(/\r?\n/g, ' ').trim();
+  const folded = why?.replace(/[\r\n]+/g, ' ').trim();
   return folded === undefined || folded === '' ? reason : `${reason} — why: ${folded}`;
 }
 

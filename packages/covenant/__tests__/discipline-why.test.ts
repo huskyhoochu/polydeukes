@@ -252,6 +252,32 @@ describe('judgeDiscipline — the appended reason stays one line (COVENANT-19 §
     );
   });
 
+  it('a why carrying a bare carriage return folds it too (PR #61 review)', () => {
+    // The line break YAML preserves without an LF beside it. `parse('a: "x\\ry"')` keeps the
+    // lone CR, and a terminal treats it as a return to column zero — so an unfolded CR does
+    // not merely survive, it repaints the rationale over the discipline id and the path the
+    // reason had already named. The first fold was written as `\r?\n`, which requires the
+    // LF and passes a bare CR straight through; the invariant is about line breaks, not
+    // about one spelling of them.
+    const withCr = 'archives are immutable\rediting one destroys the record';
+    const reason = breakReason(pathEntry(withCr), pathBreakInput());
+
+    expect(reason).not.toContain('\r');
+    expect(reason).toBe(
+      `${PATH_CURRENT} — why: archives are immutable editing one destroys the record`,
+    );
+  });
+
+  it('a run of line breaks folds to a single space, not one space each', () => {
+    // A YAML block scalar ends with a trailing newline and separates paragraphs with a blank
+    // line, so the runs are what a real config produces rather than an invented input.
+    // Folding each break separately leaves the double space visible in the message.
+    const paragraphs = 'first paragraph\n\nsecond paragraph\n';
+    const reason = breakReason(pathEntry(paragraphs), pathBreakInput());
+
+    expect(reason).toBe(`${PATH_CURRENT} — why: first paragraph second paragraph`);
+  });
+
   it('a why of only whitespace is treated as absent, leaving no dangling separator', () => {
     // The neighbouring end of axis 4: '' is caught there, but a whitespace-only why
     // survives a `why !== undefined` gate and a naive fold alike, emitting ' — why: '

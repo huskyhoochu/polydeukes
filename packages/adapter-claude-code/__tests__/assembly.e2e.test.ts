@@ -87,12 +87,18 @@ function configuredToken(): string {
  * Read one discipline's `why` out of the live root config — textual for the same reason
  * {@link configuredToken} is: the adapter package gains no dependency on the umbrella
  * loader to read the repository's own dogfooding data.
+ *
+ * A single-quoted YAML scalar escapes an apostrophe by doubling it, and these values are
+ * prose sentences where an apostrophe is ordinary. Matching `[^']*` would stop at the first
+ * half of such a pair and hand back a prefix, so the assertion using it would silently check
+ * less than it claims (PR #61 review). The pair is consumed here and unescaped on the way
+ * out, which is the whole of the single-quoted grammar.
  */
 function configuredWhy(id: string): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
-  const match = new RegExp(`- id: '${id}'\\n\\s*why: '([^']*)'`).exec(cfg);
+  const match = new RegExp(`- id: '${id}'\\n\\s*why: '((?:[^']|'')*)'`).exec(cfg);
   if (!match) throw new Error(`why not found for discipline '${id}'`);
-  return match[1];
+  return match[1].replaceAll("''", "'");
 }
 
 /** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
@@ -331,10 +337,15 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
     expect(result.status).toBe(2);
-    expect(result.stderr).toContain("discipline 'hooks-stay-armed' broken");
-    expect(result.stderr).toContain(` — why: ${configuredWhy('hooks-stay-armed')}`);
-    // One line: discipline-body writes the reason plus exactly one trailing newline.
-    expect(result.stderr.trimEnd()).not.toContain('\n');
+    // The whole stream, not fragments of it. Substring checks plus a "no newline" check are
+    // jointly satisfied by any single line containing both pieces, so a body appending the
+    // separator twice — or padding the message — passes all three while shipping something
+    // no one would accept (PR #61 review; the double-append mutant was executed and passed).
+    // Asserting the full line is what makes this surface's test discriminate at all.
+    expect(result.stderr).toBe(
+      `discipline 'hooks-stay-armed' broken: command matches forbidden pattern` +
+        ` — why: ${configuredWhy('hooks-stay-armed')}\n`,
+    );
   });
 
   it('a plain push command passes (exit 0) — the command discipline does not overblock', () => {
