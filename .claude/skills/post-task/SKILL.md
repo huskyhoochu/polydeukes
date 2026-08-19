@@ -50,6 +50,12 @@ If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` followin
 symptom → wrong hypothesis → real cause → prescription, one `## H2 {#anchor}` per atomic topic.
 If all three are no, record `dev-log: none` explicitly.
 
+**Writing the file is not the durable step.** `_docs/` is a clone of the project's wiki, so
+a dev-log lands on one machine until it is pushed: `git -C _docs add -A && git -C _docs
+commit && git -C _docs push`. Inside the `/ticket` loop, ARCHIVE does this for everything the
+loop wrote; **running this skill standalone, do it here** — the same leak §4 names below,
+one layer out.
+
 ## 4. Public-language promotion (always answer)
 
 Ask: **did this session produce a decision or narrative worth promoting into the public
@@ -70,7 +76,7 @@ ate the CONFIG-04 candidate before it was recovered by hand). If no, record
 
 Emit this before proceeding to the PR (or the final commit):
 
-```
+```text
 ### Post-task
 - TSDoc: <files documented, or "no exported symbols changed">
 - Docs drift: <stale sentence found + fix applied | "no drift" (checked: <files>)>

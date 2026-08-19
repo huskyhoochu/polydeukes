@@ -141,12 +141,20 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   prescription in `_docs/knowledge/foundation.dev-log.carryover-grep-misses-disposition-sections.md`.
 - Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to
   `done` (with merge date + PR number), keep the 4-key frontmatter. Archived PRDs are immutable.
+- **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any
+  dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local edit until
+  that push. `git -C _docs add -A && git -C _docs commit && git -C _docs push`. Unpushed
+  knowledge exists on one machine, which is exactly what the telemetry loss demonstrated
+  costs a project its record.
 - Report which roadmap tickets the merge unlocked.
 
 ## Notes
 
-- `_docs/` is local-only (gitignored) by design; this skill is checked in, so contributors
-  without `_docs/` can still follow the loop's shape with their own roadmap/PRD store.
+- `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the
+  project's Forgejo wiki, which is where the roadmap, PRDs, and knowledge entries actually
+  live. Edits there are ordinary git work: commit and push in that directory (see ARCHIVE).
+  This skill is checked into the main repo, so contributors without that clone can still
+  follow the loop's shape with their own roadmap/PRD store.
 - Vocabulary is binding throughout: `covenant` / `discipline framework` / `memory` — never
   `guard` / `harness` / `kb` (see `.claude/rules/domain-terms.md`).
 - Unit tasks must stay small enough for one PRD, verifiable by a command or test. If PRE
