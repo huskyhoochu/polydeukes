@@ -13,6 +13,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.5.0](https://github.com/b95labs/polydeukes/compare/v0.4.0...v0.5.0) (2026-08-19)
+
+
+### Features
+
+* **covenant:** carry each discipline's why into its break message (COVENANT-19) ([#61](https://github.com/b95labs/polydeukes/issues/61)) ([1bdfe98](https://github.com/b95labs/polydeukes/commit/1bdfe98b2cfffa20245778ff9affb1faffb7936d))
+
 ## [0.4.0](https://github.com/b95labs/polydeukes/compare/v0.3.0...v0.4.0) (2026-08-18)
 
 
