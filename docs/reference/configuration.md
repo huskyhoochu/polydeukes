@@ -173,9 +173,14 @@ recorded as `witnessed`, never silent.
 
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
 data. An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
-telemetry label), and optionally a `why` (the reason, kept next to the rule) plus, on a
-`forbid` or `requirePrecedent` entry, `in` (the file globs it judges) and `except` (globs
-carved out of that scope).
+telemetry label), and optionally a `why` (the reason, which travels with the block message
+the agent reads) plus, on a `forbid` or `requirePrecedent` entry, `in` (the file globs it
+judges) and `except` (globs carved out of that scope).
+
+A `why` is never judged — it changes no verdict. It is appended to the break message once a
+verdict has blocked, so whoever reads the block gets the rationale in the same line instead
+of having to open this file. A `why` spanning several lines is folded to spaces: the message
+is one line.
 
 **`forbid` — content delta.** Blocks an edit that *adds* a new match of the pattern.
 Existing occurrences are forgiven: adopting a discipline never blocks a legacy codebase,

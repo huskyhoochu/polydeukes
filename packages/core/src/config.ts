@@ -50,7 +50,7 @@ export type DisciplineForbid = string | { added: string };
 export type DisciplineEntry = {
   /** unique handle — telemetry label and verdict reason prefix */
   id: string;
-  /** prose rationale, documentation only — never judged */
+  /** prose rationale — never judged, and carried into the break message (COVENANT-19) */
   why?: string;
   /** delta/context-family scope: glob(s) the file path must match (absent = every file change) */
   in?: string | string[];

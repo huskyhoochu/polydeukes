@@ -310,7 +310,17 @@ behaves correctly is where the untested half hides.
      could not do for itself, by design. The edit landed once a human-driven session
      supplied the same evidence. Worth telling because the usual objection to enforcement
      is that it slows the work down: here it did, by one command, and the promise held in
-     the one direction that matters — the party being bound could not release itself. -->
+     the one direction that matters — the party being bound could not release itself.
+     Parked candidate (2026-08-19, COVENANT-19): the session that taught the blocks to
+     carry their reason was stopped twice by the reasons it had just added. One of those
+     blocks asked for evidence — read what this project already recorded about adapters
+     before touching one — and the document it forced open changed the work: it warned that
+     a test passing on its first run proves nothing until you check which mutation it would
+     catch, so the new test was re-run against a deliberately broken implementation to see
+     it fail. Worth telling because it answers the enforcement objection from the other
+     side: the cost was one document read, and what it bought was a verification that would
+     otherwise not have happened. A discipline that only ever costs is a tax; this one paid
+     back inside the same hour, in the work of the person it delayed. -->
 
 ## What Polydeukes is not
 

@@ -83,6 +83,18 @@ function configuredToken(): string {
   return match[1];
 }
 
+/**
+ * Read one discipline's `why` out of the live root config — textual for the same reason
+ * {@link configuredToken} is: the adapter package gains no dependency on the umbrella
+ * loader to read the repository's own dogfooding data.
+ */
+function configuredWhy(id: string): string {
+  const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
+  const match = new RegExp(`- id: '${id}'\\n\\s*why: '([^']*)'`).exec(cfg);
+  if (!match) throw new Error(`why not found for discipline '${id}'`);
+  return match[1];
+}
+
 /** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
 function invokingTranscript(): string {
   const path = join(tmpRoot, 'transcript.jsonl');
@@ -307,6 +319,22 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     expect(records.length).toBe(1);
     expect(records[0].label).toBe('hooks-stay-armed');
     expect(records[0].event).toBe('blocked');
+  });
+
+  it("the block message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
+    // What an agent receives, read where it actually receives it. The pure judge is covered
+    // by the covenant package's unit tests; what only this surface exercises is the round
+    // trip — the assembly serializes the whole entry into argv, the body re-parses it, and
+    // the reason is built on the far side. The em dash of the separator crosses that
+    // encoding here, and the sentence asserted comes from the live root config rather than
+    // a fixture, so this asserts the message this repository judges itself by.
+    const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("discipline 'hooks-stay-armed' broken");
+    expect(result.stderr).toContain(` — why: ${configuredWhy('hooks-stay-armed')}`);
+    // One line: discipline-body writes the reason plus exactly one trailing newline.
+    expect(result.stderr.trimEnd()).not.toContain('\n');
   });
 
   it('a plain push command passes (exit 0) — the command discipline does not overblock', () => {
