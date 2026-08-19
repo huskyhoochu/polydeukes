@@ -147,11 +147,21 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   prescription in `_docs/knowledge/foundation.dev-log.carryover-grep-misses-disposition-sections.md`.
 - Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to
   `done` (with merge date + PR number), keep the 4-key frontmatter. Archived PRDs are immutable.
-- **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any
-  dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local edit until
-  that push. `git -C _docs add -A && git -C _docs commit && git -C _docs push`. Unpushed
-  knowledge exists on one machine, which is exactly what the telemetry loss demonstrated
-  costs a project its record.
+- **Commit and push the `_docs/` clone, then re-index.** Everything this loop wrote there —
+  the PRD, any dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local
+  edit until that push. Unpushed knowledge exists on one machine, which is exactly what the
+  telemetry loss demonstrated costs a project its record. The push is also what makes the
+  recall index stale, so the two belong in one step:
+
+  ```sh
+  git -C _docs add -A && git -C _docs commit && git -C _docs push
+  ssh root@gem12 'incus exec apps -- /opt/cognee/sync.sh' &
+  ```
+
+  `sync.sh` pulls the clone and re-indexes only what changed — background it, since a
+  ticket's 3~4 documents take a couple of minutes and nothing downstream waits on it. A
+  daily timer covers pushes made outside this loop; recall prints how far behind the index
+  is, so a skipped sync surfaces at the next question rather than silently aging.
 - Report which roadmap tickets the merge unlocked.
 
 ## Notes

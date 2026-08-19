@@ -51,10 +51,17 @@ symptom → wrong hypothesis → real cause → prescription, one `## H2 {#ancho
 If all three are no, record `dev-log: none` explicitly.
 
 **Writing the file is not the durable step.** `_docs/` is a clone of the project's wiki, so
-a dev-log lands on one machine until it is pushed: `git -C _docs add -A && git -C _docs
-commit && git -C _docs push`. Inside the `/ticket` loop, ARCHIVE does this for everything the
-loop wrote; **running this skill standalone, do it here** — the same leak §4 names below,
-one layer out.
+a dev-log lands on one machine until it is pushed — the same leak §4 names below, one layer
+out. Inside the `/ticket` loop, ARCHIVE handles this for everything the loop wrote;
+**running this skill standalone, do it here**:
+
+```sh
+git -C _docs add -A && git -C _docs commit && git -C _docs push
+ssh root@gem12 'incus exec apps -- /opt/cognee/sync.sh' &
+```
+
+The second line re-indexes what the push changed, so the next session's recall can see this
+dev-log. Background it; nothing waits on it.
 
 ## 4. Public-language promotion (always answer)
 
