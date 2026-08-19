@@ -10,7 +10,7 @@ terms below is in `domain-terms.md`.
 
 ## Disposing of a new bypass spelling
 
-The shell axis's contract is in `CLAUDE.md`; what it means for a change here is one question.
+The shell axis's contract is in `dogfooding-axes.md`; what it means for a change here is one question.
 **Did the spelling leave a telemetry row?** If yes it is a declared limit — write one line and
 stop. Do not open a ticket and do not widen a pattern to chase it, because the next spelling
 is always reachable. If no, that is the defect class and it blocks.

@@ -511,8 +511,8 @@ describe('COVENANT-18 B4 — deriveShellChanges keeps the evidence AND the unjud
     // computed write away, so a discipline that judges written bytes never sees them —
     // that is the loss part B exists to stop. (2) Answering the partial success with an
     // empty `unjudgeable` deletes the `skipped shell-unjudgeable` telemetry row, which is
-    // the contract CLAUDE.md states for this axis: a call that passes unrecorded is the
-    // COVENANT-10b defect class, not a smaller version of a block.
+    // the contract .claude/rules/dogfooding-axes.md states for this axis: a call that
+    // passes unrecorded is the COVENANT-10b defect class, not a smaller version of a block.
     const result = deriveShellChanges(`echo x > ${PROTECTED_DIST}/a.js;echo 'y`);
 
     expect(result.evidence).toEqual([

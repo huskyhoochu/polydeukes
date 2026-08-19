@@ -110,7 +110,7 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 
 - Input: the audited, surviving test file(s) + current source tree.
 - Output: minimum code to make the surviving tests pass. No speculative branches, no features the
-  surviving tests do not demand. (CLAUDE.md §2 Simplicity First.)
+  surviving tests do not demand. (Global CLAUDE.md §2 Simplicity First.)
 - Verify: the runner goes green on the new file.
 
 ### 4. REVIEW — main session

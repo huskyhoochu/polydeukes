@@ -1,14 +1,18 @@
 ---
 paths:
-  - "packages/**"
   - "package.json"
+  - "packages/*/package.json"
   - "pnpm-workspace.yaml"
+  - "turbo.json"
+  - "packages/*/turbo.json"
+  - "vitest.config.ts"
+  - "release-please-config.json"
 ---
 
 # Workspace structure — non-obvious constraints
 
 Things about this monorepo's layout that the files themselves don't explain. (Stack
-facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`/`CLAUDE.md`; not repeated here.)
+facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not repeated here.)
 
 ## Package roles
 

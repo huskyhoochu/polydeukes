@@ -54,32 +54,20 @@ carries. The family determines what evidence the judgment needs.
 `when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
 nothing else.
 
-## Surfaces and axes
+## Surfaces, axes, meta-covenants
 
-**Two surfaces observe the same promises.** The **session surface** (PreToolUse hook) judges a
-declared tool call before it runs; the **commit surface** (`pdks covenant check` under
-lefthook) re-observes the same change as a staged diff. A commit-time verdict is a second
-observation, not a new change — which is why `enforce` belongs to the observer, not to the
-shared judgment vocabulary.
+Naming only; how each one judges is in `dogfooding-axes.md`.
 
-**Three axes reach the judge.** The **tool axis** (Edit/Write/…) carries proven `fileChange`
-evidence. The **shell axis** (Bash) carries a command line whose target is often not
-computable before execution. The **transcript** is the session's own record, judged by
-whole-path equality rather than as a protected ancestor.
-
-## Meta-covenants
-
-Three registrations protect the judging chain itself: **self-mod** (mutations to protected
-paths through the tool axis), **shell-mod** (the same through the shell axis), and
-**transcript-mod** (writes to the live session transcript). They are covenants like any
-other — the vocabulary above applies to them unchanged.
-
-## Declared limit vs defect
-
-A **declared limit** is a case the judge cannot decide and says so — it leaves a `skipped` row
-and passes. A **defect** is a call that passes with no row at all, or is recorded `passed`
-while never judged. The two look alike in a diff and are opposite in meaning; the telemetry row
-is what separates them. (Why the shell axis has limits at all: `CLAUDE.md`.)
+- **Surfaces** — **session** (PreToolUse hook, judges a declared call before it runs) and
+  **commit** (`pdks covenant check` under lefthook, re-observes the same change as a staged
+  diff). `enforce` belongs to the observer, not to the judgment vocabulary above.
+- **Axes** — **tool** (Edit/Write/…), **shell** (Bash), and **transcript**.
+- **Meta-covenants** — **self-mod**, **shell-mod**, **transcript-mod**: the registrations that
+  protect the judging chain itself. Covenants like any other; the vocabulary above applies
+  unchanged.
+- **Declared limit vs defect** — a declared limit leaves a `skipped` row and passes; a defect
+  passes with NO row, or is recorded `passed` while never judged. They look alike in a diff
+  and are opposite in meaning. The telemetry row is what separates them.
 
 ## Term usage rules
 
