@@ -35,6 +35,12 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `grep -ln '이월\|carry-over' _docs/knowledge/*.prd.*.md` plus a `grep '<ID>'` over the memory
   progress notes. Every hit must be dispositioned in the PRD's scope section — included or
   explicitly excluded; silence is a miss.
+- **Ask recall one question here too.** This sweep is the clearest case of what a filename scan
+  cannot reach, so put the question in prose — "what was carried over toward `<ID>`", "what did
+  earlier tickets defer in this area". The command and its two weak axes are in the `/tdd`
+  skill's PRE-FLIGHT section; the same rule applies — **every attempt gets a row in
+  `_docs/knowledge/memory.dev-log.cognee-recall-gaps.md`**, a wrong answer included. Recall
+  supplements the greps above and never replaces them: a hit it misses is still a miss.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): same 4-key frontmatter (`scope`/`type`/`tags`/`created_at`), status line
   `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
