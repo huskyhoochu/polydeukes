@@ -19,7 +19,9 @@ one-way, through the core alone.
 - **`pdks covenant check`** — the first real subcommand of the `pdks` bin (`polydeukes` is an
   alias). A pre-commit judgment runner: staged changes are collected by `@polydeukes/adapter-git`,
   translated into the covenant input IR, and dispatched through the very judge bodies the session
-  hook spawns — one judge, every surface. Context-family disciplines (`requirePrecedent`) assemble
+  hook spawns — one judge, every surface. `--worktree` and `--range <base>..<head>` run the same
+  judgment over the working tree or a ref range as a diagnostic call, with no witness prompt.
+  Context-family disciplines (`requirePrecedent`) assemble
   here like any other, but with no session to read they become skip registrations: when one
   matches a staged change it records a `skipped` event carrying its id and that change, and the
   commit proceeds. Judging them would block every matching commit with no legitimate pass path;

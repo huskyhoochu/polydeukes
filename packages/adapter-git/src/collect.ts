@@ -1,21 +1,31 @@
 /**
- * Git-backed staged-change collector (ADAPTER-git §4.2) — reads a real staging area
- * into the structured shape the pure translation core consumes.
+ * Git-backed change collectors (ADAPTER-git §4.2, DIAG-01 §4.1) — read a real repository
+ * into the structured shape the pure translation core consumes. Three observation points
+ * of the same commit surface: the staging area, the working tree, and a ref range.
  *
  * Synchronous `git` spawns belong in this package: an adapter accessing its payload
- * source is the same axis as `transcriptFromJsonlFile` reading a file. `pre` comes
- * from the HEAD blob and `post` from the STAGED blob (`git show :<path>`) — never the
- * worktree, which may have diverged after `git add`.
+ * source is the same axis as `transcriptFromJsonlFile` reading a file. Each collector
+ * names its own `pre`/`post` sources.
  */
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import type { StagedChange } from './index.js';
 
-// maxBuffer everywhere: the default 1MB would throw ENOBUFS on any large staged blob and
-// fail the whole commit closed (review F2) — size is not a judgment axis.
+/**
+ * Run one `git` command in `repoRoot` and return its stdout. `maxBuffer` is unbounded so
+ * a large blob never throws ENOBUFS; stderr is captured, so a failure reaches the caller
+ * through the thrown error's message instead of the process's own output.
+ */
 function git(repoRoot: string, args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf-8', maxBuffer: Infinity });
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf-8',
+    maxBuffer: Infinity,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 /**
@@ -24,7 +34,11 @@ function git(repoRoot: string, args: string[]): string {
  * so "no judgeable text" is surfaced as null instead (review F4, PRD §4.2).
  */
 function gitBlobText(repoRoot: string, ref: string): string | null {
-  const blob = execFileSync('git', ['show', ref], { cwd: repoRoot, maxBuffer: Infinity });
+  const blob = execFileSync('git', ['show', ref], {
+    cwd: repoRoot,
+    maxBuffer: Infinity,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   return blob.includes(0) ? null : blob.toString('utf-8');
 }
 
@@ -38,6 +52,72 @@ function headExists(repoRoot: string): boolean {
   }
 }
 
+/** Split a `--name-status -z` listing into its `[status, path]` pairs. */
+function nameStatusEntries(listing: string): [string, string][] {
+  const tokens = listing.split('\0').filter((token) => token !== '');
+  const entries: [string, string][] = [];
+  for (let index = 0; index < tokens.length; ) {
+    entries.push([tokens[index++] as string, tokens[index++] as string]);
+  }
+  return entries;
+}
+
+/** Split a NUL-separated path listing (`git ls-files -z`) into its paths. */
+function pathList(listing: string): string[] {
+  return listing.split('\0').filter((path) => path !== '');
+}
+
+/**
+ * Read one file on disk as judgeable text, or null when there is none — binary content
+ * (the NUL-byte heuristic {@link gitBlobText} applies to a blob) or a path that cannot be
+ * read at all (a dangling symlink, a permission refusal). Either way the change survives
+ * for path judgment with no content, the disposition a binary staged blob already has
+ * (PR #67 review).
+ */
+function diskText(repoRoot: string, path: string): string | null {
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(join(repoRoot, path));
+  } catch {
+    return null;
+  }
+  return bytes.includes(0) ? null : bytes.toString('utf-8');
+}
+
+/**
+ * Listing flags every collector shares. `--no-renames` forces D+A reporting, so a rename
+ * away from a protected path surfaces as a judged deletion instead of one R entry whose
+ * source path never reaches judgment (review F1, PRD §4.1). The trailing `--` closes the
+ * revision list, so a ref that also names a file is not an ambiguous argument (PR #67
+ * review).
+ */
+const NO_RENAMES = ['--name-status', '-z', '--no-renames'];
+const END_OF_REVISIONS = '--';
+
+/**
+ * One `--name-status` entry as a change. `D` is a deletion with its `pre`; otherwise a
+ * modification when the pre side holds the path (`M` or `T` type change, and a pre side
+ * exists at all) and a creation with `pre: null` when it does not.
+ */
+function changeFromEntry(
+  rawStatus: string,
+  path: string,
+  hasPreSide: boolean,
+  readPre: (path: string) => string | null,
+  readPost: (path: string) => string | null,
+): StagedChange {
+  if (rawStatus === 'D') {
+    return { path, status: 'deleted', pre: readPre(path), post: null };
+  }
+  const existsInPre = hasPreSide && (rawStatus === 'M' || rawStatus === 'T');
+  return {
+    path,
+    status: existsInPre ? 'modified' : 'added',
+    pre: existsInPre ? readPre(path) : null,
+    post: readPost(path),
+  };
+}
+
 /**
  * Collect the staged changes of `repoRoot` (PRD §4.2).
  *
@@ -48,35 +128,108 @@ function headExists(repoRoot: string): boolean {
  */
 export function collectStagedChanges(repoRoot: string): StagedChange[] {
   const hasHead = headExists(repoRoot);
-  // --no-renames forces D+A reporting: git detects renames by default and would collapse
-  // `git mv` into one R entry whose SOURCE path vanishes from judgment — renaming a
-  // protected file away must surface as a judged deletion (review F1, PRD §4.1).
-  const listing = git(repoRoot, ['diff', '--cached', '--name-status', '-z', '--no-renames']);
-  const tokens = listing.split('\0').filter((token) => token !== '');
-
-  const changes: StagedChange[] = [];
-  for (let index = 0; index < tokens.length; ) {
-    const rawStatus = tokens[index++] as string;
-    const path = tokens[index++] as string;
-
-    if (rawStatus === 'D') {
-      changes.push({
-        path,
-        status: 'deleted',
-        pre: gitBlobText(repoRoot, `HEAD:${path}`),
-        post: null,
-      });
-      continue;
-    }
-
-    const existsInHead = hasHead && rawStatus === 'M';
-    changes.push({
+  const listing = git(repoRoot, ['diff', '--cached', ...NO_RENAMES, END_OF_REVISIONS]);
+  return nameStatusEntries(listing).map(([rawStatus, path]) =>
+    changeFromEntry(
+      rawStatus,
       path,
-      status: existsInHead ? 'modified' : 'added',
-      pre: existsInHead ? gitBlobText(repoRoot, `HEAD:${path}`) : null,
-      post: gitBlobText(repoRoot, `:${path}`),
-    });
-  }
+      hasHead,
+      (p) => gitBlobText(repoRoot, `HEAD:${p}`),
+      (p) => gitBlobText(repoRoot, `:${p}`),
+    ),
+  );
+}
 
-  return changes;
+/**
+ * Collect the working-tree changes of `repoRoot` (DIAG-01 §4.1).
+ *
+ * `pre` is the HEAD blob and `post` the bytes on disk; the index is not consulted.
+ * Untracked, non-ignored files (`--exclude-standard`) join as `added`, and a file missing
+ * from disk is `deleted` — whether HEAD held it or only the index did (`git add` then
+ * `rm`: `git diff HEAD` lists no such path, `ls-files --deleted` does). On the unborn
+ * first commit every tracked and untracked file present on disk is `added` with
+ * `pre: null`. A clean worktree yields `[]`.
+ */
+export function collectWorktreeChanges(repoRoot: string): StagedChange[] {
+  const untracked = pathList(git(repoRoot, ['ls-files', '--others', '--exclude-standard', '-z']));
+  const missing = pathList(git(repoRoot, ['ls-files', '--deleted', '-z']));
+
+  const tracked = headExists(repoRoot)
+    ? nameStatusEntries(git(repoRoot, ['diff', 'HEAD', ...NO_RENAMES, END_OF_REVISIONS])).map(
+        ([rawStatus, path]) =>
+          changeFromEntry(
+            rawStatus,
+            path,
+            true,
+            (p) => gitBlobText(repoRoot, `HEAD:${p}`),
+            (p) => diskText(repoRoot, p),
+          ),
+      )
+    : pathList(git(repoRoot, ['ls-files', '-z']))
+        .filter((path) => !missing.includes(path))
+        .map(
+          (path): StagedChange => ({
+            path,
+            status: 'added',
+            pre: null,
+            post: diskText(repoRoot, path),
+          }),
+        );
+
+  const seen = new Set(tracked.map((change) => change.path));
+  const created = untracked
+    .filter((path) => !seen.has(path))
+    .map(
+      (path): StagedChange => ({
+        path,
+        status: 'added',
+        pre: null,
+        post: diskText(repoRoot, path),
+      }),
+    );
+  // Index-only entries gone from disk: HEAD never held them, so there is no `pre`.
+  const removed = missing
+    .filter((path) => !seen.has(path))
+    .map((path): StagedChange => ({ path, status: 'deleted', pre: null, post: null }));
+  return [...tracked, ...created, ...removed];
+}
+
+/**
+ * Resolve a range expression to its `[base, head]` refs — `A..B` takes base = A, `A...B`
+ * takes base = merge-base(A, B). Two refs with no common ancestor fail on the explicit
+ * `git merge-base` spawn rather than becoming a diff against nothing.
+ */
+function resolveRange(repoRoot: string, range: string): [string, string] {
+  const threeDot = range.indexOf('...');
+  if (threeDot !== -1) {
+    const left = range.slice(0, threeDot);
+    const right = range.slice(threeDot + 3);
+    return [git(repoRoot, ['merge-base', left, right]).trim(), right];
+  }
+  const twoDot = range.indexOf('..');
+  if (twoDot === -1) {
+    throw new Error(`range '${range}' is neither <base>..<head> nor <base>...<head>`);
+  }
+  return [range.slice(0, twoDot), range.slice(twoDot + 2)];
+}
+
+/**
+ * Collect the changes between two refs of `repoRoot` (DIAG-01 §4.1).
+ *
+ * `pre` is the base ref's blob and `post` the head ref's; neither the index nor the disk
+ * is read. An unresolvable ref lets git's own failure throw rather than yielding an empty
+ * domain. Identical refs yield `[]`.
+ */
+export function collectRangeChanges(repoRoot: string, range: string): StagedChange[] {
+  const [base, head] = resolveRange(repoRoot, range);
+  const listing = git(repoRoot, ['diff', ...NO_RENAMES, base, head, END_OF_REVISIONS]);
+  return nameStatusEntries(listing).map(([rawStatus, path]) =>
+    changeFromEntry(
+      rawStatus,
+      path,
+      true,
+      (p) => gitBlobText(repoRoot, `${base}:${p}`),
+      (p) => gitBlobText(repoRoot, `${head}:${p}`),
+    ),
+  );
 }

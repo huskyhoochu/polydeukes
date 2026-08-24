@@ -10,7 +10,11 @@
 
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 
-export { collectStagedChanges } from './collect.js';
+export {
+  collectRangeChanges,
+  collectStagedChanges,
+  collectWorktreeChanges,
+} from './collect.js';
 export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
 
 /** Tool name a staged creation or modification surfaces as in the IR. */
@@ -27,6 +31,9 @@ export const STAGED_DELETE = 'staged-delete';
  * (`null` for a deletion). A binary blob (no judgeable text) is also `null` on either
  * side — its toolCall survives for path judgment while no corrupted content reaches the
  * delta judges. Paths are repo-root-relative.
+ *
+ * The worktree and ref-range collectors fill this same shape from their own sources
+ * (DIAG-01 §4.1) — every domain is one observation of the commit surface.
  */
 export type StagedChange = {
   path: string;

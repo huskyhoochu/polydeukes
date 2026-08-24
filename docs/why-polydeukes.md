@@ -102,6 +102,11 @@ both in one project. That second surface is the sharpest proof of the framing: s
 AI away entirely, and what remains is a developer choosing to stand under their own
 declared discipline. See [Installing Polydeukes](./installation.md) for the two paths.
 
+<!-- Parked candidate (2026-08-25, DIAG-01): the commit surface is also a judge you call
+     at a step you choose — `covenant check --worktree` after a task, `--range` before a PR
+     or in CI — with no prompt and no gate; the same verdict the commit would receive,
+     delivered as a report. This is the diagnostic posture in one sentence. -->
+
 <!-- TODO: link each remaining area to its doc/package as it ships. -->
 
 ## Three design principles

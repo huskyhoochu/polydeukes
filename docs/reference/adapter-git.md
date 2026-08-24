@@ -25,16 +25,27 @@ This is a pure library. It knows the staged-diff shape and nothing about install
 runners, or valves — wiring it into a pre-commit hook is a deployment act that lives in the
 umbrella.
 
-## Staged collection and the `adapters.git` namespace
+## Collection and the `adapters.git` namespace
+
+**Three collectors, one shape.** `collectStagedChanges`, `collectWorktreeChanges`, and
+`collectRangeChanges(repoRoot, '<base>..<head>' | '<base>...<head>')` each return the same
+`StagedChange[]`, so the translator and everything after it is one path.
+
+| Collector | `pre` | `post` | Also |
+|---|---|---|---|
+| staged | HEAD blob | The **staged** blob — never the worktree, which may have diverged after `git add` | |
+| worktree | HEAD blob | The bytes on disk | Untracked, non-ignored files join as `added`; a file missing from disk is `deleted`, whether HEAD held it or only the index did; an unreadable path (a dangling symlink) yields null content and is judged on its path |
+| range | base blob | head blob | `...` resolves the base to `git merge-base`; a ref git cannot resolve, or two refs with no merge-base, throws |
 
 **Collection is deliberately narrow about what it trusts.**
 
 | Decision | Why |
 |---|---|
-| `--no-renames` forced on | A rename is judged as a deletion plus an addition. A `git mv` of a protected file must not slip through as one opaque rename entry |
-| `pre` from the HEAD blob, `post` from the **staged** blob | Never the worktree, which may have diverged after `git add` |
-| A binary blob yields null content | Rather than lossily decoded bytes |
-| The unborn first commit narrows to all-added | Rather than throwing |
+| `--no-renames` forced on, in every collector | A rename is judged as a deletion plus an addition. A `git mv` of a protected file must not slip through as one opaque rename entry |
+| A binary blob or file yields null content | Rather than lossily decoded bytes |
+| The unborn first commit narrows to all-added | Rather than throwing — staged and worktree alike |
+| A type change (`T`) keeps its `pre` side | A symlink replaced by a file is a modification, so a delta judgment still sees what was removed |
+| Every listing ends with `--` | A branch that shares its name with a file is a ref, never an ambiguous argument |
 
 Translation produces one tool call per change, under the adapter-owned names `staged-write`
 and `staged-delete`. A deletion always carries its evidence. A write carries it unless the

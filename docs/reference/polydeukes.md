@@ -21,24 +21,39 @@ you do not install and do not import.
 
 ## Subcommands
 
-The bin is `pdks`, with `polydeukes` as an alias. There are no flags and no options
-anywhere: two subcommands take an exact two-word form, `explain` takes one word, and
-`docs` takes an optional topic.
+The bin is `pdks`, with `polydeukes` as an alias. Every argument form is matched against a
+finite table: `covenant check` takes an optional domain flag, `init claude-code` is exact,
+`explain` takes one word, and `docs` takes an optional topic.
 
 ### `pdks covenant check`
 
-The commit-surface judgment runner, invoked from a pre-commit hook. It discovers the config
-at the working directory, collects the staging area through the git adapter, translates it
-into the covenant input IR, and dispatches it through the same judge bodies the session hook
-spawns.
+`pdks covenant check [--worktree | --range <base>..<head>]` — the commit-surface judgment
+runner. It discovers the config at the working directory,
+collects one observation of the repository through the git adapter, translates it into the
+covenant input IR, and dispatches it through the same judge bodies the session hook spawns.
+Which observation is the domain flag's choice — the same violation receives the same verdict
+in all three:
+
+| Form | Domain | `pre` → `post` |
+|---|---|---|
+| `pdks covenant check` | The staging area — what a pre-commit hook judges | HEAD blob → staged blob |
+| `pdks covenant check --worktree` | The working tree, untracked (non-ignored) files included | HEAD blob → bytes on disk |
+| `pdks covenant check --range <base>..<head>` | Two refs; `<base>...<head>` reads from their merge-base, the PR reading | base blob → head blob |
+
+`--worktree` and `--range` are diagnostic calls — run them after a task, before a PR, or in
+CI. Only the staged form is a gate, so only it can prompt for the witness token; the other
+two report exit `2` without a prompt, since there is no commit for a human to open.
 
 | Situation | Result |
 |---|---|
-| Staged changes break nothing | exit `0` |
+| The domain's changes break nothing | exit `0` |
 | A staged change breaks a covenant, `enforce: block`, config has a `witness` block | Prompts once on `/dev/tty` for the witness token; an unanswered or wrong answer exits `2` |
 | The same, with no `witness` block in the config | exit `2` with no prompt — the valve is built from that block, so without it nothing can open a block |
-| A staged change breaks a covenant, `enforce: advise` | One advisory line on stderr, exit `0`, recorded `advised` |
-| Empty staging area | exit `0` — an explicit pass, not a skipped run |
+| A worktree or range change breaks a covenant, `enforce: block` | exit `2`, never a prompt |
+| A change breaks a covenant, `enforce: advise` | One advisory line on stderr, exit `0`, recorded `advised` |
+| Empty domain (nothing staged, a clean tree, identical refs) | exit `0` — an explicit pass, not a skipped run |
+| A range naming a ref git cannot resolve, or two refs with no merge-base | exit `2`, one `blocked` row |
+| `--range` without an argument, an argument without `..`, both flags at once, or an unknown flag | The usage line on stderr, exit `2` |
 | No config, more than one config, or an invalid one | exit `2` |
 | A judge body that cannot be loaded | exit `2` |
 
@@ -147,9 +162,9 @@ permanent condition.
 
 ### Any other argument form
 
-Anything that is not one of these forms writes
-`usage: pdks covenant check | pdks explain | pdks init claude-code | pdks docs [topic]` to
-stderr and exits `2`.
+Anything that is not one of these forms writes the usage line —
+`usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain |
+pdks init claude-code | pdks docs [topic]` — to stderr and exits `2`.
 
 ## Exit codes
 
@@ -205,15 +220,22 @@ a silently unprotected project.
 function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }>;
 
 type CovenantCheckSpec = {
-  repoRoot: string;                                  // config discovery and staged collection anchor here
+  repoRoot: string;                                  // config discovery and collection anchor here
   telemetryPath?: string;                            // overrides the config's log path
   covenantDist?: string;                             // overrides the resolved judge directory
   ttyPrompt?: (prompt: string) => string | null;     // the TTY valve seam
+  domain?: CheckDomain;                              // which observation to judge; absent = staged
 };
+
+type CheckDomain =
+  | { kind: 'staged' }
+  | { kind: 'worktree' }
+  | { kind: 'range'; base: string; head: string; ancestry?: 'merge-base' };
 ```
 
 The commit surface's composition root — what [`pdks covenant
-check`](#pdks-covenant-check) runs.
+check`](#pdks-covenant-check) runs. `ancestry: 'merge-base'` is the `<base>...<head>`
+reading; the adapter resolves the merge-base.
 
 `ttyPrompt` absent means a non-TTY environment, and the valve then has no way to open — an
 agent-spawned commit and a CI run reach the same state. The valve is a human at a terminal

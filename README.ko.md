@@ -15,6 +15,9 @@
 ```sh
 pdks init claude-code    # 프로젝트에 세션 표면을 배선
 pdks covenant check      # staged diff 판정 (pre-commit 진입점)
+pdks covenant check --worktree            # 같은 판정을 작업 트리에
+pdks covenant check --range main...HEAD   # ... 또는 ref 범위(PR의 범위)에
+pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 출력 — 판정 없음
 pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
 ```
 

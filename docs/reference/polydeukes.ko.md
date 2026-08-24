@@ -20,23 +20,37 @@
 
 ## 서브커맨드
 
-실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 어디에도 플래그와 옵션이 없습니다.
-서브커맨드 둘은 정확히 두 단어 형태만 받고, `explain`은 한 단어, `docs`는 토픽 하나를
-선택으로 받습니다.
+실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 모든 인자 형태는 유한한 표와
+대조됩니다. `covenant check`는 정의역(domain) 플래그 하나를 선택적으로 받고, `init
+claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 선택적 주제를 받습니다.
 
 ### `pdks covenant check`
 
-커밋 표면의 판정 실행기이고 pre-commit 훅에서 부릅니다. 작업 디렉터리에서 설정을 찾고,
-git 어댑터로 스테이징 영역을 수집하고, 약속(covenant) 입력 IR로 번역한 다음, 세션 훅이
-띄우는 것과 같은 판정 본체로 보냅니다.
+`pdks covenant check [--worktree | --range <base>..<head>]` — 커밋 표면의 판정 실행기입니다.
+작업 디렉터리에서 설정을 찾고, git 어댑터로 저장소의 관측 하나를 수집하고, 약속(covenant)
+입력 IR로 번역한 다음, 세션 훅이 띄우는 것과 같은 판정 본체로 보냅니다. 어느 관측인지는
+정의역(domain) 플래그가 고릅니다. 같은 위반은 세 정의역 모두에서 같은 판정을 받습니다.
+
+| 형태 | 정의역 | `pre` → `post` |
+|---|---|---|
+| `pdks covenant check` | 스테이징 영역. pre-commit 훅이 판정하는 것 | HEAD blob → 스테이징된 blob |
+| `pdks covenant check --worktree` | 작업 트리. 미추적(무시되지 않은) 파일 포함 | HEAD blob → 디스크의 바이트 |
+| `pdks covenant check --range <base>..<head>` | 두 ref. `<base>...<head>`는 둘의 merge-base부터 읽는 PR 읽기 | base blob → head blob |
+
+`--worktree`와 `--range`는 진단 호출입니다. 작업을 마친 뒤, PR 전에, CI에서 부릅니다.
+관문은 스테이징 형태뿐이라 증인 토큰을 묻는 것도 그 형태뿐입니다. 나머지 둘은 묻지 않고
+종료 `2`로 보고합니다. 사람이 열어 줄 커밋이 없기 때문입니다.
 
 | 상황 | 결과 |
 |---|---|
-| 스테이징된 변경이 아무것도 깨지 않음 | 종료 `0` |
-| 변경이 약속을 깼고 `enforce: block`, 설정에 `witness` 블록이 있음 | `/dev/tty`로 증인 토큰을 한 번 묻습니다. 답이 없거나 틀리면 종료 `2` |
+| 정의역의 변경이 아무것도 깨지 않음 | 종료 `0` |
+| 스테이징된 변경이 약속을 깼고 `enforce: block`, 설정에 `witness` 블록이 있음 | `/dev/tty`로 증인 토큰을 한 번 묻습니다. 답이 없거나 틀리면 종료 `2` |
 | 같은 상황인데 설정에 `witness` 블록이 없음 | 묻지 않고 종료 `2`. 밸브는 그 블록으로 조립되므로 블록이 없으면 차단을 열 방법이 없습니다 |
+| 작업 트리나 범위의 변경이 약속을 깼고 `enforce: block` | 종료 `2`, 묻지 않습니다 |
 | 변경이 약속을 깼고 `enforce: advise` | 권고 한 줄을 stderr에 쓰고 종료 `0`, `advised`로 기록 |
-| 스테이징 영역이 빔 | 종료 `0`. 건너뛴 실행이 아니라 명시적 통과입니다 |
+| 정의역이 빔(스테이징 없음, 깨끗한 트리, 같은 ref 둘) | 종료 `0`. 건너뛴 실행이 아니라 명시적 통과입니다 |
+| git이 해소하지 못하는 ref를 담은 범위, 또는 merge-base가 없는 두 ref | 종료 `2`, `blocked` 한 행 |
+| 인자 없는 `--range`, `..` 없는 인자, 두 플래그 동시 사용, 모르는 플래그 | usage 줄을 stderr에, 종료 `2` |
 | 설정이 없거나 둘 이상이거나 무효 | 종료 `2` |
 | 판정 본체를 적재할 수 없음 | 종료 `2` |
 
@@ -140,8 +154,8 @@ surface: commit (git pre-commit) · enforce: advise
 
 ### 그 밖의 인자 형태
 
-이 형태들이 아닌 것은 `usage: pdks covenant check | pdks explain | pdks init claude-code |
-pdks docs [topic]`을 stderr에 쓰고 종료 `2`를 냅니다.
+이 형태들이 아닌 것은 `usage: pdks covenant check [--worktree | --range <base>..<head>] |
+pdks explain | pdks init claude-code | pdks docs [topic]`을 stderr에 쓰고 종료 `2`를 냅니다.
 
 ## 종료 코드
 
@@ -195,15 +209,22 @@ type LoadedConfig = {
 function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }>;
 
 type CovenantCheckSpec = {
-  repoRoot: string;                                  // 설정 탐색과 스테이징 수집이 여기 닻을 내립니다
+  repoRoot: string;                                  // 설정 탐색과 수집이 여기 닻을 내립니다
   telemetryPath?: string;                            // 설정의 로그 경로를 덮어씁니다
   covenantDist?: string;                             // 해소된 판정기 디렉터리를 덮어씁니다
   ttyPrompt?: (prompt: string) => string | null;     // TTY 밸브 이음매
+  domain?: CheckDomain;                              // 어느 관측을 판정할지. 없으면 staged
 };
+
+type CheckDomain =
+  | { kind: 'staged' }
+  | { kind: 'worktree' }
+  | { kind: 'range'; base: string; head: string; ancestry?: 'merge-base' };
 ```
 
 커밋 표면의 조립 루트이고
-[`pdks covenant check`](#pdks-covenant-check)가 실행하는 것입니다.
+[`pdks covenant check`](#pdks-covenant-check)가 실행하는 것입니다. `ancestry: 'merge-base'`가
+`<base>...<head>` 읽기이고, merge-base 해소는 어댑터가 맡습니다.
 
 `ttyPrompt`가 없으면 TTY 없는 환경이라는 뜻이고, 그러면 밸브는 열릴 방법이 없습니다.
 에이전트가 띄운 커밋과 CI 실행이 같은 상태에 닿습니다. 밸브는 터미널 앞의 사람이거나

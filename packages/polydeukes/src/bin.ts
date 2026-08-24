@@ -2,10 +2,9 @@
 /**
  * `pdks` / `polydeukes` — the umbrella bin (ADAPTER-git §4.3).
  *
- * A thin argv shim over {@link runCovenantCheck}: `covenant check` is the ONLY
- * recognized invocation (the wider CLI skeleton is a post-release increment). Anything
- * else prints usage and exits 2 — an unknown argument must never pass silently
- * (fail-closed, the same posture as an unjudgeable payload).
+ * A thin argv shim: four subcommands, each matched by direct comparison against a finite
+ * table. Anything else prints usage and exits 2 — an unknown argument must never pass
+ * silently (fail-closed, the same posture as an unjudgeable payload).
  *
  * The real TTY is wired HERE, not in the library: the runner receives an injectable
  * seam, and this shim binds it to /dev/tty. When /dev/tty cannot be opened (git run by
@@ -16,6 +15,9 @@
 import { closeSync, openSync, readSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Type-only, so the runner itself stays off this file's load path (the lazy import below
+// is what actually pulls it in).
+import type { CheckDomain } from './covenant-check.js';
 
 /**
  * Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. The runner
@@ -50,6 +52,20 @@ function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
       }
     }
   };
+}
+
+/**
+ * Write `text` to stdout and end the process — exit 0 once the write drains, exit 2 when
+ * the reader went away. A piped write is asynchronous, so the exit waits for the flush; a
+ * reader that closes mid-write makes the stream emit `error` outside any try frame, and
+ * this handler is what keeps that off node's default exit 1 with a stack trace.
+ */
+async function emitAndExit(text: string): Promise<never> {
+  process.stdout.on('error', () => process.exit(2));
+  await new Promise<void>((settle) => {
+    process.stdout.write(text, () => settle());
+  });
+  process.exit(0);
 }
 
 const args = process.argv.slice(2);
@@ -89,23 +105,7 @@ if (args[0] === 'docs' && args.length <= 2) {
     // location — never from the working directory, which is whatever shell invoked us.
     const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
     const { text } = queryDocs({ docsRoot, topic: args[1] });
-    // A reader that goes away mid-write (a killed pager, `grep -q`, a caller closing its
-    // capture) makes the stream emit `error` — an EventEmitter event, so it fires outside
-    // the frame this try guards and would reach node's default handler: exit 1 and a raw
-    // stack trace, the one disposition this bin never produces. The docs answer is not a
-    // verdict, so a reader that stopped listening is not something to report; end at the
-    // same code an unanswerable query uses.
-    process.stdout.on('error', () => process.exit(2));
-    // stdout is a pipe whenever this is captured or redirected, and a piped write is
-    // asynchronous — exiting on the next line would discard whatever is still buffered.
-    // The whole answer IS the deliverable here (a truncated document is one an agent
-    // quotes onward as if complete), so the exit waits for the flush. Awaiting rather
-    // than exiting from the callback also keeps this branch from falling through into
-    // the covenant runner below while the write drains.
-    await new Promise<void>((settle) => {
-      process.stdout.write(text, () => settle());
-    });
-    process.exit(0);
+    await emitAndExit(text);
   } catch (error) {
     // stdout stays at zero bytes on this path (DOCS-02 §3-b): what cannot be answered is
     // never answered halfway.
@@ -121,16 +121,7 @@ if (args.length === 1 && args[0] === 'explain') {
     // lefthook spawns on every commit.
     const { explain } = await import('./explain.js');
     const { text } = explain({ repoRoot: process.cwd() });
-    // A reader that goes away mid-write makes the stream emit `error` outside the frame
-    // this try guards; end at the same code an unanswerable call uses rather than at
-    // node's default exit 1 and a raw stack trace.
-    process.stdout.on('error', () => process.exit(2));
-    // A piped write is asynchronous, so the exit waits for the flush — a truncated
-    // assembly report is one a reader takes for the whole table.
-    await new Promise<void>((settle) => {
-      process.stdout.write(text, () => settle());
-    });
-    process.exit(0);
+    await emitAndExit(text);
   } catch (error) {
     // stdout stays at zero bytes on this path: what cannot be answered is never answered
     // halfway.
@@ -141,9 +132,35 @@ if (args.length === 1 && args[0] === 'explain') {
   }
 }
 
-if (args.length !== 2 || args[0] !== 'covenant' || args[1] !== 'check') {
+/**
+ * Read the `covenant check` flags as a domain, or null when the argv is not one of the
+ * three recognized forms. Direct comparison over a finite table (DIST-02 §8): no flags is
+ * the staged diff, `--worktree` is the working tree, and `--range <base>..<head>` (or
+ * `...` for the merge-base reading) is a ref range.
+ */
+function parseCheckDomain(flags: string[]): CheckDomain | null {
+  if (flags.length === 0) return { kind: 'staged' };
+  if (flags.length === 1 && flags[0] === '--worktree') return { kind: 'worktree' };
+  if (flags.length !== 2 || flags[0] !== '--range') return null;
+
+  const range = flags[1] as string;
+  if (range.startsWith('--')) return null;
+  const mergeBase = range.includes('...');
+  const separator = mergeBase ? '...' : '..';
+  const at = range.indexOf(separator);
+  if (at === -1) return null;
+  const base = range.slice(0, at);
+  const head = range.slice(at + separator.length);
+  if (base === '' || head === '') return null;
+  return { kind: 'range', base, head, ...(mergeBase && { ancestry: 'merge-base' as const }) };
+}
+
+const domain =
+  args[0] === 'covenant' && args[1] === 'check' ? parseCheckDomain(args.slice(2)) : null;
+
+if (domain === null) {
   process.stderr.write(
-    'usage: pdks covenant check | pdks explain | pdks init claude-code | pdks docs [topic]\n',
+    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks docs [topic]\n',
   );
   process.exit(2);
 }
@@ -159,6 +176,7 @@ try {
   const { exitCode } = await runCovenantCheck({
     repoRoot: process.cwd(),
     ttyPrompt: openTtyPrompt(),
+    domain,
   });
   process.exit(exitCode);
 } catch (error) {
