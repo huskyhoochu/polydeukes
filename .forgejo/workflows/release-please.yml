@@ -19,6 +19,13 @@
 # 2. The annotated-tag replacement survives unchanged: the port also tags through the
 #    Releases API, which records no tagger, date, or message — the same degradation the
 #    GitHub file guards against (measured 2026-07-29 on v0.2.0).
+#
+# The action is consumed from a fork of the port (huskyhoochu/…) carrying one patch: the
+# existing-release-PR lookup matches on the head ref, because Forgejo answers GitHub's
+# `owner:branch` `head` filter with an empty list and the unpatched port then re-creates
+# the PR and fails on "pull request already exists" (every update run since the Forgejo
+# move, measured 2026-08-24). The fork is pinned by SHA like the upstream was; the patch
+# is `patches/` in that repository.
 name: release-please
 
 on:
@@ -35,7 +42,7 @@ jobs:
       # are a deliberate SHA bump. The token itself is the per-run actions token
       # (repo-scoped, expires with the run) — a standing deploy token would widen
       # that exposure, not narrow it.
-      - uses: https://github.com/joaquinjsb/gitea-release-please-action@cc782b45391b61346202e55b9fc66fd079289e9d # v4.1.10
+      - uses: https://github.com/huskyhoochu/gitea-release-please-action@a79b2af0df3836442ecb27dd8b689418deb16395 # v4.1.10 + forgejo head-filter patch
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
