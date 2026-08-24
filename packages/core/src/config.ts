@@ -309,6 +309,147 @@ function validateRequirePrecedent(evidence: unknown, location: string): void {
   }
 }
 
+type RawEntry = Record<string, unknown>;
+
+/** Validate a draft entry (CONFIG-10 §4.1) and return it as data. */
+function validateDraft(entry: RawEntry, id: string, location: string): DisciplineDraft {
+  for (const key of Object.keys(entry)) {
+    if (!DRAFT_KEYS.has(key)) {
+      // Named as the draft rule, not as an unknown key: `forbid` et al. are legal
+      // discipline keys, just not on a draft.
+      throw new ConfigValidationError(
+        `${location} allows only id, why, draft on a draft entry (found '${key}')`,
+      );
+    }
+  }
+  if (entry.draft !== true) {
+    throw new ConfigValidationError(`${location} draft must be the literal true`);
+  }
+  if (typeof entry.why !== 'string' || entry.why.length === 0) {
+    throw new ConfigValidationError(
+      `${location} why must be a non-empty string on a draft entry — the prose is its whole body`,
+    );
+  }
+  return { id, why: entry.why, draft: true };
+}
+
+/** Validate the family-independent rules of a judged entry and return its predicate key. */
+function validateJudgedHead(entry: RawEntry, location: string): (typeof PREDICATE_KEYS)[number] {
+  rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
+  if (entry.why !== undefined && typeof entry.why !== 'string') {
+    throw new ConfigValidationError(`${location} why must be a string`);
+  }
+  if (
+    entry.enforce !== undefined &&
+    (typeof entry.enforce !== 'string' || !ENFORCE_LEVELS.has(entry.enforce))
+  ) {
+    throw new ConfigValidationError(`${location} enforce must be 'block' or 'advise'`);
+  }
+
+  const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
+  if (predicates.length !== 1) {
+    throw new ConfigValidationError(
+      `${location} must have exactly one predicate key ` +
+        `(forbid | immutable | forbidCommand | requirePrecedent)`,
+    );
+  }
+  const predicate = predicates[0];
+  if (
+    !SCOPED_PREDICATE_KEYS.has(predicate) &&
+    (entry.in !== undefined || entry.except !== undefined)
+  ) {
+    throw new ConfigValidationError(
+      `${location} allows in/except only on a forbid or requirePrecedent entry`,
+    );
+  }
+  // `when` is the context family's trigger; on any other family it would be dead data
+  // implying a trigger that is never applied.
+  if (entry.when !== undefined && predicate !== 'requirePrecedent') {
+    throw new ConfigValidationError(`${location} allows when only on a requirePrecedent entry`);
+  }
+  if (entry.in !== undefined && !isValidGlob(entry.in)) {
+    throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
+  }
+  if (entry.except !== undefined && !isValidGlob(entry.except)) {
+    throw new ConfigValidationError(`${location} except must be a non-empty glob or glob array`);
+  }
+  return predicate;
+}
+
+function validateForbid(entry: RawEntry, location: string): void {
+  const forbid = entry.forbid;
+  if (typeof forbid === 'string') {
+    // An empty pattern matches at every position, so the entry would break every
+    // in-scope change — rejected like every sibling pattern field.
+    if (forbid.length === 0) {
+      throw new ConfigValidationError(`${location} forbid must be a non-empty string pattern`);
+    }
+    rejectUncompilableRegex(forbid, `${location} forbid`);
+  } else if (isPlainObject(forbid)) {
+    // Only the { added } direction exists before COVENANT-12.
+    const keys = Object.keys(forbid);
+    if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
+      throw new ConfigValidationError(
+        `${location} forbid object must have exactly one key 'added' with a string pattern`,
+      );
+    }
+    if (forbid.added.length === 0) {
+      throw new ConfigValidationError(
+        `${location} forbid.added must be a non-empty string pattern`,
+      );
+    }
+    rejectUncompilableRegex(forbid.added, `${location} forbid.added`);
+  } else {
+    throw new ConfigValidationError(
+      `${location} forbid must be a string pattern or an { added } object`,
+    );
+  }
+}
+
+function validateImmutable(entry: RawEntry, location: string): void {
+  if (!isValidGlob(entry.immutable)) {
+    throw new ConfigValidationError(`${location} immutable must be a non-empty glob or glob array`);
+  }
+}
+
+function validateForbidCommand(entry: RawEntry, location: string): void {
+  if (typeof entry.forbidCommand !== 'string') {
+    throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
+  }
+  if (entry.forbidCommand.length === 0) {
+    // An empty pattern matches every command line — one typo would block every
+    // shell call the entry sees.
+    throw new ConfigValidationError(`${location} forbidCommand must be a non-empty string pattern`);
+  }
+  rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
+}
+
+function validateContextEntry(entry: RawEntry, location: string): void {
+  if (entry.when !== undefined) {
+    if (typeof entry.when !== 'string') {
+      throw new ConfigValidationError(`${location} when must be a string pattern`);
+    }
+    if (entry.when.length === 0) {
+      // An empty pattern matches at every position, so the trigger would fire on any
+      // file that merely grows — reject it like every sibling pattern field.
+      throw new ConfigValidationError(`${location} when must be a non-empty string pattern`);
+    }
+    rejectUncompilableRegex(entry.when, `${location} when`);
+  }
+  validateRequirePrecedent(entry.requirePrecedent, location);
+}
+
+/** One validator per family, keyed by the predicate that selects the family. */
+const PREDICATE_VALIDATORS: Record<
+  (typeof PREDICATE_KEYS)[number],
+  (entry: RawEntry, location: string) => void
+> = {
+  forbid: validateForbid,
+  immutable: validateImmutable,
+  forbidCommand: validateForbidCommand,
+  requirePrecedent: validateContextEntry,
+};
+
 /**
  * Validate the `disciplines` array (COVENANT-10 §4.1, drafts CONFIG-10 §4.1) and split
  * judged entries from drafts. Throws {@link ConfigValidationError} naming the offending
@@ -347,126 +488,12 @@ function validateDisciplines(disciplines: unknown): {
     // Draft branch (CONFIG-10 §4.1) — selected by the marker's value, so an explicit
     // `draft: undefined` is absence, like every other optional key in this validator.
     if (entry.draft !== undefined) {
-      for (const key of Object.keys(entry)) {
-        if (!DRAFT_KEYS.has(key)) {
-          // Named as the draft rule, not as an unknown key: `forbid` et al. are legal
-          // discipline keys, just not on a draft.
-          throw new ConfigValidationError(
-            `${location} allows only id, why, draft on a draft entry (found '${key}')`,
-          );
-        }
-      }
-      if (entry.draft !== true) {
-        throw new ConfigValidationError(`${location} draft must be the literal true`);
-      }
-      if (typeof entry.why !== 'string' || entry.why.length === 0) {
-        throw new ConfigValidationError(
-          `${location} why must be a non-empty string on a draft entry — the prose is its whole body`,
-        );
-      }
-      drafts.push({ id: entry.id, why: entry.why, draft: true });
+      drafts.push(validateDraft(entry, entry.id, location));
       return;
     }
 
-    rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
-    if (entry.why !== undefined && typeof entry.why !== 'string') {
-      throw new ConfigValidationError(`${location} why must be a string`);
-    }
-    if (
-      entry.enforce !== undefined &&
-      (typeof entry.enforce !== 'string' || !ENFORCE_LEVELS.has(entry.enforce))
-    ) {
-      throw new ConfigValidationError(`${location} enforce must be 'block' or 'advise'`);
-    }
-
-    const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
-    if (predicates.length !== 1) {
-      throw new ConfigValidationError(
-        `${location} must have exactly one predicate key ` +
-          `(forbid | immutable | forbidCommand | requirePrecedent)`,
-      );
-    }
-    const predicate = predicates[0];
-    if (
-      !SCOPED_PREDICATE_KEYS.has(predicate) &&
-      (entry.in !== undefined || entry.except !== undefined)
-    ) {
-      throw new ConfigValidationError(
-        `${location} allows in/except only on a forbid or requirePrecedent entry`,
-      );
-    }
-    // `when` is the context family's trigger; on any other family it would be dead data
-    // implying a trigger that is never applied.
-    if (entry.when !== undefined && predicate !== 'requirePrecedent') {
-      throw new ConfigValidationError(`${location} allows when only on a requirePrecedent entry`);
-    }
-    if (entry.in !== undefined && !isValidGlob(entry.in)) {
-      throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
-    }
-    if (entry.except !== undefined && !isValidGlob(entry.except)) {
-      throw new ConfigValidationError(`${location} except must be a non-empty glob or glob array`);
-    }
-
-    if (predicate === 'forbid') {
-      const forbid = entry.forbid;
-      if (typeof forbid === 'string') {
-        // An empty pattern matches at every position, so the entry would break every
-        // in-scope change — rejected like every sibling pattern field.
-        if (forbid.length === 0) {
-          throw new ConfigValidationError(`${location} forbid must be a non-empty string pattern`);
-        }
-        rejectUncompilableRegex(forbid, `${location} forbid`);
-      } else if (isPlainObject(forbid)) {
-        // Only the { added } direction exists before COVENANT-12.
-        const keys = Object.keys(forbid);
-        if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
-          throw new ConfigValidationError(
-            `${location} forbid object must have exactly one key 'added' with a string pattern`,
-          );
-        }
-        if (forbid.added.length === 0) {
-          throw new ConfigValidationError(
-            `${location} forbid.added must be a non-empty string pattern`,
-          );
-        }
-        rejectUncompilableRegex(forbid.added, `${location} forbid.added`);
-      } else {
-        throw new ConfigValidationError(
-          `${location} forbid must be a string pattern or an { added } object`,
-        );
-      }
-    } else if (predicate === 'immutable') {
-      if (!isValidGlob(entry.immutable)) {
-        throw new ConfigValidationError(
-          `${location} immutable must be a non-empty glob or glob array`,
-        );
-      }
-    } else if (predicate === 'forbidCommand') {
-      if (typeof entry.forbidCommand !== 'string') {
-        throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
-      }
-      if (entry.forbidCommand.length === 0) {
-        // An empty pattern matches every command line — one typo would block every
-        // shell call the entry sees.
-        throw new ConfigValidationError(
-          `${location} forbidCommand must be a non-empty string pattern`,
-        );
-      }
-      rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
-    } else {
-      if (entry.when !== undefined) {
-        if (typeof entry.when !== 'string') {
-          throw new ConfigValidationError(`${location} when must be a string pattern`);
-        }
-        if (entry.when.length === 0) {
-          // An empty pattern matches at every position, so the trigger would fire on any
-          // file that merely grows — reject it like every sibling pattern field.
-          throw new ConfigValidationError(`${location} when must be a non-empty string pattern`);
-        }
-        rejectUncompilableRegex(entry.when, `${location} when`);
-      }
-      validateRequirePrecedent(entry.requirePrecedent, location);
-    }
+    const predicate = validateJudgedHead(entry, location);
+    PREDICATE_VALIDATORS[predicate](entry, location);
     judged.push(entry as DisciplineEntry);
   });
 
