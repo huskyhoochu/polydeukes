@@ -149,6 +149,90 @@ function recordFailClosed(telemetryPath: string | undefined): void {
   });
 }
 
+/** {@link assembleCommitRegistrations} input — what the commit surface's assembly needs. */
+export type CommitAssemblySpec = {
+  config: ReturnType<typeof loadConfig>['config'];
+  rootDir: string;
+  covenantDist: string;
+  witness?: CovenantRegistration['witness'];
+};
+
+/**
+ * The commit surface's registration set (CLI-01 §7 invariant 1). One assembly, two
+ * consumers: the runner below dispatches it, `explain` renders it — so what a reader is
+ * shown is the table the judgment actually uses, never a second opinion about it.
+ */
+export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantRegistration[] {
+  const { config, rootDir, covenantDist, witness } = spec;
+  const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(config.adapters?.git);
+
+  // The commit surface judges the UNION of the common list and the git namespace's
+  // additive one (CONFIG-08 §4.2) — common first, so first-occurrence dedupe inside
+  // the one normalization pass is deterministic. The session hook reads the common
+  // list alone; that asymmetry is the contract, not an omission.
+  const protectedPaths = normalizeProtectedPaths({
+    protectedPaths: [...(config.protectedPaths ?? []), ...gitAdditivePaths],
+  });
+
+  const disciplines = config.disciplines ?? [];
+
+  const registrations: CovenantRegistration[] = [
+    {
+      label: 'self-mod',
+      protectedPaths,
+      body: {
+        command: process.execPath,
+        args: [
+          provenBodyPath(covenantDist, 'self-mod-body.js'),
+          ...protectedPaths.flatMap((path) => ['--protected-path', path]),
+          ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
+        ],
+      },
+      witness,
+    },
+    // Command-family entries are excluded: the commit surface has no shell axis (a
+    // staged diff carries no commands), so registering them would be spawn waste by
+    // design (PRD §2) — a vacuous exclusion, hence recorded nowhere. Path and delta
+    // families judge the staged fileChanges as-is.
+    //
+    // Context-family entries are NOT filtered out any more. No transcript is injected
+    // here, so the compiler gives them skip registrations, and a skip records one
+    // `skipped` exactly when its trigger matches a staged change (COVENANT-13 §4.5).
+    // The commit surface stopped being a special case: an absent evidence channel gets
+    // the same disposition on both surfaces, and the scope gate comes free with the
+    // routing every registration already carries.
+    //
+    // The body path is passed as a thunk, so the proof fires only where the compiler
+    // actually composes a body (CONFIG-06b §4.2 corollary). Entry count cannot stand in
+    // for that: an entry may compile to a body-less skip — every `requirePrecedent` one
+    // does here, since this surface injects neither transcript nor evaluator — and the
+    // compiler appends the body-less `shell-unjudgeable` backstop even for zero entries,
+    // so gating the call itself would drop that record.
+    ...compileDisciplineRegistrations({
+      disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
+      rootDir,
+      bodyCommand: process.execPath,
+      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
+      shellTools: [],
+      commandArgs: [],
+      witness,
+    }),
+  ];
+
+  // The compiler is resolved through the installed covenant package, so a workspace
+  // whose dist predates the lazy body-path convention hands back the thunk itself where
+  // a string belongs. Every consumer of this assembly — the judgment runner and
+  // `pdks explain` alike — must refuse that table rather than use it.
+  for (const registration of registrations) {
+    if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
+      throw new Error(
+        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
+      );
+    }
+  }
+  return registrations;
+}
+
 /**
  * Judge the staged changes of `repoRoot` exactly as the session surface would
  * (ADAPTER-git §4.3). Async because the dispatcher spawns covenant bodies (CORE-01) —
@@ -209,17 +293,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
   try {
     // The adapter namespace validator throws on unknown levels/keys (CONFIG-06 §4.2) —
     // resolved inside this try so a misconfiguration fails closed, never softens.
-    const { enforce, protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(
-      config.adapters?.git,
-    );
-
-    // The commit surface judges the UNION of the common list and the git namespace's
-    // additive one (CONFIG-08 §4.2) — common first, so first-occurrence dedupe inside
-    // the one normalization pass is deterministic. The session hook reads the common
-    // list alone; that asymmetry is the contract, not an omission.
-    const protectedPaths = normalizeProtectedPaths({
-      protectedPaths: [...(config.protectedPaths ?? []), ...gitAdditivePaths],
-    });
+    const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
 
     // The judge bodies are the covenant package's dist executables — resolved through
     // the real package (never a test alias), so the commit surface spawns the same
@@ -233,64 +307,12 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
     const witness =
       enforce === 'advise' ? undefined : ttyWitnessValve(config.witness, spec.ttyPrompt);
 
-    const disciplines = config.disciplines ?? [];
-
-    const registrations: CovenantRegistration[] = [
-      {
-        label: 'self-mod',
-        protectedPaths,
-        body: {
-          command: process.execPath,
-          args: [
-            provenBodyPath(covenantDist, 'self-mod-body.js'),
-            ...protectedPaths.flatMap((path) => ['--protected-path', path]),
-            ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
-          ],
-        },
-        witness,
-      },
-      // Command-family entries are excluded: the commit surface has no shell axis (a
-      // staged diff carries no commands), so registering them would be spawn waste by
-      // design (PRD §2) — a vacuous exclusion, hence recorded nowhere. Path and delta
-      // families judge the staged fileChanges as-is.
-      //
-      // Context-family entries are NOT filtered out any more. No transcript is injected
-      // here, so the compiler gives them skip registrations, and a skip records one
-      // `skipped` exactly when its trigger matches a staged change (COVENANT-13 §4.5).
-      // The commit surface stopped being a special case: an absent evidence channel gets
-      // the same disposition on both surfaces, and the scope gate comes free with the
-      // routing every registration already carries.
-      //
-      // The body path is passed as a thunk, so the proof fires only where the compiler
-      // actually composes a body (CONFIG-06b §4.2 corollary). Entry count cannot stand in
-      // for that: an entry may compile to a body-less skip — every `requirePrecedent` one
-      // does here, since this surface injects neither transcript nor evaluator — and the
-      // compiler appends the body-less `shell-unjudgeable` backstop even for zero entries,
-      // so gating the call itself would drop that record.
-      ...compileDisciplineRegistrations({
-        disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
-        rootDir: spec.repoRoot,
-        bodyCommand: process.execPath,
-        bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
-        shellTools: [],
-        commandArgs: [],
-        witness,
-      }),
-    ];
-
-    // The commit surface resolves the compiler through the installed package, so a
-    // workspace whose dist predates the lazy body-path convention hands back the thunk
-    // itself where a string belongs. `spawn` stringifies rather than rejects it, which
-    // would spawn the judge on the thunk's own source text and record the exit 1 as a
-    // verdict under a discipline's label — the confusion this ticket removes, arriving
-    // through the build-skew door. Assert the shape and let the fail-closed catch answer.
-    for (const registration of registrations) {
-      if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
-        throw new Error(
-          `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
-        );
-      }
-    }
+    const registrations = assembleCommitRegistrations({
+      config,
+      rootDir: spec.repoRoot,
+      covenantDist,
+      witness,
+    });
 
     let blocked = false;
     let advisedCount = 0;

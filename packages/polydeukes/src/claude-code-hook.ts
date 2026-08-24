@@ -42,6 +42,7 @@ import {
 } from '@polydeukes/adapter-claude-code';
 import {
   appendRecordFailOpen,
+  type CanonicalTranscript,
   DEFAULT_TELEMETRY_LOG_PATH,
   normalizeProtectedPaths,
   readRecords,
@@ -195,6 +196,139 @@ function comparisonSpec(
   };
 }
 
+/** {@link assembleSessionRegistrations} input — what the session surface's assembly needs. */
+export type SessionAssemblySpec = {
+  config: ReturnType<typeof loadConfig>['config'];
+  rootDir: string;
+  covenantDist: string;
+  /** The payload's transcript path. ABSENT leaves the transcript-mod registration out. */
+  transcriptPath?: string;
+  transcript?: CanonicalTranscript;
+  witness?: CovenantRegistration['witness'];
+};
+
+/**
+ * The session surface's registration set (CLI-01 §7 invariant 1). One assembly, two
+ * consumers: the runner below dispatches it, `explain` renders it — so what a reader is
+ * shown is the table the judgment actually uses, never a second opinion about it.
+ */
+export function assembleSessionRegistrations(spec: SessionAssemblySpec): CovenantRegistration[] {
+  const { config, rootDir, covenantDist, transcriptPath, transcript, witness } = spec;
+  // The live transcript is the evidence channel the context family reads AND the one the
+  // witness reads, so erasing or forging it disables every context discipline while
+  // opening or shutting the human valve on the same file. It lives outside the repository,
+  // so no config `protectedPaths` entry can reach it — and since COVENANT-07c it does NOT
+  // join this list either. A file deep under HOME makes HOME itself a protected ANCESTOR,
+  // which measured as the COVENANT-13 over-block: `cd /home/<user>` refused for two weeks,
+  // and the 07b attempt to register the home spellings alongside only widened that to
+  // `echo $HOME` and every edit whose content carried a bare `~`. Assembly knows the path
+  // AND the home value, so assembly registers a dedicated `matches` predicate over that
+  // ONE file instead (transcript-mod, below): equality-only — never an ancestor — with the
+  // `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data, reads absolved by the
+  // read-only allowlist, and ancestor destruction outside the repository declared out of
+  // observation scope (07c §2: the agent's own deny policy owns what no repo-scoped judge
+  // can). The witness valve applies to it like any other registration.
+  const protectedPaths = normalizeProtectedPaths({
+    protectedPaths: config.protectedPaths ?? [],
+  });
+
+  // Only the two unconditional registrations compose their paths here. The transcript-mod
+  // and discipline bodies are composed inside the conditions that decide whether their
+  // registrations exist at all — proving a body this run will never spawn would close a
+  // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
+  const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
+  const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
+  const disciplines = config.disciplines ?? [];
+  const pathArgs = protectedPaths.flatMap((path) => ['--protected-path', path]);
+
+  const registrations: CovenantRegistration[] = [
+    {
+      label: 'self-mod',
+      protectedPaths,
+      body: {
+        command: process.execPath,
+        args: [
+          selfModBody,
+          ...pathArgs,
+          ...MUTATING_TOOLS.flatMap((tool) => ['--mutating-tool', tool]),
+        ],
+      },
+      witness,
+    },
+    {
+      label: 'shell-mod',
+      protectedPaths,
+      body: {
+        command: process.execPath,
+        args: [
+          shellModBody,
+          ...pathArgs,
+          ...SHELL_TOOLS.flatMap((tool) => ['--shell-tool', tool]),
+          ...COMMAND_ARGS.flatMap((arg) => ['--command-arg', arg]),
+        ],
+      },
+      witness,
+    },
+    // The transcript's own registration (COVENANT-07c). Routing is the matches predicate,
+    // never path mention, so the home directory cannot become a protected ancestor. No
+    // transcript in the payload means nothing to protect — the valve and the context
+    // family already forfeited on the same absence.
+    ...(transcriptPath === undefined
+      ? []
+      : [
+          transcriptModRegistration({
+            transcriptPath,
+            // The env value first, since that is what the judged shell expands `~` and
+            // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
+            // HOME is unset, so a hook spawned without an environment (a service manager,
+            // `env -i`) keeps judging the home spellings instead of silently going
+            // absolute-only — an inert spelling closure looks identical to a passing call.
+            home: process.env.HOME ?? homedir(),
+            bodyCommand: process.execPath,
+            bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
+            shellTools: SHELL_TOOLS,
+            commandArgs: COMMAND_ARGS,
+            mutatingTools: MUTATING_TOOLS,
+            witness,
+          }),
+        ]),
+    // The body path is passed as a thunk, so the proof fires only where the compiler
+    // actually composes a body. Entry count cannot stand in for that: an entry may compile
+    // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
+    // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
+    // for zero entries — gating the call itself would drop that record and turn an
+    // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
+    ...compileDisciplineRegistrations({
+      disciplines,
+      rootDir,
+      bodyCommand: process.execPath,
+      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
+      shellTools: SHELL_TOOLS,
+      commandArgs: COMMAND_ARGS,
+      witness,
+      // Context-family evidence is evaluated here, at assembly: a spawned body cannot hold
+      // a transcript, and passing a path would leak JSONL knowledge into covenant
+      // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/`tool`
+      // vocabulary; core owns `command`, which the compiler judges directly.
+      transcript,
+      evaluatePrecedent,
+    }),
+  ];
+
+  // The compiler is resolved through the installed covenant package, so a workspace
+  // whose dist predates the lazy body-path convention hands back the thunk itself where
+  // a string belongs. Every consumer of this assembly — the judgment runner and
+  // `pdks explain` alike — must refuse that table rather than use it.
+  for (const registration of registrations) {
+    if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
+      throw new Error(
+        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
+      );
+    }
+  }
+  return registrations;
+}
+
 /**
  * Judge one declared tool call before it runs (DIST-01 §3-c). Async because the dispatcher
  * spawns covenant bodies (CORE-01) — a synchronous runner would mean reimplementing the
@@ -236,24 +370,6 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
     const transcript =
       transcriptPath === undefined ? undefined : transcriptFromJsonlFile(transcriptPath);
 
-    // The live transcript is the evidence channel the context family reads AND the one the
-    // witness reads, so erasing or forging it disables every context discipline while
-    // opening or shutting the human valve on the same file. It lives outside the repository,
-    // so no config `protectedPaths` entry can reach it — and since COVENANT-07c it does NOT
-    // join this list either. A file deep under HOME makes HOME itself a protected ANCESTOR,
-    // which measured as the COVENANT-13 over-block: `cd /home/<user>` refused for two weeks,
-    // and the 07b attempt to register the home spellings alongside only widened that to
-    // `echo $HOME` and every edit whose content carried a bare `~`. Assembly knows the path
-    // AND the home value, so assembly registers a dedicated `matches` predicate over that
-    // ONE file instead (transcript-mod, below): equality-only — never an ancestor — with the
-    // `~`/`$HOME`/`${HOME}`/`~<user>` spellings closed as data, reads absolved by the
-    // read-only allowlist, and ancestor destruction outside the repository declared out of
-    // observation scope (07c §2: the agent's own deny policy owns what no repo-scoped judge
-    // can). The witness valve applies to it like any other registration.
-    const protectedPaths = normalizeProtectedPaths({
-      protectedPaths: config.protectedPaths ?? [],
-    });
-
     // One witness predicate shared by every registration: a witness is a session-wide
     // permission the human granted, not a per-covenant one. Absent `witness` config leaves
     // this undefined, and no verdict can be witnessed open at all. The predicate receives
@@ -277,103 +393,14 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
     const covenantDist =
       spec.covenantDist ?? dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
 
-    // Only the two unconditional registrations compose their paths here. The transcript-mod
-    // and discipline bodies are composed inside the conditions that decide whether their
-    // registrations exist at all — proving a body this run will never spawn would close a
-    // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
-    const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
-    const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
-    const disciplines = config.disciplines ?? [];
-    const pathArgs = protectedPaths.flatMap((path) => ['--protected-path', path]);
-
-    const registrations: CovenantRegistration[] = [
-      {
-        label: 'self-mod',
-        protectedPaths,
-        body: {
-          command: process.execPath,
-          args: [
-            selfModBody,
-            ...pathArgs,
-            ...MUTATING_TOOLS.flatMap((tool) => ['--mutating-tool', tool]),
-          ],
-        },
-        witness,
-      },
-      {
-        label: 'shell-mod',
-        protectedPaths,
-        body: {
-          command: process.execPath,
-          args: [
-            shellModBody,
-            ...pathArgs,
-            ...SHELL_TOOLS.flatMap((tool) => ['--shell-tool', tool]),
-            ...COMMAND_ARGS.flatMap((arg) => ['--command-arg', arg]),
-          ],
-        },
-        witness,
-      },
-      // The transcript's own registration (COVENANT-07c). Routing is the matches predicate,
-      // never path mention, so the home directory cannot become a protected ancestor. No
-      // transcript in the payload means nothing to protect — the valve and the context
-      // family already forfeited on the same absence.
-      ...(transcriptPath === undefined
-        ? []
-        : [
-            transcriptModRegistration({
-              transcriptPath,
-              // The env value first, since that is what the judged shell expands `~` and
-              // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
-              // HOME is unset, so a hook spawned without an environment (a service manager,
-              // `env -i`) keeps judging the home spellings instead of silently going
-              // absolute-only — an inert spelling closure looks identical to a passing call.
-              home: process.env.HOME ?? homedir(),
-              bodyCommand: process.execPath,
-              bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
-              shellTools: SHELL_TOOLS,
-              commandArgs: COMMAND_ARGS,
-              mutatingTools: MUTATING_TOOLS,
-              witness,
-            }),
-          ]),
-      // The body path is passed as a thunk, so the proof fires only where the compiler
-      // actually composes a body. Entry count cannot stand in for that: an entry may compile
-      // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
-      // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
-      // for zero entries — gating the call itself would drop that record and turn an
-      // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
-      ...compileDisciplineRegistrations({
-        disciplines,
-        rootDir: spec.repoRoot,
-        bodyCommand: process.execPath,
-        bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
-        shellTools: SHELL_TOOLS,
-        commandArgs: COMMAND_ARGS,
-        witness,
-        // Context-family evidence is evaluated here, at assembly: a spawned body cannot hold
-        // a transcript, and passing a path would leak JSONL knowledge into covenant
-        // (COVENANT-13 §4.4). The adapter brings the evaluator for its own `subagent`/`tool`
-        // vocabulary; core owns `command`, which the compiler judges directly.
-        transcript,
-        evaluatePrecedent,
-      }),
-    ];
-
-    // This assembly is versioned with the umbrella; the covenant dist it composes against is
-    // resolved from the installation graph, so a workspace nobody rebuilt pairs a new
-    // assembly with an old compiler — and an old compiler stores the body-path thunk itself
-    // where a string belongs. `spawn` does not reject a non-string argv entry — it
-    // stringifies it — so the judge would be spawned on the thunk's own source text, exit 1,
-    // and be recorded as a VERDICT under a discipline's label. Assert the shape and let the
-    // fail-closed catch answer instead.
-    for (const registration of registrations) {
-      if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
-        throw new Error(
-          `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
-        );
-      }
-    }
+    const registrations = assembleSessionRegistrations({
+      config,
+      rootDir: spec.repoRoot,
+      covenantDist,
+      transcriptPath,
+      transcript,
+      witness,
+    });
 
     return await runAdapterPath({
       rawPayload,

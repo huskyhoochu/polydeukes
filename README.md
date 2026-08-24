@@ -15,6 +15,7 @@ with the v0.3.0 release; earlier npm versions are a name-reservation stub):
 ```sh
 pdks init claude-code    # wire the session surface into a project
 pdks covenant check      # judge the staged diff (the pre-commit entry point)
+pdks explain             # print what each surface judges, skips, and excludes — no judgment
 pdks docs [topic]        # read the bundled documentation, offline
 ```
 

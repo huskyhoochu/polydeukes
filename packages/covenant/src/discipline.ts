@@ -636,7 +636,10 @@ function patternFault(entry: DisciplineEntry): string | undefined {
  * an immutable entry's shell deletion is out of scope, so neither gains a skip arm. An
  * entry whose pattern is broken gains none either — a broken pattern defines no match.
  */
-function hasShellSkipArm(entry: DisciplineEntry): boolean {
+function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
+  // No shell surface, no shell writes to detect: the arm's own matches predicate could
+  // never fire, so registering it would only misreport the entry as unjudgeable there.
+  if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) return false;
   if (patternFault(entry) !== undefined) return false;
   return entry.forbid !== undefined || entry.requirePrecedent !== undefined;
 }
@@ -789,7 +792,7 @@ export function compileDisciplineRegistrations(
   });
 
   const skipArms = spec.disciplines
-    .filter(hasShellSkipArm)
+    .filter((entry) => hasShellSkipArm(entry, spec))
     .map((entry) => shellSkipArm(entry, spec));
   return [...judged, ...skipArms, shellUnjudgeableRegistration(spec)];
 }

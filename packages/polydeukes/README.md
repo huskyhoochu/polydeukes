@@ -26,6 +26,12 @@ one-way, through the core alone.
   filtering them out would hide that a gate stood down. It is the same disposition the session
   surface uses when it has no transcript. An empty staging area is an explicit pass; a missing or
   invalid config fails closed.
+- **`pdks explain`** — the assembly reader. It assembles both surfaces' registration sets through
+  the same functions the two runners call and prints them without judging: every registration
+  with its kind (`meta` / `judge` / `skip` / `excluded`), the routing scope of each entry, whether
+  it carries a `why`, and for each skip the compiler's reason — the one that otherwise reaches
+  stderr only when the cause is a config fault. No judge body is spawned and no telemetry row is
+  written. A config that cannot be loaded fails at exit `2` with stdout at zero bytes.
 - **`pdks init claude-code`** — the session-surface installer. It proves `polydeukes` resolves
   from the target project before writing anything, then creates what every distribution path
   shares (the data config and its `.polydeukes/` ignore line) and what this path owns (a delegator

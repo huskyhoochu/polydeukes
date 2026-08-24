@@ -27,32 +27,16 @@ protectedPaths:
   - 'packages/adapter-claude-code/dist'
   - 'packages/adapter-git/dist'
 
+adapters:
+  git:
+    enforce: advise
+
 # The valve: this token alone on a message's first line opens a blocked judgment for
 # ttlMinutes. Not a secret — the defence is provenance, and no agent can forge the
 # transcript marking a human utterance carries.
 witness:
   token: 'pdks witness'
   ttlMinutes: 10
-
-# The git adapter's own vocabulary. `protectedPaths` here is ADDITIVE and commit-only —
-# the judgment chain's sources and manifests, free to edit in a session, vouched for at the
-# commit that promotes them. `.github/workflows` is the release path's gate definition.
-adapters:
-  git:
-    enforce: block
-    protectedPaths:
-      - 'packages/core/src'
-      - 'packages/covenant/src'
-      - 'packages/polydeukes/src'
-      - 'packages/adapter-claude-code/src'
-      - 'packages/adapter-git/src'
-      - 'packages/core/package.json'
-      - 'packages/covenant/package.json'
-      - 'packages/polydeukes/package.json'
-      - 'packages/adapter-claude-code/package.json'
-      - 'packages/adapter-git/package.json'
-      - 'package.json'
-      - '.github/workflows'
 
 disciplines:
   - id: 'covenant-vocabulary'

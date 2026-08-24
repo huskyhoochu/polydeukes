@@ -22,7 +22,8 @@ you do not install and do not import.
 ## Subcommands
 
 The bin is `pdks`, with `polydeukes` as an alias. There are no flags and no options
-anywhere: two subcommands take an exact two-word form, and `docs` takes an optional topic.
+anywhere: two subcommands take an exact two-word form, `explain` takes one word, and
+`docs` takes an optional topic.
 
 ### `pdks covenant check`
 
@@ -96,11 +97,55 @@ the package.
 `pdks init claude-code` writes a discovery file that points an AI partner at this
 subcommand; see the artifact table above.
 
+### `pdks explain`
+
+The assembly reader. It loads the config at the working directory, assembles both surfaces'
+registration sets through the same functions the two judgment runners use, and prints them
+without judging — no judge body is spawned, no telemetry row is written, no transcript is
+read.
+
+```text
+pdks explain — polydeukes.config.yaml
+
+surface: session (claude-code hook)
+  registrations 23 · judged 11 · skip 9 · meta 3 · excluded 0
+  meta     self-mod                 paths 13 (common; includes the config file itself)
+  judge    covenant-vocabulary      forbid · in packages/*/src/** · except … · why ✓
+  skip     covenant-vocabulary      a shell write in scope whose result this layer cannot compute
+  ...
+surface: commit (git pre-commit) · enforce: advise
+  registrations 10 · judged 3 · skip 6 · meta 1 · excluded 3
+  skip     manifest-needs-npm-view  no session transcript to read
+  excluded hooks-stay-armed         forbidCommand — no shell axis on this surface
+```
+
+One line per registration, in the order the surface dispatches them. The kind column has
+four words: `meta` (the registrations protecting the judging chain — `self-mod`,
+`shell-mod`, and on the session surface `transcript-mod`), `judge` (an entry with a judge
+body, with its family, routing scope, and whether it carries a `why`), `skip` (a registration
+that records `skipped` instead of judging, with the reason the compiler gave — the reason
+that otherwise reaches stderr only on a config fault), and `excluded` (a `forbidCommand`
+entry on the commit surface, which has no shell axis). `registrations` counts the first
+three; `excluded` is tallied apart because an excluded entry never becomes a registration.
+The commit surface's header also names its `adapters.git.enforce` level, since an advising
+surface records the same table but blocks nothing.
+
+The session surface is rendered as the hook sees it under a normal payload — with a
+transcript present — so `transcript-mod` and the context family appear as they do in a
+session; the commit surface shows the context family as skips, which is that surface's
+permanent condition.
+
+| Call | Result |
+|---|---|
+| `pdks explain` | Both surfaces on stdout, exit `0` |
+| `pdks explain <anything>` | The usage line on stderr, exit `2` |
+| no config, two configs, or an invalid one | `pdks explain: <reason>` on stderr, stdout at zero bytes, exit `2` |
+
 ### Any other argument form
 
 Anything that is not one of these forms writes
-`usage: pdks covenant check | pdks init claude-code | pdks docs [topic]` to stderr and
-exits `2`.
+`usage: pdks covenant check | pdks explain | pdks init claude-code | pdks docs [topic]` to
+stderr and exits `2`.
 
 ## Exit codes
 

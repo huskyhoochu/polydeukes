@@ -153,7 +153,9 @@ assembles as a skip registration: routing intact, no judge body. When its scope 
 staged change it records `skipped` with the entry's id and proceeds.
 
 **Recovery.** None needed — this is a declared condition of the surface, not a defect. The
-row is the point: a gate that did nothing says so in the data. A context-family entry is
+row is the point: a gate that did nothing says so in the data. `pdks explain` shows the
+same fact before any commit: every context entry appears under the commit surface as a
+`skip` line carrying the reason. A context-family entry is
 really a session-surface tool — on a project that wires only the commit surface, such an
 entry only ever buys telemetry, so declare it where an AI partner's session exists to be
 judged. The row appears only when the entry's scope actually matched, so an unrelated

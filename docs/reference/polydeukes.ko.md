@@ -21,7 +21,8 @@
 ## 서브커맨드
 
 실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 어디에도 플래그와 옵션이 없습니다.
-서브커맨드 둘은 정확히 두 단어 형태만 받고, `docs`는 토픽 하나를 선택으로 받습니다.
+서브커맨드 둘은 정확히 두 단어 형태만 받고, `explain`은 한 단어, `docs`는 토픽 하나를
+선택으로 받습니다.
 
 ### `pdks covenant check`
 
@@ -94,10 +95,50 @@ git 어댑터로 스테이징 영역을 수집하고, 약속(covenant) 입력 IR
 `pdks init claude-code`가 만드는 발견 파일이 AI 파트너를 이 서브커맨드로 보냅니다. 위의
 산출물 표에 있습니다.
 
+### `pdks explain`
+
+조립 상태를 읽는 명령입니다. 작업 디렉터리의 설정을 읽고, 두 판정 러너가 쓰는 것과 같은
+함수로 두 표면의 등록표를 조립해, 판정 없이 출력합니다. 판정 본체를 띄우지 않고, 텔레메트리
+행을 쓰지 않으며, 트랜스크립트를 읽지 않습니다.
+
+```text
+pdks explain — polydeukes.config.yaml
+
+surface: session (claude-code hook)
+  registrations 23 · judged 11 · skip 9 · meta 3 · excluded 0
+  meta     self-mod                 paths 13 (common; includes the config file itself)
+  judge    covenant-vocabulary      forbid · in packages/*/src/** · except … · why ✓
+  skip     covenant-vocabulary      a shell write in scope whose result this layer cannot compute
+  ...
+surface: commit (git pre-commit) · enforce: advise
+  registrations 10 · judged 3 · skip 6 · meta 1 · excluded 3
+  skip     manifest-needs-npm-view  no session transcript to read
+  excluded hooks-stay-armed         forbidCommand — no shell axis on this surface
+```
+
+등록 하나가 한 줄이고, 순서는 그 표면이 디스패치하는 순서입니다. 종류 열은 네 단어입니다.
+`meta`는 판정 사슬 자체를 보호하는 등록(`self-mod` · `shell-mod` · 세션 표면의
+`transcript-mod`), `judge`는 판정 본체를 가진 항목(족 · 라우팅 스코프 · `why` 유무 표시),
+`skip`은 판정 대신 `skipped`를 기록하는 등록(컴파일러가 준 사유를 함께 — 평소에는 설정
+결함일 때만 stderr에 닿는 그 사유), `excluded`는 커밋 표면의 `forbidCommand` 항목(셸 축이
+없는 표면)입니다. `registrations`는 앞의 셋을 세고, `excluded`는 등록이 되지 않는 항목이라
+따로 셉니다. 커밋 표면 머리에는 `adapters.git.enforce` 수위도 같이 적습니다 — advise
+표면은 같은 표를 기록하되 아무것도 막지 않기 때문입니다.
+
+세션 표면은 훅이 정상 페이로드에서 보는 대로 — 트랜스크립트가 있는 상태로 — 렌더되므로
+`transcript-mod`와 맥락(context)족이 세션에서와 같이 나타나고, 커밋 표면은 맥락족을 skip으로
+보여 줍니다. 그것이 그 표면의 영구 조건입니다.
+
+| 호출 | 결과 |
+|---|---|
+| `pdks explain` | 두 표면을 stdout에, 종료 `0` |
+| `pdks explain <무엇이든>` | usage 줄을 stderr에, 종료 `2` |
+| 설정 없음 · 둘 · 불량 | `pdks explain: <사유>`를 stderr에, stdout 0바이트, 종료 `2` |
+
 ### 그 밖의 인자 형태
 
-이 형태들이 아닌 것은 `usage: pdks covenant check | pdks init claude-code | pdks docs [topic]`을
-stderr에 쓰고 종료 `2`를 냅니다.
+이 형태들이 아닌 것은 `usage: pdks covenant check | pdks explain | pdks init claude-code |
+pdks docs [topic]`을 stderr에 쓰고 종료 `2`를 냅니다.
 
 ## 종료 코드
 

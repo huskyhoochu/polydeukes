@@ -320,7 +320,14 @@ behaves correctly is where the untested half hides.
      it fail. Worth telling because it answers the enforcement objection from the other
      side: the cost was one document read, and what it bought was a verification that would
      otherwise not have happened. A discipline that only ever costs is a tax; this one paid
-     back inside the same hour, in the work of the person it delayed. -->
+     back inside the same hour, in the work of the person it delayed.
+     Parked candidate (2026-08-23, CLI-01): the first thing `pdks explain` showed on this
+     repository was that its commit surface cannot judge five of its eleven disciplines —
+     the compiler had computed that reason at every commit and nobody could read it, because
+     the only channel was a stderr line reserved for config faults. Worth telling because
+     the reader is not a second opinion: it renders the exact table the judgment uses (one
+     assembly, two consumers), so what it shows is what would have happened, not a guess at
+     it. A gate you can read before it runs is the diagnostic posture in one command. -->
 
 ## What Polydeukes is not
 

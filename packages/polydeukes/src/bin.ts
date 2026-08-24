@@ -114,8 +114,37 @@ if (args[0] === 'docs' && args.length <= 2) {
   }
 }
 
+if (args.length === 1 && args[0] === 'explain') {
+  try {
+    // Imported inside the try for the same reason `docs` is: the renderer pulls in both
+    // composition roots, and neither belongs on `covenant check`'s load path, which
+    // lefthook spawns on every commit.
+    const { explain } = await import('./explain.js');
+    const { text } = explain({ repoRoot: process.cwd() });
+    // A reader that goes away mid-write makes the stream emit `error` outside the frame
+    // this try guards; end at the same code an unanswerable call uses rather than at
+    // node's default exit 1 and a raw stack trace.
+    process.stdout.on('error', () => process.exit(2));
+    // A piped write is asynchronous, so the exit waits for the flush — a truncated
+    // assembly report is one a reader takes for the whole table.
+    await new Promise<void>((settle) => {
+      process.stdout.write(text, () => settle());
+    });
+    process.exit(0);
+  } catch (error) {
+    // stdout stays at zero bytes on this path: what cannot be answered is never answered
+    // halfway.
+    process.stderr.write(
+      `pdks explain: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exit(2);
+  }
+}
+
 if (args.length !== 2 || args[0] !== 'covenant' || args[1] !== 'check') {
-  process.stderr.write('usage: pdks covenant check | pdks init claude-code | pdks docs [topic]\n');
+  process.stderr.write(
+    'usage: pdks covenant check | pdks explain | pdks init claude-code | pdks docs [topic]\n',
+  );
   process.exit(2);
 }
 

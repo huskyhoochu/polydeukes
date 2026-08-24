@@ -161,6 +161,9 @@ export class ConfigValidationError extends Error {
 }
 
 /** The exact key vocabulary of each object level — anything else is a typo, rejected loudly. */
+/** Labels the assembly reserves for the judging chain's own registrations. */
+const META_COVENANT_LABELS = ['self-mod', 'shell-mod', 'transcript-mod'];
+
 const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   '$schema',
   'languages',
@@ -290,6 +293,12 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
     const location = `disciplines[${index}] ('${entry.id}')`;
     if (seenIds.has(entry.id)) {
       throw new ConfigValidationError(`${location} duplicates the id of an earlier entry`);
+    }
+    // The three meta-covenant registrations share the telemetry label space with
+    // discipline ids; a colliding id would make gain aggregation and any label-keyed
+    // reader (pdks explain) ambiguous.
+    if (META_COVENANT_LABELS.includes(entry.id)) {
+      throw new ConfigValidationError(`${location} id collides with a meta-covenant label`);
     }
     seenIds.add(entry.id);
     rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);

@@ -221,6 +221,10 @@ const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: [{ id: 'why-typed', forbid: 'a', why: 123 }] },
   // COVENANT-10 — empty-string id.
   { ...validLanguages, disciplines: [{ id: '', forbid: 'a' }] },
+  // CLI-01 — id colliding with a meta-covenant label (reserved: the telemetry label
+  // space and pdks explain's kind column key on it).
+  { ...validLanguages, disciplines: [{ id: 'self-mod', forbid: 'a' }] },
+  { ...validLanguages, disciplines: [{ id: 'transcript-mod', forbid: 'a' }] },
   // COVENANT-10 — non-string id.
   { ...validLanguages, disciplines: [{ id: 7, forbid: 'a' }] },
   // COVENANT-10 — non-compilable forbid regex (format: regex catches this).

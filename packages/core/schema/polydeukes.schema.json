@@ -91,9 +91,10 @@
       }
     },
     "disciplineId": {
-      "description": "Unique handle — telemetry label and verdict reason prefix.",
+      "description": "Unique handle — telemetry label and verdict reason prefix. The three meta-covenant labels are reserved.",
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "not": { "enum": ["self-mod", "shell-mod", "transcript-mod"] }
     },
     "disciplineWhy": {
       "description": "Prose rationale — never judged, and carried into the break message.",
