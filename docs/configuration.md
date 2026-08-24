@@ -89,7 +89,8 @@ A violating tool call or shell command is **blocked (exit 2)** before it runs, w
 discipline's `id` in the telemetry record. The sanctioned valve is the witness — a human
 supplying the pass condition on a judgment that actually blocked, recorded as
 `witnessed` — never silent. On the commit surface under
-`adapters.git.enforce: advise`, a verdict is recorded as `advised` and the commit
-proceeds — a backstop that measures instead of blocking. A missing, ambiguous, or
+`adapters.git.enforce: advise`, or for any discipline entry carrying its own
+`enforce: advise`, a verdict is recorded as `advised` and the call proceeds — a backstop
+that measures instead of blocking. A missing, ambiguous, or
 invalid config blocks every call until it is fixed: the system fails closed, because a
 dead gate that waves things through is the cheapest bypass of all.

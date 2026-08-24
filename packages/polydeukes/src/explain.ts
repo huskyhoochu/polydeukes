@@ -107,8 +107,13 @@ function renderSurface(spec: {
     }
     judged += 1;
     const entry = spec.disciplines.find((candidate) => candidate.id === registration.label);
+    // Only advise is marked (CONFIG-11 §4.5): absence and explicit block both mean block
+    // today, so annotating either would invert its meaning the day the default flips.
+    const level = entry?.enforce === 'advise' ? ' · enforce: advise' : '';
     const description =
-      entry === undefined ? '' : `${scopeOf(entry)} · why ${entry.why === undefined ? '—' : '✓'}`;
+      entry === undefined
+        ? ''
+        : `${scopeOf(entry)} · why ${entry.why === undefined ? '—' : '✓'}${level}`;
     lines.push(row('judge', registration.label, width, description));
   }
 

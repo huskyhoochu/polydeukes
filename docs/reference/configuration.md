@@ -197,6 +197,23 @@ verdict has blocked, so whoever reads the block gets the rationale in the same l
 of having to open this file. A `why` spanning several lines is folded to spaces: the message
 is one line.
 
+**`enforce` — the entry's own level.** Optional on any judged entry: `block` or `advise`.
+Under `advise` a break is recorded as an `advised` telemetry event and the call proceeds
+(exit 0), with the break message still written to stderr; `block` pins the entry at block.
+The entry's level composes with the surface's (`adapters.git.enforce` on the commit
+surface; the session surface has none and judges at block) and the lenient side wins — an
+`advise` on either axis makes the entry advise, and an explicit `block` never raises a
+surface the observer set to advise. An unjudgeable body (never built, failed to spawn)
+still blocks whatever the level. A draft carries no `enforce`; any other value is
+rejected at load time. `pdks explain` marks an `advise` entry on both surfaces.
+
+```yaml
+  - id: 'no-console-log'
+    why: 'console output belongs to the logger; measure the habit before blocking it.'
+    forbid: 'console\.log\('
+    enforce: advise
+```
+
 **`forbid` — content delta.** Blocks an edit that *adds* a new match of the pattern.
 Existing occurrences are forgiven: adopting a discipline never blocks a legacy codebase,
 because the judgment direction is "what did this edit add", not "what does the file

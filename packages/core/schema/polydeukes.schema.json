@@ -100,6 +100,10 @@
       "description": "Prose rationale — never judged, and carried into the break message.",
       "type": "string"
     },
+    "enforceLevel": {
+      "description": "The entry's own level. 'advise' records a break without stopping it; 'block' pins the entry at block. Composes with the surface's level, the lenient side winning; absent inherits the surface.",
+      "enum": ["block", "advise"]
+    },
     "globOrGlobs": {
       "anyOf": [
         { "type": "string", "minLength": 1 },
@@ -151,6 +155,7 @@
           "properties": {
             "id": { "$ref": "#/$defs/disciplineId" },
             "why": { "$ref": "#/$defs/disciplineWhy" },
+            "enforce": { "$ref": "#/$defs/enforceLevel" },
             "in": { "$ref": "#/$defs/globOrGlobs" },
             "except": { "$ref": "#/$defs/globOrGlobs" },
             "forbid": {
@@ -176,6 +181,7 @@
           "properties": {
             "id": { "$ref": "#/$defs/disciplineId" },
             "why": { "$ref": "#/$defs/disciplineWhy" },
+            "enforce": { "$ref": "#/$defs/enforceLevel" },
             "immutable": {
               "description": "Path family — its own glob is the scope.",
               "$ref": "#/$defs/globOrGlobs"
@@ -189,6 +195,7 @@
           "properties": {
             "id": { "$ref": "#/$defs/disciplineId" },
             "why": { "$ref": "#/$defs/disciplineWhy" },
+            "enforce": { "$ref": "#/$defs/enforceLevel" },
             "forbidCommand": {
               "description": "Command family — regex over shell command strings.",
               "type": "string",
@@ -204,6 +211,7 @@
           "properties": {
             "id": { "$ref": "#/$defs/disciplineId" },
             "why": { "$ref": "#/$defs/disciplineWhy" },
+            "enforce": { "$ref": "#/$defs/enforceLevel" },
             "in": { "$ref": "#/$defs/globOrGlobs" },
             "except": { "$ref": "#/$defs/globOrGlobs" },
             "when": {

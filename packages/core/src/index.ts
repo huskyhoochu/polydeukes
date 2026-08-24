@@ -18,6 +18,7 @@ export {
   type DisciplineEntry,
   type DisciplineForbid,
   defineConfig,
+  type EnforceLevel,
   type LanguageProfile,
   type PolydeukesConfig,
   type ResolvedConfig,

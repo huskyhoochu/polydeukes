@@ -40,6 +40,13 @@ export type LanguageProfile = {
 export type DisciplineForbid = string | { added: string };
 
 /**
+ * `EnforceLevel` — an entry's own rung on the promotion ladder (CONFIG-11 §4.1). `advise`
+ * records a break without stopping it; `block` pins the entry at block whatever default
+ * the ladder later adopts. Absence inherits the surface's level.
+ */
+export type EnforceLevel = 'block' | 'advise';
+
+/**
  * `DisciplineEntry` — one user-declared discipline (COVENANT-10 §4.1). Pure JSON data.
  *
  * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand` |
@@ -52,6 +59,8 @@ export type DisciplineEntry = {
   id: string;
   /** prose rationale — never judged, and carried into the break message (COVENANT-19) */
   why?: string;
+  /** the author's level; composes with the observer's surface level, lenient side winning */
+  enforce?: EnforceLevel;
   /** delta/context-family scope: glob(s) the file path must match (absent = every file change) */
   in?: string | string[];
   /** delta/context-family scope: glob(s) excluded after `in` */
@@ -203,6 +212,7 @@ const WITNESS_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
 const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'id',
   'why',
+  'enforce',
   'in',
   'except',
   'forbid',
@@ -212,6 +222,7 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'requirePrecedent',
 ]);
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
+const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
 const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent'] as const;
 /** Predicate families that `in`/`except` may scope — delta and context (COVENANT-13 §4.1). */
 const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
@@ -360,6 +371,12 @@ function validateDisciplines(disciplines: unknown): {
     rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
     if (entry.why !== undefined && typeof entry.why !== 'string') {
       throw new ConfigValidationError(`${location} why must be a string`);
+    }
+    if (
+      entry.enforce !== undefined &&
+      (typeof entry.enforce !== 'string' || !ENFORCE_LEVELS.has(entry.enforce))
+    ) {
+      throw new ConfigValidationError(`${location} enforce must be 'block' or 'advise'`);
     }
 
     const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);

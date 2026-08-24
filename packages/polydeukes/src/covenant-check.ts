@@ -328,9 +328,13 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitC
       if (exitCode === 2) blocked = true;
       advisedCount += results.filter((result) => result.event === 'advised').length;
     }
+    // The line names no level: an advised row comes from the surface's level or from the
+    // entry's own (CONFIG-11), and since the two can mix in one run, the commit's fate is
+    // read from the run rather than assumed from the advisory.
     if (advisedCount > 0) {
+      const outcome = blocked ? 'commit blocked by another verdict' : 'commit allowed';
       process.stderr.write(
-        `covenant advisory (enforce: advise): ${advisedCount} verdict(s) recorded, commit allowed\n`,
+        `covenant advisory: ${advisedCount} verdict(s) recorded as advised, ${outcome}\n`,
       );
     }
     return { exitCode: blocked ? 2 : 0 };

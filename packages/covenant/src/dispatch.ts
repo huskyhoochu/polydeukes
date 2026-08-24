@@ -16,6 +16,7 @@ import {
   appendRecordFailOpen,
   type CanonicalTranscript,
   type CovenantInput,
+  type EnforceLevel,
   EXIT_BREAK_BLOCKING,
   EXIT_UPHOLD,
   noopTranscript,
@@ -48,10 +49,15 @@ import { runCovenant } from './run-covenant.js';
  * and upholds instead of spawning. Judging it anyway would block every matched input
  * with no legitimate pass path; throwing at assembly would take down every sibling
  * registration and the witness valve with it.
+ *
+ * `enforce` is the AUTHOR's level for this one registration (CONFIG-11 §4.3), distinct
+ * from the observer's dispatch-wide level; absence means the registration inherits
+ * whatever the dispatch carries.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
+  enforce?: EnforceLevel;
   witness?: (
     input: CovenantInput,
     transcript: CanonicalTranscript,
@@ -184,8 +190,13 @@ export function matchRegistrations(
  * real break into `0` / `witnessed`. A predicate that throws opens nothing (the block
  * stands): an uncertain witness never leaks toward fail-open.
  *
- * enforce (CONFIG-06 §4.5): `spec.enforce` is threaded into every {@link runCovenant}
- * call — the level axis lives in the wrapper's translation table. The dispatcher's own
+ * enforce (CONFIG-06 §4.5, CONFIG-11 §4.2): the level has two owners — `spec.enforce`
+ * is the observer's posture for the whole dispatch, `registration.enforce` the author's
+ * for one entry — and the dispatcher composes them per registration with the lenient
+ * side winning, then threads the effective level into {@link runCovenant}, where the
+ * translation table lives. Lenient-wins keeps an explicit `block` entry from raising a
+ * surface the observer lowered, and lets one entry lower itself under a block surface.
+ * The dispatcher's own
  * fail-closed (unparseable or unjudgeable payload) is outside that axis and outside the
  * valve too (zero spawns, so no verdict to relax). Each results entry surfaces the
  * telemetry `event` the wrapper recorded, never a recomputed one — the valve is impure,
@@ -197,7 +208,7 @@ export async function dispatchCovenants(spec: {
   telemetryPath: string;
   dispatcherLabel?: string;
   transcript?: CanonicalTranscript;
-  enforce?: 'block' | 'advise';
+  enforce?: EnforceLevel;
 }): Promise<{
   exitCode: 0 | 2;
   results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[];
@@ -262,6 +273,9 @@ export async function dispatchCovenants(spec: {
     // needs to name what broke. The local alias exists for TypeScript narrowing — a
     // property access cannot stay narrowed inside the closure below.
     const witness = registration.witness;
+    // Absence stays absent: the block default lives in the wrapper, not restated here.
+    const effectiveEnforce: EnforceLevel | undefined =
+      registration.enforce === 'advise' ? 'advise' : spec.enforce;
     const { exitCode, event } = await runCovenant({
       command: registration.body.command,
       args: registration.body.args,
@@ -269,7 +283,7 @@ export async function dispatchCovenants(spec: {
       label: registration.label,
       subject: mentionedPath,
       telemetryPath: spec.telemetryPath,
-      enforce: spec.enforce,
+      enforce: effectiveEnforce,
       ...(witness !== undefined
         ? {
             witness: () =>

@@ -76,7 +76,7 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
 
     const advisoryLines = stderrWrite.mock.calls
       .map((call) => String(call[0]))
-      .filter((line) => /covenant advisory \(enforce: advise\)/.test(line));
+      .filter((line) => /covenant advisory/.test(line));
     expect(advisoryLines).toHaveLength(1);
     expect(advisoryLines[0]).toMatch(/commit allowed/);
   });

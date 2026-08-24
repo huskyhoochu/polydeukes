@@ -187,6 +187,23 @@ disciplines:
 덧붙으므로, 차단을 읽는 쪽이 이 파일을 열지 않고도 같은 줄에서 근거를 얻습니다. 여러 줄에
 걸친 `why`는 공백으로 접힙니다. 메시지는 한 줄입니다.
 
+**`enforce`는 항목 자신의 수위입니다.** 판정 항목이면 어디에나 선택으로 쓸 수 있고 값은
+`block` 또는 `advise`입니다. `advise`에서는 위반이 `advised` 텔레메트리 이벤트로 기록되고
+호출은 진행되며(exit 0), 위반 메시지는 그대로 stderr에 쓰입니다. `block`은 항목을 block에
+고정합니다. 항목의 수위는 표면의 수위(커밋 표면의 `adapters.git.enforce`, 세션 표면은
+수위 설정이 없어 block으로 판정)와 합성되고 관대한 쪽이 이깁니다. 어느 축이든 `advise`면
+그 항목은 advise이고, 명시 `block`이 관측자가 advise로 내린 표면을 도로 올리지는
+않습니다. 판정할 수 없는 본체(빌드되지 않음, 스폰 실패)는 수위와 무관하게 차단됩니다.
+초안(draft)은 `enforce`를 갖지 않고, 그 밖의 값은 로드 시점에 거부됩니다. `pdks explain`이
+`advise` 항목을 두 표면 모두에 표시합니다.
+
+```yaml
+  - id: 'no-console-log'
+    why: 'console output belongs to the logger; measure the habit before blocking it.'
+    forbid: 'console\.log\('
+    enforce: advise
+```
+
 **`forbid`는 내용 델타를 봅니다.** 패턴의 새 매치를 *더하는* 편집을 차단합니다. 기존
 매치는 사면됩니다. 판정의 방향이 "파일에 무엇이 있는가"가 아니라 "이 편집이 무엇을
 더했는가"이므로, 규율 도입이 레거시 코드베이스를 막는 일이 없습니다.

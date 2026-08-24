@@ -223,6 +223,13 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      was never going to spawn is the kind of inconvenience that sends people to the
      override, and an override reached for daily stops being an exception. -->
 
+<!-- Parked candidate (2026-08-24, CONFIG-11): an enforcement level has two owners. The
+     observer sets a surface's level as an operating posture — "this surface never stops
+     me" — and the author sets an entry's level as its rung on the ladder from draft to
+     advise to block. When the two disagree the lenient side wins: an entry may lower
+     itself under a surface that blocks, but no entry may raise a surface its observer
+     lowered. Self-imposed disciplines compose downward, never upward. -->
+
 ### 3. Evidence, not self-report
 
 **Nothing is trusted because someone — human or AI — says so.** Every covenant verdict

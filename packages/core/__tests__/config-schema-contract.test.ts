@@ -197,8 +197,6 @@ const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: [{ id: 'added-number', forbid: { added: 1 } }] },
   // COVENANT-10 — empty forbid object.
   { ...validLanguages, disciplines: [{ id: 'empty-forbid', forbid: {} }] },
-  // COVENANT-10 — unknown per-entry key (enforce).
-  { ...validLanguages, disciplines: [{ id: 'has-enforce', forbid: 'x', enforce: 'advise' }] },
   // COVENANT-10 — in on a non-forbid (immutable) entry.
   { ...validLanguages, disciplines: [{ id: 'immutable-with-in', immutable: 'y/**', in: 'z/**' }] },
   // COVENANT-10 — except on a forbidCommand entry.
