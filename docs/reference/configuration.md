@@ -177,6 +177,21 @@ telemetry label), and optionally a `why` (the reason, which travels with the blo
 the agent reads) plus, on a `forbid` or `requirePrecedent` entry, `in` (the file globs it
 judges) and `except` (globs carved out of that scope).
 
+**`draft` — an unpromoted entry.** The one shape that carries no predicate:
+`{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of
+its promotion — it makes no judgment and no telemetry record on either surface, and
+`pdks explain` shows it as `unpromoted`. `why` is required here (the prose is the entry's
+whole body), and the marker must be the literal `true` — a draft is declared, never
+inferred, so an entry with neither a predicate nor `draft: true` is still a validation
+error, and `draft: false` is rejected as dead data.
+
+```yaml
+disciplines:
+  - id: 'bilingual-docs-sync'
+    why: 'en and ko doc mirrors must move together.'
+    draft: true
+```
+
 A `why` is never judged — it changes no verdict. It is appended to the break message once a
 verdict has blocked, so whoever reads the block gets the rationale in the same line instead
 of having to open this file. A `why` spanning several lines is folded to spaces: the message

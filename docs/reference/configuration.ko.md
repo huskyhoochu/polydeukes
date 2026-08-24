@@ -169,6 +169,20 @@ AI도 증언을 위조할 수 없습니다. 증언으로 통과한 판정은 조
 `requirePrecedent` 항목에서는 `in`(판정할 파일 glob)과 `except`(그 범위에서 덜어낼 glob)도
 쓸 수 있습니다.
 
+**`draft` — 미승격 항목.** 술어를 갖지 않는 유일한 형태입니다. `{ id, why, draft: true }`
+세 키뿐입니다. 초안(draft)은 승격 전의 실천을 산문으로 등재합니다 — 두 표면 어디에서도
+판정과 텔레메트리 기록을 만들지 않고, `pdks explain`이 `unpromoted`로 표시합니다. 여기서는
+`why`가 필수입니다(산문이 항목의 본문 전부입니다). 표식은 리터럴 `true`여야 합니다 —
+초안은 선언하는 것이지 추론되는 것이 아니므로, 술어도 `draft: true`도 없는 항목은 여전히
+검증 오류이고 `draft: false`는 죽은 데이터로 거부됩니다.
+
+```yaml
+disciplines:
+  - id: 'bilingual-docs-sync'
+    why: 'en and ko doc mirrors must move together.'
+    draft: true
+```
+
 `why`는 판정하지 않습니다. 어떤 판정도 바꾸지 않습니다. 판정이 차단을 낸 뒤 위반 메시지에
 덧붙으므로, 차단을 읽는 쪽이 이 파일을 열지 않고도 같은 줄에서 근거를 얻습니다. 여러 줄에
 걸친 `why`는 공백으로 접힙니다. 메시지는 한 줄입니다.

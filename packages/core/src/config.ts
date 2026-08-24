@@ -73,6 +73,24 @@ export type DisciplineEntry = {
 };
 
 /**
+ * `DisciplineDraft` — an unpromoted discipline (CONFIG-10 §4.1): the promotion ladder's
+ * first rung, registered as prose ahead of any predicate.
+ *
+ * A draft is declared, never inferred — only the literal `draft: true` makes one, and an
+ * entry with neither a predicate nor the marker stays a validation error. It carries no
+ * predicate, scope, or trigger key, produces no registration, no judgment, and no
+ * telemetry row; `pdks explain` renders it as unpromoted.
+ */
+export type DisciplineDraft = {
+  /** unique handle in the same label space as judged entries and meta-covenant labels */
+  id: string;
+  /** the draft's whole body — required prose, unlike the judged families' optional why */
+  why: string;
+  /** the explicit marker; only the literal true exists (false is rejected as dead data) */
+  draft: true;
+};
+
+/**
  * `PolydeukesConfig` — the input shape a user writes (PRD §4.1). JSON-serializable data.
  *
  * Language keys (`typescript`, `python`, …) are user *values*, not the core's vocabulary —
@@ -96,7 +114,7 @@ export type PolydeukesConfig = {
     logPath?: string;
   };
   /** user-declared disciplines — validated here, compiled by the covenant package */
-  disciplines?: DisciplineEntry[];
+  disciplines?: (DisciplineEntry | DisciplineDraft)[];
   /**
    * TTL witness values for the covenant valve seam (CONFIG-05) — consumed at
    * assembly time, validated here
@@ -137,8 +155,14 @@ export type ResolvedConfig = {
   telemetry: {
     logPath: string;
   };
-  /** validated discipline data, passed through verbatim (absent stays absent) */
+  /**
+   * validated judged entries only — drafts are split out at resolution time so the
+   * covenant compiler has no path that receives one. Present whenever the input
+   * declared a `disciplines` array, holding exactly its judged entries in order.
+   */
   disciplines?: DisciplineEntry[];
+  /** validated drafts in declaration order (absent when the input carries none) */
+  drafts?: DisciplineDraft[];
   /** validated witness data, passed through verbatim (absent stays absent) */
   witness?: {
     token: string;
@@ -187,6 +211,7 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'when',
   'requirePrecedent',
 ]);
+const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent'] as const;
 /** Predicate families that `in`/`except` may scope — delta and context (COVENANT-13 §4.1). */
 const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
@@ -274,14 +299,20 @@ function validateRequirePrecedent(evidence: unknown, location: string): void {
 }
 
 /**
- * Validate the `disciplines` array (COVENANT-10 §4.1). Throws {@link ConfigValidationError}
- * naming the offending entry/key; the validated data passes through verbatim.
+ * Validate the `disciplines` array (COVENANT-10 §4.1, drafts CONFIG-10 §4.1) and split
+ * judged entries from drafts. Throws {@link ConfigValidationError} naming the offending
+ * entry/key; the validated data passes through verbatim, in declaration order.
  */
-function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
+function validateDisciplines(disciplines: unknown): {
+  judged: DisciplineEntry[];
+  drafts: DisciplineDraft[];
+} {
   if (!Array.isArray(disciplines)) {
     throw new ConfigValidationError('disciplines must be an array');
   }
 
+  const judged: DisciplineEntry[] = [];
+  const drafts: DisciplineDraft[] = [];
   const seenIds = new Set<string>();
   disciplines.forEach((entry, index) => {
     if (!isPlainObject(entry)) {
@@ -301,6 +332,31 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
       throw new ConfigValidationError(`${location} id collides with a meta-covenant label`);
     }
     seenIds.add(entry.id);
+
+    // Draft branch (CONFIG-10 §4.1) — selected by the marker's value, so an explicit
+    // `draft: undefined` is absence, like every other optional key in this validator.
+    if (entry.draft !== undefined) {
+      for (const key of Object.keys(entry)) {
+        if (!DRAFT_KEYS.has(key)) {
+          // Named as the draft rule, not as an unknown key: `forbid` et al. are legal
+          // discipline keys, just not on a draft.
+          throw new ConfigValidationError(
+            `${location} allows only id, why, draft on a draft entry (found '${key}')`,
+          );
+        }
+      }
+      if (entry.draft !== true) {
+        throw new ConfigValidationError(`${location} draft must be the literal true`);
+      }
+      if (typeof entry.why !== 'string' || entry.why.length === 0) {
+        throw new ConfigValidationError(
+          `${location} why must be a non-empty string on a draft entry — the prose is its whole body`,
+        );
+      }
+      drafts.push({ id: entry.id, why: entry.why, draft: true });
+      return;
+    }
+
     rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
     if (entry.why !== undefined && typeof entry.why !== 'string') {
       throw new ConfigValidationError(`${location} why must be a string`);
@@ -394,9 +450,10 @@ function validateDisciplines(disciplines: unknown): DisciplineEntry[] {
       }
       validateRequirePrecedent(entry.requirePrecedent, location);
     }
+    judged.push(entry as DisciplineEntry);
   });
 
-  return disciplines as DisciplineEntry[];
+  return { judged, drafts };
 }
 
 /**
@@ -533,8 +590,10 @@ export function defineConfig(config: unknown): ResolvedConfig {
   const protectedPaths =
     config.protectedPaths !== undefined ? validateProtectedPaths(config.protectedPaths) : undefined;
   const adapters = config.adapters !== undefined ? validateAdapters(config.adapters) : undefined;
-  const disciplines =
+  const split =
     config.disciplines !== undefined ? validateDisciplines(config.disciplines) : undefined;
+  const disciplines = split?.judged;
+  const drafts = split !== undefined && split.drafts.length > 0 ? split.drafts : undefined;
   const logPath = config.telemetry !== undefined ? validateTelemetry(config.telemetry) : undefined;
   const witness = config.witness !== undefined ? validateWitness(config.witness) : undefined;
 
@@ -546,6 +605,7 @@ export function defineConfig(config: unknown): ResolvedConfig {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },
     ...(disciplines !== undefined && { disciplines }),
+    ...(drafts !== undefined && { drafts }),
     ...(witness !== undefined && { witness }),
   };
 }

@@ -14,6 +14,7 @@ import { isPlainObject } from './is-plain-object.js';
 export {
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,
+  type DisciplineDraft,
   type DisciplineEntry,
   type DisciplineForbid,
   defineConfig,

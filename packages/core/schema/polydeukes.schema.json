@@ -125,8 +125,25 @@
       }
     },
     "discipline": {
-      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
+      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent), or a draft (id + why + draft: true, no predicate); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
       "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "why", "draft"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": {
+              "description": "A draft's only body is its prose, so why is required and non-empty here.",
+              "type": "string",
+              "minLength": 1
+            },
+            "draft": {
+              "description": "Marks an unpromoted entry — declared as prose, never judged, never recorded. Only the literal true exists; false would be dead data synonymous with absence.",
+              "const": true
+            }
+          }
+        },
         {
           "type": "object",
           "additionalProperties": false,

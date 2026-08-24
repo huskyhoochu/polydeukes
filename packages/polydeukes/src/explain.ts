@@ -17,7 +17,7 @@
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { resolveGitAdapterSettings } from '@polydeukes/adapter-git';
-import type { DisciplineEntry } from '@polydeukes/core';
+import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { noopTranscript } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { assembleSessionRegistrations } from './claude-code-hook.js';
@@ -79,6 +79,7 @@ function renderSurface(spec: {
   header: string;
   registrations: CovenantRegistration[];
   excluded: DisciplineEntry[];
+  drafts: DisciplineDraft[];
   disciplines: DisciplineEntry[];
   selfModScope: string;
 }): string {
@@ -86,6 +87,7 @@ function renderSurface(spec: {
   const width = Math.max(
     ...spec.registrations.map((registration) => registration.label.length),
     ...spec.excluded.map((entry) => entry.id.length),
+    ...spec.drafts.map((draft) => draft.id.length),
   );
   let judged = 0;
   let skip = 0;
@@ -114,9 +116,13 @@ function renderSurface(spec: {
     lines.push(row('excluded', entry.id, width, 'forbidCommand — no shell axis on this surface'));
   }
 
+  for (const draft of spec.drafts) {
+    lines.push(row('draft', draft.id, width, 'unpromoted — no judgment'));
+  }
+
   const tally =
     `  registrations ${meta + judged + skip} · judged ${judged} · skip ${skip} · ` +
-    `meta ${meta} · excluded ${spec.excluded.length}`;
+    `meta ${meta} · excluded ${spec.excluded.length} · draft ${spec.drafts.length}`;
   return [spec.header, tally, ...lines].join('\n');
 }
 
@@ -133,6 +139,7 @@ export function explain(spec: ExplainSpec): { text: string } {
   const { config, configPath } = loadConfig(spec.repoRoot);
   const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
   const disciplines: DisciplineEntry[] = config.disciplines ?? [];
+  const drafts: DisciplineDraft[] = config.drafts ?? [];
 
   const session = assembleSessionRegistrations({
     config,
@@ -155,6 +162,7 @@ export function explain(spec: ExplainSpec): { text: string } {
       header: 'surface: session (claude-code hook)',
       registrations: session,
       excluded: [],
+      drafts,
       disciplines,
       selfModScope: 'common; includes the config file itself',
     }),
@@ -163,6 +171,7 @@ export function explain(spec: ExplainSpec): { text: string } {
       header: `surface: commit (git pre-commit) · enforce: ${gitSettings.enforce}`,
       registrations: commit,
       excluded: disciplines.filter((entry) => entry.forbidCommand !== undefined),
+      drafts,
       disciplines,
       selfModScope: 'common ∪ adapters.git; deduped, includes the config file itself',
     }),

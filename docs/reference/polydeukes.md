@@ -108,25 +108,29 @@ read.
 pdks explain — polydeukes.config.yaml
 
 surface: session (claude-code hook)
-  registrations 23 · judged 11 · skip 9 · meta 3 · excluded 0
+  registrations 23 · judged 11 · skip 9 · meta 3 · excluded 0 · draft 1
   meta     self-mod                 paths 13 (common; includes the config file itself)
   judge    covenant-vocabulary      forbid · in packages/*/src/** · except … · why ✓
   skip     covenant-vocabulary      a shell write in scope whose result this layer cannot compute
+  draft    bilingual-docs-sync      unpromoted — no judgment
   ...
 surface: commit (git pre-commit) · enforce: advise
-  registrations 10 · judged 3 · skip 6 · meta 1 · excluded 3
+  registrations 10 · judged 3 · skip 6 · meta 1 · excluded 3 · draft 1
   skip     manifest-needs-npm-view  no session transcript to read
   excluded hooks-stay-armed         forbidCommand — no shell axis on this surface
+  draft    bilingual-docs-sync      unpromoted — no judgment
 ```
 
 One line per registration, in the order the surface dispatches them. The kind column has
-four words: `meta` (the registrations protecting the judging chain — `self-mod`,
+five words: `meta` (the registrations protecting the judging chain — `self-mod`,
 `shell-mod`, and on the session surface `transcript-mod`), `judge` (an entry with a judge
 body, with its family, routing scope, and whether it carries a `why`), `skip` (a registration
 that records `skipped` instead of judging, with the reason the compiler gave — the reason
-that otherwise reaches stderr only on a config fault), and `excluded` (a `forbidCommand`
-entry on the commit surface, which has no shell axis). `registrations` counts the first
-three; `excluded` is tallied apart because an excluded entry never becomes a registration.
+that otherwise reaches stderr only on a config fault), `excluded` (a `forbidCommand`
+entry on the commit surface, which has no shell axis), and `draft` (an unpromoted
+`draft: true` entry, shown on both surfaces since it belongs to neither). `registrations`
+counts the first three; `excluded` and `draft` are tallied apart because neither ever
+becomes a registration.
 The commit surface's header also names its `adapters.git.enforce` level, since an advising
 surface records the same table but blocks nothing.
 
