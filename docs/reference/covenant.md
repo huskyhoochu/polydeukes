@@ -58,7 +58,7 @@ the same word for the same event. How to read a row is in
 | `passed` | The call was judged and upheld the covenant |
 | `blocked` | The call was judged and broke it |
 | `witnessed` | A **blocked** verdict a human opened in person. Never silent, never a clean call |
-| `advised` | The commit surface at `enforce: advise` recorded a break without stopping it |
+| `advised` | A break recorded without stopping the call — the default for every discipline entry on both surfaces, and the commit surface's outcome under `adapters.git.enforce: advise` |
 | `skipped` | The call reached a registration that could not judge it. **Not a pass** — the recorded absence of a judgment |
 | `unattributed` | A protected entry's on-disk state moved and no judgment row explains it. **Not a verdict** — no call is blocked or passed by it; the session surface writes it after comparing state against a stored baseline |
 

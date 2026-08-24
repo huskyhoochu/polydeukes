@@ -203,6 +203,27 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
 // §4.3 — compileDisciplineRegistrations copies the entry level onto body-bearing arms
 // ===========================================================================
 
+describe('POSTURE-01 review [1] — a routing that could not answer stays outside the level axis', () => {
+  it('a body-bearing registration at advise whose predicate throws still exits 2 · blocked', async () => {
+    // matchRegistrations routes a throwing predicate fail-closed with subject '-', and a
+    // body-bearing arm carries that verdict out by spawning and breaking. Since every
+    // compiled entry now carries a level, the dispatcher must not let the entry's advise
+    // relax that break — the unjudgeable call would proceed with an `advised` row, the
+    // fail-open class. Mutation caught: `effectiveEnforce` ignoring `routingFailed`.
+    const throwing: RegistrationWithEnforce = {
+      ...registration('uncertain', 1, { enforce: 'advise' }),
+      matches: () => {
+        throw new Error('predicate could not answer');
+      },
+    };
+
+    const result = await dispatch([throwing]);
+
+    expect(result.exitCode).toBe(2);
+    expect(rows()).toEqual([['blocked', 'uncertain', '-']]);
+  });
+});
+
 describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reaches the body-bearing registration only', () => {
   const ROOT = '/repo';
   const SHELL_TOOL = 'Bash';
@@ -260,15 +281,54 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
     expect(body).toEqual({ label: 'no-banned', skip: false, enforce: 'block' });
   });
 
-  it('leaves the field absent on the body-bearing registration when the entry omits it', () => {
-    // Absence means "inherit the default" all the way down; a default-fill here would
-    // freeze today's block into every registration. Mutation caught: the compiler
-    // writing `enforce: 'block'` for an entry that declared nothing.
+  it("fills enforce: 'advise' on the body-bearing registration when the entry omits it (POSTURE-01 §4.1)", () => {
+    // The default rung is advise, decided here and nowhere downstream: the dispatcher
+    // reads `registration.enforce === 'advise'` and falls back to the surface level
+    // otherwise, so an absent field on the registration means block on the session
+    // surface. Mutation caught: the compiler copying the entry's value as-is (absence
+    // stays absence → every enforce-less discipline keeps blocking), or defaulting to
+    // 'block'.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry()]));
-    const body = regs.find((reg) => reg.label === 'no-banned' && reg.skip === undefined);
+    const body = levelsOf(regs).find((r) => r.label === 'no-banned' && !r.skip);
 
-    expect(body).toBeDefined();
-    expect('enforce' in (body as object)).toBe(false);
+    expect(body).toEqual({ label: 'no-banned', skip: false, enforce: 'advise' });
+  });
+
+  it('fills nothing on the skip arms of an entry that omits the level', () => {
+    // POSTURE-01 AC-1: the default lands on the body-bearing arm only — a skip arm
+    // records the absence of a judgment and sits outside the axis. Mutation caught: the
+    // `?? 'advise'` fill applied at the registration factory shared by every arm.
+    const regs = compileDisciplineRegistrations(specWith([deltaEntry()]));
+    const skipArms = levelsOf(regs).filter((r) => r.skip);
+
+    expect(skipArms.length).toBeGreaterThan(0);
+    for (const reg of skipArms) {
+      expect(reg.enforce, reg.label).toBeUndefined();
+    }
+  });
+
+  it('fills nothing on the early-return skip arms — a pattern fault and a precedent entry with no transcript', () => {
+    // POSTURE-01 §4.3 remnant 5: these two arms return before the body composes
+    // (`patternFault` and the unjudgeable precedent outcome), on code paths distinct from
+    // the appended shell skip arms above. Mutation caught: the fill hoisted onto the
+    // shared `routing` object or the top of the map — a level on an unjudgeable arm would
+    // let the dispatcher relax a routing that could not answer, the fail-open direction.
+    const faulty: EntryWithEnforce = { id: 'bad-pattern', in: ['src/**'], forbid: '(' };
+    const precedent: EntryWithEnforce = {
+      id: 'needs-read',
+      in: ['src/**'],
+      requirePrecedent: { command: 'cat ' },
+    };
+    const regs = compileDisciplineRegistrations(specWith([faulty, precedent]));
+    const arms = levelsOf(regs).filter(
+      (r) => r.label === 'bad-pattern' || r.label === 'needs-read',
+    );
+
+    expect(arms.length).toBeGreaterThan(0);
+    for (const reg of arms) {
+      expect(reg.skip, reg.label).toBe(true);
+      expect(reg.enforce, reg.label).toBeUndefined();
+    }
   });
 
   it('never copies the level onto the skip arms or the common shell-unjudgeable registration', () => {

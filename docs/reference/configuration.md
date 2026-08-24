@@ -86,7 +86,11 @@ the canonical tenant. As the enforcement level is the observer's setting, so is 
 additional scope. There is no subtractive vocabulary: a config line can widen a surface's
 scope, never quietly strip one.
 
-The session surface (the editor-time hook) has no level setting here; it always blocks.
+The session surface (the editor-time hook) has no level setting here. What it blocks is the
+judging chain's own protection — `protectedPaths` mutations and mentions on the tool and
+shell axes, the session transcript, an assembly that cannot judge (missing or invalid
+config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
+entry promoted with `enforce: block`. Every other discipline entry lands `advised` there.
 
 **Context-family disciplines skip on the commit surface.** A commit has no session to look
 at, so a `requirePrecedent` entry cannot be judged there — demanding evidence a commit
@@ -198,14 +202,16 @@ of having to open this file. A `why` spanning several lines is folded to spaces:
 is one line.
 
 **`enforce` — the entry's own level.** Optional on any judged entry: `block` or `advise`.
-Under `advise` a break is recorded as an `advised` telemetry event and the call proceeds
-(exit 0), with the break message still written to stderr; `block` pins the entry at block.
-The entry's level composes with the surface's (`adapters.git.enforce` on the commit
-surface; the session surface has none and judges at block) and the lenient side wins — an
-`advise` on either axis makes the entry advise, and an explicit `block` never raises a
-surface the observer set to advise. An unjudgeable body (never built, failed to spawn)
-still blocks whatever the level. A draft carries no `enforce`; any other value is
-rejected at load time. `pdks explain` marks an `advise` entry on both surfaces.
+**Absent means `advise`.** Under `advise` a break is recorded as an `advised` telemetry
+event and the call proceeds (exit 0), with the break message still written to stderr;
+`block` is the promotion — it pins the entry at block. The entry's level composes with the
+surface's (`adapters.git.enforce` on the commit surface; the session surface has none) and
+the lenient side wins — an `advise` on either axis makes the entry advise, and an explicit
+`block` never raises a surface the observer set to advise. An unjudgeable body (never
+built, failed to spawn) still blocks whatever the level. A draft carries no `enforce`; any
+other value is rejected at load time. `pdks explain` prints the level an entry declares
+(`enforce: block` or `enforce: advise`) on both surfaces and leaves an absent one unmarked;
+the session header states the default.
 
 ```yaml
   - id: 'no-console-log'

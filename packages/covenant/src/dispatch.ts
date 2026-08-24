@@ -274,8 +274,16 @@ export async function dispatchCovenants(spec: {
     // property access cannot stay narrowed inside the closure below.
     const witness = registration.witness;
     // Absence stays absent: the block default lives in the wrapper, not restated here.
+    // A routing that could not answer is outside the level axis on this arm too (the skip
+    // arm above already is): the body spawns against subject '-' and its break must land
+    // blocked whatever level the entry or the surface declared — since POSTURE-01 every
+    // compiled entry carries a level, so without this the unjudgeable call would advise.
     const effectiveEnforce: EnforceLevel | undefined =
-      registration.enforce === 'advise' ? 'advise' : spec.enforce;
+      routingFailed === true
+        ? undefined
+        : registration.enforce === 'advise'
+          ? 'advise'
+          : spec.enforce;
     const { exitCode, event } = await runCovenant({
       command: registration.body.command,
       args: registration.body.args,

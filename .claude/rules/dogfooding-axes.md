@@ -40,6 +40,8 @@ stale-but-present body carries no such signal.
   the command, not the intent. Out-of-repo ancestors stay out of observation scope; the agent's
   own deny policy owns that ground.
 - **Disciplines** in the config judge beyond path mention (delta / command / context families).
+  A break lands `advised` on both surfaces — exit 0, the `why` on stderr — unless the entry
+  says `enforce: block` (POSTURE-01); the three meta-covenants above are what blocks unasked.
   The context family needs a transcript, so the commit surface always lands it `skipped` — a
   permanent condition of that surface.
 

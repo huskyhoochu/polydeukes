@@ -82,7 +82,11 @@ describe('§5 AC-2 same-judge blocking on a protected path', () => {
 });
 
 describe('§5 AC-4 discipline delta family — new violation vs pre-existing debt', () => {
-  const disciplines = [{ id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts' }];
+  // Promoted explicitly: since POSTURE-01 an absent level is advise, and this block
+  // pins the judgment itself, not the default.
+  const disciplines = [
+    { id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'block' },
+  ];
 
   it('blocks when the staged delta ADDS a forbidden match', async () => {
     // P0: the delta family judges only what this commit adds. A newly introduced TODO

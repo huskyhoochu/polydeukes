@@ -777,7 +777,9 @@ export function compileDisciplineRegistrations(
       ...routing,
       // The entry's own level (CONFIG-11 §4.3) rides only on the body-bearing arm: the
       // skip arms record the absence of a judgment, which is outside the level axis.
-      ...(entry.enforce !== undefined ? { enforce: entry.enforce } : {}),
+      // Absence means advise (POSTURE-01 §4.1) and it is decided here, so the level is
+      // always present on this arm; explicit `block` is the promotion rung an author picks.
+      enforce: entry.enforce ?? 'advise',
       body: {
         command: spec.bodyCommand,
         args: [

@@ -58,6 +58,9 @@ languages:
 #     layer that can watch it happen.
 #
 # A minimum. Add entries as you find you want them.
+#
+# This list is what blocks. Every \`disciplines:\` entry below lands at advise — a break is
+# recorded and the call goes on — unless the entry itself says \`enforce: block\`.
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
@@ -74,6 +77,28 @@ protectedPaths:
 witness:
   token: 'pdks witness'
   ttlMinutes: 10
+
+# The disciplines you judge by, and the three rungs one climbs — shown as three entries so
+# each rung is a line you can copy. Uncomment to start; ids must stay distinct.
+#
+# disciplines:
+#   # A draft: prose only, no predicate. Registered and read, never judged.
+#   - id: 'no-todo-in-shipped-code-draft'
+#     why: 'a TODO nobody owns is a decision deferred out of sight'
+#     draft: true
+#
+#   # Promoted to a judgment. Advise is the default — recorded as \`advised\`, never stops
+#   # the call — so this line is optional; it is written here to show the rung.
+#   - id: 'no-todo-in-shipped-code'
+#     why: 'a TODO nobody owns is a decision deferred out of sight'
+#     forbid: 'TODO'
+#     enforce: advise
+#
+#   # The promotion — block is your choice, never the default.
+#   - id: 'no-todo-in-shipped-code-blocking'
+#     why: 'a TODO nobody owns is a decision deferred out of sight'
+#     forbid: 'TODO'
+#     enforce: block
 `;
 
 /**

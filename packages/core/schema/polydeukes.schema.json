@@ -101,7 +101,7 @@
       "type": "string"
     },
     "enforceLevel": {
-      "description": "The entry's own level. 'advise' records a break without stopping it; 'block' pins the entry at block. Composes with the surface's level, the lenient side winning; absent inherits the surface.",
+      "description": "The entry's own level. 'advise' records a break without stopping it; 'block' pins the entry at block. Composes with the surface's level, the lenient side winning; absent means advise; 'block' is the promotion rung.",
       "enum": ["block", "advise"]
     },
     "globOrGlobs": {

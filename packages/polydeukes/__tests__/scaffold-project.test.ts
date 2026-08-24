@@ -296,3 +296,56 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
     );
   });
 });
+
+describe('POSTURE-01 AC-7 / §4.5 — the generated config shows the promotion ladder as comments', () => {
+  /** The three rungs the commented example must spell, in the generated text. */
+  const LADDER_RUNGS = [
+    '#     draft: true',
+    '#     enforce: advise',
+    '#     enforce: block',
+  ] as const;
+
+  it('carries all three rungs in the text while loadConfig sees no disciplines', () => {
+    // The ladder is narrative, not policy: a consumer reads draft → advise → block in
+    // place, and the loaded config still carries no judging entry (DIST-02 §3-d minimum
+    // set). Mutation caught: the example omitted or trimmed to fewer rungs, or written
+    // as a live `disciplines:` key — the generated config would then judge with entries
+    // nobody chose, and an id-less example would fail validation and lock the session.
+    scaffoldProject(projectRoot);
+
+    const text = read(CONFIG_CANONICAL);
+    for (const rung of LADDER_RUNGS) {
+      expect(text, rung).toContain(rung);
+    }
+    const { config } = loadConfig(projectRoot);
+    expect(config.disciplines).toBeUndefined();
+  });
+
+  it('loads as three distinct disciplines once the ladder is uncommented as instructed', () => {
+    // "Uncomment to start" is a promise the generated text must keep: a consumer who
+    // strips the comment markers gets a config that loads, not one that locks every call
+    // at assembly (a duplicate id or a missing key throws before any verdict, and the
+    // valve is never consulted). Mutation caught: two rungs sharing an id, a rung missing
+    // `why`, or the block indented so it no longer parses as a `disciplines:` list.
+    scaffoldProject(projectRoot);
+    const text = read(CONFIG_CANONICAL);
+    const start = text.indexOf('# disciplines:');
+    const ladder = text
+      .slice(start)
+      .split('\n')
+      .filter((line) => line.startsWith('#'))
+      .map((line) => line.replace(/^# ?/, ''))
+      .join('\n');
+    writeFileSync(join(projectRoot, CONFIG_CANONICAL), `${text.slice(0, start)}${ladder}\n`);
+
+    const { config } = loadConfig(projectRoot);
+
+    // Resolution splits drafts from judged entries (CONFIG-10), so the three rungs land
+    // as one draft plus two judged entries.
+    expect(config.drafts?.map((entry) => entry.id)).toEqual(['no-todo-in-shipped-code-draft']);
+    expect(config.disciplines?.map((entry) => entry.id)).toEqual([
+      'no-todo-in-shipped-code',
+      'no-todo-in-shipped-code-blocking',
+    ]);
+  });
+});

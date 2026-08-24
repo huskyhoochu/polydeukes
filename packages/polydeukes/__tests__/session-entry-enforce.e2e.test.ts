@@ -1,4 +1,5 @@
-// CONFIG-11 AC-4 — the session surface honours an entry's `enforce: advise`, proven by
+// CONFIG-11 AC-4 / POSTURE-01 AC-2·AC-3 — the session surface honours an entry's
+// `enforce`, and an entry that omits it lands at advise, proven by
 // spawning the REAL PreToolUse hook (the shipped delegator, the real built dist, a real
 // discipline body) against a fixture tree carrying a config the test authors. A green
 // unit suite does not substitute for this spawn (judging-paths-and-shells): the unit
@@ -26,6 +27,7 @@ const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
 
 const SOFT_ID = 'softly-held-command';
 const PLAIN_ID = 'plainly-held-command';
+const HARD_ID = 'hardly-held-command';
 const FORBIDDEN_COMMAND = 'zzz_probe_cmd';
 const SOFT_WHY = 'the probe command reshapes state no review has seen';
 const PROTECTED_ENTRY = '.git/hooks';
@@ -106,6 +108,12 @@ const softEntry = {
   enforce: 'advise',
 };
 const plainEntry = { id: PLAIN_ID, forbidCommand: FORBIDDEN_COMMAND, why: SOFT_WHY };
+const hardEntry = {
+  id: HARD_ID,
+  forbidCommand: FORBIDDEN_COMMAND,
+  why: SOFT_WHY,
+  enforce: 'block',
+};
 
 /** The call that breaks the command entry: the forbidden command at the head of the line. */
 const breakingCall = bashPayload(`${FORBIDDEN_COMMAND} --run`);
@@ -127,15 +135,43 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
     expect(result.stderr).toContain(SOFT_WHY);
   });
 
-  it('the same call against the same entry WITHOUT enforce exits 2 · blocked (control)', () => {
-    // The control that proves the advise case above judged at all: identical payload,
-    // identical predicate, only the key differs. Mutation caught: the composition
-    // defaulting the entry axis to advise (this control would pass too, and every
-    // discipline in every consumer's config would stop blocking).
+  it('the same call against the same entry WITHOUT enforce exits 0 · ONE advised row · why on stderr (POSTURE-01 AC-2)', () => {
+    // The default rung, observed where it lands: identical payload, identical predicate,
+    // only the key is absent. The row must be advised under the entry id (exit 0 alone is
+    // also a no-match pass) and the why must still reach stderr — advise is a recorded
+    // break, not silence. Mutation caught: the compile default left at "inherit the
+    // surface" (exit 2 · blocked), or the default filled with 'block'.
     const result = runHookWithDisciplines([plainEntry], breakingCall);
 
+    expect(result.status).toBe(0);
+    expect(judgedRows()).toEqual([['advised', PLAIN_ID]]);
+    expect(result.stderr).toContain(SOFT_WHY);
+  });
+
+  it("the same call against an explicit enforce: 'block' entry exits 2 · ONE blocked row (POSTURE-01 AC-3)", () => {
+    // The promotion rung: the control that proves the advise default above is a default
+    // and not the whole axis collapsing. Mutation caught: the compiler normalising every
+    // value to advise (`'advise'` unconditionally), or the dispatcher reading the field
+    // as a presence flag — either leaves an author's explicit block at exit 0.
+    const result = runHookWithDisciplines([hardEntry], breakingCall);
+
     expect(result.status).toBe(2);
-    expect(judgedRows()).toEqual([['blocked', PLAIN_ID]]);
+    expect(judgedRows()).toEqual([['blocked', HARD_ID]]);
+  });
+
+  it('a shell-axis meta-covenant break in the same assembly still exits 2 · blocked (shell-mod, not just self-mod)', () => {
+    // POSTURE-01 §4.3 remnant 2: the shell axis routes through a different registration
+    // than the tool axis, so self-mod staying at block does not prove shell-mod did. The
+    // config carries an advise entry AND a plain (default-advise) command entry, neither
+    // of which matches this write. Mutation caught: the compile default leaking onto meta
+    // registrations built beside the disciplines on the shell axis.
+    const result = runHookWithDisciplines(
+      [softEntry, plainEntry],
+      bashPayload(`echo 'exit 0' > ${PROTECTED_ENTRY}/pre-commit`),
+    );
+
+    expect(result.status).toBe(2);
+    expect(judgedRows()).toContainEqual(['blocked', 'shell-mod']);
   });
 
   it('a meta-covenant break in the same assembly still exits 2 · blocked (the entry axis has no reach)', () => {

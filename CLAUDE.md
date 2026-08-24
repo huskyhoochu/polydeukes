@@ -55,7 +55,10 @@ Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `
 `biome.json`, `.git/hooks`), the five packages' gitignored `dist`, and the root config. Package
 sources are on the commit surface's own list instead (`adapters.git.protectedPaths`): a session
 edit is free, and the commit that stages it stops unless a human answers the TTY prompt with the
-witness token. Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored).
+witness token. The `disciplines:` entries land `advised` on both surfaces (exit 0, the `why`
+on stderr) unless an entry says `enforce: block` — since POSTURE-01 only the session-protected
+list above blocks unasked. Every judgment appends one row to `.polydeukes/roi.log` (local,
+gitignored).
 
 **What each axis compares, and the witness valve, are in
 `.claude/rules/dogfooding-axes.md`** — it auto-loads for the hook, the config, and the judge

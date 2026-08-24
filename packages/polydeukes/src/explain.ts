@@ -107,9 +107,10 @@ function renderSurface(spec: {
     }
     judged += 1;
     const entry = spec.disciplines.find((candidate) => candidate.id === registration.label);
-    // Only advise is marked (CONFIG-11 §4.5): absence and explicit block both mean block
-    // today, so annotating either would invert its meaning the day the default flips.
-    const level = entry?.enforce === 'advise' ? ' · enforce: advise' : '';
+    // The DECLARED level is rendered, never the effective one (CONFIG-11 §4.5 /
+    // POSTURE-01 §4.4): an omission stays unmarked so the default and an author's choice
+    // of it never read alike, and the surface header states what the omission resolves to.
+    const level = entry?.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
     const description =
       entry === undefined
         ? ''
@@ -164,7 +165,8 @@ export function explain(spec: ExplainSpec): { text: string } {
     `pdks explain — ${configPath}`,
     '',
     renderSurface({
-      header: 'surface: session (claude-code hook)',
+      header:
+        'surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block',
       registrations: session,
       excluded: [],
       drafts,
@@ -173,7 +175,7 @@ export function explain(spec: ExplainSpec): { text: string } {
     }),
     '',
     renderSurface({
-      header: `surface: commit (git pre-commit) · enforce: ${gitSettings.enforce}`,
+      header: `surface: commit (git pre-commit) · enforce: ${gitSettings.enforce} · disciplines: advise unless enforce: block`,
       registrations: commit,
       excluded: disciplines.filter((entry) => entry.forbidCommand !== undefined),
       drafts,

@@ -32,7 +32,7 @@ one of them, and tests, docs, and CLI output must use the same word for the same
 | `passed` | The call was judged and upheld the covenant. |
 | `blocked` | The call was judged and broke it. |
 | `witnessed` | A **blocked** verdict a human opened in person. Never silent, never a clean call — the valve is consulted only after a block. |
-| `advised` | A break recorded without stopping the call — the surface at `enforce: advise`, or the entry's own `enforce: advise` (CONFIG-11), on either surface. |
+| `advised` | A break recorded without stopping the call — the surface at `enforce: advise`, or an entry whose own `enforce` is `advise` or absent (CONFIG-11; absence is advise since POSTURE-01), on either surface. The default disposition of every user discipline. |
 | `skipped` | The call reached a registration that could not judge it (no evidence channel, or a shell line whose target is not computable). **Not a pass** — it is the recorded absence of a judgment. |
 | `unattributed` | A protected entry's on-disk state moved with no judgment row explaining it (COVENANT-14). An observation, not a verdict — it blocks nothing and passes nothing, and it is written by the baseline comparison rather than by a judge. Where `skipped` is an inability the assembly knows up front, this is an attribution failure found after the fact. |
 
@@ -61,8 +61,9 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
 - **Surfaces** — **session** (PreToolUse hook, judges a declared call before it runs) and
   **commit** (`pdks covenant check` under lefthook, re-observes the same change as a staged
   diff). A surface's `enforce` belongs to the observer; an entry's `enforce` is the author's
-  rung on the promotion ladder, and the lenient side of the two wins. Neither is part of the
-  judgment vocabulary above.
+  rung on the promotion ladder — absent means `advise`, `block` is the promotion — and the
+  lenient side of the two wins. Meta-covenants carry no entry rung, so they alone block on
+  the session surface. Neither setting is part of the judgment vocabulary above.
 - **Axes** — **tool** (Edit/Write/…), **shell** (Bash), and **transcript**.
 - **Meta-covenants** — **self-mod**, **shell-mod**, **transcript-mod**: the registrations that
   protect the judging chain itself. Covenants like any other; the vocabulary above applies

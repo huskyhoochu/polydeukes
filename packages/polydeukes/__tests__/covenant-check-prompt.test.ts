@@ -143,7 +143,12 @@ describe('COVENANT-17 §4.5 covenant check — the prompt fires only on a blocke
     writeConfig({
       protectedPaths: ['lib'],
       disciplines: [
-        { id: DISCIPLINE_ID, forbid: { added: FORBIDDEN_TOKEN }, in: DISCIPLINE_SCOPE },
+        {
+          id: DISCIPLINE_ID,
+          forbid: { added: FORBIDDEN_TOKEN },
+          in: DISCIPLINE_SCOPE,
+          enforce: 'block',
+        },
       ],
       witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
     });

@@ -42,7 +42,7 @@ export type DisciplineForbid = string | { added: string };
 /**
  * `EnforceLevel` — an entry's own rung on the promotion ladder (CONFIG-11 §4.1). `advise`
  * records a break without stopping it; `block` pins the entry at block whatever default
- * the ladder later adopts. Absence inherits the surface's level.
+ * the ladder later adopts. Absence means advise (POSTURE-01); `block` is the promotion rung.
  */
 export type EnforceLevel = 'block' | 'advise';
 

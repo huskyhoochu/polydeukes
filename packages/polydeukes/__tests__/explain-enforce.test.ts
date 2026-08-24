@@ -1,8 +1,8 @@
-// CONFIG-11 AC-6 / §4.5 — `pdks explain` marks an `enforce: advise` entry on BOTH surfaces'
-// registration tables, and marks nothing else: an entry that omits the key and an entry
-// carrying explicit `block` render without the level (absence and explicit block both mean
-// "block today", and a marker that said so would invert its meaning the day POSTURE-01
-// flips the default). The marker's exact form is the implementation's; what is pinned is
+// CONFIG-11 AC-6 / POSTURE-01 AC-6 §4.4 — `pdks explain` renders the DECLARED level of a
+// `disciplines:` entry on BOTH surfaces' registration tables: an explicit `enforce: advise`
+// and an explicit `enforce: block` each show their value, and an entry that omits the key
+// renders without any level word. The session surface header states the default the
+// omission resolves to. The marker's exact form is the implementation's; what is pinned is
 // only that the level word reaches the row.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,8 +15,12 @@ const SESSION_HEADER = 'surface: session (claude-code hook)';
 const COMMIT_HEADER = 'surface: commit (git pre-commit)';
 const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 
-/** The level word the rendered row must carry — asserted as a token, never as a format. */
+/** The level words the rendered row must carry — asserted as tokens, never as a format. */
 const ADVISE_TOKEN = 'advise';
+const BLOCK_TOKEN = 'block';
+/** POSTURE-01 §4.4 — the session header's statement of the default and the meta remnant. */
+const SESSION_DEFAULT_PHRASE = 'disciplines: advise unless enforce: block';
+const SESSION_META_PHRASE = 'meta: block';
 
 // Ids deliberately avoid the token so a containment check reads the DESCRIPTION column,
 // not the label. All three judged entries are delta family, which renders as `judge` on
@@ -81,29 +85,62 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
     }
   });
 
-  it('renders an entry that omits enforce without the level word (absence stays unmarked)', () => {
-    // §4.5: absence inherits the default and is NOT annotated. Mutation caught: the
-    // marker driven by the effective level instead of the declared one — every plain
-    // entry would read as its default, and the marker's meaning flips with POSTURE-01.
+  it('renders an entry that omits enforce without ANY level word (absence stays unmarked)', () => {
+    // §4.4: the declared level is rendered, never the effective one. Mutation caught:
+    // the marker driven by the compiled registration (every plain entry now reads
+    // `enforce: advise` — the default and the author's choice become indistinguishable).
     writeFixtureConfig([softEntry, plainEntry]);
 
     const { text } = explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'judge', PLAIN_ID)).not.toContain(ADVISE_TOKEN);
+      const row = rowOf(text, header, 'judge', PLAIN_ID);
+      expect(row).not.toContain(ADVISE_TOKEN);
+      expect(row).not.toContain(BLOCK_TOKEN);
     }
   });
 
-  it("renders an explicit enforce: 'block' entry without the level word", () => {
-    // §4.5: only advise is marked. Mutation caught: the marker rendering whatever value
-    // the key holds (`enforce: block` annotated the same way), which would make the
-    // explicit rung indistinguishable from the one this ticket introduces.
+  it("renders an explicit enforce: 'block' entry with the level word on each surface (POSTURE-01 AC-6)", () => {
+    // The promotion rung must be visible where the assembly is read — it is the one
+    // choice that keeps an entry at exit 2 on the session surface. Mutation caught: the
+    // marker still gated on `=== 'advise'` (explicit block reads like an omission).
     writeFixtureConfig([hardEntry, softEntry]);
 
     const { text } = explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'judge', HARD_ID)).not.toContain(ADVISE_TOKEN);
+      const row = rowOf(text, header, 'judge', HARD_ID);
+      expect(row).toContain(BLOCK_TOKEN);
+      expect(row).not.toContain(ADVISE_TOKEN);
     }
+  });
+
+  it('states the default on the commit header line too, beside the observer level', () => {
+    // Review [3] on PR #66: the commit header names the OBSERVER's level, which a reader
+    // combines with an unmarked row into "this entry blocks" — false since POSTURE-01.
+    // Mutation caught: the default phrase added to the session header only.
+    writeFixtureConfig([plainEntry]);
+
+    const { text } = explain({ repoRoot });
+    const headerLine = text.split('\n').find((line) => line.startsWith(COMMIT_HEADER));
+
+    expect(headerLine).toBeDefined();
+    expect(headerLine).toContain('enforce: block');
+    expect(headerLine).toContain(SESSION_DEFAULT_PHRASE);
+  });
+
+  it('states the default and the meta remnant on the session header line', () => {
+    // §4.4 / §4.3: the session surface has no observer level, so the header is the only
+    // place the reader learns that an omitted level means advise and that meta-covenants
+    // still block. Mutation caught: the header left at the bare surface name, or the
+    // phrase placed on a row rather than the header line.
+    writeFixtureConfig([plainEntry]);
+
+    const { text } = explain({ repoRoot });
+    const headerLine = text.split('\n').find((line) => line.startsWith(SESSION_HEADER));
+
+    expect(headerLine).toBeDefined();
+    expect(headerLine).toContain(SESSION_DEFAULT_PHRASE);
+    expect(headerLine).toContain(SESSION_META_PHRASE);
   });
 });

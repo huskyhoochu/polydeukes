@@ -230,6 +230,16 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      itself under a surface that blocks, but no entry may raise a surface its observer
      lowered. Self-imposed disciplines compose downward, never upward. -->
 
+<!-- Parked candidate (2026-08-24, POSTURE-01): advise is the destination, block is a
+     choice. Every discipline now lands advised by default — recorded, explained, never
+     stopping the call — and `enforce: block` is a promotion the author picks, not a rung
+     the ladder climbs on its own. What still blocks unasked is a finite list: the
+     framework's own protection (gate files, dist, transcript, an assembly that cannot
+     judge). The reason is measured, not philosophical: five dogfooding rounds found zero
+     cases where a real-time block prevented a bad edit, and 93% of the times a human
+     opened the valve were to repair the judging chain itself. Blocking bred evasion and
+     evasion falsified the measurement; at advise the same telemetry tells the truth. -->
+
 ### 3. Evidence, not self-report
 
 **Nothing is trusted because someone — human or AI — says so.** Every covenant verdict

@@ -145,7 +145,10 @@ describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion'
     // forbidden TODO would sail through, fail-open), or the skipped bookkeeping breaking
     // the judged families' dispatch.
     writeConfig({
-      disciplines: [{ id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts' }, npmViewEntry],
+      disciplines: [
+        { id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'block' },
+        npmViewEntry,
+      ],
     });
     write('lib/a.ts', 'export const x = 1;\n');
     git('add', 'lib/a.ts', 'polydeukes.config.json');

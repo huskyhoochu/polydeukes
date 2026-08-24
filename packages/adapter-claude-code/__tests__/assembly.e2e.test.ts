@@ -162,10 +162,11 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     ).toEqual(CONTEXT_ENTRIES);
   });
 
-  it('blocks the same write when a session exists but carries no npm view', () => {
+  it('judges the same write when a session exists but carries no npm view (advised, not skipped)', () => {
     // The contrast that keeps the skip honest: a readable, empty transcript IS a session,
-    // and a session with no evidence is a real block. Mutation caught: the skip widened
-    // to swallow this case, which would make the discipline inert on its own purpose.
+    // and a session with no evidence is a real break — landing `advised` since POSTURE-01,
+    // never `skipped`. Mutation caught: the skip widened to swallow this case, which would
+    // make the discipline inert on its own purpose.
     const transcriptPath = join(tmpRoot, 'no-evidence.jsonl');
     writeFileSync(transcriptPath, '');
 
@@ -173,7 +174,12 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
       transcriptPath,
     });
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(0);
+    const events = readRecords(telemetryPath)
+      .records.filter((r) => CONTEXT_ENTRIES.includes(r.label))
+      .map((r) => r.event);
+    expect(events.length).toBeGreaterThan(0);
+    expect(new Set(events)).toEqual(new Set(['advised']));
   });
 
   it('protects the transcript itself — a command that would delete it is blocked', () => {
@@ -314,20 +320,24 @@ function writePayload(filePath: string, content: string) {
   };
 }
 
+// POSTURE-01: the live root config carries no `enforce` on its disciplines, so every
+// user-discipline break below lands `advised` (exit 0). The judgment — routing, evidence
+// composition, the message — is unchanged; only the disposition moved. Meta-covenants
+// (self-mod · shell-mod · transcript-mod) keep exit 2 in the suites above and below.
 describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
-  it('a gate-disarming command mentioning no protected path is blocked by hooks-stay-armed (exit 2)', () => {
+  it('a gate-disarming command mentioning no protected path is judged by hooks-stay-armed (exit 0, advised)', () => {
     // The routing-gap pin: before COVENANT-10 this command matched NO registration
     // (path-mention only) and sailed through; the content predicate now routes it.
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
     expect(records.length).toBe(1);
     expect(records[0].label).toBe('hooks-stay-armed');
-    expect(records[0].event).toBe('blocked');
+    expect(records[0].event).toBe('advised');
   });
 
-  it("the block message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
+  it("the break message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
     // What an agent receives, read where it actually receives it. The pure judge is covered
     // by the covenant package's unit tests; what only this surface exercises is the round
     // trip — the assembly serializes the whole entry into argv, the body re-parses it, and
@@ -336,7 +346,7 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     // a fixture, so this asserts the message this repository judges itself by.
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(0);
     // The whole stream, not fragments of it. Substring checks plus a "no newline" check are
     // jointly satisfied by any single line containing both pieces, so a body appending the
     // separator twice — or padding the message — passes all three while shipping something
@@ -362,7 +372,7 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     expect(records[0].label).toBe('adapter-claude-code');
   });
 
-  it('a Write adding banned vocabulary to an in-scope source path is blocked by covenant-vocabulary', () => {
+  it('a Write adding banned vocabulary to an in-scope source path is judged by covenant-vocabulary (advised)', () => {
     // Absolute in-scope path that does not exist on disk: pre=null, so the Write's whole
     // content is the added direction. Since the protected surface narrowed to gate files
     // (2026-07-26) the meta-covenants no longer route here at all, so this is the
@@ -374,10 +384,10 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
       ),
     );
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(0);
     const { records } = readRecords(telemetryPath);
     const byLabel = (label: string) => records.filter((r) => r.label === label);
-    expect(byLabel('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    expect(byLabel('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
     // No meta-covenant row: a package source is not a gate file, so nothing but the
     // discipline had anything to say about this call.
     expect(byLabel('self-mod')).toEqual([]);
@@ -687,22 +697,22 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     readRecords(telemetryPath).records.filter((r) => r.label === label);
   const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
 
-  it('a heredoc delivering a banned word into a discipline-scoped file is blocked (exit 2)', () => {
+  it('a heredoc delivering a banned word into a discipline-scoped file is judged (exit 0, advised)', () => {
     // The B3 bypass itself: a quoted delimiter makes the body literal, so the text is computable.
     const result = runHook(
       bashPayload([`cat > ${SCOPED_SOURCE} <<'EOF'`, BANNED_LINE, 'EOF'].join('\n')),
     );
 
-    expect(result.status).toBe(2);
-    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    expect(result.status).toBe(0);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
   });
 
-  it('an append redirect delivering a banned word into the same scope is blocked (exit 2)', () => {
+  it('an append redirect delivering a banned word into the same scope is judged (exit 0, advised)', () => {
     // Append composes pre at judgment time (absence = create), so the echoed line IS the added text.
     const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${SCOPED_SOURCE}`));
 
-    expect(result.status).toBe(2);
-    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    expect(result.status).toBe(0);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
   });
 
   it('a sed -i over a scoped file is recorded skipped under EACH discipline scoping it (exit 0)', () => {
@@ -772,7 +782,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     expect(records[0].label).toBe('adapter-claude-code');
   });
 
-  it('a NotebookEdit delivering a banned word into a scoped cell is blocked (exit 2)', () => {
+  it('a NotebookEdit delivering a banned word into a scoped cell is judged (exit 0, advised)', () => {
     // The tool-axis half of B3: the hook matcher names four tools, the evidence set covered
     // three. The notebook must exist — cell evidence reads the target cell's pre from it.
     const notebookPath = join(repoRoot, 'packages/core/src/e2e-probe.ipynb');
@@ -798,8 +808,8 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
         },
       });
 
-      expect(result.status).toBe(2);
-      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+      expect(result.status).toBe(0);
+      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
     } finally {
       rmSync(notebookPath, { force: true });
     }
@@ -893,7 +903,7 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
     expect(skippedRows().map((r) => r.label)).toEqual(['core-needs-knowledge-read']);
   });
 
-  it('an append composing a real on-disk pre still blocks the banned addition (exit 2)', () => {
+  it('an append composing a real on-disk pre still judges the banned addition (exit 0, advised)', () => {
     // G1' — every sibling's pre is ENOENT (= create); a real pre exercises the judgment-
     // time disk read and pre/post composition, and the relative target sits where only a
     // repo-root resolution finds it — the hook process cwd holds no such file.
@@ -903,21 +913,21 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
     try {
       const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${realTarget}`));
 
-      expect(result.status).toBe(2);
-      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+      expect(result.status).toBe(0);
+      expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
     } finally {
       rmSync(realTargetAbs, { force: true });
     }
   });
 
-  it('a violation delivered by the second command of a chain is still blocked (exit 2)', () => {
+  it('a violation delivered by the second command of a chain is still judged (exit 0, advised)', () => {
     // G5' — two writes, two targets, the banned one second: an implementation keeping a
     // single evidence per call would let chain position launder the violation.
     const chained = `echo probe > /tmp/pdks-chain.ts && echo '${BANNED_LINE}' > ${SCOPED_SOURCE}`;
     const result = runHook(bashPayload(chained));
 
-    expect(result.status).toBe(2);
-    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['blocked']);
+    expect(result.status).toBe(0);
+    expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
   });
 });
 

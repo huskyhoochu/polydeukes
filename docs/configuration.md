@@ -85,12 +85,19 @@ the package subpath `polydeukes/schema.json` instead.
 
 ## What enforcement looks like
 
-A violating tool call or shell command is **blocked (exit 2)** before it runs, with the
-discipline's `id` in the telemetry record. The sanctioned valve is the witness — a human
-supplying the pass condition on a judgment that actually blocked, recorded as
-`witnessed` — never silent. On the commit surface under
-`adapters.git.enforce: advise`, or for any discipline entry carrying its own
-`enforce: advise`, a verdict is recorded as `advised` and the call proceeds — a backstop
-that measures instead of blocking. A missing, ambiguous, or
-invalid config blocks every call until it is fixed: the system fails closed, because a
-dead gate that waves things through is the cheapest bypass of all.
+A `disciplines:` entry lands at **advise** by default: a break is recorded as `advised`
+with the discipline's `id` in the telemetry record, the break message with its `why` goes
+to stderr, and the call proceeds (exit 0) — the judgment measures instead of stopping.
+Writing `enforce: block` on an entry is the promotion: that entry then **blocks (exit 2)**
+before the call runs. The sanctioned valve on a block is the witness — a human supplying
+the pass condition on a judgment that actually blocked, recorded as `witnessed` — never
+silent.
+
+What blocks without being asked is the judging chain's own protection, a finite list: the
+`protectedPaths` entries (tool-axis and shell-axis mutations, and mentions without a
+read-only head), the session transcript, and the assembly itself — a missing, ambiguous, or
+invalid config, an unbuilt judge, an unparseable payload, or a routing that could not
+answer. At either level the system fails closed on these, because a dead gate that waves
+things through is the cheapest bypass of all. On the commit surface `adapters.git.enforce: advise` relaxes
+the protected-path verdicts to `advised` as well — it is the observer's setting — while an
+assembly that cannot judge still fails closed.
