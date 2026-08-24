@@ -40,6 +40,31 @@ export function pathSegments(path: string): string[] {
     .filter((segment) => segment !== '');
 }
 
+/**
+ * Return the mutation target proven by a call's `fileChange` evidence, or `null` when the
+ * evidence proves none.
+ *
+ * @param call - The tool call whose evidence is inspected
+ * @returns The change path when the evidence carries a recognized kind and a path with at
+ *   least one non-`.` segment; otherwise `null`
+ */
+export function provenChangePath(call: { fileChange?: unknown }): string | null {
+  const evidence = call.fileChange;
+  if (typeof evidence !== 'object' || evidence === null) return null;
+  const { kind, path } = evidence as { kind?: unknown; path?: unknown };
+  if (typeof path !== 'string') return null;
+  // Element shapes are an intentionally unvalidated CORE-01 boundary (core `parseInput`
+  // checks only the collection shapes), so evidence is usable only when it could prove a
+  // target: a recognized discriminant and a path that carries segments to judge. A
+  // one-field stub, a bogus kind, or a degenerate path (`''`, `'.'`, `'/'` — zero
+  // segments) proves nothing and must fall through rather than be dereferenced or, worse,
+  // suppress the fallback — the evidence branch upholding on proof it never had is a
+  // fail-open, and an exported pure judge that throws is a bypass vector.
+  // `pathSegments` keeps a lone `.` as a segment, so require one that names a file.
+  if (!pathSegments(path).some((segment) => segment !== '.')) return null;
+  return kind === 'create' || kind === 'modify' || kind === 'delete' ? path : null;
+}
+
 /** True iff `needle` occurs as a contiguous segment run inside `haystack` (any offset). */
 function containsSegmentRun(haystack: string[], needle: string[]): boolean {
   if (needle.length === 0 || needle.length > haystack.length) return false;
