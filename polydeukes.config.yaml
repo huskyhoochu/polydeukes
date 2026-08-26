@@ -64,8 +64,29 @@ disciplines:
       - 'packages/*/src/**'
       - 'packages/*/__tests__/**'
     forbid: '[가-힣]'
+  # Everything under packages/ is published — it ships inside the tarball and is read on
+  # GitHub — so a comment or a test title may only point at something the reader can open.
+  # Measured 2026-08-27, before the sweep that set this baseline: 1,180 coordinate citations
+  # across 165 files pointed into the gitignored wiki clone. Delta judgment forgives what is
+  # left behind and answers only the next one.
+  - id: 'comments-need-no-wiki'
+    why: 'a ticket id or a PRD coordinate in a published comment resolves on one machine and nowhere else, so it reads as a citation while carrying nothing — state the fact instead. the rung is advise because the fix is a text edit and the baseline was drawn the day this landed: a break here is a note, not a stop.'
+    in:
+      - 'packages/*/src/**'
+      - 'packages/*/__tests__/**'
+    forbid:
+      added: '\b(COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC-\d|\.(dev-log|research|prd)\.|_docs/'
+  # Audit grades and cycle-phase names describe the session that produced a test, not the
+  # behaviour it defends. They meant something during the cycle and nothing after it.
+  - id: 'comments-carry-no-process'
+    why: 'a P0 tag or a RED-phase note records how we worked rather than what the code does. the grade goes and the sentence naming what breaks without the test stays. advise, for the same reason as the entry above: the fix is a text edit.'
+    in:
+      - 'packages/*/src/**'
+      - 'packages/*/__tests__/**'
+    forbid:
+      added: '\bP[01]\b|\b(RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d'
   - id: 'core-stays-runner-agnostic'
-    why: 'the core never names a test runner; verification is an exit code and the command is config. self-enforces the CORE-01 grep gate at edit time.'
+    why: 'the core never names a test runner; verification is an exit code and the command is config. this is the edit-time half of the literal gate the core suite asserts over its own src/.'
     in:
       - 'packages/core/src/**'
       - 'packages/core/schema/**'

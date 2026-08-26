@@ -36,6 +36,11 @@ Two near-misses that read as reachable and are not. A repo file that no package 
 the fact instead. And `telemetry.ts:136` rots the moment a line is inserted above it: name
 the function, never the line.
 
+The same token can be reachable in one position and not in another. `(d)` inside
+`judgeShellCommand` points twenty lines up and stays; `(d)` in a test title points at a
+ladder in another file, so the title keeps the descriptive name instead — `breaks (opaque
+redirect target)`, not `breaks (d)`.
+
 ## Process vocabulary is not a fact about the code
 
 `P0`, `P1`, `RED phase`, `AUDIT disposition`, the record of which tests were pruned and
