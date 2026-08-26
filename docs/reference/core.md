@@ -29,8 +29,10 @@ can check. Every other package depends on this one; this one depends on none of 
 
 ## The judged protocol
 
-This is the contract the shipped judge bodies speak: a body reads a `CovenantInput` from
-stdin and answers with an exit code. Every row in `.polydeukes/roi.log` traces back to one
+This is the contract the shipped judges speak: a judge receives a `CovenantInput` — parsed
+once from the stdin-JSON payload the surface hands the dispatcher — and answers with a
+verdict the wrapper translates into an exit code. Every row in `.polydeukes/roi.log` traces
+back to one
 of these verdicts, so this vocabulary is what a blocked row is written in.
 
 ```ts

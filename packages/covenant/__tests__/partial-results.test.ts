@@ -13,6 +13,7 @@ import {
   judgeTranscriptModification,
   type TranscriptModificationSpec,
 } from '../src/transcript-mod.js';
+import { exitThunk } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // COVENANT-18 part B (PRD §2-b B1–B4) — the tokenizer stops discarding a line it could
@@ -561,7 +562,7 @@ describe('COVENANT-18 B4 — matchRegistrations never narrows routing on a parti
     return {
       label: 'shell-mod',
       protectedPaths,
-      body: { command: process.execPath, args: ['-e', 'process.exit(0)'] },
+      body: exitThunk(0),
     };
   }
 
@@ -626,31 +627,40 @@ describe('COVENANT-18 B4 — precedent evidence refuses a partially read command
     requirePrecedent: { command: PRECEDENT_COMMAND },
   };
 
+  /** A change in the entry's scope whose added content fires its `when` trigger. */
+  const triggeringInput: CovenantInput = {
+    toolCalls: [
+      {
+        name: 'Write',
+        fileChange: { kind: 'create', path: 'pkg/dep.json', post: 'needs-precedent\n' },
+      },
+    ],
+    subagentSpawns: [],
+    userMessages: [],
+  };
+
   function contextSpec(calls: ObservedCall[]): CompileDisciplinesSpec {
     return {
       disciplines: [entry],
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
       shellTools: [SHELL_TOOL],
       commandArgs: [COMMAND_ARG],
       transcript: transcriptWithToolCalls(calls),
     };
   }
 
-  /** What the assembly decided, by the flag it compiled into the body's args. */
-  function precedentDecision(calls: ObservedCall[]): 'found' | 'missing' | 'both' | 'none' {
+  /**
+   * What the assembly decided. Since DISPATCH-01 the decision is bound INTO the judge
+   * thunk instead of serialized as an argv flag, so it is read from the verdict the thunk
+   * answers against a triggering input: uphold means found, break means missing.
+   */
+  async function precedentDecision(calls: ObservedCall[]): Promise<'found' | 'missing'> {
     const [registration] = compileDisciplineRegistrations(contextSpec(calls));
-    const args = registration?.body?.args ?? [];
-    const found = args.includes('--precedent-found');
-    const missing = args.includes('--precedent-missing');
-    if (found && missing) return 'both';
-    if (found) return 'found';
-    if (missing) return 'missing';
-    return 'none';
+    const outcome = await registration?.body?.(triggeringInput);
+    return outcome?.exitCode === 0 ? 'found' : 'missing';
   }
 
-  it('refuses a line whose read half anchors the pattern, while its fully read twin qualifies', () => {
+  it('refuses a line whose read half anchors the pattern, while its fully read twin qualifies', async () => {
     // The one consumer where accepting partial results OPENS a gate instead of closing one.
     // `false` here means "evidence missing", which blocks; so the moment `commandAnchors`
     // starts trusting the commands it managed to read, a line nobody could finish reading
@@ -659,8 +669,8 @@ describe('COVENANT-18 B4 — precedent evidence refuses a partially read command
     // control proves this shape really can qualify, so the refusal is pinned to the unread
     // span and not to an anchor that never matches. Mutation caught: `commandAnchors`
     // reading `commands` and ignoring `unread`.
-    expect(precedentDecision([observedCall(`npm view yaml;echo 'x`)])).toBe('missing');
-    expect(precedentDecision([observedCall('npm view yaml;echo x')])).toBe('found');
+    expect(await precedentDecision([observedCall(`npm view yaml;echo 'x`)])).toBe('missing');
+    expect(await precedentDecision([observedCall('npm view yaml;echo x')])).toBe('found');
   });
 });
 

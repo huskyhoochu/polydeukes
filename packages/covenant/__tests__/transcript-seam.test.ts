@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // RED by construction. The behaviours asserted here become the GREEN contract.
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers — copied from dispatch.test.ts (fake bodies via `node -e`, temp
@@ -49,7 +49,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: (_input, transcript) =>
         transcript.findUserMessages().some((m) => m.text === 'WITNESS-MARKER'),
     };
@@ -81,7 +81,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: (_input, transcript) =>
         transcript.findSubagentInvocations().length === 0 &&
         transcript.findUserMessages().length === 0,
@@ -109,7 +109,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: (_input, _transcript) => {
         throw new Error('boom');
       },
@@ -138,7 +138,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
     const makeReg = (): CovenantRegistration => ({
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: ['-e', 'process.exit(1)'] },
+      body: exitThunk(1),
     });
 
     const withoutTranscript = await dispatchCovenants({

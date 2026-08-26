@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures. `enforce` is on neither shipped type yet, so both are widened here — the
@@ -51,7 +51,7 @@ function registration(
   const reg: RegistrationWithEnforce = {
     label,
     protectedPaths: [PROTECTED_ENTRY],
-    body: { command: process.execPath, args: ['-e', `process.exit(${bodyExitCode})`] },
+    body: async () => ({ exitCode: bodyExitCode }),
   };
   if (extra.enforce !== undefined) reg.enforce = extra.enforce;
   return reg;
@@ -150,14 +150,16 @@ describe('CONFIG-11 §4.3 dispatchCovenants — the registration level stays on 
 // ===========================================================================
 
 describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudgeable body', () => {
-  it('a body that cannot be spawned stays exit 2 · blocked under registration advise', async () => {
-    // Invariant 1: spawn failure is not a verdict. Mutation caught: the registration
-    // level threaded into a branch that treats "any non-zero / null" as relaxable.
+  it('a judge that crashes stays exit 2 · blocked under registration advise', async () => {
+    // Invariant 1: a crash is not a verdict. Mutation caught: the registration level
+    // threaded into a branch that treats "any non-zero" as relaxable.
     const result = await dispatch([
       {
         label: 'soft',
         protectedPaths: [PROTECTED_ENTRY],
-        body: { command: join(dir, 'no-such-judge-executable'), args: [] },
+        body: async () => {
+          throw new Error('the judge could not run at all');
+        },
         enforce: 'advise',
       },
     ]);
@@ -187,7 +189,7 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
       {
         label: 'soft',
         protectedPaths: [PROTECTED_ENTRY],
-        body: { command: process.execPath, args: echoToFileScript(join(dir, 'body-ran.txt'), 1) },
+        body: markerThunk(join(dir, 'body-ran.txt'), 1),
         witness: () => true,
         enforce: 'advise',
       },
@@ -234,8 +236,6 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
     return {
       disciplines,
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
       shellTools: [SHELL_TOOL],
       commandArgs: [COMMAND_ARG],
     };

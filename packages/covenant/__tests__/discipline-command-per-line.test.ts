@@ -50,8 +50,6 @@ function compileOne(entry: DisciplineEntry): CovenantRegistration {
   const spec: CompileDisciplinesSpec = {
     disciplines: [entry],
     rootDir: ROOT,
-    bodyCommand: '/usr/bin/node',
-    bodyModulePath: '/repo/discipline-body.js',
     shellTools: ['Bash'],
     commandArgs: ['command'],
   };

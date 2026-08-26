@@ -72,26 +72,26 @@ function rowOf(text: string, header: string, kind: string, label: string): strin
 }
 
 describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', () => {
-  it("renders the `judge` row of an enforce: 'advise' entry with the level word on each surface", () => {
+  it("renders the `judge` row of an enforce: 'advise' entry with the level word on each surface", async () => {
     // P0 render contract: the author's level is visible where the assembly is read.
     // Mutation caught: the marker rendered on one surface only (the commit root builds
     // its table separately), or the level never reaching the row at all.
     writeFixtureConfig([softEntry, plainEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       expect(rowOf(text, header, 'judge', SOFT_ID)).toContain(ADVISE_TOKEN);
     }
   });
 
-  it('renders an entry that omits enforce without ANY level word (absence stays unmarked)', () => {
+  it('renders an entry that omits enforce without ANY level word (absence stays unmarked)', async () => {
     // §4.4: the declared level is rendered, never the effective one. Mutation caught:
     // the marker driven by the compiled registration (every plain entry now reads
     // `enforce: advise` — the default and the author's choice become indistinguishable).
     writeFixtureConfig([softEntry, plainEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       const row = rowOf(text, header, 'judge', PLAIN_ID);
@@ -100,13 +100,13 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
     }
   });
 
-  it("renders an explicit enforce: 'block' entry with the level word on each surface (POSTURE-01 AC-6)", () => {
+  it("renders an explicit enforce: 'block' entry with the level word on each surface (POSTURE-01 AC-6)", async () => {
     // The promotion rung must be visible where the assembly is read — it is the one
     // choice that keeps an entry at exit 2 on the session surface. Mutation caught: the
     // marker still gated on `=== 'advise'` (explicit block reads like an omission).
     writeFixtureConfig([hardEntry, softEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       const row = rowOf(text, header, 'judge', HARD_ID);
@@ -115,13 +115,13 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
     }
   });
 
-  it('states the default on the commit header line too, beside the observer level', () => {
+  it('states the default on the commit header line too, beside the observer level', async () => {
     // Review [3] on PR #66: the commit header names the OBSERVER's level, which a reader
     // combines with an unmarked row into "this entry blocks" — false since POSTURE-01.
     // Mutation caught: the default phrase added to the session header only.
     writeFixtureConfig([plainEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const headerLine = text.split('\n').find((line) => line.startsWith(COMMIT_HEADER));
 
     expect(headerLine).toBeDefined();
@@ -129,14 +129,14 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
     expect(headerLine).toContain(SESSION_DEFAULT_PHRASE);
   });
 
-  it('states the default and the meta remnant on the session header line', () => {
+  it('states the default and the meta remnant on the session header line', async () => {
     // §4.4 / §4.3: the session surface has no observer level, so the header is the only
     // place the reader learns that an omitted level means advise and that meta-covenants
     // still block. Mutation caught: the header left at the bare surface name, or the
     // phrase placed on a row rather than the header line.
     writeFixtureConfig([plainEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const headerLine = text.split('\n').find((line) => line.startsWith(SESSION_HEADER));
 
     expect(headerLine).toBeDefined();

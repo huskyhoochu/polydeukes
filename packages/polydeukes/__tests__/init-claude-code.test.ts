@@ -181,17 +181,20 @@ describe('DIST-02 §3-a / AC-1 initClaudeCode — absent-project creation', () =
     expect(hook).not.toMatch(/process\.cwd\(\)/);
   });
 
-  it('generates a hook whose failure path exits 2 from a catch (fail-closed)', () => {
+  it('generates a hook whose failure path settles exit code 2 from a catch (fail-closed)', () => {
     // Mutation caught: the catch dropped, or its exit code changed. An unresolvable or
     // unbuilt package would then crash the hook with node's exit 1, which the session
     // host reads as NON-blocking — every call passes unjudged with no row, the cheapest
     // bypass there is. The anchor demands the syntactic form `catch (` on
     // comment-stripped text: a bare /catch/ was satisfiable by one narrative comment.
+    // The code is ASSIGNED rather than passed to process.exit(), so a buffered stderr
+    // write is never preempted — the same reason the judges settle theirs that way.
     init();
 
     const hook = executableText(read(HOOK_REL));
     expect(hook).toMatch(/\bcatch\s*\(/);
-    expect(hook).toMatch(/process\.exit\(2\)/);
+    expect(hook).toMatch(/process\.exitCode\s*=\s*2/);
+    expect(hook).not.toMatch(/process\.exit\(/);
   });
 });
 

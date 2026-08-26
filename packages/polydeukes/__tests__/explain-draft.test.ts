@@ -9,9 +9,14 @@ import type { CovenantRegistration } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
 import { assembleCommitRegistrations } from '../src/covenant-check.ts';
+import { loadCovenantModule } from '../src/covenant-module.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { REAL_COVENANT_DIST, writeConfigAt } from './helpers';
+
+/** The covenant module both `explain` and the direct assemblies below judge with — loaded
+ * from the real dist so the render and the assembly cannot diverge on which judges exist. */
+const realCovenant = await loadCovenantModule(REAL_COVENANT_DIST);
 
 const SESSION_HEADER = 'surface: session (claude-code hook)';
 const COMMIT_HEADER = 'surface: commit (git pre-commit)';
@@ -65,14 +70,14 @@ function registrationsOf(section: string): number {
 }
 
 describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both surfaces', () => {
-  it('renders one `draft <id>` line with the fixed unpromoted description per surface', () => {
+  it('renders one `draft <id>` line with the fixed unpromoted description per surface', async () => {
     // P0 render contract: the draft line's kind, label, and the exact description string
     // (`unpromoted` is the spelling STARLARK-01 inherits). Mutation caught: the draft
     // rendered as `skip`/`excluded` (which would claim a judgment disposition it never
     // had), rendered on only one surface, or the description drifting.
     writeFixtureConfig(WITH_DRAFT);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       const lines = linesOf(surfaceSection(text, header), 'draft', DRAFT_ID);
@@ -81,27 +86,27 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
     }
   });
 
-  it('adds `· draft 1` to each surface header aggregate', () => {
+  it('adds `· draft 1` to each surface header aggregate', async () => {
     // P0 aggregate contract (§4.3): the head counts drafts as their own tally, like
     // `excluded`. Mutation caught: the tally missing, or counting drafts into another
     // bucket's number instead of its own.
     writeFixtureConfig(WITH_DRAFT);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       expect(surfaceSection(text, header)).toContain('· draft 1');
     }
   });
 
-  it('registrations N is unchanged by the draft on both surfaces', () => {
+  it('registrations N is unchanged by the draft on both surfaces', async () => {
     // P0 "a draft is not a registration": the same config with and without the draft
     // must report the same registrations tally. Mutation caught: the draft counted into
     // `registrations N` (which would claim a judging body that does not exist).
     writeFixtureConfig(JUDGED_ONLY);
-    const withoutDraft = explain({ repoRoot }).text;
+    const withoutDraft = (await explain({ repoRoot })).text;
     writeFixtureConfig(WITH_DRAFT);
-    const withDraft = explain({ repoRoot }).text;
+    const withDraft = (await explain({ repoRoot })).text;
 
     for (const header of SURFACE_HEADERS) {
       expect(registrationsOf(surfaceSection(withDraft, header))).toBe(
@@ -109,13 +114,13 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
       );
     }
   });
-  it('tallies two drafts as `· draft 2` with a line per draft', () => {
+  it('tallies two drafts as `· draft 2` with a line per draft', async () => {
     // P0 gap fixture (audit): a hardcoded `draft 1` or a `drafts ? 1 : 0` tally passes
     // the single-draft test; only a second draft distinguishes counting from presence.
     const secondDraft = { id: 'measure-first', why: 'count producers first', draft: true };
     writeFixtureConfig([...WITH_DRAFT, secondDraft]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       const section = surfaceSection(text, header);
@@ -125,14 +130,14 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
     }
   });
 
-  it('renders a drafts-only config: draft lines present, meta registrations intact', () => {
+  it('renders a drafts-only config: draft lines present, meta registrations intact', async () => {
     // P0 gap fixture (audit): drafts-only resolves with zero judged entries, so this
     // walks the empty-discipline edge of the renderer (a width computed as
     // `Math.max(...[])` would be -Infinity and corrupt every line). The meta covenants
     // still register, so the surfaces must render them alongside the draft.
     writeFixtureConfig([draftEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       const section = surfaceSection(text, header);
@@ -162,7 +167,7 @@ describe('CONFIG-10 AC-4 — judgment invariance: assembly never sees the draft'
         assembleSessionRegistrations({
           config,
           rootDir: repoRoot,
-          covenantDist: REAL_COVENANT_DIST,
+          covenant: realCovenant,
           transcriptPath: join(repoRoot, 'session.jsonl'),
         }),
       );
@@ -171,7 +176,7 @@ describe('CONFIG-10 AC-4 — judgment invariance: assembly never sees the draft'
         assembleCommitRegistrations({
           config,
           rootDir: repoRoot,
-          covenantDist: REAL_COVENANT_DIST,
+          covenant: realCovenant,
         }),
       );
 

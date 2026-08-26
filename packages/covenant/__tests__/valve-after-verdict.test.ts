@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // exist yet — transient type drift until GREEN; vitest transpiles without typechecking.
 import type { CovenantRegistration, RunCovenantSpec } from '../src/index.ts';
 import { dispatchCovenants, runCovenant } from '../src/index.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Injected fixture values — never source literals (fixture discipline at file top).
@@ -26,11 +26,6 @@ const PROTECTED_ENTRY = 'sub/protected';
 const NESTED_MENTION = 'sub/protected/deep/file.ts';
 const MATCH_SUBJECT = 'observed/session.jsonl';
 const DISPATCHER_LABEL = 'my-dispatcher';
-
-/** A body that exits with a fixed code, ignoring stdin (run-covenant.test.ts precedent). */
-function exitScript(code: number): string[] {
-  return ['-e', `process.exit(${code})`];
-}
 
 /** §4.3 — the valve axis lands on RunCovenantSpec at GREEN; this widening carries it until then. */
 type ValveRunCovenantSpec = RunCovenantSpec & { witness?: () => boolean };
@@ -63,9 +58,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // would turn every clean call into a 'witnessed' row again.
     let consulted = 0;
     const result = await runWithValve({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'test-covenant',
       telemetryPath,
       witness: () => {
@@ -89,9 +82,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // logged first and a 'witnessed' row appended after (two rows for one call).
     const outFile = join(dir, 'body-ran.txt');
     const result = await runWithValve({
-      command: process.execPath,
-      args: echoToFileScript(outFile, 1),
-      stdinPayload: '{}',
+      body: markerThunk(outFile, 1),
       label: 'test-covenant',
       telemetryPath,
       witness: () => true,
@@ -110,9 +101,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // caught: the valve's return value ignored (any valve presence softening the block), or
     // the false branch mapped to exit 0.
     const result = await runWithValve({
-      command: process.execPath,
-      args: exitScript(1),
-      stdinPayload: '{}',
+      body: exitThunk(1),
       label: 'test-covenant',
       telemetryPath,
       witness: () => false,
@@ -130,9 +119,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // valve resolving toward open on error, or the throw escaping runCovenant as a
     // rejection (awaiting directly would fail this test on its own).
     const result = await runWithValve({
-      command: process.execPath,
-      args: exitScript(1),
-      stdinPayload: '{}',
+      body: exitThunk(1),
       label: 'test-covenant',
       telemetryPath,
       witness: () => {
@@ -152,9 +139,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // record advise-level breaks as 'witnessed'.
     let consulted = 0;
     const result = await runWithValve({
-      command: process.execPath,
-      args: exitScript(1),
-      stdinPayload: '{}',
+      body: exitThunk(1),
       label: 'test-covenant',
       telemetryPath,
       enforce: 'advise',
@@ -170,22 +155,23 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('advised');
   });
 
-  it('a spawn failure with an open valve resolves witnessed at exit 0 — unjudgeable blocked is still witnessable', async () => {
-    // PRD §2 explicitly DEFERS tightening unjudgeable outcomes (2 / 3+ / null) out of the
-    // valve's reach to the judge-integrity candidate: this ticket moves only the timing, so
-    // today any blocked translation — including a spawn failure — can be witnessed open.
+  it('a crashing judge with an open valve resolves witnessed at exit 0 — unjudgeable blocked is still witnessable', async () => {
+    // PRD §2 explicitly DEFERS tightening unjudgeable outcomes (2 / 3+) out of the valve's
+    // reach to the judge-integrity candidate: this ticket moves only the timing, so today
+    // any blocked translation — including a judge that crashed — can be witnessed open.
     // Mutation caught: a premature carve-out that keeps unjudgeable outcomes blocked, which
-    // is the follow-up ticket's contract, not this one's.
+    // is the follow-up ticket's contract, not this one's. Since DISPATCH-01 the crash
+    // arrives as a throw rather than a spawn failure.
     const result = await runWithValve({
-      command: join(dir, 'this-executable-does-not-exist'),
-      stdinPayload: '{}',
+      body: async () => {
+        throw new Error('the judge could not run at all');
+      },
       label: 'test-covenant',
       telemetryPath,
       witness: () => true,
     });
 
     expect(result.exitCode).toBe(0);
-    expect(result.bodyExitCode).toBeNull();
     expect(result.event).toBe('witnessed');
     expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('witnessed');
   });
@@ -196,9 +182,7 @@ describe('runCovenant — valve consulted only after a blocked verdict (COVENANT
     // body's own fail-closed (exit 2), so a partial GREEN that carves out 2 while keeping
     // null witnessable — silently advancing half the deferred decision — fails here.
     const result = await runWithValve({
-      command: process.execPath,
-      args: exitScript(2),
-      stdinPayload: '{}',
+      body: exitThunk(2),
       label: 'test-covenant',
       telemetryPath,
       witness: () => true,
@@ -237,7 +221,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
     const reg: CovenantRegistration = {
       label: 'covenant-upholds',
       protectedPaths: [PROTECTED_ENTRY],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
+      body: markerThunk(outFile, 0),
       witness: () => {
         consulted += 1;
         return true;
@@ -267,7 +251,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
     const reg: CovenantRegistration = {
       label: 'covenant-breaks',
       protectedPaths: [PROTECTED_ENTRY],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: () => true,
     };
 
@@ -307,7 +291,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
     const reg: CovenantRegistration = {
       label: 'covenant-context',
       protectedPaths: [PROTECTED_ENTRY],
-      body: { command: process.execPath, args: exitScript(1) },
+      body: exitThunk(1),
       witness: (witnessInput, transcript, context) => {
         received.push({ input: witnessInput, transcript, context });
         return true;
@@ -337,7 +321,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
       label: 'content-covenant',
       protectedPaths: [],
       matches: () => MATCH_SUBJECT,
-      body: { command: process.execPath, args: exitScript(1) },
+      body: exitThunk(1),
       witness: (
         _input: CovenantInput,
         _transcript: CanonicalTranscript,
@@ -368,7 +352,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
     const reg: CovenantRegistration = {
       label: 'covenant-breaks',
       protectedPaths: [PROTECTED_ENTRY],
-      body: { command: process.execPath, args: exitScript(1) },
+      body: exitThunk(1),
       witness: () => {
         consulted += 1;
         return true;
@@ -395,7 +379,7 @@ describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.
     const reg: CovenantRegistration = {
       label: 'covenant-breaks',
       protectedPaths: [PROTECTED_ENTRY],
-      body: { command: process.execPath, args: exitScript(1) },
+      body: exitThunk(1),
       witness: () => {
         consulted += 1;
         return true;

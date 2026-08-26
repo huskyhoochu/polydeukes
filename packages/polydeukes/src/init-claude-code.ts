@@ -74,10 +74,13 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 try {
   const { runClaudeCodeHook } = await import('${HOOK_SPECIFIER}');
   const { exitCode } = await runClaudeCodeHook({ repoRoot });
-  process.exit(exitCode);
+  // Assign and let the process end naturally instead of process.exit(): an explicit exit
+  // can preempt a buffered stderr write on platforms with async pipes, dropping the break
+  // reason the agent needs to read.
+  process.exitCode = exitCode;
 } catch (error) {
   console.error(\`covenant hook failed closed: \${error?.message ?? error}\`);
-  process.exit(2);
+  process.exitCode = 2;
 }
 `;
 

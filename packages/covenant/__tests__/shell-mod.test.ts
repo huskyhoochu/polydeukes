@@ -1,17 +1,17 @@
-import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { CovenantInput } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
+import { selfModRegistration } from '../src/self-mod.ts';
 import {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
+  shellModRegistration,
 } from '../src/shell-mod.ts';
 import { readTelemetryLines } from './helpers.js';
 
@@ -459,161 +459,32 @@ describe('judgeShellModification — quote/escape/line-continuation split path (
 });
 
 // ---------------------------------------------------------------------------
-// PRD §5.3 (body CLI) + §5.4 (dispatcher E2E) — real compiled artifact.
+// PRD §5.4 — dispatcher E2E through the shipped registration builders.
 // ---------------------------------------------------------------------------
-
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-const bodyPath = fileURLToPath(new URL('../dist/shell-mod-body.js', import.meta.url));
-const selfModBodyPath = fileURLToPath(new URL('../dist/self-mod-body.js', import.meta.url));
-
-/** The CLI flag list corresponding to baseSpec()'s injected tool/arg/path values. */
-const CONFIG_FLAGS = [
-  '--protected-path',
-  PROTECTED,
-  '--shell-tool',
-  SHELL_TOOL,
-  '--command-arg',
-  COMMAND_ARG,
-];
-
-beforeAll(() => {
-  execFileSync('pnpm', ['exec', 'turbo', 'run', 'build', '--filter=@polydeukes/covenant'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-  });
-}, 120_000);
-
-describe('shell-mod-body CLI (PRD §5.3)', () => {
-  it('a break input yields exit 1 with the reason on stderr; an uphold input yields exit 0', () => {
-    // Mutation caught: verdictToExitCode wired backwards (break -> 0), the break reason not
-    // surfaced on stderr, or the uphold path also exiting non-zero.
-    const breakResult = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: JSON.stringify(shellCall(`sed -i s/a/b/ ${PROTECTED}`)),
-      encoding: 'utf-8',
-    });
-    expect(breakResult.status).toBe(1);
-    expect(breakResult.stderr.length).toBeGreaterThan(0);
-    expect(breakResult.stderr).toContain(PROTECTED);
-
-    const upholdResult = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: JSON.stringify(shellCall(`cat ${PROTECTED}`)),
-      encoding: 'utf-8',
-    });
-    expect(upholdResult.status).toBe(0);
-  });
-
-  it('invalid JSON stdin yields exit 2, and toolCalls:[null] yields exit 2 (judge-throw boundary)', () => {
-    // Mutation caught: the CLI not routing core parseInput's fail-closed path (crashing with
-    // an uncaught exception instead of exit 2); and a judge throw on `toolCalls:[null]`
-    // leaking as Node's crash exit 1 (read as non-blocking) instead of the blocking 2.
-    const badJson = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: 'not valid json {{{',
-      encoding: 'utf-8',
-    });
-    expect(badJson.status).toBe(2);
-
-    const nullElement = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: '{"toolCalls":[null],"subagentSpawns":[],"userMessages":[]}',
-      encoding: 'utf-8',
-    });
-    expect(nullElement.status).toBe(2);
-  });
-
-  it('each of the three required lists empty, an unknown flag, and a -- token in a value position yield exit 2', () => {
-    // Mutation caught: the config fail-closed gate missing on any of the three required
-    // axes (a misassembled meta-covenant silently degrading to universal uphold); an
-    // unknown flag ignored instead of failing closed; or a dropped value shifting the pair
-    // grid so a '--' flag token is consumed as a value while the config gate still passes.
-    const noPath = spawnSync(
-      process.execPath,
-      [bodyPath, '--shell-tool', SHELL_TOOL, '--command-arg', COMMAND_ARG],
-      { input: JSON.stringify(shellCall(`sed -i s/a/b/ ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(noPath.status).toBe(2);
-
-    const noTool = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--command-arg', COMMAND_ARG],
-      { input: JSON.stringify(shellCall(`sed -i s/a/b/ ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(noTool.status).toBe(2);
-
-    const noArg = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--shell-tool', SHELL_TOOL],
-      { input: JSON.stringify(shellCall(`sed -i s/a/b/ ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(noArg.status).toBe(2);
-
-    const unknownFlag = spawnSync(
-      process.execPath,
-      [bodyPath, ...CONFIG_FLAGS, '--unknown-flag', 'x'],
-      { input: JSON.stringify(shellCall(`cat ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(unknownFlag.status).toBe(2);
-
-    // A dropped value: '--command-arg' lands in the value slot of '--protected-path'.
-    const shiftedGrid = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', '--command-arg', COMMAND_ARG, '--shell-tool', SHELL_TOOL],
-      { input: JSON.stringify(shellCall(`cat ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(shiftedGrid.status).toBe(2);
-  });
-
-  it('zero --allow-read uses the default allowlist; one or more --allow-read REPLACES it', () => {
-    // Mutation caught: --allow-read merging into the default instead of replacing it (§4.4).
-    // With the default, `cat <protected>` upholds (exit 0). With only an unrelated
-    // --allow-read entry, `cat` is no longer allowlisted, so the same command breaks
-    // (exit 1) via the backstop — proving replacement, not merge.
-    const withDefault = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: JSON.stringify(shellCall(`cat ${PROTECTED}`)),
-      encoding: 'utf-8',
-    });
-    expect(withDefault.status).toBe(0);
-
-    const replaced = spawnSync(
-      process.execPath,
-      [bodyPath, ...CONFIG_FLAGS, '--allow-read', 'somethingelse'],
-      { input: JSON.stringify(shellCall(`cat ${PROTECTED}`)), encoding: 'utf-8' },
-    );
-    expect(replaced.status).toBe(1);
-  });
-});
 
 describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   let dir: string;
   let telemetryPath: string;
 
-  function shellModRegistration(label: string): CovenantRegistration {
+  /** The shipped builder, relabelled so co-existence cases can name each registration. */
+  function shellModReg(label: string): CovenantRegistration {
     return {
+      ...shellModRegistration({
+        protectedPaths: [PROTECTED],
+        shellTools: [SHELL_TOOL],
+        commandArgs: [COMMAND_ARG],
+      }),
       label,
-      protectedPaths: [PROTECTED],
-      body: {
-        command: process.execPath,
-        args: [bodyPath, ...CONFIG_FLAGS],
-      },
     };
   }
 
-  function selfModRegistration(label: string): CovenantRegistration {
+  function selfModReg(label: string): CovenantRegistration {
     return {
+      ...selfModRegistration({
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: ['Edit', 'Write', 'MultiEdit'],
+      }),
       label,
-      protectedPaths: [PROTECTED],
-      body: {
-        command: process.execPath,
-        args: [
-          selfModBodyPath,
-          '--protected-path',
-          PROTECTED,
-          '--mutating-tool',
-          'Edit',
-          '--mutating-tool',
-          'Write',
-          '--mutating-tool',
-          'MultiEdit',
-        ],
-      },
     };
   }
 
@@ -633,7 +504,7 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
     const input = shellCall(`sed -i 's/exit 2/exit 0/' ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
-      registrations: [shellModRegistration('shell-mod')],
+      registrations: [shellModReg('shell-mod')],
       telemetryPath,
     });
 
@@ -654,7 +525,7 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
     const input = shellCall(`cat ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
-      registrations: [shellModRegistration('shell-mod')],
+      registrations: [shellModReg('shell-mod')],
       telemetryPath,
     });
 
@@ -678,7 +549,7 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
     });
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
-      registrations: [selfModRegistration('self-mod'), shellModRegistration('shell-mod')],
+      registrations: [selfModReg('self-mod'), shellModReg('shell-mod')],
       telemetryPath,
     });
 
@@ -700,7 +571,7 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
     const input = shellCall(`sed -i 's/exit 2/exit 0/' ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
-      registrations: [selfModRegistration('self-mod'), shellModRegistration('shell-mod')],
+      registrations: [selfModReg('self-mod'), shellModReg('shell-mod')],
       telemetryPath,
     });
 

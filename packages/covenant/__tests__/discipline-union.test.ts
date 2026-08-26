@@ -181,8 +181,6 @@ describe('forbid routing — deletions never spawn a body (review round 1)', () 
     const [reg] = compileDisciplineRegistrations({
       disciplines: [entry],
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
       shellTools: ['Bash'],
       commandArgs: ['command'],
     });

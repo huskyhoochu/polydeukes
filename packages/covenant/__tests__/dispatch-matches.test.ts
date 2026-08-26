@@ -6,7 +6,7 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // COVENANT-10 §4.4 / AC §5.5 — CovenantRegistration gains an optional content-predicate
 // `matches?: (input) => string | null`. When present it routes instead of path-mention:
@@ -20,7 +20,7 @@ import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.j
 // ---------------------------------------------------------------------------
 
 /** A body that does nothing — used where only routing (not spawn) is asserted. */
-const noopBody = { command: process.execPath, args: ['-e', 'process.exit(0)'] };
+const noopBody = exitThunk(0);
 
 describe('matchRegistrations — matches predicate seam (PRD §4.4)', () => {
   it('includes a registration whose matches returns a string, using it as mentionedPath', () => {
@@ -147,7 +147,7 @@ describe('dispatchCovenants — matches seam end-to-end (PRD §4.4, AC §5.5)', 
     const reg: CovenantRegistration = {
       label: 'content-covenant',
       protectedPaths: [],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
+      body: markerThunk(outFile, 0),
       matches: () => 'src/a.ts',
     };
 
@@ -175,7 +175,7 @@ describe('dispatchCovenants — matches seam end-to-end (PRD §4.4, AC §5.5)', 
     const reg: CovenantRegistration = {
       label: 'content-covenant',
       protectedPaths: [],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
+      body: markerThunk(outFile, 0),
       matches: () => null,
     };
 
@@ -199,7 +199,7 @@ describe('dispatchCovenants — matches seam end-to-end (PRD §4.4, AC §5.5)', 
     const reg: CovenantRegistration = {
       label: 'content-covenant',
       protectedPaths: [],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       matches: () => {
         throw new Error('boom');
       },
@@ -229,12 +229,12 @@ describe('dispatchCovenants — matches seam end-to-end (PRD §4.4, AC §5.5)', 
     const pathReg: CovenantRegistration = {
       label: 'path-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outPath, 0) },
+      body: markerThunk(outPath, 0),
     };
     const contentReg: CovenantRegistration = {
       label: 'content-covenant',
       protectedPaths: [],
-      body: { command: process.execPath, args: echoToFileScript(outContent, 0) },
+      body: markerThunk(outContent, 0),
       matches: () => 'sub/protected/file.txt',
     };
 

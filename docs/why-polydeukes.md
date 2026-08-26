@@ -235,6 +235,15 @@ closed gate is never a clever prompt — always a recorded, human-shaped action.
      itself under a surface that blocks, but no entry may raise a surface its observer
      lowered. Self-imposed disciplines compose downward, never upward. -->
 
+<!-- Parked candidate (2026-08-27, DISPATCH-01): the neutrality line was one spawn() call,
+     and it cost 171 of every 237 milliseconds. Folding the judges in-process kept every
+     observable byte — the same telemetry rows in the same order, the same exit codes, the
+     same one-line reasons — which is the only honest way to swap an engine: pin what the
+     old one does before touching it, and let the pins vote. What the boundary used to buy
+     moved to named places rather than evaporating: crash isolation became a catch at the
+     same cell of the same table, and judge-in-any-language returns later as an explicit
+     extractor process contract instead of an accident of spawning. -->
+
 <!-- Parked candidate (2026-08-24, POSTURE-01): advise is the destination, block is a
      choice. Every discipline now lands advised by default — recorded, explained, never
      stopping the call — and `enforce: block` is a promotion the author picks, not a rung

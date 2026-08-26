@@ -22,6 +22,7 @@ import {
   untokenizableLineCandidates,
 } from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.js';
 
 /**
@@ -273,8 +274,6 @@ export function judgeTranscriptModification(
 export type TranscriptModRegistrationSpec = {
   transcriptPath: string;
   home?: string;
-  bodyCommand: string;
-  bodyModulePath: string;
   shellTools: string[];
   commandArgs: string[];
   mutatingTools: string[];
@@ -285,10 +284,15 @@ export type TranscriptModRegistrationSpec = {
  * Build the transcript-mod registration (PRD §2). Routing is the judge itself as a `matches`
  * predicate — `protectedPaths` stays empty so no home ancestor re-enters path-mention
  * routing — and the telemetry subject is the canonical absolute path.
+ *
+ * The misassembly gate the meta pair carries applies here too (DISPATCH-01 §4.3): with any
+ * of the three axis lists empty the judge can never see a call, so routing on it would go
+ * silently inert — the universal-uphold shape the gate exists to refuse. Such a spec routes
+ * every call instead and answers the unjudgeable outcome, which no enforce level softens.
  */
 export function transcriptModRegistration(
   spec: TranscriptModRegistrationSpec,
-): CovenantRegistration {
+): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
   const judgeSpec: TranscriptModificationSpec = {
     transcriptPath: spec.transcriptPath,
     home: spec.home,
@@ -297,22 +301,32 @@ export function transcriptModRegistration(
     mutatingToolNames: spec.mutatingTools,
     readOnlyCommands: DEFAULT_READ_ONLY_COMMANDS,
   };
+  const axesEmpty =
+    judgeSpec.mutatingToolNames.filter((name) => name !== '').length === 0 ||
+    judgeSpec.shellToolNames.filter((name) => name !== '').length === 0 ||
+    judgeSpec.commandArgNames.filter((arg) => arg !== '').length === 0;
+  if (axesEmpty) {
+    return {
+      label: 'transcript-mod',
+      protectedPaths: [],
+      matches: () => spec.transcriptPath,
+      body: async () => UNJUDGEABLE_OUTCOME,
+      ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
+    };
+  }
   return {
     label: 'transcript-mod',
     protectedPaths: [],
     matches: (input) =>
       judgeTranscriptModification(input, judgeSpec).upheld ? null : spec.transcriptPath,
-    body: {
-      command: spec.bodyCommand,
-      args: [
-        spec.bodyModulePath,
-        '--transcript-path',
-        spec.transcriptPath,
-        ...(spec.home !== undefined ? ['--home', spec.home] : []),
-        ...spec.shellTools.flatMap((tool) => ['--shell-tool', tool]),
-        ...spec.commandArgs.flatMap((arg) => ['--command-arg', arg]),
-        ...spec.mutatingTools.flatMap((tool) => ['--mutating-tool', tool]),
-      ],
+    body: async (input) => {
+      try {
+        return outcomeFromVerdict(judgeTranscriptModification(input, judgeSpec));
+      } catch {
+        // Structurally unjudgeable input that passed parseInput (element shapes are an
+        // intended CORE-01 boundary): cannot judge means block.
+        return UNJUDGEABLE_OUTCOME;
+      }
     },
     ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
   };

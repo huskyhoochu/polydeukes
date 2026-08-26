@@ -11,9 +11,7 @@
  * blocked record. An empty domain is an explicit pass with no records.
  */
 
-import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import {
   collectRangeChanges,
   collectStagedChanges,
@@ -29,11 +27,8 @@ import {
   DEFAULT_TELEMETRY_LOG_PATH,
   normalizeProtectedPaths,
 } from '@polydeukes/core';
-import {
-  type CovenantRegistration,
-  compileDisciplineRegistrations,
-  dispatchCovenants,
-} from '@polydeukes/covenant';
+import type { CovenantRegistration } from '@polydeukes/covenant';
+import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
 
 /**
@@ -102,19 +97,6 @@ function ttyWitnessValve(
 }
 
 /**
- * A judge body's module path, proven to exist before the spawn (CONFIG-06b §4.2): an
- * absent module exits 1, the same code as a break verdict, and nothing downstream can
- * tell the two apart.
- */
-function provenBodyPath(distDir: string, fileName: string): string {
-  const modulePath = join(distDir, fileName);
-  if (!existsSync(modulePath)) {
-    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
-  }
-  return modulePath;
-}
-
-/**
  * One blocked record for a run that failed closed before any dispatch could judge.
  * `appendRecordFailOpen` creates the missing `.polydeukes/` of a never-judged repository,
  * and a telemetry failure never softens the exit. An undefined path (non-string
@@ -133,7 +115,12 @@ function recordFailClosed(telemetryPath: string | undefined): void {
 export type CommitAssemblySpec = {
   config: ReturnType<typeof loadConfig>['config'];
   rootDir: string;
-  covenantDist: string;
+  /**
+   * The covenant surface the registrations are built from — the module the caller loaded
+   * from the resolved dist, so what judges a change is what that dist carries, and what
+   * `explain` renders is what would judge it (DISPATCH-01 §4.2).
+   */
+  covenant: CovenantModule;
   witness?: CovenantRegistration['witness'];
 };
 
@@ -142,7 +129,7 @@ export type CommitAssemblySpec = {
  * runner dispatches and `explain` renders.
  */
 export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantRegistration[] {
-  const { config, rootDir, covenantDist, witness } = spec;
+  const { config, rootDir, covenant, witness } = spec;
   const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(config.adapters?.git);
 
   // Union of the common list and the git-additive one (CONFIG-08 §4.2), common first so
@@ -154,43 +141,23 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
   const disciplines = config.disciplines ?? [];
 
   const registrations: CovenantRegistration[] = [
-    {
-      label: 'self-mod',
+    covenant.selfModRegistration({
       protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [
-          provenBodyPath(covenantDist, 'self-mod-body.js'),
-          ...protectedPaths.flatMap((path) => ['--protected-path', path]),
-          ...[STAGED_WRITE, STAGED_DELETE].flatMap((tool) => ['--mutating-tool', tool]),
-        ],
-      },
+      mutatingToolNames: [STAGED_WRITE, STAGED_DELETE],
       witness,
-    },
+    }),
     // No shell axis here, so command-family entries are left out. Context-family entries
     // stay in: with no transcript the compiler gives them skip registrations, which record
-    // `skipped` on a match (COVENANT-13 §4.5). The body path is a thunk so the existence
-    // proof fires only where a body is actually composed (CONFIG-06b §4.2).
-    ...compileDisciplineRegistrations({
+    // `skipped` on a match (COVENANT-13 §4.5).
+    ...covenant.compileDisciplineRegistrations({
       disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
       rootDir,
-      bodyCommand: process.execPath,
-      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
       shellTools: [],
       commandArgs: [],
       witness,
     }),
   ];
 
-  // A covenant dist older than the lazy body-path convention hands back the thunk itself
-  // where a string belongs; refuse that table rather than use it.
-  for (const registration of registrations) {
-    if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
-      throw new Error(
-        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
-      );
-    }
-  }
   return registrations;
 }
 
@@ -254,28 +221,34 @@ async function judgeChanges(
     // Inside the try so an invalid adapter namespace fails closed (CONFIG-06 §4.2).
     const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
 
-    // Real Node resolution of the covenant package, so the commit surface spawns the same
-    // judges the session hook does; tests inject a directory instead.
-    const covenantDist =
-      spec.covenantDist ?? dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
+    // Real Node resolution of the covenant package, so the commit surface runs the same
+    // judges the session hook does; tests inject a directory instead. Awaited before any
+    // registration is composed, so a dist the barrel cannot load fails the run closed here
+    // rather than leaving a half-judged table behind (DISPATCH-01 §4.2).
+    const covenantDist = spec.covenantDist ?? resolveCovenantDist();
+    const covenant = await loadCovenantModule(covenantDist);
     // No valve under advise (nothing to witness) and none outside `staged` (DIAG-01 §4.3).
     const witness =
       enforce === 'advise' || domain.kind !== 'staged'
         ? undefined
         : ttyWitnessValve(config.witness, spec.ttyPrompt);
 
+    let blocked = false;
+    let advisedCount = 0;
+    // Assembled ONCE for the run, not per change: a judge takes its call set as an argument,
+    // so the table is payload-free. Recompiling per file would repeat every compile-time
+    // side effect — the stderr line a config-faulted discipline names itself with would
+    // print once per staged file rather than once.
     const registrations = assembleCommitRegistrations({
       config,
       rootDir: spec.repoRoot,
-      covenantDist,
+      covenant,
       witness,
     });
 
-    let blocked = false;
-    let advisedCount = 0;
     for (const change of changes) {
       const input = covenantInputFromStagedChanges([change]);
-      const { exitCode, results } = await dispatchCovenants({
+      const { exitCode, results } = await covenant.dispatchCovenants({
         stdinPayload: JSON.stringify(input),
         registrations,
         telemetryPath,

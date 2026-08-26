@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseRecordLine } from '@polydeukes/core';
@@ -6,18 +6,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // COVENANT-01. Imports go through the package entry point (src/index.ts) so the tests
 // also pin the public export surface. The signature asserted here is the PRD §4.1 contract.
 import { runCovenant } from '../src/index.ts';
-import { echoToFileScript, readTelemetryLines } from './helpers.js';
+import { exitThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Dummy covenant bodies — deterministic `node -e` inline scripts (PRD §6 step 2).
 // process.execPath is the command; args carry the inline script (and, for the
 // echo-style body, an output file path as an extra arg).
 // ---------------------------------------------------------------------------
-
-/** A body that exits with a fixed code, ignoring stdin entirely. */
-function exitScript(code: number): string[] {
-  return ['-e', `process.exit(${code})`];
-}
 
 let dir: string;
 let telemetryPath: string;
@@ -36,9 +31,7 @@ describe('§5.1 exit-code translation', () => {
     // Mutation caught: translation table entry for 0 removed/flipped, or bodyExitCode
     // not passed through on the success path.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'test-covenant',
       telemetryPath,
     });
@@ -50,9 +43,7 @@ describe('§5.1 exit-code translation', () => {
     // Core mutation target: the 1→2 upgrade itself (PRD §4.2 row 2). A wrapper that
     // passes 1 straight through, or that treats 1 as passing, must fail this test.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(1),
-      stdinPayload: '{}',
+      body: exitThunk(1),
       label: 'test-covenant',
       telemetryPath,
     });
@@ -65,9 +56,7 @@ describe('§5.1 exit-code translation', () => {
     // e.g. treats 2 as an unknown code and still lands on 2 would falsely pass this if
     // bodyExitCode weren't asserted too.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(2),
-      stdinPayload: '{}',
+      body: exitThunk(2),
       label: 'test-covenant',
       telemetryPath,
     });
@@ -79,9 +68,7 @@ describe('§5.1 exit-code translation', () => {
     // PRD §4.2 row 4: "the rest (3+)" must not fall through to a passing result or to
     // an unhandled/undefined branch. bodyExitCode still reflects the raw 3.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(3),
-      stdinPayload: '{}',
+      body: exitThunk(3),
       label: 'test-covenant',
       telemetryPath,
     });
@@ -89,40 +76,21 @@ describe('§5.1 exit-code translation', () => {
     expect(result).toEqual({ exitCode: 2, bodyExitCode: 3, event: 'blocked' });
   });
 
-  it('a nonexistent executable (spawn failure) resolves to exitCode 2 and bodyExitCode null without throwing', async () => {
+  it('a thunk that throws resolves to exitCode 2 and bodyExitCode 2 without rejecting', async () => {
     // P0 fail-closed boundary (PRD §4.2 row 5): "cannot judge" must never resolve as
     // passing, and must never propagate as a rejected promise/thrown error either.
     // A rejected promise here fails the test on its own (unhandled rejection /
-    // await throw) -- no extra assertion wrapper needed to catch that case.
+    // await throw) -- no extra assertion wrapper needed to catch that case. Since
+    // DISPATCH-01 the crash arrives as a throw rather than a spawn failure.
     const result = await runCovenant({
-      command: join(dir, 'this-executable-does-not-exist'),
-      stdinPayload: '{}',
+      body: async () => {
+        throw new Error('the judge could not run at all');
+      },
       label: 'test-covenant',
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: null, event: 'blocked' });
-  });
-});
-
-describe('§5.2 stdin passthrough', () => {
-  it('stdinPayload reaches the body verbatim, including a deliberately malformed JSON string', async () => {
-    // Mutation caught: any parsing/validation/re-serialization of the payload before
-    // piping it to the body's stdin. The payload is intentionally invalid JSON — the
-    // wrapper must not choke on it, reject it, or "fix" it; it is opaque cargo.
-    const outFile = join(dir, 'echoed-stdin.txt');
-    const malformedPayload = '{"toolCalls": [}}} not valid json at all';
-
-    const result = await runCovenant({
-      command: process.execPath,
-      args: echoToFileScript(outFile),
-      stdinPayload: malformedPayload,
-      label: 'test-covenant',
-      telemetryPath,
-    });
-
-    expect(result.exitCode).toBe(0);
-    expect(readFileSync(outFile, 'utf-8')).toBe(malformedPayload);
+    expect(result).toEqual({ exitCode: 2, bodyExitCode: 2, event: 'blocked' });
   });
 });
 
@@ -131,9 +99,7 @@ describe('§5.3 per-call logging', () => {
     // Mutation caught: appendRecord called 0 or 2+ times per call, or the record's
     // event/label/subject fields not threaded through from the call spec.
     await runCovenant({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'my-label',
       subject: 'my-subject.ts',
       telemetryPath,
@@ -152,9 +118,7 @@ describe('§5.3 per-call logging', () => {
     // Distinguishes the logging event mapping from the exit-code mapping: a wrapper
     // could translate the exit code correctly yet still log the wrong event string.
     await runCovenant({
-      command: process.execPath,
-      args: exitScript(1),
-      stdinPayload: '{}',
+      body: exitThunk(1),
       label: 'my-label',
       telemetryPath,
     });
@@ -164,13 +128,14 @@ describe('§5.3 per-call logging', () => {
     expect(parseRecordLine(lines[0])?.event).toBe('blocked');
   });
 
-  it('a spawn-failure call still appends exactly one line with event=blocked (measurement never skipped)', async () => {
+  it('a crashing-judge call still appends exactly one line with event=blocked (measurement never skipped)', async () => {
     // P0: PRD §4.3 "every call, exactly one line, regardless of which table row it
-    // ends on". Mutation caught: an early-return on spawn error that skips the
+    // ends on". Mutation caught: an early-return on the crash branch that skips the
     // appendRecord call entirely, silently losing the measurement.
     await runCovenant({
-      command: join(dir, 'this-executable-does-not-exist'),
-      stdinPayload: '{}',
+      body: async () => {
+        throw new Error('the judge could not run at all');
+      },
       label: 'my-label',
       telemetryPath,
     });
@@ -189,9 +154,7 @@ describe('§5.3 per-call logging', () => {
 
     // Same rationale as above: a rejection would fail this await directly.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'my-label',
       telemetryPath: missingDirTelemetryPath,
     });
@@ -211,9 +174,7 @@ describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
     const nestedTelemetryPath = join(dir, 'nested', 'deep', 'roi.log');
 
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'my-label',
       telemetryPath: nestedTelemetryPath,
     });
@@ -240,43 +201,11 @@ describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
     // Same rationale as the existing "unwritable telemetryPath" test above: a rejection
     // would fail this await directly, no extra try/catch needed to detect a throw.
     const result = await runCovenant({
-      command: process.execPath,
-      args: exitScript(0),
-      stdinPayload: '{}',
+      body: exitThunk(0),
       label: 'my-label',
       telemetryPath: impossibleTelemetryPath,
     });
 
     expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// CONFIG-06b §4.1 — the exit-1 collision. A body MODULE that was never built is
-// not a spawn failure: node itself exists, so the spawn succeeds and the CHILD
-// fails, with the same code a real break verdict returns. This pin records that
-// collision at the level where it happens, so the assembly-time existence proof
-// cannot later be read as redundant — what makes it look unnecessary from down
-// here is exactly the ambiguity it exists to remove.
-// ---------------------------------------------------------------------------
-
-describe('CONFIG-06b §4.1 a body module that does not exist', () => {
-  it('resolves to bodyExitCode 1 — indistinguishable from a real break verdict, not a spawn failure', async () => {
-    // The measured fact the ticket is built on, pinned so it cannot drift silently. Compare
-    // the two siblings above: exitScript(1) — a genuine break verdict — produces this exact
-    // result object, and the nonexistent EXECUTABLE produces bodyExitCode null (the only
-    // unjudgeable signal the wrapper has, and one this branch never reaches). Mutation
-    // caught: a runtime or wrapper change that starts delivering a missing module as null/2
-    // would make the assembly proof look redundant, and this pin is what forces that
-    // discovery to be deliberate rather than a quiet deletion.
-    const result = await runCovenant({
-      command: process.execPath,
-      args: [join(dir, 'this-body-module-does-not-exist.js')],
-      stdinPayload: '{}',
-      label: 'test-covenant',
-      telemetryPath,
-    });
-
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1, event: 'blocked' });
   });
 });

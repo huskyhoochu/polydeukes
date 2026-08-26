@@ -27,10 +27,9 @@
  * mentions no protected path, so it is never blocked).
  */
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   COMMAND_ARGS,
   evaluatePrecedent,
@@ -49,15 +48,13 @@ import {
 } from '@polydeukes/core';
 import {
   type CovenantRegistration,
-  compileDisciplineRegistrations,
-  dispatchCovenants,
   findUnattributed,
   readBaseline,
   snapshotBaseline,
-  transcriptModRegistration,
   ttlWitness,
   writeBaseline,
 } from '@polydeukes/covenant';
+import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
 
 /** `runClaudeCodeHook` input (DIST-01 §3-c) — the `CovenantCheckSpec` shape, session side. */
@@ -71,21 +68,6 @@ export type ClaudeCodeHookSpec = {
   /** Overrides the resolved covenant dist directory (tests and assembly injection). */
   covenantDist?: string;
 };
-
-/**
- * Compose a judge body path and prove it exists (CONFIG-06b §4.2). A body module that was
- * never built makes node exit 1 — the same code a real break verdict returns — so nothing
- * downstream can separate an unjudgeable run from a judged one. The proof therefore belongs
- * to the act of composing the path, and a body this assembly composes no path for is never
- * proven: the throw lands in the fail-closed catch below, one blocked record and exit 2.
- */
-function provenBodyPath(distDir: string, fileName: string): string {
-  const modulePath = join(distDir, fileName);
-  if (!existsSync(modulePath)) {
-    throw new Error(`judge body ${modulePath} is missing — run 'pnpm build' to rebuild it`);
-  }
-  return modulePath;
-}
 
 /** The label every post-hoc state comparison row carries (COVENANT-14 §2-d). */
 const BASELINE_LABEL = 'baseline';
@@ -200,7 +182,12 @@ function comparisonSpec(
 export type SessionAssemblySpec = {
   config: ReturnType<typeof loadConfig>['config'];
   rootDir: string;
-  covenantDist: string;
+  /**
+   * The covenant surface the registrations are built from — the module the caller loaded
+   * from the resolved dist, so what judges a call is what that dist carries, and what
+   * `explain` renders is what would judge it (DISPATCH-01 §4.2).
+   */
+  covenant: CovenantModule;
   /** The payload's transcript path. ABSENT leaves the transcript-mod registration out. */
   transcriptPath?: string;
   transcript?: CanonicalTranscript;
@@ -213,7 +200,7 @@ export type SessionAssemblySpec = {
  * shown is the table the judgment actually uses, never a second opinion about it.
  */
 export function assembleSessionRegistrations(spec: SessionAssemblySpec): CovenantRegistration[] {
-  const { config, rootDir, covenantDist, transcriptPath, transcript, witness } = spec;
+  const { config, rootDir, covenant, transcriptPath, transcript, witness } = spec;
   // The live transcript is the evidence channel the context family reads AND the one the
   // witness reads, so erasing or forging it disables every context discipline while
   // opening or shutting the human valve on the same file. It lives outside the repository,
@@ -232,43 +219,20 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
     protectedPaths: config.protectedPaths ?? [],
   });
 
-  // Only the two unconditional registrations compose their paths here. The transcript-mod
-  // and discipline bodies are composed inside the conditions that decide whether their
-  // registrations exist at all — proving a body this run will never spawn would close a
-  // call over a file it was never going to use (CONFIG-06b §4.2 corollary).
-  const selfModBody = provenBodyPath(covenantDist, 'self-mod-body.js');
-  const shellModBody = provenBodyPath(covenantDist, 'shell-mod-body.js');
   const disciplines = config.disciplines ?? [];
-  const pathArgs = protectedPaths.flatMap((path) => ['--protected-path', path]);
 
   const registrations: CovenantRegistration[] = [
-    {
-      label: 'self-mod',
+    covenant.selfModRegistration({
       protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [
-          selfModBody,
-          ...pathArgs,
-          ...MUTATING_TOOLS.flatMap((tool) => ['--mutating-tool', tool]),
-        ],
-      },
+      mutatingToolNames: MUTATING_TOOLS,
       witness,
-    },
-    {
-      label: 'shell-mod',
+    }),
+    covenant.shellModRegistration({
       protectedPaths,
-      body: {
-        command: process.execPath,
-        args: [
-          shellModBody,
-          ...pathArgs,
-          ...SHELL_TOOLS.flatMap((tool) => ['--shell-tool', tool]),
-          ...COMMAND_ARGS.flatMap((arg) => ['--command-arg', arg]),
-        ],
-      },
+      shellTools: SHELL_TOOLS,
+      commandArgs: COMMAND_ARGS,
       witness,
-    },
+    }),
     // The transcript's own registration (COVENANT-07c). Routing is the matches predicate,
     // never path mention, so the home directory cannot become a protected ancestor. No
     // transcript in the payload means nothing to protect — the valve and the context
@@ -276,7 +240,7 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
     ...(transcriptPath === undefined
       ? []
       : [
-          transcriptModRegistration({
+          covenant.transcriptModRegistration({
             transcriptPath,
             // The env value first, since that is what the judged shell expands `~` and
             // `$HOME` from. `homedir()` reads the same passwd entry bash falls back to when
@@ -284,25 +248,15 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
             // `env -i`) keeps judging the home spellings instead of silently going
             // absolute-only — an inert spelling closure looks identical to a passing call.
             home: process.env.HOME ?? homedir(),
-            bodyCommand: process.execPath,
-            bodyModulePath: provenBodyPath(covenantDist, 'transcript-mod-body.js'),
             shellTools: SHELL_TOOLS,
             commandArgs: COMMAND_ARGS,
             mutatingTools: MUTATING_TOOLS,
             witness,
           }),
         ]),
-    // The body path is passed as a thunk, so the proof fires only where the compiler
-    // actually composes a body. Entry count cannot stand in for that: an entry may compile
-    // to a body-less skip (a `requirePrecedent` one whenever no transcript came with the
-    // payload), and the compiler appends the body-less `shell-unjudgeable` backstop even
-    // for zero entries — gating the call itself would drop that record and turn an
-    // uncomputable shell write back into a silent pass, undoing COVENANT-10b.
-    ...compileDisciplineRegistrations({
+    ...covenant.compileDisciplineRegistrations({
       disciplines,
       rootDir,
-      bodyCommand: process.execPath,
-      bodyModulePath: () => provenBodyPath(covenantDist, 'discipline-body.js'),
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
       witness,
@@ -315,17 +269,6 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
     }),
   ];
 
-  // The compiler is resolved through the installed covenant package, so a workspace
-  // whose dist predates the lazy body-path convention hands back the thunk itself where
-  // a string belongs. Every consumer of this assembly — the judgment runner and
-  // `pdks explain` alike — must refuse that table rather than use it.
-  for (const registration of registrations) {
-    if (registration.body !== undefined && typeof registration.body.args?.[0] !== 'string') {
-      throw new Error(
-        `covenant dist predates the lazy body-path convention (registration '${registration.label}') — run 'pnpm build'`,
-      );
-    }
-  }
   return registrations;
 }
 
@@ -385,18 +328,24 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
             ttlMs: config.witness.ttlMinutes * 60_000,
           });
 
-    // The judge bodies are the covenant package's dist executables — resolved through the
-    // real package (never a test alias), so the session surface spawns the same judges the
-    // commit surface does. An injected directory overrides that resolution: `createRequire`
-    // is real Node resolution and always lands on the real build, which no fixture tree can
-    // take a body away from.
-    const covenantDist =
-      spec.covenantDist ?? dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
+    // The judges are the covenant package's built barrel — resolved through the real
+    // package (never a test alias), so the session surface runs the same judges the commit
+    // surface does. An injected directory overrides that resolution, which is how a fixture
+    // reaches a dist that real Node resolution would never land on. Awaited HERE, before
+    // any registration is composed: a dist the barrel cannot load throws now, into the
+    // fail-closed catch, instead of leaving a half-judged table behind (DISPATCH-01 §4.2).
+    const covenantDist = spec.covenantDist ?? resolveCovenantDist();
+    const covenant = await loadCovenantModule(covenantDist);
 
+    // Assembled HERE, outside the dispatch seam: a judge takes its call set as an argument,
+    // so assembly needs no payload, and an assembly throw belongs to this function's own
+    // fail-closed catch — `hook` label, `covenant hook failed closed:` on stderr. Composed
+    // inside the dispatch closure it would land in `runAdapterPath`'s catch instead, which
+    // records the adapter's label and says nothing about what broke.
     const registrations = assembleSessionRegistrations({
       config,
       rootDir: spec.repoRoot,
-      covenantDist,
+      covenant,
       transcriptPath,
       transcript,
       witness,
@@ -406,7 +355,12 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
       rawPayload,
       telemetryPath: logPath,
       dispatch: (stdinPayload) =>
-        dispatchCovenants({ stdinPayload, registrations, telemetryPath: logPath, transcript }),
+        covenant.dispatchCovenants({
+          stdinPayload,
+          registrations,
+          telemetryPath: logPath,
+          transcript,
+        }),
     });
   } catch (error) {
     process.stderr.write(

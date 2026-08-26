@@ -120,7 +120,7 @@ if (args.length === 1 && args[0] === 'explain') {
     // composition roots, and neither belongs on `covenant check`'s load path, which
     // lefthook spawns on every commit.
     const { explain } = await import('./explain.js');
-    const { text } = explain({ repoRoot: process.cwd() });
+    const { text } = await explain({ repoRoot: process.cwd() });
     await emitAndExit(text);
   } catch (error) {
     // stdout stays at zero bytes on this path: what cannot be answered is never answered

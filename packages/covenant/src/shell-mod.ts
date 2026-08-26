@@ -12,8 +12,10 @@
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
+import type { CovenantRegistration } from './dispatch.js';
 import { mentionsPath, untokenizableLineCandidates } from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 
 /**
  * `ShellModificationSpec` — the injected axes of the judge (PRD §4.1).
@@ -207,4 +209,63 @@ export function judgeShellModification(
   }
 
   return { upheld: true };
+}
+
+/**
+ * `ShellModRegistrationSpec` — the assembly values baked into the registration
+ * (DISPATCH-01 §4.4). The call set is not among them: the dispatcher supplies it to the
+ * judge at call time. `readOnlyCommands` REPLACES {@link DEFAULT_READ_ONLY_COMMANDS} when
+ * given — no merge, since an assembly wanting to extend the default spreads the constant.
+ */
+export type ShellModRegistrationSpec = {
+  protectedPaths: string[];
+  shellTools: string[];
+  /**
+   * The `args` keys shell lines live under. ABSENT is the empty surface, which the thunk's
+   * entry gate refuses — naming no command arg would otherwise uphold every call.
+   */
+  commandArgs?: string[];
+  readOnlyCommands?: string[];
+  witness?: CovenantRegistration['witness'];
+};
+
+/**
+ * Build the shell-mod registration (DISPATCH-01 §4.4). Routing stays path mention; the
+ * judgment is the thunk.
+ *
+ * The misassembly gate the CLI body held lives at the thunk's entry: zero valid entries in
+ * any of the three required lists would make {@link judgeShellModification} uphold every
+ * call, so it answers the unjudgeable outcome instead, which no enforce level softens. The
+ * allowlist is exempt — empty just means stricter.
+ */
+export function shellModRegistration(
+  spec: ShellModRegistrationSpec,
+): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
+  const judgeSpec: ShellModificationSpec = {
+    protectedPaths: spec.protectedPaths,
+    shellToolNames: spec.shellTools,
+    commandArgNames: spec.commandArgs ?? [],
+    readOnlyCommands: spec.readOnlyCommands ?? DEFAULT_READ_ONLY_COMMANDS,
+  };
+  return {
+    label: 'shell-mod',
+    protectedPaths: spec.protectedPaths,
+    body: async (input) => {
+      if (
+        judgeSpec.protectedPaths.filter((path) => path !== '').length === 0 ||
+        judgeSpec.shellToolNames.filter((name) => name !== '').length === 0 ||
+        judgeSpec.commandArgNames.filter((arg) => arg !== '').length === 0
+      ) {
+        return UNJUDGEABLE_OUTCOME;
+      }
+      try {
+        return outcomeFromVerdict(judgeShellModification(input, judgeSpec));
+      } catch {
+        // Structurally unjudgeable input that passed parseInput (element shapes are an
+        // intended CORE-01 boundary): cannot judge means block.
+        return UNJUDGEABLE_OUTCOME;
+      }
+    },
+    ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
+  };
 }

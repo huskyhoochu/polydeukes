@@ -53,9 +53,8 @@ const FAIL_CLOSED_LABEL = 'hook';
 /** The label runAdapterPath records under — the funnel supplement and payload faults. */
 const ADAPTER_LABEL = 'adapter-claude-code';
 /** Bodies this surface composes paths for, removed one at a time to model build skew. */
-const SELF_MOD_BODY = 'self-mod-body.js';
-const TRANSCRIPT_MOD_BODY = 'transcript-mod-body.js';
-const DISCIPLINE_BODY = 'discipline-body.js';
+/** A library module the covenant barrel imports eagerly — absent, the import throws. */
+const BARREL_MODULE = 'self-mod.js';
 /** A discipline whose evidence this run cannot read — it compiles to a body-less skip. */
 const PRECEDENT_ID = 'needs-precedent';
 const PRECEDENT_TOOL = 'WebFetch';
@@ -70,9 +69,10 @@ function writeConfig(extra: Record<string, unknown>): void {
   writeConfigAt(repoRoot, telemetryPath, extra, DISCIPLINE_SCOPE);
 }
 
-/** This suite's dist fixtures, all rooted at the current throwaway directory. */
-function distWithout(bodyFileName: string): string {
-  return sharedDistWithout(repoRoot, bodyFileName);
+/** This suite's dist fixtures, all rooted at the current throwaway directory. `null` omits
+ * nothing — the complete mirror, which must judge exactly as the real build. */
+function distWithout(moduleFileName: string | null): string {
+  return sharedDistWithout(repoRoot, moduleFileName);
 }
 
 /**
@@ -218,13 +218,14 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
     ]);
   });
 
-  it('resolves { exitCode: 2 } and records ONE hook blocked row when the covenant dist lacks the self-mod body', async () => {
+  it('resolves { exitCode: 2 } and records ONE hook blocked row when the covenant dist is missing a barrel module', async () => {
     // AC-7, on a payload touching NO protected path on purpose: a mutant that drops
     // the existence proof — or ignores the covenantDist seam and resolves the real
     // build — dispatches, matches nothing, and answers exit 0 with an adapter passed
     // row. Both directions are refuted by this exact-row pin, and only the
-    // fail-closed label proves the assembly stopped before judging
-    // (the covenant-check-unbuilt-body precedent).
+    // fail-closed label proves the assembly stopped before judging. Since DISPATCH-01
+    // the proof object is the package IMPORT, so the fixture removes a module the
+    // eager barrel references rather than a body CLI that no longer exists.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     await expect(
@@ -232,7 +233,7 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
         repoRoot,
         rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
         telemetryPath,
-        covenantDist: distWithout(SELF_MOD_BODY),
+        covenantDist: distWithout(BARREL_MODULE),
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
@@ -295,8 +296,8 @@ describe('DIST-01 §3-e parity shape — the assembled session judgment', () => 
 // or an ordinary config shape turns into a lockout that sends people to the witness.
 // ---------------------------------------------------------------------------
 
-describe('DIST-01 / CONFIG-06b — a body this run never registers is not required to be present', () => {
-  it('a payload carrying NO transcript is untouched by a missing transcript-mod body (exit 0)', async () => {
+describe('DIST-01 / CONFIG-06b — a registration this run never composes costs it nothing', () => {
+  it('a payload carrying NO transcript composes no transcript-mod registration (exit 0)', async () => {
     // Proof happens where the path is PRODUCED (CONFIG-06b §4.2 corollary): no
     // transcript means no transcript-mod registration, so its body path is never
     // composed and its absence proves nothing. Mutation caught: the proof hoisted
@@ -308,14 +309,14 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
       repoRoot,
       rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
       telemetryPath,
-      covenantDist: distWithout(TRANSCRIPT_MOD_BODY),
+      covenantDist: distWithout(null),
     });
 
     expect(result.exitCode).toBe(0);
     expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
-  it('a config declaring NO disciplines is untouched by a missing discipline body (exit 0)', async () => {
+  it('a config declaring NO disciplines still judges and still compiles the backstop (exit 0)', async () => {
     // Zero entries still compile (the body-less shell-unjudgeable backstop), but
     // nothing composes the discipline body's path, so its absence is not this run's
     // concern — demanding it would close every call in a repository that simply
@@ -328,14 +329,14 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
       repoRoot,
       rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
       telemetryPath,
-      covenantDist: distWithout(DISCIPLINE_BODY),
+      covenantDist: distWithout(null),
     });
 
     expect(result.exitCode).toBe(0);
     expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
   });
 
-  it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0, one skipped row)', async () => {
+  it('a discipline compiling to a body-less skip records skipped, not a fail-closed (exit 0, one skipped row)', async () => {
     // Declaring a discipline is not the same as spawning one: with no transcript this
     // entry's evidence can never be read, so it compiles to a skip with no body and
     // nothing will ever run. The skipped row is the load-bearing half — it proves the
@@ -354,7 +355,7 @@ describe('DIST-01 / CONFIG-06b — a body this run never registers is not requir
       repoRoot,
       rawPayload: writePayload(join(repoRoot, SCOPED_TARGET), 'export const y = 2;\n'),
       telemetryPath,
-      covenantDist: distWithout(DISCIPLINE_BODY),
+      covenantDist: distWithout(null),
     });
 
     expect(result.exitCode).toBe(0);

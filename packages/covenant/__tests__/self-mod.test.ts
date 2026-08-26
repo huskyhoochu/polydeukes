@@ -1,14 +1,12 @@
-import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.js';
 import { dispatchCovenants } from '../src/dispatch.js';
-import { judgeSelfModification } from '../src/self-mod.js';
+import { judgeSelfModification, selfModRegistration } from '../src/self-mod.js';
 import { readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
@@ -458,166 +456,26 @@ describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5
 });
 
 // ---------------------------------------------------------------------------
-// COVENANT-03 §5.2 (body CLI) + §5.3 (dispatcher E2E) — real compiled artifact.
+// COVENANT-03 §5.3 — dispatcher E2E through the shipped registration builder.
 // ---------------------------------------------------------------------------
-
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-const bodyPath = fileURLToPath(new URL('../dist/self-mod-body.js', import.meta.url));
-
-beforeAll(() => {
-  execFileSync('pnpm', ['exec', 'turbo', 'run', 'build', '--filter=@polydeukes/covenant'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-  });
-}, 120_000);
-
-describe('self-mod-body CLI (COVENANT-03 §5.2)', () => {
-  it('a break input yields exit 1 with the mentioned path on stderr', () => {
-    // Mutation caught: verdictToExitCode wired backwards (break -> 0), or the break
-    // reason not surfaced on stderr at all.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--mutating-tool', 'Edit'],
-      { input: JSON.stringify(input), encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(1);
-    expect(result.stderr.length).toBeGreaterThan(0);
-    expect(result.stderr).toContain(PROTECTED);
-  });
-
-  it('invalid JSON on stdin yields exit 2 (CORE-01 fail-closed)', () => {
-    // Mutation caught: the CLI not calling core parseInput's fail-closed path, e.g.
-    // crashing with an uncaught exception (undefined/null exit code) instead of exit 2.
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--mutating-tool', 'Edit'],
-      { input: 'not valid json at all {{{', encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('zero --protected-path flags yields exit 2 (config fail-closed)', () => {
-    // P0: COVENANT-03 §4.2 "quietly leaking into universal uphold is itself a bypass
-    // vector". Mutation caught: an empty protectedPaths list silently treated as
-    // vacuous-uphold (exit 0) instead of a fail-closed config error.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(process.execPath, [bodyPath, '--mutating-tool', 'Edit'], {
-      input: JSON.stringify(input),
-      encoding: 'utf-8',
-    });
-
-    expect(result.status).toBe(2);
-  });
-
-  it('zero --mutating-tool flags yields exit 2 (config fail-closed)', () => {
-    // Same fail-closed boundary as above, other axis of the spec.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(process.execPath, [bodyPath, '--protected-path', PROTECTED], {
-      input: JSON.stringify(input),
-      encoding: 'utf-8',
-    });
-
-    expect(result.status).toBe(2);
-  });
-
-  it('only empty-string values for both flags yields exit 2 (config fail-closed)', () => {
-    // Mutation caught: raw flag *count* treated as "valid config" without filtering
-    // empty-string entries, letting a misconfigured assembly slip through as exit 0/1
-    // instead of failing closed.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', '', '--mutating-tool', ''],
-      { input: JSON.stringify(input), encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a flag token in a value position yields exit 2 (config fail-closed)', () => {
-    // Review finding (COVENANT-03): a dropped value shifts the pair grid so the next
-    // flag token is silently consumed as a value ('--mutating-tool' stored as a
-    // protected path), passing the non-empty config gate while judging garbage —
-    // a silent universal-uphold. Mutation caught: parseArgv accepting a '--'-prefixed
-    // token as a flag value instead of failing closed.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', '--mutating-tool', '--mutating-tool', 'Edit'],
-      { input: JSON.stringify(input), encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a structurally malformed toolCalls element yields exit 2, never a crash exit code (fail-closed)', () => {
-    // Review finding (COVENANT-03): `toolCalls: [null]` passes core parseInput (element
-    // shapes are an intended CORE-01 boundary) and would crash the judge with a
-    // TypeError — Node exits 1, which the protocol reads as a *non-blocking* break.
-    // Mutation caught: the CLI shell not translating a judge throw into the blocking 2.
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--mutating-tool', 'Edit'],
-      {
-        input: '{"toolCalls":[null],"subagentSpawns":[],"userMessages":[]}',
-        encoding: 'utf-8',
-      },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('an unknown flag yields exit 2 (config fail-closed)', () => {
-    // Mutation caught: unrecognized argv silently ignored instead of failing closed —
-    // a typo'd flag in assembly must not silently degrade into a differently-configured
-    // (or unconfigured) meta-covenant.
-    const input = inputWithToolCall('Edit', { file_path: PROTECTED });
-
-    const result = spawnSync(
-      process.execPath,
-      [bodyPath, '--protected-path', PROTECTED, '--mutating-tool', 'Edit', '--unknown-flag', 'x'],
-      { input: JSON.stringify(input), encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(2);
-  });
-});
 
 describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
   let dir: string;
   let telemetryPath: string;
   const TEST_VAR = 'PDKS_TEST_SELF_MOD_E2E_HATCH_VAR';
 
-  function selfModRegistration(
+  /** The shipped builder, relabelled so each case can name its registration. */
+  function selfModReg(
     label: string,
     witness?: (input: CovenantInput) => boolean,
   ): CovenantRegistration {
     return {
+      ...selfModRegistration({
+        protectedPaths: [PROTECTED],
+        mutatingToolNames: ['Edit', 'Write', 'MultiEdit'],
+        ...(witness ? { witness } : {}),
+      }),
       label,
-      protectedPaths: [PROTECTED],
-      body: {
-        command: process.execPath,
-        args: [
-          bodyPath,
-          '--protected-path',
-          PROTECTED,
-          '--mutating-tool',
-          'Edit',
-          '--mutating-tool',
-          'Write',
-          '--mutating-tool',
-          'MultiEdit',
-        ],
-      },
-      ...(witness ? { witness } : {}),
     };
   }
 
@@ -639,7 +497,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
       old_string: 'a',
       new_string: 'b',
     });
-    const reg = selfModRegistration('self-mod');
+    const reg = selfModReg('self-mod');
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
@@ -659,7 +517,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
     // Mutation caught: dispatcher matching (protectedPaths) and judge break condition
     // disagreeing, or the covenant firing on unrelated content.
     const input = inputWithToolCall('Edit', { file_path: 'sub/unrelated/other.txt' });
-    const reg = selfModRegistration('self-mod');
+    const reg = selfModReg('self-mod');
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
@@ -685,7 +543,7 @@ describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
     // The valve is an inline predicate, not a shipped one: what this case pins is the
     // dispatcher wiring a registration's witness and recording `witnessed`, so any
     // predicate that answers true exercises it.
-    const reg = selfModRegistration('self-mod', () => process.env[TEST_VAR] === 'set');
+    const reg = selfModReg('self-mod', () => process.env[TEST_VAR] === 'set');
 
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),

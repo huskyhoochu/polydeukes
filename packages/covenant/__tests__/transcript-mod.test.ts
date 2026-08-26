@@ -1,8 +1,5 @@
-import { execFileSync, spawnSync } from 'node:child_process';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { CovenantInput, FileChange } from '@polydeukes/core';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_READ_ONLY_COMMANDS } from '../src/shell-mod.js';
 import {
   judgeTranscriptModification,
@@ -517,8 +514,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
 });
 
 describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () => {
-  const BODY_COMMAND = '/usr/bin/node';
-  const BODY_MODULE = '/somewhere/dist/transcript-mod-body.js';
+  /** A forgery the judge must break on — the input every axis assertion below binds. */
+  const FORGERY = shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`);
 
   function regSpec(
     overrides: Partial<TranscriptModRegistrationSpec> = {},
@@ -526,8 +523,6 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
     return {
       transcriptPath: TRANSCRIPT,
       home: HOME,
-      bodyCommand: BODY_COMMAND,
-      bodyModulePath: BODY_MODULE,
       shellTools: [SHELL_TOOL],
       commandArgs: [COMMAND_ARG],
       mutatingTools: MUTATING_TOOLS,
@@ -535,59 +530,45 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
     };
   }
 
-  it('builds the transcript-mod registration with EMPTY protectedPaths and the exact body argv', () => {
+  it('builds the transcript-mod registration with EMPTY protectedPaths and a judging thunk', async () => {
     // The whole ticket in one shape: protectedPaths MUST be [] — any entry there
-    // re-enters path-mention routing and re-creates the home ancestor. The argv is
-    // deep-equalled so a silently dropped axis (a missing --mutating-tool pair) cannot
-    // ship a differently-configured body.
+    // re-enters path-mention routing and re-creates the home ancestor. Since DISPATCH-01
+    // the axes reach the judge by closure rather than argv, so the shape is proven by what
+    // the thunk ANSWERS for a call the dispatcher hands it: a shell-axis forgery spelled
+    // through `~` breaks, which needs the shell tool, the command arg, and the home value
+    // all wired.
     const reg = transcriptModRegistration(regSpec());
 
     expect(reg.label).toBe('transcript-mod');
     expect(reg.protectedPaths).toEqual([]);
-    expect(reg.body).toEqual({
-      command: BODY_COMMAND,
-      args: [
-        BODY_MODULE,
-        '--transcript-path',
-        TRANSCRIPT,
-        '--home',
-        HOME,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-        '--mutating-tool',
-        'Edit',
-        '--mutating-tool',
-        'Write',
-        '--mutating-tool',
-        'NotebookEdit',
-      ],
-    });
+    expect(typeof reg.body).toBe('function');
+    const outcome = await reg.body?.(FORGERY);
+    expect(outcome?.exitCode).toBe(1);
+    expect(outcome?.reason).toContain(TRANSCRIPT);
   });
 
-  it('an omitted home yields no --home pair in the argv', () => {
-    // Mutation caught: the string 'undefined' (or an empty value) smuggled into the body
-    // argv as a --home pair — the body's fail-fast flag parsing would then refuse every
-    // call instead of degrading to the absolute-only judgment.
+  it('the mutating-tool axis reaches the judge: a tool-axis forgery breaks', async () => {
+    // Mutation caught: a silently dropped axis — the argv deep-equal used to catch a
+    // missing --mutating-tool pair, and with argv gone the axis is proven by judging an
+    // input only that axis can break.
+    const reg = transcriptModRegistration(regSpec());
+
+    const outcome = await reg.body?.(
+      inputWithToolCall('Write', { file_path: TRANSCRIPT, content: 'x' }),
+    );
+    expect(outcome?.exitCode).toBe(1);
+    expect(outcome?.reason).toContain(TRANSCRIPT);
+  });
+
+  it('an omitted home leaves the `~` spelling unjudged, degrading to the absolute-only judgment', async () => {
+    // Mutation caught: a bogus home value (the string 'undefined', or an empty one)
+    // smuggled in — an empty home turns `~/x` into `/x` and manufactures matches, while
+    // the contract is that an absent home closes no home spelling at all.
     const { home: _home, ...withoutHome } = regSpec();
     const reg = transcriptModRegistration(withoutHome);
 
-    expect(reg.body?.args).toEqual([
-      BODY_MODULE,
-      '--transcript-path',
-      TRANSCRIPT,
-      '--shell-tool',
-      SHELL_TOOL,
-      '--command-arg',
-      COMMAND_ARG,
-      '--mutating-tool',
-      'Edit',
-      '--mutating-tool',
-      'Write',
-      '--mutating-tool',
-      'NotebookEdit',
-    ]);
+    const outcome = await reg.body?.(FORGERY);
+    expect(outcome?.exitCode).toBe(0);
   });
 
   it('matches runs the judge: the transcript path for a forgery, null for an allowlisted read', () => {
@@ -622,132 +603,54 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
 });
 
 // ---------------------------------------------------------------------------
-// transcript-mod-body CLI (COVENANT-07c) — real compiled artifact, mirroring
-// the self-mod / shell-mod body-spawn idiom.
+// The judge thunk the builder composes (COVENANT-07c), exercised as the
+// dispatcher runs it: axes bound at assembly, the call set passed at judgment.
 // ---------------------------------------------------------------------------
 
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-const bodyPath = fileURLToPath(new URL('../dist/transcript-mod-body.js', import.meta.url));
-
-beforeAll(() => {
-  execFileSync('pnpm', ['exec', 'turbo', 'run', 'build', '--filter=@polydeukes/covenant'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
+/** Judge a payload through the registration builder's thunk, with the standard axes. */
+async function judgeThroughThunk(input: CovenantInput): Promise<{
+  exitCode: number;
+  reason?: string;
+}> {
+  const reg = transcriptModRegistration({
+    transcriptPath: TRANSCRIPT,
+    home: HOME,
+    shellTools: [SHELL_TOOL],
+    commandArgs: [COMMAND_ARG],
+    mutatingTools: MUTATING_TOOLS,
   });
-}, 120_000);
+  return (await reg.body?.(input)) ?? { exitCode: 2 };
+}
 
-describe('transcript-mod-body CLI (COVENANT-07c)', () => {
-  /** The argv mirror of baseSpec()'s injected values (home included). */
-  const CONFIG_FLAGS = [
-    '--transcript-path',
-    TRANSCRIPT,
-    '--home',
-    HOME,
-    '--shell-tool',
-    SHELL_TOOL,
-    '--command-arg',
-    COMMAND_ARG,
-    '--mutating-tool',
-    'Edit',
-    '--mutating-tool',
-    'Write',
-    '--mutating-tool',
-    'NotebookEdit',
-  ];
-
-  it('missing --transcript-path yields exit 2 (config fail-closed)', () => {
-    // Mutation caught: a body with no file to protect silently degrading to universal
-    // uphold (exit 0) instead of refusing the misassembly.
-    const result = spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--home',
-        HOME,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-        '--mutating-tool',
-        'Edit',
-      ],
-      {
-        input: JSON.stringify(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`)),
-        encoding: 'utf-8',
-      },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('an unknown flag yields exit 2 (config fail-closed)', () => {
-    // Mutation caught: unrecognized argv silently ignored — a typo'd flag in assembly
-    // must not degrade into a differently-configured judge.
-    const result = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS, '--unknown-flag', 'x'], {
-      input: JSON.stringify(shellCall(`cat ${TRANSCRIPT}`)),
-      encoding: 'utf-8',
-    });
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a flag token in a value position yields exit 2 (config fail-closed)', () => {
-    // The shifted-grid regression the sibling bodies pinned: a dropped value makes the
-    // next '--' token a value while the pair count still looks valid. Mutation caught:
-    // parseArgv accepting '--home' as the --transcript-path value.
-    const result = spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--transcript-path',
-        '--home',
-        HOME,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-        '--mutating-tool',
-        'Edit',
-      ],
-      { input: JSON.stringify(shellCall(`cat ${TRANSCRIPT}`)), encoding: 'utf-8' },
-    );
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a structurally malformed toolCalls element yields exit 2, never a crash exit code (fail-closed)', () => {
+describe('transcript-mod judge thunk (COVENANT-07c)', () => {
+  it('a structurally malformed toolCalls element yields the exit-2 equivalent, never a crash', async () => {
     // `toolCalls: [null]` passes core parseInput (element shapes are a CORE-01 boundary)
-    // and would crash the judge — Node exits 1, which the protocol reads as NON-blocking.
-    // Mutation caught: the CLI shell not translating a judge throw into the blocking 2.
-    const result = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: '{"toolCalls":[null],"subagentSpawns":[],"userMessages":[]}',
-      encoding: 'utf-8',
-    });
+    // and would crash the judge — which, uncaught, escapes the wrapper as a rejection.
+    // Mutation caught: the thunk not translating a judge throw into the blocking outcome.
+    const result = await judgeThroughThunk({
+      toolCalls: [null],
+      subagentSpawns: [],
+      userMessages: [],
+    } as unknown as CovenantInput);
 
-    expect(result.status).toBe(2);
+    expect(result.exitCode).toBe(2);
   });
 
-  it('a forged "~" append yields exit 1 with the transcript in the stderr reason', () => {
-    // Mutation caught: verdictToExitCode wired backwards (break -> 0), or the break
-    // reason not surfaced on stderr — the block would be undiagnosable at the hook.
-    const result = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: JSON.stringify(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`)),
-      encoding: 'utf-8',
-    });
+  it('a forged "~" append yields exit 1 with the transcript in the reason', async () => {
+    // Mutation caught: the verdict translation wired backwards (break -> 0), or the break
+    // reason dropped — the block would be undiagnosable at the hook, since the wrapper
+    // writes exactly this string to stderr.
+    const result = await judgeThroughThunk(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`));
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toMatch(/transcript/i);
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toMatch(/transcript/i);
   });
 
-  it('a "$HOME" read yields exit 0 (default read-only allowlist with zero allowlist flags)', () => {
-    // Mutation caught: the body defaulting to an EMPTY allowlist when no allowlist flag
-    // is given — every read of the session would then need the witness (the friction
-    // this ladder deliberately removed).
-    const result = spawnSync(process.execPath, [bodyPath, ...CONFIG_FLAGS], {
-      input: JSON.stringify(shellCall(`cat $HOME/${TRANSCRIPT_TAIL}`)),
-      encoding: 'utf-8',
-    });
+  it('a "$HOME" read yields exit 0 (default read-only allowlist)', async () => {
+    // Mutation caught: the builder defaulting to an EMPTY allowlist — every read of the
+    // session would then need the witness (the friction this ladder deliberately removed).
+    const result = await judgeThroughThunk(shellCall(`cat $HOME/${TRANSCRIPT_TAIL}`));
 
-    expect(result.status).toBe(0);
+    expect(result.exitCode).toBe(0);
   });
 });

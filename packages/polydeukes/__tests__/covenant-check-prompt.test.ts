@@ -1,5 +1,3 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // COVENANT-17 §4.5 RED phase — the commit-surface TTY valve moves behind the verdict and
@@ -15,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The widened seam signature does not exist yet — transient type drift until GREEN; vitest
 // transpiles without typechecking.
 import { runCovenantCheck } from '../src/index.ts';
-import { type CheckRepo, createCheckRepo } from './helpers.ts';
+import { type CheckRepo, createCheckRepo, stubDistWithUnjudgeableSelfMod } from './helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Each test builds a real throwaway git repo AND writes its own tmp config file, so
@@ -33,9 +31,6 @@ const SCOPED_SOURCE = 'lib/a.ts';
 const FORBIDDEN_TOKEN = 'TODO';
 /** The umbrella's protected-paths registration label — an observable contract, not a fixture choice. */
 const SELF_MOD_LABEL = 'self-mod';
-/** The judge body filename the commit surface composes for that registration (CONFIG-06b). */
-const SELF_MOD_BODY = 'self-mod-body.js';
-
 let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
@@ -251,10 +246,10 @@ describe('COVENANT-17 §4.5 covenant check — the prompt fires only on a blocke
     // a TTY prompt. Green today; it pins the future against a GREEN that derives "may
     // prompt" from the translated event alone. Mutation caught: the advise branch wiring
     // a valve because the translation says blocked.
-    const stubDist = join(repoRoot, 'covenant-dist-stub');
-    mkdirSync(stubDist, { recursive: true });
-    // A judge body that answers "cannot judge" (exit 2) no matter the payload.
-    writeFileSync(join(stubDist, SELF_MOD_BODY), 'process.exit(2);\n');
+    // A covenant dist whose self-mod judge answers "cannot judge" (the exit-2 equivalent)
+    // no matter the payload — a mirror of the real build with that ONE module replaced, so
+    // the barrel still loads and every other registration behaves normally.
+    const stubDist = stubDistWithUnjudgeableSelfMod(repoRoot);
     writeConfig({
       protectedPaths: [PROTECTED_ENTRY],
       witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },

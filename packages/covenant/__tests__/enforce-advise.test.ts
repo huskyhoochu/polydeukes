@@ -14,7 +14,7 @@ import { dispatchCovenants } from '../src/dispatch.ts';
 //     advise relaxes ONLY the verdict cell (body exit 1 → exit 0 · 'advised'); every
 //     unjudgeable outcome (2, 3+, null) stays exit 2 · 'blocked' (§4.4 invariant).
 import { runCovenant, translateExitCode } from '../src/index.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 let dir: string;
 let telemetryPath: string;
@@ -83,9 +83,7 @@ describe('CONFIG-06 §4.4 runCovenant — enforce threaded to the wrapper', () =
     // Mutation caught: enforce accepted on the spec but never threaded, so the body still
     // blocks / logs blocked.
     const result = await runCovenant({
-      command: process.execPath,
-      args: echoToFileScript(join(dir, 'body-ran.txt'), 1),
-      stdinPayload: '{}',
+      body: markerThunk(join(dir, 'body-ran.txt'), 1),
       label: 'advise-label',
       telemetryPath,
       enforce: 'advise',
@@ -107,7 +105,7 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: ['-e', 'process.exit(1)'] },
+      body: exitThunk(1),
     };
 
     const result = await dispatchCovenants({
@@ -131,7 +129,7 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
     const reg: CovenantRegistration = {
       label: 'witness-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(join(dir, 'body-ran.txt'), 1) },
+      body: markerThunk(join(dir, 'body-ran.txt'), 1),
       witness: () => true,
     };
 
@@ -155,7 +153,7 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: ['-e', 'process.exit(0)'] },
+      body: exitThunk(0),
     };
 
     const result = await dispatchCovenants({

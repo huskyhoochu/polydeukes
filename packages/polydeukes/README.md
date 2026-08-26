@@ -18,8 +18,8 @@ one-way, through the core alone.
   itself to its own protection surface.
 - **`pdks covenant check`** — the first real subcommand of the `pdks` bin (`polydeukes` is an
   alias). A pre-commit judgment runner: staged changes are collected by `@polydeukes/adapter-git`,
-  translated into the covenant input IR, and dispatched through the very judge bodies the session
-  hook spawns — one judge, every surface. `--worktree` and `--range <base>..<head>` run the same
+  translated into the covenant input IR, and dispatched through the very in-process judges the
+  session hook calls — one judge, every surface. `--worktree` and `--range <base>..<head>` run the same
   judgment over the working tree or a ref range as a diagnostic call, with no witness prompt.
   Context-family disciplines (`requirePrecedent`) assemble
   here like any other, but with no session to read they become skip registrations: when one
@@ -32,7 +32,7 @@ one-way, through the core alone.
   the same functions the two runners call and prints them without judging: every registration
   with its kind (`meta` / `judge` / `skip` / `excluded`), the routing scope of each entry, whether
   it carries a `why`, and for each skip the compiler's reason — the one that otherwise reaches
-  stderr only when the cause is a config fault. No judge body is spawned and no telemetry row is
+  stderr only when the cause is a config fault. No judge thunk is called and no telemetry row is
   written. A config that cannot be loaded fails at exit `2` with stdout at zero bytes.
 - **`pdks init claude-code`** — the session-surface installer. It proves `polydeukes` resolves
   from the target project before writing anything, then creates what every distribution path

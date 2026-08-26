@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CovenantInput } from '@polydeukes/core';
@@ -6,7 +6,7 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // §6.1 matching core (pure) — synthetic CovenantInput builders, no I/O.
@@ -16,7 +16,7 @@ function registration(label: string, protectedPaths: string[]): CovenantRegistra
   return {
     label,
     protectedPaths,
-    body: { command: process.execPath, args: ['-e', 'process.exit(0)'] },
+    body: exitThunk(0),
   };
 }
 
@@ -176,15 +176,16 @@ afterEach(() => {
 });
 
 describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
-  it('a matching input routed to an exit-0 dummy body yields dispatcher exitCode 0 and the body received the verbatim raw payload on stdin', async () => {
-    // Mutation caught: the shell re-serializing the parsed input before forwarding it
-    // (opaque-cargo violation), or the wrapper verdict not being surfaced as-is.
+  it('a matching input routed to an exit-0 dummy body yields dispatcher exitCode 0 and the judge actually ran', async () => {
+    // Mutation caught: the dispatcher recording a verdict for a judge it never called, or
+    // the wrapper verdict not being surfaced as-is. The marker file is the execution proof
+    // the spawned echo body used to carry through stdin.
     const outFile = join(dir, 'echoed-stdin.txt');
     const rawPayload = JSON.stringify(inputWithArgs({ target: 'sub/protected/file.txt' }));
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
+      body: markerThunk(outFile),
     };
 
     const result = await dispatchCovenants({
@@ -194,7 +195,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(readFileSync(outFile, 'utf-8')).toBe(rawPayload);
+    expect(existsSync(outFile)).toBe(true);
   });
 
   it('a non-matching input yields exitCode 0, zero spawns, and zero telemetry lines', async () => {
@@ -205,7 +206,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
+      body: markerThunk(outFile),
     };
 
     const result = await dispatchCovenants({
@@ -227,7 +228,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
+      body: markerThunk(outFile),
     };
 
     const result = await dispatchCovenants({
@@ -256,12 +257,12 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     const regA: CovenantRegistration = {
       label: 'covenant-a',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFileA, 0) },
+      body: markerThunk(outFileA, 0),
     };
     const regB: CovenantRegistration = {
       label: 'covenant-b',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFileB, 1) },
+      body: markerThunk(outFileB, 1),
     };
 
     const result = await dispatchCovenants({
@@ -289,7 +290,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile) },
+      body: markerThunk(outFile),
     };
 
     const result = await dispatchCovenants({
@@ -316,7 +317,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: ['-e', 'process.exit(0)'] },
+      body: exitThunk(0),
     };
 
     const result = await dispatchCovenants({
@@ -425,7 +426,7 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: () => true,
     };
 
@@ -453,7 +454,7 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 0) },
+      body: markerThunk(outFile, 0),
       witness: () => false,
     };
 
@@ -480,7 +481,7 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: () => {
         throw new Error('boom');
       },
@@ -508,13 +509,13 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
     const regA: CovenantRegistration = {
       label: 'covenant-a',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: ['-e', 'process.exit(1)'] },
+      body: exitThunk(1),
       witness: () => true,
     };
     const regB: CovenantRegistration = {
       label: 'covenant-b',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFileB, 0) },
+      body: markerThunk(outFileB, 0),
     };
 
     const result = await dispatchCovenants({

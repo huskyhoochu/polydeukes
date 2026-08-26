@@ -272,23 +272,30 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
   const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
   const cmdEntry: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
-  function specWith(disciplines: DisciplineEntry[]): CompileDisciplinesSpec {
+  function specWith(disciplines: DisciplineEntry[], input?: CovenantInput): CompileDisciplinesSpec {
     return {
       disciplines,
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
+      ...(input === undefined ? {} : { input }),
       shellTools: ['Bash'],
       commandArgs: ['command'],
     };
   }
 
-  it('emits one registration per entry with label=id, empty protectedPaths, and the serialized body args', () => {
+  it('emits one registration per entry with label=id, empty protectedPaths, and a judging thunk', async () => {
     // P0 compiler contract: each entry becomes exactly one registration whose label is the
     // id, whose protectedPaths is [] (routing is by the matches closure, not path mention),
-    // and whose body serializes the entry + assembly values as CLI args. Mutation caught:
-    // the arg vector built in the wrong order / missing the --discipline JSON / dropping the
-    // repeated --shell-tool / --command-arg pairs.
+    // and whose body judges that entry against the bound input. Since DISPATCH-01 the entry
+    // and the assembly values reach the judge by closure rather than argv, so the wiring is
+    // proven by judging an input only THIS entry breaks on. Mutation caught: the wrong entry
+    // bound to a registration, or the root dir / shell surface dropped on the way in.
+    const violating: CovenantInput = {
+      toolCalls: [
+        { name: 'Write', fileChange: { kind: 'create', path: 'src/a.ts', post: '#abcdef\n' } },
+      ],
+      subagentSpawns: [],
+      userMessages: [],
+    };
     const regs = compileDisciplineRegistrations(specWith([forbidEntry, cmdEntry]));
 
     // Two judged registrations, then the delta entry's shell skip arm and the common
@@ -296,19 +303,16 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     expect(regs).toHaveLength(4);
     expect(regs[0].label).toBe('no-hex');
     expect(regs[0].protectedPaths).toEqual([]);
-    expect(regs[0].body?.command).toBe('/usr/bin/node');
-    expect(regs[0].body?.args).toEqual([
-      '/repo/discipline-body.js',
-      '--discipline',
-      JSON.stringify(forbidEntry),
-      '--root-dir',
-      ROOT,
-      '--shell-tool',
-      'Bash',
-      '--command-arg',
-      'command',
-    ]);
+    expect(typeof regs[0].body).toBe('function');
+
+    const outcome = await regs[0].body?.(violating);
+    expect(outcome?.exitCode).toBe(1);
+    expect(outcome?.reason).toContain('no-hex');
+    expect(outcome?.reason).toContain('src/a.ts');
+
+    // The sibling command entry is judged on its own axis, so the same input upholds it.
     expect(regs[1].label).toBe('hooks-armed');
+    expect((await regs[1].body?.(violating))?.exitCode).toBe(0);
   });
 
   it('passes the witness through to each registration when provided', () => {
@@ -344,8 +348,6 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
     const [reg] = compileDisciplineRegistrations({
       disciplines: [entry],
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
       shellTools: ['Bash'],
       commandArgs: ['command'],
     });
@@ -416,8 +418,6 @@ describe('discipline extensibility — a fresh entry works with no other setup (
     const [reg] = compileDisciplineRegistrations({
       disciplines: [fresh],
       rootDir: ROOT,
-      bodyCommand: '/usr/bin/node',
-      bodyModulePath: '/repo/discipline-body.js',
       shellTools: ['Bash'],
       commandArgs: ['command'],
     });

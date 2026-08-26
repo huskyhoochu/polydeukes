@@ -1,16 +1,17 @@
 /**
- * `runCovenant` — the covenant execution wrapper (COVENANT-01).
+ * `runCovenant` — the covenant execution wrapper (COVENANT-01, DISPATCH-01 §4.1).
  *
- * Spawns a covenant body, pipes the opaque stdin payload verbatim, translates the
- * body's exit code by policy (1 → blocking 2), and appends exactly one ROI telemetry
- * record per call via {@link appendRecordFailOpen} (the core's fail-open wrapper
- * around its sole collector — no local logger). Process spawning is confined to this file;
- * {@link translateExitCode} is pure.
+ * Calls an in-process judge thunk the assembly has already bound its payload and options
+ * into, translates the thunk's exit-code equivalent by policy (1 → blocking 2), writes the
+ * break reason to stderr, and appends exactly one ROI telemetry record per call via
+ * {@link appendRecordFailOpen} (the core's fail-open wrapper around its sole collector —
+ * no local logger). {@link translateExitCode} is pure.
  */
 
-import { spawn } from 'node:child_process';
 import {
   appendRecordFailOpen,
+  type CovenantVerdict,
+  type EnforceLevel,
   EXIT_BREAK_BLOCKING,
   EXIT_BREAK_NON_BLOCKING,
   EXIT_UPHOLD,
@@ -21,10 +22,17 @@ import {
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
 
 /**
- * `runCovenant` specification (PRD §4.1).
+ * What a judge thunk answers (DISPATCH-01 §4.1) — the shape the body CLIs used to report
+ * as an exit code plus a line on stderr: `0` uphold, `1` break, `2` unjudgeable, and
+ * `reason` naming the break for the agent that has to read it.
+ */
+export type JudgeOutcome = { exitCode: number; reason?: string };
+
+/**
+ * `runCovenant` specification (PRD §4.1, DISPATCH-01 §4.1).
  *
- * `stdinPayload` is opaque cargo — piped to the body's stdin verbatim, never parsed or
- * validated (that is the body's fail-closed `parseInput`). `subject` defaults to the
+ * `body` is an in-process judge thunk with the payload and its options already bound by
+ * the assembly; it is the only judgment this wrapper performs. `subject` defaults to the
  * `-` sentinel in telemetry when absent. `telemetryPath` is always an explicit argument.
  * `enforce` selects the translation column (CONFIG-06): absent defaults to `block`.
  * `witness` is the valve axis (COVENANT-17 §4.3) — a zero-arg thunk whose arguments the
@@ -32,13 +40,11 @@ type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
  * translated to `blocked`.
  */
 export type RunCovenantSpec = {
-  command: string;
-  args?: string[];
-  stdinPayload: string;
+  body: () => Promise<JudgeOutcome>;
   label: string;
   subject?: string;
   telemetryPath: string;
-  enforce?: 'block' | 'advise';
+  enforce?: EnforceLevel;
   witness?: () => boolean;
 };
 
@@ -56,7 +62,7 @@ export type RunCovenantSpec = {
  */
 export function translateExitCode(
   bodyExitCode: number | null,
-  enforce: 'block' | 'advise' = 'block',
+  enforce: EnforceLevel = 'block',
 ): {
   exitCode: WrapperExitCode;
   event: TelemetryEvent;
@@ -70,24 +76,40 @@ export function translateExitCode(
   return { exitCode: EXIT_BREAK_BLOCKING, event: 'blocked' };
 }
 
-/** Spawn the body, pipe the payload to its stdin, and resolve its exit code (or `null`). */
-function spawnBody(command: string, args: string[], stdinPayload: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const child = spawn(command, args, { stdio: ['pipe', 'inherit', 'inherit'] });
-
-    // Spawn failure (nonexistent executable, etc.) — cannot judge, so resolve `null`
-    // and let the translation table fail-closed. Never reject: the wrapper never throws.
-    child.on('error', () => resolve(null));
-
-    // A signal-terminated body reports code `null`; the translation table treats it as
-    // fail-closed too.
-    child.on('close', (code) => resolve(code));
-
-    // The payload is opaque — written verbatim, not serialized or validated.
-    child.stdin.on('error', () => {});
-    child.stdin.end(stdinPayload);
-  });
+/**
+ * Run the judge thunk and normalize what it answers (DISPATCH-01 §4.1).
+ *
+ * A throw is the body-crash cell — the same `2` a crashed spawn reported — so crash
+ * isolation moves from the process boundary to this try/catch. A resolution that is not
+ * the outcome shape (an old covenant dist answering the spawn contract) is uninterpretable
+ * and lands in the same cell: `null` routes to the translation table's fail-closed row
+ * without that table learning a new code.
+ */
+async function runBody(body: RunCovenantSpec['body']): Promise<JudgeOutcome> {
+  let outcome: unknown;
+  try {
+    outcome = await body();
+  } catch {
+    return { exitCode: EXIT_BREAK_BLOCKING };
+  }
+  if (typeof outcome !== 'object' || outcome === null) {
+    return { exitCode: EXIT_BREAK_BLOCKING };
+  }
+  return outcome as JudgeOutcome;
 }
+
+/**
+ * Turn a pure judge's verdict into the outcome a thunk answers (DISPATCH-01 §4.1) — the
+ * translation the body CLIs did with `verdictToExitCode` plus a write to stderr.
+ */
+export function outcomeFromVerdict(verdict: CovenantVerdict): JudgeOutcome {
+  return verdict.upheld
+    ? { exitCode: EXIT_UPHOLD }
+    : { exitCode: EXIT_BREAK_NON_BLOCKING, reason: verdict.reason };
+}
+
+/** The unjudgeable outcome: a misassembly or an input no judge could read (`2`, no reason). */
+export const UNJUDGEABLE_OUTCOME: JudgeOutcome = { exitCode: EXIT_BREAK_BLOCKING };
 
 /** Consult the valve, counting a throw as closed — an uncertain valve never opens (PRD §7-3). */
 function witnessOpens(witness: () => boolean): boolean {
@@ -99,24 +121,35 @@ function witnessOpens(witness: () => boolean): boolean {
 }
 
 /**
- * Run a covenant body through the wrapper (PRD §4).
+ * Run a covenant body through the wrapper (PRD §4, DISPATCH-01 §4.1).
  *
- * The order is spawn → translate → valve (COVENANT-17 §4.3): the body always runs, and
+ * The order is judge → translate → valve (COVENANT-17 §4.3): the body always runs, and
  * only a `blocked` translation has anything for the valve to relax into
  * `0` / `witnessed`. Whatever that leaves is recorded ONCE — one call, one row — so a
  * witnessed break never leaves a `blocked` row beside its `witnessed` one.
  *
+ * The break reason goes to stderr whenever the thunk carried one, whatever the level and
+ * whatever the final event: this write replaces the inherited fd the spawned bodies used,
+ * so gating it on the verdict would leave `advised` mute and the valve silent about what
+ * it opened.
+ *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`), the raw `bodyExitCode` for
- * observation (`null` when the body left no code), and the telemetry `event` that was
- * recorded. The event is surfaced rather than left to callers: the valve is impure, so
- * recomputing the event would consult it a second time. Logging is fail-open (PRD §4.3)
- * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and
- * never throws. The gate closes; the measurement stays open.
+ * observation (`null` when the body answered no interpretable code), and the telemetry
+ * `event` that was recorded. The event is surfaced rather than left to callers: the valve
+ * is impure, so recomputing the event would consult it a second time. Logging is fail-open
+ * (PRD §4.3) via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict
+ * and never throws. The gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,
 ): Promise<{ exitCode: WrapperExitCode; bodyExitCode: number | null; event: TelemetryEvent }> {
-  const bodyExitCode = await spawnBody(spec.command, spec.args ?? [], spec.stdinPayload);
+  const outcome = await runBody(spec.body);
+  // A code the outcome does not carry as a number is uninterpretable, and `null` is the
+  // table's existing cell for exactly that — no new row in translateExitCode.
+  const bodyExitCode = typeof outcome.exitCode === 'number' ? outcome.exitCode : null;
+  if (typeof outcome.reason === 'string' && outcome.reason !== '') {
+    process.stderr.write(`${outcome.reason}\n`);
+  }
   const verdict = translateExitCode(bodyExitCode, spec.enforce);
   const { exitCode, event }: { exitCode: WrapperExitCode; event: TelemetryEvent } =
     verdict.event === 'blocked' && spec.witness !== undefined && witnessOpens(spec.witness)

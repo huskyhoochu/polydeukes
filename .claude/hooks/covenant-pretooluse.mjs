@@ -33,8 +33,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 try {
   const { runClaudeCodeHook } = await import('polydeukes/claude-code');
   const { exitCode } = await runClaudeCodeHook({ repoRoot });
-  process.exit(exitCode);
+  process.exitCode = exitCode;
 } catch (error) {
   console.error(`covenant hook failed closed: ${error?.message ?? error}`);
-  process.exit(2);
+  process.exitCode = 2;
 }

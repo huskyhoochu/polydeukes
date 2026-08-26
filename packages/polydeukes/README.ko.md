@@ -18,7 +18,7 @@
   표면에 편입시킵니다.
 - **`pdks covenant check`.** `pdks` bin의 첫 실물 서브커맨드입니다(`polydeukes`는 별칭).
   pre-commit 판정 러너로, 스테이징 영역의 변경을 `@polydeukes/adapter-git`이 수집해
-  약속(covenant) 입력 IR로 번역하고, 세션 훅이 띄우는(spawn) 바로 그 판정 본체로 보냅니다.
+  약속(covenant) 입력 IR로 번역하고, 세션 훅이 부르는 바로 그 in-process 판정기로 보냅니다.
   판정기는 하나, 표면은 여럿입니다. `--worktree`와 `--range <base>..<head>`는 같은 판정을
   작업 트리나 ref 범위에 진단 호출로 돌리며, 증인 프롬프트는 뜨지 않습니다. 맥락족 규율(discipline, `requirePrecedent`)도 다른 규율과
   똑같이 조립되지만, 읽을 세션이 없으므로 스킵 등록이 됩니다. 스테이징 변경과 매치하면 자기

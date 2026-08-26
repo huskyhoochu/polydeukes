@@ -1,21 +1,15 @@
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// CONFIG-06b §4.1/§4.2 RED phase. A judge body that was never built makes a run
-// UNJUDGEABLE, but it arrives as body exit 1 — the same number a real break verdict
-// returns — so `advise` translates a judgment that never happened into { exit 0, advised }
-// and the commit proceeds. translateExitCode cannot separate the two (its only input is
-// that number, §4.1), so the ambiguity is removed upstream: the assembly proves each body
-// module exists and throws into the umbrella's existing fail-closed catch when one does not.
+// CONFIG-06b §4.3 — the `covenantDist` seam, from the side that must keep WORKING. The
+// fail-closed half of this axis moved to covenant-dist-module-missing.test.ts when
+// DISPATCH-01 folded the judges in-process: with no body file left to stat, the existence
+// proof became the package import, and a per-FILE absence no longer means anything. What
+// survives here is the seam's other obligation — an injected dist that CAN be resolved is
+// judged exactly as the real one, so a `passed` row is unforgeable proof a judge ran.
 //
-// New injection seam asserted here (it does NOT exist yet, so every absent-body case below
-// is RED by construction):
-//   runCovenantCheck({ ..., covenantDist?: string })
-//     absent  → the current createRequire resolution of the real package dist, so existing
-//               call sites stay unmodified (§4.2).
-//     present → the directory the judge body paths are composed under.
 // The seam is required rather than convenient: createRequire is real Node resolution and
 // ignores this package's vitest alias, so without it the umbrella always points at the real
-// build, where a body file cannot be removed.
+// build, which no fixture tree can vary.
 import { runCovenantCheck } from '../src/index.ts';
 import {
   type CheckRepo,
@@ -37,18 +31,10 @@ const DISCIPLINE_ID = 'no-todo';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
 const SCOPED_SOURCE = 'lib/a.ts';
 const FORBIDDEN_TOKEN = 'TODO';
-/** The two judge bodies the umbrella composes paths for — one per assembly site. */
-const SELF_MOD_BODY = 'self-mod-body.js';
-const DISCIPLINE_BODY = 'discipline-body.js';
 /** A body of the session surface's shell axis — one this surface never composes a path for. */
-const SHELL_MOD_BODY = 'shell-mod-body.js';
-/** The label the umbrella's fail-closed catch records under — never a judge's label. */
-const FAIL_CLOSED_LABEL = 'covenant-check';
 /** A discipline whose evidence this surface cannot speak — it compiles to a body-less skip. */
 const PRECEDENT_ID = 'needs-precedent';
 const PRECEDENT_TOOL = 'WebFetch';
-/** The recovery command a locked-out operator must be told (§4.2). */
-const RECOVERY_COMMAND = 'pnpm build';
 
 let repo: CheckRepo;
 let repoRoot: string;
@@ -57,9 +43,9 @@ let git: CheckRepo['git'];
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
-/** This suite's dist fixtures, all rooted at the current throwaway repository. */
-function distWithout(bodyFileName: string): string {
-  return sharedDistWithout(repoRoot, bodyFileName);
+/** A complete covenant dist mirror rooted at the current throwaway repository. */
+function mirroredDist(): string {
+  return sharedDistWithout(repoRoot, null);
 }
 
 /** Every telemetry row as [event, label] — the label separates a verdict from a fail-closed. */
@@ -122,91 +108,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('CONFIG-06b §4.2 covenant check — an unbuilt judge body fails closed at assembly', () => {
-  it('under advise: exit 2 and ONE covenant-check blocked row, never an advised verdict', async () => {
-    // THE blocker (§3). The body never executes, node exits 1, and 1 is also what a real
-    // break verdict returns — so advise records "a verdict was noted, commit allowed" for a
-    // judge that ran no line, and the commit proceeds. Today this run exits 0 with two
-    // advised self-mod rows. The row set is what refuses a wrong-reason green: any run that
-    // still reaches routing leaves a JUDGE's label here, so only the fail-closed label
-    // proves the assembly stopped before judging. Mutation caught: the existence proof
-    // absent from the self-mod body path, or its throw caught somewhere that records a
-    // verdict instead of the one fail-closed row.
-    stageProtectedChange('advise');
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist: distWithout(SELF_MOD_BODY),
-    });
-
-    expect(result.exitCode).toBe(2);
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL]]);
-  });
-
-  it('under block: the SAME single covenant-check row — the exit code was already right, the label was not', async () => {
-    // The label half of the same fact (§3: the verdict is right and the label is wrong).
-    // Block already exits 2 here today, but by accident: body exit 1 is translated up, so an
-    // assembly that could not judge is written down as a self-mod VERDICT against a
-    // protected entry no judge ever compared, and the gate's telemetry counts it as a real
-    // block. An exit-code-only assertion cannot see that. Mutation caught: the existence
-    // proof wired into the advise branch alone, leaving block to fabricate verdicts out of
-    // build failures.
-    stageProtectedChange('block');
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist: distWithout(SELF_MOD_BODY),
-    });
-
-    expect(result.exitCode).toBe(2);
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL]]);
-  });
-
-  it('a dist missing only the DISCIPLINE body fails closed under advise even though nothing is violated', async () => {
-    // The second assembly site, and the direction a violation fixture never reaches: the
-    // umbrella composes TWO body paths, so a proof wired at one leaves the other open. Here
-    // the staged change breaks nothing — with the discipline body absent and no proof, the
-    // spawn's exit 1 becomes { exit 0, advised } and a clean commit is recorded as having
-    // broken a discipline whose judge never started. Mutation caught: the existence proof
-    // applied to the self-mod path alone (this run would then answer exit 0 with an advised
-    // no-todo row, which is the shape the assertion refuses).
-    stageCleanScopedChange('advise');
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist: distWithout(DISCIPLINE_BODY),
-    });
-
-    expect(result.exitCode).toBe(2);
-    expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL]]);
-  });
-
-  it('names the missing body file and the recovery command on stderr', async () => {
-    // Fail-closed at the composition root is a lockout: the operator cannot edit their way
-    // out, only rebuild (CLAUDE.md's recovery contract). An error that says nothing but
-    // ENOENT leaves them without either half of that. §4.2 makes both halves part of the
-    // message. Mutation caught: a bare throw with no filename, or one naming the file while
-    // leaving the recovery command to be guessed.
-    stageProtectedChange('advise');
-    const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
-
-    await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist: distWithout(SELF_MOD_BODY),
-    });
-
-    const emitted = stderrWrite.mock.calls.map((call) => String(call[0])).join('');
-    expect(emitted).toContain(SELF_MOD_BODY);
-    expect(emitted).toContain(RECOVERY_COMMAND);
-  });
-});
-
-describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly as before', () => {
-  it('a dist missing a body this surface never assembles is left alone (exit 0)', async () => {
+describe('CONFIG-06b §4.3 covenant check — a resolvable dist is judged exactly as before', () => {
+  it('an injected COMPLETE mirror judges the protected change exactly as the real dist', async () => {
     // The over-blocking end of the same axis, and the only case that observes §4.2's form
     // constraint — "the function that PRODUCES a path proves it" — from the outside. Every
     // other absent-body fixture removes a body the umbrella really composes a path for, so
@@ -220,7 +123,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist: distWithout(SHELL_MOD_BODY),
+      covenantDist: mirroredDist(),
     });
 
     expect(result.exitCode).toBe(0);
@@ -230,7 +133,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     ]);
   });
 
-  it('a dist missing the discipline body is left alone when no disciplines are declared (exit 0)', async () => {
+  it('a config declaring no disciplines still judges and still compiles the backstop (exit 0)', async () => {
     // The same over-block one level subtler than the sibling above. A config with no
     // `disciplines` still compiles one registration — the body-less `shell-unjudgeable`
     // backstop — so this surface never spawns that body, and demanding it closes a commit
@@ -242,7 +145,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist: distWithout(DISCIPLINE_BODY),
+      covenantDist: mirroredDist(),
     });
 
     expect(result.exitCode).toBe(0);
@@ -252,7 +155,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     ]);
   });
 
-  it('a discipline compiling to a body-less skip does not demand the discipline body (exit 0)', async () => {
+  it('a discipline compiling to a body-less skip records skipped, not a fail-closed (exit 0)', async () => {
     // F2, the review's second finding. Declaring a discipline is not the same as spawning
     // one: this entry's evidence vocabulary is one the commit surface does not speak, so it
     // compiles to a skip with no body and nothing will ever run. An assembly that reads
@@ -267,7 +170,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist: distWithout(DISCIPLINE_BODY),
+      covenantDist: mirroredDist(),
     });
 
     expect(result.exitCode).toBe(0);
@@ -315,7 +218,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     expect(rows()).toEqual([['passed', DISCIPLINE_ID]]);
   });
 
-  it('a body runs out of a distWithout() mirror too — passed is the only unforgeable proof', async () => {
+  it('a judge runs out of an injected mirror too — passed is the only unforgeable proof', async () => {
     // F3, fixture honesty. Every over-block pin above reads `advised` rows out of a mirror,
     // and `advised` is forgeable: a body that dies at import also exits 1, so a mirror that
     // stopped producing runnable bodies would leave those pins green while the surface
@@ -336,7 +239,7 @@ describe('CONFIG-06b §4.3 covenant check — a present body is judged exactly a
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist: distWithout(SHELL_MOD_BODY),
+      covenantDist: mirroredDist(),
     });
 
     expect(result.exitCode).toBe(0);

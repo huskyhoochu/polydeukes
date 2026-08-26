@@ -1,13 +1,10 @@
-import { execFileSync, spawnSync } from 'node:child_process';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type {
   CanonicalTranscript,
   CovenantInput,
   DisciplineEntry,
   FileChange,
 } from '@polydeukes/core';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 // COVENANT-13 §4.4 / AC 7–9 — the fourth discipline family (`requirePrecedent`): a
 // trigger-matched mutation breaks unless session evidence preceded it. The body is a
 // spawned CLI, so evidence is evaluated at ASSEMBLY time and transported as an argv
@@ -19,6 +16,7 @@ import {
   type DisciplineJudgeOptions,
   judgeDiscipline,
 } from '../src/discipline.ts';
+import type { CovenantRegistration } from '../src/dispatch.ts';
 
 // ---------------------------------------------------------------------------
 // Fixtures. Shell tool names, command arg names, and evidence vocabularies are
@@ -98,12 +96,26 @@ function contextSpec(
   return {
     disciplines,
     rootDir: ROOT,
-    bodyCommand: '/usr/bin/node',
-    bodyModulePath: '/repo/discipline-body.js',
+    // Bound so the compiled thunk has a triggering call set to judge: since DISPATCH-01
+    // the evidence decision rides INSIDE the thunk instead of in an argv flag, so it is
+    // read from the verdict — uphold means found, break means missing.
     shellTools: ['Bash'],
     commandArgs: ['command'],
     ...extra,
   } as CompileDisciplinesSpec;
+}
+
+/**
+ * The evidence decision the compiled thunk carries, read from the verdict it answers for a
+ * call that FIRES the entry's trigger — an out-of-scope input never triggers, and an
+ * untriggered entry upholds, which would read as `found` whatever the seam answered.
+ */
+async function precedentDecision(
+  reg: CovenantRegistration,
+  input: CovenantInput = triggeredInput(),
+): Promise<'found' | 'missing'> {
+  const outcome = await reg.body?.(input);
+  return outcome?.exitCode === 0 ? 'found' : 'missing';
 }
 
 // ===========================================================================
@@ -279,7 +291,7 @@ describe('judgeDiscipline — precedentFound does not leak into other families (
 // ===========================================================================
 
 describe('compileDisciplineRegistrations — command evidence transport (AC 7)', () => {
-  it('transports --precedent-found when a shell tool call command matches the pattern', () => {
+  it('transports --precedent-found when a shell tool call command matches the pattern', async () => {
     // P0 transport, found direction: matching shell history must arrive at the body as
     // the found flag (and never both flags). No evaluatePrecedent is injected — the
     // compiler owns the command vocabulary itself. Mutation caught: the compiler
@@ -290,11 +302,10 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body?.args).toContain('--precedent-found');
-    expect(reg.body?.args).not.toContain('--precedent-missing');
+    expect(await precedentDecision(reg)).toBe('found');
   });
 
-  it('transports --precedent-missing when no shell command matches', () => {
+  it('transports --precedent-missing when no shell command matches', async () => {
     // P0 transport, missing direction: unrelated shell history is not evidence.
     // Mutation caught: the pattern test dropped (any Bash call at all counts as found).
     const transcript = transcriptWithToolCalls([
@@ -302,11 +313,10 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body?.args).toContain('--precedent-missing');
-    expect(reg.body?.args).not.toContain('--precedent-found');
+    expect(await precedentDecision(reg)).toBe('missing');
   });
 
-  it('ignores a matching command on a tool outside shellTools (not evidence)', () => {
+  it('ignores a matching command on a tool outside shellTools (not evidence)', async () => {
     // P0 shell filter: findToolCalls returns every call, so the compiler MUST re-filter
     // by the injected shellTools before reading command args. Mutation caught: the name
     // filter dropped — any tool whose args happen to carry the string would open the gate.
@@ -315,10 +325,10 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body?.args).toContain('--precedent-missing');
+    expect(await precedentDecision(reg)).toBe('missing');
   });
 
-  it('ignores a matching value under an arg name outside commandArgs (not evidence)', () => {
+  it('ignores a matching value under an arg name outside commandArgs (not evidence)', async () => {
     // P0 command-arg filter: only the injected commandArgs names carry a command string.
     // Mutation caught: the compiler scanning every arg value of a shell call (a mention
     // of the pattern in an unrelated arg would forge the evidence).
@@ -327,10 +337,10 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([whenEntry], { transcript }));
 
-    expect(reg.body?.args).toContain('--precedent-missing');
+    expect(await precedentDecision(reg)).toBe('missing');
   });
 
-  it('matches the command as a regex, not a substring', () => {
+  it('matches the command as a regex, not a substring', async () => {
     // P0 match semantics (PRD §4.1: the command string matches the pattern as a REGEX —
     // the forbidCommand precedent): an alternation only matches under regex semantics.
     // Mutation caught: the evidence check implemented as String.includes — this
@@ -346,7 +356,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     ]);
     const [reg] = compileDisciplineRegistrations(contextSpec([regexEntry], { transcript }));
 
-    expect(reg.body?.args).toContain('--precedent-found');
+    expect(await precedentDecision(reg)).toBe('found');
   });
 
   // A sessionless assembly no longer transports `missing` — it produces a skip
@@ -360,7 +370,12 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
     requirePrecedent: { subagent: 'planner' },
   } as DisciplineEntry;
 
-  it('transports --precedent-found when the evaluator affirms, passing the evidence verbatim', () => {
+  /** A change inside THIS entry's scope, so its trigger actually fires. */
+  const sacredInput = inputWithEvidence([
+    { kind: 'create', path: 'sacred/altar.ts', post: 'export const x = 1;\n' },
+  ]);
+
+  it('transports --precedent-found when the evaluator affirms, passing the evidence verbatim', async () => {
     // P0 delegation contract: a non-command key goes to the injected evaluator, which
     // receives the ENTRY'S evidence object (not the whole entry) and whose true becomes
     // the found flag. Mutation caught: the compiler passing the wrong object to the seam,
@@ -377,11 +392,11 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
       }),
     );
 
-    expect(reg.body?.args).toContain('--precedent-found');
+    expect(await precedentDecision(reg, sacredInput)).toBe('found');
     expect(seen).toEqual([{ subagent: 'planner' }]);
   });
 
-  it('transports --precedent-missing when the evaluator denies', () => {
+  it('transports --precedent-missing when the evaluator denies', async () => {
     // P0 delegation, missing direction: false from the seam must land as missing (not be
     // confused with undefined/unrecognized). Mutation caught: false and undefined merged
     // into one branch — a legitimate "no evidence" answer would throw instead of block.
@@ -392,37 +407,13 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
       }),
     );
 
-    expect(reg.body?.args).toContain('--precedent-missing');
+    expect(await precedentDecision(reg, sacredInput)).toBe('missing');
   });
 });
 
 // Assembly no longer fails closed by throwing — an unresolvable evidence spec becomes a
 // skip registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5). The
 // throw took every sibling registration and the witness valve down with it.
-
-describe('compileDisciplineRegistrations — existing families carry no precedent flags (AC 9)', () => {
-  it('forbid, immutable, and forbidCommand registrations get neither precedent flag', () => {
-    // P0 regression fence: the transport is context-family-only. Mutation caught: the
-    // compiler appending a precedent flag unconditionally — every existing discipline
-    // body would hit the misassembly gate (or worse, be handed found and judged wrong).
-    const transcript = transcriptWithToolCalls([
-      { name: 'Bash', args: { command: 'npm view react version' } },
-    ]);
-    const entries: DisciplineEntry[] = [
-      { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' },
-      { id: 'lockfile', immutable: ['config/*.lock'] },
-      { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=0\\b' },
-    ];
-    const regs = compileDisciplineRegistrations(contextSpec(entries, { transcript }));
-
-    // The shell-axis skip registrations carry no body at all, so only the judged ones
-    // have args a flag could ride on (COVENANT-10b §2-c).
-    for (const reg of regs.filter((candidate) => candidate.body !== undefined)) {
-      expect(reg.body?.args).not.toContain('--precedent-found');
-      expect(reg.body?.args).not.toContain('--precedent-missing');
-    }
-  });
-});
 
 // ===========================================================================
 // PRD §4.4 — routing: matches fires on the trigger alone, evidence-blind
@@ -493,105 +484,46 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
 });
 
 // ===========================================================================
-// AC 9 — the spawned body's precedent-flag gate (real compiled artifact)
+// AC 9 — the compiled thunk's precedent gate
 // ===========================================================================
 
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-const bodyPath = fileURLToPath(new URL('../dist/discipline-body.js', import.meta.url));
-
-beforeAll(() => {
-  execFileSync('pnpm', ['exec', 'turbo', 'run', 'build', '--filter=@polydeukes/covenant'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-  });
-}, 120_000);
-
-describe('discipline-body CLI — precedent flag gate (AC 9)', () => {
-  const baseArgs = [
-    bodyPath,
-    '--discipline',
-    JSON.stringify(whenEntry),
-    '--root-dir',
-    ROOT,
-    '--shell-tool',
-    'Bash',
-    '--command-arg',
-    'command',
-  ];
-
-  function spawnBody(extraArgs: string[], input: CovenantInput) {
-    return spawnSync(process.execPath, [...baseArgs, ...extraArgs], {
-      input: JSON.stringify(input),
-      encoding: 'utf-8',
-    });
+describe('compiled discipline thunk — precedent gate (AC 9)', () => {
+  /** Judge one entry's thunk against `input`, with the evidence decision the spec implies. */
+  async function judgeEntry(
+    entry: DisciplineEntry,
+    input: CovenantInput,
+    extra: Record<string, unknown> = {},
+  ): Promise<{ exitCode: number; reason?: string }> {
+    const [reg] = compileDisciplineRegistrations(contextSpec([entry], extra));
+    return (await reg?.body?.(input)) ?? { exitCode: 2 };
   }
 
-  it('a context entry arriving with neither precedent flag exits 2 (misassembly fail-closed)', () => {
-    // The compiler cannot emit this shape any more — an entry it cannot evaluate becomes a
-    // skip registration — but the body is a shipped CLI a third party can spawn directly,
-    // or pin against an older compiler. It must stay exit 2 rather than the judged break's
-    // exit 1, because `enforce: advise` translates a break into an advisory that lets the
-    // commit through, and a misassembly has to block at either level. Mutation caught: the
-    // gate deleted as unreachable, or an absent flag defaulting to found.
-    const result = spawnBody([], triggeredInput());
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a context entry with --precedent-found and a matching trigger exits 0', () => {
-    // P0 pass path end-to-end: the transported found flag must reach the judge as
-    // precedentFound=true. Mutation caught: the flag parsed but never wired into the
-    // judge options (evidence could never open the gate at the body).
-    const result = spawnBody(['--precedent-found'], triggeredInput());
-
-    expect(result.status).toBe(0);
-  });
-
-  it('a context entry with --precedent-missing and a matching trigger exits 1, naming the id on stderr', () => {
+  it('missing evidence on a matching trigger breaks, naming the id in the reason', async () => {
     // P0 block path end-to-end: missing evidence + trigger = a judged break, which in the
-    // body exit-code protocol is exit 1 (run_covenant translates 1 into the blocking 2 —
-    // the same shape the self-mod body pins). Mutation caught: the missing flag treated
-    // as uphold (fail-open), or the break reason not surfaced on stderr.
-    const result = spawnBody(['--precedent-missing'], triggeredInput());
+    // outcome protocol is exit 1 (runCovenant translates 1 into the blocking 2 — the same
+    // shape the self-mod judge pins). The id in the REASON is what reaches the agent's
+    // stderr through the wrapper, and no sibling probe in this file asserts it. Mutation
+    // caught: the missing direction treated as uphold (fail-open), or the break reason
+    // built without the entry id.
+    const result = await judgeEntry(whenEntry, triggeredInput(), {
+      transcript: transcriptWithToolCalls([]),
+    });
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('dep-needs-view');
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toContain('dep-needs-view');
   });
 
-  it('a context entry arriving with BOTH precedent flags exits 2 (contradictory assembly)', () => {
-    // P0 decision fixture: two contradictory evidence verdicts cannot be judged — the
-    // consistent disposition is the misassembly exit, never picking one flag silently.
-    // Mutation caught: last-flag-wins parsing (a contradictory assembly judged as if
-    // it were coherent, in whichever direction the parser happens to prefer).
-    const result = spawnBody(['--precedent-found', '--precedent-missing'], triggeredInput());
-
-    expect(result.status).toBe(2);
-  });
-
-  it('a forbid entry without precedent flags is untouched by the gate (still exits 1 on a break)', () => {
-    // P0 regression fence at the body: the flag gate is context-family-only. Mutation
-    // caught: the gate applied to every family — all existing discipline bodies would
-    // exit 2 on arrival, turning the whole standard library into misassembly noise.
+  it('a forbid entry is untouched by the precedent gate (still breaks on its own axis)', async () => {
+    // P0 regression fence: the gate is context-family-only. Mutation caught: the gate
+    // applied to every family — every discipline thunk would answer the misassembly
+    // outcome on arrival, turning the whole standard library into noise.
     const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const input = inputWithEvidence([
       { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
-    const result = spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--discipline',
-        JSON.stringify(forbidHex),
-        '--root-dir',
-        ROOT,
-        '--shell-tool',
-        'Bash',
-        '--command-arg',
-        'command',
-      ],
-      { input: JSON.stringify(input), encoding: 'utf-8' },
-    );
 
-    expect(result.status).toBe(1);
+    const result = await judgeEntry(forbidHex, input);
+
+    expect(result.exitCode).toBe(1);
   });
 });

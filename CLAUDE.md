@@ -73,9 +73,14 @@ session locks.
 - **A RENAME of anything the hook or config names has no safe build order** — dist, hook, and
   config must land together: package sources first (session-free), then swap the hook and root
   config in one witness window, then build. Beware test suites whose `beforeAll` rebuilds dist
-  (the covenant five and both adapter e2e suites): run one after renaming sources and the
-  session locks, every mutating call refused, until a human edits the two protected files in
-  their own terminal.
+  (the set moves with the tests — enumerate it with
+  `rg -l 'turbo run build|pnpm build' packages/*/__tests__` before relying on it): run one
+  while the source tree is mid-change — a rename, or any cross-package contract change — and
+  the session locks, every mutating call refused, until a human runs the recovery in their own
+  terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one package's dist
+  rebuilt against sources the sibling dist has not seen crashes assembly on every call, and
+  `pnpm build` (run by a human — the locked session cannot) clears it only if the whole tree
+  already typechecks, so gate any dist-touching command on `tsc --noEmit` first.
 - **Rewiring the hook cuts your own valve** — the delegator and the dist it loads are two links
   of one protected chain. Verify a rewired hook against real payloads *before* relying on it,
   and never remove the current valve until the replacement is proven; otherwise recovery is a

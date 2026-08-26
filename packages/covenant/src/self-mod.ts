@@ -11,7 +11,9 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
+import type { CovenantRegistration } from './dispatch.js';
 import { mentionsPath, pathMatchesProtected, provenChangePath } from './mention.js';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 
 /**
  * `SelfModificationSpec` — the injected axes of the judge (PRD §4.1).
@@ -68,4 +70,52 @@ export function judgeSelfModification(
   }
 
   return { upheld: true };
+}
+
+/**
+ * `SelfModRegistrationSpec` — the assembly values baked into the registration
+ * (DISPATCH-01 §4.4). The call set is not among them: the dispatcher supplies it to the
+ * judge at call time, so one built registration serves every payload.
+ */
+export type SelfModRegistrationSpec = {
+  protectedPaths: string[];
+  mutatingToolNames: string[];
+  witness?: CovenantRegistration['witness'];
+};
+
+/**
+ * Build the self-mod registration (DISPATCH-01 §4.4). Routing stays path mention; the
+ * judgment is the thunk.
+ *
+ * The misassembly gate the CLI body held lives at the thunk's entry: zero valid entries in
+ * either list would make {@link judgeSelfModification} uphold every call, so it answers the
+ * unjudgeable outcome instead, which no enforce level softens.
+ */
+export function selfModRegistration(
+  spec: SelfModRegistrationSpec,
+): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
+  const judgeSpec: SelfModificationSpec = {
+    protectedPaths: spec.protectedPaths,
+    mutatingToolNames: spec.mutatingToolNames,
+  };
+  return {
+    label: 'self-mod',
+    protectedPaths: spec.protectedPaths,
+    body: async (input) => {
+      if (
+        judgeSpec.protectedPaths.filter((path) => path !== '').length === 0 ||
+        judgeSpec.mutatingToolNames.filter((name) => name !== '').length === 0
+      ) {
+        return UNJUDGEABLE_OUTCOME;
+      }
+      try {
+        return outcomeFromVerdict(judgeSelfModification(input, judgeSpec));
+      } catch {
+        // Structurally unjudgeable input that passed parseInput (element shapes are an
+        // intended CORE-01 boundary): cannot judge means block.
+        return UNJUDGEABLE_OUTCOME;
+      }
+    },
+    ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
+  };
 }

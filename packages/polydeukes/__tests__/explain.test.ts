@@ -8,9 +8,14 @@ import type { CovenantRegistration } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
 import { assembleCommitRegistrations } from '../src/covenant-check.ts';
+import { loadCovenantModule } from '../src/covenant-module.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { REAL_COVENANT_DIST, writeConfigAt } from './helpers';
+
+/** The covenant module both `explain` and the direct assemblies below judge with — loaded
+ * from the real dist so the render and the assembly cannot diverge on which judges exist. */
+const realCovenant = await loadCovenantModule(REAL_COVENANT_DIST);
 
 const COMMON_PATHS = ['gate-a', 'gate-b'];
 const GIT_ONLY_PATHS = ['gate-c'];
@@ -127,16 +132,16 @@ function lineOf(text: string, header: string, kind: Kind, label: string): string
 }
 
 describe("CLI-01 §7 invariant 1 / AC-2 — explain renders the roots' own assembly", () => {
-  it('renders the commit surface in the exact label order assembleCommitRegistrations returns', () => {
+  it('renders the commit surface in the exact label order assembleCommitRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
     const { config } = loadConfig(repoRoot);
 
     const expected = assembleCommitRegistrations({
       config,
       rootDir: repoRoot,
-      covenantDist: REAL_COVENANT_DIST,
+      covenant: realCovenant,
     }).map((registration: CovenantRegistration) => registration.label);
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const rendered = kindLabelRows(surfaceSection(text, COMMIT_HEADER))
       .filter(([kind]) => kind !== 'excluded')
       .map(([, label]) => label);
@@ -144,17 +149,17 @@ describe("CLI-01 §7 invariant 1 / AC-2 — explain renders the roots' own assem
     expect(rendered).toEqual(expected);
   });
 
-  it('renders the session surface in the exact label order assembleSessionRegistrations returns', () => {
+  it('renders the session surface in the exact label order assembleSessionRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
     const { config } = loadConfig(repoRoot);
 
     const expected = assembleSessionRegistrations({
       config,
       rootDir: repoRoot,
-      covenantDist: REAL_COVENANT_DIST,
+      covenant: realCovenant,
       transcriptPath: join(repoRoot, 'session.jsonl'),
     }).map((registration: CovenantRegistration) => registration.label);
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const rendered = kindLabelRows(surfaceSection(text, SESSION_HEADER)).map(([, label]) => label);
 
     expect(rendered).toEqual(expected);
@@ -162,39 +167,39 @@ describe("CLI-01 §7 invariant 1 / AC-2 — explain renders the roots' own assem
 });
 
 describe('CLI-01 AC-3 — the four skip reasons surface with their entry', () => {
-  it('commit surface: a requirePrecedent command entry skips with the absent-transcript reason', () => {
+  it('commit surface: a requirePrecedent command entry skips with the absent-transcript reason', async () => {
     writeFixtureConfig([npmViewEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(lineOf(text, COMMIT_HEADER, 'skip', NPM_VIEW_ID)).toContain(
       'no session transcript to read',
     );
   });
 
-  it('commit surface: a requirePrecedent tool entry skips with the absent-evaluator reason', () => {
+  it('commit surface: a requirePrecedent tool entry skips with the absent-evaluator reason', async () => {
     writeFixtureConfig([context7Entry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(lineOf(text, COMMIT_HEADER, 'skip', CONTEXT7_ID)).toContain(
       'no precedent evaluator injected',
     );
   });
 
-  it("renders a delta entry's shell-skip arm under the entry id with its reason", () => {
+  it("renders a delta entry's shell-skip arm under the entry id with its reason", async () => {
     writeFixtureConfig([vocabEntry]);
 
-    const session = surfaceSection(explain({ repoRoot }).text, SESSION_HEADER);
+    const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
     expect(linesOf(session, 'judge', VOCAB_ID)).toHaveLength(1);
     expect(linesOf(session, 'skip', VOCAB_ID).join('\n')).toContain('shell write in scope');
   });
 
-  it('renders the shell-unjudgeable backstop with its reason on both surfaces', () => {
+  it('renders the shell-unjudgeable backstop with its reason on both surfaces', async () => {
     writeFixtureConfig([]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of [SESSION_HEADER, COMMIT_HEADER]) {
       expect(lineOf(text, header, 'skip', 'shell-unjudgeable')).toContain(
@@ -203,10 +208,10 @@ describe('CLI-01 AC-3 — the four skip reasons surface with their entry', () =>
     }
   });
 
-  it('session surface: a context entry is a judge, not a skip — the model carries a transcript', () => {
+  it('session surface: a context entry is a judge, not a skip — the model carries a transcript', async () => {
     writeFixtureConfig([npmViewEntry, context7Entry]);
 
-    const session = surfaceSection(explain({ repoRoot }).text, SESSION_HEADER);
+    const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
     expect(linesOf(session, 'judge', NPM_VIEW_ID)).toHaveLength(1);
     expect(linesOf(session, 'judge', CONTEXT7_ID)).toHaveLength(1);
@@ -216,10 +221,10 @@ describe('CLI-01 AC-3 — the four skip reasons surface with their entry', () =>
 });
 
 describe('CLI-01 AC-4 / AC-5 — surface placement', () => {
-  it('renders a forbidCommand entry as excluded on the commit surface and as judge on the session surface', () => {
+  it('renders a forbidCommand entry as excluded on the commit surface and as judge on the session surface', async () => {
     writeFixtureConfig([hooksEntry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const commit = surfaceSection(text, COMMIT_HEADER);
     const session = surfaceSection(text, SESSION_HEADER);
 
@@ -229,19 +234,19 @@ describe('CLI-01 AC-4 / AC-5 — surface placement', () => {
     expect(linesOf(session, 'excluded', HOOKS_ID)).toHaveLength(0);
   });
 
-  it('self-mod counts the common list (+config) on session and the git union on commit', () => {
+  it('self-mod counts the common list (+config) on session and the git union on commit', async () => {
     writeFixtureConfig([]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(lineOf(text, SESSION_HEADER, 'meta', 'self-mod')).toMatch(/paths 3\b/);
     expect(lineOf(text, COMMIT_HEADER, 'meta', 'self-mod')).toMatch(/paths 4\b/);
   });
 
-  it('shell-mod and transcript-mod exist only on the session surface', () => {
+  it('shell-mod and transcript-mod exist only on the session surface', async () => {
     writeFixtureConfig([]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
     const session = surfaceSection(text, SESSION_HEADER);
     const commit = surfaceSection(text, COMMIT_HEADER);
 
@@ -253,10 +258,10 @@ describe('CLI-01 AC-4 / AC-5 — surface placement', () => {
 });
 
 describe('CLI-01 AC-6 / AC-7 — routing scope per family and the why mark', () => {
-  it('renders the delta scope as `in` globs and the `except` globs, with why ✓', () => {
+  it('renders the delta scope as `in` globs and the `except` globs, with why ✓', async () => {
     writeFixtureConfig([vocabEntry]);
 
-    const line = lineOf(explain({ repoRoot }).text, SESSION_HEADER, 'judge', VOCAB_ID);
+    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', VOCAB_ID);
 
     expect(line).toContain('forbid');
     expect(line).toContain('in lib/**, src/**');
@@ -264,38 +269,38 @@ describe('CLI-01 AC-6 / AC-7 — routing scope per family and the why mark', () 
     expect(line).toContain('why ✓');
   });
 
-  it('renders a delta entry with no `in` as `every file`, with why —', () => {
+  it('renders a delta entry with no `in` as `every file`, with why —', async () => {
     writeFixtureConfig([anyFileEntry]);
 
-    const line = lineOf(explain({ repoRoot }).text, SESSION_HEADER, 'judge', ANY_FILE_ID);
+    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', ANY_FILE_ID);
 
     expect(line).toContain('every file');
     expect(line).not.toContain('except');
     expect(line).toContain('why —');
   });
 
-  it('renders the path family as `immutable <glob>`', () => {
+  it('renders the path family as `immutable <glob>`', async () => {
     writeFixtureConfig([changelogEntry]);
 
-    const line = lineOf(explain({ repoRoot }).text, COMMIT_HEADER, 'judge', CHANGELOG_ID);
+    const line = lineOf((await explain({ repoRoot })).text, COMMIT_HEADER, 'judge', CHANGELOG_ID);
 
     expect(line).toContain('immutable CHANGELOG.md');
     expect(line).not.toContain('every file');
   });
 
-  it('renders the command family as `(no path scope)`', () => {
+  it('renders the command family as `(no path scope)`', async () => {
     writeFixtureConfig([hooksEntry]);
 
-    const line = lineOf(explain({ repoRoot }).text, SESSION_HEADER, 'judge', HOOKS_ID);
+    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', HOOKS_ID);
 
     expect(line).toContain('forbidCommand');
     expect(line).toContain('(no path scope)');
   });
 
-  it('renders the context family with its evidence key and `in` scope', () => {
+  it('renders the context family with its evidence key and `in` scope', async () => {
     writeFixtureConfig([npmViewEntry, context7Entry]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(lineOf(text, SESSION_HEADER, 'judge', NPM_VIEW_ID)).toContain(
       'requirePrecedent command',
@@ -306,10 +311,10 @@ describe('CLI-01 AC-6 / AC-7 — routing scope per family and the why mark', () 
 });
 
 describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () => {
-  it('a multi-entry config: registrations N equals the counted registration lines on each surface', () => {
+  it('a multi-entry config: registrations N equals the counted registration lines on each surface', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     for (const header of [SESSION_HEADER, COMMIT_HEADER]) {
       const section = surfaceSection(text, header);
@@ -325,10 +330,10 @@ describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () =
     }
   });
 
-  it('disciplines: [] — the smallest assembly is 4 session rows and 2 commit rows', () => {
+  it('disciplines: [] — the smallest assembly is 4 session rows and 2 commit rows', async () => {
     writeFixtureConfig([]);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
       registrations: 4,
@@ -346,10 +351,10 @@ describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () =
     });
   });
 
-  it('the multi-entry config: absolute tallies differ per surface and count the excluded entry', () => {
+  it('the multi-entry config: absolute tallies differ per surface and count the excluded entry', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
       registrations: 14,
@@ -367,10 +372,10 @@ describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () =
     });
   });
 
-  it('names the config file in the header and never spells the telemetry event', () => {
+  it('names the config file in the header and never spells the telemetry event', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(text.split('\n')[0]).toContain('pdks explain — ');
     expect(text.split('\n')[0]).toContain('polydeukes.config.json');
@@ -379,21 +384,25 @@ describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () =
 });
 
 describe('CLI-01 — the commit surface names its enforce level', () => {
-  it('renders enforce: block by default and enforce: advise when the namespace says so', () => {
+  it('renders enforce: block by default and enforce: advise when the namespace says so', async () => {
     writeFixtureConfig([]);
-    expect(surfaceSection(explain({ repoRoot }).text, COMMIT_HEADER)).toContain('enforce: block');
+    expect(surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER)).toContain(
+      'enforce: block',
+    );
 
     writeConfigAt(repoRoot, telemetryPath, {
       protectedPaths: COMMON_PATHS,
       adapters: { git: { enforce: 'advise', protectedPaths: GIT_ONLY_PATHS } },
       disciplines: [],
     });
-    expect(surfaceSection(explain({ repoRoot }).text, COMMIT_HEADER)).toContain('enforce: advise');
+    expect(surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER)).toContain(
+      'enforce: advise',
+    );
   });
 });
 
 describe('CLI-01 — the live config format', () => {
-  it('reads a yaml config and names it in the header', () => {
+  it('reads a yaml config and names it in the header', async () => {
     writeFileSync(
       join(repoRoot, 'polydeukes.config.yaml'),
       [
@@ -408,7 +417,7 @@ describe('CLI-01 — the live config format', () => {
       ].join('\n'),
     );
 
-    const { text } = explain({ repoRoot });
+    const { text } = await explain({ repoRoot });
 
     expect(text.split('\n')[0]).toContain('polydeukes.config.yaml');
     expect(lineOf(text, COMMIT_HEADER, 'judge', VOCAB_ID)).toContain('forbid');
@@ -416,18 +425,21 @@ describe('CLI-01 — the live config format', () => {
 });
 
 describe('CLI-01 §7 inv. 2-3 / failure shape — explain observes, never judges', () => {
-  it('writes no telemetry row and no baseline file', () => {
+  it('writes no telemetry row and no baseline file', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
-    explain({ repoRoot });
+    await explain({ repoRoot });
 
     expect(existsSync(telemetryPath)).toBe(false);
     expect(existsSync(join(repoRoot, '.polydeukes', 'baseline.json'))).toBe(false);
     expect(existsSync(join(repoRoot, '.polydeukes', 'roi.log'))).toBe(false);
   });
 
-  it('throws naming the config when the repository has none', () => {
-    expect(() => explain({ repoRoot })).toThrow(/config/);
+  it('rejects naming the config when the repository has none', async () => {
+    // `rejects`, never a synchronous toThrow: explain is async since it imports the
+    // covenant dist, and a wrapped call would resolve the assertion unconditionally while
+    // the rejection escaped as an unhandled promise.
+    await expect(explain({ repoRoot })).rejects.toThrow(/config/);
   });
 });
 

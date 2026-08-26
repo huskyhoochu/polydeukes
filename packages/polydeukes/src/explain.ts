@@ -14,14 +14,14 @@
  * cannot be given is never given halfway.
  */
 
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { resolveGitAdapterSettings } from '@polydeukes/adapter-git';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { noopTranscript } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { assembleSessionRegistrations } from './claude-code-hook.js';
 import { assembleCommitRegistrations } from './covenant-check.js';
+import { loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
 
 /** `explain` input — the repository whose config is read. */
@@ -141,23 +141,26 @@ function renderSurface(spec: {
  * compiler would report every context entry as a skip, which is the COMMIT surface's answer,
  * not the session's.
  */
-export function explain(spec: ExplainSpec): { text: string } {
+export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   const { config, configPath } = loadConfig(spec.repoRoot);
-  const covenantDist = dirname(createRequire(import.meta.url).resolve('@polydeukes/covenant'));
+  // Resolved and imported exactly as the two runners do, so what this renders is the table
+  // that would judge: a dist those runners would refuse cannot be rendered as if it worked
+  // (DISPATCH-01 §4.2). The load names the missing module and the recovery command.
+  const covenant = await loadCovenantModule(resolveCovenantDist());
   const disciplines: DisciplineEntry[] = config.disciplines ?? [];
   const drafts: DisciplineDraft[] = config.drafts ?? [];
 
   const session = assembleSessionRegistrations({
     config,
     rootDir: spec.repoRoot,
-    covenantDist,
+    covenant,
     transcriptPath: join(spec.repoRoot, 'transcript.jsonl'),
     transcript: noopTranscript,
   });
   const commit = assembleCommitRegistrations({
     config,
     rootDir: spec.repoRoot,
-    covenantDist,
+    covenant,
   });
   const gitSettings = resolveGitAdapterSettings(config.adapters?.git);
 

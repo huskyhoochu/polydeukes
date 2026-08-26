@@ -61,6 +61,40 @@ export function distWithout(repoRoot: string, omitBody: string | null): string {
 }
 
 /**
+ * A covenant dist mirroring the real build with ONE module replaced: `self-mod.js` re-exports
+ * the real one but overrides `selfModRegistration` to answer the unjudgeable outcome (exit-2
+ * equivalent) for every payload. The barrel still loads and every other registration behaves
+ * normally, so what a run observes is a judge that cannot judge — the in-process successor of
+ * the `process.exit(2)` stub body.
+ */
+export function stubDistWithUnjudgeableSelfMod(repoRoot: string): string {
+  const stubDist = join(repoRoot, 'covenant-dist-stub');
+  mkdirSync(stubDist, { recursive: true });
+  const overridden = 'self-mod.js';
+  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
+    if (entry === overridden) continue;
+    symlinkSync(join(REAL_COVENANT_DIST, entry), join(stubDist, entry));
+  }
+  // Written beside the symlinks rather than symlinked: this is the one module whose
+  // behaviour the fixture replaces. It imports the real module by absolute path, so the
+  // re-exports the barrel needs still resolve to the real build.
+  const realSelfMod = join(REAL_COVENANT_DIST, overridden);
+  writeFileSync(
+    join(stubDist, overridden),
+    `export * from ${JSON.stringify(realSelfMod)};\n` +
+      'export function selfModRegistration(spec) {\n' +
+      '  return {\n' +
+      "    label: 'self-mod',\n" +
+      '    protectedPaths: spec.protectedPaths,\n' +
+      '    body: async () => ({ exitCode: 2 }),\n' +
+      '    ...(spec.witness !== undefined ? { witness: spec.witness } : {}),\n' +
+      '  };\n' +
+      '}\n',
+  );
+  return stubDist;
+}
+
+/**
  * Write `polydeukes.config.json` into `repoRoot`: the minimal valid config (`languages`
  * is required) plus the caller's keys.
  *

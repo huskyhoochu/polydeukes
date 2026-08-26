@@ -30,7 +30,7 @@ finite table: `covenant check` takes an optional domain flag, `init claude-code`
 `pdks covenant check [--worktree | --range <base>..<head>]` — the commit-surface judgment
 runner. It discovers the config at the working directory,
 collects one observation of the repository through the git adapter, translates it into the
-covenant input IR, and dispatches it through the same judge bodies the session hook spawns.
+covenant input IR, and dispatches it through the same in-process judges the session hook calls.
 Which observation is the domain flag's choice — the same violation receives the same verdict
 in all three:
 
@@ -116,7 +116,7 @@ subcommand; see the artifact table above.
 
 The assembly reader. It loads the config at the working directory, assembles both surfaces'
 registration sets through the same functions the two judgment runners use, and prints them
-without judging — no judge body is spawned, no telemetry row is written, no transcript is
+without judging — no judge thunk is called, no telemetry row is written, no transcript is
 read.
 
 ```text
@@ -173,16 +173,16 @@ Three codes exist, and they live at two layers. **What a consumer's hook observe
 
 | Code | Constant | Emitted by | Means |
 |---|---|---|---|
-| `0` | `EXIT_UPHOLD` | Judge body, wrapper, bin | The promise was upheld — the call or commit proceeds |
-| `1` | `EXIT_BREAK_NON_BLOCKING` | Judge body only | A break reported as a signal. The wrapper translates it — into `2` under `enforce: block`, into `0` + an `advised` row under `advise`. It never reaches the surface either way |
+| `0` | `EXIT_UPHOLD` | Judge outcome, wrapper, bin | The promise was upheld — the call or commit proceeds |
+| `1` | `EXIT_BREAK_NON_BLOCKING` | Judge outcome only | A break reported as a signal. The wrapper translates it — into `2` under `enforce: block`, into `0` + an `advised` row under `advise`. It never reaches the surface either way |
 | `2` | `EXIT_BREAK_BLOCKING` | Wrapper, bin, fail-closed paths | The call or commit is refused |
 
-The asymmetry is the protocol's responsibility boundary. A covenant body decides *whether* a
-promise was broken and says so with `0` or `1`; deciding what a break *costs* belongs to the
-wrapper, and that is the one place `enforce` is read. A body can therefore be run, tested, and
-reasoned about without knowing whether the surface it runs under blocks or advises. Only the
-verdict relaxes: every unjudgeable outcome — a body exit of `2` or higher, a signal death —
-stays `2` at either level.
+The asymmetry is the protocol's responsibility boundary. A judge decides *whether* a
+promise was broken and answers `0` or `1` in its outcome; deciding what a break *costs* belongs
+to the wrapper, and that is the one place `enforce` is read. A judge can therefore be run,
+tested, and reasoned about without knowing whether the surface it runs under blocks or advises.
+Only the verdict relaxes: every unjudgeable outcome — an outcome of `2` or higher, a throw
+from the judge — stays `2` at either level.
 
 **Everything unjudgeable resolves to `2`.** A missing config, an invalid one, an
 unparseable payload, a judge body that was never built — each fails closed. The one

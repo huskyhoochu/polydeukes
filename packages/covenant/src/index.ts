@@ -1,21 +1,22 @@
 /**
  * @polydeukes/covenant — the run_covenant execution wrapper and the Bash analysis core.
  *
- * Pre-alpha. COVENANT-01 lands the wrapper: it spawns a covenant body,
- * pipes stdin-JSON, translates the body's exit code (1 → blocking 2),
+ * Pre-alpha. COVENANT-01 lands the wrapper: it calls an in-process judge
+ * thunk, translates its exit-code equivalent (1 → blocking 2),
  * and appends one ROI telemetry record per call via @polydeukes/core.
  * COVENANT-04a lands the pure Bash command-line tokenizer + mutation-target
  * extraction core that the path-shaped meta-covenant (04b–04d) builds on.
  * COVENANT-02 lands the path-routing dispatcher: the edit-time first-line layer
  * that routes protected-path mentions to their registered covenant bodies.
  * COVENANT-03 lands the self-mod meta-covenant — the dispatcher's first real
- * registrant: a pure judge + CLI body that block mutating tool calls on protected
- * paths, plus the witness seam whose openings are measured as `witnessed`.
+ * registrant: a pure judge + registration builder that block mutating tool calls on
+ * protected paths, plus the witness seam whose openings are measured as `witnessed`.
  * COVENANT-04d lands the shell-mod meta-covenant — the Bash-axis mirror: a pure
- * judge + CLI body that assemble the tokenizer and detection rules into a verdict,
- * with a read-only allowlist as the friction valve.
+ * judge + registration builder that assemble the tokenizer and detection rules into a
+ * verdict, with a read-only allowlist as the friction valve.
  */
 
+export type { TelemetryEvent } from '@polydeukes/core';
 export {
   type BaselineSnapshot,
   findUnattributed,
@@ -52,12 +53,26 @@ export {
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';
 export { redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
-export { type RunCovenantSpec, runCovenant, translateExitCode } from './run-covenant.js';
-export { judgeSelfModification, type SelfModificationSpec } from './self-mod.js';
+export {
+  type JudgeOutcome,
+  outcomeFromVerdict,
+  type RunCovenantSpec,
+  runCovenant,
+  translateExitCode,
+  UNJUDGEABLE_OUTCOME,
+} from './run-covenant.js';
+export {
+  judgeSelfModification,
+  type SelfModificationSpec,
+  type SelfModRegistrationSpec,
+  selfModRegistration,
+} from './self-mod.js';
 export {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
+  type ShellModRegistrationSpec,
+  shellModRegistration,
 } from './shell-mod.js';
 export {
   judgeTranscriptModification,

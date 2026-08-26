@@ -28,8 +28,6 @@ function contextSpec(
   return {
     disciplines,
     rootDir: ROOT,
-    bodyCommand: '/usr/bin/node',
-    bodyModulePath: '/repo/discipline-body.js',
     shellTools: ['Bash'],
     commandArgs: ['command'],
     ...extra,
@@ -194,7 +192,7 @@ describe('compileDisciplineRegistrations — a skip registration stays a first-c
 
     expectSkip(registrations[0]);
     expect((registrations[1] as { skip?: unknown }).skip).toBeUndefined();
-    expect(registrations[1].body?.args).toBeDefined();
+    expect(typeof registrations[1].body).toBe('function');
   });
 });
 

@@ -1,10 +1,8 @@
-import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { CanonicalTranscript, CovenantInput, DisciplineEntry } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // COVENANT-10b §2-b·§2-c — the shell axis reaches the disciplines: delta/context
 // routing closures join shell-derived computable targets, each delta/context entry
 // gains a per-entry SKIP registration for detected-but-uncomputable writes in its
@@ -39,8 +37,6 @@ function specWith(
   return {
     disciplines,
     rootDir: ROOT,
-    bodyCommand: '/usr/bin/node',
-    bodyModulePath: '/repo/discipline-body.js',
     shellTools: [SHELL_TOOL],
     commandArgs: [COMMAND_ARG],
     ...extra,
@@ -61,9 +57,13 @@ function lines(...parts: string[]): string {
   return parts.join('\n');
 }
 
-/** Stub the canonical-transcript seam with a fixed tool-call history. */
+/**
+ * Stub the canonical-transcript seam with a fixed tool-call history. `succeeded` is part of
+ * what evidence means since COVENANT-13b — only a call the provider saw run AND succeed
+ * counts — so a fixture meaning to supply evidence must state it.
+ */
 function transcriptWithToolCalls(
-  calls: { name: string; args: Record<string, unknown> }[],
+  calls: { name: string; args: Record<string, unknown>; succeeded?: boolean }[],
 ): CanonicalTranscript {
   return {
     findSubagentInvocations: () => [],
@@ -396,17 +396,32 @@ describe('delta matches — evidence/derivation attribution under divergent chan
 // translates it into the blocking 2)
 // ===========================================================================
 
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-const bodyPath = fileURLToPath(new URL('../dist/discipline-body.js', import.meta.url));
-
-beforeAll(() => {
-  execFileSync('pnpm', ['exec', 'turbo', 'run', 'build', '--filter=@polydeukes/covenant'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
+/**
+ * Judge one entry's compiled thunk against a shell payload, rooted at `rootDir`.
+ *
+ * Since DISPATCH-01 the shell-evidence completion these cases pin (derive → read disk
+ * pre-state → chain same-path writes → judge) lives inside the compiled thunk rather than
+ * in a spawned CLI, so the seam is exercised where it now runs. The answer keeps the CLI's
+ * shape — 0 uphold, 1 break, 2 cannot-judge — so every assertion below reads the same.
+ */
+async function judgeShellPayload(
+  entry: DisciplineEntry,
+  command: string,
+  rootDir: string,
+  extra: Partial<CompileDisciplinesSpec> = {},
+): Promise<{ exitCode: number; reason?: string }> {
+  const [registration] = compileDisciplineRegistrations({
+    disciplines: [entry],
+    rootDir,
+    shellTools: [SHELL_TOOL],
+    commandArgs: [COMMAND_ARG],
+    ...extra,
   });
-}, 120_000);
+  const outcome = await registration?.body?.(bashInput(command));
+  return outcome ?? { exitCode: 2 };
+}
 
-describe('discipline-body CLI — shell evidence enrichment (§2-b)', () => {
+describe('compiled discipline thunk — shell evidence enrichment (§2-b)', () => {
   let dir: string;
   let target: string;
 
@@ -420,70 +435,56 @@ describe('discipline-body CLI — shell evidence enrichment (§2-b)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  function spawnBody(command: string) {
+  function judgeBody(command: string) {
     const entry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
-    return spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--discipline',
-        JSON.stringify(entry),
-        '--root-dir',
-        dir,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-      ],
-      { input: JSON.stringify(bashInput(command)), encoding: 'utf-8' },
-    );
+    return judgeShellPayload(entry, command, dir);
   }
 
-  it('breaks an append that adds the pattern over a clean disk pre (AC §3.1)', () => {
+  it('breaks an append that adds the pattern over a clean disk pre (AC §3.1)', async () => {
     // Append composes REAL disk pre + derived content; the added direction then sees
     // the new match. Mutation caught: append judged as create/truncate (pre ignored)
     // still breaks here, BUT the no-enrichment mutant — today's body — upholds, so
     // this pins the whole seam: derive, read pre, judge. RED against current dist.
     writeFileSync(target, 'plain line\n');
 
-    const result = spawnBody(`echo '${BANNED}' >> ${target}`);
+    const result = await judgeBody(`echo '${BANNED}' >> ${target}`);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('no-banned');
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toContain('no-banned');
   });
 
-  it('still breaks when the disk pre already carries the pattern (occurrence added)', () => {
+  it('still breaks when the disk pre already carries the pattern (occurrence added)', async () => {
     // Delta semantics are a per-string multiset: 1 -> 2 occurrences is an added
     // instance, debt does not absolve a NEW one. Mutation caught: presence-based
     // composition (pattern-in-pre would forgive every further insertion forever).
     writeFileSync(target, `${BANNED} already lives here\n`);
 
-    const result = spawnBody(`echo '${BANNED}' >> ${target}`);
+    const result = await judgeBody(`echo '${BANNED}' >> ${target}`);
 
-    expect(result.status).toBe(1);
+    expect(result.exitCode).toBe(1);
   });
 
-  it('upholds a clean append onto a clean file (passed direction, AC §3.3)', () => {
+  it('upholds a clean append onto a clean file (passed direction, AC §3.3)', async () => {
     // Axis "verdict" passed end: computable + no violation = exit 0, no new event
     // vocabulary. Mutation caught: the enrichment blocking whenever ANY derivation
     // exists (ordinary shell writes in scope would all block).
     writeFileSync(target, 'plain line\n');
 
-    const result = spawnBody(`echo 'still clean' >> ${target}`);
+    const result = await judgeBody(`echo 'still clean' >> ${target}`);
 
-    expect(result.status).toBe(0);
+    expect(result.exitCode).toBe(0);
   });
 
-  it('breaks a heredoc CREATE of an absent file whose body carries the pattern (AC §3.1)', () => {
+  it('breaks a heredoc CREATE of an absent file whose body carries the pattern (AC §3.1)', async () => {
     // Absent file = create: the whole post is added (§2-b, adapter readPreState
     // precedent). Mutation caught: the disk read's ENOENT degrading the evidence to
     // unjudgeable — the brand-new violation would silently uphold.
     const command = lines(`cat > ${target} <<'EOF'`, `${BANNED} rides in the body`, 'EOF');
 
-    const result = spawnBody(command);
+    const result = await judgeBody(command);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('no-banned');
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toContain('no-banned');
   });
 });
 
@@ -522,7 +523,7 @@ describe('shell-axis registrations — audit-round routing gaps (G1/G4)', () => 
 // Audit-round gaps (2026-07-27) — body-level judgment (G2/G13/G5)
 // ===========================================================================
 
-describe('discipline-body CLI — absent-file append, same-path chaining, context verdict', () => {
+describe('compiled discipline thunk — absent-file append, same-path chaining, context verdict', () => {
   let dir: string;
   let target: string;
 
@@ -538,54 +539,43 @@ describe('discipline-body CLI — absent-file append, same-path chaining, contex
 
   const forbidEntry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
 
-  function spawnEntryBody(entry: DisciplineEntry, command: string, extraArgs: string[] = []) {
-    return spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--discipline',
-        JSON.stringify(entry),
-        '--root-dir',
-        dir,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-        ...extraArgs,
-      ],
-      { input: JSON.stringify(bashInput(command)), encoding: 'utf-8' },
-    );
+  function judgeEntryBody(
+    entry: DisciplineEntry,
+    command: string,
+    extra: Partial<CompileDisciplinesSpec> = {},
+  ) {
+    return judgeShellPayload(entry, command, dir, extra);
   }
 
-  it('breaks an append that CREATES an absent file (pre null, whole post added)', () => {
+  it('breaks an append that CREATES an absent file (pre null, whole post added)', async () => {
     // (audit G2) §2-b: `>>` onto a missing file is a create — the adapter readPreState
     // precedent. Mutation caught: the ENOENT read demoting append evidence to
     // unjudgeable, so a brand-new violation lands as a skip row instead of a block.
     const fresh = join(dir, 'scoped', 'fresh.ts');
 
-    const result = spawnEntryBody(forbidEntry, `echo '${BANNED}' >> ${fresh}`);
+    const result = await judgeEntryBody(forbidEntry, `echo '${BANNED}' >> ${fresh}`);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('no-banned');
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toContain('no-banned');
   });
 
-  it('chains same-path evidence in command order, not against disk pre twice', () => {
+  it('chains same-path evidence in command order, not against disk pre twice', async () => {
     // (audit G13) Disk pre already carries the pattern and the FIRST write truncates
     // it away. A no-chain body judging disk-pre → final-post sees the occurrence count
     // unchanged (1→1, forgiven as debt) and upholds; correct chaining hands evidence2
     // pre='clean\n', so its append is 0→1 added and breaks.
     writeFileSync(target, `${BANNED}\n`);
 
-    const result = spawnEntryBody(
+    const result = await judgeEntryBody(
       forbidEntry,
       `echo 'clean' > ${target} && echo '${BANNED}' >> ${target}`,
     );
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('no-banned');
+    expect(result.exitCode).toBe(1);
+    expect(result.reason).toContain('no-banned');
   });
 
-  it('a context entry judges a computable shell write by the transported verdict', () => {
+  it('a context entry judges a computable shell write by the transported verdict', async () => {
     // (audit G5) First interaction of the derivation trigger with the argv verdict:
     // missing → judged break (exit 1), found → uphold (exit 0). Mutation caught:
     // context bodies ignoring derived evidence (a missing-precedent shell write
@@ -598,12 +588,21 @@ describe('discipline-body CLI — absent-file append, same-path chaining, contex
     writeFileSync(target, 'plain line\n');
     const command = `echo 'dep bump' > ${target}`;
 
-    const missing = spawnEntryBody(contextEntry, command, ['--precedent-missing']);
-    const found = spawnEntryBody(contextEntry, command, ['--precedent-found']);
+    // The verdict is no longer transported as an argv flag: the compiler evaluates the
+    // evidence against the injected transcript and binds the answer into the thunk, so the
+    // two directions are driven by what that transcript witnessed.
+    const missing = await judgeEntryBody(contextEntry, command, {
+      transcript: transcriptWithToolCalls([]),
+    });
+    const found = await judgeEntryBody(contextEntry, command, {
+      transcript: transcriptWithToolCalls([
+        { name: SHELL_TOOL, args: { [COMMAND_ARG]: 'npm view yaml version' }, succeeded: true },
+      ]),
+    });
 
-    expect(missing.status).toBe(1);
-    expect(missing.stderr).toContain('needs-view');
-    expect(found.status).toBe(0);
+    expect(missing.exitCode).toBe(1);
+    expect(missing.reason).toContain('needs-view');
+    expect(found.exitCode).toBe(0);
   });
 });
 
@@ -633,7 +632,7 @@ describe('review-round regressions (PR #36) — routing scope spelling', () => {
   });
 });
 
-describe('review-round regressions (PR #36) — body pre-read failure', () => {
+describe('review-round regressions (PR #36) — thunk pre-read failure', () => {
   let dir: string;
 
   beforeEach(() => {
@@ -645,49 +644,31 @@ describe('review-round regressions (PR #36) — body pre-read failure', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('a pre-read failure that is not ENOENT blocks instead of passing (fail-closed)', () => {
+  it('a pre-read failure that is not ENOENT blocks instead of passing (fail-closed)', async () => {
     // Review [3]: dropped evidence read as a clean pass — the outcome this ticket
     // exists to remove. ENOTDIR: an intermediate path component is a plain file.
     writeFileSync(join(dir, 'scoped', 'blocker.txt'), 'a file, not a directory\n');
     const entry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
     const target = join(dir, 'scoped', 'blocker.txt', 'x.ts');
 
-    const result = spawnSync(
-      process.execPath,
-      [
-        bodyPath,
-        '--discipline',
-        JSON.stringify(entry),
-        '--root-dir',
-        dir,
-        '--shell-tool',
-        SHELL_TOOL,
-        '--command-arg',
-        COMMAND_ARG,
-      ],
-      { input: JSON.stringify(bashInput(`echo '${BANNED}' >> ${target}`)), encoding: 'utf-8' },
-    );
+    const result = await judgeShellPayload(entry, `echo '${BANNED}' >> ${target}`, dir);
 
     // The undecidable-structure fail mode, not a judged break: routing matched, the
     // evidence could not be completed, and CORE-03 says cannot-judge blocks at exit 2.
-    expect(result.status).toBe(2);
+    expect(result.exitCode).toBe(2);
   });
 });
 
 // ===========================================================================
-// CONFIG-06b review (PR #39) — WHERE the body path is resolved. The assembly
-// roots tried to answer "will a body ever be spawned?" with
+// CONFIG-06b review (PR #39) — WHICH registrations carry a body at all. The
+// assembly roots tried to answer "will a body ever run?" with
 // `disciplines.length === 0 ? [] : compile(...)`, and only the compiler can
 // answer it: skipping the call deletes the backstop below, and making the call
-// whenever entries exist demands a body for configs whose entries all compile
-// to body-less skips. `bodyModulePath` therefore accepts a resolver, consumed
-// at the single site that composes a body — so the call always happens and the
-// existence proof fires only where a body really is composed.
+// whenever entries exist assumes a body for configs whose entries all compile
+// to body-less skips. Both halves stay pinned here.
 // ===========================================================================
 
-describe('compileDisciplineRegistrations — the body path is resolved only where a body is composed', () => {
-  const LAZY_BODY_PATH = '/repo/lazy-discipline-body.js';
-  const STRING_BODY_PATH = '/repo/legacy-discipline-body.js';
+describe('compileDisciplineRegistrations — a body is composed only where one can judge', () => {
   const precedentEntry = {
     id: 'needs-precedent',
     in: ['packages/**/*.ts'],
@@ -695,78 +676,29 @@ describe('compileDisciplineRegistrations — the body path is resolved only wher
   } as DisciplineEntry;
 
   /** A resolver that counts its own calls — the observation this whole contract turns on. */
-  function countingResolver(): { resolve: () => string; calls: () => number } {
-    let calls = 0;
-    return {
-      resolve: () => {
-        calls += 1;
-        return LAZY_BODY_PATH;
-      },
-      calls: () => calls,
-    };
-  }
+  it('composes no body when no discipline is declared, and the backstop is still emitted', () => {
+    // The two halves of F1 in one assertion. An assembly root that answers the judgment
+    // question itself has to skip this call — and skipping it drops the shell-unjudgeable
+    // backstop, which is appended regardless of entry count, so an uncomputable shell write
+    // in a config with no disciplines goes from `skipped` to silence. Mutation caught: the
+    // backstop made conditional on there being entries.
+    const regs = compileDisciplineRegistrations(specWith([]));
 
-  it('is left unresolved when no discipline is declared, and the backstop is still emitted', () => {
-    // The two halves of F1 in one assertion. An assembly root that answers the spawn
-    // question itself has to skip this call to avoid resolving a path it does not need —
-    // and skipping it drops the shell-unjudgeable backstop, which is appended regardless
-    // of entry count, so an uncomputable shell write in a config with no disciplines goes
-    // from `skipped` to silence. Mutation caught: the resolver normalized once at the top
-    // of the compiler (the obvious refactor), which resolves a path for a call that
-    // composes no body at all and hands the assembly root its excuse back.
-    const resolver = countingResolver();
-
-    const regs = compileDisciplineRegistrations(specWith([], { bodyModulePath: resolver.resolve }));
-
-    expect(resolver.calls()).toBe(0);
     expect(regs.map((reg) => [reg.label, reg.body === undefined])).toEqual([
       ['shell-unjudgeable', true],
     ]);
   });
 
-  it('is left unresolved for an entry that compiles to a body-less skip', () => {
+  it('composes no body for an entry that compiles to a body-less skip', () => {
     // F2. Entry count is not the question either: a requirePrecedent entry with no
     // transcript and no evaluator injected — the commit surface's own shape — compiles to
-    // a skip that carries no body, so nothing will ever be spawned for it. Demanding the
-    // built body anyway fails the whole run closed over a file it was never going to run.
-    // Mutation caught: resolution moved to the head of the entry loop rather than to the
-    // one branch that composes a body.
-    const resolver = countingResolver();
-
-    const regs = compileDisciplineRegistrations(
-      specWith([precedentEntry], { bodyModulePath: resolver.resolve }),
-    );
+    // a skip that carries no body, so nothing will ever judge for it. Mutation caught: a
+    // body composed on the skip arm, which would judge an entry whose evidence channel is
+    // absent and block every matched input with no legitimate pass path.
+    const regs = compileDisciplineRegistrations(specWith([precedentEntry]));
     const reg = regs.find((r) => r.label === precedentEntry.id);
 
-    expect(resolver.calls()).toBe(0);
     expect(reg?.skip).toBeDefined();
     expect(reg?.body).toBeUndefined();
-  });
-
-  it('is resolved for a body-bearing entry and its result becomes the body module arg', () => {
-    // The other end: laziness must not become never. A delta entry composes a real body, so
-    // the resolver runs and what it returns is the module the dispatcher will spawn.
-    // Mutation caught: the resolver accepted and stored but never called (the function
-    // object itself lands in args[0] and every discipline spawn dies), or called for its
-    // side effect while a stale path is passed on.
-    const resolver = countingResolver();
-
-    const regs = compileDisciplineRegistrations(
-      specWith([deltaEntry], { bodyModulePath: resolver.resolve }),
-    );
-
-    expect(resolver.calls()).toBe(1);
-    expect(bodyRegOf(regs, deltaEntry.id)?.body?.args?.[0]).toBe(LAZY_BODY_PATH);
-  });
-
-  it('still accepts a plain string path, passed through unchanged', () => {
-    // Back-compat: every existing caller and fixture hands a string, so widening the field
-    // must not make the resolver form mandatory. Mutation caught: the string branch dropped
-    // during the widening, which would break every assembly root and test at once.
-    const regs = compileDisciplineRegistrations(
-      specWith([deltaEntry], { bodyModulePath: STRING_BODY_PATH }),
-    );
-
-    expect(bodyRegOf(regs, deltaEntry.id)?.body?.args?.[0]).toBe(STRING_BODY_PATH);
   });
 });

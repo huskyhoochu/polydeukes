@@ -10,7 +10,7 @@ import { dispatchCovenants } from '../src/dispatch.ts';
 // so this import is unresolvable and the whole file is RED by construction. The behaviours
 // asserted here become the GREEN contract (PRD §4.1–4.2, §5.1–5.4).
 import { ttlWitness } from '../src/ttl-witness.ts';
-import { echoToFileScript, inputWithArgs, readTelemetryLines } from './helpers.js';
+import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers.
@@ -328,7 +328,7 @@ describe('ttlWitness — dispatcher integration (PRD §5.4)', () => {
     const reg: CovenantRegistration = {
       label: 'ttl-witness-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 1) },
+      body: markerThunk(outFile, 1),
       witness: ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow }),
     };
 
@@ -359,7 +359,7 @@ describe('ttlWitness — dispatcher integration (PRD §5.4)', () => {
     const reg: CovenantRegistration = {
       label: 'ttl-witness-covenant',
       protectedPaths: ['sub/protected/file.txt'],
-      body: { command: process.execPath, args: echoToFileScript(outFile, 2) },
+      body: markerThunk(outFile, 2),
       witness: ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow }),
     };
 

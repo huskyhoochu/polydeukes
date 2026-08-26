@@ -208,7 +208,8 @@ event and the call proceeds (exit 0), with the break message still written to st
 surface's (`adapters.git.enforce` on the commit surface; the session surface has none) and
 the lenient side wins — an `advise` on either axis makes the entry advise, and an explicit
 `block` never raises a surface the observer set to advise. An unjudgeable body (never
-built, failed to spawn) still blocks whatever the level. A draft carries no `enforce`; any
+built, or one that cannot be loaded) still blocks whatever the level. A draft carries no
+`enforce`; any
 other value is rejected at load time. `pdks explain` prints the level an entry declares
 (`enforce: block` or `enforce: advise`) on both surfaces and leaves an absent one unmarked;
 the session header states the default.
