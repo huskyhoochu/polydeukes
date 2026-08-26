@@ -48,10 +48,12 @@ disciplines:
       - 'packages/core/__tests__/config-witness-key.test.ts'
     forbid: '\b(guard|harness|kb|waiver?)\b'
   - id: 'hooks-stay-armed'
-    why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself.'
+    why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself. the rung is block because the gate definitions such a command neutralizes are already on the protected list — leaving the command at advise let one defence hold its files while its bypass passed.'
+    enforce: block
     forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b'
   - id: 'work-stays-recoverable'
-    why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, never an agent default.'
+    why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, never an agent default. the rung is block because an advisory arrives after the work is gone: for this entry the way through is the witness valve, a human answering in person.'
+    enforce: block
     forbidCommand: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git branch\b.*\s-D\b|git push\b.*--force(?![\w-])'
   - id: 'pnpm-only'
     why: 'the runtime pins pnpm; npm/yarn mutations desync the lockfile. read-only npm (view, info) stays allowed for version measurement.'
