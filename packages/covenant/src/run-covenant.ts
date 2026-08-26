@@ -1,9 +1,9 @@
 /**
- * `runCovenant` — the covenant execution wrapper (COVENANT-01, DISPATCH-01 §4.1).
+ * `runCovenant` — the covenant execution wrapper.
  *
  * Calls an in-process judge thunk the assembly has already bound its payload and options
  * into, translates the thunk's exit-code equivalent by policy (1 → blocking 2), writes the
- * break reason to stderr, and appends exactly one ROI telemetry record per call via
+ * break reason to stderr, and appends exactly one telemetry record per call via
  * {@link appendRecordFailOpen} (the core's fail-open wrapper around its sole collector —
  * no local logger). {@link translateExitCode} is pure.
  */
@@ -22,22 +22,20 @@ import {
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
 
 /**
- * What a judge thunk answers (DISPATCH-01 §4.1) — the shape the body CLIs used to report
- * as an exit code plus a line on stderr: `0` uphold, `1` break, `2` unjudgeable, and
- * `reason` naming the break for the agent that has to read it.
+ * What a judge thunk answers: `0` uphold, `1` break, `2` unjudgeable, and `reason` naming
+ * the break for the agent that has to read it.
  */
 export type JudgeOutcome = { exitCode: number; reason?: string };
 
 /**
- * `runCovenant` specification (PRD §4.1, DISPATCH-01 §4.1).
+ * `runCovenant` specification.
  *
  * `body` is an in-process judge thunk with the payload and its options already bound by
  * the assembly; it is the only judgment this wrapper performs. `subject` defaults to the
  * `-` sentinel in telemetry when absent. `telemetryPath` is always an explicit argument.
- * `enforce` selects the translation column (CONFIG-06): absent defaults to `block`.
- * `witness` is the valve axis (COVENANT-17 §4.3) — a zero-arg thunk whose arguments the
- * caller has already bound, consulted only once the body has run and its outcome
- * translated to `blocked`.
+ * `enforce` selects the translation column: absent defaults to `block`. `witness` is the
+ * valve axis — a zero-arg thunk whose arguments the caller has already bound, consulted
+ * only once the body has run and its outcome translated to `blocked`.
  */
 export type RunCovenantSpec = {
   body: () => Promise<JudgeOutcome>;
@@ -49,16 +47,16 @@ export type RunCovenantSpec = {
 };
 
 /**
- * Translate a body outcome into the wrapper verdict and telemetry event (PRD §4.2, pure).
+ * Translate a body outcome into the wrapper verdict and telemetry event (pure).
  *
  * `bodyExitCode === 0` (uphold) passes; every other outcome — a break report (`1`), the
- * body's own fail-closed (`2`), any uninterpretable code (`3+`), or a spawn failure /
- * signal termination (`null`) — is fail-closed to the blocking `2` / `blocked`. This is
- * the CORE-03 evolution seam: the unconditional 1→2 translation lives here, isolated.
+ * body's own fail-closed (`2`), any uninterpretable code (`3+`), or a body that answered
+ * nothing interpretable (`null`) — is fail-closed to the blocking `2` / `blocked`. The
+ * unconditional 1→2 translation lives here, isolated, so it has one place to evolve in.
  *
- * `enforce` (CONFIG-06 §4.4) relaxes ONLY the verdict cell: under `advise` a break
- * report (`1`) becomes `0` / `advised` — recorded, not blocking. Every unjudgeable
- * outcome (`2`, `3+`, `null`) stays `2` / `blocked` regardless of level.
+ * `enforce` relaxes ONLY the verdict cell: under `advise` a break report (`1`) becomes
+ * `0` / `advised` — recorded, not blocking. Every unjudgeable outcome (`2`, `3+`, `null`)
+ * stays `2` / `blocked` regardless of level.
  */
 export function translateExitCode(
   bodyExitCode: number | null,
@@ -77,11 +75,10 @@ export function translateExitCode(
 }
 
 /**
- * Run the judge thunk and normalize what it answers (DISPATCH-01 §4.1).
+ * Run the judge thunk and normalize what it answers.
  *
- * A throw is the body-crash cell — the same `2` a crashed spawn reported — so crash
- * isolation moves from the process boundary to this try/catch. A resolution that is not
- * the outcome shape (an old covenant dist answering the spawn contract) is uninterpretable
+ * A throw is the body-crash cell, so crash isolation is this try/catch. A resolution that
+ * is not the outcome shape (a stale dist answering an older contract) is uninterpretable
  * and lands in the same cell: `null` routes to the translation table's fail-closed row
  * without that table learning a new code.
  */
@@ -98,10 +95,7 @@ async function runBody(body: RunCovenantSpec['body']): Promise<JudgeOutcome> {
   return outcome as JudgeOutcome;
 }
 
-/**
- * Turn a pure judge's verdict into the outcome a thunk answers (DISPATCH-01 §4.1) — the
- * translation the body CLIs did with `verdictToExitCode` plus a write to stderr.
- */
+/** Turn a pure judge's verdict into the outcome a thunk answers. */
 export function outcomeFromVerdict(verdict: CovenantVerdict): JudgeOutcome {
   return verdict.upheld
     ? { exitCode: EXIT_UPHOLD }
@@ -111,7 +105,7 @@ export function outcomeFromVerdict(verdict: CovenantVerdict): JudgeOutcome {
 /** The unjudgeable outcome: a misassembly or an input no judge could read (`2`, no reason). */
 export const UNJUDGEABLE_OUTCOME: JudgeOutcome = { exitCode: EXIT_BREAK_BLOCKING };
 
-/** Consult the valve, counting a throw as closed — an uncertain valve never opens (PRD §7-3). */
+/** Consult the valve, counting a throw as closed — an uncertain valve never opens. */
 function witnessOpens(witness: () => boolean): boolean {
   try {
     return witness() === true;
@@ -121,24 +115,23 @@ function witnessOpens(witness: () => boolean): boolean {
 }
 
 /**
- * Run a covenant body through the wrapper (PRD §4, DISPATCH-01 §4.1).
+ * Run a covenant body through the wrapper.
  *
- * The order is judge → translate → valve (COVENANT-17 §4.3): the body always runs, and
- * only a `blocked` translation has anything for the valve to relax into
- * `0` / `witnessed`. Whatever that leaves is recorded ONCE — one call, one row — so a
- * witnessed break never leaves a `blocked` row beside its `witnessed` one.
+ * The order is judge → translate → valve: the body always runs, and only a `blocked`
+ * translation has anything for the valve to relax into `0` / `witnessed`. Whatever that
+ * leaves is recorded ONCE — one call, one row — so a witnessed break never leaves a
+ * `blocked` row beside its `witnessed` one.
  *
  * The break reason goes to stderr whenever the thunk carried one, whatever the level and
- * whatever the final event: this write replaces the inherited fd the spawned bodies used,
- * so gating it on the verdict would leave `advised` mute and the valve silent about what
- * it opened.
+ * whatever the final event: gating it on the verdict would leave `advised` mute and the
+ * valve silent about what it opened.
  *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`), the raw `bodyExitCode` for
  * observation (`null` when the body answered no interpretable code), and the telemetry
  * `event` that was recorded. The event is surfaced rather than left to callers: the valve
  * is impure, so recomputing the event would consult it a second time. Logging is fail-open
- * (PRD §4.3) via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict
- * and never throws. The gate closes; the measurement stays open.
+ * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and never
+ * throws. The gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,

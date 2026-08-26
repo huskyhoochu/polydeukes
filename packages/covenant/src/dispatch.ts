@@ -1,15 +1,11 @@
 /**
- * Path-routing dispatcher — the edit-time first-line layer (COVENANT-02).
- *
- * This dispatcher is layer 2 of the three-layer enforcement model: it routes hook
- * input to the covenant bodies whose protected paths are mentioned. Permission-deny
- * (layer 1) and the push gate (layer 3, the second-line regression defence) live
- * outside this code and are neither assumed nor replicated here.
+ * Path-routing dispatcher — routes an input to the covenant bodies whose protected paths
+ * it mentions.
  *
  * Matching is a pure path-mention core (zero I/O); execution reuses {@link runCovenant}
  * (the sole judgment wrapper) and {@link appendRecordFailOpen} (the sole log seam). The
  * dispatcher parses the payload once, to decide routing and to hand the judge thunks the
- * one parsed call set they judge (DISPATCH-01 §4.1).
+ * one parsed call set they judge.
  */
 
 import {
@@ -28,33 +24,34 @@ import { pathCandidates, pathMatchesProtected } from './mention.js';
 import { type JudgeOutcome, runCovenant } from './run-covenant.js';
 
 /**
- * `CovenantRegistration` — one registered covenant (PRD §4.1).
+ * `CovenantRegistration` — one registered covenant.
  *
  * `protectedPaths` are literal path strings (the output shape of normalization, not
- * globs); an empty array never matches, and empty-string entries are ignored (an
- * empty `''` would match every input). `body` is the in-process judge (DISPATCH-01 §4.1):
- * assembly binds its options into it, and the dispatcher supplies the parsed call set as
- * its argument when a protected path is mentioned. Assembly therefore never needs the
- * payload, so one compiled registration set judges every call.
- * `witness`, when present, is consulted only after a *matched*
- * registration's body has run and broken (COVENANT-17 §4.3), receiving the injected
- * transcript seam as its second argument (CORE-04) and a `{ label, subject }` context
- * naming what broke as its third: a `true` return relaxes that block (measured as
- * `witnessed`).
- * `matches`, when present, replaces path-mention routing with a content predicate
- * (COVENANT-10 §4.4): a non-null return routes (the string becomes the telemetry
- * subject), null does not, and a throw is a fail-closed match with subject `'-'`.
+ * globs); an empty array never matches, and empty-string entries are ignored (an empty
+ * `''` would match every input). `body` is the in-process judge: assembly binds its
+ * options into it, and the dispatcher supplies the parsed call set as its argument when a
+ * protected path is mentioned. Assembly therefore never needs the payload, so one compiled
+ * registration set judges every call.
  *
- * A registration carries EITHER a `body` or a `skip` (COVENANT-13 §4.5). `skip` means
- * assembly could not produce a judgeable body — the evidence channel is absent, or the
- * declared evidence vocabulary could not be resolved — so a match records one `skipped`
- * and upholds instead of judging. Judging it anyway would block every matched input
- * with no legitimate pass path; throwing at assembly would take down every sibling
- * registration and the witness valve with it.
+ * `witness`, when present, is consulted only after a *matched* registration's body has run
+ * and broken, receiving the injected transcript seam as its second argument and a
+ * `{ label, subject }` context naming what broke as its third: a `true` return relaxes
+ * that block (measured as `witnessed`).
  *
- * `enforce` is the AUTHOR's level for this one registration (CONFIG-11 §4.3), distinct
- * from the observer's dispatch-wide level; absence means the registration inherits
- * whatever the dispatch carries.
+ * `matches`, when present, replaces path-mention routing with a content predicate: a
+ * non-null return routes (the string becomes the telemetry subject), null does not, and a
+ * throw is a fail-closed match with subject `'-'`.
+ *
+ * A registration carries EITHER a `body` or a `skip`. `skip` means assembly could not
+ * produce a judgeable body — the evidence channel is absent, or the declared evidence
+ * vocabulary could not be resolved — so a match records one `skipped` and upholds instead
+ * of judging. Judging it anyway would block every matched input with no legitimate pass
+ * path; throwing at assembly would take down every sibling registration and the witness
+ * valve with it.
+ *
+ * `enforce` is the AUTHOR's level for this one registration, distinct from the observer's
+ * dispatch-wide level; absence means the registration inherits whatever the dispatch
+ * carries.
  */
 export type CovenantRegistration = {
   label: string;
@@ -72,12 +69,12 @@ export type CovenantRegistration = {
 );
 
 /**
- * Collect path candidates from every string value inside `value` (PRD §4.2). Each string is
- * tokenized quote-aware (via the shared tokenizer) so quote/escape splits collapse to the
- * word the shell would see; each resulting word text is a candidate. An unread span surfaces
- * as `failed = true` so the caller can route fail-closed rather than fall back to a
+ * Collect path candidates from every string value inside `value`. Each string is tokenized
+ * quote-aware (via the shared tokenizer) so quote/escape splits collapse to the word the
+ * shell would see; each resulting word text is a candidate. An unread span surfaces as
+ * `failed = true` so the caller can route fail-closed rather than fall back to a
  * raw-substring scan — the candidates the same line's read commands contribute add routing
- * precision, they never withdraw that flag (COVENANT-18 §2-b B4).
+ * precision, they never withdraw that flag.
  */
 function collectPathCandidates(value: unknown): { candidates: string[]; failed: boolean } {
   const candidates: string[] = [];
@@ -111,7 +108,7 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
 }
 
 /**
- * Match registrations against a {@link CovenantInput} by path mention (PRD §4.2, pure).
+ * Match registrations against a {@link CovenantInput} by path mention (pure).
  *
  * A registration matches when any of its `protectedPaths` is an ancestor/descendant/equal of
  * a path candidate extracted from any string value reachable at any depth inside
@@ -122,10 +119,10 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
  * protected path (in array order) that mentions. Result preserves registration order, at most
  * one entry per registration.
  *
- * A registration carrying a `matches` predicate routes on it exclusively (path mention is
- * skipped for it, COVENANT-10 §4.4): non-null return → included with that string as
- * `mentionedPath`; null → skipped; a throw → fail-closed inclusion with `'-'` (caught per
- * registration, never bubbling to the dispatcher-level catch).
+ * A registration carrying a `matches` predicate routes on it exclusively, path mention
+ * skipped for it: non-null return → included with that string as `mentionedPath`; null →
+ * skipped; a throw → fail-closed inclusion with `'-'` (caught per registration, never
+ * bubbling to the dispatcher-level catch).
  */
 export function matchRegistrations(
   input: CovenantInput,
@@ -148,7 +145,7 @@ export function matchRegistrations(
         // An uncertain predicate must not leak fail-open — route with subject '-'. The
         // flag travels with the match because a skip registration has no body to carry
         // that verdict out, and answering `skipped` there would turn the fail-closed
-        // routing into a pass (review 4).
+        // routing into a pass.
         subject = '-';
         routingFailed = true;
       }
@@ -171,38 +168,35 @@ export function matchRegistrations(
 }
 
 /**
- * Dispatch covenants for a stdin payload (PRD §4.3).
+ * Dispatch covenants for a stdin payload.
  *
- * fail-closed: an unjudgeable payload — unparseable JSON (core `parseInput`) or a
- * parseable one whose structure defeats the matching traversal (a null toolCalls
- * element, adversarially deep nesting) — yields exitCode 2, judges nothing, and appends
- * exactly one `blocked` record for the dispatcher itself. "Cannot judge" means block;
- * it never means throw, because an uncaught rejection exits the hook with a
- * non-blocking code and becomes a bypass vector. On matches, every matched
- * registration runs sequentially via {@link runCovenant} (run-all, no short-circuit);
- * the verdict is `2` if any body blocks, else `0`. No matches passes vacuously with zero
- * judgments and zero telemetry.
+ * Fail-closed: an unjudgeable payload — unparseable JSON, or a parseable one whose
+ * structure defeats the matching traversal (a null toolCalls element, adversarially deep
+ * nesting) — yields exitCode 2, judges nothing, and appends exactly one `blocked` record
+ * for the dispatcher itself. "Cannot judge" means block; it never means throw, because an
+ * uncaught rejection exits the hook with a non-blocking code and becomes a bypass vector.
+ * On matches, every matched registration runs sequentially via {@link runCovenant}
+ * (run-all, no short-circuit); the verdict is `2` if any body blocks, else `0`. No matches
+ * passes vacuously with zero judgments and zero telemetry.
  *
- * witness (COVENANT-17 §4.3): the dispatcher only BINDS the witness's arguments — the
- * parsed input, the injected `spec.transcript` (CORE-04 seam, `noopTranscript` when
- * omitted), and a `{ label, subject }` context naming the registration and its matched
- * path — and hands the thunk to {@link runCovenant}, which consults it after the judgment
- * and only when the body's outcome translated to `blocked`. So the body always runs: a
- * matched registration that upholds is never witnessed, and a `true` return relaxes a
- * real break into `0` / `witnessed`. A predicate that throws opens nothing (the block
- * stands): an uncertain witness never leaks toward fail-open.
+ * Witness: the dispatcher only BINDS the witness's arguments — the parsed input, the
+ * injected `spec.transcript` (`noopTranscript` when omitted), and a `{ label, subject }`
+ * context naming the registration and its matched path — and hands the thunk to
+ * {@link runCovenant}, which consults it after the judgment and only when the body's
+ * outcome translated to `blocked`. So the body always runs: a matched registration that
+ * upholds is never witnessed, and a `true` return relaxes a real break into
+ * `0` / `witnessed`. A predicate that throws opens nothing: an uncertain witness never
+ * leaks toward fail-open.
  *
- * enforce (CONFIG-06 §4.5, CONFIG-11 §4.2): the level has two owners — `spec.enforce`
- * is the observer's posture for the whole dispatch, `registration.enforce` the author's
- * for one entry — and the dispatcher composes them per registration with the lenient
- * side winning, then threads the effective level into {@link runCovenant}, where the
- * translation table lives. Lenient-wins keeps an explicit `block` entry from raising a
- * surface the observer lowered, and lets one entry lower itself under a block surface.
- * The dispatcher's own
- * fail-closed (unparseable or unjudgeable payload) is outside that axis and outside the
- * valve too (nothing judged, so no verdict to relax). Each results entry surfaces the
- * telemetry `event` the wrapper recorded, never a recomputed one — the valve is impure,
- * and a recompute would consult it twice for one verdict.
+ * Enforce: the level has two owners — `spec.enforce` is the observer's posture for the
+ * whole dispatch, `registration.enforce` the author's for one entry — and the dispatcher
+ * composes them per registration with the lenient side winning, then threads the effective
+ * level into {@link runCovenant}, where the translation table lives. Lenient-wins keeps an
+ * explicit `block` entry from raising a surface the observer lowered, and lets one entry
+ * lower itself under a block surface. The dispatcher's own fail-closed is outside that axis
+ * and outside the valve too (nothing judged, so no verdict to relax). Each results entry
+ * surfaces the telemetry `event` the wrapper recorded, never a recomputed one — the valve
+ * is impure, and a recompute would consult it twice for one verdict.
  */
 export async function dispatchCovenants(spec: {
   stdinPayload: string;
@@ -233,8 +227,8 @@ export async function dispatchCovenants(spec: {
   try {
     matches = matchRegistrations(parsed.value, spec.registrations);
   } catch {
-    // Structurally unjudgeable input (parseInput's element shapes are intentionally
-    // unvalidated — a CORE-01 boundary) — fail-closed, same as an unparseable payload.
+    // Structurally unjudgeable input (parseInput validates the collection shapes, not the
+    // element ones) — fail-closed, same as an unparseable payload.
     return blockedByDispatcher();
   }
 
@@ -261,7 +255,7 @@ export async function dispatchCovenants(spec: {
         continue;
       }
       // Nothing to judge and nothing to witness — the valve exists for a verdict, and a
-      // skip has none. Recording it keeps the no-op visible in `gain` (PRD §4.5).
+      // skip has none. Recording it keeps the no-op visible in `gain`.
       appendRecordFailOpen(spec.telemetryPath, {
         event: 'skipped',
         label: registration.label,
@@ -278,8 +272,8 @@ export async function dispatchCovenants(spec: {
     // Absence stays absent: the block default lives in the wrapper, not restated here.
     // A routing that could not answer is outside the level axis on this arm too (the skip
     // arm above already is): the body judges against subject '-' and its break must land
-    // blocked whatever level the entry or the surface declared — since POSTURE-01 every
-    // compiled entry carries a level, so without this the unjudgeable call would advise.
+    // blocked whatever level the entry or the surface declared. Every compiled entry
+    // carries a level, so without this the unjudgeable call would advise.
     const effectiveEnforce: EnforceLevel | undefined =
       routingFailed === true
         ? undefined
@@ -288,7 +282,7 @@ export async function dispatchCovenants(spec: {
           : spec.enforce;
     // The parsed call set is handed to the judge HERE rather than baked in at assembly:
     // the dispatcher is the one place that has it, so assembly stays payload-free and one
-    // compiled registration set serves every payload (DISPATCH-01 §4.4).
+    // compiled registration set serves every payload.
     const body = registration.body;
     const { exitCode, event } = await runCovenant({
       body: () => body(parsed.value),

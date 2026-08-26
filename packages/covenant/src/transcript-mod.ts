@@ -1,6 +1,6 @@
 /**
- * `judgeTranscriptModification` — the transcript-mod covenant's pure judge (COVENANT-07c,
- * zero I/O) plus the registration factory that routes on it.
+ * `judgeTranscriptModification` — the transcript-mod covenant's pure judge (zero I/O) plus
+ * the registration factory that routes on it.
  *
  * The transcript is judged by whole-path equality on one file, never as an ancestor, so
  * home-directory spellings (`~`, `$HOME`, `${HOME}`, `~<user>`) are closed by the injected
@@ -26,8 +26,8 @@ import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.js';
 
 /**
- * `TranscriptModificationSpec` — the injected axes of the judge (PRD §2). Empty-string
- * entries in every list are ignored.
+ * `TranscriptModificationSpec` — the injected axes of the judge. Empty-string entries in
+ * every list are ignored.
  */
 export type TranscriptModificationSpec = {
   /** the one file this covenant owns */
@@ -41,8 +41,8 @@ export type TranscriptModificationSpec = {
   readOnlyCommands: string[];
 };
 
-// The fixed rule set, assembled exactly as shell-mod assembles it (COVENANT-04d §4.2):
-// rule-selection injection stays closed, since dropping one would be a detection hole.
+// The rule set is fixed, assembled exactly as shell-mod assembles it: dropping one would be
+// a detection hole, and the two judges must not diverge on what counts as a write.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
 /** The transcript's axes once resolved: the canonical target, the home forms, the allowlist. */
@@ -137,9 +137,12 @@ function argsNameTranscript(value: unknown, transcript: ResolvedTranscript): boo
 }
 
 /**
- * Judge one simple command (PRD §3, order normative). Returns the break reason, or null when
- * the command contributes to uphold. `lineFullyRead` is false when the line carried a span
- * the tokenizer could not read, which withholds clause (e).
+ * Judge one simple command. Returns the break reason, or null when the command contributes
+ * to uphold. Clause `(d)` must stay ahead of `(e)`: an opaque write target is unprovable, so
+ * it has to break before the allowlist gets a chance to absolve it. The letters skip `(c)`
+ * because this ladder has no opaque-mention clause, matching the shell ladder's numbering
+ * rather than closing the gap. `lineFullyRead` is false when the line carried a span the
+ * tokenizer could not read, which withholds the allowlist clause.
  */
 function judgeCommand(
   command: SimpleCommand,
@@ -170,7 +173,7 @@ function judgeCommand(
   // (e) Read-only allowlist: a proven read absolves the mention, in every spelling — but a
   // nested shell (`eval`/`sh -c …`) re-parses its string args, so it is never provably a read.
   // A line carrying an unread span is refused the same way: reading the session is free, but
-  // only on a line we finished reading (COVENANT-18 §2-b B3).
+  // only on a line we finished reading.
   const first = command.words[0];
   const firstBasename = first !== undefined ? commandBasename(first) : '';
   if (
@@ -199,8 +202,8 @@ function judgeShellCall(
 
   for (const line of lines) {
     const { commands, unread } = tokenizeCommandLine(line);
-    // An unread span gets the conservative treatment (COVENANT-18 §2-b B3): quotes and
-    // escapes are stripped as the shell would, and metachar-glued spellings are decomposed.
+    // An unread span gets the conservative treatment: quotes and escapes are stripped as
+    // the shell would, and metachar-glued spellings are decomposed.
     for (const span of unread) {
       const candidates = untokenizableLineCandidates(span.text.replace(/['"\\]/g, ''));
       if (candidates.some((candidate) => tokenNamesTranscript(candidate, transcript))) {
@@ -270,7 +273,7 @@ export function judgeTranscriptModification(
   return { upheld: true };
 }
 
-/** `TranscriptModRegistrationSpec` — the assembly values baked into the registration (PRD §2). */
+/** `TranscriptModRegistrationSpec` — the assembly values baked into the registration. */
 export type TranscriptModRegistrationSpec = {
   transcriptPath: string;
   home?: string;
@@ -281,14 +284,14 @@ export type TranscriptModRegistrationSpec = {
 };
 
 /**
- * Build the transcript-mod registration (PRD §2). Routing is the judge itself as a `matches`
+ * Build the transcript-mod registration. Routing is the judge itself as a `matches`
  * predicate — `protectedPaths` stays empty so no home ancestor re-enters path-mention
  * routing — and the telemetry subject is the canonical absolute path.
  *
- * The misassembly gate the meta pair carries applies here too (DISPATCH-01 §4.3): with any
- * of the three axis lists empty the judge can never see a call, so routing on it would go
- * silently inert — the universal-uphold shape the gate exists to refuse. Such a spec routes
- * every call instead and answers the unjudgeable outcome, which no enforce level softens.
+ * The misassembly gate the other meta-covenants carry applies here too: with any of the
+ * three axis lists empty the judge can never see a call, so routing on it would go silently
+ * inert — the universal-uphold shape the gate exists to refuse. Such a spec routes every
+ * call instead and answers the unjudgeable outcome, which no enforce level softens.
  */
 export function transcriptModRegistration(
   spec: TranscriptModRegistrationSpec,
@@ -323,8 +326,8 @@ export function transcriptModRegistration(
       try {
         return outcomeFromVerdict(judgeTranscriptModification(input, judgeSpec));
       } catch {
-        // Structurally unjudgeable input that passed parseInput (element shapes are an
-        // intended CORE-01 boundary): cannot judge means block.
+        // Structurally unjudgeable input that passed parseInput (which validates the
+        // collection shapes, not the element ones): cannot judge means block.
         return UNJUDGEABLE_OUTCOME;
       }
     },

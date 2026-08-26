@@ -8,12 +8,9 @@ import {
   transcriptModRegistration,
 } from '../src/transcript-mod.js';
 
-// ---------------------------------------------------------------------------
-// COVENANT-07c — the transcript-mod predicate: EXACTLY ONE FILE, spelling
-// equality, never an ancestor. The home value, transcript path, tool names,
-// and arg names below are injected fixture values, never source literals —
-// the judge receives HOME as data and reads no environment itself (§2).
-// ---------------------------------------------------------------------------
+// The transcript-mod predicate protects EXACTLY ONE FILE, by whole-path equality across every
+// spelling, never as an ancestor. The judge receives HOME as data and reads no environment
+// itself, so the home value is injected like every other fixture.
 
 const HOME = '/home/u';
 const TRANSCRIPT_TAIL = '.claude/projects/-home-u-proj/session.jsonl';
@@ -28,7 +25,7 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
   return { toolCalls: [{ name, args }], subagentSpawns: [], userMessages: [] };
 }
 
-/** Build a CovenantInput with a single call carrying its own nested evidence (CORE-06). */
+/** Build a CovenantInput with a single call carrying its own nested evidence. */
 function inputWithCall(call: CovenantInput['toolCalls'][number]): CovenantInput {
   return { toolCalls: [call], subagentSpawns: [], userMessages: [] };
 }
@@ -53,9 +50,9 @@ function baseSpec(overrides: Partial<TranscriptModificationSpec> = {}): Transcri
 
 describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07c §3)', () => {
   it('an append redirect through the "~" spelling breaks — audit B2 itself', () => {
-    // Mutation caught: no home-spelling normalization at all — raw segments ['~', ...]
-    // never equal ['home', 'u', ...], so the measured B2 forgery (appending a fake human
-    // utterance the TTL witness then reads) sails through exactly as it does today.
+    // Without home-spelling normalization the raw segments ['~', ...] never equal
+    // ['home', 'u', ...], so a forgery appending a fake human utterance — which the TTL witness
+    // then reads as proof a human spoke — sails through.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -68,9 +65,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('an append redirect through the "$HOME" spelling breaks (opaque target named by its text)', () => {
-    // Mutation caught: clause (a′) missing — the redirect-write rule stays silent on an
-    // opaque target, so a judge relying on the rules alone never compares the target TEXT,
-    // which normalizes to the transcript.
+    // The redirect-write rule stays silent on an opaque target, so a judge relying on the
+    // rules alone never compares the target TEXT — which normalizes to the transcript.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> $HOME/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -80,8 +76,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('an append redirect through the brace-form $-HOME spelling breaks', () => {
-    // Mutation caught: the brace form left out of the closed spelling set — a one-char
-    // variation of the same forgery.
+    // The brace form is a one-character variation of the same forgery and belongs to the same
+    // closed spelling set.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> \${HOME}/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -91,9 +87,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('an append redirect through the "~<user>" spelling breaks (user = last home segment)', () => {
-    // The 07b third-review gap: `~u/<tail>` names the same file when HOME is /home/u.
-    // Mutation caught: only the bare `~/` form handled, `~<user>/` never derived from the
-    // injected home value.
+    // `~u/<tail>` names the same file when HOME is /home/u, so the `~<user>/` form has to be
+    // derived from the injected home value rather than only the bare `~/` handled.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~u/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -103,9 +98,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('an append redirect naming the absolute transcript path breaks (the pre-07c defence survives the move)', () => {
-    // Mutation caught: the predicate judging home spellings ONLY — moving the transcript
-    // off protectedPaths and then dropping the absolute comparison would trade the old
-    // hole for a new one.
+    // A predicate judging home spellings ONLY trades one hole for another: the absolute
+    // comparison has to stand alongside them.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ${TRANSCRIPT}`),
       baseSpec(),
@@ -115,18 +109,16 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('rm of the transcript breaks (backstop: mention without read-only proof)', () => {
-    // Mutation caught: the judge keyed on write-redirect structure alone — a plain rm has
-    // no redirect and trips no mutation rule, so only the mention backstop stops the
-    // evidence file from being deleted.
+    // A plain rm has no redirect and trips no mutation rule, so only the mention backstop
+    // stops the evidence file from being deleted.
     const verdict = judgeTranscriptModification(shellCall(`rm ~/${TRANSCRIPT_TAIL}`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
   });
 
   it('chmod 000 through the "$HOME" spelling breaks (the mention scan reads opaque word text)', () => {
-    // Mutation caught: the mention scan skipping opaque words — this ladder has no
-    // opaque-mention clause (c), so an opaque token whose TEXT normalizes to the
-    // transcript must still register as a mention for the backstop to answer.
+    // This ladder has no opaque-mention clause of its own, so an opaque token whose TEXT
+    // normalizes to the transcript has to register as a mention for the backstop to answer.
     const verdict = judgeTranscriptModification(
       shellCall(`chmod 000 $HOME/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -136,9 +128,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('a piped tee onto the transcript breaks (tee writes with no redirect operator)', () => {
-    // Mutation caught: the tee rule dropped, the rule target not home-normalized before
-    // the equality comparison, or only the FIRST simple command of a line judged (tee is
-    // the second command here).
+    // tee is the second command on the line, so judging only the first misses it; so does
+    // leaving the rule's target un-normalized before the equality comparison.
     const verdict = judgeTranscriptModification(
       shellCall(`cat /tmp/x | tee ~/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -148,9 +139,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('a dot-resolved spelling of the transcript breaks (07b union carried into the equality)', () => {
-    // `~/.claude/../<tail>` resolves to the transcript while its raw segments differ.
-    // Mutation caught: the equality implemented on raw segments only, dropping the
-    // interior-dot second pass COVENANT-07b established for every other judge.
+    // `~/.claude/../<tail>` resolves to the transcript while its raw segments differ, so the
+    // equality needs the interior-dot pass every other judge already has.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/.claude/../${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -160,10 +150,9 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('a half-read line carrying the "~" spelling breaks (§4.1 home resolution)', () => {
-    // Mutation caught: an unread span defaulting to uphold — an unclosed quote sitting next
-    // to the forgery must not save it. Since COVENANT-18 §2-b B3 the forgery itself is in
-    // the READ half, so the home spelling has to resolve in precise judgment, not only in
-    // the span scan that used to answer for the whole line.
+    // An unclosed quote sitting next to the forgery must not save it. The forgery is in the
+    // READ half, so the home spelling has to resolve inside precise judgment and not only in
+    // the span scan.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL} "unclosed`),
       baseSpec(),
@@ -173,18 +162,17 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('a read of the transcript into an opaque redirect target breaks (opaque write target clause)', () => {
-    // Mutation caught: the opaque-write-target clause dropped — `$OUT` could resolve to
-    // the transcript itself, so the allowlisted `cat` head must not absolve the mention.
+    // `$OUT` could resolve to the transcript itself, so the allowlisted `cat` head must not
+    // absolve the mention.
     const verdict = judgeTranscriptModification(shellCall(`cat ${TRANSCRIPT} > $OUT`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
   });
 
   it('a candidate carrying a glued flag or operator still names the transcript', () => {
-    // Review finding: whole-path equality reads the candidate as one string, and no splitter
-    // separates `-o` or `>>` from the path fused to it. Under the protected-path routing this
-    // covenant replaces, the offset-tolerant comparison caught these; equality alone loses
-    // them, and every one is a write that overwrites the file the witness reads.
+    // Whole-path equality reads the candidate as one string, and no splitter separates `-o` or
+    // `>>` from the path fused to it. An offset-tolerant comparison catches these incidentally;
+    // equality alone loses them, and every one overwrites the file the witness reads.
     for (const command of [
       `curl -so${TRANSCRIPT} https://example.test/forged.jsonl`,
       `wget -O${TRANSCRIPT} https://example.test/forged.jsonl`,
@@ -196,9 +184,9 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 
   it('a home spelling whose ".." cancels back into home still names the transcript', () => {
-    // Review finding: the shell expands the prefix and THEN resolves dots. Resolving first
-    // cancels the `~` itself against the `..`, leaving a path that names nothing — so a
-    // spelling bash delivers straight to the transcript was upheld.
+    // The shell expands the prefix and THEN resolves dots. Resolving first cancels the `~`
+    // itself against the `..` and leaves a path naming nothing, upholding a spelling bash
+    // delivers straight to the transcript.
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell expansion spelling
     for (const prefix of ['~', '$HOME', '${HOME}']) {
       const command = `echo forged >> ${prefix}/../u/${TRANSCRIPT_TAIL}`;
@@ -217,9 +205,8 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
 
 describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-07c §3)', () => {
   it('cd ~, cd $HOME, and mv x ~ uphold (non-allowlisted heads with a bare home argument)', () => {
-    // The daily friction of the withdrawn 07b registration, at the sharp end: cd and mv
-    // are NOT read-only entries, so no absolution can rescue a false mention — an
-    // ancestor-matching mutant blocks these at the backstop with no valve but the
+    // cd and mv are NOT read-only entries, so no absolution can rescue a false mention here:
+    // an ancestor-matching predicate blocks all three at the backstop, with no valve but the
     // human-typed witness.
     expect(judgeTranscriptModification(shellCall('cd ~'), baseSpec())).toEqual({ upheld: true });
     expect(judgeTranscriptModification(shellCall('cd $HOME'), baseSpec())).toEqual({
@@ -229,21 +216,19 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('cd into the literal absolute home upholds — the COVENANT-13 over-block dissolves (§3 AC)', () => {
-    // `cd /home/<user>` has blocked since COVENANT-13 because the transcript in
-    // protectedPaths made home a protected ANCESTOR. Mutation caught: the predicate
-    // built on the shared ancestor/descendant primitive instead of file equality — the
-    // root this ticket removes, not just the spelling.
+    // Listing the transcript among the protected paths makes home a protected ANCESTOR and
+    // blocks `cd /home/<user>`. Building this predicate on the shared ancestor/descendant
+    // primitive instead of file equality reproduces that.
     expect(judgeTranscriptModification(shellCall(`cd ${HOME}`), baseSpec())).toEqual({
       upheld: true,
     });
   });
 
   it('rm -rf of transcript ancestor directories upholds — out of observation scope BY DESIGN (§2)', () => {
-    // Designed pass, made audible (07b's non-goal convention): the predicate protects
-    // the transcript FILE only; out-of-repo ancestor destruction is declared outside
-    // Polydeukes observation scope and parked with agent deny policy (§2 scope
-    // principle). Mutation caught: the equality widened toward ancestors — the home
-    // ancestor growing back under a new name.
+    // A designed pass, pinned so it stays visible: the predicate protects the transcript FILE
+    // only, and out-of-repo ancestor destruction is outside this project's observation scope,
+    // owned by the agent's own deny policy. Widening the equality toward ancestors grows the
+    // home ancestor back under a new name.
     expect(judgeTranscriptModification(shellCall('rm -rf ~/.claude'), baseSpec())).toEqual({
       upheld: true,
     });
@@ -254,9 +239,9 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
 
   it('reads of the transcript uphold in every spelling (read-only absolution, no opaque-mention clause)', () => {
     // Reading a session must never need a witness. The `$HOME` read is the deliberate
-    // divergence from shell-mod's ladder: there is NO opaque-mention block clause here,
-    // so a fully-normalized opaque spelling under a read-only head is a proven read.
-    // Mutation caught: shell-mod's clause (c) copied over, re-blocking `cat $HOME/<tail>`.
+    // divergence from shell-mod's ladder: there is NO opaque-mention block clause here, so a
+    // fully normalized opaque spelling under a read-only head is a proven read. Copying
+    // shell-mod's opaque clause over re-blocks `cat $HOME/<tail>`.
     expect(judgeTranscriptModification(shellCall(`cat ${TRANSCRIPT}`), baseSpec())).toEqual({
       upheld: true,
     });
@@ -272,10 +257,9 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('a glob spelling of the transcript upholds (not segment-equal — designed non-goal)', () => {
-    // `sess*.jsonl` needs the filesystem to resolve, and the judge does not guess —
-    // same disposition as 07b's glob row (the disciplines layer owns the skip record).
-    // Mutation caught: glob-aware matching bolted onto the equality, which would also
-    // block unrelated files sharing the prefix.
+    // `sess*.jsonl` needs the filesystem to resolve and the judge does not guess; the
+    // disciplines layer owns the skip record for it. Glob-aware matching bolted onto the
+    // equality would also block unrelated files sharing the prefix.
     const verdict = judgeTranscriptModification(
       shellCall('echo forged >> ~/.claude/projects/-home-u-proj/sess*.jsonl'),
       baseSpec(),
@@ -285,8 +269,8 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('a different user\'s "~other" spelling upholds (username equality, not prefix)', () => {
-    // Mutation caught: any `~<word>/` prefix treated as this home — the user form must be
-    // derived from the injected home value's own last segment, so `~other` closes nothing.
+    // The `~<user>` form is derived from the injected home value's own last segment, so
+    // `~other` closes nothing; treating any `~<word>/` prefix as this home would.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~other/${TRANSCRIPT_TAIL}`),
       baseSpec(),
@@ -296,9 +280,8 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('a half-read line not naming the transcript upholds, and empty toolCalls upholds', () => {
-    // Mutation caught: an unread span defaulting to break regardless of content
-    // (every malformed line would need the witness), and a degenerate input breaking
-    // instead of vacuously upholding.
+    // An unread span defaulting to break sends every malformed line to the witness, and a
+    // degenerate input must uphold vacuously rather than break.
     expect(judgeTranscriptModification(shellCall('echo "unclosed'), baseSpec())).toEqual({
       upheld: true,
     });
@@ -307,19 +290,18 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 
   it('a foreign-rooted path embedding the transcript run upholds (equality, never containment)', () => {
-    // A backup copy under another root embeds the transcript's whole segment run at an
-    // offset. Mutation caught: the predicate reusing the shared mention primitive, whose
-    // contains-segment-run match would block operations on mere copies — the 07c
-    // contract is one file, whole-path equality.
+    // A backup copy under another root embeds the transcript's whole segment run at an offset,
+    // so the shared mention primitive's contains-segment-run match blocks operations on mere
+    // copies. The contract here is one file, by whole-path equality.
     const verdict = judgeTranscriptModification(shellCall(`rm /backup${TRANSCRIPT}`), baseSpec());
 
     expect(verdict).toEqual({ upheld: true });
   });
 
   it('a sibling sharing the transcript name as a prefix upholds (segment-text equality)', () => {
-    // `session.jsonl.bak` shares every segment but the last one's text. Mutation caught:
-    // an includes/startsWith/endsWith shortcut implementation of the equality, which
-    // would block the transcript's own backup — a file the predicate never owned.
+    // `session.jsonl.bak` shares every segment but the last one's text, so an
+    // includes/startsWith/endsWith shortcut blocks the transcript's own backup — a file the
+    // predicate never owned.
     const verdict = judgeTranscriptModification(
       shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}.bak`),
       baseSpec(),
@@ -334,10 +316,10 @@ describe('judgeTranscriptModification — home-shape validation (COVENANT-07c §
   const absoluteForgery = shellCall(`echo forged >> ${TRANSCRIPT}`);
 
   it('an invalid home (undefined, empty, "/", "///", relative) leaves home spellings open but the absolute spelling judged', () => {
-    // Shape validation lives INSIDE the judge, per call. Mutation caught in both
-    // directions at once: an invalid home expanded anyway ('' turning `~/x` into `/x`,
-    // '/' doubling into '//'), manufacturing matches from garbage; or the whole judgment
-    // disabled on invalid home, dropping the absolute-spelling defence that predates 07c.
+    // Shape validation lives INSIDE the judge, per call, and both directions fail here at
+    // once: an invalid home expanded anyway manufactures matches from garbage — '' turns `~/x`
+    // into `/x`, '/' doubles into '//' — while disabling the whole judgment on an invalid home
+    // drops the absolute-spelling defence too.
     for (const home of [undefined, '', '/', '///', 'foo/bar']) {
       expect(judgeTranscriptModification(tildeForgery, baseSpec({ home }))).toEqual({
         upheld: true,
@@ -347,18 +329,17 @@ describe('judgeTranscriptModification — home-shape validation (COVENANT-07c §
   });
 
   it('a home with trailing slashes normalizes and still closes the spellings', () => {
-    // Mutation caught: `/home/u/` failing a `startsWith('<home>/')` check or building a
-    // double-slash tail, silently reopening B2 for the most common env spelling.
+    // `/home/u/` is the commonest environment spelling: failing a `startsWith('<home>/')`
+    // check, or building a double-slash tail, silently reopens every home spelling for it.
     for (const home of ['/home/u/', '/home/u//']) {
       expect(judgeTranscriptModification(tildeForgery, baseSpec({ home })).upheld).toBe(false);
     }
   });
 
   it('a transcript outside the given home leaves home spellings inert but the absolute spelling judged', () => {
-    // HOME and the transcript path arrive from different sources and can disagree.
-    // Mutation caught: the tail computed by blind slicing (transcriptPath minus
-    // home.length) — under /home/other that "tail" is garbage that must close nothing,
-    // while the absolute defence stays.
+    // HOME and the transcript path arrive from different sources and can disagree. A tail
+    // computed by blind slicing — transcriptPath minus home.length — is garbage under
+    // /home/other, and it must close nothing while the absolute defence stays.
     const outside = baseSpec({ home: '/home/other' });
 
     expect(judgeTranscriptModification(tildeForgery, outside)).toEqual({ upheld: true });
@@ -368,11 +349,10 @@ describe('judgeTranscriptModification — home-shape validation (COVENANT-07c §
 
 describe('judgeTranscriptModification — degenerate transcript path (COVENANT-07c)', () => {
   it('a zero-segment transcriptPath ("", "/", ".") is inert: forged appends uphold and nothing throws', () => {
-    // Contract decided at audit: a degenerate transcript path makes the registration
-    // INERT — the repo convention for empty protected-path entries (ignored, never a
-    // total lock-up). The hook only checks `typeof transcript_path === 'string'`, so an
-    // empty string reaches this layer. Mutation caught: an endsWith-style shortcut
-    // matching every candidate against '' and blocking every call with subject ''.
+    // A degenerate transcript path makes the registration INERT, following the same
+    // convention as an empty protected-path entry: ignored, never a total lock-up. The hook
+    // only checks that transcript_path is a string, so an empty one reaches this layer, where
+    // an endsWith-style shortcut would match every candidate and block every call.
     for (const transcriptPath of ['', '/', '.']) {
       const spec = baseSpec({ transcriptPath });
       expect(
@@ -387,8 +367,8 @@ describe('judgeTranscriptModification — degenerate transcript path (COVENANT-0
 
 describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   it('modify evidence naming the transcript breaks', () => {
-    // Mutation caught: the tool axis missing entirely — an Edit tool writing the
-    // transcript directly (no shell involved) is the forgery with the fewest steps.
+    // An Edit writing the transcript directly, with no shell involved, is the forgery with the
+    // fewest steps.
     const verdict = judgeTranscriptModification(
       inputWithCall({
         name: 'Edit',
@@ -405,8 +385,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('create evidence carrying the "~" spelling of the transcript breaks (evidence paths are normalized too)', () => {
-    // Mutation caught: home normalization applied to Bash candidates only — a producer
-    // reporting its target home-relative would slip the same file past the tool axis.
+    // With home normalization applied to Bash candidates only, a producer reporting its target
+    // home-relative slips the same file past the tool axis.
     const verdict = judgeTranscriptModification(
       inputWithCall({
         name: 'Write',
@@ -420,10 +400,9 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('delete evidence naming the transcript breaks even when the call carries no args at all', () => {
-    // Deleting the evidence source is a modification of the surface (CORE-06 makes
-    // deletion first-class), and with no args the evidence is the only signal. Mutation
-    // caught: the evidence comparison keyed on kinds carrying `post` (create/modify),
-    // silently skipping delete — the witness's data source removed unjudged.
+    // Deleting the evidence source is a modification of the surface, and with no args the
+    // evidence is the only signal. An evidence comparison keyed on kinds carrying `post` skips
+    // delete silently and lets the witness's data source be removed unjudged.
     const verdict = judgeTranscriptModification(
       inputWithCall({
         name: 'Write',
@@ -436,10 +415,9 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('evidence naming an unrelated file upholds even when args content spells the transcript and a bare "~"', () => {
-    // The 07b friction row this ticket dissolves: an edit whose CONTENT merely carried a
-    // bare `~` was refused by the fallback branch. Mutation caught: args consulted on
-    // the evidence branch (a defensive "also scan args" clause), re-conflating mention
-    // with target — the COVENANT-09 boundary applied to this predicate.
+    // An edit whose CONTENT merely carries a bare `~` must not be refused. Consulting args on
+    // the evidence branch — a defensive "also scan args" clause — re-conflates a mention with
+    // a target.
     const body = `see ~/${TRANSCRIPT_TAIL} and the bare ~ marker`;
     const verdict = judgeTranscriptModification(
       inputWithCall({
@@ -454,8 +432,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('an evidence-free mutating call whose args spell the transcript breaks (conservative fallback)', () => {
-    // Mutation caught: the fallback dropped — an evidence-free producer (a failed apply,
-    // a future adapter) could then name the transcript in file_path and pass unjudged.
+    // An evidence-free producer — a failed apply, a new adapter — can name the transcript in
+    // file_path, and without the fallback it passes unjudged.
     const verdict = judgeTranscriptModification(
       inputWithToolCall('Write', { file_path: `~/${TRANSCRIPT_TAIL}`, content: 'forged' }),
       baseSpec(),
@@ -465,9 +443,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('an evidence-free mutating call whose args carry only a bare "~" upholds (equality, not ancestor)', () => {
-    // Mutation caught: the fallback walking args with ancestor semantics — a NotebookEdit
-    // whose cell text mentions `~` would block with a reason naming a file it never
-    // touched (the undiagnosable block of PRD §1, row 3).
+    // A fallback walking args with ancestor semantics blocks a NotebookEdit whose cell text
+    // mentions `~`, with a reason naming a file it never touched.
     const verdict = judgeTranscriptModification(
       inputWithToolCall('NotebookEdit', {
         notebook_path: `${HOME}/docs/notes.ipynb`,
@@ -480,9 +457,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('degenerate evidence (zero-segment path or unrecognized kind) falls back to the args traversal', () => {
-    // Mutation caught: junk evidence counted as proof, suppressing the fallback — a
-    // stub would then absolve a call whose args name the transcript (the COVENANT-09
-    // review fail-open replayed against this predicate).
+    // Junk evidence counted as proof suppresses the fallback, and a stub then absolves a call
+    // whose args name the transcript.
     const degenerates = [
       { kind: 'modify', path: '/', pre: 'a', post: 'forged' },
       { kind: 'rename', path: UNRELATED_FILE },
@@ -502,8 +478,8 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 
   it('a non-mutating, non-shell call whose args name the transcript upholds (axis boundary)', () => {
-    // Mutation caught: every tool judged by args mention regardless of name — a Read of
-    // the transcript must stay free without any allowlist involved.
+    // A Read of the transcript stays free without any allowlist involved, so judging every
+    // tool by args mention regardless of name blocks it.
     const verdict = judgeTranscriptModification(
       inputWithToolCall('Read', { file_path: TRANSCRIPT }),
       baseSpec(),
@@ -531,12 +507,10 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   }
 
   it('builds the transcript-mod registration with EMPTY protectedPaths and a judging thunk', async () => {
-    // The whole ticket in one shape: protectedPaths MUST be [] — any entry there
-    // re-enters path-mention routing and re-creates the home ancestor. Since DISPATCH-01
-    // the axes reach the judge by closure rather than argv, so the shape is proven by what
-    // the thunk ANSWERS for a call the dispatcher hands it: a shell-axis forgery spelled
-    // through `~` breaks, which needs the shell tool, the command arg, and the home value
-    // all wired.
+    // protectedPaths MUST be []: any entry there re-enters path-mention routing and recreates
+    // the home ancestor. The axes reach the judge by closure rather than argv, so the wiring is
+    // proven by what the thunk ANSWERS — a `~`-spelled shell forgery breaks only if the shell
+    // tool, the command arg and the home value are all bound.
     const reg = transcriptModRegistration(regSpec());
 
     expect(reg.label).toBe('transcript-mod');
@@ -548,9 +522,7 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   });
 
   it('the mutating-tool axis reaches the judge: a tool-axis forgery breaks', async () => {
-    // Mutation caught: a silently dropped axis — the argv deep-equal used to catch a
-    // missing --mutating-tool pair, and with argv gone the axis is proven by judging an
-    // input only that axis can break.
+    // A silently dropped axis is proven absent by judging an input only that axis can break.
     const reg = transcriptModRegistration(regSpec());
 
     const outcome = await reg.body?.(
@@ -561,9 +533,9 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   });
 
   it('an omitted home leaves the `~` spelling unjudged, degrading to the absolute-only judgment', async () => {
-    // Mutation caught: a bogus home value (the string 'undefined', or an empty one)
-    // smuggled in — an empty home turns `~/x` into `/x` and manufactures matches, while
-    // the contract is that an absent home closes no home spelling at all.
+    // An absent home closes no home spelling at all. A bogus value smuggled in its place —
+    // the string 'undefined', or an empty one — manufactures matches instead, since an empty
+    // home turns `~/x` into `/x`.
     const { home: _home, ...withoutHome } = regSpec();
     const reg = transcriptModRegistration(withoutHome);
 
@@ -572,11 +544,10 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   });
 
   it('matches runs the judge: the transcript path for a forgery, null for an allowlisted read', () => {
-    // Mutation caught: matches wired to a constant or to a judge without the default
-    // read-only allowlist — the null side uses `cat ~/<tail>`, which only a wired
-    // allowlist absolves, so a predicate that routes reads (or routes everything)
-    // fails one of the two sides. The returned string is the telemetry subject, so it
-    // must be the canonical absolute path, not the spelling that was typed.
+    // The null side uses `cat ~/<tail>`, which only a wired allowlist absolves, so a matches
+    // closure wired to a constant or to a judge without the default allowlist fails one of the
+    // two sides. The returned string is the telemetry subject, so it is the canonical absolute
+    // path rather than the spelling that was typed.
     const reg = transcriptModRegistration(regSpec());
 
     expect(reg.matches?.(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`))).toBe(TRANSCRIPT);
@@ -584,17 +555,17 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   });
 
   it('a degenerate transcriptPath builds an inert registration: matches returns null for the forgery', () => {
-    // Same audit contract on the factory seam. Mutation caught: '' passed through to a
-    // matches closure that still routes on it — every call would route with subject ''
-    // and die at the body's config gate, a total lock-up out of one empty string.
+    // The inert contract at the factory seam: '' passed through to a matches closure that
+    // still routes on it makes every call route with subject '' and die at the body's config
+    // gate — a total lock-up out of one empty string.
     const reg = transcriptModRegistration(regSpec({ transcriptPath: '' }));
 
     expect(reg.matches?.(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`))).toBeNull();
   });
 
   it('witness passes through when provided and stays absent when omitted', () => {
-    // Mutation caught: the factory dropping the witness (the TTL witness valve silently
-    // stops applying to this registration) or manufacturing one when none was given.
+    // A dropped witness silently stops the valve applying to this registration; a
+    // manufactured one opens a valve nobody asked for.
     const witness = () => true;
 
     expect(transcriptModRegistration(regSpec({ witness: witness })).witness).toBe(witness);
@@ -602,10 +573,8 @@ describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () =>
   });
 });
 
-// ---------------------------------------------------------------------------
-// The judge thunk the builder composes (COVENANT-07c), exercised as the
-// dispatcher runs it: axes bound at assembly, the call set passed at judgment.
-// ---------------------------------------------------------------------------
+// The judge thunk the builder composes, exercised as the dispatcher runs it: axes bound at
+// assembly, the call set passed at judgment.
 
 /** Judge a payload through the registration builder's thunk, with the standard axes. */
 async function judgeThroughThunk(input: CovenantInput): Promise<{
@@ -624,9 +593,9 @@ async function judgeThroughThunk(input: CovenantInput): Promise<{
 
 describe('transcript-mod judge thunk (COVENANT-07c)', () => {
   it('a structurally malformed toolCalls element yields the exit-2 equivalent, never a crash', async () => {
-    // `toolCalls: [null]` passes core parseInput (element shapes are a CORE-01 boundary)
-    // and would crash the judge — which, uncaught, escapes the wrapper as a rejection.
-    // Mutation caught: the thunk not translating a judge throw into the blocking outcome.
+    // `toolCalls: [null]` passes core's parse — element shapes are an unvalidated boundary —
+    // and crashes the judge, which uncaught escapes the wrapper as a rejection instead of a
+    // blocking outcome.
     const result = await judgeThroughThunk({
       toolCalls: [null],
       subagentSpawns: [],
@@ -637,9 +606,8 @@ describe('transcript-mod judge thunk (COVENANT-07c)', () => {
   });
 
   it('a forged "~" append yields exit 1 with the transcript in the reason', async () => {
-    // Mutation caught: the verdict translation wired backwards (break -> 0), or the break
-    // reason dropped — the block would be undiagnosable at the hook, since the wrapper
-    // writes exactly this string to stderr.
+    // The wrapper writes this reason string to stderr, so dropping it leaves the block
+    // undiagnosable at the hook.
     const result = await judgeThroughThunk(shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`));
 
     expect(result.exitCode).toBe(1);
@@ -647,8 +615,8 @@ describe('transcript-mod judge thunk (COVENANT-07c)', () => {
   });
 
   it('a "$HOME" read yields exit 0 (default read-only allowlist)', async () => {
-    // Mutation caught: the builder defaulting to an EMPTY allowlist — every read of the
-    // session would then need the witness (the friction this ladder deliberately removed).
+    // A builder defaulting to an EMPTY allowlist sends every read of the session to the
+    // witness.
     const result = await judgeThroughThunk(shellCall(`cat $HOME/${TRANSCRIPT_TAIL}`));
 
     expect(result.exitCode).toBe(0);

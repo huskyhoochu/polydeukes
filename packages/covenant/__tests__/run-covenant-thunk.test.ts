@@ -3,11 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// DISPATCH-01 §4.1 RED phase — RunCovenantSpec.body becomes an in-process judge thunk
-// (() => Promise<{ exitCode, reason? }>). Wrapper order unchanged (judge → translate →
-// valve → one row); a THROW is the exit-2 cell (valve consulted, body-crash parity);
-// the wrapper writes `${reason}\n` to stderr at every level — the advise delivery that
-// replaces stdio inherit. The shape does not exist yet: RED by construction.
+// RunCovenantSpec.body is an in-process judge thunk. The wrapper's order is judge,
+// translate, consult the valve, write one row; a THROW lands in the unjudgeable cell with
+// the valve still consulted; and the reason reaches stderr at every level, which is how an
+// advised break is delivered at all.
 import type { RunCovenantSpec, TelemetryEvent } from '../src/index.ts';
 import { runCovenant } from '../src/index.ts';
 import { readTelemetryLines } from './helpers.js';
@@ -16,7 +15,7 @@ const LABEL = 'thunk-covenant';
 const SUBJECT = 'observed/entry';
 const REASON = 'the covenant names exactly why this call broke';
 
-/** §4.1 thunk-bodied spec; the widening carries the type drift until GREEN. */
+/** The thunk-bodied spec shape. */
 type ThunkRunCovenantSpec = {
   body: () => Promise<{ exitCode: number; reason?: string }>;
   label: string;
@@ -58,8 +57,6 @@ afterEach(() => {
 
 describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit codes did', () => {
   it('a thunk resolving exitCode 0 passes: exit 0, one passed row, valve never consulted', async () => {
-    // Mutation caught: 0 misread as unknown (fail-closed), the row dropped, or the
-    // valve consulted on every outcome again.
     let consulted = 0;
     const result = await runThunk({
       body: async () => ({ exitCode: 0 }),
@@ -84,8 +81,8 @@ describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit co
   });
 
   it('exitCode 1 under block translates up: exit 2, one blocked row, the reason once on stderr', async () => {
-    // Mutation caught: 1 passed through as the wrapper exit, or the reason dropped now
-    // that no child process carries it.
+    // No child process carries the reason any more, so the wrapper is the only thing that
+    // can put it on stderr.
     const result = await runThunk({
       body: async () => ({ exitCode: 1, reason: REASON }),
       label: LABEL,
@@ -101,8 +98,8 @@ describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit co
   });
 
   it('exitCode 1 under advise records advised at exit 0 WITH the reason on stderr', async () => {
-    // Mutation caught: the reason written only on the blocked branch — advise goes mute
-    // (PRD §4.4, the advise delivery mechanism).
+    // Written only on the blocked branch, advise goes mute — and the reason on stderr is
+    // the entire delivery mechanism of an advised break.
     const result = await runThunk({
       body: async () => ({ exitCode: 1, reason: REASON }),
       label: LABEL,
@@ -119,8 +116,7 @@ describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit co
   });
 
   it('exitCode 2 under advise stays blocked at exit 2 (misassembly never softens)', async () => {
-    // Mutation caught: the advise translation widened over 2 — a broken assembly
-    // advised through (CONFIG-06b's blocker, in-process form).
+    // Widening the advise translation over 2 advises a broken assembly through.
     const result = await runThunk({
       body: async () => ({ exitCode: 2 }),
       label: LABEL,
@@ -141,8 +137,6 @@ describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, v
     'block',
     'advise',
   ] as const)('a throwing thunk under %s with no valve fails closed: exit 2, exactly one blocked row', async (enforce) => {
-    // Mutation caught: the throw escaping as a rejection, swallowed into a pass, or
-    // the row skipped so the crash leaves no record.
     const result = await runThunk({
       body: async () => {
         throw new Error('judge blew up mid-judgment');
@@ -160,8 +154,8 @@ describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, v
   });
 
   it('a throwing thunk with an open valve resolves witnessed at exit 0 — one row, never two', async () => {
-    // Mutation caught: the catch placed AFTER the valve consultation (a crash bypasses
-    // the witness), or a blocked row logged alongside the witnessed one.
+    // The catch must precede the valve consultation, or a crash escapes the witness
+    // entirely; and one call still writes one row.
     const result = await runThunk({
       body: async () => {
         throw new Error('judge blew up mid-judgment');
@@ -179,9 +173,8 @@ describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, v
   });
 
   it('a witnessed break still puts the reason on stderr — the valve is never silent', async () => {
-    // Mutation caught: the reason write gated on the FINAL event — a witnessed opening
-    // would erase what broke, and the valve's contract is never-silent (§4.1-4: the
-    // reason is written whatever the level or final event).
+    // The valve is never silent: gating the reason write on the FINAL event would let a
+    // witnessed opening erase what broke.
     const result = await runThunk({
       body: async () => ({ exitCode: 1, reason: REASON }),
       label: LABEL,
@@ -196,8 +189,8 @@ describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, v
   });
 
   it('a throwing thunk with a closed valve stays blocked: consulted once, refused', async () => {
-    // Mutation caught: the crash branch skipping the valve (consulted 0), narrowing the
-    // witness's reach relative to today's spawned crash.
+    // The crash branch must still consult the valve, or the witness reaches less than it
+    // does for any other blocked outcome.
     let consulted = 0;
     const result = await runThunk({
       body: async () => {
@@ -223,8 +216,7 @@ describe('DISPATCH-01 §4.1 — an out-of-shape thunk result fails closed (old-d
     ['block', 3],
     ['advise', 3],
   ] as const)('an uninterpretable exitCode (3) under %s lands blocked at exit 2', async (enforce, code) => {
-    // Mutation caught: the uninterpretable-code cell falling through to a pass — an old
-    // covenant dist answering a code the table does not carry must stay fail-closed.
+    // An old dist answering a code the table does not carry must stay fail-closed.
     const result = await runThunk({
       body: async () => ({ exitCode: code }),
       label: LABEL,
@@ -241,9 +233,8 @@ describe('DISPATCH-01 §4.1 — an out-of-shape thunk result fails closed (old-d
     'block',
     'advise',
   ] as const)('a thunk resolving a non-object under %s lands blocked at exit 2', async (enforce) => {
-    // Mutation caught: the wrapper destructuring the result unguarded — an old-shape
-    // registration (dist skew) resolving undefined must land in the fail-closed cell,
-    // not crash out of the wrapper or read as a pass.
+    // An old-shape registration resolving undefined must land in the fail-closed cell
+    // rather than crash out of the wrapper or read as a pass.
     const result = await runThunk({
       body: (async () => undefined) as unknown as ThunkRunCovenantSpec['body'],
       label: LABEL,

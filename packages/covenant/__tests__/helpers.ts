@@ -1,7 +1,4 @@
-/**
- * Shared covenant test helpers (COVENANT-10 REVIEW — the COVENANT-06 §8 carry-over's
- * trigger condition fired: a third file duplicated all three). Not a test file itself.
- */
+/** Shared covenant test helpers. Not a test file itself. */
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { CovenantInput } from '@polydeukes/core';
@@ -21,10 +18,9 @@ export function exitThunk(code: number): () => Promise<{ exitCode: number }> {
 }
 
 /**
- * A judge thunk that touches `outFile` and answers `exitCode` — proves the judge actually
- * ran (a missing outFile means it never did), the observation the spawned marker-file body
- * used to carry. `reason` rides along on a break so stderr assertions have something to
- * read (DISPATCH-01 §4.1).
+ * A judge thunk that touches `outFile` and answers `exitCode` — the marker file is how a
+ * test proves the judge actually ran, since a missing outFile means it never did. `reason`
+ * rides along on a break so stderr assertions have something to read.
  */
 export function markerThunk(
   outFile: string,

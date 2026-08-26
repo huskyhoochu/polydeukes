@@ -1,15 +1,15 @@
 /**
- * `ttlWitness` — a time-boxed witness predicate (COVENANT-06, PRD §4.1–4.2).
+ * `ttlWitness` — a time-boxed witness predicate.
  *
  * The predicate on the witness seam. Expiry is built in rather than left to the human
  * to disarm: a human types the agreed token into the conversation, the witness holds
  * for `ttlMs` from that user message's timestamp, then blocking resumes automatically
  * — no stored state, every dispatch re-judges against the injected clock.
  *
- * Invoking the witness is distinct from talking about it (COVENANT-15): the token must
- * stand alone on the utterance's first line, so quoting or asking about it never opens
- * the valve. Only the token's *placement* is constrained — its value is free, and this
- * module never inspects its shape.
+ * Invoking the witness is distinct from talking about it: the token must stand alone on
+ * the utterance's first line, so quoting or asking about it never opens the valve. Only
+ * the token's *placement* is constrained — its value is free, and this module never
+ * inspects its shape.
  */
 
 import type { CanonicalTranscript, CovenantInput } from '@polydeukes/core';
@@ -33,15 +33,15 @@ export type TtlWitnessSpec = {
 
 /**
  * Build a predicate that returns `true` iff some user message carries the token
- * within the TTL window (PRD §4.2).
+ * within the TTL window.
  *
  * A message witnesses only when all hold: it comes from `transcript.findUserMessages()`
  * (no other text surface is consulted — an AI-synthesised token never counts), the
  * first line of its `text` equals the token once trimmed, its `timestampMs` is
  * present, and `0 <= now() - timestampMs <= ttlMs` (closed interval; a future
- * timestamp is rejected). A missing `timestampMs` defers to `resolveFailMode('evidence-absence')`
- * — the CORE-04 contract "missing timestampMs = freshness unprovable = fail-closed"
- * — so the disposition's single source of truth stays in the core policy table.
+ * timestamp is rejected). A missing `timestampMs` means freshness is unprovable and
+ * defers to `resolveFailMode('evidence-absence')`, so the disposition's single source of
+ * truth stays in the core policy table.
  *
  * Validation is a factory-time concern: a trimmed-empty token or a non-finite /
  * non-positive `ttlMs` throws here; the returned predicate itself never throws.
@@ -77,11 +77,11 @@ export function ttlWitness(
     const judgedAt = now();
     return transcript.findUserMessages().some((message) => {
       // The first line only, compared whole: an utterance invokes the witness, it does
-      // not merely mention it (COVENANT-15 §4.1). `split` keeps a leading blank line as
-      // an empty first element, so a token below it never matches, and `trim` absorbs
-      // both surrounding spaces and the trailing `\r` of a CRLF transport — CRLF only:
-      // a lone `\r` with no `\n` is not treated as a line break, so such a message
-      // fails closed (refused), never open.
+      // not merely mention it. `split` keeps a leading blank line as an empty first
+      // element, so a token below it never matches, and `trim` absorbs both surrounding
+      // spaces and the trailing `\r` of a CRLF transport — CRLF only: a lone `\r` with no
+      // `\n` is not treated as a line break, so such a message fails closed (refused),
+      // never open.
       //
       // `trim` covers the whole Unicode space class, so a token padded with NBSP, an
       // ideographic space, or a BOM opens the valve exactly as an ASCII-padded one does.

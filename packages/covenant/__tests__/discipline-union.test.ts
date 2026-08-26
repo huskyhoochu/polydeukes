@@ -1,23 +1,17 @@
 import type { CovenantInput, DisciplineEntry, FileChange } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// CORE-06 §4.3 / AC 5–6 — discipline judging consumes the union from the NESTED
-// position (toolCalls[n].fileChange): the delta family short-circuits delete to uphold
-// (deletion adds no content) and immutable breaks on kind !== 'create' (an immutable
-// file can be neither modified nor deleted). Today delete evidence cannot even be
-// expressed and the judge reads the removed top-level array, so this file is RED by
-// construction — AC 6 in particular demonstrates the live fail-open hole.
+// Discipline judging consumes file-change evidence from the NESTED position
+// (toolCalls[n].fileChange): the delta family short-circuits delete to uphold (deletion adds
+// no content) and immutable breaks on kind !== 'create' (an immutable file can be neither
+// modified nor deleted).
 import {
   compileDisciplineRegistrations,
   type DisciplineJudgeOptions,
   judgeDiscipline,
 } from '../src/discipline.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures. Evidence is ALWAYS nested on its own tool-call element — the only
-// home the contract leaves. Deleted files' pre contents deliberately CONTAIN
-// forbidden matches (breaking direction: a judge that scans pre would wrongly
-// break; one that feeds delete into the added-delta path would throw).
-// ---------------------------------------------------------------------------
+// Deleted files' pre contents deliberately CONTAIN forbidden matches: a judge that scans
+// pre would wrongly break, and one that feeds delete into the added-delta path would throw.
 
 const ROOT = '/repo';
 
@@ -40,10 +34,6 @@ function inputWithEvidence(changes: FileChange[]): CovenantInput {
   };
 }
 
-// ===========================================================================
-// AC 5 — delta family `forbid: {added}` over the union
-// ===========================================================================
-
 describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   const forbidHex: DisciplineEntry = {
     id: 'no-hex',
@@ -52,12 +42,10 @@ describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   };
 
   it('upholds a delete whose pre is FULL of forbidden matches (deletion adds nothing)', () => {
-    // P1 delete-arm misroute pin: the deleted file's baseline carries two matches, yet
-    // deletion cannot add content, so the added-direction verdict is uphold. Mutations
-    // caught: the delete arm feeding pre as post into the added delta (would break), or
-    // an undefined post reaching captureBaseline (would throw). NOTE: a pass-through of
-    // {pre, post: ''} also upholds — the short-circuit's existence is pinned by the
-    // default-less switch at compile time, not by this runtime test.
+    // The deleted file's baseline carries two matches, yet deletion cannot add content, so
+    // the added-direction verdict is uphold. A pass-through of {pre, post: ''} also upholds
+    // — the short-circuit's existence is pinned by the default-less switch at compile time,
+    // not by this runtime test.
     const input = inputWithEvidence([
       { kind: 'delete', path: 'src/legacy.css', pre: 'a: #123456;\nb: #abcdef;' },
     ]);
@@ -66,10 +54,8 @@ describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   });
 
   it('breaks a create (nested evidence) whose post carries a match — regression pairing', () => {
-    // P0 pairing for the short-circuit: a create with a matching post must still break,
-    // proving the judge actually reads the NESTED evidence. Mutation caught: the delete
-    // short-circuit over-reaching to every kind, or the judge still reading the removed
-    // top-level array and seeing no evidence at all (blanket uphold).
+    // Paired with the short-circuit above: a create with a matching post must still break,
+    // proving the judge actually reads the nested evidence rather than upholding blanket.
     const input = inputWithEvidence([{ kind: 'create', path: 'src/new.css', post: 'b: #123456;' }]);
 
     const verdict = judgeDiscipline(forbidHex, input, judgeOpts);
@@ -82,9 +68,8 @@ describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   });
 
   it('breaks a modify (nested evidence) that adds a new match over a clean pre', () => {
-    // P0 modify arm mapping: {pre, post} must reach the added-delta judgment the right
-    // way round. Mutation caught: pre/post swapped in the modify arm (the new match
-    // would land in the forgiven baseline and the edit would sail through).
+    // {pre, post} must reach the added-delta judgment the right way round: swapped, the new
+    // match lands in the forgiven baseline and the edit sails through.
     const input = inputWithEvidence([
       { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
@@ -93,18 +78,12 @@ describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   });
 });
 
-// ===========================================================================
-// AC 6 — immutable over the union: deletion joins the judgment (the hole closes)
-// ===========================================================================
-
 describe('judgeDiscipline — immutable delete judgment (AC 6)', () => {
   const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
 
   it('breaks a delete of an immutable-matched file, naming id and path (the fail-open hole)', () => {
-    // P0 money test, breaking direction: today deletion produces no evidence at all, so
-    // deleting an immutable file UPHOLDS — this RED run must show that hole live.
-    // Mutation caught: the break condition written modify-only (pre-based) instead of
-    // kind !== 'create', reopening the deletion channel.
+    // The break condition is kind !== 'create', never a modify-only (pre-based) test: the
+    // latter reopens the deletion channel around the whole family.
     const input = inputWithEvidence([
       { kind: 'delete', path: 'config/a.lock', pre: 'locked = true' },
     ]);
@@ -119,9 +98,7 @@ describe('judgeDiscipline — immutable delete judgment (AC 6)', () => {
   });
 
   it('still breaks a modify of an immutable-matched file (nested evidence)', () => {
-    // P0 regression on the new seam: the modify break must survive the move from the
-    // pre !== null formulation to the kind formulation AND the move to nested evidence.
-    // Mutation caught: the immutable judge left reading the removed top-level array.
+    // The modify break must survive the kind formulation as well as the pre-based one.
     const input = inputWithEvidence([
       { kind: 'modify', path: 'config/a.lock', pre: 'old', post: 'new' },
     ]);
@@ -130,33 +107,26 @@ describe('judgeDiscipline — immutable delete judgment (AC 6)', () => {
   });
 
   it('still upholds creation of an immutable-matched file', () => {
-    // P0 across-boundary partner: kind === 'create' is the ONE allowed kind — first
-    // authoring must pass. Mutation caught: kind !== 'create' widened to a blanket
-    // break on any evidence (would block ever creating the immutable file).
+    // kind === 'create' is the ONE allowed kind: widened to a blanket break on any
+    // evidence, the immutable file could never be created in the first place.
     const input = inputWithEvidence([{ kind: 'create', path: 'config/a.lock', post: 'seed' }]);
 
     expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
   });
 
   it('breaks a delete of an immutable-matched binary file — evidence without a pre baseline', () => {
-    // P0 hole closure (review round 1): a binary HEAD blob leaves delete.pre absent, and
-    // the judgment must not care — immutable reads path and kind only. Mutation caught:
-    // the judge or scope requiring pre (the binary deletion would silently uphold again).
+    // A binary HEAD blob leaves delete.pre absent, and the judgment must not care —
+    // immutable reads path and kind only. Requiring pre lets a binary deletion uphold.
     const input = inputWithEvidence([{ kind: 'delete', path: 'config/a.lock' }]);
 
     expect(judgeDiscipline(immutable, input, judgeOpts).upheld).toBe(false);
   });
 });
 
-// ===========================================================================
-// Review round 1 — unjudgeable kinds fail closed legibly; delete never routes forbid
-// ===========================================================================
-
 describe('judgeDiscipline — unrecognized evidence kind (review round 1)', () => {
   it('throws a legible unjudgeable error instead of a bare TypeError', () => {
-    // P1 legibility pin: a legacy-shaped evidence (stale adapter dist) has no kind; the
-    // judged body must fail closed with a reason an operator can act on. Mutation caught:
-    // the never-guard default removed (bare "reading 'upheld'" TypeError returns).
+    // Evidence from a stale adapter dist has no `kind`; the judged body must fail closed
+    // with a reason an operator can act on rather than a bare TypeError.
     const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const legacy = {
       toolCalls: [
@@ -188,9 +158,8 @@ describe('forbid routing — deletions never spawn a body (review round 1)', () 
   }
 
   it('forbid matches returns null for a delete-only input (no spawn waste, no telemetry noise)', () => {
-    // P1 routing filter: a deletion cannot break the added direction, so routing it spawns
-    // a body that can only uphold. Mutation caught: the delete filter dropped from the
-    // forbid matches closure (delete-heavy commits spawn one body per discipline per file).
+    // A deletion cannot break the added direction, so routing it runs a judge that can only
+    // uphold — one per discipline per file on a delete-heavy commit.
     const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const reg = compileOne(forbidHex);
     const input = inputWithEvidence([
@@ -201,9 +170,8 @@ describe('forbid routing — deletions never spawn a body (review round 1)', () 
   });
 
   it('immutable matches still routes a delete-only input (that family judges deletions)', () => {
-    // P1 filter scope partner: the delete filter belongs to forbid ONLY. Mutation caught:
-    // the filter over-extended to immutable routing (immutable deletions would never spawn
-    // a judge — the AC6 hole reopened at the routing layer).
+    // The delete filter belongs to forbid ONLY: over-extended to immutable routing, an
+    // immutable deletion would never reach a judge at all.
     const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
     const reg = compileOne(immutable);
     const input = inputWithEvidence([{ kind: 'delete', path: 'config/a.lock', pre: 'locked' }]);

@@ -1,14 +1,14 @@
 /**
- * Discipline judgment layer + registration compiler (COVENANT-10 §4.5).
+ * Discipline judgment layer + registration compiler.
  *
  * `judgeDiscipline` decides one validated `DisciplineEntry` against a `CovenantInput`
- * across the three predicate families: delta (`forbid` — consumes the COVENANT-05
- * delta layer verbatim, zero reimplementation), path (`immutable`), and command
- * (`forbidCommand`). `compileDisciplineRegistrations` turns entries into dispatcher
+ * across the predicate families: delta (`forbid` — consumes the delta layer verbatim,
+ * zero reimplementation), path (`immutable`), command (`forbidCommand`), and context
+ * (`requirePrecedent`). `compileDisciplineRegistrations` turns entries into dispatcher
  * registrations — one per entry, content-predicate routed (`matches`), judged by an
- * in-process thunk. Glob matching is bought (picomatch, covenant-only dependency); absolute
- * paths are relativized against the repo root before matching (paths outside the root
- * never match — scope is a repo-relative declaration).
+ * in-process thunk. Glob matching is bought (picomatch); absolute paths are relativized
+ * against the repo root before matching, so a path outside the root never matches — scope
+ * is a repo-relative declaration.
  */
 
 import { readFileSync } from 'node:fs';
@@ -32,10 +32,9 @@ import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './s
 /**
  * `DisciplineJudgeOptions` — assembly values the judge needs beside the entry.
  *
- * `shellTools`/`commandArgs` name the shell surface (injected values, shell-mod
- * precedent — never core vocabulary); `rootDir` anchors glob relativization.
- * `precedentFound` is the context family's evidence verdict, evaluated at assembly
- * time and bound into the judge thunk (COVENANT-13 §4.4).
+ * `shellTools`/`commandArgs` name the shell surface as injected values, never source
+ * literals; `rootDir` anchors glob relativization. `precedentFound` is the context family's
+ * evidence verdict, evaluated at assembly time and bound into the judge thunk.
  */
 export type DisciplineJudgeOptions = {
   rootDir: string;
@@ -45,13 +44,13 @@ export type DisciplineJudgeOptions = {
 };
 
 /**
- * `CompileDisciplinesSpec` — validated entries plus the assembly values baked into
- * each registration's judge thunk and matches closure (COVENANT-10 §4.5).
+ * `CompileDisciplinesSpec` — validated entries plus the assembly values baked into each
+ * registration's judge thunk and matches closure.
  *
  * `transcript` is the session history the context family's evidence is evaluated against
  * at assembly time. Absent means no evidence CHANNEL, not absent evidence — the entry
  * cannot be judged and skips, whereas an empty-but-present transcript is a session that
- * has said nothing yet and is judged as missing evidence (COVENANT-13 §4.5).
+ * has said nothing yet and is judged as missing evidence.
  *
  * `evaluatePrecedent` is the seam an adapter fills for its own evidence vocabulary.
  * `undefined` from it means the key belongs to no adapter, so the entry skips rather than
@@ -77,15 +76,15 @@ function toGlobs(value: string | string[] | undefined): string[] {
 }
 
 /**
- * Relativize a file-change path against the root for glob matching (PRD §4.5).
- * A relative path passes through; an absolute path outside `rootDir` yields null
- * (never matches — discipline scope is declared repo-relative).
+ * Relativize a file-change path against the root for glob matching. A relative path passes
+ * through; an absolute path outside `rootDir` yields null (never matches — discipline scope
+ * is declared repo-relative).
  */
 function relativizeForScope(filePath: string, rootDir: string): string | null {
   if (!isAbsolute(filePath)) {
     // A relative spelling normalizes before matching — `./x` and `a/../x` name x, and a
-    // spelling that resolves out of the root matches nothing. Verbatim matching let an
-    // equivalent spelling escape every scope (review PR #36 [2], 07b's notation class).
+    // spelling that resolves out of the root matches nothing. Matching verbatim instead
+    // lets an equivalent spelling escape every scope.
     const normalized = posix.normalize(filePath);
     if (normalized === '.' || normalized.startsWith('..')) return null;
     return normalized;
@@ -153,10 +152,10 @@ function forbidPatternSource(forbid: NonNullable<DisciplineEntry['forbid']>): st
 }
 
 /**
- * Added-direction verdict for one change, exhaustive over the CORE-06 evidence union.
- * One definition shared by the delta family's judge and the context family's trigger,
- * so the two can never disagree on what a change kind means. A deletion upholds —
- * it adds no content, so the added direction has no violation to find.
+ * Added-direction verdict for one change, exhaustive over the evidence union. One
+ * definition shared by the delta family's judge and the context family's trigger, so the
+ * two can never disagree on what a change kind means. A deletion upholds — it adds no
+ * content, so the added direction has no violation to find.
  */
 function judgeAddedForChange(change: FileChange, pattern: RegExp): CovenantVerdict {
   switch (change.kind) {
@@ -210,7 +209,7 @@ function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): stri
 }
 
 /**
- * True when a command-family pattern matches the command (CONFIG-09 §4.1).
+ * True when a command-family pattern matches the command.
  *
  * The match is the union of two units. Each LINE is tested (split on `/\r?\n/`, so a `^`
  * anchor means "start of a line" instead of silently anchoring to the whole string, and a
@@ -224,17 +223,17 @@ function commandLineMatches(command: string, pattern: RegExp): boolean {
   return pattern.test(command) || command.split(/\r?\n/).some((line) => pattern.test(line));
 }
 
-/** What the input's shell commands prove, and what they only signal (COVENANT-10b §2-a). */
+/** What the input's shell commands prove, and what they only signal. */
 export type ShellSignals = {
   evidence: { toolName: string; change: ShellChange }[];
   unjudgeable: ShellUnjudgeable[];
 };
 
 /**
- * Derive the shell-delivered signals of an input (§2-b) — the one derivation seam both
- * the routing closures and the judged body consume, so the two can never disagree on
- * what a command proves. Pure: completing the evidence with a pre-state is the body's
- * job, since routing may not read disk.
+ * Derive the shell-delivered signals of an input — the one derivation seam both the routing
+ * closures and the judged body consume, so the two can never disagree on what a command
+ * proves. Pure: completing the evidence with a pre-state is the body's job, since routing
+ * may not read disk.
  */
 function deriveShellSignals(input: CovenantInput, opts: DisciplineJudgeOptions): ShellSignals {
   const signals: ShellSignals = { evidence: [], unjudgeable: [] };
@@ -252,7 +251,7 @@ function deriveShellSignals(input: CovenantInput, opts: DisciplineJudgeOptions):
  * The file's content before this call runs, `null` when it does not exist (a create), and
  * `undefined` when it cannot be read at all — a permission error or a race is not an empty
  * file. The caller escalates that to the fail-closed exit: routing already matched, so a
- * quiet drop here would record the run as `passed` (review PR #36 [3]).
+ * quiet drop here would record the run as `passed`.
  */
 function readPreState(location: string): string | null | undefined {
   try {
@@ -263,15 +262,15 @@ function readPreState(location: string): string | null | undefined {
 }
 
 /**
- * Complete shell-derived evidence with disk pre-state and attach it to the input
- * (COVENANT-10b §2-b). The hook runs before the tool does, so disk IS the pre-state.
+ * Complete shell-derived evidence with disk pre-state and attach it to the input. The hook
+ * runs before the tool does, so disk IS the pre-state.
  *
- * Two rules. **One evidence, one call element**: `toolCall.fileChange` is singular
- * (CORE-06), so each derived change rides its own element (same tool name, no args) rather
- * than the shell call it came from — an element without args carries nothing into the
- * command family's judgment. **Same-path evidence chains in command order**: only the
- * first write reads disk, and every later one composes onto its predecessor's post, or a
- * truncate followed by a re-add would be forgiven as pre-existing debt.
+ * Two rules. **One evidence, one call element**: `toolCall.fileChange` is singular, so each
+ * derived change rides its own element (same tool name, no args) rather than the shell call
+ * it came from — an element without args carries nothing into the command family's
+ * judgment. **Same-path evidence chains in command order**: only the first write reads
+ * disk, and every later one composes onto its predecessor's post, or a truncate followed by
+ * a re-add would be forgiven as pre-existing debt.
  */
 function enrichWithShellEvidence(
   input: CovenantInput,
@@ -287,8 +286,8 @@ function enrichWithShellEvidence(
     const chained = composed.get(location);
     const pre = chained !== undefined ? chained : readPreState(location);
     if (pre === undefined) {
-      // Cannot judge means block (CORE-03): the thunk-level catch turns this throw into
-      // the undecidable-structure outcome — never a quiet uphold recorded as `passed`.
+      // Cannot judge means block: the thunk-level catch turns this throw into the
+      // undecidable-structure outcome — never a quiet uphold recorded as `passed`.
       throw new Error(`pre-state of ${change.path} is unreadable`);
     }
     const post = change.mode === 'append' ? `${pre ?? ''}${change.content}` : change.content;
@@ -310,8 +309,8 @@ function derivedTargets(input: CovenantInput, opts: DisciplineJudgeOptions): str
 }
 
 /**
- * The relativized path of the first change triggering a context entry, or null
- * (COVENANT-13 §4.4). One trigger definition, shared by the judge and by routing.
+ * The relativized path of the first change triggering a context entry, or null. One trigger
+ * definition, shared by the judge and by routing.
  *
  * With `when`, the trigger is the added direction of the delta layer verbatim, so a
  * `delete` never triggers (deletion adds no content). Without `when`, every in-scope
@@ -341,29 +340,28 @@ function precedentTrigger(
 const SHELL_LIST_KEYWORDS = new Set(['do', 'then', 'else', 'elif']);
 
 /**
- * True when the pattern matches at the START of one of the command line's simple commands
- * (COVENANT-13b §4.3) — the difference between having run a command and having mentioned
- * it. The tokenizer already knows the `&&`/`||`/`;`/pipe boundaries, so a chained
- * `cd pkg && npm view yaml` still qualifies while `echo "npm view yaml"` does not.
+ * True when the pattern matches at the START of one of the command line's simple commands —
+ * the difference between having run a command and having mentioned it. The tokenizer
+ * already knows the `&&`/`||`/`;`/pipe boundaries, so a chained `cd pkg && npm view yaml`
+ * still qualifies while `echo "npm view yaml"` does not.
  *
  * Only `words` are joined: redirect targets and heredoc bodies are not command positions,
  * and folding them in would let anyone forge evidence by writing the command into a
- * document. A word-less command (a bare redirect) joins to the empty string, which a
- * pattern able to match nothing would anchor at index 0 — index 0 is necessary for
- * evidence, never sufficient, so an empty join is skipped. A line carrying an unread span
- * answers false, exactly as a tokenize failure did before partial results: this judge cannot
- * say where an unfinished line's commands start. That refusal is kept deliberately, not left
- * behind by the migration — here `false` means "evidence missing", which BLOCKS, so trusting
- * the half we read would OPEN a discipline gate. A future change in this one place is
- * fail-open, the same asymmetry COVENANT-18 §2-a A5 resolved at the nested-shell boundary.
+ * document. A word-less command (a bare redirect) joins to the empty string, which a pattern
+ * able to match nothing would anchor at index 0 — index 0 is necessary for evidence, never
+ * sufficient, so an empty join is skipped.
+ *
+ * A line carrying an unread span answers false: this judge cannot say where an unfinished
+ * line's commands start. The boolean reads backwards from the rest of the package — here
+ * `false` means "evidence missing" — but it resolves the same way every other unread-span
+ * site does, toward refusing. Trusting the half that was read would open a discipline gate.
  *
  * A word carrying a space came from quoting, and the tokenizer hands back its text with the
  * quotes removed — so `"npm view yaml"` arrives as ONE word spelling exactly what three
  * separate words would spell, and in the command position nothing precedes it to push the
- * match off index 0. A simple command whose NAME is such a word is therefore refused: in
- * practice no program is named with a space, and if one were, that name is not the command
- * the pattern looks for. Only the name is checked, so quoted ARGUMENTS are untouched and
- * `npm view "some pkg"` still matches.
+ * match off index 0. A simple command whose NAME is such a word is therefore refused. Only
+ * the name is checked, so quoted ARGUMENTS are untouched and `npm view "some pkg"` still
+ * matches.
  *
  * The anchor is a POSITION check on the match, not `'^' + source`: prefixing binds the
  * anchor to the first alternation branch only and leaves every other branch free to match
@@ -382,7 +380,7 @@ function commandAnchors(command: string, pattern: RegExp): boolean {
 }
 
 /**
- * Append an entry's rationale to a break reason (COVENANT-19 §4.1).
+ * Append an entry's rationale to a break reason.
  *
  * The reason is one line an agent reads off stderr, so a `why` spanning several lines — a YAML
  * block scalar writes exactly that — folds to spaces before it is appended. Every line break
@@ -406,19 +404,18 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
 }
 
 /**
- * Judge one discipline entry against a covenant input (pure, COVENANT-10 §4.5).
+ * Judge one discipline entry against a covenant input (pure).
  *
- * Delta family: in-scope file changes judged via {@link judgeAddedViolations} — the
- * reason names the discipline id and the added match text, and a deletion short-circuits
- * to uphold (CORE-06 §4.3: deletion adds no content). Path family: a matching change of
- * any kind but `create` breaks (an immutable file can be neither modified nor deleted;
- * first authoring upholds). Command family: a shell-tool command matching the pattern
- * breaks. No file changes / no targets uphold (defensive re-check of what routing would
- * not have matched).
+ * Delta family: in-scope file changes judged via {@link judgeAddedViolations} — the reason
+ * names the discipline id and the added match text, and a deletion short-circuits to uphold
+ * (deletion adds no content). Path family: a matching change of any kind but `create` breaks
+ * (an immutable file can be neither modified nor deleted; first authoring upholds). Command
+ * family: a shell-tool command matching the pattern breaks. No file changes / no targets
+ * uphold — a defensive re-check of what routing would not have matched.
  *
- * Every break reason carries the entry's `why` when it has one (COVENANT-19) — appended by
- * {@link withWhy} once the verdict is settled, so the rationale reaches the agent reading
- * stderr without ever entering the judgment.
+ * Every break reason carries the entry's `why` when it has one, appended by {@link withWhy}
+ * once the verdict is settled, so the rationale reaches the agent reading stderr without
+ * ever entering the judgment.
  */
 export function judgeDiscipline(
   entry: DisciplineEntry,
@@ -481,11 +478,11 @@ export function judgeDiscipline(
     if (triggered !== null && opts.precedentFound !== true) {
       return {
         upheld: false,
-        // The reason names the recovery path, not just the requirement (COVENANT-13b §4.6).
-        // Since evidence became an execution there are several ways a user who DID run the
-        // command still lands here — the line failed as a whole, or the match sat somewhere
-        // other than a command's start. Without the hint those cases are indistinguishable
-        // from never having run it, and the natural next move is the witness.
+        // The reason names the recovery path, not just the requirement. Because evidence
+        // is an execution, a user who DID run the command can still land here — the line
+        // failed as a whole, or the match sat somewhere other than a command's start.
+        // Without the hint those cases are indistinguishable from never having run it, and
+        // the natural next move is the witness.
         reason: withWhy(
           `discipline '${entry.id}' broken on ${triggered}: requires prior session evidence (${describePrecedent(entry.requirePrecedent)}). only a call that ran and succeeded counts, matched at the start of a simple command — if it was part of a chain or a compound that failed, run it on its own`,
           entry.why,
@@ -499,7 +496,7 @@ export function judgeDiscipline(
   return { upheld: true };
 }
 
-/** Build the family-specific routing predicate for one entry (PRD §4.4). */
+/** Build the family-specific routing predicate for one entry. */
 function buildMatches(
   entry: DisciplineEntry,
   spec: CompileDisciplinesSpec,
@@ -520,17 +517,16 @@ function buildMatches(
   if (entry.requirePrecedent !== undefined) {
     // Routing is evidence-blind: a trigger with evidence still spawns the body and
     // records `passed` — "the gate checked, and the evidence was there" is the context
-    // family's measurement value, not wasted judgment (COVENANT-13 §4.4).
+    // family's measurement value, not wasted judgment.
     //
-    // A shell-derived target routes `when`-blind (COVENANT-10b §2-b): no pre exists at
-    // routing time, so the added direction cannot be asked here. Precision is the body's.
+    // A shell-derived target routes `when`-blind: no pre exists at routing time, so the
+    // added direction cannot be asked here. Precision is the body's.
     return (input) =>
       precedentTrigger(entry, input, spec.rootDir) ??
       firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
   }
-  // Deletions can never break the added direction, so they must not route a body spawn
-  // (COVENANT-10: routing adds no wasted judgment); the judge still short-circuits them
-  // defensively when a mixed input arrives.
+  // Deletions can never break the added direction, so they must not route a body spawn;
+  // the judge still short-circuits them defensively when a mixed input arrives.
   return (input) =>
     forbidScope(entry, allFileChanges(input), spec.rootDir).find(
       (target) => target.change.kind !== 'delete',
@@ -538,8 +534,7 @@ function buildMatches(
 }
 
 /**
- * The three results of asking whether session evidence preceded a mutation
- * (COVENANT-13 §4.5).
+ * The three results of asking whether session evidence preceded a mutation.
  *
  * `unjudgeable` is not a verdict — it reports that the question could not be asked.
  * `configFault` separates an author's mistake, which must name itself on stderr, from an
@@ -552,8 +547,8 @@ type EvidenceOutcome =
   | { kind: 'unjudgeable'; reason: string; configFault: boolean };
 
 /**
- * Evaluate a context entry's evidence against the session at assembly time
- * (COVENANT-13 §4.4) — the compiled thunk judges one input and holds no transcript.
+ * Evaluate a context entry's evidence against the session at assembly time — the compiled
+ * thunk judges one input and holds no transcript.
  *
  * Vocabulary is layered: `command` is the core's own, evaluated here against the shell
  * surface with the same filter the command family judges by; every other key is adapter
@@ -595,9 +590,9 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
     let found: boolean;
     try {
       // Only a call the provider saw run and succeed is evidence: a blocked, refused, or
-      // failed call did not do the work the discipline demands (COVENANT-13b §4.2), and
-      // an absent outcome means the provider cannot tell — including the input-backed
-      // provider, whose calls are the very ones being judged.
+      // failed call did not do the work the discipline demands, and an absent outcome means
+      // the provider cannot tell — including the input-backed provider, whose calls are the
+      // very ones being judged.
       const calls = spec.transcript.findToolCalls().filter((call) => call.succeeded === true);
       found = filterShellCommands(calls, spec.shellTools, spec.commandArgs).some((c) =>
         commandAnchors(c, pattern),
@@ -621,9 +616,8 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
   if (spec.evaluatePrecedent === undefined) {
     // An environment fact, not an author's mistake: a surface that does not speak adapter
     // vocabulary correctly declines to supply an evaluator, and the commit surface never
-    // does. Announcing it would put a line on stderr for every commit (measured the day
-    // this repo first configured a `tool` entry). A misspelled key is the loud case — the
-    // evaluator is present and answers `undefined` for it, below.
+    // does. Announcing it would put a line on stderr for every commit. A misspelled key is
+    // the loud case — the evaluator is present and answers `undefined` for it, below.
     return {
       kind: 'unjudgeable',
       reason: `no precedent evaluator injected for evidence ${JSON.stringify(evidence)}`,
@@ -677,10 +671,10 @@ function patternFault(entry: DisciplineEntry): string | undefined {
 }
 
 /**
- * True for the families whose shell-delivered writes are attributable to one entry
- * (COVENANT-10b §2-c): delta and context. A command entry's axis is the string itself and
- * an immutable entry's shell deletion is out of scope, so neither gains a skip arm. An
- * entry whose pattern is broken gains none either — a broken pattern defines no match.
+ * True for the families whose shell-delivered writes are attributable to one entry: delta
+ * and context. A command entry's axis is the string itself and an immutable entry's shell
+ * deletion is out of scope, so neither gains a skip arm. An entry whose pattern is broken
+ * gains none either — a broken pattern defines no match.
  */
 function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
   // No shell surface, no shell writes to detect: the arm's own matches predicate could
@@ -691,9 +685,9 @@ function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): 
 }
 
 /**
- * The per-entry skip registration (§2-c): a detected write in this entry's scope whose
- * result cannot be computed records one `skipped` under the entry's own label, keeping
- * the gain aggregation in one group instead of falling to the common backstop.
+ * The per-entry skip registration: a detected write in this entry's scope whose result
+ * cannot be computed records one `skipped` under the entry's own label, keeping the gain
+ * aggregation in one group instead of falling to the common backstop.
  */
 function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): CovenantRegistration {
   const opts: DisciplineJudgeOptions = {
@@ -715,9 +709,9 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
 }
 
 /**
- * The one common shell-axis skip registration (§2-c). A write whose target itself is
- * unknowable belongs to no entry's scope, so leaving N rows under N labels would trade
- * one silent pass for a fabricated attribution — one row, one subject `'-'`.
+ * The one common shell-axis skip registration. A write whose target itself is unknowable
+ * belongs to no entry's scope, so leaving N rows under N labels would trade one silent pass
+ * for a fabricated attribution — one row, one subject `'-'`.
  */
 function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantRegistration {
   const opts: DisciplineJudgeOptions = {
@@ -737,23 +731,23 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
 }
 
 /**
- * Compile validated discipline entries into dispatcher registrations (COVENANT-10 §4.5).
+ * Compile validated discipline entries into dispatcher registrations.
  *
  * One registration per entry: `label` = id (per-discipline telemetry), `protectedPaths`
  * = [] (routing is the matches closure, not path mention), `body` = the judge thunk with
- * the entry and the assembly values bound in. Delta and context entries gain a
- * second, body-less registration for their shell axis, and one common `shell-unjudgeable`
- * registration is appended last whatever the entry count (COVENANT-10b §2-c).
+ * the entry and the assembly values bound in. Delta and context entries gain a second,
+ * body-less registration for their shell axis, and one common `shell-unjudgeable`
+ * registration is appended last whatever the entry count.
  *
- * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead
- * (COVENANT-13 §4.5): routing is kept, so the no-op stays visible in `gain`, but there is
- * no thunk to run. Assembly never throws — one bad entry taking down its siblings, both
- * meta-covenants, and the witness valve left no way to fix the config that caused it.
+ * An entry whose evidence cannot be evaluated compiles to a **skip registration** instead:
+ * routing is kept, so the no-op stays visible in `gain`, but there is no thunk to run.
+ * Assembly never throws — one bad entry taking down its siblings, the meta-covenants, and
+ * the witness valve would leave no way to fix the config that caused it.
  *
- * A non-compilable pattern also skips, but routes to nothing: the pattern IS the
- * definition of what the entry matches, so a broken one leaves no match to record. Its
- * only signal is the stderr line, and in production it is unreachable anyway — the
- * validator refuses such a config before assembly is ever called.
+ * A non-compilable pattern also skips, but routes to nothing: the pattern IS the definition
+ * of what the entry matches, so a broken one leaves no match to record. Its only signal is
+ * the stderr line, and in production it is unreachable anyway — the validator refuses such
+ * a config before assembly is ever called.
  */
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
@@ -761,8 +755,7 @@ export function compileDisciplineRegistrations(
   const judged = spec.disciplines.map((entry) => {
     const witness = spec.witness !== undefined ? { witness: spec.witness } : {};
 
-    // A silent skip is how a discipline goes inert while its verdict still reads passed —
-    // the failure this project already shipped once with a `^` anchor.
+    // A silent skip is how a discipline goes inert while its verdict still reads passed.
     const nameFault = (reason: string): void => {
       process.stderr.write(`discipline '${entry.id}': ${reason} — skipped, not judged\n`);
     };
@@ -807,15 +800,15 @@ export function compileDisciplineRegistrations(
 
     return {
       ...routing,
-      // The entry's own level (CONFIG-11 §4.3) rides only on the body-bearing arm: the
-      // skip arms record the absence of a judgment, which is outside the level axis.
-      // Absence means advise (POSTURE-01 §4.1) and it is decided here, so the level is
-      // always present on this arm; explicit `block` is the promotion rung an author picks.
+      // The entry's own level rides only on the body-bearing arm: the skip arms record the
+      // absence of a judgment, which is outside the level axis. Absence means advise, and
+      // it is decided here, so the level is always present on this arm; explicit `block` is
+      // the promotion an author opts into.
       enforce: entry.enforce ?? 'advise',
       body: async (input: CovenantInput) => {
-        // The misassembly gate the CLI body held (DISPATCH-01 §4.3): a command-family
-        // entry with no shell surface would uphold everything, so it fails closed at
-        // either level rather than degrading into a universal pass.
+        // The misassembly gate: a command-family entry with no shell surface would uphold
+        // everything, so it fails closed at either level rather than degrading into a
+        // universal pass.
         if (
           entry.forbidCommand !== undefined &&
           (spec.shellTools.length === 0 || spec.commandArgs.length === 0)
@@ -828,7 +821,7 @@ export function compileDisciplineRegistrations(
           );
         } catch {
           // A structurally unjudgeable input, an unreadable pre-state, or a broken pattern
-          // that slipped past assembly: cannot judge means block (CORE-03 policy table).
+          // that slipped past assembly: cannot judge means block.
           return UNJUDGEABLE_OUTCOME;
         }
       },

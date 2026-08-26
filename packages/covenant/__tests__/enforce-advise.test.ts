@@ -5,14 +5,10 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-// CONFIG-06 §4.4/§4.5 RED phase. The enforce-level translation seam and its dispatcher
-// threading. Imported from the package entry points (the published surfaces). The new
-// symbols — translateExitCode's second `enforce` parameter, RunCovenantSpec.enforce, the
-// dispatcher spec's enforce, and the results `event` field — do NOT exist yet, so these
-// are RED by construction. Contract asserted (GREEN matches):
-//   translateExitCode(bodyExitCode, enforce: 'block' | 'advise' = 'block')
-//     advise relaxes ONLY the verdict cell (body exit 1 → exit 0 · 'advised'); every
-//     unjudgeable outcome (2, 3+, null) stays exit 2 · 'blocked' (§4.4 invariant).
+// The enforce-level translation and its dispatcher threading. Advise relaxes ONLY the
+// verdict cell — body exit 1 becomes exit 0 · 'advised'; every unjudgeable outcome (2, 3+,
+// null) stays exit 2 · 'blocked'. Imported from the package entry point so the tests also
+// pin the published surface.
 import { runCovenant, translateExitCode } from '../src/index.ts';
 import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
@@ -30,58 +26,45 @@ afterEach(() => {
 
 describe('CONFIG-06 §4.4 translateExitCode — advise level (pure)', () => {
   it('body exit 0 (uphold) stays exit 0 · passed under advise', () => {
-    // §4.4 row 1: advise does not touch the uphold cell. Mutation caught: the advise
-    // branch mislabeling a pass as advised, or flipping its exit code.
+    // Advise does not touch the uphold cell.
     expect(translateExitCode(0, 'advise')).toEqual({ exitCode: 0, event: 'passed' });
   });
 
   it('body exit 1 (verdict) becomes exit 0 · advised under advise (THE one relaxed cell)', () => {
-    // §4.4 row 2 — the single cell advise relaxes: a normal violation verdict is recorded
-    // and passed. Mutation caught: the relaxation not applied (stays exit 2 · blocked), or
-    // applied but mislabeled (exit 0 · passed hides the verdict the ticket measures).
+    // The single cell advise relaxes: the verdict is recorded and passed. Labelling it
+    // `passed` instead would hide the very break the level exists to measure.
     expect(translateExitCode(1, 'advise')).toEqual({ exitCode: 0, event: 'advised' });
   });
 
   it('body exit 2 (body-side fail-closed) stays exit 2 · blocked under advise', () => {
-    // §4.4 row 3 invariant: advise relaxes the verdict, NOT the unjudgeable. A body's own
-    // fail-closed 2 must never soften. Mutation caught: the advise branch relaxing exit 2
-    // the same way it relaxes exit 1 — a fail-open hole wherever a body reaches its own
-    // refusal to judge and says so with 2. A judge body FILE that was never built does NOT
-    // arrive here (CONFIG-06b §4.1): node exits 1 for a missing module, colliding with a
-    // real break verdict, which is why that one branch is closed at assembly rather than in
-    // this translation; the measurement is pinned in run-covenant.test.ts. A body file that
-    // EXISTS but carries an older commit's logic is a third case again — it judges, so it
-    // arrives at any code at all and nothing observable here separates it. CONFIG-06b §4.3
-    // leaves that row open by decision.
+    // Advise relaxes the verdict, never the inability to judge: a body's own fail-closed 2
+    // must not soften, or every body that refuses to judge is waved through. A judge that
+    // was never built does not arrive here — a missing module exits 1, colliding with a
+    // real break verdict, so that branch is closed at assembly instead.
     expect(translateExitCode(2, 'advise')).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
   it('body exit 3 (uninterpretable) stays exit 2 · blocked under advise', () => {
-    // §4.4 row 4: 3+ is unjudgeable, outside the level axis. Mutation caught: an advise
-    // branch that treats "any non-zero" as a relaxable verdict.
+    // 3+ is unjudgeable and outside the level axis: "any non-zero" is not a verdict.
     expect(translateExitCode(3, 'advise')).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
   it('body exit null (spawn failure / signal) stays exit 2 · blocked under advise', () => {
-    // §4.4 row 4: a spawn failure cannot judge — advise never opens it. Mutation caught:
-    // a null branch falling through the advise verdict-relaxation path.
+    // A judge that never produced a code cannot have judged, so advise never opens it.
     expect(translateExitCode(null, 'advise')).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
   it('body exit 1 stays exit 2 · blocked when the enforce param is OMITTED (default block)', () => {
-    // §4.4 block column, defaulted argument: absence of the level defaults to block, so
-    // every existing caller keeps current behavior. Mutation caught: the default value
-    // flipped to 'advise', silently relaxing all legacy call sites.
+    // Absence of the level defaults to block, so a caller that names no level keeps
+    // blocking.
     expect(translateExitCode(1)).toEqual({ exitCode: 2, event: 'blocked' });
   });
 });
 
 describe('CONFIG-06 §4.4 runCovenant — enforce threaded to the wrapper', () => {
   it('a body exiting 1 under enforce advise yields exit 0 plus one advised telemetry line', async () => {
-    // Proves the spec-level enforce reaches translateExitCode: a real break body (exit 1)
-    // passes as exit 0 AND logs the distinct advised event (N:N unchanged, only the name).
-    // Mutation caught: enforce accepted on the spec but never threaded, so the body still
-    // blocks / logs blocked.
+    // The spec-level enforce must reach translateExitCode, not merely be accepted on the
+    // spec: a real break passes as exit 0 AND lands the distinct advised event.
     const result = await runCovenant({
       body: markerThunk(join(dir, 'body-ran.txt'), 1),
       label: 'advise-label',
@@ -98,9 +81,8 @@ describe('CONFIG-06 §4.4 runCovenant — enforce threaded to the wrapper', () =
 
 describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results event field', () => {
   it('a matched exit-1 body under enforce advise yields overall exit 0 and a results entry with event advised', async () => {
-    // §4.5: the dispatcher threads enforce into every runCovenant call, and surfaces the
-    // per-registration event on results. Mutation caught: enforce dropped at the dispatch
-    // layer (verdict still blocks), or the results entry missing/mislabeling event.
+    // The dispatcher threads enforce into every runCovenant call and surfaces the
+    // per-registration event on results.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
@@ -120,11 +102,9 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
   });
 
   it('results carry event witnessed on the witness path (enforce omitted)', () => {
-    // §4.5: the witnessed outcome must also surface through results — the umbrella
-    // observes the event there. Since COVENANT-17 there is no separate bypass path: the
-    // body spawns, translates to blocked, and the witness relaxes it to `witnessed`.
-    // Mutation caught: the wrapper's event surfaced on plain verdicts but dropped on the
-    // witnessed rewrite. (Sync body: assertion is the awaited result below.)
+    // The witnessed outcome must also surface through results, since that is where the
+    // umbrella observes the event. There is no separate opening path: the body runs,
+    // translates to blocked, and the witness relaxes it.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
       label: 'witness-covenant',
@@ -147,9 +127,8 @@ describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results even
   });
 
   it('dispatcher fail-closed is NOT relaxed by advise: an unparseable payload stays exit 2 + one blocked record', async () => {
-    // §4.5 invariant: the dispatcher's own fail-closed (unparseable stdin) is outside the
-    // level axis — enforce advise must not soften it. Mutation caught: the advise level
-    // threaded into the dispatcher-level fail-closed, opening a bypass on garbage input.
+    // The dispatcher's own fail-closed is outside the level axis: threading advise into it
+    // opens a hole on garbage input.
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
       protectedPaths: ['sub/protected/file.txt'],

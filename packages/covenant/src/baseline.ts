@@ -1,5 +1,5 @@
 /**
- * Post-hoc state comparison — the baseline comparator (COVENANT-14 §2-b–§2-e).
+ * Post-hoc state comparison — the baseline comparator.
  *
  * The session surface judges declared calls, so a write nobody declared leaves no row at
  * all. This module answers the same question from the other end: summarize the protected
@@ -31,7 +31,7 @@ export type BaselineSnapshot = Record<string, string>;
 export type StoredBaseline = { entries: BaselineSnapshot; cutAt?: string };
 
 /**
- * The two verdict words that explain a change (§2-c) — the ones that mean a mutation of a
+ * The two verdict words that explain a change — the ones that mean a mutation of a
  * protected entry was judged and let through anyway.
  *
  * `witnessed` is a break a human opened in person; `advised` is one an advise-level surface
@@ -50,7 +50,7 @@ export type StoredBaseline = { entries: BaselineSnapshot; cutAt?: string };
 const ATTRIBUTING_EVENTS: readonly TelemetryEvent[] = ['witnessed', 'advised'];
 
 /**
- * Fold one file's path and content into `hash` (§2-b full content hashing).
+ * Fold one file's path and content into `hash`.
  *
  * The path participates, so a rename with byte-identical content still moves the entry's
  * hash. An unreadable file contributes a fixed absence marker rather than aborting the
@@ -91,7 +91,7 @@ function foldEntry(hash: ReturnType<typeof createHash>, rootDir: string, relPath
 }
 
 /**
- * Summarize each entry's on-disk state as one sha256 (§2-b).
+ * Summarize each entry's on-disk state as one sha256.
  *
  * `entries` are repo-relative paths of either shape — a file or a directory. Every entry
  * keeps a key whatever its state, so the diff always sees it; a missing entry simply hashes
@@ -108,7 +108,7 @@ export function snapshotBaseline(spec: { rootDir: string; entries: string[] }): 
 }
 
 /**
- * The entries whose hash changed and that no window row explains (§2-c, pure).
+ * The entries whose hash changed and that no window row explains (pure).
  *
  * Attribution is asked per entry, never per window: "the window holds an attributing row"
  * and "THIS entry's change has one" are different claims, and answering the first is the
@@ -148,7 +148,7 @@ export function findUnattributed(spec: {
 }
 
 /**
- * Write the baseline file (§2-e).
+ * Write the baseline file.
  *
  * `cutAt` is the instant this comparison ran, so the next one attributes from rows written
  * at or after it. Written at call END, so the rows explaining what this call itself changed
@@ -159,7 +159,7 @@ export function writeBaseline(path: string, snapshot: BaselineSnapshot, cutAt?: 
 }
 
 /**
- * Read the baseline — entries and window cut in ONE parse — or `null` (§2-e).
+ * Read the baseline — entries and window cut in ONE parse — or `null`.
  *
  * One parse rather than two: reading the hashes and the cut separately lets a concurrent
  * write land between them, pairing one comparison's state with another's window bound. That

@@ -4,18 +4,13 @@ import { join } from 'node:path';
 import type { CanonicalTranscript } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// CORE-04 RED phase (§5.2). The dispatcher seam wiring — `spec.transcript` and the
-// 2-arg `witness(input, transcript)` signature — does not exist yet, so this file is
-// RED by construction. The behaviours asserted here become the GREEN contract.
+// The dispatcher's transcript seam: `spec.transcript` reaches a witness as its second
+// argument, and defaults to a real empty transcript rather than undefined.
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
-// ---------------------------------------------------------------------------
-// Helpers — copied from dispatch.test.ts (fake bodies via `node -e`, temp
-// telemetry). A spawned body writes its stdin verbatim to a file, so file
-// presence proves a spawn happened and file absence proves a bypass.
-// ---------------------------------------------------------------------------
+// The judge body touches a marker file, so its presence proves the judge ran.
 
 /** A fake transcript whose findUserMessages returns exactly the given texts. */
 function transcriptWithUserMessages(texts: string[]): CanonicalTranscript {
@@ -40,10 +35,8 @@ afterEach(() => {
 
 describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   it('injects spec.transcript as the second witness argument: a 2-arg witness that keys on a marker user message opens the valve after the verdict', async () => {
-    // P0: the transcript must actually reach the witness's second parameter. The witness
-    // returns true only when it observes the marker message, so a relaxed block proves
-    // the injected transcript (not undefined, not noop) was passed. Mutation caught: the
-    // dispatcher calling the witness with one argument only, or passing the wrong object.
+    // The witness returns true only when it observes the marker message, so a relaxed block
+    // proves the injected transcript — not undefined, not the empty default — was passed.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -71,11 +64,9 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   });
 
   it('defaults to noopTranscript when spec.transcript is omitted: a 2-arg witness receives a real CanonicalTranscript object (both queries callable), not undefined', async () => {
-    // P0: the injection-absent default must be an object satisfying the interface, so a
-    // 2-arg witness never crashes on undefined. The witness calls BOTH queries (proving the
-    // shape) and opens only when findUserMessages() is empty — true for the noop
-    // default. Mutation caught: passing undefined as the second argument (witness throws →
-    // no bypass → the block stands), or defaulting to a non-empty transcript.
+    // The injection-absent default must satisfy the interface, so a 2-arg witness never
+    // crashes on undefined. The witness calls BOTH queries, proving the shape, and opens
+    // only when there are no user messages, which is true of the empty default.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -101,9 +92,7 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   });
 
   it('a 2-arg witness that throws is treated as no bypass: the body spawns and the call is blocked (fail-closed unchanged)', async () => {
-    // P0 fail-closed regression (PRD §4.3: a throwing witness is never a bypass), now with
-    // the widened 2-arg signature. Mutation caught: the seam widening dropping the
-    // try/catch, or a throwing witness resolving to bypass instead of a normal spawn.
+    // A throwing witness is never an opening, the 2-arg signature included.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -130,10 +119,8 @@ describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
   });
 
   it('verdict parity: injecting a transcript does not change matching/spawn/verdict for a registration without witness', async () => {
-    // Invariant (PRD §5.2/§7, verdict unchanged): the seam carries no verdict weight for
-    // a witness-less registration. A blocking body must yield the same exitCode 2 whether
-    // or not spec.transcript is supplied. Mutation caught: the transcript wiring altering
-    // the match/spawn path for registrations that never consult it.
+    // The seam carries no verdict weight for a witness-less registration: a blocking body
+    // yields the same result whether or not a transcript is supplied.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const makeReg = (): CovenantRegistration => ({
       label: 'sample-covenant',

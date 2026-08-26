@@ -1,11 +1,11 @@
 /**
- * First real detection rules for the mutation-rule seam (COVENANT-04b).
+ * Detection rules for the mutation-rule seam.
  *
  * Pure functions only — each rule is `SimpleCommand → MutationTarget[]`, nothing more.
- * Both rules stay silent on opaque tokens (unknowable values are never reported as
- * confident paths); the 04a core already marks those commands indeterminate, so the
- * fail-closed signal is preserved. Protected-path matching, blocking, allowlists, and
- * telemetry belong to 04d.
+ * Every rule stays silent on opaque tokens: an unknowable value is never reported as a
+ * confident path. The tokenizer already marks such commands indeterminate, so the
+ * fail-closed signal survives the silence. Protected-path matching, blocking, allowlists,
+ * and telemetry belong to the judges that consume these rules.
  */
 
 import type { MutationRule, MutationTarget, WordToken } from './bash-line.js';
@@ -51,7 +51,7 @@ export const redirectWriteRule: MutationRule = {
  * Reports every non-flag argument of a `tee` command (first-word basename match, so
  * `/usr/bin/tee` fires too). Flags are skipped until the `--` end-of-options marker;
  * after it, `-`-prefixed words are paths. Wrapper commands (`sudo tee`) never fire —
- * the 04d path-mention policy covers them.
+ * the judges' path-mention backstop covers them.
  */
 export const teeRule: MutationRule = {
   name: TEE_RULE_NAME,
@@ -103,8 +103,8 @@ function isScriptFlag(text: string): boolean {
  * `/usr/bin/sed` fires too). Without an in-place flag sed writes to stdout — silence.
  * The `-e`/`-f` family is skipped with its value (the `-f` script file is read, not
  * written); when no such flag is present the first positional operand is the sed script
- * — skipped even after `--`. Wrapper commands (`sudo sed`) never fire — the 04d
- * path-mention policy covers them.
+ * — skipped even after `--`. Wrapper commands (`sudo sed`) never fire — the judges'
+ * path-mention backstop covers them.
  */
 export const sedInPlaceRule: MutationRule = {
   name: SED_IN_PLACE_RULE_NAME,

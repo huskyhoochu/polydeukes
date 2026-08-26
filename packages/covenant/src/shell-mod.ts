@@ -1,5 +1,5 @@
 /**
- * `judgeShellModification` — the shell-mod meta-covenant's pure judge (COVENANT-04d, zero I/O).
+ * `judgeShellModification` — the shell-mod meta-covenant's pure judge (zero I/O).
  *
  * Analyzes the command-line strings of *shell* tool calls (names and arg keys are injected
  * values, never source literals) per simple command: the fixed detection rules catch writes
@@ -18,7 +18,7 @@ import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './m
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 
 /**
- * `ShellModificationSpec` — the injected axes of the judge (PRD §4.1).
+ * `ShellModificationSpec` — the injected axes of the judge.
  *
  * `protectedPaths` are literal path strings; `shellToolNames` are the tool names whose
  * calls carry shell lines; `commandArgNames` are the `args` keys those lines live under;
@@ -34,9 +34,9 @@ export type ShellModificationSpec = {
 };
 
 /**
- * Commands proven read-only by shell semantics (PRD §4.3) — the default allowlist. An
- * entry is a leading word sequence; multi-word entries exist because a bare command name
- * (`git`) can front mutating subcommands. Omission errs toward friction, never a hole.
+ * Commands proven read-only by shell semantics — the default allowlist. An entry is a
+ * leading word sequence; multi-word entries exist because a bare command name (`git`) can
+ * front mutating subcommands. Omission errs toward friction, never a hole.
  *
  * An entry must have no way to write a file through its own arguments, since the allowlist
  * vouches for the command head while `matchesReadOnlyEntry` never inspects trailing argv.
@@ -60,14 +60,14 @@ export const DEFAULT_READ_ONLY_COMMANDS: string[] = [
   'git grep',
 ];
 
-// The fixed rule set (PRD §4.2): rule-selection injection stays closed — dropping a rule
-// from an assembly would be a detection hole, and no consumer needs a subset.
+// The rule set is fixed, not injectable: dropping a rule from an assembly would be a
+// detection hole, and no consumer needs a subset.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
 /**
  * True when the command's leading words match the allowlist entry's word sequence. Exported
- * so the transcript predicate's own (e) clause (COVENANT-07c) absolves reads by this exact
- * comparison instead of a fork that could drift from it.
+ * so the transcript judge's allowlist clause absolves reads by this exact comparison instead
+ * of a fork that could drift from it.
  */
 export function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): boolean {
   // An empty entry would match every command vacuously (`[].every()` is true) — reject it
@@ -83,9 +83,10 @@ export function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): b
 }
 
 /**
- * Judge one simple command (PRD §4.1(a)–(f), order normative). Returns the break reason,
- * or null when the command contributes to uphold. `lineFullyRead` is false when the line
- * carried a span the tokenizer could not read, which withholds clause (e).
+ * Judge one simple command. Returns the break reason, or null when the command contributes
+ * to uphold. The clause order below is normative: each clause exists to be reached before
+ * the next one can absolve. `lineFullyRead` is false when the line carried a span the
+ * tokenizer could not read, which withholds the allowlist clause.
  */
 function judgeCommand(
   command: SimpleCommand,
@@ -115,8 +116,7 @@ function judgeCommand(
   if (mentioned === undefined) return null;
 
   // (c) A mention inside an opaque token (command substitution, process substitution,
-  // expansion, glob) is undecidable — the "protected path inside command substitution"
-  // policy clause.
+  // expansion, glob) is undecidable, so it breaks rather than passing.
   if (mentionIsOpaque) return `protected path ${mentioned} inside an opaque token`;
 
   // (d) An opaque write target could resolve to the protected path — unprovable, so it
@@ -129,7 +129,7 @@ function judgeCommand(
   // (`eval`/`sh -c …`) re-parses its string args, so it can never be proven read-only even
   // if it was injected into the allowlist. Its mention falls through to the backstop. A line
   // carrying an unread span is refused the same way: what the scanner never read could be
-  // anything, so no head vouches for it (COVENANT-18 §2-b B3).
+  // anything, so no head vouches for it.
   const first = command.words[0];
   const firstBasename = first !== undefined ? commandBasename(first) : '';
   if (
@@ -151,9 +151,9 @@ function judgeCommand(
  * every string value under a non-empty `commandArgNames` key is analyzed as a shell line;
  * a shell call with zero such strings breaks (a misassembled arg name must not degrade
  * into universal uphold). A span the tokenizer could not read breaks iff the dequoted span —
- * or one of its shell-metacharacter fragments (COVENANT-07d) — mentions a protected path,
- * and is answered before the commands so that a mention only the span can see is named as
- * one. Non-shell calls, `subagentSpawns`, and `userMessages` are never judged.
+ * or one of its shell-metacharacter fragments — mentions a protected path, and is answered
+ * before the commands so that a mention only the span can see is named as one. Non-shell
+ * calls, `subagentSpawns`, and `userMessages` are never judged.
  */
 export function judgeShellModification(
   input: CovenantInput,
@@ -181,14 +181,14 @@ export function judgeShellModification(
     }
     for (const line of lines) {
       const { commands, unread } = tokenizeCommandLine(line);
-      // Each unread span keeps the conservative treatment the whole line used to get, and
-      // only the span gets it (COVENANT-18 §2-b B3): the shell would still remove quotes and
-      // backslash escapes, so a split target like `sr"c"` or `sr\c` becomes `src` on
-      // execution — strip both before the segment-match, or the very escaping that stopped
-      // the scan defeats the scan that replaces it. Removal may over-join unrelated words,
-      // which only ever widens what breaks, never a hole. The fallback-only decomposition
-      // then covers the metachar-glued forms (`…/dist;echo x`) that no tokenizer was left to
-      // cut apart (COVENANT-07d) — narrowing the span must not narrow the extraction.
+      // The conservative treatment applies to the span alone, not the whole line. The shell
+      // would still remove quotes and backslash escapes, so a split target like `sr"c"` or
+      // `sr\c` becomes `src` on execution — strip both before the segment-match, or the very
+      // escaping that stopped the scan defeats the scan that replaces it. Removal may
+      // over-join unrelated words, which only ever widens what breaks, never a hole. The
+      // fallback-only decomposition then covers the metachar-glued forms (`…/dist;echo x`)
+      // that no tokenizer was left to cut apart — narrowing the span must not narrow the
+      // extraction.
       for (const span of unread) {
         const candidates = untokenizableLineCandidates(span.text.replace(/['"\\]/g, ''));
         const hit = protectedPaths.find((path) =>
@@ -212,10 +212,10 @@ export function judgeShellModification(
 }
 
 /**
- * `ShellModRegistrationSpec` — the assembly values baked into the registration
- * (DISPATCH-01 §4.4). The call set is not among them: the dispatcher supplies it to the
- * judge at call time. `readOnlyCommands` REPLACES {@link DEFAULT_READ_ONLY_COMMANDS} when
- * given — no merge, since an assembly wanting to extend the default spreads the constant.
+ * `ShellModRegistrationSpec` — the assembly values baked into the registration. The call
+ * set is not among them: the dispatcher supplies it to the judge at call time.
+ * `readOnlyCommands` REPLACES {@link DEFAULT_READ_ONLY_COMMANDS} when given — no merge,
+ * since an assembly wanting to extend the default spreads the constant.
  */
 export type ShellModRegistrationSpec = {
   protectedPaths: string[];
@@ -230,13 +230,12 @@ export type ShellModRegistrationSpec = {
 };
 
 /**
- * Build the shell-mod registration (DISPATCH-01 §4.4). Routing stays path mention; the
- * judgment is the thunk.
+ * Build the shell-mod registration. Routing stays path mention; the judgment is the thunk.
  *
- * The misassembly gate the CLI body held lives at the thunk's entry: zero valid entries in
- * any of the three required lists would make {@link judgeShellModification} uphold every
- * call, so it answers the unjudgeable outcome instead, which no enforce level softens. The
- * allowlist is exempt — empty just means stricter.
+ * The misassembly gate lives at the thunk's entry: zero valid entries in any of the three
+ * required lists would make {@link judgeShellModification} uphold every call, so it answers
+ * the unjudgeable outcome instead, which no enforce level softens. The allowlist is exempt
+ * — empty just means stricter.
  */
 export function shellModRegistration(
   spec: ShellModRegistrationSpec,
@@ -261,8 +260,8 @@ export function shellModRegistration(
       try {
         return outcomeFromVerdict(judgeShellModification(input, judgeSpec));
       } catch {
-        // Structurally unjudgeable input that passed parseInput (element shapes are an
-        // intended CORE-01 boundary): cannot judge means block.
+        // Structurally unjudgeable input that passed parseInput (which validates the
+        // collection shapes, not the element ones): cannot judge means block.
         return UNJUDGEABLE_OUTCOME;
       }
     },

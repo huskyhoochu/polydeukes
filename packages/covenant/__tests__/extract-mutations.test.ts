@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { MutationRule, SimpleCommand } from '../src/bash-line.js';
-// COVENANT-04a §4.2/§5.2. The module does not exist yet (RED phase) — this import
-// must fail to resolve until bash-line.ts is implemented.
 import { extractMutations } from '../src/bash-line.js';
 
-// ---------------------------------------------------------------------------
-// Test-only dummy rule (PRD §4.2: 04a ships zero built-in rules — verification
-// uses a rule defined here, not a real one from 04b/04c).
-// A command whose first word is "mutate" is treated as writing its second word.
-// ---------------------------------------------------------------------------
+// A test-only rule, so that these cases verify the rule seam rather than any shipped rule's
+// behaviour: a command whose first word is "mutate" is treated as writing its second word.
 const dummySecondArgRule: MutationRule = {
   name: 'dummy-second-arg',
   detect(command: SimpleCommand) {
@@ -27,17 +22,16 @@ describe('§5.2 rule seam — mutation detection', () => {
   });
 
   it('applies the rule per simple command: only the matching command contributes', () => {
-    // Mutation caught: a rule application that only inspects the first simple command
-    // of the line (or merges all commands into one before running the rule).
+    // A rule application that inspects only the first simple command, or merges all commands
+    // into one before running the rule, misses this.
     const result = extractMutations('safe x; mutate f', [dummySecondArgRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'dummy-second-arg' }]);
   });
 
   it('accumulates results from multiple rules, each matching its own command', () => {
-    // Mutation caught: an implementation that applies only rules[0] (or stops at the
-    // first matching rule) would pass every single-rule test but break the real
-    // deployment shape, where 04b and 04c rules are plugged in together.
+    // Applying only rules[0], or stopping at the first matching rule, passes every
+    // single-rule case and still breaks the shape where several rules are plugged in together.
     const dummyFirstArgRule: MutationRule = {
       name: 'dummy-first-arg',
       detect(command: SimpleCommand) {
@@ -60,7 +54,7 @@ describe('§5.2 rule seam — mutation detection', () => {
 
 describe('§5.2 nested shell execution is indeterminate', () => {
   it('"eval \'...\'" is indeterminate regardless of the inner string, even with zero rules', () => {
-    // PRD §4.3: nested shell = reinterpretation boundary, not recursively parsed.
+    // A nested shell is a reinterpretation boundary, never parsed into recursively.
     const result = extractMutations("eval 'rm -rf /'", []);
 
     expect(result.mutations).toEqual([]);
@@ -80,9 +74,8 @@ describe('§5.2 nested shell execution is indeterminate', () => {
   });
 
   it('does not recursively parse the inner string of a nested shell call for mutations', () => {
-    // Even though the inner string textually matches the dummy rule's pattern
-    // ("mutate f"), it must NOT surface as a mutation — it is inside eval's argument,
-    // a reinterpretation boundary that 04a explicitly does not parse into.
+    // The inner string textually matches the rule's pattern, but it sits inside eval's
+    // argument — a reinterpretation boundary — so it must not surface as a mutation.
     const result = extractMutations("eval 'mutate f'", [dummySecondArgRule]);
 
     expect(result.mutations).toEqual([]);
@@ -92,9 +85,9 @@ describe('§5.2 nested shell execution is indeterminate', () => {
 
 describe('§5.2 opaque token in target position', () => {
   it('an opaque redirect target is indeterminate even with zero rules', () => {
-    // Mutation caught: an opacity scan that inspects command.words only — an append-write
-    // to an unknowable path (`x >> $var`) would yield mutations:[] AND indeterminate:[],
-    // the forbidden confident pass (PRD §7 "모호하면 판정불가").
+    // An opacity scan that inspects command.words only answers mutations:[] AND
+    // indeterminate:[] for an append-write to an unknowable path — a confident pass over
+    // something nothing could decide.
     const result = extractMutations('x >> $var', []);
 
     expect(result.mutations).toEqual([]);
@@ -102,8 +95,8 @@ describe('§5.2 opaque token in target position', () => {
   });
 
   it('an opaque second argument to the dummy rule is indeterminate, not a mutation', () => {
-    // Mutation caught: a rule seam that ignores opacity and reports the raw opaque
-    // text as a concrete path, or one that silently drops the case (empty arrays).
+    // A rule seam that ignores opacity reports the raw opaque text as a concrete path; one
+    // that drops the case answers with two empty arrays.
     const result = extractMutations('mutate $(echo f)', [dummySecondArgRule]);
 
     expect(result.mutations).toEqual([]);
@@ -153,11 +146,10 @@ describe('§5.3 fail-closed no-throw fuzz cases', () => {
 
 describe('§5.5 nested-shell boundary uses command basename (SSOT with shell-mod)', () => {
   it('"/bin/sh -c \'...\'" is indeterminate — matched by basename, not raw first.text', () => {
-    // COVENANT-07 §5.5. Mutation caught: the nested-shell boundary comparing the raw first
-    // word (`/bin/sh`) against the bare-name set instead of its basename (`sh`). A raw-text
-    // comparison misses `/bin/sh`, so the inner `> packages/core/src/y` write neither
-    // surfaces as a mutation nor as indeterminate — the confident-pass drift this ticket
-    // closes. The basename boundary (mirror of shell-mod's (e) clause) reports indeterminate.
+    // Comparing the raw first word (`/bin/sh`) against the bare-name set instead of its
+    // basename misses this, so the inner `> packages/core/src/y` write surfaces neither as a
+    // mutation nor as indeterminate — a confident pass. The basename comparison mirrors
+    // shell-mod's allowlist clause.
     const result = extractMutations("/bin/sh -c 'echo x > packages/core/src/y'", []);
 
     expect(result.mutations).toEqual([]);

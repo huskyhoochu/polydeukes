@@ -2,23 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { extractMutations, tokenizeCommandLine } from '../src/bash-line.js';
 import { redirectWriteRule } from '../src/mutation-rules.js';
 
-// ---------------------------------------------------------------------------
-// Tokenizer — newline as command separator (PRD §5.1). The current tokenizer
-// treats a newline as a word character, gluing "a\necho" into one word; these
-// tests pin the multi-line splitting the refinement adds.
-// ---------------------------------------------------------------------------
 describe('§5.1 newline as command separator', () => {
   it('splits "echo a\\necho b > f" into two commands with only {path: f}', () => {
-    // Mutation caught: a tokenizer that folds the newline into a word glues
-    // "a\necho" together, so the second command (and its write redirect) is lost.
+    // Folding the newline into a word glues "a\necho" together, losing the second command
+    // and its write redirect.
     const result = extractMutations('echo a\necho b > f', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
   });
 
   it('splits "echo a\\necho b > f" into exactly two simple commands', () => {
-    // Boundary on the command count: one glued command (no split) or three
-    // (a spurious empty command) both fail this.
+    // One glued command (no split) and three (a spurious empty one) both fail this.
     const result = tokenizeCommandLine('echo a\necho b > f');
 
     expect(result.unread).toEqual([]);
@@ -29,11 +23,11 @@ describe('§5.1 newline as command separator', () => {
   });
 
   it('fires the sed rule on the second line of "echo hi\\nsed -i s/x/y/ t"', () => {
-    // Mutation caught: the newline stays a word character, so "hi\nsed" glues and
-    // the second command never reaches the sed rule — the §2 under-detection gap.
+    // With the newline still a word character, "hi\nsed" glues and the second command never
+    // reaches the sed rule.
     const result = extractMutations('echo hi\nsed -i s/x/y/ t', [redirectWriteRule]);
-    // The sed rule detection is asserted in sed-in-place.test.ts; here we only
-    // prove the newline split produced a distinct second command.
+    // sed-in-place.test.ts asserts the rule itself; this only proves the newline split
+    // produced a distinct second command.
     const tokens = tokenizeCommandLine('echo hi\nsed -i s/x/y/ t');
 
     expect(result.mutations).toEqual([]);
@@ -45,8 +39,7 @@ describe('§5.1 newline as command separator', () => {
   });
 
   it('keeps a newline inside a double-quoted string as word content, not a separator', () => {
-    // Boundary across the quote divide: a newline INSIDE quotes is literal content
-    // (bash multi-line string), so it must not split the command.
+    // A newline inside quotes is literal content, so it must not split the command.
     const result = tokenizeCommandLine('echo "a\nb"');
 
     expect(result.unread).toEqual([]);
@@ -58,14 +51,10 @@ describe('§5.1 newline as command separator', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Tokenizer — heredoc recognition and body consumption (PRD §5.1). The goal is
-// that "cat > f <<EOF" tokenizes so 04b's redirect-write fires on "> f".
-// ---------------------------------------------------------------------------
 describe('§5.1 heredoc recognition and body consumption', () => {
   it('tokenizes "cat > f <<EOF\\nhello\\nEOF" to one redirect-write mutation on f', () => {
-    // Roadmap AC case: before the refinement the second "<" of "<<EOF" scanned an
-    // empty redirect target and fail-closed the whole line.
+    // Read naively, the second "<" of "<<EOF" scans an empty redirect target and fails the
+    // whole line closed.
     const result = extractMutations('cat > f <<EOF\nhello\nEOF', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
@@ -80,8 +69,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('detects the write target with a tab-stripping "<<-EOF" and tab-indented terminator', () => {
-    // Mutation caught: "<<-" not recognized as its own operator, or the leading tab
-    // on the terminator line not stripped so the body never terminates.
+    // "<<-" must be its own operator, and the terminator line's leading tab must be stripped
+    // or the body never terminates.
     const result = extractMutations('cat > f <<-EOF\n\thello\n\tEOF', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
@@ -89,8 +78,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('detects the write target with a quoted "<<\'EOF\'" delimiter', () => {
-    // Mutation caught: the quotes not stripped from the delimiter, so the plain
-    // "EOF" terminator line never matches and the body runs to EOF.
+    // Without stripping the quotes from the delimiter, the plain "EOF" terminator line never
+    // matches and the body runs to the end of input.
     const result = extractMutations("cat > f <<'EOF'\nhello\nEOF", [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
@@ -98,8 +87,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('does not parse heredoc body text as commands (no mutation from body writes)', () => {
-    // Mutation caught: the body consumed as ordinary lines would let "sed -i …" and
-    // "echo x > y" in the body produce phantom mutations — the body is data.
+    // The body is data: consuming it as ordinary lines lets "sed -i …" and "echo x > y"
+    // inside it produce phantom mutations.
     const line = 'cat <<EOF\nsed -i s/a/b/ g\necho x > y\nEOF';
     const result = extractMutations(line, [redirectWriteRule]);
 
@@ -107,8 +96,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('consumes two heredocs on one line in order, then parses the following line', () => {
-    // Mutation caught: only the first heredoc body consumed, so the second body's
-    // lines leak back as commands — bash consumes them in appearance order.
+    // Bash consumes the bodies in appearance order; consuming only the first leaks the
+    // second body's lines back as commands.
     const line = 'cat <<A <<B\nbody-a\nA\nbody-b\nB\necho done > f';
     const result = extractMutations(line, [redirectWriteRule]);
 
@@ -116,8 +105,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('handles an unterminated heredoc without throwing and still detects the redirect target', () => {
-    // Fail-closed no-throw: bash ends the body at EOF; there is no hidden command
-    // after it, so silence there is not a pass. The "> f" write is still detected.
+    // Bash ends the body at end of input, so there is no hidden command after it and silence
+    // there is not a pass. The "> f" write is still detected.
     const line = 'cat > f <<EOF\nbody';
 
     expect(() => extractMutations(line, [redirectWriteRule])).not.toThrow();
@@ -127,18 +116,17 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('reports no mutation for a herestring "<<<" (read direction)', () => {
-    // Mutation caught: "<<<" mistaken for a write, or its value word reported as a
-    // path — a herestring supplies stdin, so it is a read.
+    // A herestring supplies stdin, so it is a read: neither the operator nor its value word
+    // is a write target.
     const result = extractMutations('cmd <<< data', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([]);
   });
 
   it('detects the write after a "cat <<$(x)" body — the delimiter is never expanded', () => {
-    // Rewritten in COVENANT-18 (§2-a A3): this case used to be pinned as fail-closed on
-    // an "undecidable" body end. Measured (bash 5.3.9), `bash -n` accepts the line and
-    // execution ends the body at the literal `$(x)` line, so the end IS statically
-    // decidable and the command after it runs — the write this detects.
+    // Measured with bash 5.3.9: `bash -n` accepts the line, and execution ends the body at
+    // the literal `$(x)` line — the delimiter is never expanded — so the body end is
+    // statically decidable and the command after it runs.
     const result = extractMutations('cat <<$(x)\nbody\n$(x)\necho hi > f', [redirectWriteRule]);
 
     expect(result.mutations).toEqual([{ path: 'f', rule: 'redirect-write' }]);
@@ -146,9 +134,8 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 
   it('ends a "cat <<$(x)" body at its literal delimiter line, not at the input end', () => {
-    // Same case at the tokenizer surface, where it used to answer { ok: false }. Mutation
-    // caught: the delimiter's `$(x)` normalized or the body run to EOF — either loses the
-    // following command, which is the fail-open direction a deleted refusal must not open.
+    // The same case at the tokenizer surface. Normalizing the delimiter's `$(x)`, or running
+    // the body to end of input, loses the following command.
     const result = tokenizeCommandLine('cat <<$(x)\nbody\n$(x)\necho done');
 
     expect(result.unread).toEqual([]);
@@ -159,18 +146,15 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Invariants — no-throw fuzz cases relevant to heredoc/newline (PRD §5.3).
-// ---------------------------------------------------------------------------
 describe('§5.3 fail-closed no-throw fuzz cases', () => {
   it('never throws on a lone "<<" heredoc operator with no delimiter', () => {
     expect(() => extractMutations('<<', [redirectWriteRule])).not.toThrow();
   });
 
   it('splits on a lone carriage return without stalling (every terminator is consumed)', () => {
-    // Mutation caught: scanWord terminates a word on `\r` but the main loop only
-    // consumed `\r\n` pairs — a lone CR then produced empty words forever (a hang,
-    // which no fail-closed contract can catch). A regression here times out the suite.
+    // scanWord terminates a word on `\r` while the main loop consumes only `\r\n` pairs; a
+    // lone CR then produces empty words forever. A hang is what no fail-closed contract can
+    // catch, so a regression here times the suite out rather than failing.
     const result = tokenizeCommandLine('echo a\recho b > f');
 
     expect(result.unread).toEqual([]);

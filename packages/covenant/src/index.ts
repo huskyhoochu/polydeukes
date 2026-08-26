@@ -1,19 +1,12 @@
 /**
- * @polydeukes/covenant — the run_covenant execution wrapper and the Bash analysis core.
+ * @polydeukes/covenant — the judging core.
  *
- * Pre-alpha. COVENANT-01 lands the wrapper: it calls an in-process judge
- * thunk, translates its exit-code equivalent (1 → blocking 2),
- * and appends one ROI telemetry record per call via @polydeukes/core.
- * COVENANT-04a lands the pure Bash command-line tokenizer + mutation-target
- * extraction core that the path-shaped meta-covenant (04b–04d) builds on.
- * COVENANT-02 lands the path-routing dispatcher: the edit-time first-line layer
- * that routes protected-path mentions to their registered covenant bodies.
- * COVENANT-03 lands the self-mod meta-covenant — the dispatcher's first real
- * registrant: a pure judge + registration builder that block mutating tool calls on
- * protected paths, plus the witness seam whose openings are measured as `witnessed`.
- * COVENANT-04d lands the shell-mod meta-covenant — the Bash-axis mirror: a pure
- * judge + registration builder that assemble the tokenizer and detection rules into a
- * verdict, with a read-only allowlist as the friction valve.
+ * The execution wrapper (`runCovenant`) calls an in-process judge thunk, translates its
+ * exit code, and appends one telemetry record per call. The path-routing dispatcher sends
+ * an input to the covenant bodies whose protected paths it mentions. On top of a pure Bash
+ * tokenizer sit three meta-covenants — self-mod (the tool axis), shell-mod (the Bash axis),
+ * and transcript-mod — plus the discipline compiler that turns config entries into
+ * registrations.
  */
 
 export type { TelemetryEvent } from '@polydeukes/core';

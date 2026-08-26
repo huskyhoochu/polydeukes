@@ -1,12 +1,11 @@
 /**
- * Delta layer — new-violation-only judgment over a file's pre/post pair
- * (COVENANT-05, PRD §4.1–4.4).
+ * Delta layer — new-violation-only judgment over a file's pre/post pair.
  *
- * The execution foundation of the delta-family predicate `forbid:{added}`:
- * pre-existing debt (matches already in pre) is forgiven, and only the matches
- * this edit adds are judged. Pure total functions — zero I/O, zero failure
- * branches; unresolvable post-states never reach this layer (PRD §4.4, the
- * caller's fail-closed responsibility).
+ * The execution foundation of the delta-family predicate `forbid:{added}`: pre-existing
+ * debt (matches already in pre) is forgiven, and only the matches this edit adds are
+ * judged. Pure total functions — zero I/O, zero failure branches; resolving an
+ * unreadable post-state is the caller's fail-closed responsibility, so one never arrives
+ * here.
  */
 
 import type { CovenantVerdict } from '@polydeukes/core';
@@ -14,16 +13,16 @@ import type { CovenantVerdict } from '@polydeukes/core';
 /** A file's content pair around an edit. `pre` is null when the file does not exist yet (creation edit). */
 export type FileDelta = { pre: string | null; post: string };
 
-/** Pattern-match multiset: matched string → occurrence count (PRD §4.2). */
+/** Pattern-match multiset: matched string → occurrence count. */
 export type Baseline = ReadonlyMap<string, number>;
 
 /**
- * Extract every pattern-match occurrence in `content` as a multiset (PRD §4.2).
+ * Extract every pattern-match occurrence in `content` as a multiset.
  *
- * `null` content (no file) yields an empty baseline, so on a creation edit
- * every post match counts as added. Matching runs on an internal clone that
- * guarantees the `g` flag — the caller's RegExp `lastIndex` is never read nor
- * written, so identical arguments always yield identical baselines (PRD §4.3).
+ * `null` content (no file) yields an empty baseline, so on a creation edit every post
+ * match counts as added. Matching runs on an internal clone that guarantees the `g` flag —
+ * the caller's RegExp `lastIndex` is never read nor written, so identical arguments always
+ * yield identical baselines.
  */
 export function captureBaseline(content: string | null, pattern: RegExp): Baseline {
   const baseline = new Map<string, number>();
@@ -37,13 +36,11 @@ export function captureBaseline(content: string | null, pattern: RegExp): Baseli
 }
 
 /**
- * Symmetric multiset difference between two baselines (PRD §4.2).
+ * Symmetric multiset difference between two baselines.
  *
- * For each matched string the surplus is netted per direction as
- * `max(post − pre, 0)` into `added` and `max(pre − post, 0)` into `removed`;
- * the intersection cancels out and zero-count entries are never emitted.
- * Judgment consumes `added` only — `removed` is produced for later delta-family
- * predicates (COVENANT-12) and deliberately has no judge here.
+ * For each matched string the surplus is netted per direction as `max(post − pre, 0)` into
+ * `added` and `max(pre − post, 0)` into `removed`; the intersection cancels out and
+ * zero-count entries are never emitted. Judgment consumes `added` only.
  */
 export function diffBaselines(
   pre: Baseline,
@@ -63,7 +60,7 @@ export function diffBaselines(
 }
 
 /**
- * Judge a file edit on the added direction only (PRD §4.1–4.2).
+ * Judge a file edit on the added direction only.
  *
  * Breaks iff the edit adds at least one new match instance — the reason names
  * every added matched string, never the forgiven pre-existing debt. Deletions

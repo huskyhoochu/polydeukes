@@ -1,5 +1,5 @@
 /**
- * Bash command-line tokenizer + mutation-target extraction core (COVENANT-04a).
+ * Bash command-line tokenizer + mutation-target extraction core.
  *
  * Pure functions only — zero I/O, spawn, or logging. A hand-rolled single-pass character
  * scanner recognizes quote state (`'`, `"`, `$'…'`, `\`), control operators
@@ -10,7 +10,7 @@
  * Fail-closed: no input ever throws. A construct the scanner cannot finish reading yields a
  * partial result — the commands it did read, plus one `unread` span per failure; in
  * {@link extractMutations} each span becomes one indeterminate entry. Block/allow
- * decisions, read-only allowlists, and real detection rules live in COVENANT-04b/c/d.
+ * decisions, read-only allowlists, and detection rules live in the judges that consume this.
  */
 
 /** A single word token with a static-opacity flag (`opaque` = value not knowable). */
@@ -26,9 +26,9 @@ export type RedirectToken = {
 };
 
 /**
- * One heredoc body a command declared, with its delimiter's quoting (COVENANT-10b §2-a).
- * `literal` means the delimiter was quoted, so the body is written verbatim; an unquoted
- * delimiter expands its body, which only a consumer can decide what to do about.
+ * One heredoc body a command declared, with its delimiter's quoting. `literal` means the
+ * delimiter was quoted, so the body is written verbatim; an unquoted delimiter expands its
+ * body, which only a consumer can decide what to do about.
  */
 export type HeredocBody = {
   body: string;
@@ -46,9 +46,8 @@ export type SimpleCommand = {
 };
 
 /**
- * A span of the line the scanner could not read, with the reason it stopped (COVENANT-18
- * §2-b B2). `reason` is a telemetry pass-through value: no consumer branches on it, and it
- * is deliberately not promoted to a discriminated union (§2-f C2).
+ * A span of the line the scanner could not read, with the reason it stopped. `reason` is a
+ * telemetry pass-through value: no consumer branches on it.
  */
 export type UnreadSpan = {
   text: string;
@@ -57,9 +56,8 @@ export type UnreadSpan = {
 
 /**
  * The tokenizer's result: the commands it read, plus one span per failure it hit. A failure
- * no longer discards the line — the read commands reach precise judgment and only the spans
- * fall to a consumer's conservative treatment (COVENANT-18 §2-b B2). An empty `unread` is
- * the "fully read" signal.
+ * does not discard the line — the read commands reach precise judgment and only the spans
+ * fall to a consumer's conservative treatment. An empty `unread` is the "fully read" signal.
  */
 export type TokenizeResult = {
   commands: SimpleCommand[];
@@ -73,8 +71,8 @@ export type MutationTarget = {
 };
 
 /**
- * A detection rule seam (PRD §4.2). A pure function over a single simple command that
- * returns the mutation targets it detects. 04b/04c plug real rules in here; 04a ships none.
+ * A detection rule seam: a pure function over a single simple command that returns the
+ * mutation targets it detects.
  */
 export type MutationRule = {
   name: string;
@@ -93,9 +91,10 @@ export type MutationAnalysis = {
 };
 
 // Reinterpretation-boundary declaration, NOT a blocklist: a command whose first word is
-// one of these re-parses its string arguments in a nested shell, so 04a honestly reports
-// indeterminate rather than parsing into it. Kept a small explicit set on purpose; residual
-// vectors (indirect path computation) are telemetry's concern in 04d, not blocking here.
+// one of these re-parses its string arguments in a nested shell, so the tokenizer honestly
+// reports indeterminate rather than parsing into it. Deliberately a small explicit set —
+// residual vectors such as indirect path computation are telemetry's concern in the judges,
+// not something this set should grow to chase.
 const NESTED_SHELL_COMMANDS = new Set(['eval', 'bash', 'sh', 'zsh']);
 
 /**
@@ -113,7 +112,7 @@ const ASSIGNMENT_WORD = /^[A-Za-z_][A-Za-z0-9_]*=/;
 
 /**
  * The word that names the command, skipping any leading assignments — undefined when the
- * command is nothing but assignments (COVENANT-18 §2-a A5).
+ * command is nothing but assignments.
  *
  * Read at the nested-shell boundary only. There an unskipped assignment hides `bash` behind
  * `FOO=1` and the line passes with confidence; for the read-only allowlist and precedent
@@ -128,7 +127,7 @@ export function commandNameWord(command: SimpleCommand): WordToken | undefined {
 /**
  * True if a double-quoted fragment carries a dynamic construct whose value is unknowable.
  * Only expansion and command substitution run inside double quotes — bash does not glob
- * there, so `*` and `?` are opacity grounds outside quotes only (COVENANT-18 §2-a A4).
+ * there, so `*` and `?` are opacity grounds outside quotes only.
  */
 function quotedFragmentIsOpaque(fragment: string): boolean {
   return fragment.includes('$') || fragment.includes('`');
@@ -136,7 +135,7 @@ function quotedFragmentIsOpaque(fragment: string): boolean {
 
 // Inside double quotes bash removes a backslash only before these characters; before
 // anything else it stays literal content (`"a\|b"` is the four bytes `a\|b`). The same
-// set decides the pairing, so an escaped `"` never closes the string (§2-a A1).
+// set decides the pairing, so an escaped `"` never closes the string.
 const DOUBLE_QUOTE_ESCAPES = new Set(['$', '`', '"', '\\']);
 
 /**
@@ -149,7 +148,7 @@ type ScannedQuote = { text: string; next: number; closed: boolean; decoded: bool
 /**
  * Scan a double-quoted string whose opening `"` sits at `open`. Returns the content bash
  * would pass and the index just past the closing quote; a string that never closes is read
- * to the end of input and reported `closed: false`, never discarded (§2-b B1).
+ * to the end of input and reported `closed: false`, never discarded.
  */
 function scanDoubleQuoted(line: string, open: number): ScannedQuote {
   let text = '';
@@ -191,16 +190,16 @@ const ANSI_C_ESCAPES: Record<string, string> = { n: '\n', t: '\t', "'": "'", '\\
 /**
  * Scan an ANSI-C quoted string (`$'…'`) whose opening `'` sits at `open`. Returns the
  * DECODED bytes and the index just past the closing quote; a string that never closes is
- * read to the end of input and reported `closed: false` (§2-b B1). Decoding is not
- * cosmetic: the word text becomes written-content evidence downstream, so handing back the
- * source spelling would record bytes bash never writes (§2-a A7).
+ * read to the end of input and reported `closed: false`. Decoding is not cosmetic: the word
+ * text becomes written-content evidence downstream, so handing back the source spelling
+ * would record bytes bash never writes.
  *
  * An escape the table does not carry sets `decoded: false`, and the caller turns that into
- * opacity. The alternative — keeping the source spelling and calling it decided — asserts
- * bytes bash never writes AS CONFIDENT EVIDENCE: `$'\x64ist'` would be filed as the literal
- * `\x64ist` while bash writes `dist`, so a judge reading written content compares a string
- * that never existed and answers uphold with no unjudgeable row. Completing the table is NOT
- * the fix — the next unlisted escape reproduces it. Declining to claim knowledge is.
+ * opacity. Keeping the source spelling and calling it decided would assert bytes bash never
+ * writes AS CONFIDENT EVIDENCE: `$'\x64ist'` would be filed as the literal `\x64ist` while
+ * bash writes `dist`, so a judge reading written content compares a string that never
+ * existed and upholds with no unjudgeable row. Completing the table is NOT the fix — the
+ * next unlisted escape reproduces it. Declining to claim knowledge is.
  */
 function scanAnsiCQuoted(line: string, open: number): ScannedQuote {
   let text = '';
@@ -234,8 +233,8 @@ type ScanResult = { word: ScannedWord; next: number; unread?: UnreadSpan };
 /**
  * Close a word on an unterminated quote whose opening character sits at `open`: the rest of
  * the input is consumed, the word is opaque (its value depends on bytes the shell never
- * received), and the raw span is reported. The backtick branch of {@link scanWord} has
- * always worked this way; §2-b B1 gives the three quote forms the same treatment.
+ * received), and the raw span is reported. All three quote forms and the backtick branch of
+ * {@link scanWord} share this treatment.
  */
 function unreadFrom(line: string, open: number, text: string): ScanResult {
   return {
@@ -258,8 +257,8 @@ function scanWord(line: string, start: number): ScanResult {
     const ch = line[i];
 
     // Whitespace and control/redirect operators terminate a word (outside quotes).
-    // Newlines count too (04c): they separate commands, like `;`. Inside quotes they
-    // remain word content — the quote branches below consume across them.
+    // Newlines count too: they separate commands, like `;`. Inside quotes they remain
+    // word content — the quote branches below consume across them.
     if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') break;
     if (ch === ';' || ch === '|' || ch === '&' || ch === '<' || ch === '>') break;
 
@@ -291,7 +290,7 @@ function scanWord(line: string, start: number): ScanResult {
       const close = line.indexOf("'", i + 1);
       // The dequoted content JOINS the word in progress rather than starting a new one:
       // `pack'ages/…` is one shell word, and splitting it leaves two halves that each
-      // match nothing (§2-b B1).
+      // match nothing.
       if (close === -1) return unreadFrom(line, i, text + line.slice(i + 1));
       text += line.slice(i + 1, close);
       i = close + 1;
@@ -364,8 +363,7 @@ function scanWord(line: string, start: number): ScanResult {
  * swallows everything from `open` to end of input into ONE opaque word, so without this flag
  * a line the scanner demonstrably could not finish reading answers `unread: []` — the
  * "fully read" signal — and files zero unjudgeable entries. That is a call passing with no
- * telemetry row at all, which is the defect class COVENANT-10b defines and blocker B7
- * measured (COVENANT-18 §2-b, top invariant).
+ * telemetry row at all, which is the defect this whole axis is built to make impossible.
  */
 type ParenScan = { end: number; closed: boolean };
 
@@ -375,8 +373,7 @@ function matchParen(line: string, open: number): ParenScan {
     const ch = line[i];
 
     // Quoting suspends the count: a `)` inside `"[^)]+"` is regex content, not a close paren.
-    // Counting it ends the substitution early and every quote after it pairs one position off
-    // (COVENANT-18 §2-a A9) — the same context-blindness the `"` pairing had before A1.
+    // Counting it ends the substitution early and every quote after it pairs one position off.
     if (ch === '\\') {
       i += 1;
       continue;
@@ -427,16 +424,15 @@ function scanRedirect(line: string, i: number): { operator: string; length: numb
     return { operator: line.slice(i, end), length: end - i };
   }
   if (three === '&>>') return { operator: '&>>', length: 3 };
-  // `>|` truncates past `noclobber` — a write like `>`, and graded as one by the operator's
-  // `>` (COVENANT-18 §2-a A6).
-  // `<&` is the read-direction twin of `>&` and closes an fd as `<&-`; without it the `-`
-  // never reads as a target and a valid line dies (COVENANT-18 §2-a A10).
+  // `>|` truncates past `noclobber` — a write like `>`, and graded as one by the `>` it
+  // contains. `<&` is the read-direction twin of `>&` and closes an fd as `<&-`; without it
+  // the `-` never reads as a target and a valid line dies.
   if (two === '>>' || two === '>|' || two === '&>' || two === '>&' || two === '<&') {
     return { operator: two, length: 2 };
   }
   if (ch === '>') return { operator: '>', length: 1 };
-  // Heredoc family (04c): longest match first so `<<EOF` is never a lone `<` with an
-  // empty (fail-closing) target — `<<<` herestring, `<<-` tab-stripping heredoc, `<<`.
+  // Heredoc family, longest match first so `<<EOF` is never a lone `<` with an empty
+  // (fail-closing) target — `<<<` herestring, `<<-` tab-stripping heredoc, `<<`.
   if (three === '<<<' || three === '<<-') return { operator: three, length: 3 };
   if (two === '<<') return { operator: '<<', length: 2 };
   if (ch === '<') return { operator: '<', length: 1 };
@@ -496,9 +492,9 @@ function consumeHeredocBodies(line: string, start: number, pending: PendingHered
 }
 
 /**
- * Tokenize one shell line into simple commands (PRD §4.1). Never throws, and never discards
- * what it read: a construct it cannot finish reading is recorded as an `unread` span and the
- * scan carries on (COVENANT-18 §2-b B2).
+ * Tokenize one shell line into simple commands. Never throws, and never discards what it
+ * read: a construct it cannot finish reading is recorded as an `unread` span and the scan
+ * carries on.
  */
 export function tokenizeCommandLine(line: string): TokenizeResult {
   const commands: SimpleCommand[] = [];
@@ -572,7 +568,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       }
       // A redirect with no target is a bash syntax error, but a LOCAL one: everything past
       // the operator is still readable, so the span is recorded and the scan resumes there
-      // instead of throwing the line away (§2-b B2).
+      // instead of throwing the line away.
       if (scanned.word.text === '') {
         unread.push({ text: line.slice(i, j), reason: 'missing redirect target' });
         i = j;
@@ -580,7 +576,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       }
       if (redirect.operator === '<<' || redirect.operator === '<<-') {
         // bash never expands a heredoc delimiter, so the body's end is decidable from the
-        // literal text even for `<<$D` — no fail-closed branch here (§2-a A3).
+        // literal text even for `<<$D` — no fail-closed branch here.
         pendingHeredocs.push({
           delimiter: scanned.word.text,
           stripTabs: redirect.operator === '<<-',
@@ -625,7 +621,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
 }
 
 /**
- * Extract mutation targets from a shell line via injected rules (PRD §4.2). A simple command
+ * Extract mutation targets from a shell line via injected rules. A simple command
  * contributes an indeterminate entry when it is a nested-shell call OR contains any opaque
  * word (in which case its rules are still applied, but an undecidable structure is present);
  * each unread span yields one more. Never throws.
@@ -638,8 +634,8 @@ export function extractMutations(line: string, rules: MutationRule[]): MutationA
 
   for (const command of result.commands) {
     // Nested shell = reinterpretation boundary: report indeterminate, do not parse inside.
-    // Matched by command basename (`/bin/sh` → `sh`), the same boundary shell-mod's (e)
-    // clause uses (SSOT), so a leading-path nested shell is not missed by a raw-text compare.
+    // Matched by command basename (`/bin/sh` → `sh`), the same boundary shell-mod's
+    // allowlist clause uses, so a leading-path nested shell is not missed by a raw compare.
     const name = commandNameWord(command);
     const nameBasename = name !== undefined ? name.text.slice(name.text.lastIndexOf('/') + 1) : '';
     if (name !== undefined && isNestedShellCommand(nameBasename)) {

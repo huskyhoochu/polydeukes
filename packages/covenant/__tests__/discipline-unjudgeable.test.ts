@@ -1,10 +1,10 @@
 import type { CanonicalTranscript, DisciplineEntry } from '@polydeukes/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-// COVENANT-13 §4.5 (revised 2026-07-26) — evaluation yields THREE results, not two:
-// found, missing, and unjudgeable. An unjudgeable entry compiles into a SKIP
-// registration: no body, so the dispatcher records one `skipped` instead of spawning.
-// Assembly never throws — one entry's failure used to take down every registration and
-// the witness valve with it, leaving no in-session recovery.
+// Evidence evaluation yields THREE results, not two: found, missing, and unjudgeable. An
+// unjudgeable entry compiles into a SKIP registration — no body, so the dispatcher records
+// one `skipped` rather than judging. Assembly never throws: one entry's failure would
+// otherwise take every registration and the witness valve down with it, leaving no
+// in-session recovery.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 
 const ROOT = '/repo';
@@ -57,14 +57,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ===========================================================================
 // The five unjudgeable causes. None of them throws; all of them skip.
-// ===========================================================================
-
 describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a skip registration', () => {
   it('skips when the evaluator does not recognize the evidence key', () => {
-    // Was a throw. The throw took down every sibling registration AND the witness valve,
-    // so a single typo left no way to edit the config that caused it.
+    // A throw here took down every sibling registration AND the witness valve, so a single
+    // typo left no way to edit the config that caused it.
     const [registration] = compileDisciplineRegistrations(
       contextSpec([typoEntry], {
         transcript: transcriptWithToolCalls([]),
@@ -76,11 +73,10 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
   });
 
   it('skips QUIETLY when no evaluator is injected — the surface cannot speak the vocabulary', () => {
-    // Not an author's mistake. A surface that does not speak adapter vocabulary declines
-    // to supply an evaluator, and `pdks covenant check` never supplies one — announcing
-    // it would put a line on stderr for every commit. Mutation caught: this case merged
-    // back into the loud configFault branch, which is what the repo actually observed the
-    // day it first configured a `tool` entry.
+    // Not an author's mistake. A surface that does not speak adapter vocabulary declines to
+    // supply an evaluator, and `pdks covenant check` never supplies one — announcing it
+    // would put a line on stderr for every commit. Merging this into the loud config-fault
+    // branch is what makes that happen.
     const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     const [registration] = compileDisciplineRegistrations(
@@ -106,8 +102,8 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
   });
 
   it('skips command evidence when a transcript exists but the shell surface is empty', () => {
-    // With a session to read but no surface to read it through, command evidence can
-    // never be found. Transporting `missing` would forge a block with no pass path.
+    // With a session to read but no surface to read it through, command evidence can never
+    // be found, so answering `missing` would forge a block with no pass path.
     for (const emptySurface of [{ shellTools: [] }, { commandArgs: [] }]) {
       const [registration] = compileDisciplineRegistrations(
         contextSpec([commandEntry], {
@@ -122,8 +118,7 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
 
   it('skips when no transcript is injected at all', () => {
     // The session surface's absent transcript and the commit surface's absent evidence
-    // channel are the same fact, so they now get the same disposition. This is the
-    // asymmetry that produced eleven of the third review's fifteen findings.
+    // channel are the same fact, so they get the same disposition.
     const [registration] = compileDisciplineRegistrations(contextSpec([commandEntry]));
 
     expectSkip(registration);
@@ -131,8 +126,8 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
 });
 
 describe('compileDisciplineRegistrations — a non-compilable pattern skips in every family', () => {
-  // Containing only the context family left the other three able to take down the whole
-  // assembly through the same door (third review F13).
+  // Every family reaches assembly through the same door, so confining the skip disposition
+  // to the context family leaves the other three able to take the whole assembly down.
   const brokenByFamily: [string, DisciplineEntry][] = [
     ['forbid', { id: 'bad-forbid', in: ['pkg/**'], forbid: '(' } as DisciplineEntry],
     ['forbidCommand', { id: 'bad-command', forbidCommand: '(' } as unknown as DisciplineEntry],
@@ -158,10 +153,6 @@ describe('compileDisciplineRegistrations — a non-compilable pattern skips in e
   }
 });
 
-// ===========================================================================
-// What a skip registration must keep, and what it must not disturb.
-// ===========================================================================
-
 describe('compileDisciplineRegistrations — a skip registration stays a first-class registration', () => {
   it('keeps its routing predicate so an out-of-scope change never reaches it', () => {
     const [registration] = compileDisciplineRegistrations(contextSpec([commandEntry]));
@@ -173,8 +164,8 @@ describe('compileDisciplineRegistrations — a skip registration stays a first-c
 
   it('carries the witness like any other registration', () => {
     // Not because a skip needs witnessing — the dispatcher answers `skipped` before it ever
-    // reaches the witness — but because the registration shape stays uniform, which is what
-    // lets the dispatcher treat skips as ordinary matches rather than a second kind.
+    // reaches the witness — but because a uniform registration shape is what lets the
+    // dispatcher treat skips as ordinary matches rather than a second kind.
     const witness = () => true;
     const [registration] = compileDisciplineRegistrations(contextSpec([commandEntry], { witness }));
 
@@ -198,8 +189,7 @@ describe('compileDisciplineRegistrations — a skip registration stays a first-c
 
 describe('compileDisciplineRegistrations — a configuration fault names itself on stderr', () => {
   it('writes the entry id and the cause when the evidence vocabulary is unrecognized', () => {
-    // A silent skip is how a discipline goes inert while its verdict still reads passed —
-    // the failure this project already shipped once with a `^` anchor.
+    // A silent skip is how a discipline goes inert while its verdict still reads passed.
     const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     compileDisciplineRegistrations(

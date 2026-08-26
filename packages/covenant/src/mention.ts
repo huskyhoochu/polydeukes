@@ -1,36 +1,34 @@
 /**
  * `mentionsPath` — the single path-mention semantic shared by the dispatcher and the
- * pure judges (PRD §7).
+ * pure judges.
  *
- * Both the path-routing dispatcher (`matchRegistrations`) and any covenant judge
- * that keys on a protected path import this one function, so the two layers can never
- * drift apart. Argument names are never inspected — only string *values* are scanned,
- * at any depth, keeping the traversal agent-neutral.
+ * Both the path-routing dispatcher (`matchRegistrations`) and any covenant judge that keys
+ * on a protected path import this one function, so the two layers can never drift apart.
+ * Argument names are never inspected — only string *values* are scanned, at any depth,
+ * keeping the traversal agent-neutral.
  *
- * COVENANT-07b adds interior `.`/`..` as a SECOND comparison rather than a replacement.
- * The raw segments are matched first, exactly as they always were, and the dot-resolved
- * segments only if that fails. The union is the point: every path this predicate matched
- * before still matches, so closing a notation can never cost a defence — the failure mode
- * that a replacement pass produced twice before this shape was found.
+ * Interior `.`/`..` resolution is a SECOND comparison, never a replacement: raw segments
+ * match first, dot-resolved segments only if that fails. Because the result is a union, a
+ * newly closed notation can only ever add matches — a replacement pass would silently
+ * withdraw defences that the raw comparison already had.
  *
- * What it deliberately does NOT read is a glob, a variable expansion, or a tilde. None can
- * be resolved without running the shell or touching the filesystem, and a judge that guesses
- * at them either misses the real target or blocks an innocent one — both measured. They stay
- * undecidable here and are answered where undecidability belongs (the Bash axis's opaque-token
- * rule, and COVENANT-10b's skip registrations). A spelling that some layer genuinely *can*
- * resolve — the home directory in front of the session transcript — is closed by the layer
- * that knows the value: assembly registers a dedicated `matches` predicate for the transcript
- * (COVENANT-07c) rather than a protected path, so no home spelling is inferred in here.
+ * A glob, a variable expansion, and a tilde are deliberately NOT read. None can be resolved
+ * without running the shell or touching the filesystem, and a judge that guesses at them
+ * either misses the real target or blocks an innocent one. They stay undecidable here and
+ * are answered where undecidability belongs: the Bash axis's opaque-token rule and the skip
+ * registrations. A spelling some layer genuinely *can* resolve — the home directory in front
+ * of the session transcript — is closed by the layer that knows the value, via a dedicated
+ * `matches` predicate rather than a protected path, so no home spelling is inferred here.
  */
 
 /**
  * Normalize a path into segments: strip leading `./`, trailing `/`, split on `/`, drop
  * empties. Exported so the self-mod judge can tell a judgeable evidence path from a
- * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing (COVENANT-09).
+ * degenerate one (`''`, `'.'`, `'/'` — zero segments) that proves nothing.
  *
- * A lone `.` survives as a segment. Resolving interior dots is a separate pass inside
- * {@link pathMatchesProtected}, kept out of this function on purpose so that its contract —
- * and self-mod's degenerate-evidence check built on top of it — stays exactly what it was.
+ * A lone `.` survives as a segment, and resolving interior dots is a separate pass inside
+ * {@link pathMatchesProtected}. Folding that pass in here would change what the
+ * degenerate-evidence check built on top of this function counts as degenerate.
  */
 export function pathSegments(path: string): string[] {
   return path
@@ -53,13 +51,12 @@ export function provenChangePath(call: { fileChange?: unknown }): string | null 
   if (typeof evidence !== 'object' || evidence === null) return null;
   const { kind, path } = evidence as { kind?: unknown; path?: unknown };
   if (typeof path !== 'string') return null;
-  // Element shapes are an intentionally unvalidated CORE-01 boundary (core `parseInput`
-  // checks only the collection shapes), so evidence is usable only when it could prove a
-  // target: a recognized discriminant and a path that carries segments to judge. A
-  // one-field stub, a bogus kind, or a degenerate path (`''`, `'.'`, `'/'` — zero
-  // segments) proves nothing and must fall through rather than be dereferenced or, worse,
-  // suppress the fallback — the evidence branch upholding on proof it never had is a
-  // fail-open, and an exported pure judge that throws is a bypass vector.
+  // Core `parseInput` validates the collection shapes, not the element ones, so evidence
+  // is usable only when it could prove a target: a recognized discriminant and a path that
+  // carries segments to judge. A one-field stub, a bogus kind, or a degenerate path (`''`,
+  // `'.'`, `'/'` — zero segments) proves nothing and must fall through rather than be
+  // dereferenced or, worse, suppress the fallback — the evidence branch upholding on proof
+  // it never had is a fail-open, and an exported pure judge that throws is a bypass vector.
   // `pathSegments` keeps a lone `.` as a segment, so require one that names a file.
   if (!pathSegments(path).some((segment) => segment !== '.')) return null;
   return kind === 'create' || kind === 'modify' || kind === 'delete' ? path : null;
@@ -106,7 +103,7 @@ function segmentsMatch(a: string[], b: string[]): boolean {
  * path that points outside the tree.
  *
  * Exported so a judge whose own equality needs the same second pass (the transcript
- * predicate, COVENANT-07c) shares this one implementation instead of forking it per site.
+ * predicate) shares this one implementation instead of forking it per site.
  */
 export function resolveDotSegments(segments: string[]): string[] {
   const resolved: string[] = [];
@@ -123,7 +120,7 @@ export function resolveDotSegments(segments: string[]): string[] {
 
 /**
  * True iff `candidate` names the protected path, a descendant of it, or a (relative) ancestor
- * of it — compared on path segments (not raw substrings, PRD §4.1), by {@link segmentsMatch}.
+ * of it — compared on path segments, not raw substrings, by {@link segmentsMatch}.
  *
  * Two passes, unioned. The raw pass is the shipped semantic and runs first: a command that
  * spells the protected path out loud is caught by it no matter what the path resolves to
@@ -157,30 +154,24 @@ export function pathCandidates(token: string): string[] {
 
 /**
  * Extract path candidates from a whole command line the tokenizer REFUSED — the fallback-only
- * counterpart of {@link pathCandidates} (COVENANT-07d §2-c).
+ * counterpart of {@link pathCandidates}.
  *
- * The input precondition is the opposite one. On the tokenized path an operator between two
- * words has already become a word boundary, so `pathCandidates`' separator set never needed the
- * operators themselves; the two untokenizable-fallback branches (shell-mod's and transcript-mod's)
- * have no tokenizer left and hand over the raw line, where nothing consumed those operators and a
- * path glued to one (`packages/core/dist;echo x`) stayed a single unmatchable segment. So the set
- * here is wider by exactly what the tokenizer would have eaten — `;` `&` `|` `<` `>`. It is NOT
- * the case that a tokenized word can never carry one: a QUOTED word keeps its operators
- * (`bash -c "rm -rf …;echo x"`), which the tokenized path still reads as one candidate — a
- * separate gap on a separate axis, not one this fallback can answer.
+ * The precondition is the opposite one. On the tokenized path an operator between two words
+ * has already become a word boundary, so `pathCandidates`' separator set never needed the
+ * operators themselves. A fallback branch has no tokenizer left and gets the raw line, where
+ * nothing consumed them and a path glued to one (`packages/core/dist;echo x`) stayed a single
+ * unmatchable segment — so the set here is wider by exactly what the tokenizer would have
+ * eaten: `;` `&` `|` `<` `>`.
  *
- * The line itself stays a candidate alongside the fragments: the union is what keeps a protected
- * path whose own segment carries an operator (`pkg/a&b/dist`) matchable, and an added form can
- * only add a match, never withdraw one (COVENANT-07b's shape). `:` stays out for the reason
- * {@link pathCandidates} records — shattering URLs over-blocks — so a colon-joined list is one
- * candidate here too.
+ * The line itself stays a candidate alongside the fragments, so a protected path whose own
+ * segment carries an operator (`pkg/a&b/dist`) is still matchable; an added form can only add
+ * a match, never withdraw one. `:` stays out for the reason {@link pathCandidates} records.
  *
- * Widening a fragment boundary widens the ancestor direction with it: `…?x=1&packages=1` splits
- * to a bare `packages`, which `segmentsMatch` accepts as a root-anchored ancestor of a protected
- * `packages/core/dist`. That block is the ancestor rule's known conservatism (the same class as
- * the `.git` mention over-block), accepted here rather than narrowed — the narrowing that would
- * spare it also drops a glued ancestor destroy (`rm -rf packages/core;echo x`), which is the
- * defence this fallback exists to provide.
+ * Widening a fragment boundary widens the ancestor direction with it: `…?x=1&packages=1`
+ * splits to a bare `packages`, which `segmentsMatch` accepts as a root-anchored ancestor of a
+ * protected `packages/core/dist`. That over-block is accepted rather than narrowed — the
+ * narrowing that would spare it also drops a glued ancestor destroy
+ * (`rm -rf packages/core;echo x`), which is the defence this fallback exists to provide.
  */
 export function untokenizableLineCandidates(line: string): string[] {
   const fragments = line.split(/[;&|<>]+/).filter((f) => f !== '' && f !== line);

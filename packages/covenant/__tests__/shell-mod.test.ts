@@ -15,12 +15,6 @@ import {
 } from '../src/shell-mod.ts';
 import { readTelemetryLines } from './helpers.js';
 
-// ---------------------------------------------------------------------------
-// PRD §5.1/§5.2 — pure judge. The shell-tool name, command-arg name, and
-// protected-path strings below are injected fixture values, never source
-// literals (PRD §4.1/§4.2/§7 — a source literal reproduces the §9-난관1 leak).
-// ---------------------------------------------------------------------------
-
 const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';
 const PROTECTED = 'sub/protected/file.txt';
@@ -53,9 +47,8 @@ function baseSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModifica
 
 describe('judgeShellModification — break direction (PRD §5.1)', () => {
   it('sed -i on the protected path breaks, with reason carrying the rule name and path', () => {
-    // Mutation caught: the sedInPlaceRule dropped from the fixed rule set (§4.2), or the
-    // rule-detected target not matched against protectedPaths — the original assessment
-    // vector (`sed -i 's/exit 2/exit 0/' <meta-covenant>`) would silently pass.
+    // The rule set must carry sedInPlaceRule and its detected target must be matched against
+    // protectedPaths, or `sed -i 's/exit 2/exit 0/' <judge>` rewrites the judge and passes.
     const verdict = judgeShellModification(
       shellCall(`sed -i 's/exit 2/exit 0/' ${PROTECTED}`),
       baseSpec(),
@@ -69,7 +62,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a heredoc redirect writing the protected path breaks (redirect-write on the heredoc vector)', () => {
-    // Mutation caught: the redirect target of a `>`-with-heredoc command not analyzed, so
+    // Without analyzing the redirect target of a `>`-with-heredoc command,
     // `cat > <protected> <<EOF` writes the file while the heredoc body distracts the scan.
     const verdict = judgeShellModification(
       shellCall(`cat > ${PROTECTED} <<EOF\nhello\nEOF`),
@@ -84,8 +77,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('tee on the protected path breaks (tee rule)', () => {
-    // Mutation caught: the teeRule dropped from the fixed set — `tee <protected>` writes
-    // without any redirect operator, so only the rule catches it.
+    // `tee <protected>` writes with no redirect operator at all, so only the rule catches it.
     const verdict = judgeShellModification(shellCall(`tee ${PROTECTED}`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -95,13 +87,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  // AUDIT: the printf-redirect break case was pruned as a duplicate happy-path — rule
-  // detection for `printf 'x' > f` is pinned by mutation-rules.test.ts and the
-  // redirect-write → break wiring by the heredoc case above (same rule, same judge path).
-
   it('a compound line breaks on the write half even when the leading command is harmless', () => {
-    // Mutation caught: whole-line judgement instead of per-simple-command (§4.1/§7) — the
-    // harmless `echo ok` would absolve the trailing `sed -i` if the line were judged as one.
+    // Judged as one line rather than per simple command, the harmless `echo ok` absolves the
+    // trailing `sed -i`.
     const verdict = judgeShellModification(
       shellCall(`echo ok && sed -i s/a/b/ ${PROTECTED}`),
       baseSpec(),
@@ -114,9 +102,8 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a protected-path mention inside a command substitution breaks (§4.1(c) opaque mention)', () => {
-    // Mutation caught: mention inside an opaque token (`echo $(cat <protected>)`) treated as
-    // a transparent read and upheld, defeating the "protected path inside command
-    // substitution is undecidable → block" policy clause.
+    // A protected path inside a command substitution is undecidable, so it blocks. Treating
+    // the mention as a transparent read upholds it instead.
     const verdict = judgeShellModification(shellCall(`echo $(cat ${PROTECTED})`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -126,9 +113,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('an allowlisted reader with an opaque write target breaks (§4.1(d) opaque redirect target)', () => {
-    // Mutation caught: allowlist (e) evaluated before the opaque-write check (d), so
-    // `cat <protected> > $(x)` is absolved by `cat` even though the write target could
-    // resolve to the protected path. The order invariant (§7) is the fail point.
+    // The clause order is the invariant: with the allowlist evaluated before the opaque-write
+    // check, `cat <protected> > $(x)` is absolved by `cat` even though the write target could
+    // resolve to the protected path.
     const verdict = judgeShellModification(shellCall(`cat ${PROTECTED} > $(x)`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -138,9 +125,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a plain mention by a non-allowlisted command breaks (§4.1(f) backstop)', () => {
-    // Mutation caught: the backstop removed — `node x.js <protected>` mentions the path,
-    // is not allowlisted, has no write/opaque structure, and must still block. Reason
-    // carries the first word so the backstop is diagnosable.
+    // The mention backstop: `node x.js <protected>` names the path, is not allowlisted, and
+    // has no write or opaque structure, so nothing else on the ladder can answer it. The
+    // reason carries the first word so the backstop is diagnosable.
     const verdict = judgeShellModification(shellCall(`node x.js ${PROTECTED}`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -151,10 +138,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('an eval wrapping a sed -i on the protected path breaks (backstop covers nested shells)', () => {
-    // Mutation caught: eval is a nested-shell reinterpretation boundary — 04a reports it
-    // indeterminate rather than parsing inside, so the inner `sed -i` is invisible to the
-    // rules. The backstop (f) is what blocks: eval is non-allowlisted and mentions the
-    // path, so the mention alone must block. Removing the backstop leaks nested shells.
+    // eval is a reinterpretation boundary reported indeterminate rather than parsed into, so
+    // the inner `sed -i` is invisible to the rules. The mention backstop is what blocks here,
+    // and removing it leaks every nested shell.
     const verdict = judgeShellModification(
       shellCall(`eval 'sed -i s/a/b/ ${PROTECTED}'`),
       baseSpec(),
@@ -167,10 +153,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a line left half-read still breaks on the path its read half names (§4.1 step 2)', () => {
-    // Mutation caught: an unread span defaulting to uphold regardless of content. Since
-    // COVENANT-18 §2-b B3 the read half reaches precise judgment, so what fails closed here
-    // is clause (e): `cat` would normally be absolved, and the span withholds that — what
-    // the scanner never read could be anything, so no head vouches for the line.
+    // The read half reaches precise judgment, so what fails closed here is the allowlist:
+    // `cat` would normally be absolved, and the unread span withholds that, because what the
+    // scanner never read could be anything and no head vouches for the whole line.
     const verdict = judgeShellModification(shellCall(`cat ${PROTECTED} "unclosed`), baseSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -180,9 +165,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a tokenize failure whose quote-split target names the protected path breaks (high-review regression)', () => {
-    // The fallback strips quotes before matching, so a quote-split protected target inside an
-    // untokenizable line is not hidden by the very quoting that broke tokenization.
-    // Mutation caught: the fallback matching the raw (quoted) line, missing `sub/prot"e"cted`.
+    // The fallback strips quotes before matching, so a quote-split protected target is not
+    // hidden by the very quoting that broke tokenization. Matching the raw quoted line misses
+    // `sub/prot"e"cted`.
     const verdict = judgeShellModification(
       shellCall(`printf x > sub/prot"e"cted/file.txt 'unclosed`),
       baseSpec(),
@@ -195,10 +180,8 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a shell-tool call with no string value under any command-arg key breaks (§4.1 step 1 misassembly)', () => {
-    // Mutation caught: a shell-tool call whose command cannot be read (arg-name typo, or a
-    // non-string value) silently upheld instead of failing closed — the judge-level twin of
-    // the config fail-closed gate, stopping a misassembled meta-covenant from waving
-    // everything through.
+    // A shell-tool call whose command cannot be read — an arg-name typo, or a non-string
+    // value — fails closed, so a misassembled meta-covenant cannot wave everything through.
     const input = inputWithToolCall(SHELL_TOOL, { notTheCommandKey: 123, another: false });
 
     const verdict = judgeShellModification(input, baseSpec());
@@ -206,13 +189,11 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     expect(verdict.upheld).toBe(false);
   });
 
-  // --- Review-found fail-open fixes (PR #12) ------------------------------------------
-
   it('an allowlisted reader fronting a process substitution that writes the protected path breaks', () => {
-    // Fail-open caught (review): `cat <(sed -i … <protected>)` — bash executes the inner
-    // sed, writing the protected file. The tokenizer must consume `<(…)` as one opaque word
-    // so the path lands inside an opaque token and step (c) breaks; otherwise the inner
-    // args leak as plain words and the leading `cat` is absolved by the allowlist.
+    // Bash executes the inner sed of `cat <(sed -i … <protected>)`, writing the protected
+    // file. The tokenizer must consume `<(…)` as one opaque word so the path lands inside an
+    // opaque token; otherwise the inner args leak as plain words and the leading `cat` is
+    // absolved by the allowlist.
     const verdict = judgeShellModification(
       shellCall(`cat <(sed -i s/a/b/ ${PROTECTED})`),
       baseSpec(),
@@ -225,9 +206,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('git diff --output writing the protected path breaks (write-capable allowlist entry removed)', () => {
-    // Fail-open caught (review): `git diff --output=<file>` writes <file> with no redirect,
-    // so no rule fires; the fix removes `git diff`/`git log`/`git show` from the default
-    // allowlist (they are write-capable via --output), so the mention hits the backstop.
+    // `git diff --output=<file>` writes with no redirect, so no rule fires. `git diff`,
+    // `git log` and `git show` are therefore kept OUT of the default allowlist — all three are
+    // write-capable through `--output` — and the mention reaches the backstop.
     const verdict = judgeShellModification(
       shellCall(`git diff --output=${PROTECTED} HEAD`),
       baseSpec(),
@@ -240,9 +221,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a nested-shell command is never absolved even when injected into the allowlist', () => {
-    // Defense-in-depth (review): the default allowlist excludes nested shells, but a
-    // misassembled `--allow-read sh` must not absolve `sh -c '…write…'` — a nested shell
-    // re-parses its string argument, so it can never be proven read-only.
+    // The default allowlist excludes nested shells, but a misassembled allowlist entry must
+    // not absolve `sh -c '…write…'` either: a nested shell re-parses its string argument, so
+    // it can never be proven read-only.
     const verdict = judgeShellModification(shellCall(`sh -c 'sed -i s/a/b/ ${PROTECTED}'`), {
       ...baseSpec(),
       readOnlyCommands: ['sh'],
@@ -255,9 +236,9 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 
   it('a whitespace-only allowlist entry does not vacuously absolve every command', () => {
-    // Fail-open caught (review): `matchesReadOnlyEntry(command, [])` returns true vacuously.
-    // A whitespace-only entry must reject, not match every command — otherwise one blank
-    // allowlist entry turns every protected-path mention into a proven read.
+    // A whitespace-only entry tokenizes to an empty word list, which a naive sequence match
+    // accepts vacuously — one blank allowlist entry then turns every protected-path mention
+    // into a proven read.
     const verdict = judgeShellModification(shellCall(`node x.js ${PROTECTED}`), {
       ...baseSpec(),
       readOnlyCommands: ['   '],
@@ -272,9 +253,8 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
 
 describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   it('sed -i, tee, and printf redirect on an UNPROTECTED path all uphold (roadmap AC "non-protected same command")', () => {
-    // Mutation caught: the rule-detected target matched against something other than the
-    // protected-path list (e.g. matching on "is a write" alone), which would over-block
-    // every write regardless of destination.
+    // Matching on "is a write" alone, rather than against the protected-path list,
+    // over-blocks every write regardless of destination.
     expect(judgeShellModification(shellCall(`sed -i s/a/b/ ${UNPROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
@@ -287,11 +267,10 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   });
 
   it('cat, grep, and git status on the protected path uphold via the allowlist (incl. the two-word entry)', () => {
-    // Mutation caught: the allowlist (e) not consulted, so every protected-path mention
-    // backstops to break — legitimate reads become friction. The `git status` case also
-    // proves the multi-word sequence match (`git` alone is not enough; `status` must
-    // follow). `git status` (unlike `git diff`) has no --output write flag, so it stays a
-    // proven read-only allowlist entry.
+    // Without the allowlist, every protected-path mention backstops to a break and legitimate
+    // reads become friction. The `git status` case also proves the multi-word sequence match:
+    // `git` alone is not enough, `status` must follow. Unlike `git diff` it has no `--output`
+    // write flag, so it stays a proven read-only entry.
     expect(judgeShellModification(shellCall(`cat ${PROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
@@ -304,38 +283,33 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   });
 
   it('a protected read plus a transparent unprotected write upholds ((a) passes the write, (e) absolves the mention)', () => {
-    // Mutation caught: an unprotected write target treated as a reason to block regardless
-    // of destination, or the allowlist not clearing the protected-path mention — either
-    // over-blocks `grep x <protected> > /tmp/out`, a legitimate "read protected, write
-    // elsewhere" command.
+    // `grep x <protected> > /tmp/out` reads the protected file and writes elsewhere, which is
+    // legitimate. Both an unprotected write target read as a reason to block, and an
+    // allowlist that does not clear the mention, over-block it.
     expect(judgeShellModification(shellCall(`grep x ${PROTECTED} > /tmp/out`), baseSpec())).toEqual(
       { upheld: true },
     );
   });
 
   it('a protected path appearing only in a heredoc BODY upholds (body is data — 04c boundary)', () => {
-    // Mutation caught: heredoc body lines scanned as command words/mentions, so a protected
-    // path quoted inside a document written elsewhere would falsely block. The body must be
-    // excluded from mention analysis.
+    // The body is data and must be excluded from mention analysis: scanned as command words,
+    // a protected path quoted inside a document written elsewhere blocks.
     expect(
       judgeShellModification(shellCall(`cat > /tmp/x <<EOF\n${PROTECTED}\nEOF`), baseSpec()),
     ).toEqual({ upheld: true });
   });
 
   it('a non-shell (mutating-tool-shaped) call mentioning the protected path upholds (co-existence boundary)', () => {
-    // P0 co-existence invariant (§7, mirror of self-mod): the tool axis belongs to
-    // self-mod; a non-shell tool name is not in shellToolNames, so this judge must not
-    // break on it. Mutation caught: judging by mention alone, ignoring the tool-name axis,
-    // which would pre-empt self-mod and break run-all co-existence.
+    // The mirror of self-mod's boundary: the tool axis belongs to self-mod, and a non-shell
+    // tool name is not in shellToolNames. Judging by mention alone pre-empts self-mod.
     const input = inputWithToolCall('Edit', { file_path: PROTECTED });
 
     expect(judgeShellModification(input, baseSpec())).toEqual({ upheld: true });
   });
 
   it('a tokenize failure without a raw mention upholds, and empty toolCalls upholds', () => {
-    // Mutation caught: a tokenize failure defaulting to break regardless of content
-    // (over-blocking every malformed line even when it never names a protected path);
-    // and a fallback branch breaking on zero tool calls instead of vacuously upholding.
+    // An unread span defaulting to break over-blocks every malformed line even when it names
+    // no protected path; a fallback that breaks on zero tool calls blocks a vacuous input.
     expect(judgeShellModification(shellCall(`echo "unclosed`), baseSpec())).toEqual({
       upheld: true,
     });
@@ -344,17 +318,16 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   });
 
   it('tool-name matching is exact (no substring) and empty-string entries in all four lists are ignored', () => {
-    // Mutation caught: an `includes()` tool-name check (a call named "BashRunner" would
-    // falsely match an injected "Bash"); and an unguarded '' entry vacuously matching
-    // every path/tool/arg/command, collapsing the judge into a match-everything rule.
+    // An `includes()` tool-name check matches "BashRunner" against an injected "Bash"; an
+    // unguarded '' entry vacuously matches every path, tool, arg and command, collapsing the
+    // judge into a match-everything.
     const notShell = inputWithToolCall('BashRunner', {
       [COMMAND_ARG]: `sed -i s/a/b/ ${PROTECTED}`,
     });
     expect(judgeShellModification(notShell, baseSpec())).toEqual({ upheld: true });
 
-    // Empty-string entries everywhere must not manufacture a universal match: this shell
-    // call names an unprotected path only, so with all four lists degenerating to '' it
-    // must still uphold.
+    // Empty-string entries must not manufacture a universal match: this call names an
+    // unprotected path only, so with all four lists carrying '' it must still uphold.
     const emptyEntrySpec: ShellModificationSpec = {
       protectedPaths: ['', PROTECTED],
       shellToolNames: ['', SHELL_TOOL],
@@ -367,10 +340,8 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   });
 
   it('allowlist first word is basename-compared (/bin/cat upholds), an opaque first word is not allowlisted', () => {
-    // Mutation caught: the allowlist first-word comparison done verbatim instead of by
-    // basename, so `/bin/cat <protected>` would miss the `cat` entry and over-block; and
-    // an opaque first word (`$X <protected>`) treated as allowlisted, which would let an
-    // unknowable command absolve a protected-path mention (fail-open).
+    // A verbatim first-word comparison misses `/bin/cat` and over-blocks it; an opaque first
+    // word treated as allowlisted lets an unknowable command absolve a protected mention.
     expect(judgeShellModification(shellCall(`/bin/cat ${PROTECTED}`), baseSpec())).toEqual({
       upheld: true,
     });
@@ -383,16 +354,12 @@ describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// COVENANT-07 §5.1/§5.2/§5.3 — path-segment matching upgrade of the shared
-// primitive, applied by the Bash-axis judge. Uses the real protected path
-// `packages/core/src` so the parent-operation and quote-split vectors match
-// exactly the audit-found bypasses.
-// ---------------------------------------------------------------------------
+// A repository-shaped protected path, so the parent-operation and quote-split cases below are
+// spelled the way the measured bypasses were.
 
 const REAL_PROTECTED = 'packages/core/src';
 
-/** A shell-mod spec keyed on the real protected path (audit vectors). */
+/** A shell-mod spec keyed on the repository-shaped protected path. */
 function realSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModificationSpec {
   return {
     protectedPaths: [REAL_PROTECTED],
@@ -405,9 +372,8 @@ function realSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModifica
 
 describe('judgeShellModification — parent-of-protected operations (PRD §5.1)', () => {
   it('rm -rf on the protected parent directory breaks (ancestor match)', () => {
-    // Mutation caught: reverting mentionsPath to substring semantics — `packages/core` does
-    // NOT contain `packages/core/src` as a substring, so the substring primitive let
-    // `rm -rf packages/core` (a parent-of-protected deletion) pass. Ancestor matching blocks.
+    // `packages/core` does not contain `packages/core/src` as a substring, so a substring
+    // primitive passes this parent-of-protected deletion. Only ancestor matching blocks it.
     const verdict = judgeShellModification(shellCall('rm -rf packages/core'), realSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -417,8 +383,8 @@ describe('judgeShellModification — parent-of-protected operations (PRD §5.1)'
   });
 
   it('mv of the protected parent directory breaks (ancestor match)', () => {
-    // Mutation caught: same substring bypass on the move vector — `mv packages/core /tmp/x`
-    // relocates the parent of the protected dir. The ancestor relation must catch it.
+    // The same bypass on the move shape: `mv packages/core /tmp/x` relocates the parent of
+    // the protected directory.
     const verdict = judgeShellModification(shellCall('mv packages/core /tmp/x'), realSpec());
 
     expect(verdict.upheld).toBe(false);
@@ -430,9 +396,9 @@ describe('judgeShellModification — parent-of-protected operations (PRD §5.1)'
 
 describe('judgeShellModification — quote/escape/line-continuation split path (PRD §5.2)', () => {
   it('a quote-split protected path in a redirect target breaks (tokenizer strips quotes)', () => {
-    // Mutation caught: matching the raw string instead of the tokenized (quote-stripped)
-    // word — the raw `packages/core/sr"c"/index.ts` has no contiguous `packages/core/src`,
-    // so a raw-substring judge misses it while the shell writes the protected file.
+    // The raw `packages/core/sr"c"/index.ts` carries no contiguous `packages/core/src`, so a
+    // judge matching the raw string rather than the quote-stripped word misses it while the
+    // shell writes the protected file.
     const verdict = judgeShellModification(
       shellCall('printf x > packages/core/sr"c"/index.ts'),
       realSpec(),
@@ -445,9 +411,9 @@ describe('judgeShellModification — quote/escape/line-continuation split path (
   });
 
   it('a backslash+newline line continuation inside a path is elided, so the path matches and breaks', () => {
-    // Mutation caught: scanWord inserting a literal newline for `\`+newline instead of
-    // eliding it as a shell line continuation. The byte sequence is backslash then an actual
-    // newline char mid-path; after continuation removal the word is `packages/core/src/...`.
+    // The fixture's byte sequence is a backslash then an actual newline mid-path. Bash elides
+    // it as a line continuation, so the word is `packages/core/src/...`; a scanner inserting a
+    // literal newline instead reads a path the shell never sees.
     const line = 'printf x > packages/core/sr\\\nc/index.ts';
     const verdict = judgeShellModification(shellCall(line), realSpec());
 
@@ -457,10 +423,6 @@ describe('judgeShellModification — quote/escape/line-continuation split path (
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// PRD §5.4 — dispatcher E2E through the shipped registration builders.
-// ---------------------------------------------------------------------------
 
 describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   let dir: string;
@@ -498,9 +460,9 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   });
 
   it('the sed -i vector blocks with exitCode 2 and one blocked telemetry record (label + subject)', async () => {
-    // Mutation caught: the real compiled body not spawned by the dispatcher, or the break
-    // verdict not translated to the dispatcher's blocking exit code 2 — the symbol case
-    // (`sed -i 's/exit 2/exit 0/' <protected>`) must die through the full round trip.
+    // The rewrite-the-judge shape has to die through the full round trip, not only in the
+    // pure judge: the dispatcher must spawn the compiled body and translate its break into
+    // the blocking exit code 2.
     const input = shellCall(`sed -i 's/exit 2/exit 0/' ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
@@ -518,10 +480,9 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   });
 
   it('a read-only vector spawns the body then upholds: exitCode 0 with a telemetry record proving the spawn', async () => {
-    // Mutation caught: the dispatcher short-circuiting on the protected-path mention (never
-    // spawning), or the body over-blocking a legitimate read. runCovenant records every
-    // spawn, so a `passed` record proves the friction valve's full path: routed, spawned,
-    // then absolved.
+    // Every spawn is recorded, so a `passed` row proves the whole path — routed, spawned,
+    // then absolved. The failure directions are the dispatcher short-circuiting on the mention
+    // and never spawning, and the body over-blocking a legitimate read.
     const input = shellCall(`cat ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
@@ -538,10 +499,9 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   });
 
   it('co-existence: a mutating-tool-shaped input breaks only self-mod, shell-mod upholds', async () => {
-    // P0 run-all co-existence (§5.4/§7): both bodies register with the same protectedPaths.
-    // An Edit-shaped input is the tool axis — self-mod must block it (exit 2) and shell-mod
-    // must uphold it (exit 0, non-shell tool name). Mutation caught: shell-mod breaking on
-    // the tool axis (double-block / axis confusion), defeating the mirror boundary.
+    // Both bodies register with the same protectedPaths. An Edit-shaped input is the tool
+    // axis, so self-mod blocks it and shell-mod upholds it; shell-mod breaking here would
+    // double-count the same call across two axes.
     const input = inputWithToolCall('Edit', {
       file_path: PROTECTED,
       old_string: 'a',
@@ -564,10 +524,8 @@ describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
   });
 
   it('co-existence: a shell-tool write input breaks only shell-mod, self-mod upholds', async () => {
-    // The reverse mirror: a Bash-shaped write is the shell axis — shell-mod must block it
-    // (exit 2) and self-mod must uphold it (exit 0, tool name not in its mutating list).
-    // Mutation caught: self-mod reaching into the command string and breaking on the Bash
-    // axis, which would double-count and break the axis separation.
+    // The reverse mirror: a Bash-shaped write is the shell axis, so shell-mod blocks it and
+    // self-mod upholds it. Self-mod reaching into the command string would double-count.
     const input = shellCall(`sed -i 's/exit 2/exit 0/' ${PROTECTED}`);
     const result = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),

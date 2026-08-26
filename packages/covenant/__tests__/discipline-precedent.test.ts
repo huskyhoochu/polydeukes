@@ -5,11 +5,9 @@ import type {
   FileChange,
 } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// COVENANT-13 §4.4 / AC 7–9 — the fourth discipline family (`requirePrecedent`): a
-// trigger-matched mutation breaks unless session evidence preceded it. The body is a
-// spawned CLI, so evidence is evaluated at ASSEMBLY time and transported as an argv
-// flag (--precedent-found / --precedent-missing); `judgeDiscipline` consumes it as
-// opts.precedentFound. None of that exists yet, so this file is RED by construction.
+// The context discipline family (`requirePrecedent`): a trigger-matched mutation breaks
+// unless session evidence preceded it. Evidence is evaluated at assembly time and reaches
+// `judgeDiscipline` as opts.precedentFound.
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
@@ -18,11 +16,8 @@ import {
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures. Shell tool names, command arg names, and evidence vocabularies are
-// injected assembly values, never source literals. The `when` trigger pattern is
-// a plain token so the added-direction delta is unambiguous in every fixture.
-// ---------------------------------------------------------------------------
+// The `when` trigger pattern is a plain token so the added-direction delta is unambiguous
+// in every fixture.
 
 const ROOT = '/repo';
 
@@ -32,12 +27,12 @@ const judgeOpts: DisciplineJudgeOptions = {
   commandArgs: ['command'],
 };
 
-/** judgeOpts extended with the new precedentFound option (typed post-GREEN). */
+/** judgeOpts extended with the precedentFound option. */
 function withPrecedent(found: boolean): DisciplineJudgeOptions {
   return { ...judgeOpts, precedentFound: found } as DisciplineJudgeOptions;
 }
 
-/** A context-family entry WITH a `when` trigger (the dogfooding shape, PRD §4.1). */
+/** A context-family entry WITH a `when` trigger. */
 const whenEntry: DisciplineEntry = {
   id: 'dep-needs-view',
   in: ['pkg/**'],
@@ -52,7 +47,7 @@ const anyMutationEntry: DisciplineEntry = {
   requirePrecedent: { command: 'npm view ' },
 } as DisciplineEntry;
 
-/** Build a CovenantInput whose evidence rides its own tool-call element (CORE-06). */
+/** Build a CovenantInput whose evidence rides its own tool-call element. */
 function inputWithEvidence(changes: FileChange[]): CovenantInput {
   return {
     toolCalls: changes.map((fileChange, index) => ({
@@ -72,10 +67,10 @@ function triggeredInput(): CovenantInput {
   ]);
 }
 
-// `succeeded` is stated on every call fixture below because COVENANT-13b made a
-// successful execution part of what evidence means: an outcome-less call is refused
-// before any pattern is consulted, which would let each negative here pass for the wrong
-// reason. The outcome axis itself is pinned in discipline-precedent-anchor.test.ts.
+// `succeeded` is stated on every call fixture below because a successful execution is part
+// of what evidence means: an outcome-less call is refused before any pattern is consulted,
+// which would let each negative here pass for the wrong reason. The outcome axis itself is
+// pinned in discipline-precedent-anchor.test.ts.
 type TranscriptToolCallish = { name: string; args: Record<string, unknown>; succeeded?: boolean };
 
 /** Stub the canonical-transcript seam with a fixed tool-call history. */
@@ -88,7 +83,7 @@ function transcriptWithToolCalls(calls: TranscriptToolCallish[]): CanonicalTrans
   } as unknown as CanonicalTranscript;
 }
 
-/** Compile-spec base; `extra` carries the new transcript / evaluatePrecedent seams. */
+/** Compile-spec base; `extra` carries the transcript / evaluatePrecedent seams. */
 function contextSpec(
   disciplines: DisciplineEntry[],
   extra: Record<string, unknown> = {},
@@ -96,9 +91,6 @@ function contextSpec(
   return {
     disciplines,
     rootDir: ROOT,
-    // Bound so the compiled thunk has a triggering call set to judge: since DISPATCH-01
-    // the evidence decision rides INSIDE the thunk instead of in an argv flag, so it is
-    // read from the verdict — uphold means found, break means missing.
     shellTools: ['Bash'],
     commandArgs: ['command'],
     ...extra,
@@ -118,16 +110,10 @@ async function precedentDecision(
   return outcome?.exitCode === 0 ? 'found' : 'missing';
 }
 
-// ===========================================================================
-// AC 7 — judgeDiscipline: the context-family verdict is trigger ∧ ¬evidence
-// ===========================================================================
-
 describe('judgeDiscipline — requirePrecedent context family (AC 7)', () => {
   it('breaks a trigger-matched edit without evidence, naming id, path, and required evidence', () => {
-    // P0 core purpose: trigger match + precedentFound=false must break, and the reason
-    // must carry the discipline id, the matched path, and the evidence being demanded.
-    // Mutation caught: the evidence condition inverted (breaking WITH evidence), or the
-    // reason built without id / path / the required-evidence description.
+    // The reason must carry the discipline id, the matched path, and the evidence being
+    // demanded — those three are what tells the reader how to get through the gate.
     const verdict = judgeDiscipline(whenEntry, triggeredInput(), withPrecedent(false));
 
     expect(verdict.upheld).toBe(false);
@@ -139,26 +125,23 @@ describe('judgeDiscipline — requirePrecedent context family (AC 7)', () => {
   });
 
   it('upholds the same trigger-matched edit when precedentFound is true', () => {
-    // P0 pass path: the evidence flag is the ONLY thing separating this fixture from the
-    // break above. Mutation caught: precedentFound ignored (the family would block every
-    // matched edit, evidence or not — a gate with no legitimate way through).
+    // The evidence flag is the ONLY thing separating this fixture from the break above.
+    // Ignoring it makes the family block every matched edit — a gate with no way through.
     expect(judgeDiscipline(whenEntry, triggeredInput(), withPrecedent(true))).toEqual({
       upheld: true,
     });
   });
 
   it('treats an unspecified precedentFound as missing evidence (breaks)', () => {
-    // P0 fail-closed default (PRD: precedentFound !== true): an assembly that forgets the
-    // option must land on the blocking side. Mutation caught: a truthiness default of
-    // "undefined means found" — the silent fail-open a covenant must never have.
+    // The rule is `precedentFound !== true`: an assembly that forgets the option must land
+    // on the blocking side, never on a silent fail-open.
     expect(judgeDiscipline(whenEntry, triggeredInput(), judgeOpts).upheld).toBe(false);
   });
 });
 
 describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => {
   it('upholds an out-of-scope edit regardless of missing evidence', () => {
-    // P0 scoping: `in: pkg/**` must not judge a docs/ file even with no evidence.
-    // Mutation caught: the in glob dropped, turning the entry into a global gate.
+    // Dropping the `in` glob turns a scoped entry into a global gate.
     const input = inputWithEvidence([
       { kind: 'modify', path: 'docs/dep.json', pre: 'a;', post: 'a;\nneeds-precedent;' },
     ]);
@@ -167,8 +150,8 @@ describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => 
   });
 
   it('upholds an in-scope edit whose added lines do not match when', () => {
-    // P0 trigger filter: an unrelated in-scope edit is not the declared trigger.
-    // Mutation caught: the when pattern never tested (every in-scope edit judged).
+    // An unrelated in-scope edit is not the declared trigger; without the `when` test every
+    // in-scope edit would be judged.
     const input = inputWithEvidence([
       { kind: 'modify', path: 'pkg/dep.json', pre: 'a;', post: 'a;\nunrelated;' },
     ]);
@@ -177,10 +160,9 @@ describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => 
   });
 
   it('upholds a debt-only edit — when matches pre content but nothing added matches', () => {
-    // P0 added-direction semantics (COVENANT-05 delta layer, inherited verbatim): a file
-    // already carrying the trigger token, edited without adding a new one, must pass.
-    // Mutation caught: when evaluated against the full post instead of the added delta
-    // (every later edit to a matched file would demand fresh evidence forever).
+    // The trigger is evaluated against the added delta, not the full post: a file already
+    // carrying the token, edited without adding one, must pass, or every later edit to a
+    // matched file demands fresh evidence forever.
     const input = inputWithEvidence([
       {
         kind: 'modify',
@@ -194,17 +176,12 @@ describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => 
   });
 });
 
-// ===========================================================================
-// AC 8 — kind disposition, fixed as fixtures (the pre-GREEN decision of §4.4)
-// ===========================================================================
-
 // The modify arm of this matrix is covered by the reason-shape test above, which judges
-// the very same triggeredInput() fixture — it is not repeated here.
+// the very same triggeredInput() fixture.
 describe('judgeDiscipline — when-present trigger kind disposition (AC 8)', () => {
   it('create: the whole post is added, so a matching post triggers (breaks without evidence)', () => {
-    // P0 create arm: pre-less evidence must feed the added direction as all-added.
-    // Mutation caught: the create arm skipped by the trigger (authoring a matched file
-    // fresh would never demand evidence — a hole at first authorship).
+    // Pre-less evidence feeds the added direction as all-added; skipping the create arm
+    // leaves a hole at first authorship.
     const input = inputWithEvidence([
       { kind: 'create', path: 'pkg/new.json', post: 'needs-precedent;' },
     ]);
@@ -213,10 +190,9 @@ describe('judgeDiscipline — when-present trigger kind disposition (AC 8)', () 
   });
 
   it('delete: never triggers a when entry — deletion adds no content (upholds without evidence)', () => {
-    // P0 kind decision (breaking direction): pre is deliberately FULL of trigger matches,
-    // yet a when entry judges the added direction only. Mutation caught: the delete arm
-    // feeding pre as post into the when evaluation (every deletion of a matched file
-    // would demand evidence a when entry never asked for).
+    // The pre is deliberately FULL of trigger matches, yet a `when` entry judges the added
+    // direction only. Feeding pre as post makes every deletion of a matched file demand
+    // evidence the entry never asked for.
     const input = inputWithEvidence([
       { kind: 'delete', path: 'pkg/dep.json', pre: 'needs-precedent;\nneeds-precedent;' },
     ]);
@@ -227,16 +203,16 @@ describe('judgeDiscipline — when-present trigger kind disposition (AC 8)', () 
 
 describe('judgeDiscipline — when-absent trigger kind disposition (AC 8)', () => {
   it('create in scope triggers without when (breaks without evidence)', () => {
-    // P0: absent when = every in-scope mutation is the trigger, creation included.
-    // Mutation caught: absent when defaulting to "trigger nothing" (the entry inert).
+    // An absent `when` means every in-scope mutation is the trigger, creation included;
+    // defaulting to "trigger nothing" leaves the entry inert.
     const input = inputWithEvidence([{ kind: 'create', path: 'sacred/x.ts', post: 'seed' }]);
 
     expect(judgeDiscipline(anyMutationEntry, input, withPrecedent(false)).upheld).toBe(false);
   });
 
   it('modify in scope triggers without when (breaks without evidence)', () => {
-    // P0 modify arm of the when-absent matrix. Mutation caught: a when-absent entry
-    // routed through the delta path with an undefined pattern (throw or blanket uphold).
+    // A when-absent entry routed through the delta path with an undefined pattern would
+    // throw or uphold blanket.
     const input = inputWithEvidence([
       { kind: 'modify', path: 'sacred/x.ts', pre: 'old', post: 'new' },
     ]);
@@ -245,25 +221,19 @@ describe('judgeDiscipline — when-absent trigger kind disposition (AC 8)', () =
   });
 
   it('delete in scope triggers without when — erasing without precedent is judged (breaks)', () => {
-    // P0 kind decision, the sharp edge: a when-absent context entry covers deletion too,
-    // and the evidence needs no pre baseline (binary-blob lesson). Mutation caught: the
-    // delete kind excluded from the when-absent trigger — deleting a covered file would
-    // silently bypass the family (fail-open through the erase channel).
+    // A when-absent context entry covers deletion too, and needs no pre baseline. Excluding
+    // the delete kind opens a fail-open erase channel around the whole family.
     const input = inputWithEvidence([{ kind: 'delete', path: 'sacred/x.ts' }]);
 
     expect(judgeDiscipline(anyMutationEntry, input, withPrecedent(false)).upheld).toBe(false);
   });
 });
 
-// ===========================================================================
-// AC 9 — precedentFound is inert for the existing three families
-// ===========================================================================
-
 describe('judgeDiscipline — precedentFound does not leak into other families (AC 9)', () => {
   it('existing family verdicts ignore the precedentFound option in both directions', () => {
-    // P0 regression fence: the new option can neither open nor close the other families'
-    // gates. Mutation caught: precedentFound consulted in the shared judged body (true
-    // would wave a forbid break through; false would break a debt-only forbid uphold).
+    // The option can neither open nor close the other families' gates: consulted in the
+    // shared judged body, true would wave a forbid break through and false would break a
+    // debt-only uphold.
     const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const breaking = inputWithEvidence([
       { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
@@ -286,17 +256,10 @@ describe('judgeDiscipline — precedentFound does not leak into other families (
   });
 });
 
-// ===========================================================================
-// AC 7 — compileDisciplineRegistrations: assembly-time evidence → argv transport
-// ===========================================================================
-
 describe('compileDisciplineRegistrations — command evidence transport (AC 7)', () => {
   it('transports --precedent-found when a shell tool call command matches the pattern', async () => {
-    // P0 transport, found direction: matching shell history must arrive at the body as
-    // the found flag (and never both flags). No evaluatePrecedent is injected — the
-    // compiler owns the command vocabulary itself. Mutation caught: the compiler
-    // delegating command to the absent seam (throw), or transporting missing regardless
-    // of the transcript (evidence could never open the gate).
+    // No evaluatePrecedent is injected: the compiler owns the command vocabulary itself, so
+    // delegating `command` to the absent seam would throw.
     const transcript = transcriptWithToolCalls([
       { name: 'Bash', args: { command: 'npm view react version' }, succeeded: true },
     ]);
@@ -306,8 +269,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   });
 
   it('transports --precedent-missing when no shell command matches', async () => {
-    // P0 transport, missing direction: unrelated shell history is not evidence.
-    // Mutation caught: the pattern test dropped (any Bash call at all counts as found).
+    // Unrelated shell history is not evidence; without the pattern test any Bash call at
+    // all would count as found.
     const transcript = transcriptWithToolCalls([
       { name: 'Bash', args: { command: 'git status' }, succeeded: true },
     ]);
@@ -317,9 +280,9 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   });
 
   it('ignores a matching command on a tool outside shellTools (not evidence)', async () => {
-    // P0 shell filter: findToolCalls returns every call, so the compiler MUST re-filter
-    // by the injected shellTools before reading command args. Mutation caught: the name
-    // filter dropped — any tool whose args happen to carry the string would open the gate.
+    // findToolCalls returns every call, so the compiler must re-filter by the injected
+    // shellTools before reading command args — otherwise any tool whose args happen to
+    // carry the string opens the gate.
     const transcript = transcriptWithToolCalls([
       { name: 'NotShell', args: { command: 'npm view react version' }, succeeded: true },
     ]);
@@ -329,9 +292,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   });
 
   it('ignores a matching value under an arg name outside commandArgs (not evidence)', async () => {
-    // P0 command-arg filter: only the injected commandArgs names carry a command string.
-    // Mutation caught: the compiler scanning every arg value of a shell call (a mention
-    // of the pattern in an unrelated arg would forge the evidence).
+    // Only the injected commandArgs names carry a command string: scanning every arg value
+    // of a shell call lets a mention in an unrelated arg forge the evidence.
     const transcript = transcriptWithToolCalls([
       { name: 'Bash', args: { script: 'npm view react version' }, succeeded: true },
     ]);
@@ -341,10 +303,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   });
 
   it('matches the command as a regex, not a substring', async () => {
-    // P0 match semantics (PRD §4.1: the command string matches the pattern as a REGEX —
-    // the forbidCommand precedent): an alternation only matches under regex semantics.
-    // Mutation caught: the evidence check implemented as String.includes — this
-    // alternation would never find evidence.
+    // The command string matches the pattern as a REGEX, the same as forbidCommand: under
+    // String.includes this alternation would never find evidence.
     const regexEntry = {
       id: 'dep-needs-view',
       in: ['pkg/**'],
@@ -359,8 +319,8 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
     expect(await precedentDecision(reg)).toBe('found');
   });
 
-  // A sessionless assembly no longer transports `missing` — it produces a skip
-  // registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5).
+  // A sessionless assembly produces a skip registration rather than transporting `missing`;
+  // that is pinned in discipline-unjudgeable.test.ts.
 });
 
 describe('compileDisciplineRegistrations — adapter evidence via the injected seam (AC 7)', () => {
@@ -376,10 +336,8 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
   ]);
 
   it('transports --precedent-found when the evaluator affirms, passing the evidence verbatim', async () => {
-    // P0 delegation contract: a non-command key goes to the injected evaluator, which
-    // receives the ENTRY'S evidence object (not the whole entry) and whose true becomes
-    // the found flag. Mutation caught: the compiler passing the wrong object to the seam,
-    // or dropping the seam's answer and transporting missing unconditionally.
+    // A non-command key goes to the injected evaluator, which receives the ENTRY'S evidence
+    // object rather than the whole entry.
     const seen: Record<string, unknown>[] = [];
     const evaluatePrecedent = (evidence: Record<string, unknown>) => {
       seen.push(evidence);
@@ -397,9 +355,9 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
   });
 
   it('transports --precedent-missing when the evaluator denies', async () => {
-    // P0 delegation, missing direction: false from the seam must land as missing (not be
-    // confused with undefined/unrecognized). Mutation caught: false and undefined merged
-    // into one branch — a legitimate "no evidence" answer would throw instead of block.
+    // False from the seam must land as missing, never be merged with undefined: the two
+    // mean "no evidence" and "vocabulary unrecognized", and merging them makes a legitimate
+    // no-evidence answer unjudgeable.
     const [reg] = compileDisciplineRegistrations(
       contextSpec([subagentEntry], {
         transcript: transcriptWithToolCalls([]),
@@ -411,20 +369,15 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
   });
 });
 
-// Assembly no longer fails closed by throwing — an unresolvable evidence spec becomes a
-// skip registration, pinned in discipline-unjudgeable.test.ts (COVENANT-13 §4.5). The
-// throw took every sibling registration and the witness valve down with it.
-
-// ===========================================================================
-// PRD §4.4 — routing: matches fires on the trigger alone, evidence-blind
-// ===========================================================================
+// An unresolvable evidence spec becomes a skip registration rather than a throw, pinned in
+// discipline-unjudgeable.test.ts: a throw took every sibling registration and the witness
+// valve down with it.
 
 describe('compileDisciplineRegistrations — requirePrecedent matches routes on trigger only (PRD §4.4)', () => {
   it('routes a trigger-matched input even when the evidence was found (observation, not waste)', () => {
-    // P0 counter-intuitive contract: found evidence must NOT suppress the route — the
-    // body spawns and records `passed`, which is the family's measurement value.
-    // Mutation caught: an "optimization" skipping the spawn when evidence exists
-    // (the gate's checks would vanish from the telemetry record).
+    // Found evidence must NOT suppress the route: the body runs and records `passed`, which
+    // is the family's measurement value. An optimization that skips the judgment when
+    // evidence exists erases the gate's checks from the telemetry record.
     const transcript = transcriptWithToolCalls([
       { name: 'Bash', args: { command: 'npm view react version' }, succeeded: true },
     ]);
@@ -434,11 +387,9 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
   });
 
   it('returns null for out-of-scope and when-nonmatching inputs', () => {
-    // P0 routing filter: a non-trigger must not spawn a body. Mutation caught: the in
-    // glob or the when pattern dropped from the matches closure (every input routes).
-    // A transcript is injected so this compiles to a body-bearing registration: without
-    // one the entry becomes a skip, and the routing suite would only ever exercise
-    // registrations the dispatcher never spawns.
+    // A transcript is injected so this compiles to a body-bearing registration: without one
+    // the entry becomes a skip, and the routing suite would only ever exercise registrations
+    // the dispatcher never runs.
     const [reg] = compileDisciplineRegistrations(
       contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]) }),
     );
@@ -454,12 +405,9 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
   });
 
   it('returns null for a delete under a when entry (kind disposition applies to routing)', () => {
-    // P0 routing/judgment coherence: the delete non-trigger of a when entry must hold at
-    // the routing layer too. Mutation caught: matches routing deletions the judge would
-    // never break (spawn waste and phantom `passed` telemetry for a non-trigger).
-    // A transcript is injected so this compiles to a body-bearing registration: without
-    // one the entry becomes a skip, and the routing suite would only ever exercise
-    // registrations the dispatcher never spawns.
+    // The delete non-trigger of a `when` entry must hold at the routing layer too, or the
+    // judge runs for inputs it can never break and writes phantom `passed` rows.
+    // A transcript is injected so this compiles to a body-bearing registration.
     const [reg] = compileDisciplineRegistrations(
       contextSpec([whenEntry], { transcript: transcriptWithToolCalls([]) }),
     );
@@ -471,9 +419,8 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
   });
 
   it('routes a delete under a when-absent entry with its relativized path', () => {
-    // P0 partner direction: a when-absent entry judges deletions, so routing must carry
-    // them to the body. Mutation caught: the forbid-family delete filter over-extended to
-    // the context family (the erase channel would bypass the gate at the routing layer).
+    // A when-absent entry judges deletions, so routing must carry them to the body:
+    // over-extending the forbid family's delete filter reopens the erase channel here.
     const [reg] = compileDisciplineRegistrations(
       contextSpec([anyMutationEntry], { transcript: transcriptWithToolCalls([]) }),
     );
@@ -482,10 +429,6 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
     expect(reg.matches?.(input)).toBe('sacred/x.ts');
   });
 });
-
-// ===========================================================================
-// AC 9 — the compiled thunk's precedent gate
-// ===========================================================================
 
 describe('compiled discipline thunk — precedent gate (AC 9)', () => {
   /** Judge one entry's thunk against `input`, with the evidence decision the spec implies. */
@@ -499,12 +442,10 @@ describe('compiled discipline thunk — precedent gate (AC 9)', () => {
   }
 
   it('missing evidence on a matching trigger breaks, naming the id in the reason', async () => {
-    // P0 block path end-to-end: missing evidence + trigger = a judged break, which in the
-    // outcome protocol is exit 1 (runCovenant translates 1 into the blocking 2 — the same
-    // shape the self-mod judge pins). The id in the REASON is what reaches the agent's
-    // stderr through the wrapper, and no sibling probe in this file asserts it. Mutation
-    // caught: the missing direction treated as uphold (fail-open), or the break reason
-    // built without the entry id.
+    // A judged break is exit 1 in the outcome protocol; what the wrapper translates it into
+    // depends on the entry's enforce level — advise (the default) becomes exit 0, an explicit
+    // block becomes 2. The id in the REASON is what reaches the agent's stderr either way,
+    // and no sibling probe in this file asserts it.
     const result = await judgeEntry(whenEntry, triggeredInput(), {
       transcript: transcriptWithToolCalls([]),
     });
@@ -514,9 +455,8 @@ describe('compiled discipline thunk — precedent gate (AC 9)', () => {
   });
 
   it('a forbid entry is untouched by the precedent gate (still breaks on its own axis)', async () => {
-    // P0 regression fence: the gate is context-family-only. Mutation caught: the gate
-    // applied to every family — every discipline thunk would answer the misassembly
-    // outcome on arrival, turning the whole standard library into noise.
+    // The precedent gate is context-family-only: applied to every family, every discipline
+    // thunk would answer the unjudgeable outcome on arrival.
     const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const input = inputWithEvidence([
       { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },

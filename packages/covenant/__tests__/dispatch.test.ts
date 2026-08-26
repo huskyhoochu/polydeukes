@@ -8,10 +8,6 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
 import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
-// ---------------------------------------------------------------------------
-// §6.1 matching core (pure) — synthetic CovenantInput builders, no I/O.
-// ---------------------------------------------------------------------------
-
 function registration(label: string, protectedPaths: string[]): CovenantRegistration {
   return {
     label,
@@ -22,8 +18,6 @@ function registration(label: string, protectedPaths: string[]): CovenantRegistra
 
 describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   it('matches when a top-level string arg contains the protected path, with correct mentionedPath', () => {
-    // Mutation caught: substring check replaced with equality, or mentionedPath
-    // returning the wrong element / the input value instead of the registration's path.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -33,9 +27,8 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('matches a protected path mentioned deep inside nested object/array structures', () => {
-    // Proves traversal recurses through arbitrary nesting (object -> array -> object)
-    // and does not care about the argument name at any level. Mutation caught: a
-    // shallow scan that only checks top-level values or a fixed nesting depth.
+    // Traversal recurses through arbitrary nesting and does not care about the argument
+    // name at any level.
     const input = inputWithArgs({
       edits: [{ meta: { nested: { file: 'sub/protected/file.txt' } } }],
     });
@@ -47,9 +40,9 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('matches on a partial/substring mention inside a longer string (e.g. a shell command)', () => {
-    // Path-mention policy (PRD §4.2/§8): matching is substring containment, not exact
-    // equality or path-boundary aware. Mutation caught: a check requiring the whole
-    // string to equal the protected path, or requiring word/path-segment boundaries.
+    // The mention sits inside a longer command, so routing cannot require the whole string
+    // to be the path. Matching is per path segment, not raw containment: a sibling sharing
+    // a segment prefix stays unmatched.
     const input = inputWithArgs({ command: 'cat sub/protected/file.txt | grep secret' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -59,8 +52,6 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('returns zero matches when the input only mentions non-protected paths', () => {
-    // Mutation caught: a match function that always returns non-empty (e.g. returns
-    // every registration regardless of content), or one that ignores absence.
     const input = inputWithArgs({ target: 'sub/unrelated/other.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -70,8 +61,6 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('returns only the matching registration out of two, preserving registration array order', () => {
-    // Mutation caught: order not preserved (e.g. matched registrations pushed in
-    // reverse or sorted), or both/neither returned instead of exactly the one match.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const regA = registration('covenant-a', ['sub/protected/file.txt']);
     const regB = registration('covenant-b', ['sub/other/unrelated.txt']);
@@ -82,9 +71,7 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('a registration with an empty protectedPaths array never matches any input', () => {
-    // Mutation caught: an empty-array short-circuit removed, causing an empty
-    // protectedPaths to be treated as "match everything" (e.g. `.some()` on empty
-    // array vacuously true if the predicate were inverted).
+    // An empty protectedPaths must never degrade into "match everything".
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg = registration('sample-covenant', []);
 
@@ -94,9 +81,9 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('an empty-string protectedPaths entry never matches any input', () => {
-    // Mutation caught: `value.includes('')` is vacuously true for every string, so an
-    // unguarded empty entry would turn the registration into a match-everything rule
-    // (covenant spawned on every tool call, subject logged as '').
+    // `value.includes('')` is vacuously true for every string, so an unguarded empty entry
+    // turns the registration into a match-everything one, judging every tool call with an
+    // empty subject.
     const input = inputWithArgs({ target: 'sub/unrelated/other.txt' });
     const reg = registration('sample-covenant', ['']);
 
@@ -106,9 +93,8 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('does not match when the protected path string appears only in subagentSpawns or userMessages', () => {
-    // PRD §4.2 non-participation rule. Mutation caught: a traversal that also walks
-    // subagentSpawns[].kind or userMessages[].text into the scan, producing a false
-    // positive match from those fields.
+    // Only tool-call args participate in path-mention routing: walking subagentSpawns or
+    // userMessages into the scan produces false positives from text nobody executed.
     const input: CovenantInput = {
       toolCalls: [{ name: 'some-tool', args: { target: 'sub/unrelated/other.txt' } }],
       subagentSpawns: [{ kind: 'sub/protected/file.txt' }],
@@ -122,10 +108,9 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('routes a quote-split protected path in a command arg to the registration (PRD §5.2)', () => {
-    // Mutation caught: matchRegistrations keeping raw-substring routing — a quote-split write
-    // like `printf x > sub/prot"e"cted/file.txt` has no contiguous `sub/protected/file.txt`
-    // in the raw arg, so a substring router silently misses it and no covenant is spawned.
-    // The tokenize-aware candidate extraction (quote-stripped) must still route it.
+    // A quote-split write like `printf x > sub/prot"e"cted/file.txt` has no contiguous
+    // protected path in the raw arg, so raw-substring routing silently misses it and no
+    // covenant is judged. Candidate extraction is tokenize-aware and quote-stripped.
     const input = inputWithArgs({ command: 'printf x > sub/prot"e"cted/file.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -135,9 +120,9 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('routes an absolute file_path to the registration (high-review regression)', () => {
-    // Claude Code Edit/Write send an absolute file_path; matchRegistrations must route it to
-    // the covenant body. Mutation caught: segment matching anchored at index 0, so an
-    // absolute descendant of the relative protected path never routes and self-mod is skipped.
+    // Edit/Write send an absolute file_path. Segment matching anchored at index 0 would
+    // leave an absolute descendant of a relative protected path unrouted, skipping self-mod
+    // entirely.
     const input = inputWithArgs({ file_path: '/home/u/proj/sub/protected/file.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -147,8 +132,8 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
   });
 
   it('routes a `--flag=<protected>` argument to the registration (high-review regression)', () => {
-    // Mutation caught: the dispatcher tests raw tokenizer word.text without the shell-separator
-    // split, so `--dest=sub/protected/file.txt` (one word) never surfaces the path candidate.
+    // `--dest=sub/protected/file.txt` is one tokenizer word, so without the shell-separator
+    // split the path candidate never surfaces.
     const input = inputWithArgs({ command: 'cp x --dest=sub/protected/file.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
 
@@ -157,11 +142,6 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
     expect(matches).toEqual([{ registration: reg, mentionedPath: 'sub/protected/file.txt' }]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// §6.2 dispatch shell — real dummy bodies spawned via `node -e` inline scripts,
-// following the run-covenant.test.ts convention.
-// ---------------------------------------------------------------------------
 
 let dir: string;
 let telemetryPath: string;
@@ -177,9 +157,8 @@ afterEach(() => {
 
 describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   it('a matching input routed to an exit-0 dummy body yields dispatcher exitCode 0 and the judge actually ran', async () => {
-    // Mutation caught: the dispatcher recording a verdict for a judge it never called, or
-    // the wrapper verdict not being surfaced as-is. The marker file is the execution proof
-    // the spawned echo body used to carry through stdin.
+    // The marker file is the proof the judge actually ran, so the dispatcher cannot record
+    // a verdict for a judge it never called.
     const outFile = join(dir, 'echoed-stdin.txt');
     const rawPayload = JSON.stringify(inputWithArgs({ target: 'sub/protected/file.txt' }));
     const reg: CovenantRegistration = {
@@ -199,8 +178,6 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('a non-matching input yields exitCode 0, zero spawns, and zero telemetry lines', async () => {
-    // Mutation caught: the dispatcher spawning every registration unconditionally
-    // (ignoring matchRegistrations), or writing a telemetry record even absent a match.
     const outFile = join(dir, 'should-not-exist.txt');
     const input = inputWithArgs({ target: 'sub/unrelated/other.txt' });
     const reg: CovenantRegistration = {
@@ -221,9 +198,8 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('invalid JSON stdin payload yields exitCode 2, zero spawns, and exactly one blocked telemetry record labeled by dispatcherLabel', async () => {
-    // P0 fail-closed boundary (PRD §4.3 row 1). Mutation caught: falling through to a
-    // passing exit code on unparseable input, spawning a body anyway, or skipping/
-    // duplicating the fail-closed telemetry record.
+    // Unparseable input is the dispatcher's own fail-closed boundary: no judge runs, and
+    // exactly one record carries the dispatcher's label.
     const outFile = join(dir, 'should-not-exist.txt');
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
@@ -248,9 +224,8 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('two matching registrations (one exit-0, one exit-1 body) both execute (run-all), aggregate to exitCode 2, and each logs its own telemetry record with subject=mentionedPath', async () => {
-    // P0 run-all invariant (PRD §4.3/§8: "run-all, no short-circuit"). Mutation caught:
-    // a short-circuit that stops after the first breaking result, dropping the second
-    // spawn and its telemetry record, or subject not threaded from mentionedPath.
+    // Run-all, no short-circuit: stopping after the first breaking result drops the second
+    // judgment and its telemetry record.
     const outFileA = join(dir, 'body-a-ran.txt');
     const outFileB = join(dir, 'body-b-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
@@ -282,10 +257,9 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('a parseable payload with a null toolCalls element yields exitCode 2, zero spawns, and one blocked record', async () => {
-    // fail-closed boundary: parseInput only validates that the three collections are
-    // arrays (an intended CORE-01 boundary), so a null element reaches the dispatcher's
-    // traversal. An uncaught TypeError would exit the hook with a non-blocking code —
-    // a bypass vector. Unjudgeable structure must block, not throw.
+    // parseInput validates only that the three collections are arrays, so a null element
+    // reaches the dispatcher's traversal. An uncaught TypeError exits the hook with a
+    // non-blocking code — unjudgeable structure must block, never throw.
     const outFile = join(dir, 'should-not-exist.txt');
     const reg: CovenantRegistration = {
       label: 'sample-covenant',
@@ -309,9 +283,9 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('a pathologically deep args nesting yields exitCode 2 with one blocked record instead of an unhandled stack overflow', async () => {
-    // fail-closed boundary: recursion over an adversarially deep args tree can throw
-    // RangeError (stack overflow). Whether JSON.parse or the traversal gives out first,
-    // the dispatcher must resolve to a blocking 2 with its own record — never reject.
+    // Recursion over an adversarially deep args tree can throw RangeError. Whether
+    // JSON.parse or the traversal gives out first, the dispatcher must resolve to a blocking
+    // 2 with its own record rather than reject.
     const depth = 200_000;
     const payload = `{"toolCalls":[{"name":"some-tool","args":{"a":${'['.repeat(depth)}"x"${']'.repeat(depth)}}}],"subagentSpawns":[],"userMessages":[]}`;
     const reg: CovenantRegistration = {
@@ -333,8 +307,6 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 
   it('an empty registrations array yields exitCode 0 for any payload', async () => {
-    // Mutation caught: an empty-array edge case that throws, hangs, or defaults to
-    // exitCode 2 instead of the vacuous-pass 0.
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
 
     const result = await dispatchCovenants({
@@ -346,11 +318,6 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
     expect(result.exitCode).toBe(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// witness seam (COVENANT-03, PRD §4.3) — dummy bodies again, no real
-// self-mod artifact needed here (that round trip lives in self-mod.test.ts).
-// ---------------------------------------------------------------------------
 
 describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   const skipRegistration = (matches: () => string | null): CovenantRegistration => ({
@@ -372,10 +339,9 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   });
 
   it('never consults the witness — a skip has no verdict to witness', async () => {
-    // A skip never reaches runCovenant, and the witness lives inside runCovenant —
-    // so this pins that a skip short-circuits before the spawn-and-witness path entirely.
-    // Mutation caught: skip handling folded into the body path, which would turn a live
-    // witness into `witnessed` rows for entries that were never judged.
+    // A skip never reaches runCovenant, where the witness lives, so it short-circuits
+    // before the judge-and-witness path entirely. Folded into the body path, a live witness
+    // would write `witnessed` rows for entries that were never judged.
     let consulted = false;
     const registration = {
       ...skipRegistration(() => 'src/a.ts'),
@@ -396,10 +362,9 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   });
 
   it('blocks instead of skipping when the routing predicate itself could not answer', async () => {
-    // A throwing `matches` is resolved fail-closed by matchRegistrations, which a
-    // body-bearing registration carries out by spawning and blocking. A skip has no body,
-    // so answering `skipped` here would convert that fail-closed routing into a pass —
-    // exactly the stale-dist case the routing throw exists to catch.
+    // matchRegistrations resolves a throwing `matches` fail-closed, which a body-bearing
+    // registration carries out by judging and blocking. A skip has no body, so answering
+    // `skipped` would convert that fail-closed routing into a pass.
     const { exitCode, results } = await dispatchCovenants({
       stdinPayload: JSON.stringify(inputWithArgs({ file_path: 'src/a.ts' })),
       registrations: [
@@ -417,10 +382,8 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
 
 describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
   it('a matched registration whose body breaks with a witness predicate returning true is witnessed: the body still spawns, exitCode 0, one witnessed record', async () => {
-    // P0: the witness relaxes a real break AFTER the body reported it (COVENANT-17 §4.3) —
-    // measured control, not a body-level decision. Mutation caught: the witness evaluated
-    // but ignored (the block stands), the bypass not logged as the distinct 'witnessed'
-    // event, or the old routing-time timing skipping the spawn.
+    // The witness relaxes a real break AFTER the body reported it, so the body always runs
+    // and the opening is recorded as its own `witnessed` event.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -447,8 +410,6 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
   });
 
   it('a matched registration with a witness predicate returning false spawns the body normally', async () => {
-    // Mutation caught: a witness seam that always skips spawning regardless of the
-    // predicate's return value (fail-open in the wrong direction).
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -472,10 +433,8 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
   });
 
   it('a witness predicate that throws is treated as no bypass: the body spawns and the call is blocked', async () => {
-    // P0 fail-open invariant (PRD §4.3/§7: "witness throw -> false, never bypass"). Mutation
-    // caught: a try/catch around the predicate that resolves to true on error instead of
-    // false, or an unhandled throw that escapes as a rejected dispatchCovenants promise
-    // (asserted here by awaiting directly, per the async-not-toThrow discipline).
+    // A throwing witness is never an opening: it resolves to false, and the throw never
+    // escapes as a rejected promise (asserted by awaiting directly).
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -501,9 +460,8 @@ describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
   });
 
   it('two matched registrations, first witness-bearing and second a normal exit-0 body, both resolve (run-all preserved)', async () => {
-    // P0 run-all invariant carried into the witness seam: a witness-bearing registration must not
-    // stop other matched registrations from running. Mutation caught: an early return
-    // after the first bypass that skips evaluating/running the rest of the matches.
+    // Run-all carried into the witness seam: a witness-bearing registration must not stop
+    // the other matched registrations from running.
     const outFileB = join(dir, 'body-b-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const regA: CovenantRegistration = {

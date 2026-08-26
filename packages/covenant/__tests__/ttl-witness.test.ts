@@ -6,15 +6,8 @@ import { noopTranscript, parseRecordLine, transcriptFromInput } from '@polydeuke
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-// COVENANT-06 RED phase. The witness predicate factory `ttlWitness` does not exist yet,
-// so this import is unresolvable and the whole file is RED by construction. The behaviours
-// asserted here become the GREEN contract (PRD §4.1–4.2, §5.1–5.4).
 import { ttlWitness } from '../src/ttl-witness.ts';
 import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers.
-// ---------------------------------------------------------------------------
 
 const TOKEN = 'PDKS-WITNESS-42';
 const NOW = 1_000_000;
@@ -22,9 +15,9 @@ const NOW = 1_000_000;
 const fakeNow = (): number => NOW;
 
 /**
- * A fake transcript whose findUserMessages returns exactly the given messages
- * (each carrying its own optional timestampMs). findSubagentInvocations returns
- * the given invocations so §5.2 can plant the token outside user messages.
+ * A fake transcript whose findUserMessages returns exactly the given messages, each
+ * carrying its own optional timestampMs. findSubagentInvocations returns the given
+ * invocations, so a case can plant the token outside user messages.
  */
 function fakeTranscript(
   userMessages: { text: string; timestampMs?: number }[],
@@ -50,14 +43,8 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-// ===========================================================================
-// §5.1 — witness verdict (PRD §4.2 semantics)
-// ===========================================================================
-
 describe('ttlWitness — verdict (PRD §5.1)', () => {
   it('bypasses a token-bearing user message that is within the TTL window', () => {
-    // P0 business rule: a fresh, agreed token must witness. Mutation caught: the predicate
-    // never returning true (dead witness), or the substring match being inverted.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 1000 },
@@ -66,8 +53,7 @@ describe('ttlWitness — verdict (PRD §5.1)', () => {
   });
 
   it('witnesses AT the TTL boundary (now - ts === ttlMs) and blocks one ms past it', () => {
-    // P1 boundary: the interval is closed on the far edge. Mutation caught: `<= ttlMs`
-    // flipped to `< ttlMs` (would drop the exact-boundary case), or `ttlMs` shifted by 1.
+    // The interval is closed on the far edge.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const atBoundary = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 5000 }]);
     const pastBoundary = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 5001 }]);
@@ -76,27 +62,24 @@ describe('ttlWitness — verdict (PRD §5.1)', () => {
   });
 
   it('does not witness when the only token-bearing message lacks a timestamp', () => {
-    // P0 fail-closed: absent timestampMs is unprovable freshness — the disposition is
-    // resolveFailMode('evidence-absence') === 'closed', so it can never witness. Mutation
-    // caught: treating a missing timestampMs as fresh (fail-open hole), or defaulting it
-    // to 0/now.
+    // An absent timestampMs is unprovable freshness, so it can never witness: defaulting it
+    // to 0 or to now would open the valve on evidence that does not exist.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
   it('rejects a future timestamp (ts > now, negative elapsed)', () => {
-    // P0 fail-closed: a clock that cannot prove a *past* agreement is unjudgeable. The
-    // interval is 0 <= elapsed <= ttlMs, so negative elapsed is out. Mutation caught: the
-    // lower bound `0 <= elapsed` being dropped (a future/replayed timestamp would witness).
+    // The interval is 0 <= elapsed <= ttlMs: without the lower bound a future or replayed
+    // timestamp witnesses, and a clock that cannot prove a PAST agreement proves nothing.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW + 1 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
   it('witnesses when exactly one of several messages qualifies (order-independent)', () => {
-    // P1 existential quantifier: the predicate is `SOME message satisfies ALL`. Mutation
-    // caught: `.some` narrowed to `.every` (all-must-qualify), or first/last-only scanning.
+    // The predicate is "SOME message satisfies ALL the conditions", never all-must-qualify
+    // and never first-or-last-only.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: 'no token here', timestampMs: NOW - 100 },
@@ -107,10 +90,9 @@ describe('ttlWitness — verdict (PRD §5.1)', () => {
   });
 
   it('never witnesses against noopTranscript or a bare transcriptFromInput (no timestamps)', () => {
-    // P0 convergence: zero-evidence (noop) and bare-IR (timestamp-free) sources both
-    // fail-closed. Even when the IR user message carries the token, the wrapped transcript
-    // omits timestampMs, so it cannot witness. Mutation caught: the predicate treating an
-    // absent timestamp as fresh, or reading userMessages off the IR directly.
+    // Both a zero-evidence transcript and a timestamp-free one fail closed. Even when the
+    // input's own user message carries the token, the wrapped transcript omits timestampMs,
+    // so reading userMessages off the input directly would open the valve on it.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const input: CovenantInput = {
       toolCalls: [],
@@ -122,18 +104,12 @@ describe('ttlWitness — verdict (PRD §5.1)', () => {
   });
 });
 
-// ===========================================================================
-// COVENANT-15 §5.1 — mention exclusion (PRD §4.1 first-line exact match, §4.3 backticks)
-//
-// The token may only invoke when the FIRST LINE of the message, trimmed, equals the
-// token exactly. Every case below merely *mentions* the token and must stay false.
-// ===========================================================================
+// The token invokes only when the FIRST LINE of the message, trimmed, equals it exactly.
+// Every case below merely MENTIONS the token and must stay false.
 
 describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
   it('does not witness when the token sits mid-sentence in a question about the witness', () => {
-    // P0 security fail-closed (the measured 2026-07-21 incident): asking *about* the valve
-    // must not open it. Mutation caught: `firstLine(text).trim() === token` regressing to
-    // `text.includes(token)` — the exact substring semantics this ticket renegotiates.
+    // Asking ABOUT the valve must not open it, which substring matching cannot distinguish.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: `so when does ${TOKEN} expire?`, timestampMs: NOW - 100 },
@@ -142,9 +118,8 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
   });
 
   it('does not witness when the first line starts with the token but carries trailing text', () => {
-    // P0 boundary of the exact-match rule (PRD §4.2 table row `<token> <trailing word>`): prefix is not
-    // enough. Mutation caught: `=== token` weakened to `.startsWith(token)`, which would let
-    // any sentence opening with the token through.
+    // A prefix is not enough: `.startsWith` would let any sentence opening with the token
+    // through.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: `${TOKEN} — what is that?`, timestampMs: NOW - 100 },
@@ -153,18 +128,16 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
   });
 
   it('does not witness when the token is wrapped in backticks (PRD §4.3)', () => {
-    // P0 adopted safety property: code formatting signals *mention*, not intent. No stripping
-    // code exists by design — exact match excludes it naturally. Mutation caught: any added
-    // normalisation that peels backticks/punctuation before comparing, or `.includes`.
+    // Code formatting signals mention, not intent. Exact match excludes it with no
+    // stripping code at all, so any normalisation that peels backticks reopens it.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `\`${TOKEN}\``, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
   it('does not witness when the token appears only on a line below the first', () => {
-    // P0 first-line-only scope: quoting the token under an introduction is a mention.
-    // Mutation caught: the predicate scanning every line (`text.split('\n').some(...)`)
-    // instead of the first line alone.
+    // Quoting the token under an introduction is a mention, so the scan is the first line
+    // alone rather than every line.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: `here is the token:\n${TOKEN}`, timestampMs: NOW - 100 },
@@ -173,36 +146,28 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
   });
 
   it('does not witness when a leading blank line precedes the token (PRD §4.1)', () => {
-    // P0 explicit rule "the token IS the start of the utterance": a leading empty line is
-    // not forgiven, because forgiving it reintroduces a "how many lines do we search"
-    // boundary. Mutation caught: skipping/trimming leading blank lines before taking the
-    // first line (e.g. `text.trim()` applied before splitting, or `.split` + `.find(Boolean)`).
+    // The token IS the start of the utterance: forgiving a leading blank line reintroduces
+    // the "how many lines do we search" boundary the exact rule removes.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `\n${TOKEN}`, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 });
 
-// ===========================================================================
-// COVENANT-15 §5.2 — invocation preserved (PRD §4.2 table, invoking rows)
-//
-// Narrowing must not break real invocations: the predicate only ever shrinks.
-// ===========================================================================
+// The narrowing above must not break real invocations.
 
 describe('ttlWitness — invocation preserved (COVENANT-15 §5.2)', () => {
   it('witnesses when the whole utterance is the bare token', () => {
-    // P0 business rule: the canonical invocation form must keep working, otherwise the
-    // narrowing has produced a dead valve. Mutation caught: the match predicate inverted or
-    // hard-wired to false.
+    // The canonical invocation form must keep working, or the narrowing has produced a
+    // dead valve.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
 
   it('witnesses when the first line is the token and later lines carry the work instruction', () => {
-    // P1 first-line scoping in the invoking direction: text below the first line is free.
-    // Mutation caught: comparing the WHOLE text to the token (`text.trim() === token`),
-    // which would reject every multi-line invocation — the realistic usage shape.
+    // Text below the first line is free: comparing the WHOLE text to the token rejects
+    // every multi-line invocation, which is the realistic usage shape.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
       { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 100 },
@@ -211,38 +176,29 @@ describe('ttlWitness — invocation preserved (COVENANT-15 §5.2)', () => {
   });
 
   it('witnesses when the first line has surrounding whitespace around the token', () => {
-    // P1 boundary of the trim rule (PRD §4.1): leading/trailing spaces on the first line are
-    // removed before comparing. Mutation caught: `.trim()` dropped from the first-line
-    // comparison, which would reject accidentally-indented invocations.
+    // Leading and trailing spaces on the first line are removed before comparing, so an
+    // accidentally indented invocation still opens the valve.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `  ${TOKEN}  \nfix it`, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
 
   it('witnesses when the message was transported with CRLF line endings', () => {
-    // P1 external transport contract: a `\r` left at the end of the first line by CRLF
-    // transport must be absorbed by `trim()`. Mutation caught: splitting on `\n` without
-    // trimming (the residual `\r` would break equality and silently kill the valve for
-    // CRLF-carried transcripts).
+    // A `\r` left at the end of the first line by CRLF transport must be absorbed by the
+    // trim, or the valve is silently dead for every CRLF-carried transcript.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `${TOKEN}\r\nfix it`, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
 });
 
-// ===========================================================================
-// §5.2 — layer boundary: only findUserMessages() is consulted
-// ===========================================================================
-
 describe('ttlWitness — layer boundary (PRD §5.2)', () => {
   it('ignores a token planted outside user messages (invocations and toolCalls args)', () => {
-    // P0 layer responsibility: the token may ride on user messages only. Here it lives in
-    // an invocation kind and in the tool-call args, but no user message carries it — no
-    // witness. Mutation caught: the predicate scanning findSubagentInvocations() or the
-    // input IR (an AI-synthesised token would then witness — a security bypass).
-    // The planted tokens are BARE (nothing appended): under first-line-exact matching a
-    // decorated token never matches anywhere, which would let a leaked scan pass this
-    // test unnoticed — the review's executed mutation proved exactly that (COVENANT-15).
+    // The token may ride on user messages only. Here it lives in an invocation kind and in
+    // the tool-call args, so a predicate scanning invocations or the input itself would let
+    // an agent-synthesised token open the valve for itself. The planted tokens are BARE:
+    // under first-line-exact matching a decorated token never matches anywhere, so a
+    // decorated fixture would let a leaked scan pass this test unnoticed.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript(
       [{ text: 'ordinary message', timestampMs: NOW - 100 }],
@@ -253,44 +209,34 @@ describe('ttlWitness — layer boundary (PRD §5.2)', () => {
   });
 });
 
-// ===========================================================================
-// §5.3 — factory validation (throws at factory time, not predicate time)
-// ===========================================================================
-
 describe('ttlWitness — factory validation (PRD §5.3)', () => {
   it('throws when the token is empty or whitespace-only', () => {
-    // P0 assembly gate: a blank token would match every message (witness everything).
-    // Mutation caught: the trimmed-empty check being dropped, or `.trim()` omitted.
+    // A blank token matches every message, witnessing everything.
     expect(() => ttlWitness({ token: '', ttlMs: 5000, now: fakeNow })).toThrow();
     expect(() => ttlWitness({ token: '   ', ttlMs: 5000, now: fakeNow })).toThrow();
   });
 
   it('throws when the token contains a line break (structurally inert under first-line matching)', () => {
-    // P0 silent-death check (review finding ④): the judgment compares an utterance's
-    // FIRST LINE, which never contains a line break, so a token with an embedded \n or
-    // lone \r could never match anything — factory acceptance would ship a valve that
-    // refuses every utterance with no error pointing at the token. Mutation caught:
-    // dropping the /[\r\n]/ viability check.
+    // The judgment compares an utterance's FIRST LINE, which never contains a line break,
+    // so a token with an embedded \n or lone \r can never match anything. Accepting it at
+    // the factory ships a valve that refuses every utterance with no error naming the
+    // token.
     expect(() => ttlWitness({ token: 'pdks\nwitness', ttlMs: 5000, now: fakeNow })).toThrow();
     expect(() => ttlWitness({ token: 'pdks\rwitness', ttlMs: 5000, now: fakeNow })).toThrow();
   });
 
   it('normalises a token configured with surrounding whitespace instead of dying silently', () => {
-    // P0 silent-death check (REVIEW finding): the first line is compared trimmed, so a
-    // token carrying stray whitespace would never equal it — the factory would accept the
-    // config and the valve would then refuse every utterance, with no error to explain it.
-    // Mutation caught: dropping the assembly-time `rawToken.trim()` (normalising only one
-    // side of the comparison).
+    // The first line is compared trimmed, so normalising only that side leaves a token
+    // carrying stray whitespace unable to equal it — again a valve that refuses every
+    // utterance with no error to explain it.
     const predicate = ttlWitness({ token: `  ${TOKEN}  `, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
     expect(predicate(inputWithArgs({}), transcript)).toBe(true);
   });
 
   it('throws when ttlMs is not a finite positive number', () => {
-    // P0 assembly gate: zero/negative/NaN/Infinity TTL each break the closed-interval
-    // meaning (0 disables, negative is impossible, NaN never compares true, Infinity never
-    // expires). Mutation caught: the `Number.isFinite(ttlMs) && ttlMs > 0` check being
-    // weakened to `> 0` (lets NaN/Infinity through) or `>= 0` (lets 0 through).
+    // Each of these breaks the closed interval's meaning: 0 disables the valve, negative is
+    // impossible, NaN never compares true, and Infinity never expires.
     expect(() => ttlWitness({ token: TOKEN, ttlMs: 0, now: fakeNow })).toThrow();
     expect(() => ttlWitness({ token: TOKEN, ttlMs: -1, now: fakeNow })).toThrow();
     expect(() => ttlWitness({ token: TOKEN, ttlMs: Number.NaN, now: fakeNow })).toThrow();
@@ -300,10 +246,9 @@ describe('ttlWitness — factory validation (PRD §5.3)', () => {
   });
 
   it('a successfully built predicate never throws (returns a plain false instead)', () => {
-    // P1 purity: validation is a factory-time concern; the predicate itself is total. A
-    // weird-but-valid transcript (timestamp-free message) yields false, not an exception.
-    // Mutation caught: validation logic leaking into the predicate body (would throw at
-    // dispatch time, which the dispatcher would silently absorb as no-bypass).
+    // Validation is a factory-time concern and the predicate is total: validation leaking
+    // into the predicate body throws at dispatch time, which the dispatcher silently
+    // absorbs as no opening.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const weird = fakeTranscript([{ text: TOKEN }]);
     expect(() => predicate(inputWithArgs({}), noopTranscript)).not.toThrow();
@@ -313,16 +258,10 @@ describe('ttlWitness — factory validation (PRD §5.3)', () => {
   });
 });
 
-// ===========================================================================
-// §5.4 — dispatcher integration through the existing witness seam
-// ===========================================================================
-
 describe('ttlWitness — dispatcher integration (PRD §5.4)', () => {
   it('a fresh-token transcript opens the valve after the verdict and records exactly one witnessed event', async () => {
-    // P1 external contract: wired as witness, a valid witness must relax the body's
-    // break and measure `witnessed` with exit 0. File presence proves the body still ran.
-    // Mutation caught: the predicate not reaching a true verdict end-to-end (the block
-    // would stand).
+    // Wired as the witness, a valid token relaxes the body's break and measures
+    // `witnessed`. The marker file proves the judge still ran.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -349,11 +288,9 @@ describe('ttlWitness — dispatcher integration (PRD §5.4)', () => {
   });
 
   it('an expired-token transcript restores blocking: the body spawns and records blocked with exit 2', async () => {
-    // P0 fail-closed restoration ("re-block after expiry"): once the witness window closes,
-    // the same registration must fall back to the covenant body. File presence proves the
-    // spawn; a blocking body yields exit 2 and a `blocked` record. Mutation caught: the TTL
-    // upper bound being dropped (an expired token would keep witnessing forever — the exact
-    // env-valve failure this ticket removes).
+    // Once the window closes the same registration blocks again. Without the TTL upper
+    // bound an expired token keeps witnessing forever, which is what a valve carried in the
+    // environment does.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {

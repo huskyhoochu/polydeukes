@@ -1,16 +1,16 @@
 /**
- * Shell-evidence derivation (COVENANT-10b §2-a) — one command line in, computed writes
- * plus a reasoned unjudgeable list out.
+ * Shell-evidence derivation — one command line in, computed writes plus a reasoned
+ * unjudgeable list out.
  *
- * Pure: no disk read, no spawn. `create`/`modify` discrimination and the append
- * composition need a pre-state, which belongs to the judged body (adapter `readPreState`
- * precedent); this layer answers only what the command text itself decides.
+ * Pure: no disk read, no spawn. `create`/`modify` discrimination and the append composition
+ * need a pre-state, which belongs to the judged body; this layer answers only what the
+ * command text itself decides.
  *
- * The §2-a boundary table IS the contract — a form the table does not name is
- * unjudgeable, never a confident guess. An uncomputable write whose target is known
- * carries that path, so the compiler can route it to the discipline whose scope covers it;
- * a write whose target is unknowable carries none. A command with no mutation signal at
- * all leaves both lists empty: recording a line per read would drown the log it feeds.
+ * The enumerated forms below ARE the contract — a form none of them names is unjudgeable,
+ * never a confident guess. An uncomputable write whose target is known carries that path,
+ * so the compiler can route it to the discipline whose scope covers it; a write whose
+ * target is unknowable carries none. A command with no mutation signal at all leaves both
+ * lists empty: recording a line per read would drown the log it feeds.
  */
 
 import {
@@ -55,15 +55,15 @@ type Content = { content: string } | { reason: string };
 type Target = { path: string } | { reason: string };
 
 // A command that moves the working directory makes every relative target on the line
-// ambiguous — resolving it against a guessed base is the approximation §2-a refuses.
+// ambiguous — resolving it against a guessed base is exactly the approximation this layer
+// refuses to make.
 const DIRECTORY_CHANGE_COMMANDS = new Set(['cd', 'pushd', 'popd']);
 
 // The redirect spellings that carry stdout — the only stream whose bytes this layer can
-// compute. `1>` IS `>` by fd, so demoting it would turn a computable write into a skip.
-// `>|` and `1>|` join the set with A6: the tokenizer emits them as write operators and the
-// detection rules grade them by the `>` they contain, so leaving them out here files a
-// computable write as `does not carry stdout` — the evidence axis refusing a write the
-// judging axis already accepted (COVENANT-18 §2-a A6, completed in review).
+// compute. Every member is load-bearing: `1>` IS `>` by fd, and `>|`/`1>|` are write
+// operators the tokenizer emits and the detection rules grade by the `>` they contain.
+// Dropping any of them files a computable write as `does not carry stdout`, so the evidence
+// axis would refuse a write the judging axis already accepted.
 const STDOUT_WRITE_OPERATORS = new Set(['>', '>>', '>|', '1>', '1>>', '1>|']);
 
 // Rules that detect a write with no redirect. The redirect rule is consulted separately,
@@ -100,7 +100,7 @@ function writeRedirects(command: SimpleCommand): RedirectToken[] {
   );
 }
 
-/** The path a target text names, or the reason this layer cannot know it (§2-a rows 10–11). */
+/** The path a target text names, or the reason this layer cannot know it. */
 function resolveTarget(text: string, opaque: boolean, movesDirectory: boolean): Target {
   if (opaque) return { reason: `write target ${text} is opaque` };
   // `~` is never expanded here — the same contract the path-notation judge keeps.
@@ -155,7 +155,7 @@ function stdinContent(command: SimpleCommand, reads: RedirectToken[]): Content {
   return { content: `${read.target.text}\n` };
 }
 
-/** The bytes one command writes to its stdout redirect (§2-a rows 1–7). */
+/** The bytes one command writes to its stdout redirect. */
 function computeContent(command: SimpleCommand): Content {
   // With no command word the redirection still runs and nothing writes into it.
   if (command.words.length === 0) return { content: '' };
@@ -226,7 +226,7 @@ function hasSubshellMarker(command: SimpleCommand): boolean {
   return command.words.some((word) => word.text.startsWith('(') || word.text.endsWith(')'));
 }
 
-/** Derive one simple command (§2-a, top to bottom — the first matching row answers). */
+/** Derive one simple command, top to bottom — the first matching case answers. */
 function deriveCommand(
   command: SimpleCommand,
   movesDirectory: boolean,
@@ -256,7 +256,7 @@ function deriveCommand(
 
   // A write redirect and a rule-detected write can ride ONE command (`sed -i f > log`,
   // `… | tee f > /dev/null`) — each files its own row; an early return on either side
-  // would swallow the other (review PR #36 [1]).
+  // would swallow the other.
   const writes = writeRedirects(command);
   deriveWrites(command, writes, movesDirectory, derivation);
 
@@ -280,11 +280,11 @@ function deriveCommand(
 }
 
 /**
- * Derive the file changes one shell command line proves (§2-a).
+ * Derive the file changes one shell command line proves.
  *
  * Never throws: a span the tokenizer could not read is exactly where a quiet pass would
  * hide, so each one answers an unjudgeable entry carrying its reason — and the commands
- * around it still contribute their real evidence (COVENANT-18 §2-b B4).
+ * around it still contribute their real evidence.
  */
 export function deriveShellChanges(commandLine: string): ShellDerivation {
   const result = tokenizeCommandLine(commandLine);
@@ -292,7 +292,7 @@ export function deriveShellChanges(commandLine: string): ShellDerivation {
   // A directory change is line-scoped and order-blind: a write before it is as ambiguous
   // as one after, since only execution decides which base each relative target resolves to.
   const movesDirectory = result.commands.some((command) => {
-    // Past leading assignments, like `deriveCommand` — `FOO=1 cd sub` moves the directory
+    // Read past leading assignments, like `deriveCommand` — `FOO=1 cd sub` moves the directory
     // exactly as `cd sub` does. Missing it is not a silent skip: every relative target on
     // the line would then be resolved against the repo root and filed as CONFIDENT evidence
     // for a path the command never touched.
@@ -303,8 +303,8 @@ export function deriveShellChanges(commandLine: string): ShellDerivation {
   });
 
   // A line with any unread span files at least one entry, whatever the commands around it
-  // derive: that row is the `skipped shell-unjudgeable` telemetry the shell axis contracts
-  // for, and a partial success that swallowed it would be a call passing unrecorded.
+  // derive: that row is the telemetry the shell axis contracts for, and a partial success
+  // that swallowed it would be a call passing unrecorded.
   const derivation: ShellDerivation = {
     evidence: [],
     unjudgeable: result.unread.map((span) => ({ reason: span.reason })),

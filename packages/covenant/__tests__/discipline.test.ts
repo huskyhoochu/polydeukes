@@ -1,10 +1,8 @@
 import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// COVENANT-10 §4.5 / AC §5.2–5.5 — the pure discipline judge and the registration
-// compiler. `judgeDiscipline` decides one DisciplineEntry against a CovenantInput
-// (delta / path / command families); `compileDisciplineRegistrations` turns validated
-// entries into dispatcher registrations (one per entry, matches closure + serialized
-// body args). Neither module exists yet, so this file is RED by construction.
+// The pure discipline judge and the registration compiler. `judgeDiscipline` decides one
+// entry against a CovenantInput across the delta, path, and command families;
+// `compileDisciplineRegistrations` turns validated entries into dispatcher registrations.
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
@@ -12,12 +10,6 @@ import {
   judgeDiscipline,
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
-
-// ---------------------------------------------------------------------------
-// Fixtures. `guard|harness|kb` appears only inside a discipline's forbid pattern —
-// that is the discipline DATA under test (AC §5.7 exempts pattern literals from the
-// vocabulary gate). Judge options default to a fixed repo root and shell surface.
-// ---------------------------------------------------------------------------
 
 const ROOT = '/repo';
 
@@ -28,8 +20,8 @@ const judgeOpts: DisciplineJudgeOptions = {
 };
 
 /**
- * Build a CovenantInput whose evidence rides its own tool-call element (CORE-06 §4.1).
- * Flat pre/post pairs are tagged for the caller: `pre === null` is a create, else a modify.
+ * Build a CovenantInput whose evidence rides its own tool-call element. Flat pre/post pairs
+ * are tagged for the caller: `pre === null` is a create, else a modify.
  */
 function inputWithFileChanges(
   fileChanges: { path: string; pre: string | null; post: string }[],
@@ -51,17 +43,11 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
   return { toolCalls: [{ name, args }], subagentSpawns: [], userMessages: [] };
 }
 
-// ===========================================================================
-// AC §5.2 — delta family `forbid`
-// ===========================================================================
-
 describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
 
   it('breaks when an in-scope edit ADDS a new match, naming the id and the added text', () => {
-    // P0 core purpose (roadmap AC verbatim): a genuinely new in-scope match blocks, and the
-    // reason cites both the discipline id and the newly matched string. Mutation caught: the
-    // added-direction check inverted, or the reason built without id / without the added text.
+    // The reason must cite both the discipline id and the newly matched string.
     const input = inputWithFileChanges([
       { path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
@@ -76,9 +62,8 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('upholds a debt-only edit that adds no new match (added semantics)', () => {
-    // P0 debt amnesty (roadmap AC verbatim): a file that already carries a match, edited
-    // without adding a new one, must pass. Mutation caught: judging on presence in post
-    // instead of the added delta — that would block every edit to a debt-bearing file.
+    // Judgment is on the added delta, not on presence in post: otherwise every edit to a
+    // debt-bearing file blocks.
     const input = inputWithFileChanges([
       { path: 'src/a.css', pre: 'a: #123456;', post: 'a: #123456;\nmargin: 0;' },
     ]);
@@ -87,8 +72,7 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('upholds a violation added to an out-of-scope file (in scope excludes it)', () => {
-    // P0 scoping: `in: ['src/**']` must not judge a docs/ file. Mutation caught: the in
-    // glob ignored (every path judged), turning a scoped discipline into a global one.
+    // Ignoring the `in` glob turns a scoped discipline into a global one.
     const input = inputWithFileChanges([
       { path: 'docs/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
@@ -97,8 +81,7 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('upholds a violation added to an except-matched file (except wins over in)', () => {
-    // P0 scoping precedence: `except` subtracts from `in`. Mutation caught: except not
-    // applied, or in and except OR-combined instead of in-minus-except.
+    // `except` subtracts from `in`, rather than being OR-combined with it.
     const scoped: DisciplineEntry = {
       id: 'no-hex',
       in: ['src/**'],
@@ -113,8 +96,7 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('judges every file change when `in` is absent (absent = all)', () => {
-    // P1 default scope: no `in` means the discipline applies to every file change.
-    // Mutation caught: an absent `in` defaulting to "match nothing" instead of "match all".
+    // An absent `in` means every file change, never "match nothing".
     const noScope: DisciplineEntry = { id: 'no-hex', forbid: '#[0-9a-f]{6}' };
     const input = inputWithFileChanges([
       { path: 'anywhere/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
@@ -124,9 +106,8 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('relativizes an absolute in-scope path against rootDir before matching', () => {
-    // P0 path relativization (PRD §4.5, segment-prefix lesson): an absolute path under
-    // rootDir must be relativized so `src/**` matches it. Mutation caught: absolute paths
-    // matched raw against the relative glob (they never match → discipline silently skipped).
+    // An absolute path under rootDir must be relativized before the glob sees it: matched
+    // raw it never matches, and the discipline goes silently inert.
     const input = inputWithFileChanges([
       { path: '/repo/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
@@ -135,9 +116,8 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('upholds when an absolute path is outside rootDir (never matches)', () => {
-    // P0 scope boundary: a path outside the repo root is out of scope by declaration.
-    // Mutation caught: a relativization that produces `../…` still being fed to the glob
-    // and matching, judging files outside the repo.
+    // A path outside the repo root is out of scope by declaration: a relativization
+    // producing `../…` must not be fed to the glob, or files outside the repo get judged.
     const input = inputWithFileChanges([
       { path: '/elsewhere/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
@@ -146,18 +126,16 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('breaks a new file (pre=null) whose post contains a match (all post is added)', () => {
-    // P0 creation (roadmap AC): a newly created in-scope file with a match has no debt to
-    // forgive. Mutation caught: pre=null coerced to a post-equal baseline (would forgive
-    // brand-new violations in a created file).
+    // A newly created in-scope file has no debt to forgive: coercing a null pre to a
+    // post-equal baseline forgives brand-new violations.
     const input = inputWithFileChanges([{ path: 'src/new.css', pre: null, post: 'b: #123456;' }]);
 
     expect(judgeDiscipline(forbidHex, input, judgeOpts).upheld).toBe(false);
   });
 
   it('produces the same verdict for the string shorthand and the { added } object form', () => {
-    // P0 equivalence (roadmap AC): string shorthand ≡ { added } on the same fixture.
-    // Mutation caught: the two forms routed to different judgment paths, so only one
-    // enforces the pattern.
+    // The two forms must not route to different judgment paths, leaving only one of them
+    // enforcing the pattern.
     const stringForm: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
     const objectForm: DisciplineEntry = {
       id: 'no-hex',
@@ -174,24 +152,19 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 
   it('upholds when there are no file changes at all (defensive re-check)', () => {
-    // P1 no-evidence: routing would not have matched, but the judge must uphold rather than
-    // throw when fileChanges is absent. Mutation caught: an undefined fileChanges deref.
+    // Routing would not have matched, but the judge must uphold rather than throw when
+    // there is no file-change evidence at all.
     const noFc: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
 
     expect(judgeDiscipline(forbidHex, noFc, judgeOpts)).toEqual({ upheld: true });
   });
 });
 
-// ===========================================================================
-// AC §5.3 — path family `immutable`
-// ===========================================================================
-
 describe('judgeDiscipline — immutable path family (AC §5.3)', () => {
   const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
 
   it('breaks a modification (pre !== null) of a glob-matching file, naming id and path', () => {
-    // P0 (roadmap AC verbatim): editing an existing immutable file is forbidden. Mutation
-    // caught: the pre!==null condition dropped, or the reason omitting id/path.
+    // The reason must name both the id and the path.
     const input = inputWithFileChanges([{ path: 'config/a.lock', pre: 'old', post: 'new' }]);
 
     const verdict = judgeDiscipline(immutable, input, judgeOpts);
@@ -204,34 +177,24 @@ describe('judgeDiscipline — immutable path family (AC §5.3)', () => {
   });
 
   it('upholds creation (pre === null) of a glob-matching file', () => {
-    // P0 across-boundary (roadmap AC verbatim): creating the file is allowed; only mutation
-    // is forbidden. Mutation caught: pre===null also treated as a break (blocks first
-    // authoring), or the pre check ignored entirely.
+    // Creating the file is allowed; only mutation is forbidden, or the file could never be
+    // authored in the first place.
     const input = inputWithFileChanges([{ path: 'config/a.lock', pre: null, post: 'seed' }]);
 
     expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
   });
 
   it('upholds a modification of a non-matching path', () => {
-    // P0 scope: a path outside the immutable glob is not judged. Mutation caught: the glob
-    // ignored so every modification breaks.
     const input = inputWithFileChanges([{ path: 'src/a.ts', pre: 'old', post: 'new' }]);
 
     expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
   });
 });
 
-// ===========================================================================
-// AC §5.4 — command family `forbidCommand`
-// ===========================================================================
-
 describe('judgeDiscipline — forbidCommand command family (AC §5.4)', () => {
   const forbidCmd: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
   it('breaks a shell tool call whose command arg matches the pattern', () => {
-    // P0 (roadmap AC verbatim): a matching command on a shell tool blocks. Mutation caught:
-    // the pattern not tested against the named command arg, or the shell-tool filter
-    // inverted so nothing is judged.
     const input = inputWithToolCall('Bash', { command: 'LEFTHOOK=0 git push' });
 
     const verdict = judgeDiscipline(forbidCmd, input, judgeOpts);
@@ -243,17 +206,14 @@ describe('judgeDiscipline — forbidCommand command family (AC §5.4)', () => {
   });
 
   it('upholds a shell tool call whose command does not match', () => {
-    // P0 across-boundary: an unrelated command passes. Mutation caught: a match function
-    // that always reports a break.
     const input = inputWithToolCall('Bash', { command: 'git status' });
 
     expect(judgeDiscipline(forbidCmd, input, judgeOpts)).toEqual({ upheld: true });
   });
 
   it('does not judge a matching command string on a NON-shell tool call', () => {
-    // P0 (roadmap AC §5.4): only tool calls whose name is in opts.shellTools participate.
-    // A matching string sitting in a non-shell tool's args must be ignored. Mutation caught:
-    // the shell-tool name filter dropped, so any tool carrying the string would be judged.
+    // Only tool calls whose name is in opts.shellTools participate: without that filter any
+    // tool whose args happen to carry the string would be judged as if it ran one.
     const input = inputWithToolCall('Edit', {
       file_path: 'x',
       old_string: 'a',
@@ -263,10 +223,6 @@ describe('judgeDiscipline — forbidCommand command family (AC §5.4)', () => {
     expect(judgeDiscipline(forbidCmd, input, judgeOpts)).toEqual({ upheld: true });
   });
 });
-
-// ===========================================================================
-// AC §5.5 — the registration compiler
-// ===========================================================================
 
 describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () => {
   const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
@@ -283,12 +239,10 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
   }
 
   it('emits one registration per entry with label=id, empty protectedPaths, and a judging thunk', async () => {
-    // P0 compiler contract: each entry becomes exactly one registration whose label is the
-    // id, whose protectedPaths is [] (routing is by the matches closure, not path mention),
-    // and whose body judges that entry against the bound input. Since DISPATCH-01 the entry
-    // and the assembly values reach the judge by closure rather than argv, so the wiring is
-    // proven by judging an input only THIS entry breaks on. Mutation caught: the wrong entry
-    // bound to a registration, or the root dir / shell surface dropped on the way in.
+    // Each entry becomes one registration whose label is the id and whose protectedPaths is
+    // empty, since routing is by the matches closure rather than path mention. The entry and
+    // the assembly values reach the judge by closure, so the wiring is proven by judging an
+    // input only THIS entry breaks on.
     const violating: CovenantInput = {
       toolCalls: [
         { name: 'Write', fileChange: { kind: 'create', path: 'src/a.ts', post: '#abcdef\n' } },
@@ -299,7 +253,7 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
     const regs = compileDisciplineRegistrations(specWith([forbidEntry, cmdEntry]));
 
     // Two judged registrations, then the delta entry's shell skip arm and the common
-    // shell-unjudgeable backstop (COVENANT-10b §2-c).
+    // shell-unjudgeable backstop.
     expect(regs).toHaveLength(4);
     expect(regs[0].label).toBe('no-hex');
     expect(regs[0].protectedPaths).toEqual([]);
@@ -316,9 +270,8 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
   });
 
   it('passes the witness through to each registration when provided', () => {
-    // P1: the per-entry registration is the natural seat for a per-discipline witness. Mutation
-    // caught: the witness field dropped during compilation (would strip a configured
-    // bypass and silently harden every discipline).
+    // The per-entry registration is the seat of a per-discipline witness: dropping the field
+    // during compilation silently hardens every discipline past its configuration.
     const witness: NonNullable<CovenantRegistration['witness']> = () => false;
     const regs = compileDisciplineRegistrations({ ...specWith([forbidEntry]), witness: witness });
 
@@ -326,11 +279,10 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
   });
 
   it('compiles a non-compilable pattern into a skip registration instead of throwing', () => {
-    // A broken pattern used to halt assembly, taking every sibling registration and the
-    // witness valve down with it — leaving no way to edit the config that caused it. It
-    // now skips alone, and routes to nothing, since the pattern that would define its
-    // matches is the broken one. Mutation caught: the throw restored, or a body emitted
-    // that would crash at judge time.
+    // A broken pattern halting assembly takes every sibling registration and the witness
+    // valve with it, leaving no way to edit the config that caused it. It skips alone
+    // instead, and routes to nothing, since the pattern that would define its matches is
+    // the broken one.
     const [reg] = compileDisciplineRegistrations(specWith([{ id: 'bad', forbid: '(' }]));
 
     expect(reg.skip).toBeDefined();
@@ -355,9 +307,8 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   }
 
   it('forbid matches returns the relativized in-scope path for a matching file change', () => {
-    // P0 content-predicate routing (PRD §4.4): a matched forbid entry routes with its
-    // relativized path as the telemetry subject. Mutation caught: matches returning the raw
-    // absolute path (subject noise) or null (route missed, discipline never spawns).
+    // A matched forbid entry routes with its RELATIVIZED path as the telemetry subject;
+    // the raw absolute path is subject noise.
     const reg = compileOne(forbidEntry);
     const input = inputWithFileChanges([
       { path: '/repo/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
@@ -367,8 +318,6 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 
   it('forbid matches returns null for an out-of-scope file change', () => {
-    // P0 routing filter: an out-of-scope change must not route (no wasted spawn). Mutation
-    // caught: matches returning non-null regardless of scope (routes every input).
     const reg = compileOne(forbidEntry);
     const input = inputWithFileChanges([{ path: 'docs/a.css', pre: 'a: 0;', post: 'b: #123456;' }]);
 
@@ -376,7 +325,6 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 
   it('immutable matches returns the relativized in-scope path for a matching change', () => {
-    // P1 path-family routing: an immutable-glob match routes with its path subject.
     const reg = compileOne(immutableEntry);
     const input = inputWithFileChanges([{ path: '/repo/config/a.lock', pre: 'x', post: 'y' }]);
 
@@ -384,9 +332,8 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 
   it('forbidCommand matches returns "-" when a shell command matches the pattern', () => {
-    // P0 command-family routing (PRD §4.4): a content pre-match on the command surfaces a
-    // non-path subject '-'. Mutation caught: matches returning null despite a matching
-    // command (the command discipline would never route — the routing-gap this ticket fixes).
+    // A command match has no path, so it surfaces the non-path subject '-' rather than
+    // failing to route at all.
     const reg = compileOne(cmdEntry);
     const input = inputWithToolCall('Bash', { command: 'LEFTHOOK=0 git push' });
 
@@ -394,8 +341,6 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 
   it('forbidCommand matches returns null when no shell command matches', () => {
-    // P0 across-boundary: an unrelated command must not route. Mutation caught: the pattern
-    // test dropped so every Bash call routes.
     const reg = compileOne(cmdEntry);
     const input = inputWithToolCall('Bash', { command: 'git status' });
 
@@ -403,16 +348,11 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 });
 
-// ===========================================================================
-// AC §5.5 — data-only extensibility (adding a discipline is data, not code)
-// ===========================================================================
-
 describe('discipline extensibility — a fresh entry works with no other setup (AC §5.5)', () => {
   it('compiles and judges an arbitrary third discipline through the same code path', () => {
-    // P0 (roadmap AC "규율 추가는 데이터만"): an entirely new entry the code never saw must
-    // compile into a working registration AND its judge/matches must behave — proving zero
-    // core edits are needed to add a discipline. Mutation caught: any per-id special-casing
-    // in the compiler or judge that would make an unregistered id inert.
+    // Adding a discipline is data, not code: an entry the source never saw must compile
+    // into a working registration and judge correctly, so any per-id special-casing in the
+    // compiler or judge would leave an unregistered id inert.
     const fresh: DisciplineEntry = { id: 'no-todo', in: ['app/**'], forbid: '\\bTODO\\b' };
 
     const [reg] = compileDisciplineRegistrations({

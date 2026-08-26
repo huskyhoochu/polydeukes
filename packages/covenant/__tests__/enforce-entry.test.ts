@@ -3,25 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type DisciplineEntry, parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// CONFIG-11 §4.2 / §4.3 — the enforce level gains a second owner. CONFIG-06 gave the
-// OBSERVER one level for the whole dispatch (`dispatchCovenants({ enforce })`); this ticket
-// gives the AUTHOR one per entry, carried onto the entry's body-bearing registrations as
-// `CovenantRegistration.enforce`. The dispatcher composes the two per registration and the
-// lenient side wins: effective = (dispatch advise || registration advise) ? advise : block.
-// Neither the registration field nor the compiler copy nor the composition exists yet, so
-// the advise-bearing cases here are RED by construction; the block-end cases pin what must
-// not move. `runCovenant`/`translateExitCode` are untouched — the level value already
-// reaches them, only its origin widens.
+// The enforce level has two owners: the OBSERVER sets one for the whole dispatch, and the
+// AUTHOR sets one per entry, carried onto the entry's body-bearing registration. The
+// dispatcher composes the two per registration and the lenient side wins:
+// effective = (dispatch advise || registration advise) ? advise : block.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
-
-// ---------------------------------------------------------------------------
-// Fixtures. `enforce` is on neither shipped type yet, so both are widened here — the
-// file compiles today and every assertion stays a runtime failure. Protected entries,
-// tool names, and command-arg names are injected values, never source literals.
-// ---------------------------------------------------------------------------
 
 type EnforceLevel = 'block' | 'advise';
 type RegistrationWithEnforce = CovenantRegistration & { enforce?: EnforceLevel };
@@ -76,18 +65,13 @@ function dispatch(registrations: RegistrationWithEnforce[], dispatchEnforce?: En
   });
 }
 
-// ===========================================================================
-// §4.2 — the composition table, one row per case (body exit 1 = a real break)
-// ===========================================================================
-
-// Rows 1 and 3 of the table (no registration level) are the CONFIG-06 cells and stay
-// pinned by dispatch.test.ts and enforce-advise.test.ts; only the two cells this ticket's
-// composition adds a branch for are fixtured here.
+// The cells with no registration level stay pinned by dispatch.test.ts and
+// enforce-advise.test.ts; only the composition's own branches are fixtured here. A body
+// exiting 1 is a real break throughout.
 describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two axes, lenient wins', () => {
   it("dispatch block (omitted) × registration 'advise' → exit 0 · advised (row 2, THE ticket)", async () => {
-    // The session surface has no dispatch level, so this is the only way an author can
-    // lower one entry. Mutation caught: the registration field accepted but never read
-    // by the dispatcher (stays exit 2 · blocked), or read but mislabeled passed.
+    // The session surface has no dispatch level, so a per-entry level is the only way an
+    // author can lower one entry.
     const result = await dispatch([registration('soft', 1, { enforce: 'advise' })]);
 
     expect(result.exitCode).toBe(0);
@@ -96,9 +80,8 @@ describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two
   });
 
   it("an upheld body under registration 'advise' lands passed, not advised", async () => {
-    // advise relaxes a break; it does not rename a pass. Mutation caught: the advise
-    // registration recording every verdict as advised (a consumption-rate denominator
-    // that counts upholds as breaks).
+    // Advise relaxes a break; it does not rename a pass. Recording every verdict as advised
+    // would give the consumption rate a denominator that counts upholds as breaks.
     const result = await dispatch([registration('soft', 0, { enforce: 'advise' })]);
 
     expect(result.exitCode).toBe(0);
@@ -107,10 +90,9 @@ describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two
   });
 
   it("dispatch 'advise' × registration 'block' → exit 0 · advised (row 4, the observer's promise stands)", async () => {
-    // The lenient-wins rule's decisive cell: an explicit block entry may NOT raise a
-    // surface the observer lowered. A "registration overrides dispatch" implementation
-    // passes rows 1–3 and fails only here. Mutation caught: precedence instead of
-    // composition (registration value taken whenever present).
+    // The decisive cell of lenient-wins: an explicit block entry may NOT raise a surface
+    // the observer lowered. A "registration overrides dispatch" implementation passes every
+    // other cell and fails only here.
     const result = await dispatch([registration('hard', 1, { enforce: 'block' })], 'advise');
 
     expect(result.exitCode).toBe(0);
@@ -118,16 +100,10 @@ describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two
   });
 });
 
-// ===========================================================================
-// §4.3 — the axis is per registration, not per dispatch
-// ===========================================================================
-
 describe('CONFIG-11 §4.3 dispatchCovenants — the registration level stays on its own registration', () => {
   it('an advise registration lands advised while its enforce-less neighbour in the same dispatch blocks', async () => {
-    // AC-2's proof that the axis is per registration: one dispatch, two breaks, two
-    // different outcomes. Mutation caught: the first registration's level leaking into
-    // the dispatch (neighbour also advised → overall exit 0, a fail-open on every other
-    // entry), or the level applied to none (the advise entry blocks too).
+    // One dispatch, two breaks, two different outcomes. A level that leaks from the first
+    // registration into the dispatch is a fail-open on every other entry.
     const result = await dispatch([
       registration('soft', 1, { enforce: 'advise' }),
       registration('plain', 1),
@@ -145,14 +121,9 @@ describe('CONFIG-11 §4.3 dispatchCovenants — the registration level stays on 
   });
 });
 
-// ===========================================================================
-// AC-3 — advise relaxes the verdict only; the unjudgeable stays blocked (CONFIG-06b)
-// ===========================================================================
-
 describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudgeable body', () => {
   it('a judge that crashes stays exit 2 · blocked under registration advise', async () => {
-    // Invariant 1: a crash is not a verdict. Mutation caught: the registration level
-    // threaded into a branch that treats "any non-zero" as relaxable.
+    // A crash is not a verdict, so no entry level relaxes it.
     const result = await dispatch([
       {
         label: 'soft',
@@ -170,9 +141,8 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
   });
 
   it("a body's own fail-closed exit 2 stays exit 2 · blocked under registration advise", async () => {
-    // Invariant 1, the other unjudgeable shape: a body refusing to judge says so with 2,
-    // and the entry's level has no say. Mutation caught: the composition relaxing exit 2
-    // the way it relaxes exit 1.
+    // The other unjudgeable shape: a body refusing to judge says so with 2, and the entry's
+    // level has no say.
     const result = await dispatch([registration('soft', 2, { enforce: 'advise' })]);
 
     expect(result.exitCode).toBe(2);
@@ -180,11 +150,10 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
   });
 
   it('a witness that would open the valve is never consulted: the break lands advised, not witnessed', async () => {
-    // §4.3 valve idleness: the valve stands AFTER a blocked translation (COVENANT-17), and
-    // an advise break never translates to blocked, so a witness answering true has
-    // nothing to open. Mutation caught: the witness consulted before the level is
-    // applied (row reads witnessed — a human-attributed event nobody performed), or the
-    // level applied after the witness rewrote the event.
+    // The valve stands AFTER a blocked translation, and an advise break never translates to
+    // blocked, so a witness answering true has nothing to open. Consulted before the level
+    // is applied, the row would read `witnessed` — a human-attributed event nobody
+    // performed.
     const result = await dispatch([
       {
         label: 'soft',
@@ -201,17 +170,12 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
   });
 });
 
-// ===========================================================================
-// §4.3 — compileDisciplineRegistrations copies the entry level onto body-bearing arms
-// ===========================================================================
-
 describe('POSTURE-01 review [1] — a routing that could not answer stays outside the level axis', () => {
   it('a body-bearing registration at advise whose predicate throws still exits 2 · blocked', async () => {
     // matchRegistrations routes a throwing predicate fail-closed with subject '-', and a
-    // body-bearing arm carries that verdict out by spawning and breaking. Since every
-    // compiled entry now carries a level, the dispatcher must not let the entry's advise
-    // relax that break — the unjudgeable call would proceed with an `advised` row, the
-    // fail-open class. Mutation caught: `effectiveEnforce` ignoring `routingFailed`.
+    // body-bearing arm carries that verdict out by judging and breaking. Every compiled
+    // entry carries a level, so the dispatcher must not let the entry's advise relax that
+    // break: the unjudgeable call would proceed with an `advised` row.
     const throwing: RegistrationWithEnforce = {
       ...registration('uncertain', 1, { enforce: 'advise' }),
       matches: () => {
@@ -241,7 +205,7 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
     };
   }
 
-  /** A delta entry (the family that compiles a body arm AND per-entry skip arms). */
+  /** A delta entry — the family that compiles a body arm AND per-entry skip arms. */
   function deltaEntry(enforce?: EnforceLevel): EntryWithEnforce {
     return {
       id: 'no-banned',
@@ -262,9 +226,8 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   }
 
   it("copies enforce: 'advise' onto the entry's body-bearing registration", () => {
-    // The wire from config to dispatch. Mutation caught: the compiler building the
-    // registration without the field — the schema accepts advise and nothing downstream
-    // ever sees it, so the entry keeps blocking with a config that says otherwise.
+    // The wire from config to dispatch: without the copy the schema accepts advise and
+    // nothing downstream ever sees it, so the entry keeps blocking against its own config.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry('advise')]));
     const body = levelsOf(regs).find((r) => r.label === 'no-banned' && !r.skip);
 
@@ -272,9 +235,8 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   });
 
   it("copies enforce: 'block' verbatim — explicit block is distinct from absence on the registration", () => {
-    // The ladder's fixed rung must survive compilation as itself, not be normalised to
-    // absence: POSTURE-01 flips the default and only the explicit value keeps the entry
-    // at block. Mutation caught: the copy gated on `=== 'advise'`.
+    // Explicit block must survive compilation as itself rather than being normalised to
+    // absence: absence means advise, so only the explicit value keeps the entry at block.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry('block')]));
     const body = levelsOf(regs).find((r) => r.label === 'no-banned' && !r.skip);
 
@@ -282,12 +244,10 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   });
 
   it("fills enforce: 'advise' on the body-bearing registration when the entry omits it (POSTURE-01 §4.1)", () => {
-    // The default rung is advise, decided here and nowhere downstream: the dispatcher
-    // reads `registration.enforce === 'advise'` and falls back to the surface level
-    // otherwise, so an absent field on the registration means block on the session
-    // surface. Mutation caught: the compiler copying the entry's value as-is (absence
-    // stays absence → every enforce-less discipline keeps blocking), or defaulting to
-    // 'block'.
+    // The default is advise, decided here and nowhere downstream: the dispatcher reads
+    // `registration.enforce === 'advise'` and falls back to the surface level otherwise, so
+    // an absent field on the registration means block on the session surface. Copying the
+    // entry's value as-is leaves every enforce-less discipline blocking.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry()]));
     const body = levelsOf(regs).find((r) => r.label === 'no-banned' && !r.skip);
 
@@ -295,9 +255,8 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   });
 
   it('fills nothing on the skip arms of an entry that omits the level', () => {
-    // POSTURE-01 AC-1: the default lands on the body-bearing arm only — a skip arm
-    // records the absence of a judgment and sits outside the axis. Mutation caught: the
-    // `?? 'advise'` fill applied at the registration factory shared by every arm.
+    // The default lands on the body-bearing arm only: a skip arm records the absence of a
+    // judgment and sits outside the axis.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry()]));
     const skipArms = levelsOf(regs).filter((r) => r.skip);
 
@@ -308,11 +267,9 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   });
 
   it('fills nothing on the early-return skip arms — a pattern fault and a precedent entry with no transcript', () => {
-    // POSTURE-01 §4.3 remnant 5: these two arms return before the body composes
-    // (`patternFault` and the unjudgeable precedent outcome), on code paths distinct from
-    // the appended shell skip arms above. Mutation caught: the fill hoisted onto the
-    // shared `routing` object or the top of the map — a level on an unjudgeable arm would
-    // let the dispatcher relax a routing that could not answer, the fail-open direction.
+    // These two arms return before the body composes, on code paths distinct from the
+    // appended shell skip arms above. A level on an unjudgeable arm would let the dispatcher
+    // relax a routing that could not answer.
     const faulty: EntryWithEnforce = { id: 'bad-pattern', in: ['src/**'], forbid: '(' };
     const precedent: EntryWithEnforce = {
       id: 'needs-read',
@@ -332,10 +289,9 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
   });
 
   it('never copies the level onto the skip arms or the common shell-unjudgeable registration', () => {
-    // Skip arms record the absence of a judgment and the common backstop belongs to no
-    // entry; a level on either is outside the axis. Mutation caught: the copy applied
-    // to every registration the entry produces rather than the body-bearing one — which
-    // would let one entry's advise annotate a row shared by all entries.
+    // Skip arms record the absence of a judgment, and the common backstop belongs to no
+    // entry. Copying the level onto every registration an entry produces would let one
+    // entry's advise annotate a row shared by all of them.
     const regs = compileDisciplineRegistrations(specWith([deltaEntry('advise')]));
     const outsideAxis = levelsOf(regs).filter((r) => r.skip || r.label === COMMON_SKIP_LABEL);
 
