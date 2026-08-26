@@ -2,30 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
 import { schema, validate, validLanguages } from './helpers.ts';
 
-// ---------------------------------------------------------------------------
-// Equivalence contract (PRD §4.4 / §5.3): the hand-written JSON Schema and the
-// runtime `defineConfig()` validator must agree on every JSON-representable
-// input. For each VALID fixture, defineConfig must accept AND ajv must validate;
-// for each INVALID fixture, defineConfig must throw AND ajv must reject. If a
-// single fixture is rejected by only one side, the schema and validator have
-// drifted — and the test fails. The equivalence IS the contract.
+// The hand-written JSON Schema and the runtime `defineConfig()` validator must agree on
+// every JSON-representable input: a valid fixture must be accepted by both, an invalid one
+// rejected by both. A one-sided rejection means the two have drifted. Fixtures are limited to
+// JSON-representable inputs; non-JSON rejections (a function testCmd) are structurally
+// unrepresentable in a schema and live in config.test.ts instead.
 //
-// Scope of the fixtures here is exactly the JSON-representable inputs. Non-JSON
-// rejections (a function testCmd) are structurally unrepresentable in a schema,
-// so they are covered by config.test.ts alone, not this file.
-//
-// COVENANT-10 §4.1 / AC §5.1 (last item): `disciplines` fixtures extend the same
-// equivalence contract, asserted through the shared helpers.
-//
-// Dummy commands are FAKE (`fake-runner`, never vitest/pytest/go test) so the
-// core grep gate stays satisfied even inside fixtures. `guard|harness|kb` appears
-// only inside a discipline forbid pattern — that is discipline DATA (AC §5.7 exempts
-// pattern literals from the vocabulary gate).
-// ---------------------------------------------------------------------------
+// Dummy commands are deliberately fake (`fake-runner`, never a real runner) because the
+// core never runs the command a `testCmd` carries. The banned-vocabulary literal appears
+// only inside a discipline forbid pattern, where it is discipline data.
 
-// Shared fixtures — JSON-representable only.
 const VALID_CONFIGS: readonly unknown[] = [
-  // Minimal single-language config with a {scope} template.
   {
     languages: {
       typescript: {
@@ -34,7 +21,6 @@ const VALID_CONFIGS: readonly unknown[] = [
       },
     },
   },
-  // productionGlob as an array; a scope-free template (no {scope}).
   {
     languages: {
       python: {
@@ -43,8 +29,8 @@ const VALID_CONFIGS: readonly unknown[] = [
       },
     },
   },
-  // Optional fields present and well-typed (adapters fixtures live in the dedicated
-  // config-schema-adapters-contract file since CONFIG-07).
+  // Optional fields present and well-typed. Adapter fixtures live in
+  // config-schema-adapters-contract.test.ts.
   {
     languages: {
       typescript: {
@@ -55,15 +41,15 @@ const VALID_CONFIGS: readonly unknown[] = [
     protectedPaths: ['src/covenant/**'],
     telemetry: { logPath: 'custom/telemetry.log' },
   },
-  // telemetry present but empty (logPath omitted — default is filled by the validator,
-  // and the schema treats logPath as optional).
+  // telemetry present but empty: the validator fills logPath's default, and the schema
+  // treats it as optional — both sides must still accept the bare object.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     telemetry: {},
   },
-  // COVENANT-10: one entry per predicate family, string-shorthand and object-form forbid.
+  // One entry per predicate family, covering both the string-shorthand and object-form forbid.
   {
     ...validLanguages,
     disciplines: [
@@ -79,16 +65,13 @@ const VALID_CONFIGS: readonly unknown[] = [
       { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
     ],
   },
-  // CONFIG-03 §5.2: a top-level `$schema` string (IDE reference) must be accepted by
-  // BOTH the validator and the JSON Schema. The equivalence is only enforced where a
-  // fixture exists (dev-log lesson) — so the opening carries its own fixture.
+  // A top-level `$schema` string (the IDE reference) must be accepted by both sides. The
+  // equivalence is only enforced where a fixture exists, so every allowed key needs one.
   {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     ...validLanguages,
   },
-  // CONFIG-05 — minimal valid witness: token non-empty, ttlMinutes finite and > 0.
-  // The optional top-level `witness` key with BOTH required fields must be accepted by
-  // both the validator and the JSON Schema.
+  // Minimal valid witness: token non-empty, ttlMinutes finite and > 0. Both fields required.
   {
     ...validLanguages,
     witness: { token: 'fake-witness-token', ttlMinutes: 10 },
@@ -96,47 +79,40 @@ const VALID_CONFIGS: readonly unknown[] = [
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
-  // CONFIG-03 §5.2: a non-string `$schema` must be rejected by both sides — the key is
-  // allowed but still type-checked.
+  // `$schema` is an allowed key but still type-checked.
   {
     ...validLanguages,
     $schema: 42,
   },
-  // Missing languages.
   {},
-  // Empty languages object.
   { languages: {} },
-  // Empty-string testCmd template.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: '' },
     },
   },
-  // Non-string testCmd (number) — a JSON-representable wrong type.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 42 },
     },
   },
-  // Missing productionGlob.
   {
     languages: {
       typescript: { testCmd: 'fake-runner {scope}' },
     },
   },
-  // Empty-string productionGlob.
   {
     languages: {
       typescript: { productionGlob: '', testCmd: 'fake-runner {scope}' },
     },
   },
-  // Empty-array productionGlob.
   {
     languages: {
       typescript: { productionGlob: [], testCmd: 'fake-runner {scope}' },
     },
   },
-  // productionGlob array with an empty-string element.
+  // An empty-string element inside an otherwise valid array — the per-element check, not
+  // the container check, is what rejects this.
   {
     languages: {
       typescript: {
@@ -145,14 +121,14 @@ const INVALID_CONFIGS: readonly unknown[] = [
       },
     },
   },
-  // Unknown top-level key (protectedPath typo).
+  // The next three are near-miss typos of real keys (protectedPath, testCommand, logPathh):
+  // unknown keys must be rejected at every level rather than silently ignored.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     protectedPath: ['src/covenant/**'],
   },
-  // Unknown LanguageProfile key (testCommand typo).
   {
     languages: {
       typescript: {
@@ -162,51 +138,41 @@ const INVALID_CONFIGS: readonly unknown[] = [
       },
     },
   },
-  // Unknown telemetry key (logPathh typo).
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     telemetry: { logPathh: 'custom/telemetry.log' },
   },
-  // Non-string telemetry.logPath.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     telemetry: { logPath: 42 },
   },
-  // protectedPaths with a non-string element.
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
     },
     protectedPaths: ['src/covenant/**', 42],
   },
-  // Top-level non-object (array).
+  // An array is typeof 'object', so the top-level check must reject it explicitly.
   ['languages'],
-  // COVENANT-10 — zero predicate keys.
   { ...validLanguages, disciplines: [{ id: 'no-predicate', why: 'oops' }] },
-  // COVENANT-10 — two predicate keys.
   { ...validLanguages, disciplines: [{ id: 'two', forbid: 'x', immutable: 'y/**' }] },
-  // COVENANT-10 — deferred forbid direction (removed).
+  // `removed` and `present` are not yet accepted forbid directions; only `added` is.
   { ...validLanguages, disciplines: [{ id: 'removed-dir', forbid: { removed: 'x' } }] },
-  // COVENANT-10 — deferred forbid direction (present).
   { ...validLanguages, disciplines: [{ id: 'present-dir', forbid: { present: 'x' } }] },
-  // COVENANT-10 — forbid object with non-string added.
   { ...validLanguages, disciplines: [{ id: 'added-number', forbid: { added: 1 } }] },
-  // COVENANT-10 — empty forbid object.
   { ...validLanguages, disciplines: [{ id: 'empty-forbid', forbid: {} }] },
-  // COVENANT-10 — in on a non-forbid (immutable) entry.
   { ...validLanguages, disciplines: [{ id: 'immutable-with-in', immutable: 'y/**', in: 'z/**' }] },
-  // COVENANT-10 — except on a forbidCommand entry.
   {
     ...validLanguages,
     disciplines: [{ id: 'command-with-except', forbidCommand: 'x', except: 'z/**' }],
   },
-  // COVENANT-10 — duplicate id across entries. The two entries are FULLY identical
-  // (copy-paste duplication): JSON Schema cannot express by-key uniqueness, so the
-  // schema side rejects via uniqueItems while defineConfig rejects by id.
+  // The two entries are byte-identical on purpose: JSON Schema cannot express by-key
+  // uniqueness, so the schema side can only reject this through `uniqueItems` while
+  // defineConfig rejects by duplicate id. Differing bodies would leave the schema silent.
   {
     ...validLanguages,
     disciplines: [
@@ -214,53 +180,36 @@ const INVALID_CONFIGS: readonly unknown[] = [
       { id: 'dup', forbid: 'a' },
     ],
   },
-  // COVENANT-10 — non-string why (schema types it; the validator must agree — REVIEW
-  // caught this as a latent one-sided rejection).
   { ...validLanguages, disciplines: [{ id: 'why-typed', forbid: 'a', why: 123 }] },
-  // COVENANT-10 — empty-string id.
   { ...validLanguages, disciplines: [{ id: '', forbid: 'a' }] },
-  // CLI-01 — id colliding with a meta-covenant label (reserved: the telemetry label
-  // space and pdks explain's kind column key on it).
+  // Meta-covenant labels are reserved ids: the telemetry label space and `pdks explain`'s
+  // kind column key on them, so a user entry may not shadow one.
   { ...validLanguages, disciplines: [{ id: 'self-mod', forbid: 'a' }] },
   { ...validLanguages, disciplines: [{ id: 'transcript-mod', forbid: 'a' }] },
-  // COVENANT-10 — non-string id.
   { ...validLanguages, disciplines: [{ id: 7, forbid: 'a' }] },
-  // COVENANT-10 — non-compilable forbid regex (format: regex catches this).
+  // Non-compilable regexes; the schema side catches these through `format: regex`.
   { ...validLanguages, disciplines: [{ id: 'bad-forbid-re', forbid: '(' }] },
-  // COVENANT-10 — non-compilable forbidCommand regex.
   { ...validLanguages, disciplines: [{ id: 'bad-cmd-re', forbidCommand: '(' }] },
-  // COVENANT-10 — disciplines not an array.
   { ...validLanguages, disciplines: { id: 'x', forbid: 'a' } },
-  // COVENANT-10 — a disciplines entry that is not an object.
   { ...validLanguages, disciplines: ['not-an-object'] },
-  // CONFIG-05 — witness is a string (non-object). The `witness` value must be an object;
-  // a scalar has neither `token` nor `ttlMinutes`.
+  // A scalar and an array are both plausible witness mistakes, and an array is typeof
+  // 'object' — the container check must reject each without coercing.
   { ...validLanguages, witness: 'covenant-witness' },
-  // CONFIG-05 — witness is an array. An array is typeof 'object' but is not a witness record.
   { ...validLanguages, witness: ['covenant-witness'] },
-  // CONFIG-05 — unknown key inside witness (`ttl` typo alongside the two required fields).
-  // The witness-level unknown-key gate mirrors the telemetry precedent.
   { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: 10, ttl: 5 } },
-  // CONFIG-05 — token missing (only ttlMinutes present). Both fields are required.
   { ...validLanguages, witness: { ttlMinutes: 10 } },
-  // CONFIG-05 — token non-string (number).
   { ...validLanguages, witness: { token: 123, ttlMinutes: 10 } },
-  // CONFIG-05 — token empty string. Boundary: trim-length 0 ⟺ schema minLength 1.
+  // Token boundaries: empty pairs the validator's trim-length 0 with the schema's
+  // minLength 1; whitespace-only pairs `token.trim().length === 0` with `pattern: \S`.
   { ...validLanguages, witness: { token: '', ttlMinutes: 10 } },
-  // CONFIG-05 — token whitespace-only. Boundary: validator `token.trim().length === 0`
-  // ⟺ schema `pattern: \S` (requires at least one non-whitespace character).
   { ...validLanguages, witness: { token: '   ', ttlMinutes: 10 } },
-  // CONFIG-05 — ttlMinutes missing (only token present). Both fields are required.
   { ...validLanguages, witness: { token: 'fake-witness-token' } },
-  // CONFIG-05 — ttlMinutes non-number (string).
   { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: '10' } },
-  // CONFIG-05 — ttlMinutes 0. Boundary AT the exclusive lower bound: 0 is excluded
-  // (validator `ttlMinutes > 0` ⟺ schema `exclusiveMinimum: 0`).
+  // At and across the exclusive lower bound: validator `ttlMinutes > 0` pairs with the
+  // schema's `exclusiveMinimum: 0`, so 0 itself must be excluded.
   { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: 0 } },
-  // CONFIG-05 — ttlMinutes negative. Boundary ACROSS the exclusive lower bound.
   { ...validLanguages, witness: { token: 'fake-witness-token', ttlMinutes: -5 } },
-  // CONFIG-05 — per-discipline witness key is STILL rejected (COVENANT-10 §2 reservation).
-  // Enforced by the discipline-entry unknown-key gate; a `witness` key on an entry must throw.
+  // `witness` is a top-level key only; on a discipline entry it is an unknown key and throws.
   {
     ...validLanguages,
     disciplines: [{ id: 'per-discipline-witness', forbid: 'x', witness: { ttlMinutes: 5 } }],
@@ -279,8 +228,8 @@ function defineConfigAccepts(config: unknown): boolean {
 
 describe('§5.3 JSON Schema artifact', () => {
   it('declares the draft 2020-12 $schema', () => {
-    // AC §5.3: the artifact must be a draft 2020-12 schema. Mutation caught: a schema
-    // authored against an older draft that ajv/dist/2020 would silently misinterpret.
+    // A schema authored against an older draft would be silently misinterpreted by
+    // ajv/dist/2020 rather than failing outright.
     expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
   });
 });
@@ -289,8 +238,6 @@ describe('§5.3 schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    // Both sides must accept. If either side rejects a genuinely valid config, the
-    // schema and validator have drifted.
     expect(defineConfigAccepts(config)).toBe(true);
     expect(validate(config)).toBe(true);
   });
@@ -300,8 +247,6 @@ describe('§5.3 schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    // Both sides must reject. If only one side rejects, the equivalence — the whole
-    // point of publishing a schema alongside the validator — is broken.
     expect(defineConfigAccepts(config)).toBe(false);
     expect(validate(config)).toBe(false);
   });

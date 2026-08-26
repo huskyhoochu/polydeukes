@@ -1,11 +1,9 @@
 /**
- * ROI telemetry — the single shared collector and its `gain` aggregation (CORE-02).
+ * ROI telemetry — the single shared collector and its `gain` aggregation.
  *
- * One record is one line of 4-field TSV (PRD §4.1); one append is one write call
- * (PRD §4.2). I/O is confined to exactly two functions — {@link appendRecord} (the
- * only write) and {@link readRecords} (the only read). Formatting, parsing, and
- * aggregation are pure. This is the sole collector: later work calls this API rather
- * than building its own logger.
+ * One record is one line of 4-field TSV; one append is one write call. I/O is confined to
+ * exactly two functions — {@link appendRecord} (the only write) and {@link readRecords}
+ * (the only read). Formatting, parsing, and aggregation are pure.
  */
 
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
@@ -32,7 +30,7 @@ export type TelemetryEvent =
   | 'unattributed';
 
 /**
- * `TelemetryRecord` — one measured covenant outcome (PRD §4.1).
+ * `TelemetryRecord` — one measured covenant outcome.
  *
  * `subject` is the judged target (a file path, etc.); `-` is the documented sentinel
  * for "no subject", carried round-trip like any other value.
@@ -64,16 +62,16 @@ const VALID_EVENTS: readonly TelemetryEvent[] = [
  * The event name `witnessed` was written under before the rename — a read-only migration
  * seam, never a value this module emits.
  *
- * It exists because the collected log predates the rename: those rows are the sample the
- * milestone journal round argues from, and dropping them as corrupt would delete the
- * measurement instead of migrating it. Compatibility runs one way only — {@link
- * formatRecordLine} has no path back to this name — and the match is the exact literal, so
- * a genuinely corrupt field is still rejected rather than coerced into a fabricated record.
+ * A log written before the rename still carries the old name, and rejecting those rows as
+ * corrupt would discard the measurement rather than migrate it. Compatibility runs one way —
+ * {@link formatRecordLine} has no path back to this name — and the match is the exact
+ * literal, so a genuinely corrupt field is still rejected rather than coerced into a
+ * fabricated record.
  */
 const LEGACY_WITNESSED_EVENT = 'bypassed';
 
 /**
- * Replace tab/newline/carriage-return with single spaces (PRD §4.1 line integrity).
+ * Replace tab/newline/carriage-return with single spaces.
  *
  * Without this, a tab or newline inside a field would fabricate extra TSV fields or
  * extra lines — a record is always exactly one line.
@@ -122,13 +120,13 @@ export function parseRecordLine(line: string): TelemetryRecord | null {
 }
 
 /**
- * Append one record to the log at `path` — the only write I/O (PRD §4.2).
+ * Append one record to the log at `path` — the only write I/O.
  *
  * Exactly one {@link appendFileSync} call per record, writing {@link formatRecordLine}
  * verbatim. Relying on POSIX `O_APPEND` single-write semantics, concurrent appends do
  * not interleave lines.
  *
- * fail-open (PRD §4.3): any fs failure — bad path, permissions, disk — returns
+ * fail-open: any fs failure — bad path, permissions, disk — returns
  * `{ ok: false }` and never throws. This is deliberately the opposite direction of the
  * covenant path's fail-closed: the worst outcome of telemetry is a missing datum, never
  * a blocked workflow.
@@ -143,12 +141,12 @@ export function appendRecord(path: string, record: TelemetryRecord): { ok: boole
 }
 
 /**
- * Append one telemetry record fail-open, timestamping it here (CORE-05).
+ * Append one telemetry record fail-open, timestamping it here.
  *
- * This layer lives above the deliberately mkdir-free {@link appendRecord} (COVENANT-01b:
- * an absent directory is a fail-open `{ ok: false }` for `appendRecord` itself), so this
- * wrapper carries the parent-directory guarantee. The mkdir and the append share one try
- * block, and a failure of either never alters the caller's verdict and never propagates.
+ * {@link appendRecord} is deliberately mkdir-free — for it an absent directory is just a
+ * fail-open `{ ok: false }` — so this wrapper carries the parent-directory guarantee. The
+ * mkdir and the append share one try block, and a failure of either never alters the
+ * caller's verdict and never propagates.
  */
 export function appendRecordFailOpen(
   telemetryPath: string,
@@ -163,7 +161,7 @@ export function appendRecordFailOpen(
 }
 
 /**
- * Read every record from the log at `path` — the only read I/O (PRD §4.4).
+ * Read every record from the log at `path` — the only read I/O.
  *
  * fail-open: an absent file or any read error returns `{ records: [], skipped: 0 }`
  * (an absent log means "nothing collected yet"), never throwing. Corrupt lines
@@ -196,7 +194,7 @@ export function readRecords(path: string): { records: TelemetryRecord[]; skipped
 }
 
 /**
- * Aggregate records into per-label event counts (PRD §4.4, pure).
+ * Aggregate records into per-label event counts (pure).
  *
  * Each label gets its own counter across all six events, so a corrupt or missing
  * event never bleeds counts between labels.
@@ -223,7 +221,7 @@ export function aggregateGain(records: TelemetryRecord[]): GainSummary {
  * Render a {@link GainSummary} into human-readable lines (pure).
  *
  * Each label is mentioned with its passed/blocked/witnessed/advised/skipped/unattributed
- * counts; each is a distinct column, never folded into another (PRD §4.4). A non-zero
+ * counts; each is a distinct column, never folded into another. A non-zero
  * corrupt-line count is reported rather than hidden — silent skipping would mask log
  * corruption.
  *
@@ -249,7 +247,7 @@ function renderGain(summary: GainSummary, skipped: number): string {
 }
 
 /**
- * `gain` entry point — read the log at `path`, aggregate, and render (PRD §4.4).
+ * `gain` entry point — read the log at `path`, aggregate, and render.
  *
  * Composes {@link readRecords} + {@link aggregateGain} + a pure renderer. An absent or
  * empty log yields `no telemetry collected`; a corrupt line is skipped upstream, reported

@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
-// COVENANT-10 §4.1 / AC §5.1 — `defineConfig(unknown)` accepts an optional top-level
-// `disciplines: DisciplineEntry[]`. Exactly one predicate key per entry (forbid | immutable
-// | forbidCommand); `in`/`except` only on forbid entries; ids unique and non-empty; regex
-// strings must be compilable; unknown keys rejected (deferred-axis enforcement). Every
-// failure throws ConfigValidationError with a field path naming the offending entry/key.
-// The validated data passes through to ResolvedConfig.disciplines verbatim. These symbols
-// are the GREEN contract; disciplines support does not exist yet, so this file is RED.
+// `defineConfig(unknown)` accepts an optional top-level `disciplines: DisciplineEntry[]`.
+// Exactly one predicate key per entry (forbid | immutable | forbidCommand); `in`/`except`
+// only on forbid entries; ids unique and non-empty; regex strings must be compilable;
+// unknown keys rejected. Every failure throws ConfigValidationError with a field path
+// naming the offending entry or key, and validated data passes through to
+// ResolvedConfig.disciplines verbatim.
 import { ConfigValidationError, defineConfig } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures. A valid base config (v2 config-as-data) that disciplines attach to.
-// `guard|harness|kb` appears ONLY inside a discipline's forbid pattern string — that is
-// the discipline DATA being tested (the vocabulary rule exempts pattern literals, AC §5.7).
-// testCmd bodies are FAKE (`fake-runner`) so the core grep gate stays satisfied.
-// ---------------------------------------------------------------------------
+// The banned-vocabulary literal appears only inside a discipline's forbid pattern string,
+// where it is the discipline data under test. testCmd bodies are deliberately fake
+// (`fake-runner`) because the core never runs the command it carries.
 
 const baseConfig = {
   languages: {
@@ -40,16 +36,12 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-// ===========================================================================
-// AC §5.1 — valid disciplines pass and pass through verbatim
-// ===========================================================================
-
 describe('defineConfig disciplines — valid entries (AC §5.1)', () => {
   it('accepts one entry per predicate family (plus a string-shorthand forbid) and carries them verbatim', () => {
-    // P0 pass-through invariant: a well-formed disciplines array must validate and reach
-    // ResolvedConfig.disciplines byte-for-byte (compilation is covenant's job, not core's).
-    // Mutation caught: the validator dropping/rewriting a field (e.g. normalizing the
-    // string-shorthand forbid into an object, or dropping `why`/`in`/`except`).
+    // A well-formed array must reach ResolvedConfig.disciplines byte-for-byte — compiling
+    // patterns is the covenant package's job, not core's. The assertion catches the
+    // validator normalizing the string-shorthand forbid into an object, or dropping
+    // `why`/`in`/`except`.
     const disciplines = [
       {
         id: 'vocabulary',
@@ -69,25 +61,18 @@ describe('defineConfig disciplines — valid entries (AC §5.1)', () => {
   });
 
   it('does not fabricate a disciplines key when the config omits disciplines', () => {
-    // P0 no-fabrication (CORE-04 precedent): a config without disciplines must resolve with
-    // no `disciplines` key, distinct from an explicit empty array. Mutation caught: a
-    // default-fill assigning `disciplines: []` when the key is absent.
+    // A config without disciplines must resolve with no `disciplines` key at all, which is
+    // distinct from an explicit empty array — no default-fill may blur the two.
     const resolved = defineConfig(baseConfig);
 
     expect('disciplines' in resolved).toBe(false);
   });
 });
 
-// ===========================================================================
-// AC §5.1 — predicate-key cardinality (exactly one)
-// ===========================================================================
-
 describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => {
   it('rejects an entry with zero predicate keys, naming the entry index', () => {
-    // P0 fail-fast (roadmap AC verbatim): an entry with no forbid/immutable/forbidCommand
-    // is unjudgeable and must be refused at authoring time. Mutation caught: the
-    // exactly-one-predicate check dropped (a keyless entry silently accepted = a dead
-    // discipline that protects nothing).
+    // An entry with no forbid/immutable/forbidCommand is unjudgeable; accepting it yields a
+    // dead discipline that protects nothing while appearing registered.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'no-predicate', why: 'oops' }]),
     );
@@ -96,8 +81,8 @@ describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => 
   });
 
   it('rejects an entry with two predicate keys (forbid + immutable), naming the entry', () => {
-    // P0 fail-fast (roadmap AC verbatim): two predicates make the family ambiguous.
-    // Mutation caught: the check weakened to "at least one" instead of "exactly one".
+    // Two predicates make the entry's family ambiguous, so the count is exactly one rather
+    // than at least one.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'two-predicates', forbid: 'x', immutable: 'y/**' }]),
     );
@@ -106,7 +91,7 @@ describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => 
   });
 
   it('rejects an entry with forbid + forbidCommand together', () => {
-    // P0: the delta and command families are mutually exclusive per entry.
+    // The delta and command families are mutually exclusive per entry.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'delta-and-command', forbid: 'x', forbidCommand: 'y' }]),
     );
@@ -115,14 +100,10 @@ describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => 
   });
 });
 
-// ===========================================================================
-// AC §5.1 — forbid object variants deferred to COVENANT-12
-// ===========================================================================
-
 describe('defineConfig disciplines — forbid object variants (COVENANT-12 deferral, AC §5.1)', () => {
   it('rejects forbid: { removed: ... } (removed is deferred)', () => {
-    // P0 deferred-direction rejection: only `{ added }` is accepted before COVENANT-12.
-    // Mutation caught: the object-form validator accepting any direction key.
+    // `{ added }` is the only accepted direction key; the object-form validator must not
+    // admit an arbitrary one.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'removed-dir', forbid: { removed: 'x' } }]),
     );
@@ -131,7 +112,6 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
   });
 
   it('rejects forbid: { present: ... } (present is deferred)', () => {
-    // P0 deferred-direction rejection partner.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'present-dir', forbid: { present: 'x' } }]),
     );
@@ -140,7 +120,6 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
   });
 
   it('rejects forbid: { added: <number> } (added value must be a string pattern)', () => {
-    // P0 type boundary: the added pattern must be a compilable regex string, not a number.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'added-number', forbid: { added: 1 } }]),
     );
@@ -149,7 +128,6 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
   });
 
   it('rejects forbid: {} (empty object has no direction key)', () => {
-    // P0 boundary: an empty forbid object supplies no pattern at all.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'empty-forbid', forbid: {} }]),
     );
@@ -158,15 +136,10 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
   });
 });
 
-// ===========================================================================
-// AC §5.1 — unknown keys (deferred-axis enforcement — witness rejected)
-// ===========================================================================
-
 describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred-axis)', () => {
   it('rejects an entry carrying an unknown `witness` key, naming that key', () => {
-    // P0 deferred-axis enforcement: per-discipline witness is a future axis and must be
-    // refused now, not silently dropped — silent ignore would be a fail-open accident
-    // (CONFIG-04 §3 precedent). Mutation caught: the per-entry unknown-key gate removed.
+    // `witness` is a top-level key only. On an entry it must be refused rather than
+    // silently dropped: an author who believes the key took effect gets a fail-open gate.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'has-witness', forbid: 'x', witness: 'PDKS-1' }]),
     );
@@ -175,15 +148,10 @@ describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred
   });
 });
 
-// ===========================================================================
-// AC §5.1 — in/except only on forbid entries
-// ===========================================================================
-
 describe('defineConfig disciplines — scope keys are forbid-only (AC §5.1)', () => {
   it('rejects `in` on an immutable entry', () => {
-    // P0: immutable is its own scope (its glob), so `in` is a meaningless combination and
-    // must be refused (silent acceptance would imply a scope that is never applied).
-    // Mutation caught: the family-specific key restriction dropped.
+    // An immutable entry's glob is already its scope, so `in` would imply a narrowing that
+    // is never applied.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'immutable-with-in', immutable: 'y/**', in: 'z/**' }]),
     );
@@ -192,7 +160,7 @@ describe('defineConfig disciplines — scope keys are forbid-only (AC §5.1)', (
   });
 
   it('rejects `except` on a forbidCommand entry', () => {
-    // P0: forbidCommand judges on the command axis, not paths, so `except` is meaningless.
+    // forbidCommand judges the command line, not paths, so a path exception cannot apply.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'command-with-except', forbidCommand: 'x', except: 'z/**' }]),
     );
@@ -201,15 +169,10 @@ describe('defineConfig disciplines — scope keys are forbid-only (AC §5.1)', (
   });
 });
 
-// ===========================================================================
-// AC §5.1 — id validity and uniqueness
-// ===========================================================================
-
 describe('defineConfig disciplines — id constraints (AC §5.1)', () => {
   it('rejects duplicate ids across entries, naming the duplicated id', () => {
-    // P0 uniqueness: ids are the telemetry label and verdict-reason prefix; a collision
-    // would merge two disciplines' measurements. Mutation caught: the cross-entry
-    // uniqueness check dropped.
+    // An id is the telemetry label and the verdict-reason prefix, so a collision silently
+    // merges two disciplines' measurements.
     const error = expectConfigValidationError(
       withDisciplines([
         { id: 'dup', forbid: 'a' },
@@ -221,48 +184,38 @@ describe('defineConfig disciplines — id constraints (AC §5.1)', () => {
   });
 
   it('rejects an empty-string id', () => {
-    // P0 boundary: an empty id is a present-but-invalid handle. Mutation caught: the
-    // non-empty check on id dropped.
+    // An empty id is a present-but-unusable handle: it satisfies a presence check while
+    // naming nothing in telemetry.
     expectConfigValidationError(withDisciplines([{ id: '', forbid: 'a' }]));
   });
 
   it('rejects a non-string id', () => {
-    // P0 type boundary: a numeric id must be refused, not stringified.
+    // A numeric id must be refused, not stringified.
     expectConfigValidationError(withDisciplines([{ id: 7, forbid: 'a' }]));
   });
 });
 
-// ===========================================================================
-// AC §5.1 — regex compilability (core checks compilability only, never runs it)
-// ===========================================================================
-
+// Core checks that a pattern compiles; it never runs one.
 describe('defineConfig disciplines — regex compilability (AC §5.1)', () => {
   it('rejects a non-compilable forbid regex string (unbalanced paren)', () => {
-    // P0: a pattern that `new RegExp` cannot compile is a broken discipline — refuse it at
-    // authoring time rather than fail at judge time. Mutation caught: the compilability
-    // probe removed (an uncompilable pattern would slip to the covenant compiler).
+    // A pattern `new RegExp` cannot compile is a broken discipline: refuse it at authoring
+    // time rather than let it reach the covenant compiler and fail at judge time.
     expectConfigValidationError(withDisciplines([{ id: 'bad-forbid-re', forbid: '(' }]));
   });
 
   it('rejects a non-compilable forbidCommand regex string', () => {
-    // P0 partner on the command family.
     expectConfigValidationError(withDisciplines([{ id: 'bad-cmd-re', forbidCommand: '(' }]));
   });
 });
 
-// ===========================================================================
-// AC §5.1 — shape of disciplines and entries
-// ===========================================================================
-
 describe('defineConfig disciplines — container/entry shape (AC §5.1)', () => {
   it('rejects disciplines that is not an array', () => {
-    // P0: the top-level disciplines must be an array. Mutation caught: the Array.isArray
-    // check on disciplines dropped.
+    // A single entry object is the plausible mistake here, and it is typeof 'object' like
+    // the array — only an explicit Array.isArray check separates them.
     expectConfigValidationError(withDisciplines({ id: 'x', forbid: 'a' }));
   });
 
   it('rejects a disciplines entry that is not an object', () => {
-    // P0: each entry must be a record; a bare string is not a DisciplineEntry.
     expectConfigValidationError(withDisciplines(['not-an-object']));
   });
 });

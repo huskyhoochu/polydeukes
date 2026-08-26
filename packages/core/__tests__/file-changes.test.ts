@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
-// COVENANT-10 §4.2 / AC §5.6 — CovenantInput transports agent-neutral pre/post evidence.
-// CORE-06 §4.1 moved that evidence into its own tool-call element (`fileChange?`) and made
-// it a discriminated union, so the round-trip pinned here rides the nested position. The
-// removed top-level `fileChanges` field and its array validation are pinned by
-// file-change-union.test.ts (the field's absence is now part of the contract).
+// CovenantInput transports agent-neutral pre/post evidence, carried per tool call as the
+// discriminated `fileChange?` element. The absence of a top-level `fileChanges` field is part
+// of the contract and is pinned by file-change-union.test.ts.
 import { type CovenantInput, type FileChange, parseInput } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures — a minimal valid input plus evidence covering the create (no prior
-// file) and modify (existing baseline) kinds.
-// ---------------------------------------------------------------------------
+// Evidence covering both kinds: create (no prior file) and modify (existing baseline).
 
 const modifyChange: FileChange = {
   kind: 'modify',
@@ -31,9 +26,8 @@ const inputWithFileChanges: CovenantInput = {
 
 describe('parseInput — file-change evidence round-trip (PRD §4.2, AC §5.6)', () => {
   it('preserves each call element evidence through a JSON round-trip', () => {
-    // P1 round-trip atomicity: a payload carrying evidence must deserialize with every
-    // element intact and identical. Mutation caught: the field dropped during validation,
-    // or an element's kind/pre/post/path rewritten.
+    // A payload carrying evidence must deserialize with every element intact and identical —
+    // no field dropped during validation, no kind/pre/post/path rewritten.
     const result = parseInput(JSON.stringify(inputWithFileChanges));
 
     expect(result.ok).toBe(true);
@@ -46,10 +40,8 @@ describe('parseInput — file-change evidence round-trip (PRD §4.2, AC §5.6)',
 
 describe('parseInput — file-change absence (PRD §4.2, no key fabrication)', () => {
   it('accepts a payload with no evidence and does not fabricate the key', () => {
-    // P0 no-fabrication (CORE-04 timestampMs precedent): an IR whose calls carry no
-    // evidence must parse AND the parsed calls must not carry a fabricated `fileChange`
-    // key. A fabricated key would be indistinguishable from real evidence downstream.
-    // Mutation caught: a default-fill assigning evidence when the key is absent.
+    // An IR whose calls carry no evidence must parse without a default-fill inventing the
+    // key: a fabricated `fileChange` is indistinguishable from real evidence downstream.
     const result = parseInput(
       JSON.stringify({
         toolCalls: [{ name: 'bash', args: { command: 'ls' } }],

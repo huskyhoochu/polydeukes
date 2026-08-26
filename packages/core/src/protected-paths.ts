@@ -1,11 +1,11 @@
 /**
  * Protected-path normalization — the `protectedPaths` list normalized into the literal
- * path strings the dispatcher contract expects (CONFIG-02). Pure string transformation —
- * zero file I/O, no glob expansion, no path resolution (PRD §4.2).
+ * path strings the dispatcher contract expects. Pure string transformation — zero file
+ * I/O, no glob expansion, no path resolution.
  */
 
 /**
- * Normalize the protection surface from a config-shaped spec (PRD §4.2).
+ * Normalize the protection surface from a config-shaped spec.
  *
  * Processing order: trim each entry → strip a leading `./` → strip a trailing `/` → drop
  * empty-equivalent entries → dedupe on the normalized value, keeping the first occurrence.

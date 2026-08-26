@@ -2,19 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { ConfigValidationError, defineConfig } from '../src/index.ts';
 import { validLanguages } from './helpers.ts';
 
-// ---------------------------------------------------------------------------
-// CONFIG-09 §4.2 / AC-3 — empty-string rejection in the five spots where
-// defineConfig accepts today what the same-family fields (`when`,
-// `requirePrecedent.command`, `witness.token`) already reject. An empty pattern
-// matches at every position, so one typo turns a scoped discipline into a
-// universal block; an empty logPath silently redirects telemetry.
-//
-// testCmd bodies are deliberately FAKE runner strings ('fake-runner {scope}')
-// so the core grep gate stays satisfied even inside fixtures.
-// ---------------------------------------------------------------------------
+// Empty-string rejection in the five spots that carry a pattern or a path. An empty pattern
+// matches at every position, so one typo turns a scoped discipline into a universal block;
+// an empty logPath silently redirects telemetry.
 
-// Shared assertion for the invalid-path tests: asserts the concrete error instance
-// (not just "did it throw") and returns it so callers can assert on the message.
+// Asserts the concrete error instance (not just "did it throw") and returns it so callers
+// can assert on the message.
 function expectConfigValidationError(invalidConfig: unknown): ConfigValidationError {
   try {
     defineConfig(invalidConfig);
@@ -27,9 +20,8 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
 
 describe('§4.2 empty-pattern rejection — discipline predicate fields', () => {
   it('rejects a string-form forbid of "", naming the forbid field', () => {
-    // P0: '' compiles as a regex and matches everywhere — the delta entry would break
-    // every in-scope edit. Mutation caught: the string-form branch accepting '' while
-    // only type-checking.
+    // '' compiles as a regex and matches everywhere, so the delta entry would break every
+    // in-scope edit; a type-only check accepts it.
     const error = expectConfigValidationError({
       ...validLanguages,
       disciplines: [{ id: 'empty-forbid', forbid: '' }],
@@ -39,9 +31,8 @@ describe('§4.2 empty-pattern rejection — discipline predicate fields', () => 
   });
 
   it('rejects forbid: { added: "" }, naming the forbid field', () => {
-    // P0: the object form takes its own validation branch — a fix that only rejects
-    // the string shorthand leaves this spelling open. Mutation caught: the added-form
-    // branch left without the non-empty check.
+    // The object form takes its own validation branch, so a fix that only rejects the
+    // string shorthand leaves this spelling open.
     const error = expectConfigValidationError({
       ...validLanguages,
       disciplines: [{ id: 'empty-added', forbid: { added: '' } }],
@@ -51,9 +42,8 @@ describe('§4.2 empty-pattern rejection — discipline predicate fields', () => 
   });
 
   it('rejects a forbidCommand of "", naming the forbidCommand field', () => {
-    // P0: an empty command pattern matches every shell call — the command family would
-    // block all of Bash. Mutation caught: the command-family field skipping the
-    // non-empty check the delta fields gained.
+    // An empty command pattern matches every shell call — the command family would block
+    // all of Bash. Its own branch needs the same non-empty check as the delta fields.
     const error = expectConfigValidationError({
       ...validLanguages,
       disciplines: [{ id: 'empty-cmd', forbidCommand: '' }],
@@ -65,9 +55,9 @@ describe('§4.2 empty-pattern rejection — discipline predicate fields', () => 
 
 describe('§4.2 empty-element rejection — protectedPaths', () => {
   it('rejects an empty-string element among valid ones, naming protectedPaths', () => {
-    // P0: an '' entry has no path meaning and rides along silently next to valid
-    // entries. Mutation caught: the element check testing only typeof string, or a
-    // some/every inversion that lets one empty element hide behind valid siblings.
+    // The empty entry is placed beside a valid one deliberately: it catches a some/every
+    // inversion that lets one empty element hide behind valid siblings, as well as an
+    // element check that tests only typeof string.
     const error = expectConfigValidationError({
       ...validLanguages,
       protectedPaths: ['src/covenant/**', ''],
@@ -79,8 +69,7 @@ describe('§4.2 empty-element rejection — protectedPaths', () => {
 
 describe('§4.2 telemetry.logPath — trim-then-non-empty (the witness.token idiom)', () => {
   it('rejects logPath: "", naming logPath', () => {
-    // P0: '' passed the type-only check and would resolve telemetry to an empty path.
-    // Mutation caught: the logPath validation staying typeof-only.
+    // A type-only check lets '' through and resolves telemetry to an empty path.
     const error = expectConfigValidationError({
       ...validLanguages,
       telemetry: { logPath: '' },
@@ -90,8 +79,8 @@ describe('§4.2 telemetry.logPath — trim-then-non-empty (the witness.token idi
   });
 
   it('rejects a whitespace-only logPath, naming logPath', () => {
-    // P0 boundary: '  ' has length > 0 but trims to nothing — the same boundary
-    // witness.token pins with trim(). Mutation caught: a length check without trim.
+    // '  ' has length > 0 but trims to nothing, so a length check without trim accepts it —
+    // the same boundary witness.token pins with trim().
     const error = expectConfigValidationError({
       ...validLanguages,
       telemetry: { logPath: '  ' },
@@ -103,9 +92,8 @@ describe('§4.2 telemetry.logPath — trim-then-non-empty (the witness.token idi
 
 describe('§6 invariant — non-empty values in the same five spots stay accepted', () => {
   it('accepts non-empty forbid (both forms) and forbidCommand entries', () => {
-    // P0 the mirror direction: the new rejections must not over-reach. A valid pattern
-    // in each predicate spot resolves. Mutation caught: a non-empty check inverted or
-    // applied to the wrong field.
+    // The mirror direction: the rejections must not over-reach. Catches a non-empty check
+    // inverted or applied to the wrong field.
     const resolved = defineConfig({
       ...validLanguages,
       disciplines: [

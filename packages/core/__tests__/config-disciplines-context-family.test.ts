@@ -1,21 +1,16 @@
 import { describe, expect, it } from 'vitest';
-// COVENANT-13 §4.1 / AC §5.1 — the 4th predicate family (context family). A
-// `requirePrecedent` entry declares "this edit needs session evidence first". Core owns and
-// fully validates ONLY the `command` evidence vocabulary; every other evidence key is
-// adapter vocabulary that the container check (flat object, exactly one evidence key)
-// admits with its value passed through verbatim (CONFIG-07 namespace layering). The
-// optional `when` trigger regex combines with `requirePrecedent` ONLY, and `in`/`except`
-// widen from delta-family-only to delta+context (path/command families still reject them).
-// None of the context-family surface exists yet, so the acceptance side is RED; the
-// rejection side locks the exactly-one boundaries GREEN must not overshoot.
+// The context family: a `requirePrecedent` entry declares that an edit needs session
+// evidence first. Core owns and fully validates only the `command` evidence vocabulary;
+// every other evidence key is adapter vocabulary, admitted by the container check (flat
+// object, exactly one evidence key) with its value passed through verbatim. The optional
+// `when` trigger regex combines with `requirePrecedent` only, and `in`/`except` are open to
+// the delta and context families while the path and command families still reject them.
 import { ConfigValidationError, defineConfig } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures. Same valid base config as config-disciplines.test.ts (v2 config-as-data).
-// testCmd bodies are FAKE (`fake-runner`) so the core grep gate stays satisfied.
-// Evidence values (`npm view `, subagent kinds, tool-name patterns) are discipline DATA
-// injected through fixtures — never literals the core itself knows about.
-// ---------------------------------------------------------------------------
+// testCmd bodies are deliberately fake (`fake-runner`): the core never runs the command,
+// so a real runner name would imply a coupling it does not have. Evidence values
+// (`npm view `, subagent kinds, tool-name patterns) are discipline data injected through
+// fixtures, never literals core knows about.
 
 const baseConfig = {
   languages: {
@@ -42,16 +37,11 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-// ===========================================================================
-// AC §5.1.1 — valid context-family entries pass and pass through verbatim
-// ===========================================================================
-
 describe('defineConfig context family — valid requirePrecedent entries (AC §5.1)', () => {
   it('accepts a full context-family entry (in/except/when/command) and carries it verbatim', () => {
-    // P0 pass-through invariant (PRD §4.1 example shape): a well-formed context-family
-    // entry must validate and reach ResolvedConfig.disciplines byte-for-byte. Mutation
-    // caught: requirePrecedent not registered as the 4th predicate key (entry rejected as
-    // predicate-less), or the validator rewriting/dropping when/in/except on the way through.
+    // A well-formed entry must reach ResolvedConfig.disciplines byte-for-byte: the
+    // assertion catches both requirePrecedent going unregistered as a predicate key and
+    // the validator rewriting or dropping when/in/except on the way through.
     const disciplines = [
       {
         id: 'dependency-needs-npm-view',
@@ -69,10 +59,8 @@ describe('defineConfig context family — valid requirePrecedent entries (AC §5
   });
 
   it('accepts a minimal entry without when/in (when is optional; requirePrecedent alone is the one predicate)', () => {
-    // P0 boundary: `when` absent means "every in-scope change triggers" (PRD §4.1), so its
-    // absence must validate. Mutation caught: `when` (or `in`) accidentally made required
-    // on the context family, or the exactly-one-predicate count not counting
-    // requirePrecedent (a lone requirePrecedent rejected as zero predicates).
+    // An absent `when` means "every in-scope change triggers", so omitting it must
+    // validate — and a lone requirePrecedent must count as one predicate, not zero.
     const disciplines = [{ id: 'minimal-context', requirePrecedent: { command: 'fake-probe ' } }];
 
     const resolved = defineConfig(withDisciplines(disciplines));
@@ -81,12 +69,10 @@ describe('defineConfig context family — valid requirePrecedent entries (AC §5
   });
 
   it('admits adapter evidence vocabulary verbatim — container checked, values never validated by core', () => {
-    // P0 vocabulary layering (PRD §4.1, CONFIG-07): non-command evidence keys belong to
-    // adapters; core validates only the container (flat object, one key) and passes values
-    // through verbatim. The third entry's value is a NON-compilable regex on purpose:
-    // core applying its command-grade regex probe to an adapter value would reject it.
-    // Mutation caught: core validating adapter values (over-reach), or rejecting unknown
-    // evidence keys at config time (they fail-closed at ASSEMBLY time, not here — §4.4).
+    // Non-command evidence keys belong to adapters, so core checks only the container and
+    // passes values through untouched. The third entry's value is a non-compilable regex on
+    // purpose — core applying its command-grade regex probe to an adapter value would
+    // reject it. An unknown evidence key fails closed at assembly time, not at config time.
     const disciplines = [
       { id: 'spawn-evidence', in: 'src/**', requirePrecedent: { subagent: 'tdd-implementer' } },
       { id: 'tool-evidence', in: 'src/**', requirePrecedent: { tool: '^mcp__' } },
@@ -99,14 +85,9 @@ describe('defineConfig context family — valid requirePrecedent entries (AC §5
   });
 });
 
-// ===========================================================================
-// AC §5.1.1 — core vocabulary `command` is fully validated
-// ===========================================================================
-
 describe('defineConfig context family — command evidence validation (AC §5.1)', () => {
   it('rejects an empty-string command, naming the entry', () => {
-    // P0 boundary: an empty command pattern matches everything — the gate would open on
-    // any tool call (fail-open). Mutation caught: the non-empty check on command dropped.
+    // An empty command pattern matches everything, so the gate would open on any tool call.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'empty-command', requirePrecedent: { command: '' } }]),
     );
@@ -115,9 +96,8 @@ describe('defineConfig context family — command evidence validation (AC §5.1)
   });
 
   it('rejects a non-compilable command regex string', () => {
-    // P0: a pattern `new RegExp` cannot compile is a broken discipline — refuse at
-    // authoring time, not at judge time. Mutation caught: the compilability probe applied
-    // to forbid/forbidCommand but not to the new command evidence field.
+    // A pattern `new RegExp` cannot compile is a broken discipline: refuse it at authoring
+    // time rather than at judge time.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'bad-command-re', requirePrecedent: { command: '(' } }]),
     );
@@ -126,9 +106,8 @@ describe('defineConfig context family — command evidence validation (AC §5.1)
   });
 
   it('rejects a non-string command value', () => {
-    // P0 type boundary: core owns the command vocabulary, so a numeric value must be
-    // refused (verbatim pass-through applies to ADAPTER keys only). Mutation caught: the
-    // command branch falling into the adapter verbatim path.
+    // Core owns the command vocabulary, so a numeric value must be refused — verbatim
+    // pass-through applies to adapter keys only.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'command-number', requirePrecedent: { command: 123 } }]),
     );
@@ -137,16 +116,10 @@ describe('defineConfig context family — command evidence validation (AC §5.1)
   });
 });
 
-// ===========================================================================
-// AC §5.1.1 — evidence container: flat object with exactly one evidence key
-// ===========================================================================
-
 describe('defineConfig context family — evidence container shape (AC §5.1)', () => {
   it('rejects a requirePrecedent with zero evidence keys ({})', () => {
-    // P0 fail-fast: an evidence-less requirePrecedent can never be satisfied nor evaluated
-    // — an unjudgeable entry. Mutation caught: the exactly-one lower bound dropped
-    // (an empty container silently accepted = a discipline that always blocks or always
-    // passes depending on the evaluator's whim).
+    // An evidence-less requirePrecedent can never be satisfied nor evaluated; accepting it
+    // yields a discipline that always blocks or always passes depending on the evaluator.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'no-evidence', requirePrecedent: {} }]),
     );
@@ -155,10 +128,8 @@ describe('defineConfig context family — evidence container shape (AC §5.1)', 
   });
 
   it('rejects a requirePrecedent with two evidence keys (command+adapter and adapter+adapter)', () => {
-    // P0 fail-fast: two evidence keys make the required precedent ambiguous. Both pairings
-    // matter — a count that only watches the `command` key would admit the adapter-only
-    // pair. Mutation caught: the exactly-one upper bound weakened to "at least one", or
-    // counted over core keys only.
+    // Two evidence keys make the required precedent ambiguous. Both pairings are needed: a
+    // count that only watches the `command` key would still admit the adapter-only pair.
     const withCommand = expectConfigValidationError(
       withDisciplines([
         { id: 'two-evidence-core', requirePrecedent: { command: 'fake-probe ', subagent: 'x' } },
@@ -175,9 +146,8 @@ describe('defineConfig context family — evidence container shape (AC §5.1)', 
   });
 
   it('rejects a requirePrecedent value that is not a flat object (array/string/null)', () => {
-    // P0 container boundary: arrays are typeof object, strings look like a shorthand, and
-    // null JSON-parses fine — each must be refused, not coerced. Mutation caught: a
-    // typeof-object check that admits arrays/null, or a string-shorthand fabricated.
+    // Arrays are typeof object, strings look like a shorthand, and null JSON-parses fine:
+    // each must be refused rather than coerced into an evidence container.
     for (const value of [['fake-probe '], 'fake-probe ', null]) {
       const error = expectConfigValidationError(
         withDisciplines([{ id: 'non-object-evidence', requirePrecedent: value }]),
@@ -187,15 +157,10 @@ describe('defineConfig context family — evidence container shape (AC §5.1)', 
   });
 });
 
-// ===========================================================================
-// AC §5.1.2 — exactly-one-predicate widened to 4 keys
-// ===========================================================================
-
 describe('defineConfig context family — predicate cardinality over 4 keys (AC §5.1)', () => {
   it('rejects requirePrecedent combined with each of the other three predicate keys', () => {
-    // P0: the exactly-one-predicate count must include requirePrecedent on the too-many
-    // side as well. Mutation caught: requirePrecedent added as an accepted key but left
-    // out of the cardinality set, so it could ride along another family unnoticed.
+    // requirePrecedent must belong to the cardinality set, not merely be an accepted key;
+    // otherwise it could ride along with another family unnoticed.
     const combos: Record<string, unknown>[] = [
       { forbid: 'x' },
       { immutable: 'y/**' },
@@ -212,15 +177,10 @@ describe('defineConfig context family — predicate cardinality over 4 keys (AC 
   });
 });
 
-// ===========================================================================
-// AC §5.1.2 — `when` couples with requirePrecedent only, and is itself validated
-// ===========================================================================
-
 describe('defineConfig context family — when trigger coupling and validity (AC §5.1)', () => {
   it('rejects when on a forbid, immutable, or forbidCommand entry', () => {
-    // P0 (PRD §4.1): `when` is a context-family trigger; on any other family it would be
-    // silently dead data implying a trigger that is never applied. Mutation caught: `when`
-    // added to the shared entry key set instead of the context-family-only set.
+    // `when` is a context-family trigger; on any other family it is dead data implying a
+    // trigger that is never applied, so it must live in the context-only key set.
     const entries = [
       { id: 'forbid-with-when', forbid: 'x', when: 'y' },
       { id: 'immutable-with-when', immutable: 'y/**', when: 'y' },
@@ -233,7 +193,6 @@ describe('defineConfig context family — when trigger coupling and validity (AC
   });
 
   it('rejects a non-string when value', () => {
-    // P0 type boundary: `when` is a regex string, not a number/object.
     const error = expectConfigValidationError(
       withDisciplines([
         { id: 'when-number', when: 123, requirePrecedent: { command: 'fake-probe ' } },
@@ -244,11 +203,9 @@ describe('defineConfig context family — when trigger coupling and validity (AC
   });
 
   it('rejects an empty-string when trigger', () => {
-    // P0 boundary partner of the empty-command rejection: '' compiles fine and matches
-    // every content, so an empty trigger silently means "always", which is what OMITTING
-    // `when` already expresses. Admitting it would let a typo'd trigger masquerade as a
-    // narrow one. Mutation caught: the non-empty check applied to command evidence but
-    // not to `when` (compilability alone never catches '').
+    // '' compiles fine and matches everything, so an empty trigger silently means "always"
+    // — what omitting `when` already expresses — and would let a typo'd trigger masquerade
+    // as a narrow one. Compilability alone never catches this; the non-empty check does.
     const error = expectConfigValidationError(
       withDisciplines([
         { id: 'empty-when', when: '', requirePrecedent: { command: 'fake-probe ' } },
@@ -260,8 +217,7 @@ describe('defineConfig context family — when trigger coupling and validity (AC
   });
 
   it('rejects a non-compilable when regex', () => {
-    // P0: same authoring-time compilability gate as every other pattern field. Mutation
-    // caught: the compilability probe not extended to the new `when` field.
+    // The same authoring-time compilability gate every other pattern field gets.
     const error = expectConfigValidationError(
       withDisciplines([
         { id: 'bad-when-re', when: '(', requirePrecedent: { command: 'fake-probe ' } },
@@ -272,16 +228,10 @@ describe('defineConfig context family — when trigger coupling and validity (AC
   });
 });
 
-// ===========================================================================
-// AC §5.1.2 — in/except widening must not leak to the path/command families
-// ===========================================================================
-
 describe('defineConfig context family — scope keys stay off path/command families (AC §5.1)', () => {
   it('rejects `in` on a forbidCommand entry (the widening regression, new combination)', () => {
-    // P0 regression: widening in/except from forbid-only to delta+context must NOT open
-    // them to the command family. The shipped suite pins except-on-forbidCommand; this
-    // pins the in-side of the same boundary. Mutation caught: the scope-key restriction
-    // rewritten as "any family" during the widening.
+    // Opening in/except to the context family must not open them to the command family.
+    // config-disciplines.test.ts pins except-on-forbidCommand; this pins the in-side.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'command-with-in', forbidCommand: 'x', in: 'z/**' }]),
     );
@@ -290,8 +240,8 @@ describe('defineConfig context family — scope keys stay off path/command famil
   });
 
   it('rejects `except` on an immutable entry (the widening regression, new combination)', () => {
-    // P0 regression partner: the shipped suite pins in-on-immutable; this pins the
-    // except-side, catching an asymmetric widening that opens only one of the two keys.
+    // config-disciplines.test.ts pins in-on-immutable; this pins the except-side, so an
+    // asymmetric widening that opens only one of the two keys is caught.
     const error = expectConfigValidationError(
       withDisciplines([{ id: 'immutable-with-except', immutable: 'y/**', except: 'z/**' }]),
     );

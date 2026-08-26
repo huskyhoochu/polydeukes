@@ -1,10 +1,9 @@
 /**
  * @polydeukes/core — the thin, domain- and agent-agnostic core.
  *
- * Pre-alpha. The covenant protocol (CORE-01) landed first, then the ROI telemetry
- * collector (CORE-02) and the config loader (CONFIG-01). Pure types and functions,
- * except telemetry's confined I/O functions (appendRecord / readRecords /
- * appendRecordFailOpen — the fail-open wrapper promoted by CORE-05).
+ * Alpha. Carries the covenant protocol, the ROI telemetry collector, and the config
+ * schema. Pure types and functions, except telemetry's confined I/O functions
+ * (appendRecord / readRecords / appendRecordFailOpen).
  * See https://github.com/huskyhoochu/polydeukes
  */
 
@@ -59,7 +58,7 @@ export {
 } from './transcript.js';
 
 /**
- * `FileChange` — one file's mutation evidence around the judged call (CORE-06 §4.1).
+ * `FileChange` — one file's mutation evidence around the judged call.
  *
  * Agent-neutral, discriminated by `kind`: a deletion is first-class evidence rather
  * than an unrepresentable case, and impossible states (a deletion with resulting
@@ -74,14 +73,13 @@ export type FileChange =
   | { kind: 'delete'; path: string; pre?: string };
 
 /**
- * `CovenantInput` — the agent-neutral input IR a covenant judges (PRD §4.2).
+ * `CovenantInput` — the agent-neutral input IR a covenant judges.
  *
  * Adapters up-translate their own agent payloads into this shape and pipe it as
  * stdin-JSON. The vocabulary carries no agent/tool literals; concrete tool or
  * subagent names are *values* an adapter fills in, never part of the core's type.
- * Evidence has exactly one home — the call element it belongs to (CORE-06 §4.1):
- * `fileChange` absent means "this call is unproven", and no sibling call's evidence
- * can stand in for it.
+ * Evidence has exactly one home, the call element it belongs to: `fileChange` absent
+ * means "this call is unproven", and no sibling call's evidence can stand in for it.
  */
 export type CovenantInput = {
   toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
@@ -90,7 +88,7 @@ export type CovenantInput = {
 };
 
 /**
- * `CovenantVerdict` — the result a covenant body produces (PRD §4.3).
+ * `CovenantVerdict` — the result a covenant body produces.
  *
  * Either the promise was upheld, or it was broken with a human-readable reason.
  * Maps to an exit code via {@link verdictToExitCode}.
@@ -100,7 +98,7 @@ export type CovenantVerdict = { upheld: true } | { upheld: false; reason: string
 /**
  * Deserialize stdin-JSON into a {@link CovenantInput} (the protocol's reverse direction).
  *
- * fail-closed (PRD §5.2): this never throws. Any failure — unparseable JSON, an empty
+ * fail-closed: this never throws. Any failure — unparseable JSON, an empty
  * payload, a parsed value that is not an object, or a missing required collection —
  * resolves to a blocking `{ ok: false, exitCode: 2 }`. "Cannot judge" means block,
  * so an unjudgeable input can never be mistaken for a valid one.
@@ -132,7 +130,7 @@ export function parseInput(
 }
 
 /**
- * Flatten every call's evidence into one array in call order (CORE-06 §4.1).
+ * Flatten every call's evidence into one array in call order.
  *
  * The one traversal for consumers that need no attribution (discipline scope, delta
  * judging): calls without evidence are skipped, never substituted for.
@@ -148,7 +146,7 @@ export function allFileChanges(input: CovenantInput): FileChange[] {
 /**
  * Map a {@link CovenantVerdict} to an exit code (the protocol's forward direction).
  *
- * Responsibility boundary (PRD §4.1): the body emits `0` when upheld and `1` when
+ * Responsibility boundary: the body emits `0` when upheld and `1` when
  * broken — never the blocking `2`. Translating `1` into `2` is the wrapper's policy.
  */
 export function verdictToExitCode(verdict: CovenantVerdict): 0 | 1 {

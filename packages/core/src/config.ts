@@ -1,22 +1,19 @@
 /**
- * Config schema v2 + `defineConfig()` validator — config as data (CONFIG-04).
+ * Config schema and the `defineConfig()` validator — config as data.
  *
- * This is the single settings surface the three areas share (covenant's `protectedPaths`,
- * ledger's `testCmd`, memory's ticket pattern all reference this shape). Since schema v2 the
- * input is pure JSON-representable data: `testCmd` is a `{scope}` template string, and
- * `defineConfig` is the runtime validator for parsed unknown data (the CONFIG-03 loader feeds
- * it values the compiler never saw). It stays a pure function — zero file I/O, zero runtime
- * dependencies (hand-rolled validation; the published JSON Schema is a sibling artifact the
- * source never reads).
+ * The single settings surface the areas share. The input is pure JSON-representable data,
+ * and `defineConfig` is the runtime validator for parsed unknown values the compiler never
+ * saw. It stays a pure function — no file I/O and no runtime dependencies: validation is
+ * hand-rolled, and the published JSON Schema is a sibling artifact this source never reads.
  */
 
 import { isPlainObject } from './is-plain-object.js';
 
-/** Conventional default telemetry log path (PRD §4.3) — local-only observation data. */
+/** Conventional default telemetry log path — local-only observation data. */
 export const DEFAULT_TELEMETRY_LOG_PATH = '.polydeukes/roi.log';
 
 /**
- * `LanguageProfile` — the unit of the language axis (PRD §4.1).
+ * `LanguageProfile` — the unit of the language axis.
  *
  * `testCmd` is a shell command template: every literal `{scope}` token is substituted at
  * resolve time, and the core only carries the resulting string — it never interprets it.
@@ -32,22 +29,22 @@ export type LanguageProfile = {
 };
 
 /**
- * `DisciplineForbid` — the delta-family predicate value (COVENANT-10 §4.1).
+ * `DisciplineForbid` — the delta-family predicate value.
  *
- * The string shorthand is equivalent to `{ added }`; `removed`/`present` directions are
- * deferred (COVENANT-12) and rejected by validation.
+ * The string shorthand is equivalent to `{ added }`. It is the only direction that exists;
+ * anything else is rejected by validation.
  */
 export type DisciplineForbid = string | { added: string };
 
 /**
- * `EnforceLevel` — an entry's own rung on the promotion ladder (CONFIG-11 §4.1). `advise`
- * records a break without stopping it; `block` pins the entry at block whatever default
- * the ladder later adopts. Absence means advise (POSTURE-01); `block` is the promotion rung.
+ * `EnforceLevel` — an entry's own rung on the promotion ladder. `advise` records a break
+ * without stopping it; `block` pins the entry at block whatever default the ladder later
+ * adopts. Absence means advise; `block` is the promotion rung.
  */
 export type EnforceLevel = 'block' | 'advise';
 
 /**
- * `DisciplineEntry` — one user-declared discipline (COVENANT-10 §4.1). Pure JSON data.
+ * `DisciplineEntry` — one user-declared discipline. Pure JSON data.
  *
  * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand` |
  * `requirePrecedent`) per entry; `in`/`except` scope the delta and context families.
@@ -57,7 +54,7 @@ export type EnforceLevel = 'block' | 'advise';
 export type DisciplineEntry = {
   /** unique handle — telemetry label and verdict reason prefix */
   id: string;
-  /** prose rationale — never judged, and carried into the break message (COVENANT-19) */
+  /** prose rationale — never judged, and carried into the break message */
   why?: string;
   /** the author's level; composes with the observer's surface level, lenient side winning */
   enforce?: EnforceLevel;
@@ -76,14 +73,14 @@ export type DisciplineEntry = {
   /**
    * context family — the session evidence one edit requires beforehand. Exactly one
    * evidence key. The core owns and fully validates `command`; every other key is
-   * adapter vocabulary whose value passes through verbatim (CONFIG-07 layering).
+   * adapter vocabulary whose value passes through verbatim.
    */
   requirePrecedent?: Record<string, unknown>;
 };
 
 /**
- * `DisciplineDraft` — an unpromoted discipline (CONFIG-10 §4.1): the promotion ladder's
- * first rung, registered as prose ahead of any predicate.
+ * `DisciplineDraft` — an unpromoted discipline: the promotion ladder's first rung,
+ * registered as prose ahead of any predicate.
  *
  * A draft is declared, never inferred — only the literal `draft: true` makes one, and an
  * entry with neither a predicate nor the marker stays a validation error. It carries no
@@ -100,39 +97,39 @@ export type DisciplineDraft = {
 };
 
 /**
- * `PolydeukesConfig` — the input shape a user writes (PRD §4.1). JSON-serializable data.
+ * `PolydeukesConfig` — the input shape a user writes. JSON-serializable data.
  *
  * Language keys (`typescript`, `python`, …) are user *values*, not the core's vocabulary —
  * no language or tool literal appears in the core source.
  */
 export type PolydeukesConfig = {
-  /** IDE schema reference (CONFIG-03) — accepted and ignored, never part of the resolution */
+  /** IDE schema reference — accepted and ignored, never part of the resolution */
   $schema?: string;
   /** language axis, first-class. keys are user values ('typescript', 'python', …) */
   languages: Record<string, LanguageProfile>;
-  /** raw protected path patterns — normalization is CONFIG-02's job */
+  /** raw protected path patterns — normalized downstream, never here */
   protectedPaths?: string[];
   /**
-   * adapter namespaces (CONFIG-07) — keys are ecosystem values (never validated), each
-   * value is that adapter's own settings object, passed through verbatim (the vocabulary
-   * belongs to the adapter, whose own validator judges the contents)
+   * adapter namespaces — keys are ecosystem values (never validated), each value is that
+   * adapter's own settings object, passed through verbatim (the vocabulary belongs to the
+   * adapter, whose own validator judges the contents)
    */
   adapters?: Record<string, Record<string, unknown>>;
   telemetry?: {
-    /** conventional default applies when omitted (§4.3) */
+    /** conventional default applies when omitted */
     logPath?: string;
   };
   /** user-declared disciplines — validated here, compiled by the covenant package */
   disciplines?: (DisciplineEntry | DisciplineDraft)[];
   /**
-   * TTL witness values for the covenant valve seam (CONFIG-05) — consumed at
-   * assembly time, validated here
+   * TTL witness values for the covenant valve seam — consumed at assembly time,
+   * validated here
    */
   witness?: {
     /**
      * the agreed phrase a human types alone on a message's first line — quoting it
-     * mid-sentence is a mention, not an invocation (COVENANT-15). Non-empty after
-     * trimming; the value itself is free (provenance, not secrecy, is the defence)
+     * mid-sentence is a mention, not an invocation. Non-empty after trimming; the value
+     * itself is free, since provenance rather than secrecy is the defence
      */
     token: string;
     /** validity window in minutes from the user message's timestamp — finite and > 0 */
@@ -143,11 +140,11 @@ export type PolydeukesConfig = {
 /**
  * `ResolvedLanguageProfile` — a {@link LanguageProfile} with its template compiled.
  *
- * Consumers keep the callable shape (`testCmd(scope)`), identical to schema v1 (LEDGER-05).
+ * Consumers keep the callable shape (`testCmd(scope)`).
  */
 export type ResolvedLanguageProfile = {
   productionGlob: string | string[];
-  /** compiled from the template — consumers keep the callable shape (LEDGER-05) */
+  /** compiled from the template — consumers keep the callable shape */
   testCmd: (scope: string) => string;
 };
 
@@ -180,7 +177,7 @@ export type ResolvedConfig = {
 };
 
 /**
- * `ConfigValidationError` — raised when a config fails structural validation (PRD §4.3).
+ * `ConfigValidationError` — raised when a config fails structural validation.
  *
  * The message names the offending field path so the developer sees exactly what is wrong.
  * This throw is a developer-time error (config authoring), a different axis from the
@@ -193,7 +190,6 @@ export class ConfigValidationError extends Error {
   }
 }
 
-/** The exact key vocabulary of each object level — anything else is a typo, rejected loudly. */
 /** Labels the assembly reserves for the judging chain's own registrations. */
 const META_COVENANT_LABELS = ['self-mod', 'shell-mod', 'transcript-mod'];
 
@@ -224,7 +220,7 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
 const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent'] as const;
-/** Predicate families that `in`/`except` may scope — delta and context (COVENANT-13 §4.1). */
+/** Predicate families that `in`/`except` may scope — delta and context. */
 const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
 
 /** Throw on the first key outside the allowed vocabulary, naming the key and its location. */
@@ -257,7 +253,7 @@ function isValidGlob(glob: unknown): glob is string | string[] {
 }
 
 /**
- * Compile a `{scope}` template into the callable consumers use (PRD §4.2).
+ * Compile a `{scope}` template into the callable consumers use.
  *
  * Exactly the literal token `{scope}` is substituted, at every occurrence (`replaceAll`
  * semantics). Other braces (`${VAR}`, `{a,b}`, `awk '{print}'`) are the shell's own
@@ -279,14 +275,13 @@ function rejectUncompilableRegex(pattern: string, location: string): void {
 }
 
 /**
- * Validate a context-family `requirePrecedent` value (COVENANT-13 §4.1).
+ * Validate a context-family `requirePrecedent` value.
  *
  * Evidence vocabulary is layered: the container (a flat object holding exactly one
  * evidence key) is the core's, and so is the `command` key — a shell command is the
  * agent-crossing surface, fully validated here. Every other key belongs to an adapter,
  * whose own validator judges the value; the core passes it through verbatim and never
- * inspects it (CONFIG-07 layering). An unrecognized evidence key fails closed at
- * assembly time, not here.
+ * inspects it. An unrecognized evidence key fails closed at assembly time, not here.
  */
 function validateRequirePrecedent(evidence: unknown, location: string): void {
   if (!isPlainObject(evidence)) {
@@ -311,7 +306,7 @@ function validateRequirePrecedent(evidence: unknown, location: string): void {
 
 type RawEntry = Record<string, unknown>;
 
-/** Validate a draft entry (CONFIG-10 §4.1) and return it as data. */
+/** Validate a draft entry and return it as data. */
 function validateDraft(entry: RawEntry, id: string, location: string): DisciplineDraft {
   for (const key of Object.keys(entry)) {
     if (!DRAFT_KEYS.has(key)) {
@@ -386,7 +381,6 @@ function validateForbid(entry: RawEntry, location: string): void {
     }
     rejectUncompilableRegex(forbid, `${location} forbid`);
   } else if (isPlainObject(forbid)) {
-    // Only the { added } direction exists before COVENANT-12.
     const keys = Object.keys(forbid);
     if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
       throw new ConfigValidationError(
@@ -451,9 +445,9 @@ const PREDICATE_VALIDATORS: Record<
 };
 
 /**
- * Validate the `disciplines` array (COVENANT-10 §4.1, drafts CONFIG-10 §4.1) and split
- * judged entries from drafts. Throws {@link ConfigValidationError} naming the offending
- * entry/key; the validated data passes through verbatim, in declaration order.
+ * Validate the `disciplines` array and split judged entries from drafts. Throws
+ * {@link ConfigValidationError} naming the offending entry/key; the validated data passes
+ * through verbatim, in declaration order.
  */
 function validateDisciplines(disciplines: unknown): {
   judged: DisciplineEntry[];
@@ -485,8 +479,8 @@ function validateDisciplines(disciplines: unknown): {
     }
     seenIds.add(entry.id);
 
-    // Draft branch (CONFIG-10 §4.1) — selected by the marker's value, so an explicit
-    // `draft: undefined` is absence, like every other optional key in this validator.
+    // Selected by the marker's value, so an explicit `draft: undefined` is absence,
+    // like every other optional key in this validator.
     if (entry.draft !== undefined) {
       drafts.push(validateDraft(entry, entry.id, location));
       return;
@@ -500,9 +494,7 @@ function validateDisciplines(disciplines: unknown): {
   return { judged, drafts };
 }
 
-/**
- * Validate the `languages` map and compile each profile's `{scope}` template (PRD §4.1).
- */
+/** Validate the `languages` map and compile each profile's `{scope}` template. */
 function validateLanguages(languages: unknown): Record<string, ResolvedLanguageProfile> {
   if (!isPlainObject(languages) || Object.keys(languages).length === 0) {
     throw new ConfigValidationError('languages must be a non-empty object');
@@ -552,8 +544,8 @@ function validateProtectedPaths(protectedPaths: unknown): string[] {
 }
 
 /**
- * Validate the `adapters` map (CONFIG-07 layering) — each namespace is a plain object whose
- * contents belong to that adapter's own validator, so they pass through verbatim.
+ * Validate the `adapters` map — each namespace is a plain object whose contents belong to
+ * that adapter's own validator, so they pass through verbatim.
  */
 function validateAdapters(adapters: unknown): Record<string, Record<string, unknown>> {
   // Array first: the removed directory-list form deserves a migration hint, not a
@@ -590,7 +582,7 @@ function validateTelemetry(telemetry: unknown): string | undefined {
   return telemetry.logPath;
 }
 
-/** Validate the `witness` section (CONFIG-05) — both values are consumed at assembly time. */
+/** Validate the `witness` section — both values are consumed at assembly time. */
 function validateWitness(witness: unknown): { token: string; ttlMinutes: number } {
   if (!isPlainObject(witness)) {
     throw new ConfigValidationError('witness must be an object');
@@ -608,8 +600,7 @@ function validateWitness(witness: unknown): { token: string; ttlMinutes: number 
 
 /**
  * Validate parsed unknown data as a {@link PolydeukesConfig} and return a
- * {@link ResolvedConfig} with defaults filled and templates compiled (PRD §4.3).
- * Pure — no file I/O.
+ * {@link ResolvedConfig} with defaults filled and templates compiled. Pure — no file I/O.
  *
  * Throws {@link ConfigValidationError} (naming the offending field path) when the top level
  * is not a plain object, any object level carries an unknown key, `languages` is
@@ -624,8 +615,8 @@ export function defineConfig(config: unknown): ResolvedConfig {
   }
   rejectUnknownKeys(config, TOP_LEVEL_KEYS, 'config');
 
-  // `$schema` is an IDE schema reference (CONFIG-03): accepted, type-checked, and
-  // ignored — it never appears in the resolution output.
+  // `$schema` is an IDE schema reference: accepted, type-checked, and ignored — it never
+  // appears in the resolution output.
   if (config.$schema !== undefined && typeof config.$schema !== 'string') {
     throw new ConfigValidationError('$schema must be a string');
   }

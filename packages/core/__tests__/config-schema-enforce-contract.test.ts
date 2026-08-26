@@ -2,19 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { defineConfig } from '../src/index.ts';
 import { validate, validLanguages } from './helpers.ts';
 
-// ---------------------------------------------------------------------------
-// CONFIG-11 AC-1 — schema ⟺ defineConfig equivalence for the judged entry's
-// `enforce` key (`'block' | 'advise'`, closed). Mirrors
-// config-schema-draft-contract.test.ts: for each VALID fixture, defineConfig must
-// accept AND ajv must validate; for each INVALID fixture, defineConfig must throw
-// AND ajv must reject. A one-sided verdict means the schema and validator have
-// drifted — the equivalence IS the contract.
+// Schema ⟺ defineConfig equivalence for a judged entry's `enforce` key ('block' | 'advise',
+// closed). For each VALID fixture defineConfig must accept AND ajv must validate; for each
+// INVALID fixture defineConfig must throw AND ajv must reject. A one-sided verdict means the
+// published schema and the validator have drifted — the equivalence IS the contract.
 //
-// Dev-log gate (core.dev-log.schema-equivalence-blind-without-fixture): every
-// constraint the new node carries gets its own invalid fixture — the closed
-// enumeration (an unknown level), the string type (the `why: 123` blind spot's
-// shape on this key), and the draft branch's closed key set (enforce on a draft).
-// ---------------------------------------------------------------------------
+// Every constraint the key carries needs its own invalid fixture, or one side can go blind
+// to it: the closed enumeration, the string type, and the draft branch's closed key set.
 
 /** Attach one disciplines array to the valid base config. */
 function withDisciplines(disciplines: unknown): unknown {
@@ -22,9 +16,7 @@ function withDisciplines(disciplines: unknown): unknown {
 }
 
 const VALID_CONFIGS: readonly unknown[] = [
-  // §4.1 row 1 — the middle rung.
   withDisciplines([{ id: 'softly-held', forbid: 'zzz_banned', enforce: 'advise' }]),
-  // §4.1 row 2 — the explicit fixed rung.
   withDisciplines([{ id: 'hard-held', forbid: 'zzz_banned', enforce: 'block' }]),
   // The key on every judged family, beside an enforce-less sibling and a draft: the
   // level must be admitted by each judged oneOf branch, not only the delta one.
@@ -38,16 +30,13 @@ const VALID_CONFIGS: readonly unknown[] = [
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
-  // --- closed enumeration: only 'block' and 'advise' exist ---
-  // An unknown level (CONFIG-06's reserved third value, enforced as a rejection).
+  // An unknown level — the enumeration is closed.
   withDisciplines([{ id: 'measured-probe', forbid: 'x', enforce: 'measure' }]),
-  // --- type: a string, never a boolean ---
-  // `enforce: true` — kills a schema that types the key loosely and a validator
-  // that tests presence or truthiness.
+  // A boolean kills a schema that types the key loosely and a validator that tests
+  // presence or truthiness rather than the value.
   withDisciplines([{ id: 'boolean-probe', forbid: 'x', enforce: true }]),
-  // --- draft branch: the key set stays id·why·draft ---
-  // A draft carrying the level — one fixture guards the draft branch's
-  // `additionalProperties: false` against the new key.
+  // A draft carrying the level — pins the draft branch's `additionalProperties: false`,
+  // whose key set stays id·why·draft.
   withDisciplines([{ id: 'draft-with-enforce', why: 'w', draft: true, enforce: 'advise' }]),
 ];
 
@@ -65,9 +54,8 @@ describe('CONFIG-11 AC-1 — enforce schema ⟺ defineConfig equivalence (VALID 
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid enforce fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    // Both sides must accept. Mutation caught: only one side gaining the key — a
-    // validator-only enforce leaves every consumer's IDE schema rejecting it, and a
-    // schema-only enforce validates configs defineConfig still throws on.
+    // Both sides must accept. A validator-only key leaves every consumer's IDE schema
+    // rejecting it; a schema-only key validates configs defineConfig still throws on.
     expect(defineConfigAccepts(config)).toBe(true);
     expect(validate(config)).toBe(true);
   });
@@ -77,8 +65,7 @@ describe('CONFIG-11 AC-1 — enforce schema ⟺ defineConfig equivalence (INVALI
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid enforce fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    // Both sides must reject. A one-sided rejection is exactly the `why: 123` blind
-    // spot the dev-log gate exists to prevent — here probed on the NEW key.
+    // Both sides must reject; a one-sided rejection is the drift this file exists to catch.
     expect(defineConfigAccepts(config)).toBe(false);
     expect(validate(config)).toBe(false);
   });

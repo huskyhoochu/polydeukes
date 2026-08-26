@@ -1,11 +1,10 @@
 /**
- * `CanonicalTranscript` — the agent-neutral session-query seam (CORE-04).
+ * `CanonicalTranscript` — the agent-neutral session-query seam.
  *
- * Layering (PRD §1): this seam does not replace `CovenantInput`. The IR (CORE-01) is
- * the *data* a covenant judges; `CanonicalTranscript` is the *behavioral seam* that
- * queries session data — CORE-04 sits on top of CORE-01, and the IR is one source it
- * can wrap. Concrete transcript formats stay in adapters; the core knows only the
- * query vocabulary. Pure types and functions, zero I/O.
+ * This seam does not replace `CovenantInput`. The IR is the *data* a covenant judges;
+ * `CanonicalTranscript` is the *behavioral seam* that queries session data, and the IR is
+ * one source it can wrap. Concrete transcript formats stay in adapters; the core knows only
+ * the query vocabulary. Pure types and functions, zero I/O.
  */
 
 import type { CovenantInput } from './index.js';
@@ -14,7 +13,7 @@ import type { CovenantInput } from './index.js';
 export type SubagentInvocation = { kind: string };
 
 /**
- * One user message observed in the session (PRD §4.1).
+ * One user message observed in the session.
  *
  * `timestampMs` is epoch milliseconds. Its absence means the source cannot prove
  * freshness — the fail-closed signal a witness consumer must treat as "not fresh".
@@ -22,10 +21,10 @@ export type SubagentInvocation = { kind: string };
 export type TranscriptUserMessage = { text: string; timestampMs?: number };
 
 /**
- * One tool call observed in the session (COVENANT-13 §4.2). `name` and `args` are
- * adapter-supplied values — the core knows the query vocabulary, never a tool's name.
+ * One tool call observed in the session. `name` and `args` are adapter-supplied values —
+ * the core knows the query vocabulary, never a tool's name.
  *
- * `succeeded` is three-valued (COVENANT-13b §4.1): `true` = it ran and reported success,
+ * `succeeded` is three-valued: `true` = it ran and reported success,
  * `false` = it ran and reported an error, was blocked, or was refused, and absent = the
  * provider cannot observe results at all. A consumer that treats the call as evidence
  * accepts only `true`, so the latter two share a disposition while staying diagnosable.
@@ -37,7 +36,7 @@ export type TranscriptToolCall = {
 };
 
 /**
- * `CanonicalTranscript` — what a covenant may ask about the session (PRD §4.1).
+ * `CanonicalTranscript` — what a covenant may ask about the session.
  *
  * Synchronous by design (covenant bodies are short-lived CLI processes) and
  * verdict-free: the seam carries facts only; TTL filtering and token matching belong
@@ -53,7 +52,7 @@ export type CanonicalTranscript = {
 };
 
 /**
- * The injection-absent default (PRD §4.2): every query answers "nothing happened".
+ * The injection-absent default: every query answers "nothing happened".
  * A witness consumer naturally converges to fail-closed — no evidence, no skip — and
  * so does a precedent consumer (no evidence, gate stays shut).
  */
@@ -64,7 +63,7 @@ export const noopTranscript: CanonicalTranscript = {
 };
 
 /**
- * Wrap a {@link CovenantInput} as a {@link CanonicalTranscript} (PRD §4.2).
+ * Wrap a {@link CovenantInput} as a {@link CanonicalTranscript}.
  *
  * Exposes `subagentSpawns` as invocations (filtered when a kind is given) and
  * `userMessages` with `timestampMs` omitted — the bare IR cannot prove freshness,
@@ -72,12 +71,10 @@ export const noopTranscript: CanonicalTranscript = {
  * Order preserved; the input is never mutated, and every query returns fresh
  * objects so consumers never hold live aliases into the shared IR.
  *
- * `findToolCalls` projects each call down to `{ name, args }` only: since CORE-06 a
- * call element also carries `fileChange` evidence, and evidence is judgment input, not
- * session history — the two vocabularies stay separate (COVENANT-13 §4.2). `succeeded`
- * stays absent for the same reason it is left three-valued: these calls are the ones
- * being judged right now, so they have not run, and a call can never be its own
- * precedent (COVENANT-13b §4.1).
+ * `findToolCalls` projects each call down to `{ name, args }` only: a call element also
+ * carries `fileChange` evidence, and evidence is judgment input, not session history — the
+ * two vocabularies stay separate. `succeeded` stays absent because these calls are the ones
+ * being judged right now: they have not run, and a call can never be its own precedent.
  */
 export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
   return {

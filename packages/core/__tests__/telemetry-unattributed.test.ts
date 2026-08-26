@@ -2,13 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// COVENANT-14 §2-d RED phase. The 6th telemetry event, `unattributed`: a protected entry
-// whose on-disk state changed with no judgment row explaining it. An observation event on
-// a different axis from the five verdicts — `skipped` is an inability the assembly knows
-// UP FRONT, `unattributed` is an attribution failure discovered AFTER the fact — and it
-// never blocks or passes a call (§6). Same structure as the COVENANT-13 `skipped` opening:
-// `unattributed` does NOT exist in the union yet, so the round-trip/aggregation/render
-// tests here are RED by construction.
+// `unattributed`: a protected entry whose on-disk state changed with no judgment row
+// explaining it. An observation on a different axis from the five verdicts — `skipped` is an
+// inability the assembly knows up front, this is an attribution failure discovered after the
+// fact — and it never blocks or passes a call.
 import {
   aggregateGain,
   appendRecord,
@@ -18,9 +15,8 @@ import {
   type TelemetryRecord,
 } from '../src/index.ts';
 
-// PRD §2-d row shape: label = 'baseline', subject = the changed protected ENTRY — the
-// config element, never a file underneath it, so the attribution join stays on the same
-// granularity the dispatcher records (covenant.dev-log.telemetry-subject-is-matched-entry).
+// subject is the changed protected ENTRY — the config element, never a file underneath it,
+// so the attribution join stays on the same granularity the dispatcher records.
 const unattributedRecord: TelemetryRecord = {
   timestamp: '2026-08-12T12:00:00Z',
   event: 'unattributed',
@@ -42,18 +38,16 @@ afterEach(() => {
 
 describe('COVENANT-14 §2-d unattributed — round-trip', () => {
   it('formatRecordLine → parseRecordLine round-trips an unattributed record', () => {
-    // Mutation caught: `unattributed` missing from the accepted-events set, so
-    // parseRecordLine rejects it and every reader (gain, the attribution window)
-    // silently drops the very row this ticket exists to write.
+    // If `unattributed` is missing from the accepted-events set, every reader silently drops
+    // the row instead of surfacing the attribution failure.
     const parsed = parseRecordLine(formatRecordLine(unattributedRecord));
 
     expect(parsed).toEqual(unattributedRecord);
   });
 
   it('parseRecordLine still rejects an event outside the six (unatributed)', () => {
-    // The other side of the enum boundary: widening the accepted set to `unattributed`
-    // must not widen it to arbitrary strings. Mutation caught: the membership check
-    // dropped so a near-miss typo ('unatributed') masquerades as a valid record.
+    // The other side of the enum boundary: widening the accepted set to `unattributed` must
+    // not widen it to arbitrary strings, or a near-miss typo passes as a valid record.
     expect(
       parseRecordLine('2026-08-12T12:00:00Z\tunatributed\tbaseline\tpackages/judge/dist'),
     ).toBeNull();
@@ -62,10 +56,8 @@ describe('COVENANT-14 §2-d unattributed — round-trip', () => {
 
 describe('COVENANT-14 §2-d unattributed — aggregation', () => {
   it('aggregateGain initializes every label with unattributed: 0 and counts unattributed records', () => {
-    // Mutation caught: the per-label counter initializer omitting the unattributed slot
-    // (an undefined + 1 = NaN column), or the count bleeding into passed — which would
-    // disguise "changed with no explaining judgment" as a normal pass, the exact
-    // confusion §0 says the sixth word exists to prevent.
+    // A missing unattributed slot in the per-label initializer yields NaN, and a count
+    // bleeding into passed disguises "changed with no explaining judgment" as a normal pass.
     const records: TelemetryRecord[] = [
       unattributedRecord,
       { ...unattributedRecord, event: 'passed' },
@@ -87,10 +79,8 @@ describe('COVENANT-14 §2-d unattributed — aggregation', () => {
 
 describe('COVENANT-14 §3.5 unattributed — render', () => {
   it('runGain shows unattributed as its own column, never summed into the five', () => {
-    // AC §3.5: the gain output carries an `unattributed` column and does not fold it
-    // into an existing one. Mutation caught: the render template omitting the new
-    // column (the alarm invisible in the report), or the count absorbed into
-    // passed/skipped (passed=3 or skipped=2 instead of the split below).
+    // The column must stand on its own: omitting it makes the alarm invisible in the report,
+    // and folding it into passed or skipped hides it behind a number that looks normal.
     appendRecord(logPath, unattributedRecord);
     appendRecord(logPath, unattributedRecord);
     appendRecord(logPath, { ...unattributedRecord, event: 'passed' });

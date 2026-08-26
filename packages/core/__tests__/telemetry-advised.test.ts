@@ -2,10 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// CONFIG-06 §4.3 RED phase. The 4th first-class telemetry event, `advised`: "a violation
-// verdict was reached, but the enforcement level was advise so it passed and was recorded
-// only". Imported from the package entry point (the surface `@polydeukes/core` publishes).
-// The `advised` event does NOT exist in the union yet, so these are RED by construction.
+// `advised`: a break verdict was reached, but the enforcement level was advise, so the call
+// passed and the verdict was recorded only.
 import {
   aggregateGain,
   appendRecord,
@@ -36,8 +34,8 @@ afterEach(() => {
 
 describe('CONFIG-06 §4.3 advised — round-trip', () => {
   it('formatRecordLine → parseRecordLine round-trips an advised record', () => {
-    // Mutation caught: `advised` missing from the accepted-events set, so parseRecordLine
-    // rejects it and the round-trip returns null instead of the original record.
+    // If `advised` is missing from the accepted-events set the round-trip returns null and
+    // the recorded verdict is lost on every read.
     const parsed = parseRecordLine(formatRecordLine(advisedRecord));
 
     expect(parsed).toEqual(advisedRecord);
@@ -45,8 +43,7 @@ describe('CONFIG-06 §4.3 advised — round-trip', () => {
 
   it('parseRecordLine still rejects an event outside the four (advized)', () => {
     // The other side of the enum boundary: widening the accepted set to `advised` must not
-    // widen it to arbitrary strings. Mutation caught: the membership check dropped so a
-    // near-miss typo ('advized') masquerades as a valid record.
+    // widen it to arbitrary strings, or a near-miss typo passes as a valid record.
     expect(
       parseRecordLine('2026-07-23T12:00:00Z\tadvized\tcommit-self-mod\tlib/protected.ts'),
     ).toBeNull();
@@ -55,9 +52,8 @@ describe('CONFIG-06 §4.3 advised — round-trip', () => {
 
 describe('CONFIG-06 §4.3 advised — aggregation', () => {
   it('aggregateGain initializes every label with advised: 0 and counts advised records', () => {
-    // Mutation caught: the per-label counter initializer omitting the advised slot (so an
-    // advised record lands on undefined + 1 = NaN or throws), or the count bleeding into
-    // passed/blocked instead of its own column.
+    // A missing advised slot in the per-label initializer yields NaN or throws, and a count
+    // bleeding into passed/blocked loses the distinction the event exists to record.
     const records: TelemetryRecord[] = [
       advisedRecord,
       { ...advisedRecord, event: 'passed' },
@@ -79,8 +75,7 @@ describe('CONFIG-06 §4.3 advised — aggregation', () => {
 
 describe('CONFIG-06 §4.3 advised — render', () => {
   it('runGain output carries an advised= column for a label', () => {
-    // Mutation caught: the render line omitting the advised count, which would hide the
-    // recorded-but-passed verdicts the whole ticket exists to measure.
+    // Omitting the advised count from the render line hides the recorded-but-passed verdicts.
     appendRecord(logPath, advisedRecord);
 
     const output = runGain(logPath);
