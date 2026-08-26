@@ -1,11 +1,11 @@
 /**
- * `pdks covenant check` — the commit surface's composition root (ADAPTER-git §4.3).
+ * `pdks covenant check` — the commit surface's composition root.
  *
  * Assembly mirrors the session hook — loadConfig → normalizeProtectedPaths → collect →
  * dispatchCovenants — and spawns the same covenant dist bodies, so a change receives the
  * verdict a session tool call would. Each change is dispatched as its own input so
  * telemetry stays one row per file. The witness valve is a `/dev/tty` prompt that only
- * the staged domain assembles (DIAG-01 §4.3); the other domains open no commit.
+ * the staged domain assembles; the other domains open no commit.
  *
  * fail-closed: a missing config, an unbuilt body, or a collector failure exits 2 with one
  * blocked record. An empty domain is an explicit pass with no records.
@@ -32,8 +32,8 @@ import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './
 import { loadConfig } from './load-config.js';
 
 /**
- * Which observation of the commit surface a run judges (DIAG-01 §4.2). Only the collector
- * differs between them; the IR, the assembly, and the dispatcher are one path.
+ * Which observation of the commit surface a run judges. Only the collector differs between
+ * them; the IR, the assembly, and the dispatcher are one path.
  *
  * `range` names its two refs. `ancestry: 'merge-base'` selects the `A...B` reading, whose
  * base is the two refs' common ancestor rather than `A` itself; the adapter that owns the
@@ -44,23 +44,22 @@ export type CheckDomain =
   | { kind: 'worktree' }
   | { kind: 'range'; base: string; head: string; ancestry?: 'merge-base' };
 
-/** `runCovenantCheck` input (ADAPTER-git §4.3 — the contract covenant-check tests pin). */
+/** `runCovenantCheck` input. */
 export type CovenantCheckSpec = {
   /** Repository root — config discovery and staged collection both anchor here. */
   repoRoot: string;
   /**
    * Overrides where telemetry is written (tests and assembly injection) — the first term
    * of the precedence, ahead of the config's `telemetry.logPath` and of the default this
-   * runner settles before the config loads (ADAPTER-git-b §4.1). Absent, both of those
-   * apply in that order.
+   * runner settles before the config loads. Absent, both of those apply in that order.
    */
   telemetryPath?: string;
   /** Overrides the resolved covenant dist directory (tests and assembly injection). */
   covenantDist?: string;
   /**
    * TTY valve seam: writes the given prompt and returns the line a human typed, or null
-   * for no input. ABSENT means a non-TTY environment — the valve never opens (AC-3
-   * human-only arming).
+   * for no input. ABSENT means a non-TTY environment — the valve never opens, which is
+   * what keeps it human-only.
    */
   ttyPrompt?: (prompt: string) => string | null;
   /** Which observation to judge. ABSENT means `staged`. */
@@ -70,10 +69,10 @@ export type CovenantCheckSpec = {
 /**
  * The TTY witness predicate, or undefined when no valve can exist (no witness configured
  * or no TTY seam). It fires on the first registration that broke, names it from the
- * dispatcher's context (COVENANT-17 §4.5), and caches the answer: one commit, at most one
- * prompt, full-token equality. Both sides are trimmed like the session valve, since config
- * validation accepts a padded token. The cache latches closed before the seam is consulted
- * so a throwing seam never re-prompts.
+ * dispatcher's context, and caches the answer: one commit, at most one prompt, full-token
+ * equality. Both sides are trimmed like the session valve, since config validation accepts
+ * a padded token. The cache latches closed before the seam is consulted so a throwing seam
+ * never re-prompts.
  */
 function ttyWitnessValve(
   witness: { token: string } | undefined,
@@ -118,22 +117,22 @@ export type CommitAssemblySpec = {
   /**
    * The covenant surface the registrations are built from — the module the caller loaded
    * from the resolved dist, so what judges a change is what that dist carries, and what
-   * `explain` renders is what would judge it (DISPATCH-01 §4.2).
+   * `explain` renders is what would judge it.
    */
   covenant: CovenantModule;
   witness?: CovenantRegistration['witness'];
 };
 
 /**
- * The commit surface's registration set (CLI-01 §7 invariant 1) — one assembly that the
- * runner dispatches and `explain` renders.
+ * The commit surface's registration set — one assembly that the runner dispatches and
+ * `explain` renders.
  */
 export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantRegistration[] {
   const { config, rootDir, covenant, witness } = spec;
   const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(config.adapters?.git);
 
-  // Union of the common list and the git-additive one (CONFIG-08 §4.2), common first so
-  // first-occurrence dedupe is deterministic. The session hook reads the common list alone.
+  // Union of the common list and the git-additive one, common first so first-occurrence
+  // dedupe is deterministic. The session hook reads the common list alone.
   const protectedPaths = normalizeProtectedPaths({
     protectedPaths: [...(config.protectedPaths ?? []), ...gitAdditivePaths],
   });
@@ -148,7 +147,7 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
     }),
     // No shell axis here, so command-family entries are left out. Context-family entries
     // stay in: with no transcript the compiler gives them skip registrations, which record
-    // `skipped` on a match (COVENANT-13 §4.5).
+    // `skipped` on a match.
     ...covenant.compileDisciplineRegistrations({
       disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
       rootDir,
@@ -173,9 +172,9 @@ function failClosed(telemetryPath: string | undefined, error: unknown): { exitCo
 /**
  * Settle the telemetry path and load the config once, or fail closed. The provisional
  * path is settled before the load so a config that never loads still has somewhere to
- * write its blocked row (ADAPTER-git-b §4.1); both terms use `resolve` so a relative
- * `repoRoot` cannot send them to different files. The provisional term sits inside the
- * try because `resolve` throws on a non-string `repoRoot`.
+ * write its blocked row; both terms use `resolve` so a relative `repoRoot` cannot send
+ * them to different files. The provisional term sits inside the try because `resolve`
+ * throws on a non-string `repoRoot`.
  */
 function settleConfig(
   spec: CovenantCheckSpec,
@@ -194,8 +193,8 @@ function settleConfig(
 }
 
 /**
- * Collect the changes of one domain (DIAG-01 §4.1). The three collectors return the same
- * shape, so everything downstream of this dispatch is one path.
+ * Collect the changes of one domain. The three collectors return the same shape, so
+ * everything downstream of this dispatch is one path.
  */
 function collectDomain(repoRoot: string, domain: CheckDomain): StagedChange[] {
   if (domain.kind === 'worktree') return collectWorktreeChanges(repoRoot);
@@ -218,16 +217,16 @@ async function judgeChanges(
   changes: StagedChange[],
 ): Promise<{ exitCode: 0 | 2 }> {
   try {
-    // Inside the try so an invalid adapter namespace fails closed (CONFIG-06 §4.2).
+    // Inside the try so an invalid adapter namespace fails closed.
     const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
 
     // Real Node resolution of the covenant package, so the commit surface runs the same
     // judges the session hook does; tests inject a directory instead. Awaited before any
     // registration is composed, so a dist the barrel cannot load fails the run closed here
-    // rather than leaving a half-judged table behind (DISPATCH-01 §4.2).
+    // rather than leaving a half-judged table behind.
     const covenantDist = spec.covenantDist ?? resolveCovenantDist();
     const covenant = await loadCovenantModule(covenantDist);
-    // No valve under advise (nothing to witness) and none outside `staged` (DIAG-01 §4.3).
+    // No valve under advise (nothing to witness) and none outside `staged`.
     const witness =
       enforce === 'advise' || domain.kind !== 'staged'
         ? undefined
@@ -258,8 +257,8 @@ async function judgeChanges(
       if (exitCode === 2) blocked = true;
       advisedCount += results.filter((result) => result.event === 'advised').length;
     }
-    // Names no level: surface-level and entry-level advice mix in one run (CONFIG-11), so
-    // the commit's fate is read from the run.
+    // Names no level: surface-level and entry-level advice mix in one run, so the commit's
+    // fate is read from the run.
     if (advisedCount > 0) {
       const outcome = blocked ? 'commit blocked by another verdict' : 'commit allowed';
       process.stderr.write(
@@ -273,10 +272,9 @@ async function judgeChanges(
 }
 
 /**
- * Judge one observation of `repoRoot` exactly as the session surface would
- * (ADAPTER-git §4.3, DIAG-01 §4.2) — the staged diff by default, the working tree or a
- * ref range on request. Async because the dispatcher spawns covenant bodies (CORE-01).
- * An empty domain is an explicit pass: nothing to judge, no records.
+ * Judge one observation of `repoRoot` exactly as the session surface would — the staged
+ * diff by default, the working tree or a ref range on request. Async because the dispatcher
+ * spawns covenant bodies. An empty domain is an explicit pass: nothing to judge, no records.
  */
 export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }> {
   const settlement = settleConfig(spec);

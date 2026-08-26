@@ -10,45 +10,31 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// DIST-02 §3-i — the project-side scaffold layer, the half every distribution path shares
-// (the plugin path of DIST-04 reuses this function and swaps only the registration layer).
-//
-// Contract asserted (the implementer matches this named export; it is reached directly,
-// never through the barrel — the same convention as both composition roots):
-//   scaffoldProject(projectRoot: string): { created: string[]; skipped: string[] }
-//     - creates polydeukes.config.yaml and the .polydeukes/ .gitignore line, NOTHING
-//       else: registration artifacts (hook file, .claude/settings.json) belong to the
-//       session layer (§3-i), which is what lets DIST-04 reuse this function unchanged.
-//     - never overwrites anything (§5-d invariant 1); created/skipped report per artifact
-//       as projectRoot-relative paths (the bin prints them — the §3-a stdout contract).
-//     - the config existence check looks at ALL THREE discovery candidates (§3-a):
-//       creating the canonical name next to an existing sibling spelling would make
-//       loadConfig throw on ambiguity, and the fail-closed session surface would then
-//       block every call right after install. Existence is FILE PRESENCE, never parse
-//       success (AC-11) — a broken config is the consumer's to fix, not ours to replace.
+// The project-side scaffold layer, the half every distribution path shares. It creates the
+// config and the telemetry ignore line and NOTHING else: registration artifacts belong to
+// the session layer, which is what lets another distribution path reuse this function
+// unchanged.
 import { loadConfig } from '../src/load-config.ts';
 import { scaffoldProject } from '../src/scaffold-project.ts';
 
-// ---------------------------------------------------------------------------
 // Each test builds a throwaway projectRoot under tmpdir, so no protected path of THIS
-// repository is ever targeted (§3-h: the scaffold never runs against this checkout).
-// ---------------------------------------------------------------------------
+// repository is ever targeted — the scaffold never runs against this checkout.
 
 /** The canonical config name the scaffold creates, and the sibling spellings it honors. */
 const CONFIG_CANONICAL = 'polydeukes.config.yaml';
 const CONFIG_YML = 'polydeukes.config.yml';
 const CONFIG_JSON = 'polydeukes.config.json';
-/** The telemetry-directory ignore line (§3-a, carried over from core.prd.config-schema §4.3). */
+/** The telemetry-directory ignore line. */
 const GITIGNORE_LINE = '.polydeukes/';
 /**
- * DIST-05 AC-5 — the `$schema` line the generated config opens with. The value is a
- * consumer-root-relative FILE path because `$schema` is a static string an editor reads;
- * a module specifier never reaches a resolver from there (DIST-05 §3-b).
+ * The `$schema` line the generated config opens with. The value is a consumer-root-relative
+ * FILE path because `$schema` is a static string an editor reads; a module specifier never
+ * reaches a resolver from there.
  */
 const SCHEMA_LINE =
   '# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json';
 /**
- * §3-d minimum protection set for a generated config — the gate definitions the session
+ * The minimum protection set for a generated config — the gate definitions the session
  * layer creates. A generated list ships as a minimum a consumer adds to, so an entry
  * belongs here only when editing that path removes a judgment rather than failing one.
  */
@@ -81,10 +67,10 @@ afterEach(() => {
 
 describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer', () => {
   it('creates the canonical config and the .polydeukes/ ignore line on an empty tree, reporting both as created', () => {
-    // Mutation caught: either shared artifact dropped (a consumer without a config fails
-    // closed on every call; without the ignore line every consumer commits its own
-    // telemetry), or the created report disagreeing with the disk — the bin prints this
-    // report, and a report that lies leaves the user unable to tell a run from a no-op.
+    // A consumer without a config fails closed on every call; without the ignore line
+    // every consumer commits its own telemetry. The report must also agree with the disk —
+    // the bin prints it, and a report that lies leaves the user unable to tell a run from
+    // a no-op.
     const result = scaffoldProject(projectRoot);
 
     expect(existsSync(join(projectRoot, CONFIG_CANONICAL))).toBe(true);
@@ -94,10 +80,10 @@ describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer
   });
 
   it('creates NO registration artifact — no hook file and no .claude/settings.json (AC-9)', () => {
-    // Mutation caught: a registration output moved back into the shared layer — the
-    // change AC-9 names as the reuse-voiding one. DIST-04 calls this function for a path
-    // whose registration lives outside the project, so a hook file written here would
-    // ship a second, unregistered delegator with every plugin install.
+    // A registration output moved back into this shared layer voids the reuse: another
+    // distribution path calls this function for a case whose registration lives outside
+    // the project, so a hook file written here would ship a second, unregistered
+    // delegator with every install.
     scaffoldProject(projectRoot);
 
     expect(existsSync(join(projectRoot, '.claude'))).toBe(false);
@@ -107,11 +93,11 @@ describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer
 
 describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction', () => {
   it('passes loadConfig and carries the §3-d minimum protectedPaths', () => {
-    // loadConfig throwing here is §5-b's worst case: the session surface is fail-closed,
-    // so an invalid generated config blocks every call right after install. Mutation
-    // caught: the languages placeholder dropped (validation rejects the config), or a
-    // resolution-path entry missing — a stub on the node_modules walk then replaces the
-    // judge and every call passes with no telemetry row (the defect class).
+    // loadConfig throwing here is the worst case: the session surface is fail-closed, so
+    // an invalid generated config blocks every call right after install. Dropping the
+    // languages placeholder makes validation reject the config; a missing resolution-path
+    // entry lets a stub on the node_modules walk replace the judge, and every call then
+    // passes with no telemetry row.
     scaffoldProject(projectRoot);
 
     const { config } = loadConfig(projectRoot);
@@ -119,11 +105,9 @@ describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction'
   });
 
   it('carries a witness block — a valveless generated config makes the first block a lockout (§3-e)', () => {
-    // The schema keeps witness optional, so the loadConfig pass above proves nothing
-    // about it — this assertion is the only thing between a generated config and §3-e's
-    // lockout: without the block no human can open ANY blocked verdict, and .claude/hooks
-    // is on the protection list, so the first block would freeze the project for good.
-    // Mutation caught: the witness block omitted from the generated config.
+    // The schema keeps witness optional, so the loadConfig pass above proves nothing about
+    // it. Without the block no human can open ANY blocked verdict, and .claude/hooks is on
+    // the protection list, so the first block would freeze the project for good.
     scaffoldProject(projectRoot);
 
     const { config } = loadConfig(projectRoot);
@@ -133,11 +117,11 @@ describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction'
 
 describe('DIST-02 §3-a / AC-10 config existence looks at all three discovery candidates', () => {
   it('does not create the canonical name next to an existing .yml config', () => {
-    // Mutation caught: the existence check narrowed to the canonical filename — AC-10's
-    // named mutant. Writing .yaml next to a project's .yml makes loadConfig throw on
-    // ambiguity, and the fail-closed session surface then blocks every call: the scaffold
-    // itself would be what bricks the project. The ignore line must still land — the skip
-    // is per artifact, never an early return on the first existing one.
+    // An existence check narrowed to the canonical filename writes .yaml next to a
+    // project's .yml, which makes loadConfig throw on ambiguity, and the fail-closed
+    // session surface then blocks every call: the scaffold itself would be what stopped
+    // the project. The ignore line must still land — the skip is per artifact, never an
+    // early return on the first existing one.
     writeFileSync(join(projectRoot, CONFIG_YML), VALID_SIBLING_YML);
 
     scaffoldProject(projectRoot);
@@ -148,9 +132,9 @@ describe('DIST-02 §3-a / AC-10 config existence looks at all three discovery ca
   });
 
   it('does not create the canonical name next to an existing .json config', () => {
-    // Mutation caught: the candidate set covering the two YAML spellings but not .json —
-    // the loader's third discovery candidate. Same ambiguity brick as the .yml case, one
-    // spelling over.
+    // A candidate set covering the two YAML spellings but not .json misses the loader's
+    // third discovery candidate — the same ambiguity as the .yml case, one spelling
+    // over.
     writeFileSync(join(projectRoot, CONFIG_JSON), VALID_SIBLING_JSON);
 
     scaffoldProject(projectRoot);
@@ -162,10 +146,10 @@ describe('DIST-02 §3-a / AC-10 config existence looks at all three discovery ca
 
 describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', () => {
   it('leaves an existing canonical config byte-identical and reports it skipped', () => {
-    // Mutation caught: the shared layer regenerating an existing config. A regenerator
-    // that emits identical bytes would survive a second-run byte comparison, so this
-    // fixture deliberately differs from anything the scaffold would generate — an
-    // overwrite here is a consumer's hand-tuned protection surface silently reset.
+    // A regenerator that emits identical bytes would survive a second-run byte
+    // comparison, so this fixture deliberately differs from anything the scaffold would
+    // generate. An overwrite here is a consumer's hand-tuned protection surface silently
+    // reset.
     const userConfig = '# hand-tuned by the consumer — not scaffold output\n';
     writeFileSync(join(projectRoot, CONFIG_CANONICAL), userConfig);
 
@@ -177,12 +161,11 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
   });
 
   it('leaves an unparseable config untouched — existence is file presence, not parse success (AC-11)', () => {
-    // Mutation caught: the existence check implemented as a parse (or loadConfig)
-    // attempt — AC-11's named mutant. A broken config would read as "absent" and be
-    // overwritten, destroying the very file the consumer was midway through fixing.
-    // The hand-tuned case above cannot catch the parse-level variant (its comment-only
-    // fixture parses cleanly and fails only validation), so this fixture must fail at
-    // PARSE: an unclosed YAML flow sequence.
+    // An existence check implemented as a parse or loadConfig attempt reads a broken
+    // config as "absent" and overwrites it, destroying the very file the consumer was
+    // midway through fixing. The hand-tuned case above cannot catch that variant — its
+    // comment-only fixture parses cleanly and fails only validation — so this fixture must
+    // fail at PARSE: an unclosed YAML flow sequence.
     const broken = 'languages: [never closed\n';
     writeFileSync(join(projectRoot, CONFIG_CANONICAL), broken);
 
@@ -194,9 +177,9 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
   });
 
   it('appends the ignore line to an existing .gitignore without touching its other lines', () => {
-    // Mutation caught: .gitignore rewritten wholesale — every ignore entry the consumer
-    // already relies on vanishes, and their build output turns trackable on the very next
-    // status. Append is the contract; the original lines must survive alongside ours.
+    // A .gitignore rewritten wholesale loses every entry the consumer already relies on,
+    // and their build output turns trackable on the very next status. Append is the
+    // contract; the original lines must survive alongside ours.
     writeFileSync(join(projectRoot, '.gitignore'), 'dist/\ncoverage/\n');
 
     scaffoldProject(projectRoot);
@@ -243,13 +226,12 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
   }
 
   it('opens with the exact yaml-language-server $schema line', () => {
-    // Mutation caught: any spelling drift in the value — the `@polydeukes/core` path the
-    // docs carried before this ticket, a module specifier (`polydeukes/schema.json`), an
-    // absolute path, or a GitHub raw URL. Every one of those is still a plausible-looking
-    // comment that yaml-language-server silently ignores or fails to fetch, so nothing in
-    // the consumer's editor reports the mistake: validation just never happens. The line
-    // must also be FIRST — the directive is only honored at the head of the document, so
-    // a line pushed below a banner comment is inert in the same silent way.
+    // Any spelling drift in the value — a module specifier, an absolute path, a raw URL —
+    // is still a plausible-looking comment that yaml-language-server silently ignores or
+    // fails to fetch, so nothing in the consumer's editor reports the mistake: validation
+    // just never happens. The line must also be FIRST: the directive is only honored at
+    // the head of the document, so a line pushed below a banner comment is inert in the
+    // same silent way.
     installSchemaBeside(projectRoot);
     scaffoldProject(projectRoot);
 
@@ -260,10 +242,10 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
     // An editor resolves a relative `$schema` against the CONFIG FILE's own directory, and
     // the config is written wherever this command was invoked — so a run inside a monorepo
     // sub-package, where the install hoisted to the workspace root, would name a path that
-    // is not there. Mutation caught: the directive emitted unconditionally. That line reads
-    // as working configuration, and the failure is silent on both ends — the editor reports
-    // no error for an unresolvable schema, and the user does not audit a line the tool wrote
-    // for them. Writing nothing leaves an absence they can see and fix.
+    // is not there. A directive emitted unconditionally reads as working configuration, and
+    // the failure is silent on both ends: the editor reports no error for an unresolvable
+    // schema, and the user does not audit a line the tool wrote for them. Writing nothing
+    // leaves an absence they can see and fix.
     scaffoldProject(projectRoot);
 
     expect(read(CONFIG_CANONICAL)).not.toContain('yaml-language-server');
@@ -271,8 +253,7 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
 
   it('still generates a loadable config when the line is omitted', () => {
     // The omission is one comment line, not a different artifact: everything the scaffold
-    // promises has to survive it. Mutation caught: the conditional dropping the header
-    // comment block with the directive, or emitting a config whose first line is now blank.
+    // promises has to survive it, with no dropped header block and no leading blank line.
     scaffoldProject(projectRoot);
 
     expect(() => loadConfig(projectRoot)).not.toThrow();
@@ -280,13 +261,12 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
   });
 
   it('still passes loadConfig with the $schema line present', () => {
-    // DIST-05 §5 invariant 4, asserted rather than assumed: the line is a YAML comment and
-    // the loader must not see it. Mutation caught: the line emitted as a document KEY
-    // (`$schema: node_modules/...`) instead of a comment — the schema forbids unknown
+    // Asserted rather than assumed: the line is a YAML comment and the loader must not see
+    // it. Emitted as a document KEY instead, it would hit the schema's ban on unknown
     // top-level properties, so validation would reject the config the scaffold itself just
-    // wrote, and the fail-closed session surface would block every call right after
-    // install. The header-line assertion above passes for a mapping key too, since the
-    // comment marker is one character.
+    // wrote and the fail-closed session surface would block every call right after install.
+    // The header-line assertion above passes for a mapping key too, since the comment
+    // marker is one character.
     installSchemaBeside(projectRoot);
     scaffoldProject(projectRoot);
 
@@ -306,11 +286,10 @@ describe('POSTURE-01 AC-7 / §4.5 — the generated config shows the promotion l
   ] as const;
 
   it('carries all three rungs in the text while loadConfig sees no disciplines', () => {
-    // The ladder is narrative, not policy: a consumer reads draft → advise → block in
-    // place, and the loaded config still carries no judging entry (DIST-02 §3-d minimum
-    // set). Mutation caught: the example omitted or trimmed to fewer rungs, or written
-    // as a live `disciplines:` key — the generated config would then judge with entries
-    // nobody chose, and an id-less example would fail validation and lock the session.
+    // The ladder is narrative, not policy: a consumer reads draft, advise, block in place,
+    // and the loaded config still carries no judging entry. Written as a live
+    // `disciplines:` key instead, the generated config would judge with entries nobody
+    // chose, and an id-less example would fail validation and lock the session.
     scaffoldProject(projectRoot);
 
     const text = read(CONFIG_CANONICAL);
@@ -324,9 +303,9 @@ describe('POSTURE-01 AC-7 / §4.5 — the generated config shows the promotion l
   it('loads as three distinct disciplines once the ladder is uncommented as instructed', () => {
     // "Uncomment to start" is a promise the generated text must keep: a consumer who
     // strips the comment markers gets a config that loads, not one that locks every call
-    // at assembly (a duplicate id or a missing key throws before any verdict, and the
-    // valve is never consulted). Mutation caught: two rungs sharing an id, a rung missing
-    // `why`, or the block indented so it no longer parses as a `disciplines:` list.
+    // at assembly. A duplicate id, a rung missing `why`, or a block indented so it no
+    // longer parses as a `disciplines:` list throws before any verdict, and the witness
+    // valve is never consulted.
     scaffoldProject(projectRoot);
     const text = read(CONFIG_CANONICAL);
     const start = text.indexOf('# disciplines:');
@@ -340,8 +319,8 @@ describe('POSTURE-01 AC-7 / §4.5 — the generated config shows the promotion l
 
     const { config } = loadConfig(projectRoot);
 
-    // Resolution splits drafts from judged entries (CONFIG-10), so the three rungs land
-    // as one draft plus two judged entries.
+    // Resolution splits drafts from judged entries, so the three rungs land as one draft
+    // plus two judged entries.
     expect(config.drafts?.map((entry) => entry.id)).toEqual(['no-todo-in-shipped-code-draft']);
     expect(config.disciplines?.map((entry) => entry.id)).toEqual([
       'no-todo-in-shipped-code',

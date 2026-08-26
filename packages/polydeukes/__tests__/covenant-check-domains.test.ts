@@ -8,10 +8,9 @@ import {
   type StagedChange,
 } from '@polydeukes/adapter-git';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// DIAG-01 §4.2 / §4.3 / §5 AC-3, AC-4, AC-5 RED phase — `runCovenantCheck` gains a
-// `domain` (staged | worktree | range). One judge, three observation points: the same
-// violation must collect identically, exit identically, and leave the same telemetry
-// rows under the one `covenant-check` label. The witness valve stands on staged alone.
+// `runCovenantCheck`'s `domain` (staged | worktree | range): one judge, three
+// observation points. The same violation must collect identically, exit identically,
+// and leave the same telemetry rows. The witness valve stands on staged alone.
 import { runCovenantCheck } from '../src/index.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
@@ -83,13 +82,11 @@ function sortedRows(path: string): [string, string, string][] {
 
 describe('§5 AC-3 covenant check — the three domains judge one violation identically', () => {
   it('collects the same (path, status, pre, post) rows, exits the same, and records the same (event, label, subject) set', async () => {
-    // The symmetry is checked at every layer, not just the exit code (dev-log
-    // "symmetry-checked-at-one-layer-only"): a collector that read post from the wrong
-    // source, a domain branch that skipped the discipline registrations, or a range run
-    // that fell into the fail-closed catch would each still exit 2. Mutation caught:
-    // any one domain diverging from the other two at the collector, the exit, or the
-    // rows — and the expected rows are pinned explicitly so three runs that all crashed
-    // with a lone `covenant-check` row cannot pass as "equal".
+    // The symmetry is checked at every layer, not just the exit code: a collector reading
+    // post from the wrong source, a domain branch skipping the discipline registrations,
+    // and a range run falling into the fail-closed catch would each still exit 2. The
+    // expected rows are pinned explicitly so three runs that all crashed with a lone
+    // `covenant-check` row cannot pass as "equal".
     const base = commitCleanBaseline();
     writeViolations();
 
@@ -137,9 +134,9 @@ describe('§5 AC-3 covenant check — the three domains judge one violation iden
   });
 
   it('omitting `domain` judges the staged diff (the lefthook path is unchanged)', async () => {
-    // Mutation caught: the default flipped to worktree — a dirty-but-unstaged file would
-    // then block a commit that does not contain it. Disk carries the violation; the
-    // index is clean, so a staged default exits 0 with zero rows.
+    // A default of worktree would let a dirty-but-unstaged file block a commit that does
+    // not contain it. Disk carries the violation and the index is clean, so a staged
+    // default exits 0 with zero rows.
     commitCleanBaseline();
     writeViolations();
 
@@ -154,9 +151,9 @@ describe('§5 AC-4 covenant check — the witness valve stands on staged only', 
   // Staged prompting is pinned by covenant-check-prompt.test.ts.
 
   it('under worktree a protected-path break never consults ttyPrompt and exits 2', async () => {
-    // Mutation caught: the valve assembled for every domain — a diagnostic run would
-    // then hang on /dev/tty asking to open a commit that does not exist, and the
-    // answer would be recorded as `witnessed` (exit 0) with nothing witnessed.
+    // A valve assembled for every domain would make a diagnostic run hang on /dev/tty
+    // asking to open a commit that does not exist, and record the answer as `witnessed`
+    // with nothing witnessed.
     commitCleanBaseline({ witness: { token: WITNESS_TOKEN, ttlMinutes: 5 } });
     writeViolations();
     const ttyPrompt = vi.fn((_prompt: string) => WITNESS_TOKEN);
@@ -176,8 +173,8 @@ describe('§5 AC-4 covenant check — the witness valve stands on staged only', 
   });
 
   it('under range a protected-path break never consults ttyPrompt and exits 2', async () => {
-    // Same mutation as above on the range branch — the two diagnostic domains are
-    // separate dispatch arms, so one being valve-free proves nothing about the other.
+    // The two diagnostic domains are separate dispatch arms, so one being valve-free
+    // proves nothing about the other.
     const base = commitCleanBaseline({ witness: { token: WITNESS_TOKEN, ttlMinutes: 5 } });
     writeViolations();
     git('checkout', '--quiet', '-b', VIOLATION_BRANCH);
@@ -202,7 +199,6 @@ describe('§5 AC-4 covenant check — the witness valve stands on staged only', 
 
 describe('§5 AC-5 covenant check — empty domains and an unresolvable range', () => {
   it('an empty range (HEAD..HEAD) exits 0 with zero rows', async () => {
-    // Same short-circuit on the range arm.
     commitCleanBaseline();
 
     const result = await runCovenantCheck({
@@ -216,9 +212,8 @@ describe('§5 AC-5 covenant check — empty domains and an unresolvable range', 
   });
 
   it('an unresolvable range ref exits 2 with exactly one blocked row under the covenant-check label', async () => {
-    // Fail-closed with a record: a collector throw on a typo'd ref must not become an
-    // empty domain (exit 0) nor an unrecorded rejection. Mutation caught: the range arm's
-    // try dropped (throw escapes the runner), or the throw swallowed into [].
+    // Fail-closed with a record: a collector throw on a typo'd ref must become neither an
+    // empty domain (exit 0) nor an unrecorded rejection.
     commitCleanBaseline();
     const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 

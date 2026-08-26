@@ -1,7 +1,6 @@
-// DISPATCH-01 §5 AC-1 — the parity net: fixtures MEASURED on the pre-conversion
-// artifact and pinned (PRD §6 step 1 — authored after the conversion they would be
-// self-reporting). Both surfaces are observed from OUTSIDE the process (real hook /
-// real bin spawn), so the stderr pins hold across the fd-inherit → wrapper-write move.
+// The parity net over both surfaces, each observed from OUTSIDE the process — a real
+// hook spawn and a real bin spawn — so the stderr expectations hold regardless of how
+// the judges write their reasons internally.
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,7 +23,7 @@ const CONTEXT_TOOL = 'WebFetch';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
 const SCOPED_TARGET = 'lib/a.ts';
 const DELTA_WHY = 'todos rot in place';
-/** The block reason the session surface must keep emitting byte-for-byte (AC-1 ②). */
+/** The block reason the session surface must keep emitting byte-for-byte. */
 const BLOCK_REASON = `Write would modify protected path ${PROTECTED_ENTRY}/pre-commit\n`;
 
 const DISCIPLINES = [
@@ -116,8 +115,7 @@ function runHook(payload: Record<string, unknown>) {
 
 describe('DISPATCH-01 AC-1 ① — session surface, passing payload (measured pre-conversion)', () => {
   it('a scoped Write mentioning the protected entry passes every matched registration: exit 0, four passed rows in registration order', () => {
-    // Mutation caught: any in-process thunk answering differently than the spawned
-    // body it replaces — order, labels, and subjects are all load-bearing.
+    // Order, labels, and subjects are all load-bearing here.
     const transcript = transcriptWithPrecedent();
     const result = runHook({
       hook_event_name: 'PreToolUse',
@@ -142,8 +140,8 @@ describe('DISPATCH-01 AC-1 ① — session surface, passing payload (measured pr
   });
 
   it('a scoped shell append mentioning the protected entry read-only lands the skipped pair: exit 0, two passed + two skipped', () => {
-    // Mutation caught: a skipped row turning into a pass with NO row (the defect
-    // class), or the shell evidence enrichment lost in the body-CLI deletion.
+    // A skipped row turning into a pass with NO row is the defect class: the recorded
+    // absence of a judgment is not a pass.
     const transcript = transcriptWithPrecedent();
     const result = runHook({
       hook_event_name: 'PreToolUse',
@@ -167,8 +165,7 @@ describe('DISPATCH-01 AC-1 ① — session surface, passing payload (measured pr
 
 describe('DISPATCH-01 AC-1 ② — session surface, blocking payload (measured pre-conversion)', () => {
   it('a Write targeting a protected file blocks: exit 2, blocked self-mod then passed shell-mod, the reason verbatim on stderr', () => {
-    // Mutation caught: the wrapper dropping/reformatting/double-writing the judge's
-    // reason (the seam that physically moves), or the shell-mod sibling row lost.
+    // The reason reaches stderr verbatim — never reformatted, dropped, or written twice.
     const result = runHook({
       hook_event_name: 'PreToolUse',
       session_id: 's-1',
@@ -220,8 +217,8 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
 
 describe('DISPATCH-01 AC-1 ③ — commit surface advise translation (the domain W1 never measured)', () => {
   it('a staged delta violation under adapters.git advise: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
-    // Mutation caught: the reason line lost with the spawn (advise goes mute, PRD
-    // §4.4), the why no longer appended, or the advisory line duplicated.
+    // Advise is not mute: the reason line, the entry's `why`, and one advisory summary
+    // all reach stderr.
     const result = runCommitCheck(
       {
         disciplines: [
@@ -241,9 +238,8 @@ describe('DISPATCH-01 AC-1 ③ — commit surface advise translation (the domain
   });
 
   it('a requirePrecedent discipline on a matched staged change records ONE skipped row (exit 0, silent)', () => {
-    // Mutation caught: the commit surface's permanent no-transcript condition turning
-    // into a pass with NO row (the defect class) — or a block — once the body-less skip
-    // arm is recomposed as a thunk (successor to the spawn-era covenant-check pin).
+    // The commit surface's permanent no-transcript condition must stay a recorded skip:
+    // neither a block, nor a pass with NO row.
     const result = runCommitCheck(
       {
         disciplines: [

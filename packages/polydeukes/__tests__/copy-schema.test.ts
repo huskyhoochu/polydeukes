@@ -4,31 +4,27 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-// DIST-05 AC-1/AC-7 — the umbrella build's schema copy step (§3-b/§3-c). The copy exists
-// because npm's `files` whitelist cannot reach outside the package directory, so the
-// schema has to travel into `dist/` to ship at all; `copy-docs.mjs` solves the same
-// problem the same way and this step matches its failure posture.
+// The umbrella build's schema copy step. The copy exists because npm's `files` whitelist
+// cannot reach outside the package directory, so the schema has to travel into `dist/` to
+// ship at all; `copy-docs.mjs` solves the same problem the same way and this step matches
+// its failure posture.
 //
-// Contract asserted (the implementer matches this script path and behaviour):
-//   node packages/polydeukes/scripts/copy-schema.mjs
-//     - reads `packages/core/schema/polydeukes.schema.json` (core owns the one source,
-//       §5 invariant 2) and writes `packages/polydeukes/dist/schema/polydeukes.schema.json`.
-//     - a missing source is FATAL: copyFileSync throws ENOENT and the script exits
-//       non-zero, failing the build (§3-c). Skipping what is absent ships a package whose
-//       `$schema` line points at nothing, and the consumer's editor says nothing at all.
+// A missing source is FATAL: the script exits non-zero and fails the build. Skipping what
+// is absent would ship a package whose `$schema` line points at nothing, and the consumer's
+// editor would say nothing at all.
 //
 // The script is driven as a spawned process rather than imported: its exit code IS the
-// contract AC-7 names, and a build step that throws in-process would still leave a green
-// import in a suite that only asserted on the thrown error.
+// contract, and a build step that throws in-process would still leave a green import in a
+// suite that only asserted on the thrown error.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaRoot = resolve(import.meta.dirname, '..');
 
-/** The copy script under test — the build step DIST-05 adds beside `copy-docs.mjs`. */
+/** The copy script under test — the build step beside `copy-docs.mjs`. */
 const COPY_SCRIPT = join(umbrellaRoot, 'scripts', 'copy-schema.mjs');
-/** §3-b's source row: core's schema, the single origin. */
+/** Core's schema, the single origin. */
 const SOURCE_REL = join('packages', 'core', 'schema', 'polydeukes.schema.json');
-/** §3-b's build-output row, umbrella-package-relative. */
+/** The build output, umbrella-package-relative. */
 const OUTPUT_REL = join('dist', 'schema', 'polydeukes.schema.json');
 
 /**
@@ -79,15 +75,14 @@ afterEach(() => {
 
 describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist', () => {
   it('writes dist/schema/polydeukes.schema.json byte-identical to the core source', () => {
-    // Mutation caught: the copy transforming what passes through it — a re-serialized
-    // JSON.parse/stringify round trip, an appended banner comment. Either still produces a
-    // file at the right path, so an existence check goes green while an editor validates
-    // against something that is no longer the schema.
+    // A copy that transforms what passes through it — a JSON.parse/stringify round trip,
+    // an appended banner — still produces a file at the right path, so an existence check
+    // goes green while an editor validates against something that is no longer the schema.
     //
-    // The fixture supplies the source, so this measures the step in isolation: it says the
-    // bytes in equal the bytes out, not that the step read core's file. That the shipped
-    // copy matches core's own is asserted on the installed tree in clean-install.e2e, where
-    // the two files arrive from separately packed tarballs.
+    // The fixture supplies the source, so this measures the step in isolation: bytes in
+    // equal bytes out, not that the step read core's file. That the shipped copy matches
+    // core's own is asserted on the installed tree in clean-install.e2e, where the two
+    // files arrive from separately packed tarballs.
     const source = readFileSync(join(repoRoot, SOURCE_REL));
     const { status, stderr, fixtureRoot } = runInFixture({ source: source.toString('utf-8') });
 
@@ -97,11 +92,10 @@ describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist',
   });
 
   it('leaves the rest of dist untouched', () => {
-    // Mutation caught: a clearing step aimed at `dist` instead of `dist/schema`. The build
-    // runs `tsc && copy-docs && copy-schema`, so by the time this step runs the directory
-    // holds the compiled output and the bundled docs; widening the target erases both and
-    // says nothing — `dist` is gitignored, and the next local build refills it. Only the
-    // tarball shows the loss.
+    // A clearing step aimed at `dist` instead of `dist/schema` erases the compiled output
+    // and the bundled docs, which are already there by the time this step runs, and says
+    // nothing — `dist` is gitignored and the next local build refills it. Only the tarball
+    // would show the loss.
     const preexisting = [join('dist', 'bin.js'), join('dist', 'docs', 'installation.md')];
     const { status, stderr, fixtureRoot } = runInFixture({
       source: '{"a":1}\n',
@@ -120,11 +114,10 @@ describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist',
 
 describe('DIST-05 AC-7 — an absent source schema fails the build', () => {
   it('exits non-zero when the core schema is missing', () => {
-    // Fail-open is the defect class here: a copy that skips what is absent exits 0, the
-    // build goes green, and the tarball ships with no schema. Nothing downstream reports
-    // it — `$schema` is a static string an editor reads, so the consumer sees validation
-    // simply not happening rather than an error. Mutation caught: the copy wrapped in an
-    // existsSync check, or in a try/catch that swallows ENOENT.
+    // Fail-open is the defect class here: a copy wrapped in an existsSync check, or a
+    // try/catch swallowing ENOENT, exits 0, the build goes green, and the tarball ships
+    // with no schema. Nothing downstream reports it — `$schema` is a static string an
+    // editor reads, so the consumer sees validation simply not happening.
     const { status, stderr } = runInFixture({ source: null });
 
     expect(status).not.toBe(0);
@@ -132,10 +125,9 @@ describe('DIST-05 AC-7 — an absent source schema fails the build', () => {
   });
 
   it('leaves no output file behind when the source is missing', () => {
-    // Mutation caught: the step touching or truncating the destination before reading the
-    // source. A zero-byte `dist/schema/polydeukes.schema.json` is worse than no file — the
-    // path the consumer's `$schema` names exists, so the editor loads it and fails to
-    // parse, and the earlier good copy from a cached build is gone.
+    // A step that truncates the destination before reading the source leaves a zero-byte
+    // schema, which is worse than no file: the path the consumer's `$schema` names exists,
+    // so the editor loads it and fails to parse, and the earlier good copy is gone.
     const { status, fixtureRoot } = runInFixture({ source: null });
 
     expect(status).not.toBe(0);

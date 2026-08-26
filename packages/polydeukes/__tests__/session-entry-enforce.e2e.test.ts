@@ -1,12 +1,10 @@
-// CONFIG-11 AC-4 / POSTURE-01 AC-2·AC-3 — the session surface honours an entry's
-// `enforce`, and an entry that omits it lands at advise, proven by
-// spawning the REAL PreToolUse hook (the shipped delegator, the real built dist, a real
-// discipline body) against a fixture tree carrying a config the test authors. A green
-// unit suite does not substitute for this spawn (judging-paths-and-shells): the unit
-// tests prove the branch that was written, the spawn proves the branch that runs. The
-// spawn shape is the CONFIG-08 fixture-tree case in the adapter's assembly e2e — hook
-// copied into a temp tree whose `packages` and `node_modules` link back to the real
-// install graph, so the delegator's bare-specifier imports resolve.
+// The session surface honours an entry's `enforce`, and an entry that omits it lands at
+// advise — proven by spawning the REAL PreToolUse hook (the shipped delegator, the real
+// built dist, a real discipline body) against a fixture tree carrying a config the test
+// authors. A green unit suite does not substitute for the spawn: the unit tests cover the
+// branch that was written, the spawn covers the branch that runs. The hook is copied into
+// a temp tree whose `packages` and `node_modules` link back to the real install graph, so
+// the delegator's bare-specifier imports resolve.
 import { execSync, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,13 +15,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
 
-// ---------------------------------------------------------------------------
-// Injected fixture values. The forbidden command is synthetic (never a real tool), the
-// protected entry is the git-untracked directory only the session surface can watch
-// (CONFIG-08 M2), and the why is real rationale prose — it must reach stderr verbatim.
-// The ids avoid the word `advise` so a row/stream containment check never matches the
-// label by accident.
-// ---------------------------------------------------------------------------
+// Injected fixture values. The forbidden command is synthetic and never a real tool, the
+// protected entry is the git-untracked directory only the session surface can watch, and
+// the why is real rationale prose that must reach stderr verbatim. The ids avoid the word
+// `advise` so a containment check over a row or stream never matches a label by accident.
 
 const SOFT_ID = 'softly-held-command';
 const PLAIN_ID = 'plainly-held-command';
@@ -120,14 +115,11 @@ const breakingCall = bashPayload(`${FORBIDDEN_COMMAND} --run`);
 
 describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an entry at advise', () => {
   it("a call breaking an enforce: 'advise' entry exits 0 with ONE advised row and the why on stderr", () => {
-    // The ticket's definition of done, observed where it lands. Three things separate a
-    // real advise from the ways this can be green for the wrong reason: exit 0 alone is
-    // also a no-match pass (so the row must be advised, not the adapter's passed
-    // supplement); the label must be the entry (so the discipline judged, not a crash
-    // recorded elsewhere); and the why must reach stderr (§4.4 — the reason's only
-    // delivery). Mutation caught: the level lost anywhere between config load, compile,
-    // and dispatch (exit 2 · blocked), or the config refused as unknown vocabulary
-    // (exit 2 · a fail-closed row).
+    // Three things separate a real advise from the ways this can be green for the wrong
+    // reason: exit 0 alone is also a no-match pass, so the row must be advised rather than
+    // the adapter's passed supplement; the label must be the entry, so the discipline
+    // judged rather than a crash being recorded elsewhere; and the why must reach stderr,
+    // its only delivery.
     const result = runHookWithDisciplines([softEntry], breakingCall);
 
     expect(result.status).toBe(0);
@@ -136,11 +128,9 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
   });
 
   it('the same call against the same entry WITHOUT enforce exits 0 · ONE advised row · why on stderr (POSTURE-01 AC-2)', () => {
-    // The default rung, observed where it lands: identical payload, identical predicate,
-    // only the key is absent. The row must be advised under the entry id (exit 0 alone is
-    // also a no-match pass) and the why must still reach stderr — advise is a recorded
-    // break, not silence. Mutation caught: the compile default left at "inherit the
-    // surface" (exit 2 · blocked), or the default filled with 'block'.
+    // The default rung: identical payload, identical predicate, only the key is absent.
+    // The row must be advised under the entry id and the why must still reach stderr —
+    // advise is a recorded break, not silence.
     const result = runHookWithDisciplines([plainEntry], breakingCall);
 
     expect(result.status).toBe(0);
@@ -149,10 +139,10 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
   });
 
   it("the same call against an explicit enforce: 'block' entry exits 2 · ONE blocked row (POSTURE-01 AC-3)", () => {
-    // The promotion rung: the control that proves the advise default above is a default
-    // and not the whole axis collapsing. Mutation caught: the compiler normalising every
-    // value to advise (`'advise'` unconditionally), or the dispatcher reading the field
-    // as a presence flag — either leaves an author's explicit block at exit 0.
+    // The promotion rung, and the control proving the advise default above is a default
+    // rather than the whole axis collapsing: a compiler normalising every value to advise,
+    // or a dispatcher reading the field as a presence flag, would leave an author's
+    // explicit block at exit 0.
     const result = runHookWithDisciplines([hardEntry], breakingCall);
 
     expect(result.status).toBe(2);
@@ -160,11 +150,10 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
   });
 
   it('a shell-axis meta-covenant break in the same assembly still exits 2 · blocked (shell-mod, not just self-mod)', () => {
-    // POSTURE-01 §4.3 remnant 2: the shell axis routes through a different registration
-    // than the tool axis, so self-mod staying at block does not prove shell-mod did. The
-    // config carries an advise entry AND a plain (default-advise) command entry, neither
-    // of which matches this write. Mutation caught: the compile default leaking onto meta
-    // registrations built beside the disciplines on the shell axis.
+    // The shell axis routes through a different registration than the tool axis, so
+    // self-mod staying at block does not prove shell-mod did. The config carries an advise
+    // entry AND a plain (default-advise) command entry, neither of which matches this
+    // write, so an entry default leaking onto the meta registrations would show here.
     const result = runHookWithDisciplines(
       [softEntry, plainEntry],
       bashPayload(`echo 'exit 0' > ${PROTECTED_ENTRY}/pre-commit`),
@@ -175,10 +164,9 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
   });
 
   it('a meta-covenant break in the same assembly still exits 2 · blocked (the entry axis has no reach)', () => {
-    // §4.2: meta registrations carry no entry level, so an advise entry elsewhere in the
-    // config must leave the judging chain's own protection at block. Mutation caught:
-    // the level applied dispatch-wide once any entry declares it, or the compiler
-    // handing the level to registrations it did not compile.
+    // Meta registrations carry no entry level, so an advise entry elsewhere in the config
+    // must leave the judging chain's own protection at block: the level must never be
+    // applied dispatch-wide, nor handed to registrations the compiler did not build.
     const result = runHookWithDisciplines(
       [softEntry],
       writePayload(`${PROTECTED_ENTRY}/pre-commit`, '#!/bin/sh\nexit 0\n'),

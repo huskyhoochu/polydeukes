@@ -1,17 +1,13 @@
 /**
- * `pdks explain` — render both surfaces' assembled registration sets without judging
- * (CLI-01).
+ * `pdks explain` — render both surfaces' assembled registration sets without judging.
  *
- * The answer to "what is judged where, and what silently cannot be" lives in three places
- * today: the registration table inside each composition root, the skip reason the compiler
- * writes to stderr only on a config fault, and the surface placement in prose. This module
- * calls the roots' OWN assembly functions and renders what they return, so it reports the
- * table the judgment uses rather than a second opinion about it (§7 invariant 1).
+ * This module calls the composition roots' OWN assembly functions and renders what they
+ * return, so it reports the table the judgment uses rather than a second opinion about it.
  *
  * It never dispatches, never writes telemetry or a baseline, and never opens a transcript
  * file — the session assembly receives core's `noopTranscript`, which answers queries with
- * nothing and reads no disk (§7 invariants 2-3). Every failure throws: an answer that
- * cannot be given is never given halfway.
+ * nothing and reads no disk. Every failure throws: an answer that cannot be given is never
+ * given halfway.
  */
 
 import { join } from 'node:path';
@@ -107,9 +103,9 @@ function renderSurface(spec: {
     }
     judged += 1;
     const entry = spec.disciplines.find((candidate) => candidate.id === registration.label);
-    // The DECLARED level is rendered, never the effective one (CONFIG-11 §4.5 /
-    // POSTURE-01 §4.4): an omission stays unmarked so the default and an author's choice
-    // of it never read alike, and the surface header states what the omission resolves to.
+    // The DECLARED level is rendered, never the effective one: an omission stays unmarked
+    // so the default and an author's explicit choice of it never read alike, and the
+    // surface header states what the omission resolves to.
     const level = entry?.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
     const description =
       entry === undefined
@@ -133,7 +129,7 @@ function renderSurface(spec: {
 }
 
 /**
- * Read the config at `repoRoot`, assemble both surfaces, and render them (CLI-01 §4.2).
+ * Read the config at `repoRoot`, assemble both surfaces, and render them.
  *
  * The session assembly is given a transcript path, so its `transcript-mod` registration and
  * the context family exist here exactly as they do under a normal hook payload — the path is
@@ -144,8 +140,8 @@ function renderSurface(spec: {
 export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   const { config, configPath } = loadConfig(spec.repoRoot);
   // Resolved and imported exactly as the two runners do, so what this renders is the table
-  // that would judge: a dist those runners would refuse cannot be rendered as if it worked
-  // (DISPATCH-01 §4.2). The load names the missing module and the recovery command.
+  // that would judge: a dist those runners would refuse cannot be rendered as if it worked.
+  // The load names the missing module and the recovery command.
   const covenant = await loadCovenantModule(resolveCovenantDist());
   const disciplines: DisciplineEntry[] = config.disciplines ?? [];
   const drafts: DisciplineDraft[] = config.drafts ?? [];

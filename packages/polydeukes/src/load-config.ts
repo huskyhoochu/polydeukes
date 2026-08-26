@@ -1,13 +1,13 @@
 /**
- * Config discovery and loading (CONFIG-03) — the one place allowed to read and parse the
- * data config file, so the core stays file-I/O-free.
+ * Config discovery and loading — the one place allowed to read and parse the data config
+ * file, so the core stays file-I/O-free.
  *
  * This lives in its own module rather than in the package barrel because ESM re-exports are
- * eager: when `index.ts` re-exports both composition roots, anything importing `loadConfig`
- * from the barrel instantiates the session adapter too. That put `@polydeukes/adapter-claude-code`
- * on the commit surface's load path, where it is never used — a workspace missing only that
- * dist would kill `pdks covenant check` before its fail-closed handler could record a row
- * (PR #46 review). Both composition roots import this module directly for the same reason.
+ * eager: importing `loadConfig` from the barrel would instantiate both composition roots,
+ * putting the session adapter on the commit surface's load path where it is never used. A
+ * workspace missing only that dist would then kill `pdks covenant check` before its
+ * fail-closed handler could record a row. Both composition roots import this module directly
+ * for the same reason.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -18,8 +18,8 @@ import { parseDocument } from 'yaml';
 
 /**
  * The three accepted config filenames, checked directly under the given rootDir. Exported
- * for the scaffold (DIST-02 §3-a): its existence check has to see exactly what discovery
- * sees, or it would create a second spelling and make every later load ambiguous.
+ * for the scaffold: its existence check has to see exactly what discovery sees, or it would
+ * create a second spelling and make every later load ambiguous.
  */
 export const CONFIG_FILENAMES = [
   'polydeukes.config.yaml',
@@ -27,9 +27,7 @@ export const CONFIG_FILENAMES = [
   'polydeukes.config.json',
 ] as const;
 
-/**
- * `LoadedConfig` — the loader's return value (CONFIG-03 §4.1).
- */
+/** `LoadedConfig` — the loader's return value. */
 export type LoadedConfig = {
   /** defineConfig() resolution — protectedPaths already includes configPath */
   config: ResolvedConfig;
@@ -38,7 +36,7 @@ export type LoadedConfig = {
 };
 
 /**
- * Discover, parse, and validate the Polydeukes data config in `rootDir` (CONFIG-03 §4.1).
+ * Discover, parse, and validate the Polydeukes data config in `rootDir`.
  *
  * Discovery looks at exactly the three candidate filenames directly under `rootDir`
  * (no upward walk). Every failure branch throws — silent defaults are forbidden:
@@ -50,7 +48,7 @@ export type LoadedConfig = {
  *
  * Before returning, the discovered `configPath` is appended to
  * `config.protectedPaths` unless already present — the config file itself joins the
- * protection surface (schema rule 6), guaranteed here so no assembler has to remember.
+ * protection surface, guaranteed here so no assembler has to remember.
  */
 export function loadConfig(rootDir: string): LoadedConfig {
   const found = CONFIG_FILENAMES.filter((name) => existsSync(join(rootDir, name)));

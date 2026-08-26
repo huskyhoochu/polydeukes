@@ -7,11 +7,9 @@ import type { CovenantRegistration } from '@polydeukes/covenant';
 import { dispatchCovenants } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-// DISPATCH-01 AC-8 — the no-match no-record pin at the package boundary
-// (roi-telemetry-wiring §8 carry-over), through the real session funnel: the
-// dispatcher contributes ZERO rows on a no-match call — the single surviving row is
-// the adapter's own funnel supplement, measured here so a dispatcher that starts
-// fabricating per-registration rows cannot hide behind it.
+// Through the real session funnel, the dispatcher contributes ZERO rows on a no-match
+// call — the single surviving row is the adapter's own funnel supplement, measured here
+// so a dispatcher that starts fabricating per-registration rows cannot hide behind it.
 
 /** Injected fixture values. */
 const PROTECTED_ENTRY = 'gate';
@@ -61,8 +59,7 @@ function rows(): [string, string][] {
 
 describe('DISPATCH-01 AC-8 — a no-match call leaves no dispatcher row through the real funnel', () => {
   it('session: a Write touching nothing protected leaves ONLY the adapter supplement (zero dispatcher rows)', async () => {
-    // Mutation caught: the dispatcher fabricating a row for a call no registration
-    // judged — no-match is no-record at the dispatch boundary.
+    // No-match is no-record at the dispatch boundary.
     const result = await runFunnel('notes/ordinary.txt');
 
     expect(result.exitCode).toBe(0);
@@ -70,8 +67,7 @@ describe('DISPATCH-01 AC-8 — a no-match call leaves no dispatcher row through 
   });
 
   it('session: the same funnel DOES leave a judged row when the payload routes — the probe is not inert', async () => {
-    // Mutation caught: the pin above going green because the wiring routes nothing at
-    // all (testing-fixtures: an inert probe never routes).
+    // Without this the pin above could be green merely because the wiring routes nothing.
     await runFunnel(`${PROTECTED_ENTRY}/inner.txt`);
 
     expect(rows().map(([, label]) => label)).toContain(REG_LABEL);

@@ -4,21 +4,20 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// DIST-03 AC-1/AC-2 — the five publish tarballs, verified as artifacts. `pnpm pack` is the
-// same producer `pnpm publish -r` runs (§3-b), so what these tests enumerate is what a
-// registry would serve. Tarball paths are discovered by globbing each pack destination —
-// never spelled with a version literal (§5 invariant 5: the pipeline is version-agnostic).
+// The publish tarballs, verified as artifacts. `pnpm pack` is the same producer
+// `pnpm publish -r` runs, so what these tests enumerate is what a registry would serve.
+// Tarball paths are discovered by globbing each pack destination, never spelled with a
+// version literal, so the suite stays version-agnostic.
 //
-// Helpers stay file-local (the init-claude-code.e2e precedent): clean-install.e2e.test.ts
-// packs its own tarballs too, so each suite runs standalone.
+// Helpers stay file-local: clean-install.e2e.test.ts packs its own tarballs too, so each
+// suite runs standalone.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 
 /**
- * The publishable package directories (§3-a) — derived from the same domain
- * `pnpm -r publish` acts on (workspace packages whose manifest is not private), so a
- * new package enters this suite the moment it exists instead of waiting on a checklist
- * (review of PR #49).
+ * The publishable package directories — derived from the same domain `pnpm -r publish`
+ * acts on (workspace packages whose manifest is not private), so a new package enters this
+ * suite the moment it exists instead of waiting on a checklist.
  */
 const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
   const manifest = JSON.parse(
@@ -27,17 +26,17 @@ const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
   return manifest.private !== true;
 });
 
-/** §3-a presence enumeration — every tarball must carry these. */
+/** Presence enumeration — every tarball must carry these. */
 const REQUIRED_ENTRIES = ['package/package.json', 'package/README.md', 'package/LICENSE'];
 const DIST_PREFIX = 'package/dist/';
 
-/** The package whose tarball carries the docs bundle (DOCS-02 §3-a). */
+/** The package whose tarball carries the docs bundle. */
 const UMBRELLA_DIR = 'polydeukes';
 const DOCS_PREFIX = 'package/dist/docs/';
 /**
- * The DOCS-02 §3-a bundle, enumerated. That table is the source of truth and this is its
- * second copy on purpose: the copy step reads its own list, so a test deriving the list
- * from the same place would go green on a bundle that silently lost a member.
+ * The docs bundle, enumerated here as a second copy on purpose: the copy step reads its
+ * own list, so a test deriving the list from the same place would go green on a bundle
+ * that silently lost a member.
  */
 const BUNDLED_DOCS = [
   'installation.md',
@@ -51,7 +50,7 @@ const BUNDLED_DOCS = [
   'reference/adapter-git.md',
 ];
 
-/** §3-a absence enumeration — development-only files that must never ship. */
+/** Absence enumeration — development-only files that must never ship. */
 const FORBIDDEN_PREFIXES = ['package/src/', 'package/__tests__/'];
 const FORBIDDEN_ENTRIES = [
   'package/tsconfig.json',
@@ -73,7 +72,7 @@ beforeAll(() => {
 
 afterAll(() => {
   // Guard: a beforeAll failure leaves packRoot undefined, and rmSync(undefined) would
-  // bury the real error under ERR_INVALID_ARG_TYPE (review of PR #49).
+  // bury the real error under ERR_INVALID_ARG_TYPE.
   if (packRoot) rmSync(packRoot, { recursive: true, force: true });
 });
 
@@ -127,12 +126,11 @@ describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => 
   it.each(
     PACKAGE_DIRS,
   )('the %s tarball ships the runnable set: manifest, dist, README, LICENSE', (dir) => {
-    // Mutation caught: a `files` whitelist entry dropped — a dist-less tarball installs a
-    // package whose every hook call fails closed — or the license text lost. Measured
-    // 2026-08-03: pnpm pack inherits the workspace root LICENSE when the package has none,
-    // so this pin holds across both producing arrangements (root inheritance, per-package
-    // copies) and breaks when a producer swap or file move ships MIT-declared packages
-    // carrying no license text.
+    // A dropped `files` whitelist entry yields a dist-less tarball, which installs a
+    // package whose every hook call fails closed. Measured 2026-08-03: pnpm pack inherits
+    // the workspace root LICENSE when the package has none, so this pin holds under both
+    // arrangements (root inheritance, per-package copies) and breaks when a producer swap
+    // or file move ships MIT-declared packages carrying no license text.
     const entries = tarEntries(dir);
     for (const required of REQUIRED_ENTRIES) {
       expect(entries).toContain(required);
@@ -141,10 +139,10 @@ describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => 
   }, 30_000);
 
   it.each(PACKAGE_DIRS)('the %s tarball ships no development-only files', (dir) => {
-    // Mutation caught: the `files` whitelist deleted or widened — npm then packs the
-    // whole directory and src/, tests, and tsconfigs ride into every consumer install.
-    // The two enumerations break in opposite directions, so neither test can stand in
-    // for the other.
+    // A `files` whitelist deleted or widened makes npm pack the whole directory, and
+    // src/, tests, and tsconfigs ride into every consumer install. This enumeration and
+    // the presence one above break in opposite directions, so neither can stand in for
+    // the other.
     const entries = tarEntries(dir);
     expect(entries.filter((e) => FORBIDDEN_PREFIXES.some((p) => e.startsWith(p)))).toEqual([]);
     for (const forbidden of FORBIDDEN_ENTRIES) {
@@ -155,10 +153,9 @@ describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => 
 
 describe('DOCS-02 AC-1 — the umbrella tarball carries the docs bundle', () => {
   it('ships the eight English documents under dist/docs', () => {
-    // Mutation caught: the copy step dropped from the build script, a member lost from its
-    // list, or `dist/docs` excluded from what npm packs. Any of those installs a package
-    // whose `pdks docs` exits 2 for the missing topic, and nothing consumer-side explains
-    // why — §3-a names that the symptom this enumeration exists to prevent.
+    // A copy step dropped from the build script, a member lost from its list, or
+    // `dist/docs` excluded from what npm packs each install a package whose `pdks docs`
+    // exits 2 for the missing topic, with nothing consumer-side explaining why.
     const entries = tarEntries(UMBRELLA_DIR);
 
     for (const relative of BUNDLED_DOCS) {
@@ -182,10 +179,10 @@ describe('DIST-03 AC-2 — packed manifests carry no workspace-only specifier', 
   it.each(
     PACKAGE_DIRS,
   )('the %s packed manifest has zero workspace: and zero catalog: occurrences', (dir) => {
-    // Mutation caught: packing with npm instead of pnpm (§3-b) — npm leaves `workspace:^`
-    // and `catalog:` unrewritten, and every install of the published manifest then fails
-    // on a specifier no registry can resolve. String-zero over the whole manifest text
-    // covers every dependency field at once, devDependencies included.
+    // Packing with npm instead of pnpm leaves `workspace:^` and `catalog:` unrewritten,
+    // and every install of the published manifest then fails on a specifier no registry
+    // can resolve. String-zero over the whole manifest text covers every dependency field
+    // at once, devDependencies included.
     const manifest = tarManifest(dir);
     expect(manifest).not.toContain('workspace:');
     expect(manifest).not.toContain('catalog:');

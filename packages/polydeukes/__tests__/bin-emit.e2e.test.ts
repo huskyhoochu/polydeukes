@@ -1,6 +1,6 @@
-// DIAG-01 §4.4 / §5 AC-7 — the shared emit-and-exit helper behind `docs` and `explain`
-// on the built bin: a reader that closes before the text is drained (`| head -c 1`) must
-// land exit 2 with no stack trace, for both subcommands alike.
+// The shared emit-and-exit helper behind `docs` and `explain` on the built bin: a reader
+// that closes before the text is drained (`| head -c 1`) must land exit 2 with no stack
+// trace, for both subcommands alike.
 import { type ChildProcess, execSync, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -65,11 +65,10 @@ describe('§5 AC-7 pdks docs / explain — a reader that closes after one byte',
     ['docs', ['docs']],
     ['explain', ['explain']],
   ])('%s exits 0 or 2 and prints no stack trace when stdout is destroyed mid-write', async (_name, args) => {
-    // Mutation caught: the `stdout.on('error')` handler dropped from one branch when the
-    // pair was folded into `emitAndExit` — EPIPE would then surface as an uncaught
-    // exception (exit 1 + a stack trace). Whether the closed reader is met before the
-    // text drains depends on the pipe buffer, so the exit is pinned to the two documented
-    // outcomes (0 = drained, 2 = write error) and never 1; the trace absence is exact.
+    // Without the `stdout.on('error')` handler, EPIPE surfaces as an uncaught exception —
+    // exit 1 with a stack trace. Whether the closed reader is met before the text drains
+    // depends on the pipe buffer, so the exit is pinned to the two documented outcomes
+    // (0 = drained, 2 = write error) and never 1; the trace absence is exact.
     const result = await spawnWithClosedReader(...args);
 
     expect(result.firstByteSeen).toBe(true);

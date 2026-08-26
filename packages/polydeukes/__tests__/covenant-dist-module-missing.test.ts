@@ -2,12 +2,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// DISPATCH-01 §4.2 / AC-3 RED phase — the existence proof's equivalence move: with the
-// body CLIs gone, the proof object is the covenant package import itself. A dist
-// missing ONE barrel-referenced module must fail each surface closed at assembly:
-// exit 2, ONE blocked row under the surface's label, recovery command on stderr.
-// Today the omitted module changes nothing (the umbrella resolves the library through
-// its own node_modules), so the absent-module cases are RED by construction.
+// The judges' existence proof is the covenant package import itself. A dist missing ONE
+// barrel-referenced module fails each surface closed at assembly: exit 2, ONE blocked row
+// under the surface's own label, and the recovery command on stderr.
 import { runClaudeCodeHook, runCovenantCheck } from '../src/index.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
@@ -23,7 +20,7 @@ const BARREL_MODULE = 'self-mod.js';
 const SESSION_FAIL_CLOSED_LABEL = 'hook';
 const COMMIT_FAIL_CLOSED_LABEL = 'covenant-check';
 const ADAPTER_LABEL = 'adapter-claude-code';
-/** The recovery command a locked-out operator must be told (CLAUDE.md's contract). */
+/** The recovery command a locked-out operator must be told. */
 const RECOVERY_COMMAND = 'pnpm build';
 const PROTECTED_ENTRY = 'secret.txt';
 const SESSION_PROTECTED_ENTRY = 'gate';
@@ -51,8 +48,8 @@ describe('DISPATCH-01 AC-3 — commit surface: a module-gutted covenant dist fai
   }
 
   it('the COMPLETE mirror still judges normally (exit 0, advised self-mod rows)', async () => {
-    // Mutation caught: the import proof rejecting a complete injected dist — the gutted
-    // pins below would then be green while proving nothing.
+    // Without this control, an import proof that rejected any injected dist would leave
+    // the gutted cases below green while proving nothing.
     stageProtectedChange();
 
     const result = await runCovenantCheck({
@@ -70,9 +67,8 @@ describe('DISPATCH-01 AC-3 — commit surface: a module-gutted covenant dist fai
   });
 
   it('a dist missing one barrel module: exit 2, ONE covenant-check blocked row, recovery command on stderr', async () => {
-    // Mutation caught: the covenantDist seam no longer the resolution point (the run
-    // quietly uses the healthy real build), or the import failure caught somewhere that
-    // records a judge's verdict — only the fail-closed label proves assembly stopped.
+    // Only the fail-closed label proves assembly stopped: an import failure caught
+    // somewhere that records a judge's verdict exits 2 the same way.
     stageProtectedChange();
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
@@ -90,9 +86,9 @@ describe('DISPATCH-01 AC-3 — commit surface: a module-gutted covenant dist fai
   });
 
   it('under enforce block: the SAME single covenant-check row — the label separates a fail-closed from a fabricated verdict', async () => {
-    // Mutation caught: the import proof wired into the advise branch alone — block
-    // already exits 2 here, but through a self-mod VERDICT no judge produced, and an
-    // exit-code-only assertion cannot see that.
+    // Block already exits 2 here, but an import proof wired into the advise branch alone
+    // would reach it through a self-mod VERDICT no judge produced — which an
+    // exit-code-only assertion cannot see.
     stageProtectedChange('block');
 
     const result = await runCovenantCheck({
@@ -133,8 +129,7 @@ describe('DISPATCH-01 AC-3 — session surface: a module-gutted covenant dist fa
   }
 
   it('the COMPLETE mirror still answers normally (exit 0, one adapter passed row)', async () => {
-    // Mutation caught: same as the commit control — the omitted module must be the ONLY
-    // variable between a normal answer and a lockout.
+    // The omitted module must be the ONLY variable between a normal answer and a lockout.
     const result = await runClaudeCodeHook({
       repoRoot,
       rawPayload: unroutedPayload(),
@@ -150,8 +145,8 @@ describe('DISPATCH-01 AC-3 — session surface: a module-gutted covenant dist fa
   });
 
   it('a dist missing one barrel module: exit 2, ONE hook blocked row, recovery command on stderr', async () => {
-    // Mutation caught: the import proof wired into the commit surface alone, or the
-    // throw exiting 2 without its blocked row (a lockout with no record).
+    // The throw must exit 2 WITH its blocked row: a lockout leaving no record is the
+    // defect class.
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     const result = await runClaudeCodeHook({

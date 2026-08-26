@@ -1,17 +1,15 @@
 /**
- * The covenant package as a resolved artifact (DISPATCH-01 §4.2) — the existence proof both
- * composition roots share.
+ * The covenant package as a resolved artifact — the existence proof both composition roots
+ * share.
  *
- * With the judge bodies folded in-process there is no body file left to stat, so what the
- * roots prove is the package IMPORT itself. The barrel is eager: a dist missing one of the
- * modules it references throws on import, before any assembly can compose a registration,
- * and the surface's own fail-closed catch records that as one `blocked` row. A partially
- * loaded judge set has no representation here — an ESM import either fully succeeds or
- * throws.
+ * What the roots prove is the package IMPORT itself. The barrel is eager: a dist missing one
+ * of the modules it references throws on import, before any assembly can compose a
+ * registration, and the surface's own fail-closed catch records that as one `blocked` row. A
+ * partially loaded judge set has no representation here — an ESM import either fully succeeds
+ * or throws.
  *
- * The `covenantDist` seam keeps its meaning and gains a job: it selects WHICH dist is
- * imported, so a fixture can inject a gutted mirror where real Node resolution would always
- * land on the healthy build.
+ * The `covenantDist` seam selects WHICH dist is imported, so a fixture can inject a gutted
+ * mirror where real Node resolution would always land on the healthy build.
  */
 
 import { createRequire } from 'node:module';

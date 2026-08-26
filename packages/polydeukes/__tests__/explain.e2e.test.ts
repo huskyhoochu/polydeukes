@@ -1,4 +1,4 @@
-// CLI-01 AC-9 — `pdks explain` on the built bin.
+// `pdks explain` on the built bin.
 import { execSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

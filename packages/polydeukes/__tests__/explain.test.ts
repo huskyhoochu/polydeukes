@@ -1,6 +1,4 @@
-// CLI-01 — `pdks explain` renders both surfaces' registration sets without judging.
-// Contract: explain({ repoRoot }) → { text }, throws on any config failure;
-// assembleCommitRegistrations / assembleSessionRegistrations export each root's assembly.
+// `pdks explain` renders both surfaces' registration sets without judging.
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';

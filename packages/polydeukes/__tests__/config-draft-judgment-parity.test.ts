@@ -1,9 +1,6 @@
-// CONFIG-10 AC-5 — judgment parity e2e: a draft entry changes NO judgment on either
-// surface. For the parity payload pair (one passing, one breaking a forbid discipline),
-// the config with a draft and the config without it produce identical exit codes and
-// identical telemetry rows, and no row ever carries the draft id. AC-4 pins the assembled
-// labels; this suite pins the executed judgment — rows and exits, the roadmap's
-// "a draft makes no judgment and no record" measured at the two composition roots.
+// A draft entry changes NO judgment on either surface: the config with a draft and the
+// config without it produce identical exit codes and identical telemetry rows, and no
+// row ever carries the draft id.
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runClaudeCodeHook, runCovenantCheck } from '../src/index.ts';
@@ -72,15 +69,13 @@ describe('CONFIG-10 AC-5 — session surface judgment parity', () => {
     ['passing', PASSING_CONTENT],
     ['breaking', BREAKING_CONTENT],
   ] as const)('the %s payload: identical exit and rows with and without the draft', async (_kind, content) => {
-    // P0 parity: any divergence means the draft reached a judge. Mutation caught: the
-    // draft compiled into a registration (extra row), or its presence shifting a verdict.
+    // Any divergence means the draft reached a judge.
     const without = await sessionRun(JUDGED_ONLY, content);
     const withDraft = await sessionRun(WITH_DRAFT, content);
 
     expect(withDraft.exitCode).toBe(without.exitCode);
     expect(withDraft.rows).toEqual(without.rows);
-    // No executed judgment ever names the draft — a row carrying its id would be a
-    // judgment the entry never promised.
+    // A row carrying the draft id would be a judgment the entry never promised.
     for (const [, label, subject] of withDraft.rows) {
       expect(label).not.toContain(DRAFT_ID);
       expect(subject).not.toContain(DRAFT_ID);
@@ -123,8 +118,7 @@ describe('CONFIG-10 AC-5 — commit surface judgment parity', () => {
     ['passing', PASSING_CONTENT],
     ['breaking', BREAKING_CONTENT],
   ] as const)('the %s staged diff: identical exit and rows with and without the draft', async (_kind, content) => {
-    // P0 parity, commit surface — same contract as the session case, observed on the
-    // staged-diff re-observation of the same change.
+    // Same contract as the session case, observed on the staged-diff re-observation.
     const without = await commitRun(JUDGED_ONLY, content);
     const withDraft = await commitRun(WITH_DRAFT, content);
 

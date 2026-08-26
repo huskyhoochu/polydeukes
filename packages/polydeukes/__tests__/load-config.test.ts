@@ -3,22 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigValidationError } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// RED: `loadConfig` does not exist yet — the umbrella package currently exports nothing.
-// This import is expected to fail resolution in the RED phase, taking the whole file with it.
 import { loadConfig } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// CONFIG-03 §5.1 — the umbrella `loadConfig(rootDir)` loader.
+// The umbrella `loadConfig(rootDir)` loader: discovery + parse + delegation +
+// self-protection attach.
 //
-// The loader is pure discovery + parse + delegation + self-protection attach: it
-// finds ONE of the three candidate config files in the given rootDir, parses it with
-// the `yaml` safe schema, strips a leading `$schema` key, hands the rest to core
-// `defineConfig()`, and appends its own configPath to protectedPaths before returning.
-//
-// testCmd bodies here are deliberately FAKE runner strings ('fake-runner {scope}',
-// never vitest/pytest/go test) so the core grep gate stays satisfied even inside
-// fixtures. rootDirs are OS-tmpdir mkdtemp trees, torn down after each test.
-// ---------------------------------------------------------------------------
+// testCmd bodies here are deliberately FAKE runner strings ('fake-runner {scope}', never
+// vitest/pytest/go test) so the core grep covenant stays satisfied even inside fixtures.
+// rootDirs are OS-tmpdir mkdtemp trees, torn down after each test.
 
 /** Minimal valid config body (yaml) — one language with a {scope} template. */
 const VALID_YAML = [
@@ -53,10 +45,8 @@ function writeInRoot(filename: string, contents: string): void {
 
 describe('§5.1 discovery — the three candidate filenames', () => {
   it('discovers polydeukes.config.yaml and returns the resolved config plus its rootDir-relative path', () => {
-    // AC §5.1 (item 1): yaml variant. `config` is the defineConfig resolution (compiled
-    // testCmd callable), `configPath` is the bare filename relative to rootDir.
-    // Mutation caught: a loader that returns the raw parsed object instead of the
-    // defineConfig resolution (testCmd would still be a string, not callable).
+    // `config` is the defineConfig resolution, so testCmd is callable. A loader returning
+    // the raw parsed object would leave it a string.
     writeInRoot('polydeukes.config.yaml', VALID_YAML);
 
     const { config, configPath } = loadConfig(rootDir);
@@ -66,7 +56,6 @@ describe('§5.1 discovery — the three candidate filenames', () => {
   });
 
   it('discovers the .yml variant', () => {
-    // AC §5.1 (item 1): .yml is an accepted variant of the canonical .yaml name.
     writeInRoot('polydeukes.config.yml', VALID_YAML);
 
     const { configPath } = loadConfig(rootDir);
@@ -75,9 +64,8 @@ describe('§5.1 discovery — the three candidate filenames', () => {
   });
 
   it('discovers the .json variant through the same parser', () => {
-    // AC §5.1 (item 1): json is read by the same yaml parser (superset), no separate
-    // branch. Mutation caught: a json-specific path that never runs, or a discovery
-    // list missing the .json candidate.
+    // JSON is read by the same yaml parser (YAML is a superset), so there is no separate
+    // branch — only the discovery list has to carry the .json candidate.
     writeInRoot('polydeukes.config.json', VALID_JSON);
 
     const { config, configPath } = loadConfig(rootDir);
@@ -89,10 +77,8 @@ describe('§5.1 discovery — the three candidate filenames', () => {
 
 describe('§5.1 fail-closed — no config, ambiguous config', () => {
   it('throws when zero config files exist, naming all three candidate filenames', () => {
-    // AC §5.1 (item 2): silent defaults are forbidden — a missing config must fail loud.
-    // Mutation caught: a loader that returns an empty/default config on absence, or an
-    // error message that names fewer than all three candidates (a user would not know
-    // which filenames are searched).
+    // Silent defaults are forbidden — a missing config must fail loud, and the message
+    // must name all three candidates or a user cannot tell which filenames are searched.
     let error: unknown;
     try {
       loadConfig(rootDir);
@@ -108,9 +94,8 @@ describe('§5.1 fail-closed — no config, ambiguous config', () => {
   });
 
   it('throws when two config files coexist, naming the found files', () => {
-    // AC §5.1 (item 3): ambiguity is fail-closed — the loader must not silently pick a
-    // winner. Mutation caught: a first-match-wins discovery that stops after the first
-    // candidate instead of detecting the collision.
+    // Ambiguity is fail-closed — the loader must not silently pick a winner. A
+    // first-match-wins discovery would stop before detecting the collision.
     writeInRoot('polydeukes.config.yaml', VALID_YAML);
     writeInRoot('polydeukes.config.json', VALID_JSON);
 
@@ -130,9 +115,8 @@ describe('§5.1 fail-closed — no config, ambiguous config', () => {
 
 describe('§5.1 parse failure — surfaced with file path', () => {
   it('throws on a YAML syntax error, including the file path in the message', () => {
-    // AC §5.1 (item 4): a parse failure must name the offending file so the author can
-    // find it. Mutation caught: a catch-all that swallows the parse error into a generic
-    // message, or one that omits the path.
+    // A parse failure must name the offending file so the author can find it — never a
+    // generic message, and never one that omits the path.
     writeInRoot('polydeukes.config.yaml', 'languages: [unterminated\n  broken: : :');
 
     let error: unknown;
@@ -147,11 +131,10 @@ describe('§5.1 parse failure — surfaced with file path', () => {
   });
 
   it('rejects a yaml custom tag without executing it (safe parsing)', () => {
-    // AC §5.1 (item 7): the data-config invariant "must be uncomputable so it cannot
-    // lie" is enforced at the parser level — a custom/unresolved tag must never be
-    // resolved into an executable value; it must throw. Mutation caught: switching the
-    // parser to a permissive schema that resolves custom tags (the security boundary of
-    // config-as-data).
+    // Config data must be uncomputable so it cannot lie, and that is enforced at the
+    // parser level: a custom or unresolved tag must throw, never resolve into an
+    // executable value. A permissive parser schema would resolve custom tags and cross
+    // the config-as-data boundary.
     writeInRoot('polydeukes.config.yaml', 'languages: !!js/function "return 1"');
 
     let error: unknown;
@@ -161,9 +144,8 @@ describe('§5.1 parse failure — surfaced with file path', () => {
       error = caught;
     }
 
-    // Must throw a real parse/validation failure — NOT resolve the tag into a value, and
-    // NOT (in RED) merely a "loadConfig is not a function" TypeError. Pinning that the
-    // message names the config file keeps this test honest before AND after GREEN.
+    // Must throw a real parse or validation failure, never resolve the tag into a value.
+    // Pinning that the message names the config file is what distinguishes the two.
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).not.toContain('is not a function');
     expect((error as Error).message).toContain('polydeukes.config.yaml');
@@ -172,10 +154,9 @@ describe('§5.1 parse failure — surfaced with file path', () => {
 
 describe('§5.1 validation delegation — ConfigValidationError with file context', () => {
   it('propagates ConfigValidationError with the file path when the config has an unknown top-level key', () => {
-    // AC §5.1 (item 5): the loader owns no structural validation — it delegates to core
-    // defineConfig, which rejects unknown keys, and re-throws WITH file-path context.
-    // Mutation caught: a loader that catches and rethrows a plain Error (losing the
-    // ConfigValidationError type), or one that drops the file-path context.
+    // The loader owns no structural validation — it delegates to core defineConfig and
+    // re-throws WITH file-path context. Rethrowing a plain Error would lose the
+    // ConfigValidationError type that callers discriminate on.
     writeInRoot(
       'polydeukes.config.yaml',
       [
@@ -202,10 +183,9 @@ describe('§5.1 validation delegation — ConfigValidationError with file contex
 
 describe('§5.1 self-protection — configPath auto-attached to protectedPaths', () => {
   it('appends the configPath to protectedPaths when the user did not list it', () => {
-    // AC §5.1 (item 6): schema rule 6 — the discovered config file is itself part of the
-    // protection surface, and the loader is the only place that can guarantee it. Here
-    // the user listed a different path, so the loader must ADD configPath.
-    // Mutation caught: a loader that returns config.protectedPaths untouched.
+    // The discovered config file is itself part of the protection surface, and the loader
+    // is the only place that can guarantee it. Here the user listed a different path, so
+    // the loader must ADD configPath rather than return the list untouched.
     writeInRoot(
       'polydeukes.config.yaml',
       [
@@ -226,9 +206,8 @@ describe('§5.1 self-protection — configPath auto-attached to protectedPaths',
   });
 
   it('does not duplicate the configPath when the user already listed it', () => {
-    // AC §5.1 (item 6, second clause): idempotent self-protection — if the user already
-    // registered the config file, the loader must not add a second copy.
-    // Mutation caught: an unconditional push that appends configPath even when present.
+    // Idempotent self-protection: a user who already registered the config file must not
+    // get a second copy from an unconditional push.
     writeInRoot(
       'polydeukes.config.yaml',
       [

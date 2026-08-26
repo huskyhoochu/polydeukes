@@ -7,9 +7,8 @@ import { expect } from 'vitest';
 
 /**
  * Every telemetry row at `telemetryPath` as `[event, label, subject]` — the three-column
- * projection the umbrella suites pin verdicts with. Extracted at the fourth copy (the
- * covenant package's helpers.ts precedent fires at the third): a change to the record
- * shape now lands here once instead of drifting across suites.
+ * projection the umbrella suites pin verdicts with. Shared so a change to the record shape
+ * lands here once instead of drifting across suites.
  */
 export function telemetryRows(telemetryPath: string): [string, string, string][] {
   return readRecords(telemetryPath).records.map((record) => [
@@ -20,10 +19,10 @@ export function telemetryRows(telemetryPath: string): [string, string, string][]
 }
 
 /**
- * The row the session surface's state comparison leaves on its FIRST call in a repository
- * (COVENANT-14 §2-e): the baseline file is absent, so it is re-established and the absence
- * is recorded, subject = the baseline file. Every suite here builds a fresh repoRoot per
- * case, so every case's first hook call carries it ahead of that call's judgment rows.
+ * The row the session surface's state comparison leaves on its FIRST call in a repository:
+ * the baseline file is absent, so it is re-established and the absence is recorded, subject
+ * = the baseline file. Every suite here builds a fresh repoRoot per case, so every case's
+ * first hook call carries it ahead of that call's judgment rows.
  */
 export const BASELINE_FIRST_RUN_ROW: [string, string, unknown] = [
   'unattributed',

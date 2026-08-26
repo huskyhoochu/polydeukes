@@ -2,15 +2,16 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// DIST-01 / CONFIG-06b's session half — the `covenantDist` seam from the side that must
-// keep WORKING. runClaudeCodeHook resolves '@polydeukes/covenant' through createRequire
-// from the REAL umbrella location, so a fixture tree's packages/covenant/dist is never
-// consulted; the seam is the only injection point, and these pins hold it to judging an
-// injected dist exactly as the real one.
+// The session half of the `covenantDist` seam, from the side that must keep WORKING.
+// runClaudeCodeHook resolves '@polydeukes/covenant' through createRequire from the REAL
+// umbrella location, so a fixture tree's packages/covenant/dist is never consulted: the
+// seam is the only injection point, and it must judge an injected dist exactly as the
+// real one.
 //
-// The fail-closed half moved to covenant-dist-module-missing.test.ts when DISPATCH-01
-// folded the judges in-process: with no body file left to stat, a per-FILE absence no
-// longer means anything and the proof object became the package import itself.
+// Each test builds a throwaway repoRoot and writes its own tmp config, so no protected
+// path of THIS repository is ever referenced. The fixture dists are symlink mirrors of
+// the real build living INSIDE the throwaway repo — a symlinked body resolves its imports
+// out of the real build and actually runs, which is what keeps these cases honest.
 import { runClaudeCodeHook } from '../src/index.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
@@ -18,14 +19,6 @@ import {
   telemetryRows,
   writeConfigAt,
 } from './helpers';
-
-// ---------------------------------------------------------------------------
-// Each test builds a throwaway repoRoot and writes its own tmp config, so no
-// protected path of THIS repository is ever referenced. The fixture dists are
-// symlink mirrors of the real build living INSIDE the throwaway repo — a symlinked
-// body resolves its imports out of the real build and actually runs, which is what
-// keeps the absent-body pins honest (covenant-check-unbuilt-body precedent).
-// ---------------------------------------------------------------------------
 
 /** Injected fixture values — the config entries and payload targets under test. */
 const PROTECTED_ENTRY = 'gate';
@@ -55,7 +48,7 @@ function distWithout(omitBody: string | null): string {
 /**
  * Every telemetry row as [event, label, subject] — the label separates who answered.
  * Each case's repoRoot is fresh, so every row list opens with the state comparison's
- * first-run row (COVENANT-14 §2-e), which the broken dist below never reaches.
+ * first-run row.
  */
 const rows = () => telemetryRows(telemetryPath);
 
@@ -107,12 +100,10 @@ afterEach(() => {
 
 describe('DIST-01 / CONFIG-06b — an injected dist judges the session surface normally', () => {
   it('the COMPLETE mirror behaves normally (exit 0, one adapter passed row)', async () => {
-    // The premise every absent-body case below rests on: a broken mirror — or a seam
-    // that rejects any injected covenantDist — would fail closed at the SAME exit 2
-    // under the SAME label those cases assert, and they would go green while proving
-    // nothing. A normal pass here leaves the omitted body as the only variable.
-    // Mutation caught: the existence proof rejecting a present body (a reversed join,
-    // a filename the build does not emit), which locks every call in a healthy repo.
+    // The premise the cases below rest on: a broken mirror, or a seam that rejects any
+    // injected covenantDist, would fail closed at the SAME exit 2 under the SAME label
+    // those cases assert, and they would go green while proving nothing. A normal pass
+    // here leaves the omitted body as the only variable.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runClaudeCodeHook({
@@ -127,13 +118,10 @@ describe('DIST-01 / CONFIG-06b — an injected dist judges the session surface n
   });
 
   it('the same routed call on a COMPLETE mirror is judged by the real bodies (exit 2)', async () => {
-    // The control for the pin above, and this file's only proof that a body EXECUTES
-    // out of the symlink mirror: shell-mod's `passed` row is unreachable for a module
-    // that never loaded — a missing or unrunnable body can only produce blocked. A
-    // mirror reverted to copies (relative imports dying inside the fixture dir) turns
-    // both rows into exit-1 verdicts and refutes this. Mutation caught: the mirror
-    // mechanism no longer producing runnable bodies, which would leave every
-    // absent-body pin above green while proving nothing.
+    // This file's only proof that a body EXECUTES out of the symlink mirror: shell-mod's
+    // `passed` row is unreachable for a module that never loaded, since a missing or
+    // unrunnable body can only produce blocked. A mirror reverted to copies, whose
+    // relative imports die inside the fixture directory, refutes this.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runClaudeCodeHook({
@@ -152,13 +140,10 @@ describe('DIST-01 / CONFIG-06b — an injected dist judges the session surface n
   });
 
   it('an uncomputable shell write is still recorded skipped when NO disciplines are declared (exit 0)', async () => {
-    // The silence defence (COVENANT-10b, e2e F1): the compiler appends the body-less
-    // shell-unjudgeable backstop whatever the entry count, so an assembly that skips
-    // the compiler call on an empty list deletes the ONE record this class produces —
-    // the call would answer `passed`, reporting a clean judgment of a write whose
-    // target was never determined. Mutation caught: the compile gated on
-    // disciplines.length, restoring the unrecorded pass (the defect class, never a
-    // declared limit).
+    // The compiler appends the body-less shell-unjudgeable backstop whatever the entry
+    // count. Skipping the compiler on an empty list deletes the ONE record this class
+    // produces, and the call answers `passed` — reporting a clean judgment of a write
+    // whose target was never determined.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runClaudeCodeHook({

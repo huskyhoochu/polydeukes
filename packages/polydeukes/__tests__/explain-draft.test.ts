@@ -1,7 +1,6 @@
-// CONFIG-10 AC-4 / AC-6 — `pdks explain` renders a draft entry on BOTH surfaces as an
-// unpromoted line (kind `draft`, description `unpromoted — no judgment`) and counts it in
-// the header aggregate (`· draft D`) WITHOUT it ever becoming a registration: the
-// assembled label lists and `registrations N` are identical with and without the draft.
+// `pdks explain` renders a draft entry on BOTH surfaces as an unpromoted line and counts
+// it in the header aggregate WITHOUT it ever becoming a registration: the assembled label
+// lists and `registrations N` are identical with and without the draft.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -71,10 +70,8 @@ function registrationsOf(section: string): number {
 
 describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both surfaces', () => {
   it('renders one `draft <id>` line with the fixed unpromoted description per surface', async () => {
-    // P0 render contract: the draft line's kind, label, and the exact description string
-    // (`unpromoted` is the spelling STARLARK-01 inherits). Mutation caught: the draft
-    // rendered as `skip`/`excluded` (which would claim a judgment disposition it never
-    // had), rendered on only one surface, or the description drifting.
+    // A draft rendered as `skip` or `excluded` would claim a judgment disposition it never
+    // had, so the kind word is pinned exactly, on both surfaces.
     writeFixtureConfig(WITH_DRAFT);
 
     const { text } = await explain({ repoRoot });
@@ -87,9 +84,8 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
   });
 
   it('adds `· draft 1` to each surface header aggregate', async () => {
-    // P0 aggregate contract (§4.3): the head counts drafts as their own tally, like
-    // `excluded`. Mutation caught: the tally missing, or counting drafts into another
-    // bucket's number instead of its own.
+    // Drafts get their own tally in the header, like `excluded` — never folded into
+    // another bucket's number.
     writeFixtureConfig(WITH_DRAFT);
 
     const { text } = await explain({ repoRoot });
@@ -100,9 +96,8 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
   });
 
   it('registrations N is unchanged by the draft on both surfaces', async () => {
-    // P0 "a draft is not a registration": the same config with and without the draft
-    // must report the same registrations tally. Mutation caught: the draft counted into
-    // `registrations N` (which would claim a judging body that does not exist).
+    // A draft counted into `registrations N` would claim a judging body that does not
+    // exist, so the tally must be identical with and without it.
     writeFixtureConfig(JUDGED_ONLY);
     const withoutDraft = (await explain({ repoRoot })).text;
     writeFixtureConfig(WITH_DRAFT);
@@ -115,8 +110,8 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
     }
   });
   it('tallies two drafts as `· draft 2` with a line per draft', async () => {
-    // P0 gap fixture (audit): a hardcoded `draft 1` or a `drafts ? 1 : 0` tally passes
-    // the single-draft test; only a second draft distinguishes counting from presence.
+    // A hardcoded `draft 1` or a `drafts ? 1 : 0` tally passes the single-draft case;
+    // only a second draft distinguishes counting from presence.
     const secondDraft = { id: 'measure-first', why: 'count producers first', draft: true };
     writeFixtureConfig([...WITH_DRAFT, secondDraft]);
 
@@ -131,10 +126,10 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
   });
 
   it('renders a drafts-only config: draft lines present, meta registrations intact', async () => {
-    // P0 gap fixture (audit): drafts-only resolves with zero judged entries, so this
-    // walks the empty-discipline edge of the renderer (a width computed as
-    // `Math.max(...[])` would be -Infinity and corrupt every line). The meta covenants
-    // still register, so the surfaces must render them alongside the draft.
+    // Drafts-only resolves with zero judged entries, which walks the empty-discipline edge
+    // of the renderer: a width computed as `Math.max(...[])` would be -Infinity and corrupt
+    // every line. The meta covenants still register, so both surfaces must render them
+    // alongside the draft.
     writeFixtureConfig([draftEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -151,10 +146,9 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
 
 describe('CONFIG-10 AC-4 — judgment invariance: assembly never sees the draft', () => {
   it('both roots assemble identical label lists with and without the draft entry', () => {
-    // P0 structural invariant (§7 inv. 2): the covenant compiler has no path that
-    // receives a draft, so the assembled registrations are label-for-label identical.
-    // Mutation caught: the resolution split leaking the draft into `disciplines` (it
-    // would surface here as an extra label), or assembly growing its own draft branch.
+    // The covenant compiler has no path that receives a draft, so the assembled
+    // registrations stay label-for-label identical. A resolution split leaking the draft
+    // into `disciplines` would surface here as an extra label.
     writeFixtureConfig(JUDGED_ONLY);
     const judgedOnlyConfig = loadConfig(repoRoot).config;
     writeFixtureConfig(WITH_DRAFT);

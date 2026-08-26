@@ -1,9 +1,8 @@
-// CONFIG-11 AC-6 / POSTURE-01 AC-6 §4.4 — `pdks explain` renders the DECLARED level of a
-// `disciplines:` entry on BOTH surfaces' registration tables: an explicit `enforce: advise`
-// and an explicit `enforce: block` each show their value, and an entry that omits the key
-// renders without any level word. The session surface header states the default the
-// omission resolves to. The marker's exact form is the implementation's; what is pinned is
-// only that the level word reaches the row.
+// `pdks explain` renders the DECLARED level of a `disciplines:` entry on BOTH surfaces'
+// registration tables: an explicit `enforce: advise` and an explicit `enforce: block` each
+// show their value, and an entry that omits the key renders without any level word. The
+// session surface header states the default the omission resolves to. The marker's exact
+// form is the implementation's; what is pinned is only that the level word reaches the row.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,7 +17,7 @@ const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 /** The level words the rendered row must carry — asserted as tokens, never as a format. */
 const ADVISE_TOKEN = 'advise';
 const BLOCK_TOKEN = 'block';
-/** POSTURE-01 §4.4 — the session header's statement of the default and the meta remnant. */
+/** The session header's statement of the default and the meta remnant. */
 const SESSION_DEFAULT_PHRASE = 'disciplines: advise unless enforce: block';
 const SESSION_META_PHRASE = 'meta: block';
 
@@ -73,9 +72,8 @@ function rowOf(text: string, header: string, kind: string, label: string): strin
 
 describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', () => {
   it("renders the `judge` row of an enforce: 'advise' entry with the level word on each surface", async () => {
-    // P0 render contract: the author's level is visible where the assembly is read.
-    // Mutation caught: the marker rendered on one surface only (the commit root builds
-    // its table separately), or the level never reaching the row at all.
+    // The author's level must be visible where the assembly is read. Both surfaces are
+    // checked because the commit root builds its table separately.
     writeFixtureConfig([softEntry, plainEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -86,9 +84,9 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
   });
 
   it('renders an entry that omits enforce without ANY level word (absence stays unmarked)', async () => {
-    // §4.4: the declared level is rendered, never the effective one. Mutation caught:
-    // the marker driven by the compiled registration (every plain entry now reads
-    // `enforce: advise` — the default and the author's choice become indistinguishable).
+    // The declared level is rendered, never the effective one. A marker driven by the
+    // compiled registration would make every plain entry read `enforce: advise`, so the
+    // default and an author's explicit choice of it would become indistinguishable.
     writeFixtureConfig([softEntry, plainEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -101,9 +99,9 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
   });
 
   it("renders an explicit enforce: 'block' entry with the level word on each surface (POSTURE-01 AC-6)", async () => {
-    // The promotion rung must be visible where the assembly is read — it is the one
-    // choice that keeps an entry at exit 2 on the session surface. Mutation caught: the
-    // marker still gated on `=== 'advise'` (explicit block reads like an omission).
+    // The promotion rung must be visible where the assembly is read — it is the one choice
+    // that keeps an entry at exit 2 on the session surface. A marker gated on
+    // `=== 'advise'` would make an explicit block read like an omission.
     writeFixtureConfig([hardEntry, softEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -116,9 +114,9 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
   });
 
   it('states the default on the commit header line too, beside the observer level', async () => {
-    // Review [3] on PR #66: the commit header names the OBSERVER's level, which a reader
-    // combines with an unmarked row into "this entry blocks" — false since POSTURE-01.
-    // Mutation caught: the default phrase added to the session header only.
+    // The commit header names the OBSERVER's level, which a reader would otherwise combine
+    // with an unmarked row into "this entry blocks" — false, since an omitted level is
+    // advise. So the commit header must state the default too, not the session one alone.
     writeFixtureConfig([plainEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -130,10 +128,8 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
   });
 
   it('states the default and the meta remnant on the session header line', async () => {
-    // §4.4 / §4.3: the session surface has no observer level, so the header is the only
-    // place the reader learns that an omitted level means advise and that meta-covenants
-    // still block. Mutation caught: the header left at the bare surface name, or the
-    // phrase placed on a row rather than the header line.
+    // The session surface has no observer level, so the header is the only place a reader
+    // learns that an omitted level means advise and that meta-covenants still block.
     writeFixtureConfig([plainEntry]);
 
     const { text } = await explain({ repoRoot });

@@ -2,15 +2,13 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// COVENANT-14 §2-f RED phase — the post-hoc state comparison wired into the assembled
-// session hook. At every hook call start, BEFORE this call's judgment rows land, the
-// protected entries' on-disk state is compared against `.polydeukes/baseline.json`; an
-// entry that changed with no attributing row in the window since the previous comparison
-// leaves ONE `unattributed` row (label 'baseline', subject = the changed ENTRY — the
-// config element, covenant.dev-log.telemetry-subject-is-matched-entry). The comparison
-// records, never blocks (§6): no exit code and no judgment row ever changes because of
-// it, and any comparison failure stays inside the hook (fail-open, the
-// appendRecordFailOpen direction).
+// The post-hoc state comparison wired into the assembled session hook. At every call
+// start, BEFORE this call's judgment rows land, the protected entries' on-disk state is
+// compared against `.polydeukes/baseline.json`; an entry that changed with no attributing
+// row in the window since the previous comparison leaves ONE `unattributed` row (label
+// 'baseline', subject = the changed ENTRY, the config element). The comparison records
+// and never blocks: no exit code and no judgment row changes because of it, and any
+// comparison failure stays inside the hook.
 import { runClaudeCodeHook } from '../src/index.ts';
 import { telemetryRows, writeConfigAt } from './helpers';
 
@@ -19,13 +17,13 @@ const PROTECTED_ENTRY = 'gate';
 const PROTECTED_FILE = 'gate/inner.txt';
 const SECOND_ENTRY = 'vault';
 const SECOND_FILE = 'vault/secret.txt';
-/** The label every baseline row carries (PRD §2-d). */
+/** The label every baseline row carries. */
 const BASELINE_LABEL = 'baseline';
 /** The label runAdapterPath records the funnel supplement under. */
 const ADAPTER_LABEL = 'adapter-claude-code';
 /**
- * The first-run/corruption row's subject is the baseline file itself (PRD §2-e); the
- * repo-relative vs absolute spelling is not fixed by the PRD, so the pin is the tail.
+ * The first-run and corruption rows carry the baseline file itself as subject. The
+ * repo-relative vs absolute spelling is not part of the contract, so match the tail.
  */
 const BASELINE_SUBJECT = expect.stringMatching(/baseline\.json$/);
 
@@ -89,11 +87,10 @@ afterEach(() => {
 
 describe('COVENANT-14 §3.4 baseline re-establishment', () => {
   it('first call re-establishes an absent baseline: one unattributed row (subject = the baseline file), judgment untouched', async () => {
-    // §2-e: absence is an event, not a protected path — the file is NOT on the
-    // protection list (infinite regress), so its deletion must be legible in the log
-    // forever. Mutation caught: silent re-establishment (deleting the baseline erases
-    // all detection with no trace), the row blocking the call (exit 2), or the file
-    // established somewhere other than .polydeukes/baseline.json.
+    // Absence is an event, not a protected path: putting the baseline file on the
+    // protection list would be an infinite regress, so instead its deletion stays legible
+    // in the log forever. A silent re-establishment would let deleting the baseline erase
+    // all detection with no trace.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     await expect(hookCall(ordinaryPayload())).resolves.toEqual({ exitCode: 0 });
@@ -106,10 +103,10 @@ describe('COVENANT-14 §3.4 baseline re-establishment', () => {
   }, 20_000);
 
   it('a corrupt baseline file is re-established with one row, and the next call is quiet', async () => {
-    // §3.4: corruption is handled exactly like absence — re-establish + row, exit
-    // code untouched. Mutation caught: the parse failure escaping into the judgment
-    // try (a fail-closed exit 2 for a file the covenant never protected), or a
-    // re-establishment that keeps the corrupt file so EVERY subsequent call alarms.
+    // Corruption is handled exactly like absence: re-establish, one row, exit code
+    // untouched. A parse failure escaping into the judgment would fail the call closed
+    // over a file the covenant never protected, and a re-establishment that keeps the
+    // corrupt file would alarm on every subsequent call.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -129,12 +126,10 @@ describe('COVENANT-14 §3.4 baseline re-establishment', () => {
 
 describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattributed rows', () => {
   it('an out-of-band edit under a protected entry leaves one row, subject = the ENTRY, before the judgment rows', async () => {
-    // The mechanism itself: a write no tool call declared (an interpreter, a test
-    // runner child, an out-of-repo script) left no row, and the state comparison is
-    // what makes it visible. Mutation caught: detection missing entirely, the subject
-    // recorded as the changed FILE instead of the matched-entry granularity the
-    // attribution join needs, or the observation running AFTER this call's judgment
-    // rows (the order §2-f fixes: the row lands first).
+    // The mechanism itself: a write no tool call declared — an interpreter, a test runner
+    // child, an out-of-repo script — leaves no row, and the state comparison is what makes
+    // it visible. The subject is the matched ENTRY, the granularity the attribution join
+    // needs, and the observation runs before this call's own judgment rows.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -150,9 +145,9 @@ describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattri
   }, 30_000);
 
   it('an out-of-band file deletion surfaces the same way (absence is a state)', async () => {
-    // §2-b: deletion and content change are the same axis. Mutation caught: the
-    // snapshot skipping missing files so a deleted gate definition reads as no
-    // change — disarming by deletion would be the one tamper the comparison misses.
+    // Deletion and content change are the same axis. A snapshot that skipped missing
+    // files would read a deleted gate definition as no change, making disarming by
+    // deletion the one tamper the comparison misses.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -168,10 +163,9 @@ describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattri
   }, 30_000);
 
   it('two entries changed out of band yield TWO rows — aggregation never hides the judged unit', async () => {
-    // AC §3.1: one row per changed entry. Mutation caught: a single summary row for
-    // the whole comparison, which would make `gain` unable to say WHICH gate
-    // definition moved. The two rows land before the judgment row; their mutual
-    // order is not part of the contract, hence the sort.
+    // One row per changed entry: a single summary row would leave `gain` unable to say
+    // WHICH gate definition moved. The two rows land before the judgment row, but their
+    // mutual order is not part of the contract, hence the sort.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY, SECOND_ENTRY] });
     write(SECOND_FILE, 'kept: yes\n');
     await hookCall(ordinaryPayload());
@@ -192,12 +186,11 @@ describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattri
 
 describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', () => {
   it('the residue a blocked call left raises no alarm on the call after it', async () => {
-    // §2-c: a block stops the call, not what it already wrote (an Edit failing partway
-    // leaves its earlier writes on disk, present before the judgment that refuses the
-    // rest). The blocked call's own comparison reports that residue once, and its
-    // re-establishment at call end absorbs it — so the NEXT call is silent.
-    // Mutation caught: re-establishment moved to comparison time, which would leave every
-    // blocked call's residue to surface again on each following call.
+    // A block stops the call, not what it already wrote: an Edit failing partway leaves
+    // its earlier writes on disk, present before the judgment that refuses the rest. The
+    // blocked call's own comparison reports that residue once, and its re-establishment at
+    // call END absorbs it, so the next call is silent. Re-establishing at comparison time
+    // instead would surface every blocked call's residue again on each following call.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -220,12 +213,10 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
   }, 30_000);
 
   it('a write AFTER a blocked call is a tamper, not that call residue', async () => {
-    // The other end of the same axis, and the one that decides whether the mechanism can
-    // be disarmed: if a `blocked` row absolved its entry for the whole next window, then
-    // provoking one block would licence every later write to that entry. The call ended,
-    // its snapshot was taken, and anything after it is unexplained.
-    // Mutation caught: attribution reading judgment rows from before the previous
-    // comparison — the leak that let a mere mention absolve a later tamper.
+    // The end of the axis that decides whether the mechanism can be disarmed: if a
+    // `blocked` row absolved its entry for the whole next window, provoking one block
+    // would licence every later write to that entry. The call ended, its snapshot was
+    // taken, and anything after it is unexplained.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -247,12 +238,10 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
   }, 30_000);
 
   it('a judgment row about entry A does not absolve an out-of-band change under entry B', async () => {
-    // THE fixture (covenant.dev-log.input-level-evidence-gate-fail-open): asking
-    // "does the window hold an attributing row" instead of "does THIS entry's change
-    // have one" is the fail-open this repository already shipped once. The window
-    // here holds blocked/passed rows about `gate`; the tamper is under `vault`, and
-    // the alarm must still fire for it. Mutation caught: the window-level existence
-    // gate absolving every changed entry.
+    // Asking "does the window hold an attributing row" instead of "does THIS entry's
+    // change have one" is a fail-open: a window-level existence check absolves every
+    // changed entry. Here the window holds rows about `gate` while the tamper is under
+    // `vault`, and the alarm must still fire.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY, SECOND_ENTRY] });
     write(SECOND_FILE, 'kept: yes\n');
     await hookCall(ordinaryPayload());
@@ -274,10 +263,9 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
   }, 30_000);
 
   it('a judgment row older than the window does not absolve a later tamper', async () => {
-    // §2-c scopes the window to rows since the LAST comparison. The cheapest wiring —
-    // scanning the whole log — makes one judged edit an alibi for that entry for the
-    // rest of the session, so a tamper only has to follow any earlier legitimate
-    // judgment to travel unrecorded. Mutation caught: the window left uncut.
+    // The window is scoped to rows since the LAST comparison. Scanning the whole log
+    // instead makes one judged edit an alibi for that entry for the rest of the session,
+    // so a tamper need only follow any earlier legitimate judgment to travel unrecorded.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -302,13 +290,11 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
 
 describe('COVENANT-14 §3.3 noise defence — a quiet session stays quiet', () => {
   it('10 consecutive ordinary calls leave zero unattributed rows beyond the first-run one', async () => {
-    // The telemetry log and the baseline file live side by side in .polydeukes/ and
-    // BOTH change on every call — the log gains this call's rows, the baseline is
-    // rewritten at call end. Neither is in the domain (the domain derives from
-    // config protectedPaths, §6), so neither may feed back as a detected change.
-    // Mutation caught: the comparator observing its own state files (one alarm per
-    // call — the signal-to-noise collapse §2-a rejects for the transcript), or the
-    // baseline not persisting between calls (a re-establishment row per call).
+    // The telemetry log and the baseline file live side by side in .polydeukes/ and BOTH
+    // change on every call — the log gains this call's rows, the baseline is rewritten at
+    // call end. Neither is in the domain, which derives from the config's protectedPaths,
+    // so neither may feed back as a detected change: a comparator observing its own state
+    // files raises one alarm per call and collapses the signal.
     const dotDir = join(repoRoot, '.polydeukes');
     mkdirSync(dotDir, { recursive: true });
     telemetryPath = join(dotDir, 'roi.log');
@@ -327,11 +313,10 @@ describe('COVENANT-14 §3.3 noise defence — a quiet session stays quiet', () =
 
 describe('COVENANT-14 §3.4 fail-open — a comparison failure never touches the judgment', () => {
   it('an unreadable protected entry leaves the exit code and judgment rows of a comparison-free run', async () => {
-    // An unreadable entry is absorbed by the walk rather than thrown — absence is a state,
-    // so a permission-denied entry hashes like a vanished one. This pins that the absorption
-    // reaches the surface: exit code and judgment rows match a comparison-free run.
-    // Mutation caught: the walk propagating EACCES instead of folding it, which the outer
-    // catch would then swallow silently — detection dark with the log looking healthy.
+    // An unreadable entry is absorbed by the walk rather than thrown: absence is a state,
+    // so a permission-denied entry hashes like a vanished one. A walk that propagated
+    // EACCES would be swallowed by the outer catch, leaving detection dark while the log
+    // still looks healthy.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     await hookCall(ordinaryPayload());
 
@@ -348,12 +333,12 @@ describe('COVENANT-14 §3.4 fail-open — a comparison failure never touches the
   }, 30_000);
 
   it('a baseline directory that is really a file leaves the verdict untouched', async () => {
-    // The §6 invariant needs a failure that actually THROWS, and the comparator resolves
-    // every shape it knows to a value — so the throwing seam is the re-establishment's
-    // mkdir, which hits ENOTDIR when `.polydeukes` is occupied by a file. That is a real
-    // state (a stray write, a botched restore), not a constructed one. Mutation caught: the
-    // call-end catch removed, letting an unwritable baseline reject the hook's promise —
-    // which exits the delegator non-blocking, the cheapest bypass there is.
+    // Proving the fail-open needs a failure that actually THROWS, and the comparator
+    // resolves every shape it knows to a value — so the throwing seam is the
+    // re-establishment's mkdir, which hits ENOTDIR when `.polydeukes` is occupied by a
+    // file. That is a real state (a stray write, a botched restore), not a constructed
+    // one. Without the call-end catch an unwritable baseline rejects the hook's promise,
+    // which exits the delegator non-blocking — the cheapest bypass there is.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     writeFileSync(join(repoRoot, '.polydeukes'), 'not a directory\n');
 

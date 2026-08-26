@@ -1,23 +1,23 @@
 /**
- * `queryDocs` — the offline documentation query (DOCS-02 §3-b/§3-c/§3-d).
+ * `queryDocs` — the offline documentation query.
  *
  * The bundled English guides, answered from the installed version. An AI partner that
  * searches the web gets whatever release the internet indexed; this returns the document
  * that shipped with the code doing the judging, with no network at all.
  *
- * The domain is the five topics below and nothing else (§3-c). An unknown topic throws
- * instead of resolving to something near it: an answer to a question we never mapped is
+ * The domain is the five topics below and nothing else. An unknown topic throws instead of
+ * resolving to something near it: an answer to a question we never mapped is
  * indistinguishable from a real one by the time it reaches a reader.
  *
- * Every failure throws (§3-b) so the bin can leave stdout at zero bytes and exit 2. Text
- * written halfway is read as the document and quoted as the document — the same direction
- * the judging surface fails in, for the same reason.
+ * Every failure throws so the bin can leave stdout at zero bytes and exit 2. Text written
+ * halfway is read as the document and quoted as the document — the same direction the
+ * judging surface fails in, for the same reason.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** The finite query domain (§3-c) — the topic list `pdks docs` prints with no argument. */
+/** The finite query domain — the topic list `pdks docs` prints with no argument. */
 export const TOPICS = ['install', 'config', 'discipline', 'covenant', 'witness'] as const;
 
 type Topic = (typeof TOPICS)[number];
@@ -25,7 +25,7 @@ type Topic = (typeof TOPICS)[number];
 /** One answer fragment: a bundled document, whole or cut down to one heading's section. */
 type SectionRef = { file: string; heading?: string };
 
-/** The §3-c mapping, as data: which document answers a topic, and what to read next. */
+/** The mapping, as data: which document answers a topic, and what to read next. */
 const TOPIC_MAP: Record<Topic, { sections: readonly SectionRef[]; seeAlso: string }> = {
   install: {
     sections: [{ file: 'installation.md' }],
@@ -67,7 +67,7 @@ function headingLevel(line: string): number {
 
 /**
  * The body of one section of `markdown`: from the line equal to `heading` up to just before
- * the next heading of the same or a higher level, returned verbatim (§3-d).
+ * the next heading of the same or a higher level, returned verbatim.
  *
  * `heading` is matched by exact string equality. A document that renames its heading kills
  * the query here rather than letting a normalizing matcher hand back a neighbouring section
@@ -114,7 +114,7 @@ export function extractSection(markdown: string, heading: string): string {
   if (start === -1) {
     throw new Error(`heading not found: ${heading}`);
   }
-  // A section that closes the document ends at end of file; the §3-c map points at one.
+  // A section that closes the document ends at end of file; the topic map points at one.
   return lines.slice(start).join('\n');
 }
 
@@ -138,10 +138,10 @@ export type QueryDocsSpec = {
 };
 
 /**
- * Answer one documentation query (§3-b).
+ * Answer one documentation query.
  *
  * With no topic the result is the listing — how an AI discovers what it may ask at all.
- * With one, it is the §3-c section body followed by the bundled reference to read next.
+ * With one, it is the mapped section body followed by the bundled reference to read next.
  */
 export function queryDocs(spec: QueryDocsSpec): { text: string } {
   if (spec.topic === undefined) {

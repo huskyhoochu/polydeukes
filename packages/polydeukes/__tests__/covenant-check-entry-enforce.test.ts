@@ -1,11 +1,9 @@
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// CONFIG-11 AC-5 — the commit surface honours an entry's own level. The surface stays at
-// block (no `adapters.git` namespace), so the only advise in play is the entry's: a staged
-// delta breaking it must pass (exit 0), record `advised` under the entry's id, and emit
-// the one advisory line — the same visible outcome CONFIG-06 gives a surface-wide advise.
-// Without that line an item-level advise would pass silently, which is the new fail-quiet
-// path this ticket could open.
+// The commit surface honours an entry's own enforce level. The surface stays at block
+// (no `adapters.git` namespace), so the only advise in play is the entry's: a staged
+// delta breaking it passes (exit 0), records `advised` under the entry's id, and emits
+// one advisory line. Without that line an item-level advise would pass silently.
 import { runCovenantCheck } from '../src/index.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
@@ -44,8 +42,7 @@ function stageSoftBreak(): void {
 
 describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surface', () => {
   it('passes (exit 0) and records one advised row under the entry id', async () => {
-    // Mutation caught: the entry level dropped at the commit-surface assembly (exit 2 as
-    // today), or advised recorded under the dispatcher label instead of the entry's.
+    // The advised row must carry the entry's own id, not the dispatcher label.
     stageSoftBreak();
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
@@ -56,8 +53,8 @@ describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surfac
   });
 
   it('emits exactly one stderr advisory line', async () => {
-    // Mutation caught: the advisory gated on the SURFACE level only, so an entry-level
-    // advise passes with nothing said.
+    // An advisory gated on the surface level alone would let an entry-level advise pass
+    // with nothing said.
     stageSoftBreak();
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
@@ -71,11 +68,9 @@ describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surfac
   });
 
   it('an advise entry beside a blocking entry exits 2 and the advisory does not claim the commit was allowed', async () => {
-    // Per-entry levels can mix within one run (impossible under a surface-wide level).
-    // The blocking neighbour says `enforce: block` explicitly — since POSTURE-01 an absent
-    // level is advise, so the promotion is what keeps this a mixed run. Mutation caught:
-    // the advisory asserting "commit allowed" from the advised count alone while the run
-    // returns exit 2.
+    // Per-entry levels can mix within one run. The blocking neighbour says
+    // `enforce: block` explicitly because an absent level is advise, and the advisory
+    // must not claim "commit allowed" from the advised count while the run exits 2.
     writeConfig({
       disciplines: [
         { id: SOFT_ID, forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'advise' },
@@ -100,9 +95,9 @@ describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surfac
   });
 });
 
-// POSTURE-01 AC-4 — §4.1's two commit-surface columns the CONFIG-11 block above does not
-// reach: an absent level under a block surface, and an explicit block under an advise
-// surface. The stage helper mirrors stageSoftBreak with the entry as the only variable.
+// The two commit-surface combinations the block above does not reach: an absent level
+// under a block surface, and an explicit block under an advise surface. The stage helper
+// mirrors stageSoftBreak with the entry as the only variable.
 describe('POSTURE-01 AC-4 covenant check — the entry default is advise, explicit block is the promotion', () => {
   function stageBreakUnder(entry: Record<string, unknown>): void {
     writeConfig({ disciplines: [{ forbid: { added: 'TODO' }, in: 'lib/**/*.ts', ...entry }] });
@@ -121,10 +116,8 @@ describe('POSTURE-01 AC-4 covenant check — the entry default is advise, explic
   }
 
   it('an entry WITHOUT enforce passes (exit 0) and records one advised row under the entry id', async () => {
-    // §4.1 second column: under a block surface the omitted level still lands advise —
-    // the default is the entry axis's, not the observer's. Mutation caught: the default
-    // filled only when the surface is advise (lenient-wins composed from the surface
-    // instead of the compiler), leaving exit 2 · blocked here.
+    // Under a block surface an omitted level still lands advise: the default belongs to
+    // the entry axis, not the observer's.
     stageBreakUnder({ id: PLAIN_ID });
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath });
@@ -134,11 +127,9 @@ describe('POSTURE-01 AC-4 covenant check — the entry default is advise, explic
   });
 
   it("an explicit enforce: 'block' entry under adapters.git.enforce: advise lands advised (exit 0) — the lenient axis wins", async () => {
-    // §4.1 fourth column, this machine's live posture: the observer set advise, so the
-    // author's promotion cannot raise the surface back. Assembly-level, not dispatcher-level:
-    // the config → git settings → dispatch chain runs for real. Mutation caught: the
-    // compiler's explicit block winning over the surface (exit 2 here), or the git
-    // namespace no longer read at assembly.
+    // The observer set advise, so the author's promotion cannot raise the surface back:
+    // the lenient side of the two axes wins. Observed at assembly level, so the
+    // config → git settings → dispatch chain runs for real.
     writeConfig({
       adapters: { git: { enforce: 'advise' } },
       disciplines: [

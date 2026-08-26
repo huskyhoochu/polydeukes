@@ -1,19 +1,19 @@
 /**
- * `initClaudeCode` — the session-surface installer (DIST-02 §3-a/§3-b/§3-g).
+ * `initClaudeCode` — the session-surface installer.
  *
  * One command wires a project into the session surface: prove the package resolves, run the
  * shared project-side scaffold ({@link scaffoldProject}), then add what this distribution
  * path owns — the delegator hook file, its `.claude/settings.json` registration, and the
- * discipline file that tells an agent the docs query exists (DOCS-02 §3-e).
+ * discipline file that tells an agent the docs query exists.
  *
- * Preflight comes first and nothing is written before it clears (§5-d invariant 2). A
- * generated hook whose import can never resolve blocks every call through its own
- * fail-closed catch, and a tree that also has no config and no valve to open cannot be
- * edited back into shape from inside the session — the brick §3-g exists to prevent.
+ * Preflight comes first and nothing is written before it clears. A generated hook whose
+ * import can never resolve blocks every call through its own fail-closed catch, and a tree
+ * that also has no config and no valve to open cannot be edited back into shape from inside
+ * the session.
  *
- * Nothing existing is overwritten (§5-d invariant 1). The settings file in particular is
- * merged, never replaced: a consumer's other PreToolUse registrations and permissions are
- * live configuration, and replacing them would disarm every other tool they wired.
+ * Nothing existing is overwritten. The settings file in particular is merged, never
+ * replaced: a consumer's other PreToolUse registrations and permissions are live
+ * configuration, and replacing them would disarm every other tool they wired.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -25,7 +25,7 @@ import { TOPICS } from './docs-query.js';
 import { CONFIG_FILENAMES } from './load-config.js';
 import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
 
-/** The published entry point the generated hook loads the judge through (§3-c). */
+/** The published entry point the generated hook loads the judge through. */
 const HOOK_SPECIFIER = 'polydeukes/claude-code';
 /** The registration artifacts, as `projectRoot`-relative paths (the report vocabulary). */
 const HOOK_RELATIVE = '.claude/hooks/covenant-pretooluse.mjs';
@@ -33,17 +33,16 @@ const SETTINGS_RELATIVE = '.claude/settings.json';
 const DISCOVERY_RELATIVE = '.claude/rules/polydeukes.md';
 /**
  * The command the host spawns, and the string our registration is recognized by: the same
- * command already present means already registered (§3-a). A registration keyed on anything
- * else would be re-added on every run, and the host would then spawn the judge twice per
- * call — every verdict and every telemetry row doubled.
+ * command already present means already registered. A registration keyed on anything else
+ * would be re-added on every run, and the host would then spawn the judge twice per call —
+ * every verdict and every telemetry row doubled.
  */
 const HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${HOOK_RELATIVE}`;
 /** Which calls reach the judge — the adapter's own vocabulary, never a copy of it. */
 const HOOK_MATCHER = [...MUTATING_TOOLS, ...SHELL_TOOLS].join('|');
 
 /**
- * The generated hook (§3-b) — a copy of this repository's own delegator with its dogfooding
- * narrative removed. It carries no assembly at all, so upgrading the package upgrades the
+ * The generated hook. It carries no assembly at all, so upgrading the package upgrades the
  * judge without regenerating this file.
  */
 const GENERATED_HOOK = `#!/usr/bin/env node
@@ -84,7 +83,7 @@ try {
 }
 `;
 
-/** What a session is about to do, per topic — the correspondence §3-e asks the file to carry. */
+/** What a session is about to do, per topic — the correspondence the generated file carries. */
 const DOCS_TOPIC_PURPOSE: Record<(typeof TOPICS)[number], string> = {
   install: 'install Polydeukes, or wire another surface into this project',
   config: 'edit `polydeukes.config.*` — every key and what reads it',
@@ -94,11 +93,10 @@ const DOCS_TOPIC_PURPOSE: Record<(typeof TOPICS)[number], string> = {
 };
 
 /**
- * The generated discipline file (DOCS-02 §3-e) — the discovery path that gets the query
- * surface called. A query an agent never learns about is a query that does not exist, and
- * the alternative place to say so is the consumer's own resident instructions, which are
- * theirs to write. One scoped file costs nothing while it waits: `paths` frontmatter keeps
- * it out of context until a Polydeukes path is in play.
+ * The generated discipline file — the discovery path that gets the query surface called. A
+ * query an agent never learns about is a query that does not exist. One scoped file costs
+ * nothing while it waits: `paths` frontmatter keeps it out of context until a Polydeukes
+ * path is in play.
  *
  * Both the command forms and the topic names come from the shipped surface itself — a file
  * naming a query that exits 2 fails the agent once, and it never calls the command again.
@@ -126,12 +124,12 @@ manager's exec form — from the project root.
 ${TOPICS.map((topic) => `| ${DOCS_TOPIC_PURPOSE[topic]} | \`pdks docs ${topic}\` |`).join('\n')}
 `;
 
-/** `initClaudeCode` input (DIST-02 §3-g) — the target tree and the preflight seam. */
+/** `initClaudeCode` input — the target tree and the preflight seam. */
 export type InitClaudeCodeSpec = {
   /** Project root to install into — every write below is relative to it. */
   projectRoot: string;
   /**
-   * §3-g preflight seam: throws when the package cannot be resolved from the given root.
+   * Preflight seam: throws when the package cannot be resolved from the given root.
    * ABSENT uses the real resolution, anchored at that root and nowhere else — anchoring it
    * at the installer's own module would answer for the installer's install graph rather
    * than the target project's, which is precisely the case that must fail.
@@ -143,8 +141,8 @@ export type InitClaudeCodeSpec = {
  * The default preflight: is `polydeukes` installed where `projectRoot` can reach it?
  *
  * ESM resolution specifically, because that is what the generated hook's `await import(...)`
- * runs; the CJS alternatives were measured disagreeing in both directions (DIST-02 §5-e,
- * which also carries the standing risk that `findPackageJSON` is experimental in Node 24).
+ * runs; the CJS alternatives were measured disagreeing with it in both directions.
+ * `findPackageJSON` is experimental in Node 24, so its behaviour can still change.
  */
 function resolveFromProjectRoot(projectRoot: string): void {
   // Absence throws here rather than returning undefined (Node 24.18); the branch guards the
@@ -158,7 +156,7 @@ function resolveFromProjectRoot(projectRoot: string): void {
   // map, so a version predating the session subpath, or one whose dist was never built,
   // passes a bare-name check while the generated hook fails on every call. That tree cannot
   // be reopened with the witness token either, because an assembly crash lands before any
-  // verdict (PR #48 review).
+  // verdict.
   const manifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
   const subpath =
     isPlainObject(manifest) && isPlainObject(manifest.exports)
@@ -257,9 +255,9 @@ function mergeSettings(projectRoot: string, settings: SettingsFile, report: Scaf
   // Read the registration back rather than assuming the write carried it. The one outcome
   // this installer must never produce is a successful-looking run whose judge never spawns,
   // and the merge can drop the entry without failing — a settings file whose root is an
-  // array takes the assignment as a non-index property and `JSON.stringify` discards it
-  // (PR #48 review). Checking the file instead of the shapes that reach it keeps the
-  // question finite: one code path, asked after every write, whatever arrived.
+  // array takes the assignment as a non-index property and `JSON.stringify` discards it.
+  // Checking the file instead of the shapes that reach it keeps the question finite: one
+  // code path, asked after every write, whatever arrived.
   if (!carriesRegistration(JSON.parse(readFileSync(settingsPath, 'utf-8')) as SettingsFile)) {
     throw new Error(
       `${SETTINGS_RELATIVE} in ${projectRoot} did not take the PreToolUse registration — ` +
@@ -270,12 +268,12 @@ function mergeSettings(projectRoot: string, settings: SettingsFile, report: Scaf
 }
 
 /**
- * Install the session surface into `spec.projectRoot` (DIST-02 §3-a), skipping whatever is
- * already there and reporting both halves per artifact.
+ * Install the session surface into `spec.projectRoot`, skipping whatever is already there
+ * and reporting both halves per artifact.
  *
- * Throws before any write when the package cannot be resolved from that root (§3-g) or when
- * two config spellings already coexist there (§3-a third disposition) — both leave zero
- * files. Translating a throw into exit 2 with the install command is the bin's job.
+ * Throws before any write when the package cannot be resolved from that root or when two
+ * config spellings already coexist there — both leave zero files. Translating a throw into
+ * exit 2 with the install command is the bin's job.
  */
 export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
   const resolvePolydeukes = spec.resolvePolydeukes ?? resolveFromProjectRoot;
@@ -285,7 +283,7 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
     // The message names the package because the user's next action is installing it — the
     // seam's own message cannot be relied on to say so. The original is carried through
     // rather than discarded: "not exposed" and "not installed" need different actions, and
-    // an experimental resolver can fail for reasons that are neither (PR #48 review).
+    // an experimental resolver can fail for reasons that are neither.
     throw new Error(
       `cannot use 'polydeukes' from ${spec.projectRoot} — install or update it there first ` +
         "(e.g. 'npm install --save-dev polydeukes'), then run this command again: " +
@@ -293,7 +291,7 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
     );
   }
 
-  // Every read that can fail is settled before the first write (§5-d invariant 2).
+  // Every read that can fail is settled before the first write.
   const settings = readSettings(spec.projectRoot);
 
   const report = scaffoldProject(spec.projectRoot);

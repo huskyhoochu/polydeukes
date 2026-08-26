@@ -2,9 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// DIAG-01 §6 invariant 10 / §5 AC-7 RED phase — one `runCovenantCheck` call reads the
-// config ONCE, whichever domain it observes (CONFIG-10 AC-5 carried over). The spy wraps
-// the real loader so the run still judges a real config.
+// One `runCovenantCheck` call reads the config ONCE, whichever domain it observes. The
+// spy wraps the real loader so the run still judges a real config.
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
@@ -45,10 +44,8 @@ describe('§6 invariant 10 — loadConfig is read once per runCovenantCheck call
     ['worktree', () => ({ kind: 'worktree' as const })],
     ['range', () => ({ kind: 'range' as const, base, head: 'HEAD' })],
   ])('%s domain calls loadConfig exactly once', async (name, domain) => {
-    // Mutation caught: the three-way split (settleConfig / collectDomain / judgeChanges)
-    // re-reading the config in a later stage — a second read of a file that changed
-    // between stages would judge with one config and record under another. Zero calls
-    // would mean the run never settled a config at all.
+    // A second read of a file that changed between stages would judge with one config
+    // and record under another; zero reads would mean the run never settled a config.
     await runCovenantCheck({
       repoRoot,
       telemetryPath: join(logDir, `${name}.log`),

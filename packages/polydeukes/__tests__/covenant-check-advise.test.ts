@@ -1,20 +1,13 @@
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// CONFIG-06 §4.6 RED phase. The `covenant check` runner's advise behavior. Same assembled
-// runner as covenant-check.test.ts; imported from the package entry point.
-//   runCovenantCheck({ repoRoot, telemetryPath?, ttyPrompt? }): Promise<{ exitCode }>
-// Under adapters.git.enforce advise the runner MUST: pass a protected-path commit (exit 0),
-// record it as `advised`, NEVER assemble the TTY-valve witness (ttyPrompt never called), and
-// emit exactly one stderr advisory line. Fail-closed paths (validator throw) stay exit 2.
-// The advised outcome does NOT exist yet, so these are RED by construction.
+// The `covenant check` runner under `adapters.git.enforce: advise`: a protected-path
+// commit passes (exit 0), is recorded as `advised`, never assembles the TTY witness
+// valve, and emits exactly one stderr advisory line. Fail-closed paths stay exit 2.
+//
+// Each test builds a real throwaway git repo and writes its own tmp config, so no
+// protected path of THIS repository is ever referenced.
 import { runCovenantCheck } from '../src/index.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
-
-// ---------------------------------------------------------------------------
-// Each test builds a real throwaway git repo AND writes its own tmp config file, so
-// no protected path from THIS repository is ever referenced — the fixture configs are
-// absolute tmp paths and safe to author.
-// ---------------------------------------------------------------------------
 
 const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
 
@@ -37,11 +30,9 @@ afterEach(() => {
 
 describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
   it('exit 0 (not 2) with an advised record and the TTY valve NEVER consulted for a protected-path commit', async () => {
-    // §4.6 core: under advise a protected-path commit is recorded and passed, and the
-    // witness is structurally not assembled — even with a witness configured and a ttyPrompt
-    // that would return the exact token, the prompt is never called (so `witnessed` cannot
-    // occur under advise). Mutation caught: advise threaded but the witness still assembled
-    // (prompt fires), or the verdict still mapped to exit 2.
+    // Under advise the witness is structurally not assembled: even with a witness
+    // configured and a ttyPrompt returning the exact token, the prompt is never called,
+    // so `witnessed` cannot occur at this level.
     writeConfig({
       protectedPaths: ['secret.txt'],
       witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
@@ -61,9 +52,8 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
   });
 
   it('emits exactly one stderr advisory line mentioning the commit is allowed', async () => {
-    // §4.6: advise is not silent measurement — it emits an advisory so the reason a commit
-    // was allowed is visible. Mutation caught: the advisory omitted (advise degrades into
-    // measure), or emitted more than once per run.
+    // Advise is not silent measurement: the advisory makes the reason a commit was
+    // allowed visible, exactly once per run.
     writeConfig({
       protectedPaths: ['secret.txt'],
       adapters: { git: { enforce: 'advise' } },
@@ -82,9 +72,8 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
   });
 
   it('an unrelated staged file under advise passes (exit 0) with zero telemetry records', async () => {
-    // The other side: advise does not fabricate verdicts. A commit touching no protected
-    // path is a clean pass with nothing recorded. Mutation caught: advise emitting an
-    // advised record for every commit regardless of any verdict.
+    // Advise does not fabricate verdicts: a commit touching no protected path is a
+    // clean pass with nothing recorded.
     writeConfig({
       protectedPaths: ['secret.txt'],
       adapters: { git: { enforce: 'advise' } },
@@ -104,10 +93,8 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
 
 describe('CONFIG-06 §4.6 covenant check — advise misconfiguration never softens (fail-closed)', () => {
   it('a reserved enforce level (measure) fails closed: exit 2 + one blocked record', async () => {
-    // §4.6 invariant: the namespace validator throws on the reserved level, and a
-    // validation throw is outside the level axis — it must block, never fall back to any
-    // level. Mutation caught: the validator throw swallowed into a pass, or advise-family
-    // misconfiguration softening the verdict instead of blocking.
+    // A validation throw is outside the enforce-level axis: it must block, never fall
+    // back to any level.
     writeConfig({
       protectedPaths: ['secret.txt'],
       adapters: { git: { enforce: 'measure' } },
@@ -125,9 +112,8 @@ describe('CONFIG-06 §4.6 covenant check — advise misconfiguration never softe
 
 describe('CONFIG-06 §4.6 covenant check — block regression (default fill)', () => {
   it('an empty git namespace (default fill block) still blocks a protected-path commit at exit 2', async () => {
-    // §4.6 / §4.2 fixture 2: an empty adapters.git resolves to block, so the current
-    // blocking behavior is unchanged. Mutation caught: the default fill flipped to advise,
-    // silently relaxing every repo that does not opt in.
+    // An empty adapters.git resolves to block; a default fill of advise would silently
+    // relax every repository that does not opt in.
     writeConfig({
       protectedPaths: ['secret.txt'],
       adapters: { git: {} },
