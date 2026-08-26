@@ -49,7 +49,7 @@ function baseSpec(overrides: Partial<TranscriptModificationSpec> = {}): Transcri
 }
 
 describe('judgeTranscriptModification — Bash axis break direction', () => {
-  it('an append redirect through the "~" spelling breaks — audit B2 itself', () => {
+  it('an append redirect through the "~" spelling breaks', () => {
     // Without home-spelling normalization the raw segments ['~', ...] never equal
     // ['home', 'u', ...], so a forgery appending a fake human utterance — which the TTL witness
     // then reads as proof a human spoke — sails through.

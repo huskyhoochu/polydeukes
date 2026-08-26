@@ -438,7 +438,18 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      thin delegator calling the same entry point a consumer installs. The claim sharpens
      accordingly: from "the authors get blocked by their own rules" to "the code that
      blocks us is the code you install". Publish it with the first round that cites a real
-     outside install. -->
+     outside install.
+
+     Parked candidate (2026-08-27, the comment sweep): a citation suppresses the checking
+     it appears to supply. Removing 1,180 wiki references from published comments meant
+     reading each surviving claim against the code for the first time, and twelve of them
+     were wrong — five had been wrong from the start, including one that described a
+     protection check as looser than it is and another whose failure direction was
+     backwards. Nobody had compared them, because `§4.2` reads as evidence that somebody
+     already did. The general form is worth stating: a pointer to where a decision was
+     recorded is not a substitute for the decision still being true, and an unreachable
+     pointer removes the reader's ability to notice. Publish it once a second measurement
+     confirms the pattern outside this one sweep. -->
 
 ## Where it stands
 

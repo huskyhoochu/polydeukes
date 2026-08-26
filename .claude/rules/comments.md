@@ -16,10 +16,15 @@ package's `files` array. Every one of them was unresolvable for the audience abo
 
 ## A comment may not point at anything the reader cannot open
 
-`_docs/` is not published, so a ticket ID, a PRD section, an `AC-n`, or a dev-log filename
-is a dangling pointer the moment it leaves this machine. Say the fact instead of citing
-where the fact was decided. What shipped is allowed: a package README, `docs/`, a public
-URL, another source file in the same repo.
+`_docs/` is not published, so a ticket ID, a PRD section, an `AC-n`, a dev-log filename, or
+a bare defect label like `A6` or `B2` is a dangling pointer the moment it leaves this
+machine. Say the fact instead of citing where the fact was decided. What shipped is
+allowed: a package README, `docs/`, a public URL, another source file in the same repo.
+
+The bare labels are the ones a sweep misses. `COVENANT-18 §2-a` is unmistakable, but the
+same document's `A1`–`A10` and `B1`–`B7` read as ordinary text and survived one pass of
+this rule as `describe('A6 — the noclobber-override write operator')`. Grep for them
+separately.
 
 Cite a published document only where a reader genuinely needs the concept and the file
 cannot restate it — a package entry point, or the head of a judge. Twice in one file is

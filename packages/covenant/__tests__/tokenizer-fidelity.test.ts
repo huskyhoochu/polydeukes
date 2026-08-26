@@ -19,7 +19,7 @@ import {
 // the scanner silently drops shows up in the assertion.
 const protectedPathFixture = 'packages/core/dist/index.js';
 
-describe('A1 — escaped quotes inside a double-quoted string', () => {
+describe('escaped quotes inside a double-quoted string', () => {
   it('closes the string at the unescaped quote, keeping an escaped quote as content', () => {
     // Pairing the opening quote with the next `"` found by indexOf closes at the escaped `\"`,
     // pairs every quote after it one position off, and leaves a valid line unread.
@@ -68,7 +68,7 @@ describe('A1 — escaped quotes inside a double-quoted string', () => {
   });
 });
 
-describe('A2 — a backslash-quoted heredoc delimiter', () => {
+describe('a backslash-quoted heredoc delimiter', () => {
   it('reads `<<\\EOF` as a literal delimiter, so the body is not expanded', () => {
     // Measured: `cat <<\EOF` over a body of `$D` prints `$D`, exactly as `<<'EOF'` does, so
     // deciding the delimiter's quoting from `'` and `"` alone misreads it. Reporting
@@ -96,7 +96,7 @@ describe('A2 — a backslash-quoted heredoc delimiter', () => {
   });
 });
 
-describe('A3 — a heredoc delimiter is never expanded', () => {
+describe('a heredoc delimiter is never expanded', () => {
   it('tokenizes `<<$DELIM` and ends the body at the literal delimiter text', () => {
     // Measured: `bash -n` accepts the line and execution terminates the body at the literal
     // `$DELIM` line, never at the variable's value, so the body end is statically decidable and
@@ -126,7 +126,7 @@ describe('A3 — a heredoc delimiter is never expanded', () => {
   });
 });
 
-describe('A4 — globbing does not apply inside double quotes', () => {
+describe('globbing does not apply inside double quotes', () => {
   it('marks a double-quoted `*` glob as not opaque', () => {
     // Bash does not glob inside double quotes, so `"*.txt"` is a literal value: running the
     // opacity scan over the quoted fragment with unquoted rules calls a fully decided target
@@ -173,7 +173,7 @@ describe('A4 — globbing does not apply inside double quotes', () => {
   });
 });
 
-describe('A5 — a leading assignment does not occupy the command name', () => {
+describe('a leading assignment does not occupy the command name', () => {
   it('reaches the nested-shell boundary through a leading `NAME=VALUE`', () => {
     // Reading the command name as words[0] reads the assignment, so the basename check never
     // sees `bash` and the line yields no mutation AND no indeterminate — a confident pass over
@@ -224,7 +224,7 @@ describe('A5 — a leading assignment does not occupy the command name', () => {
   });
 });
 
-describe('A6 — the noclobber-override write operator `>|`', () => {
+describe('the noclobber-override write operator `>|`', () => {
   it('recognizes `>|` as one redirect operator with its target', () => {
     // Measured: `>|` truncates and writes even under `set -o noclobber`. Missing from the
     // operator table, `>` takes an empty target and the whole line fails.
@@ -274,7 +274,7 @@ describe('A6 — the noclobber-override write operator `>|`', () => {
   });
 });
 
-describe("A7 — ANSI-C quoting `$'…'`", () => {
+describe("ANSI-C quoting `$'…'`", () => {
   it("honors the escaped quote inside `$'…'` and yields a literal word", () => {
     // Treating `$'` as a bare `$` followed by an ordinary single quote lets the `\'` close the
     // string early and collapses the pairing. The result is also not opaque: ANSI-C quoting
@@ -302,7 +302,7 @@ describe("A7 — ANSI-C quoting `$'…'`", () => {
   });
 });
 
-describe('A8 — process substitution in redirect-target position', () => {
+describe('process substitution in redirect-target position', () => {
   it('takes a spaced `>(…)` as the redirect target and marks it opaque', () => {
     // Looking for `>(`/`<(` only at word start stops the target scan at `(` after `> ` and
     // fails the line. The target must be opaque — its real path is a /dev/fd entry only
@@ -347,7 +347,7 @@ describe('A8 — process substitution in redirect-target position', () => {
 // are bash 5.3.9, isolated with `bash -c` or `bash <file>`: this project's ambient shell is zsh
 // and answers differently.
 
-describe('A1 (audit round) — the escaped backslash the pairing must survive', () => {
+describe('the escaped backslash the pairing must survive (re-measured)', () => {
   it('closes at the quote after an escaped backslash and keeps one backslash', () => {
     // An escape rule spelled "if the next character is a quote, skip two" leaves the first `\`
     // unhonoured, so the second eats the real closing quote and this valid line reads as an
@@ -365,7 +365,7 @@ describe('A1 (audit round) — the escaped backslash the pairing must survive', 
   });
 });
 
-describe('A2 (audit round) — a quoting character anywhere in the delimiter word', () => {
+describe('a quoting character anywhere in the delimiter word (re-measured)', () => {
   it('reads `<<E"O"F` as literal and still ends the body at a plain `EOF` line', () => {
     // Adding `\` to a FIRST-character check passes `<<\EOF`, `<<'EOF'` and `<<EOF` alike and
     // still calls this body expandable. Measured: `cat <<E"O"F` over a body of `$V` prints `$V`
@@ -378,7 +378,7 @@ describe('A2 (audit round) — a quoting character anywhere in the delimiter wor
   });
 });
 
-describe('A6 (audit round) — the fd-prefixed noclobber-override forms', () => {
+describe('the fd-prefixed noclobber-override forms (re-measured)', () => {
   it('recognizes `2>|` as one redirect operator with its target', () => {
     // The digit-prefix path is separate, so `>|` added to the plain-operator path only leaves
     // `2>` taking `|` as the start of its target and the line failing. That drops a real write
@@ -393,7 +393,7 @@ describe('A6 (audit round) — the fd-prefixed noclobber-override forms', () => 
   });
 });
 
-describe('A7 (audit round) — escape decoding, and the branch it must not reach', () => {
+describe('escape decoding, and the branch it must not reach (re-measured)', () => {
   it("decodes the escapes inside `$'…'` into the bytes bash passes", () => {
     // Re-pairing the quotes and handing back the source text passes the `$'Here\'s Johnny'`
     // case above — it only forces `\'` to lose its backslash — while still recording `\n` as
@@ -427,7 +427,7 @@ describe('A7 (audit round) — escape decoding, and the branch it must not reach
   });
 });
 
-describe('A8 (audit round) — the read-direction target must not leak its inner words', () => {
+describe('the read-direction target must not leak its inner words (re-measured)', () => {
   it('consumes a spaced `< <(…)` whole, leaving no inner word at top level', () => {
     // The write direction pins `words` above; this is the same hazard where only `redirects`
     // is otherwise checked. Recognizing `<(` and then scanning the target as an ordinary word
@@ -494,7 +494,7 @@ describe('judgeShellModification — lines migrating out of the untokenizable fa
     }
   });
 
-  it('upholds an allowlisted read that only A1 makes readable — an intended change', () => {
+  it('upholds an allowlisted read that only escape-aware pairing makes readable', () => {
     // The over-blocking end: the fallback has no allowlist, so this line blocks there. Once
     // it tokenizes, `grep` is a proven read and the shipped policy absolves
     // `grep x <protected>`. A fix that still lets the escaped quote end the string early
@@ -525,7 +525,7 @@ describe('judgeShellModification — lines migrating out of the untokenizable fa
     }
   });
 
-  it('still breaks a protected path standing inside the escaped-quote span A1 leaves', () => {
+  it('still breaks a protected path standing inside the escaped-quote span', () => {
     // The judge-surface half of the case above whose only closing quote is escaped. Precise
     // judgment cannot answer here — the decoded word ends in the quote character, so its last
     // segment no longer matches — and the span's own conservative scan is what blocks.
@@ -601,7 +601,7 @@ describe('deriveShellChanges — the recording surface part A moves lines across
 // had landed. One measurement round could not have reached them, which is why the corpus is a
 // standing test rather than a one-off.
 
-describe('A9 — paren matching honors quote state', () => {
+describe('paren matching honors quote state', () => {
   it('does not close a process substitution on a `)` inside a quoted regex', () => {
     // Counting parens without quote state closes the substitution early at `[^)]`, so the rest
     // of the line re-enters as top level and its quotes pair one position off until the word
@@ -637,7 +637,7 @@ describe('A9 — paren matching honors quote state', () => {
   });
 });
 
-describe('A1 at the judge surface — the mention scan now reads the bytes bash passes', () => {
+describe('escaped quotes at the judge surface — the mention scan reads the bytes bash passes', () => {
   it('sees a protected path that a backslash escape used to hide inside double quotes', () => {
     // A token text that keeps the backslashes bash removes — `` \` `` is in the double-quote
     // escape set — leaves the segment match looking at `` \`packages/core `` and missing. The
@@ -673,7 +673,7 @@ describe('A1 at the judge surface — the mention scan now reads the bytes bash 
   });
 });
 
-describe('A10 — the read-direction `<&` operator', () => {
+describe('the read-direction `<&` operator', () => {
   it('reads `<&-` as one operator closing a descriptor', () => {
     // An operator table carrying `>&` without its twin degrades `<&-` to a lone `<` whose
     // target scan stops on `&`, so a valid line dies as a missing target.

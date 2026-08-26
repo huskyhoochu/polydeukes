@@ -541,7 +541,7 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
   const rowsFor = (label: string) =>
     readRecords(telemetryPath).records.filter((r) => r.label === label);
 
-  it('a "~" append to the transcript is blocked by transcript-mod, not shell-mod (exit 2) — audit B2 closes', () => {
+  it('a "~" append to the transcript is blocked by transcript-mod, not shell-mod (exit 2)', () => {
     // Asserting WHO answered: the subject must be the ABSOLUTE transcript path (the
     // canonical spelling, not the typed one — telemetry rows must name the real file), and
     // shell-mod must stay silent — the transcript is not in its protectedPaths, so a
