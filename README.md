@@ -96,7 +96,9 @@ Three verified gaps to close before extraction: the Bash bypass route around sel
 
 ## Documents
 
-Grouped by layer — start at the top layer you need.
+[`docs/README.md`](./docs/README.md) is the documentation index — the same map as below,
+with a one-page summary of how the framework works. The tables here are grouped by layer;
+start at the top layer you need.
 
 ### Getting started
 
@@ -123,7 +125,7 @@ Grouped by layer — start at the top layer you need.
 | Document | Contents |
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
-| [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design-principles whitepaper (skeleton, being expanded in public) |
+| [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design whitepaper: the principles, the failure stories behind them, and the measurements that settled each one |
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
