@@ -69,13 +69,18 @@ disciplines:
   # Measured 2026-08-27, before the sweep that set this baseline: 1,180 coordinate citations
   # across 165 files pointed into the gitignored wiki clone. Delta judgment forgives what is
   # left behind and answers only the next one.
+  #
+  # The bare defect labels (`A1`-`A10`, `B1`-`B7`) are in the pattern because they are the
+  # ones a sweep misses: they name the same archived PRD's findings but read as ordinary
+  # text, and 20 of them survived the pass that removed every `COVENANT-18 §2-a`. Measured
+  # zero false positives across packages, docs, and the root config.
   - id: 'comments-need-no-wiki'
     why: 'a ticket id or a PRD coordinate in a published comment resolves on one machine and nowhere else, so it reads as a citation while carrying nothing — state the fact instead. the rung is advise because the fix is a text edit and the baseline was drawn the day this landed: a break here is a note, not a stop.'
     in:
       - 'packages/*/src/**'
       - 'packages/*/__tests__/**'
     forbid:
-      added: '\b(COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC-\d|\.(dev-log|research|prd)\.|_docs/'
+      added: '\b(COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](1[0-9]|[1-9])\b|\.(dev-log|research|prd)\.|_docs/'
   # Audit grades and cycle-phase names describe the session that produced a test, not the
   # behaviour it defends. They meant something during the cycle and nothing after it.
   - id: 'comments-carry-no-process'
