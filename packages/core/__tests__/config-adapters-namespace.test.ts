@@ -27,7 +27,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('§4.1 adapters namespace map — accepted shapes (verbatim pass-through)', () => {
+describe('adapters namespace map — accepted shapes (verbatim pass-through)', () => {
   it('leaves adapters absent in the ResolvedConfig when the config omits adapters', () => {
     // Absent stays absent — a default-fill assigning `adapters: {}` or `adapters: undefined`
     // would erase the distinction between an omitted key and an empty map.
@@ -65,7 +65,7 @@ describe('§4.1 adapters namespace map — accepted shapes (verbatim pass-throug
   });
 });
 
-describe('§4.1 adapters namespace map — rejected shapes (fail closed at authoring time)', () => {
+describe('adapters namespace map — rejected shapes (fail closed at authoring time)', () => {
   it('rejects the old array form with a migration message pointing to protectedPaths', () => {
     // An array used to be a directory list unioned into the protection surface. Accepting one
     // now is a fail-open regression to those semantics, and an error without the destination
@@ -135,7 +135,7 @@ describe('§4.1 adapters namespace map — rejected shapes (fail closed at autho
 // Every per-entry rule (trim, './' and trailing '/' fixpoint strip, empty-drop,
 // first-occurrence dedupe) survives that narrowing, which is what these tests re-pin.
 
-describe('§4.2 normalizeProtectedPaths — narrowed to protectedPaths only', () => {
+describe('normalizeProtectedPaths — narrowed to protectedPaths only', () => {
   it('normalizes protectedPaths without an adapters input', () => {
     const result = normalizeProtectedPaths({ protectedPaths: ['src/core', 'src/covenant'] });
 

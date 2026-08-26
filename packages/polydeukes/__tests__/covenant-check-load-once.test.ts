@@ -38,7 +38,7 @@ afterEach(() => {
   rmSync(logDir, { recursive: true, force: true });
 });
 
-describe('§6 invariant 10 — loadConfig is read once per runCovenantCheck call', () => {
+describe('loadConfig is read once per runCovenantCheck call', () => {
   it.each([
     ['staged', () => ({ kind: 'staged' as const })],
     ['worktree', () => ({ kind: 'worktree' as const })],

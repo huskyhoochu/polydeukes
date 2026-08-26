@@ -53,7 +53,7 @@ function compileOne(entry: DisciplineEntry): CovenantRegistration {
   return reg;
 }
 
-describe('judgeDiscipline — command family judges per line (CONFIG-09 §4.1)', () => {
+describe('judgeDiscipline — command family judges per line', () => {
   it('breaks when the ^-anchored pattern matches on the SECOND line of a multi-line command', () => {
     // The disarmed-anchor trap: tested against the whole string, '^' only ever anchors at
     // position 0, so a second-line violation passes with nothing failing loudly.
@@ -107,7 +107,7 @@ describe('judgeDiscipline — command family judges per line (CONFIG-09 §4.1)',
   });
 });
 
-describe('compileDisciplineRegistrations — matches uses the same line unit (CONFIG-09 §4.1)', () => {
+describe('compileDisciplineRegistrations — matches uses the same line unit', () => {
   it('matches returns "-" when the anchored pattern hits the second line', () => {
     // If routing still tests the whole string, this input never routes and the judge above
     // never spawns — a violation without a spawn.

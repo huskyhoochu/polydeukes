@@ -65,7 +65,7 @@ function expectBlockedRow(result: { exitCode: number }, label: string): void {
   expect(record?.label).toBe(label);
 }
 
-describe('DISPATCH-01 §4.3 — self-mod thunk: empty lists fail closed', () => {
+describe('self-mod thunk: empty lists fail closed', () => {
   it('an empty protectedPaths list makes the thunk answer exit-2 equivalent directly', async () => {
     const reg = selfModRegistration({
       protectedPaths: [],
@@ -100,7 +100,7 @@ describe('DISPATCH-01 §4.3 — self-mod thunk: empty lists fail closed', () => 
   });
 });
 
-describe('DISPATCH-01 §4.3 — shell-mod thunk: an empty axis list fails closed', () => {
+describe('shell-mod thunk: an empty axis list fails closed', () => {
   it('empty protectedPaths under enforce advise: exit 2 + one blocked row', async () => {
     const reg = shellModRegistration({
       protectedPaths: [],
@@ -142,7 +142,7 @@ describe('DISPATCH-01 §4.3 — shell-mod thunk: an empty axis list fails closed
   });
 });
 
-describe('DISPATCH-01 §4.3 — transcript-mod thunk: an empty axis list fails closed', () => {
+describe('transcript-mod thunk: an empty axis list fails closed', () => {
   /** The axes a complete transcript-mod spec names; each case empties exactly one. */
   const completeAxes = {
     transcriptPath: TRANSCRIPT_PATH,

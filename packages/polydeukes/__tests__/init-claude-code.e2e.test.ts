@@ -144,7 +144,7 @@ function writePayload(filePath: string, content: string) {
   };
 }
 
-describe('DIST-02 §3-b / AC-6 — the generated hook judges real payloads', () => {
+describe('the generated hook judges real payloads', () => {
   it('passes a Write only the dogfooding config would block (exit 0, one adapter passed row)', () => {
     // Two failures, one spawn. A repoRoot anchored anywhere near the runner's cwd reads
     // THIS repository's config, which protects this target — exit 2 instead of 0, and a
@@ -183,7 +183,7 @@ describe('DIST-02 §3-b / AC-6 — the generated hook judges real payloads', () 
   });
 });
 
-describe('DIST-02 §3-c / AC-7 — subpath isolation: the session never loads the git adapter', () => {
+describe('subpath isolation: the session never loads the git adapter', () => {
   it('the COMPLETE per-entry mirror judges normally (control: exit 0, one adapter passed row)', () => {
     // The premise both distless cases rest on: a mirror the resolver cannot walk — a
     // dropped dependency entry, a reversed link — dies at the same exit 2 a barrel import

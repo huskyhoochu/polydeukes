@@ -41,7 +41,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('COVENANT-17 §4.5 covenant check — the prompt fires only on a blocked verdict', () => {
+describe('covenant check — the prompt fires only on a blocked verdict', () => {
   it('a commit matching a discipline but breaking nothing never prompts and records passed (F6)', async () => {
     // The discipline's `in:` scope matches the staged file, so the registration routes,
     // but the delta adds no forbidden match, so the judge upholds. A clean commit must

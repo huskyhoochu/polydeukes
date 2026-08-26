@@ -70,7 +70,7 @@ function rowOf(text: string, header: string, kind: string, label: string): strin
   return lines[0];
 }
 
-describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', () => {
+describe('explain marks the advise level on both surfaces', () => {
   it("renders the `judge` row of an enforce: 'advise' entry with the level word on each surface", async () => {
     // The author's level must be visible where the assembly is read. Both surfaces are
     // checked because the commit root builds its table separately.
@@ -98,7 +98,7 @@ describe('CONFIG-11 AC-6 — explain marks the advise level on both surfaces', (
     }
   });
 
-  it("renders an explicit enforce: 'block' entry with the level word on each surface (POSTURE-01 AC-6)", async () => {
+  it("renders an explicit enforce: 'block' entry with the level word on each surface", async () => {
     // The promotion rung must be visible where the assembly is read — it is the one choice
     // that keeps an entry at exit 2 on the session surface. A marker gated on
     // `=== 'advise'` would make an explicit block read like an omission.

@@ -61,7 +61,7 @@ afterEach(() => {
   repo.cleanup();
 });
 
-describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surface', () => {
+describe('context family excluded from the commit surface', () => {
   it('passes (exit 0) a staged change whose context-family trigger matches', async () => {
     // The staged dependency line matches both `in` and `when`, and the surface has no
     // evidence channel, so the entry must not be judged. Assembled against a noop
@@ -123,7 +123,7 @@ describe('COVENANT-13 §4.5 AC-10 context family excluded from the commit surfac
   });
 });
 
-describe('COVENANT-13 §4.5 AC-10 other families unchanged beside the exclusion', () => {
+describe('other families unchanged beside the exclusion', () => {
   it('a delta-family violation in the same config still blocks (exit 2) while the context entry is skipped', async () => {
     // The exclusion targets ONLY the context family: a filter that dropped the delta
     // family too would let the forbidden marker through unjudged.

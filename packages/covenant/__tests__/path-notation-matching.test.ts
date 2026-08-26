@@ -50,7 +50,7 @@ describe('pathMatchesProtected — the raw pass still answers everything it used
   });
 });
 
-describe('pathMatchesProtected — the resolved pass adds interior "." and ".." (PRD §3.1)', () => {
+describe('pathMatchesProtected — the resolved pass adds interior "." and ".."', () => {
   it('an interior "." no longer breaks the protected run', () => {
     // A measured bypass: leaving `.` an ordinary segment splits the run, so
     // `echo x >> packages/core/./dist/index.js` reaches no judge at all.
@@ -94,7 +94,7 @@ describe('pathMatchesProtected — the resolved pass adds interior "." and ".." 
   });
 });
 
-describe('pathMatchesProtected — undecidable notations are left alone on purpose (PRD §2-d)', () => {
+describe('pathMatchesProtected — undecidable notations are left alone on purpose', () => {
   it('a glob is not read, whether or not it carries a literal', () => {
     // Expanding a glob needs the filesystem and this judge has none, so it does not guess.
     // Both ends are pinned because guessing in either direction was measured: a literal-free
@@ -175,7 +175,7 @@ describe('mentionsPath — notation reaches the judges through real payload shap
   });
 });
 
-describe('mention.ts stays a zero-I/O pure function (PRD §6)', () => {
+describe('mention.ts stays a zero-I/O pure function', () => {
   const source = readFileSync(
     fileURLToPath(new URL('../src/mention.ts', import.meta.url)),
     'utf-8',

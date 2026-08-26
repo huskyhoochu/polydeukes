@@ -31,7 +31,7 @@ function normalizedRows(telemetryPath: string, repoRoot: string): [string, strin
   ]);
 }
 
-describe('CONFIG-10 AC-5 — session surface judgment parity', () => {
+describe('session surface judgment parity', () => {
   let repos: CheckRepo[];
 
   beforeEach(() => {
@@ -83,7 +83,7 @@ describe('CONFIG-10 AC-5 — session surface judgment parity', () => {
   });
 });
 
-describe('CONFIG-10 AC-5 — commit surface judgment parity', () => {
+describe('commit surface judgment parity', () => {
   let repos: CheckRepo[];
 
   beforeEach(() => {

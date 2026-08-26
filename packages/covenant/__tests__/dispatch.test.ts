@@ -16,7 +16,7 @@ function registration(label: string, protectedPaths: string[]): CovenantRegistra
   };
 }
 
-describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
+describe('matchRegistrations — path-mention core', () => {
   it('matches when a top-level string arg contains the protected path, with correct mentionedPath', () => {
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg = registration('sample-covenant', ['sub/protected/file.txt']);
@@ -107,7 +107,7 @@ describe('matchRegistrations — path-mention core (PRD §6.1)', () => {
     expect(matches).toEqual([]);
   });
 
-  it('routes a quote-split protected path in a command arg to the registration (PRD §5.2)', () => {
+  it('routes a quote-split protected path in a command arg to the registration', () => {
     // A quote-split write like `printf x > sub/prot"e"cted/file.txt` has no contiguous
     // protected path in the raw arg, so raw-substring routing silently misses it and no
     // covenant is judged. Candidate extraction is tokenize-aware and quote-stripped.
@@ -155,7 +155,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
+describe('dispatchCovenants — dispatch shell', () => {
   it('a matching input routed to an exit-0 dummy body yields dispatcher exitCode 0 and the judge actually ran', async () => {
     // The marker file is the proof the judge actually ran, so the dispatcher cannot record
     // a verdict for a judge it never called.
@@ -319,7 +319,7 @@ describe('dispatchCovenants — dispatch shell (PRD §6.2)', () => {
   });
 });
 
-describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
+describe('dispatchCovenants — skip registrations', () => {
   const skipRegistration = (matches: () => string | null): CovenantRegistration => ({
     label: 'unjudgeable-entry',
     protectedPaths: [],
@@ -380,7 +380,7 @@ describe('dispatchCovenants — skip registrations (COVENANT-13 §4.5)', () => {
   });
 });
 
-describe('dispatchCovenants — witness seam (PRD §4.3)', () => {
+describe('dispatchCovenants — witness seam', () => {
   it('a matched registration whose body breaks with a witness predicate returning true is witnessed: the body still spawns, exitCode 0, one witnessed record', async () => {
     // The witness relaxes a real break AFTER the body reported it, so the body always runs
     // and the opening is recorded as its own `witnessed` event.

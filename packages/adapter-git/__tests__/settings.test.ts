@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 // strictest level.
 import { resolveGitAdapterSettings } from '../src/index.ts';
 
-describe('CONFIG-06 §4.2 resolveGitAdapterSettings — default fill (silent-relaxation is block)', () => {
+describe('resolveGitAdapterSettings — default fill (silent-relaxation is block)', () => {
   it('fills { enforce: block } when the namespace is absent (undefined)', () => {
     expect(resolveGitAdapterSettings(undefined)).toEqual({ enforce: 'block', protectedPaths: [] });
   });
@@ -16,7 +16,7 @@ describe('CONFIG-06 §4.2 resolveGitAdapterSettings — default fill (silent-rel
   });
 });
 
-describe('CONFIG-06 §4.2 resolveGitAdapterSettings — verbatim pass-through', () => {
+describe('resolveGitAdapterSettings — verbatim pass-through', () => {
   it('returns { enforce: block } verbatim', () => {
     expect(resolveGitAdapterSettings({ enforce: 'block' })).toEqual({
       enforce: 'block',
@@ -34,7 +34,7 @@ describe('CONFIG-06 §4.2 resolveGitAdapterSettings — verbatim pass-through', 
   });
 });
 
-describe('CONFIG-06 §4.2 resolveGitAdapterSettings — fail-fast rejection', () => {
+describe('resolveGitAdapterSettings — fail-fast rejection', () => {
   it('throws on the reserved level (measure) with a field-path-named message', () => {
     // 'measure' is a reserved level with no implementation behind it; the validator
     // rejecting it is what keeps it unusable.
@@ -56,7 +56,7 @@ describe('CONFIG-06 §4.2 resolveGitAdapterSettings — fail-fast rejection', ()
   });
 });
 
-describe('CONFIG-08 §4.1 resolveGitAdapterSettings — protectedPaths acceptance', () => {
+describe('resolveGitAdapterSettings — protectedPaths acceptance', () => {
   it('accepts an explicit empty additive list', () => {
     // An empty additive list is valid vocabulary, not an unknown key.
     expect(resolveGitAdapterSettings({ protectedPaths: [] })).toEqual({
@@ -82,7 +82,7 @@ describe('CONFIG-08 §4.1 resolveGitAdapterSettings — protectedPaths acceptanc
   });
 });
 
-describe('CONFIG-08 §4.1 resolveGitAdapterSettings — protectedPaths rejection', () => {
+describe('resolveGitAdapterSettings — protectedPaths rejection', () => {
   it('throws on a non-array protectedPaths with the exact contract message', () => {
     // A scalar spelling must fail fast, never be wrapped into a one-entry list — a shape
     // typo passing silently would seed the protection surface with unvalidated data.

@@ -76,7 +76,7 @@ function toJsonl(entries: unknown[]): string {
   return entries.map((entry) => JSON.stringify(entry)).join('\n');
 }
 
-describe('COVENANT-13b §5.2(3) transcriptFromJsonl — a clean result marks the call succeeded', () => {
+describe('transcriptFromJsonl — a clean result marks the call succeeded', () => {
   it('reports succeeded true whether is_error is absent or explicitly false', () => {
     // The gate must still be openable: if the join never finds a result, every call
     // collapses to succeeded false and no amount of actually running the required tool opens
@@ -101,7 +101,7 @@ describe('COVENANT-13b §5.2(3) transcriptFromJsonl — a clean result marks the
   });
 });
 
-describe('COVENANT-13b §5.2(4) transcriptFromJsonl — an errored result marks the call failed', () => {
+describe('transcriptFromJsonl — an errored result marks the call failed', () => {
   it('marks a call the covenant itself blocked as not succeeded, while its neighbour still succeeds', () => {
     // Counting a refused call as precedent makes a record of breaking one discipline into
     // the key that opens another. The successful neighbour is not decoration: without it
@@ -177,7 +177,7 @@ describe('COVENANT-13b §5.2(4) transcriptFromJsonl — an errored result marks 
   });
 });
 
-describe('COVENANT-13b §5.2(5) transcriptFromJsonl — a call with no result never counts', () => {
+describe('transcriptFromJsonl — a call with no result never counts', () => {
   it('marks a resultless call succeeded false — not undefined — beside a call that did report', () => {
     // The in-flight call: the last tool_use in a live session has no result yet, and it is
     // the very call whose edit is being judged. `false` and `undefined` are both refused
@@ -202,7 +202,7 @@ describe('COVENANT-13b §5.2(5) transcriptFromJsonl — a call with no result ne
   });
 });
 
-describe('COVENANT-13b §4.2 transcriptFromJsonl — results join on tool_use_id', () => {
+describe('transcriptFromJsonl — results join on tool_use_id', () => {
   it('gives each call its own outcome when the results arrive in the opposite order', () => {
     // Results interleave with prose, batches, and sidechains, so the nth result is not the
     // nth call. This fixture reverses the arrival order on purpose: an implementation that
@@ -224,7 +224,7 @@ describe('COVENANT-13b §4.2 transcriptFromJsonl — results join on tool_use_id
   });
 });
 
-describe('COVENANT-13b §5.2(6) transcriptFromJsonl — malformed result blocks are skipped alone', () => {
+describe('transcriptFromJsonl — malformed result blocks are skipped alone', () => {
   it('keeps every other join intact when a result has a non-string id or a broken entry shape', () => {
     // A shape mismatch excludes that item only, and every failure reduces evidence rather
     // than throwing. Three malformations ride along — a numeric tool_use_id, a result block

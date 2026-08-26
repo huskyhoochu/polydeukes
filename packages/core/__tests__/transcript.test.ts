@@ -20,7 +20,7 @@ function inputWith(subagentSpawns: { kind: string }[], userMessageTexts: string[
   };
 }
 
-describe('§5.1 CanonicalTranscript — fake transcript consumable by the interface', () => {
+describe('CanonicalTranscript — fake transcript consumable by the interface', () => {
   it('a fake transcript satisfies the type and findSubagentInvocations() returns every invocation in order', () => {
     // Covenant code must be able to drive the seam with a fake; catches an interface too
     // strict to accept one. The no-arg call returns ALL kinds, order preserved.
@@ -44,7 +44,7 @@ describe('§5.1 CanonicalTranscript — fake transcript consumable by the interf
   });
 });
 
-describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
+describe('transcriptFromInput — IR-backed implementation', () => {
   it('exposes input.subagentSpawns as invocations in observation order via findSubagentInvocations()', () => {
     // Observation order is load-bearing: catches spawns dropped, reordered, or a different
     // IR collection exposed instead.
@@ -118,7 +118,7 @@ describe('§5.1 transcriptFromInput — IR-backed implementation', () => {
   });
 });
 
-describe('§5.1 noopTranscript — always-empty default', () => {
+describe('noopTranscript — always-empty default', () => {
   it('returns [] from both queries, with and without a kind argument', () => {
     // The injection-absent default answers "nothing happened", which lets a witness
     // consumer converge to fail-closed. A non-empty stub would fabricate evidence.

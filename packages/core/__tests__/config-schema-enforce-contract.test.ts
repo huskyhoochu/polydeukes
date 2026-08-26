@@ -50,7 +50,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('CONFIG-11 AC-1 — enforce schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
+describe('enforce schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid enforce fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
@@ -61,7 +61,7 @@ describe('CONFIG-11 AC-1 — enforce schema ⟺ defineConfig equivalence (VALID 
   });
 });
 
-describe('CONFIG-11 AC-1 — enforce schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
+describe('enforce schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid enforce fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

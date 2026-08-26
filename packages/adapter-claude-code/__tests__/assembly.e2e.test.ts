@@ -123,7 +123,7 @@ function bashPayload(command: string) {
   };
 }
 
-describe('context family across the session boundary (COVENANT-13 §4.5)', () => {
+describe('context family across the session boundary', () => {
   // Package manifests are not protected at the session surface this suite drives (they sit
   // on the commit surface's additive list), so these payloads reach the context family
   // alone, with no meta-covenant verdict mixed in. Two context entries share this scope,
@@ -300,7 +300,7 @@ function writePayload(filePath: string, content: string) {
 // entry with no `enforce` lands `advised` (exit 0), one carrying an explicit block rung
 // stops the call. Meta-covenants (self-mod, shell-mod, transcript-mod) carry no entry rung
 // and keep exit 2 in the suites above and below.
-describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
+describe('dogfooding assembly E2E — wired disciplines', () => {
   it('a gate-disarming command mentioning no protected path is judged by hooks-stay-armed', () => {
     // A command mentioning no protected path still reaches a registration: the content
     // predicate, not path mention, is what routes it. The entry carries an explicit block
@@ -314,7 +314,7 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
     expect(records[0].event).toBe('blocked');
   });
 
-  it("the break message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
+  it("the break message carries the entry's why to stderr", () => {
     // What only this surface exercises is the round trip: the assembly serializes the whole
     // entry into argv, the body re-parses it, and the reason is built on the far side. The
     // em dash of the separator crosses that encoding here, and the sentence asserted comes
@@ -384,7 +384,7 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
   });
 });
 
-describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-protecting', () => {
+describe('assembly E2E — config discovery is fail-closed and self-protecting', () => {
   it('an Edit targeting polydeukes.config.yaml itself is blocked (exit 2, config self-protection)', () => {
     // The discovered config file is auto-attached to the protection surface by the loader,
     // so editing it must block. A loader that fails to self-attach configPath would leave
@@ -468,7 +468,7 @@ function sessionTranscript(): string {
   return path;
 }
 
-describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', () => {
+describe('dogfooding assembly E2E — path notation variants', () => {
   // The transcript the assembly attaches from the payload is the surface `~` and `$HOME`
   // are written against. The home value is injected as plain data into the transcript-mod
   // predicate alone (its block sits below this one); the path-mention judges exercised
@@ -507,7 +507,7 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
     expect(rowsFor('shell-mod').map((r) => r.subject)).toEqual(['.claude/hooks']);
   });
 
-  it('a glob spelling of the same target is recorded skipped — the silence removed (COVENANT-10b)', () => {
+  it('a glob spelling of the same target is recorded skipped — the silence removed', () => {
     // Expanding a glob needs the filesystem, so no judge guesses a target and the call
     // passes — but a mutation-capable command whose target cannot be judged must leave one
     // common skipped row rather than nothing.
@@ -534,7 +534,7 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
 // The transcript is protected by its own equality predicate rather than by protectedPaths,
 // so protecting it does not make the home directory a protected ancestor.
 
-describe('dogfooding assembly E2E — transcript protection without a home ancestor (COVENANT-07c)', () => {
+describe('dogfooding assembly E2E — transcript protection without a home ancestor', () => {
   // Every spawn hands the hook a real HOME (raw env, injected into the transcript-mod
   // predicate as data) and attaches a real session under that home, so the home-relative
   // spellings below name the same file the payload declares.
@@ -560,7 +560,7 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
     expect(rowsFor('shell-mod')).toEqual([]);
   });
 
-  it('cd into the literal absolute home passes with no judge row (exit 0) — the COVENANT-13 over-block dissolves', () => {
+  it('cd into the literal absolute home passes with no judge row (exit 0)', () => {
     // Putting the transcript in protectedPaths would make home a protected ANCESTOR, so
     // `cd` into the literal absolute home would block — a fix that closes the `~` spellings
     // while keeping the transcript in protectedPaths leaves this case blocked.
@@ -623,7 +623,7 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
 // makes it computable, records an entry-scoped or common `skipped` where it does not, and
 // keeps signal-free calls silent. NotebookEdit is the same gap's tool-axis form.
 
-describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit (COVENANT-10b)', () => {
+describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit', () => {
   // A probe path inside covenant-vocabulary's scope that never exists on disk, so the
   // judgment-time pre read answers ENOENT and the whole delivered text is the added
   // direction.
@@ -654,10 +654,11 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
   it('a sed -i over a scoped file is recorded skipped under EACH discipline scoping it (exit 0)', () => {
     // Content incomputable, target known: one row per entry whose scope covers this path,
-    // attributed to the entry id and never the common label. The third row skips for a
+    // attributed to the entry id and never the common label. The last row skips for a
     // DIFFERENT reason — it is a context-family entry and this run injects no transcript,
     // so its evidence question cannot be asked at all. Two reasons share one lane, which is
-    // why this enumerates the rows rather than counting them.
+    // why this enumerates the rows rather than counting them, and why the list grows with
+    // every delta entry whose scope covers this path.
     const result = runHook(
       bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
     );
@@ -666,6 +667,8 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     expect(skippedRows().map((r) => [r.label, r.subject])).toEqual([
       ['covenant-vocabulary', 'packages/adapter-git/src/collect.ts'],
       ['english-only-sources', 'packages/adapter-git/src/collect.ts'],
+      ['comments-need-no-wiki', 'packages/adapter-git/src/collect.ts'],
+      ['comments-carry-no-process', 'packages/adapter-git/src/collect.ts'],
       ['adapter-needs-knowledge-read', 'packages/adapter-git/src/collect.ts'],
     ]);
   });
@@ -754,7 +757,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 // the computable axis (out of every scope / clean in scope), a real on-disk pre for append
 // composition, and a violation arriving second in a chain.
 
-describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)', () => {
+describe('dogfooding assembly E2E — evidence set gaps', () => {
   const SCOPED_SOURCE = 'packages/core/src/e2e-probe.ts';
   const BANNED_LINE = 'export const note = 1; // the guard word';
 
@@ -862,7 +865,7 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
 // scope stays the COMMON list. These spawn against a fixture tree carrying a config the
 // test authors, because the entries pinned here cannot live in the real repo config.
 
-describe('dogfooding assembly E2E — session surface ignores the git-additive list (CONFIG-08)', () => {
+describe('dogfooding assembly E2E — session surface ignores the git-additive list', () => {
   // The additive entry names the exact target the session payload edits, so any reading of
   // the git namespace shows up; the common list carries an untracked directory.
   const GIT_ADDITIVE_ENTRY = 'packages/core/src';

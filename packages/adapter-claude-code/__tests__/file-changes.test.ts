@@ -57,7 +57,7 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
   return (fp: string) => (fp === filePath ? content : null);
 }
 
-describe('collectFileChanges — Write (AC §5.6)', () => {
+describe('collectFileChanges — Write', () => {
   it('produces create evidence for a new file (reader returns null)', () => {
     // Absence of a file is the create discriminant. Tagging it modify opens a
     // debt-forgiveness hole downstream.
@@ -71,7 +71,7 @@ describe('collectFileChanges — Write (AC §5.6)', () => {
   });
 });
 
-describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
+describe('collectFileChanges — MultiEdit', () => {
   it('applies edits sequentially so the post reflects all edits', () => {
     // The 2nd edit targets the 1st edit's result, so edits applied against pre
     // independently would yield 'value = two'.
@@ -86,7 +86,7 @@ describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
   });
 });
 
-describe('collectFileChanges — omission of unresolvable post-state (AC §5.6, PRD §4.3)', () => {
+describe('collectFileChanges — omission of unresolvable post-state', () => {
   it('yields nothing when the Edit old_string is absent from pre (null, not an error)', () => {
     // An Edit whose virtual application fails omits evidence — it is neither an error
     // nor a fabricated post.
@@ -96,7 +96,7 @@ describe('collectFileChanges — omission of unresolvable post-state (AC §5.6, 
   });
 });
 
-describe('collectFileChanges — non-mutating payloads (AC §5.6)', () => {
+describe('collectFileChanges — non-mutating payloads', () => {
   it('returns null for a Bash payload', () => {
     // A non-file-mutating tool contributes no evidence — there is no file to judge.
     expect(collectFileChanges(bashPayload, () => null)).toBeNull();
@@ -130,7 +130,7 @@ function capturingDispatch(): {
   };
 }
 
-describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () => {
+describe('runAdapterPath — fileChanges in the dispatched IR', () => {
   it('an Edit payload hands dispatch an IR whose evidence carries the disk pre and applied post', async () => {
     const filePath = join(tmpRoot, 'app.ts');
     writeFileSync(filePath, 'const v = alpha;');

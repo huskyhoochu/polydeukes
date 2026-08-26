@@ -64,7 +64,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('CONFIG-10 AC-3 — draft schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
+describe('draft schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid draft fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
@@ -76,7 +76,7 @@ describe('CONFIG-10 AC-3 — draft schema ⟺ defineConfig equivalence (VALID fi
   });
 });
 
-describe('CONFIG-10 AC-3 — draft schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
+describe('draft schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid draft fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

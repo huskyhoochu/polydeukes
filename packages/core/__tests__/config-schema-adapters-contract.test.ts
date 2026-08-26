@@ -38,7 +38,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('§4.3 adapters schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
+describe('adapters schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid adapters fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
@@ -47,7 +47,7 @@ describe('§4.3 adapters schema ⟺ defineConfig equivalence (VALID fixtures)', 
   });
 });
 
-describe('§4.3 adapters schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
+describe('adapters schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid adapters fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

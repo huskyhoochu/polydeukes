@@ -43,7 +43,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('DISPATCH-01 §4.3 — a command-family thunk on an empty shell surface fails closed', () => {
+describe('a command-family thunk on an empty shell surface fails closed', () => {
   it.each([
     ['shellTools', { shellTools: [] as string[] }],
     ['commandArgs', { commandArgs: [] as string[] }],

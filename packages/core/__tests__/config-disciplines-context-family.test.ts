@@ -37,7 +37,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('defineConfig context family — valid requirePrecedent entries (AC §5.1)', () => {
+describe('defineConfig context family — valid requirePrecedent entries', () => {
   it('accepts a full context-family entry (in/except/when/command) and carries it verbatim', () => {
     // A well-formed entry must reach ResolvedConfig.disciplines byte-for-byte: the
     // assertion catches both requirePrecedent going unregistered as a predicate key and
@@ -85,7 +85,7 @@ describe('defineConfig context family — valid requirePrecedent entries (AC §5
   });
 });
 
-describe('defineConfig context family — command evidence validation (AC §5.1)', () => {
+describe('defineConfig context family — command evidence validation', () => {
   it('rejects an empty-string command, naming the entry', () => {
     // An empty command pattern matches everything, so the gate would open on any tool call.
     const error = expectConfigValidationError(
@@ -116,7 +116,7 @@ describe('defineConfig context family — command evidence validation (AC §5.1)
   });
 });
 
-describe('defineConfig context family — evidence container shape (AC §5.1)', () => {
+describe('defineConfig context family — evidence container shape', () => {
   it('rejects a requirePrecedent with zero evidence keys ({})', () => {
     // An evidence-less requirePrecedent can never be satisfied nor evaluated; accepting it
     // yields a discipline that always blocks or always passes depending on the evaluator.
@@ -157,7 +157,7 @@ describe('defineConfig context family — evidence container shape (AC §5.1)', 
   });
 });
 
-describe('defineConfig context family — predicate cardinality over 4 keys (AC §5.1)', () => {
+describe('defineConfig context family — predicate cardinality over 4 keys', () => {
   it('rejects requirePrecedent combined with each of the other three predicate keys', () => {
     // requirePrecedent must belong to the cardinality set, not merely be an accepted key;
     // otherwise it could ride along with another family unnoticed.
@@ -177,7 +177,7 @@ describe('defineConfig context family — predicate cardinality over 4 keys (AC 
   });
 });
 
-describe('defineConfig context family — when trigger coupling and validity (AC §5.1)', () => {
+describe('defineConfig context family — when trigger coupling and validity', () => {
   it('rejects when on a forbid, immutable, or forbidCommand entry', () => {
     // `when` is a context-family trigger; on any other family it is dead data implying a
     // trigger that is never applied, so it must live in the context-only key set.
@@ -228,7 +228,7 @@ describe('defineConfig context family — when trigger coupling and validity (AC
   });
 });
 
-describe('defineConfig context family — scope keys stay off path/command families (AC §5.1)', () => {
+describe('defineConfig context family — scope keys stay off path/command families', () => {
   it('rejects `in` on a forbidCommand entry (the widening regression, new combination)', () => {
     // Opening in/except to the context family must not open them to the command family.
     // config-disciplines.test.ts pins except-on-forbidCommand; this pins the in-side.

@@ -114,7 +114,7 @@ afterEach(() => {
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
-describe('DIST-02 §3-a / AC-1 initClaudeCode — absent-project creation', () => {
+describe('initClaudeCode — absent-project creation', () => {
   it('creates all five artifacts on an empty tree and reports each as created', () => {
     // Each artifact answers for a different failure: no hook file and nothing ever judges;
     // no settings registration and the hook exists but never spawns; no config and
@@ -177,7 +177,7 @@ describe('DIST-02 §3-a / AC-1 initClaudeCode — absent-project creation', () =
   });
 });
 
-describe('DIST-02 §3-a / AC-2 non-destructive idempotence', () => {
+describe('non-destructive idempotence', () => {
   it('leaves all five artifacts byte-identical on a second run and reports zero created', () => {
     // Any writer that appends or rewrites on re-run breaks here — the likeliest being the
     // ignore line appended unconditionally, growing .gitignore by one line per run. The
@@ -227,7 +227,7 @@ describe('DIST-02 §3-a / AC-2 non-destructive idempotence', () => {
   });
 });
 
-describe('DIST-02 §3-a / AC-3 .claude/settings.json merge', () => {
+describe('.claude/settings.json merge', () => {
   it('preserves existing registrations and unrelated keys while adding ours exactly once', () => {
     // A consumer's pre-existing PreToolUse entries and permissions are live configuration,
     // so replacing the settings file instead of merging disarms every other tool they
@@ -279,7 +279,7 @@ describe('DIST-02 §3-a / AC-3 .claude/settings.json merge', () => {
   });
 });
 
-describe('DIST-02 §3-g / AC-5 preflight — resolution proven before any write', () => {
+describe('preflight — resolution proven before any write', () => {
   it('throws an error naming polydeukes and creates ZERO files when the injected resolver fails', () => {
     // Any write ordered before the preflight leaves a partial tree, the worst failure
     // shape: a generated hook whose import can never resolve blocks every call through its
@@ -326,7 +326,7 @@ describe('DIST-02 §3-g / AC-5 preflight — resolution proven before any write'
   });
 });
 
-describe('DIST-02 §3-a / AC-11 already-ambiguous tree — a precondition failure, not a merge', () => {
+describe('already-ambiguous tree — a precondition failure, not a merge', () => {
   it('throws naming the config collision and creates ZERO new files when two configs coexist', () => {
     // Treating "two or more configs exist" as "one exists, skip and proceed" scaffolds a
     // tree that is already stopped, since loadConfig throws on ambiguity, and wires a hook
@@ -342,7 +342,7 @@ describe('DIST-02 §3-a / AC-11 already-ambiguous tree — a precondition failur
   });
 });
 
-describe('DIST-02 §3-a — the run never reports success without the registration', () => {
+describe('the run never reports success without the registration', () => {
   it('throws when the written settings file does not carry the registration', () => {
     // The one outcome this installer must never produce is a successful-looking run whose
     // judge never spawns. The merge can drop the entry without failing: a settings file
@@ -364,7 +364,7 @@ describe('DIST-02 §3-a — the run never reports success without the registrati
   });
 });
 
-describe('DIST-02 §3-g — preflight proves the subpath the generated hook imports', () => {
+describe('preflight proves the subpath the generated hook imports', () => {
   /** A fake install of `polydeukes` whose manifest carries the given exports map. */
   function installFake(exports: unknown): void {
     const dir = join(projectRoot, 'node_modules', 'polydeukes');
@@ -398,7 +398,7 @@ describe('DIST-02 §3-g — preflight proves the subpath the generated hook impo
   });
 });
 
-describe('DIST-02 §3-a — an unreadable settings file is a precondition failure', () => {
+describe('an unreadable settings file is a precondition failure', () => {
   it('throws naming the settings file and writes NOTHING when it cannot be parsed', () => {
     // Everything that can fail on READING is settled before anything is written. Parsing
     // settings inside the merge — after the config, the ignore line and the hook are
@@ -425,7 +425,7 @@ describe('DIST-02 §3-a — an unreadable settings file is a precondition failur
   });
 });
 
-describe('DOCS-02 §3-e / AC-8 the discovery file — the fifth artifact', () => {
+describe('the discovery file — the fifth artifact', () => {
   it('writes a discovery file whose command forms match the shipped query surface', () => {
     // A template instructing a form that does not exist costs one failed call, after which
     // the agent never asks again. Every topic name must appear as itself — word-boundary,

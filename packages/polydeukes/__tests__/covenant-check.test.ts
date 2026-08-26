@@ -39,7 +39,7 @@ function selfModRows(): [string, string][] {
     .map((record) => [record.event, record.subject]);
 }
 
-describe('§5 AC-2 same-judge blocking on a protected path', () => {
+describe('same-judge blocking on a protected path', () => {
   it('blocks (exit 2) when a staged change touches a protectedPaths file', async () => {
     // A commit mutating a declared protected path fails closed at commit time, exactly as
     // the session hook blocks the same edit.
@@ -69,7 +69,7 @@ describe('§5 AC-2 same-judge blocking on a protected path', () => {
   });
 });
 
-describe('§5 AC-4 discipline delta family — new violation vs pre-existing debt', () => {
+describe('discipline delta family — new violation vs pre-existing debt', () => {
   // `enforce: block` is explicit because an absent level is advise, and this block
   // exercises the judgment itself rather than the default.
   const disciplines = [
@@ -109,7 +109,7 @@ describe('§5 AC-4 discipline delta family — new violation vs pre-existing deb
   });
 });
 
-describe('§5 AC-3 TTY witness valve — human-only arming', () => {
+describe('TTY witness valve — human-only arming', () => {
   function stageProtectedChange(): void {
     writeConfig({
       protectedPaths: ['secret.txt'],
@@ -177,7 +177,7 @@ describe('§5 AC-3 TTY witness valve — human-only arming', () => {
   });
 });
 
-describe('§5 AC-6 telemetry — every judged call is recorded', () => {
+describe('telemetry — every judged call is recorded', () => {
   it('appends one record per judged call across a multi-file staged batch', async () => {
     // N judged calls leave N records, never one aggregate row.
     writeConfig({ protectedPaths: ['secret.txt', 'guarded.txt'] });
@@ -192,7 +192,7 @@ describe('§5 AC-6 telemetry — every judged call is recorded', () => {
   });
 });
 
-describe('§5 AC-7 fail-closed and empty-staging boundaries', () => {
+describe('fail-closed and empty-staging boundaries', () => {
   it('blocks (exit 2) when no config file exists in the repo root', async () => {
     // loadConfig throws on a missing config, and the runner translates that into exit 2
     // rather than passing vacuously.
@@ -222,7 +222,7 @@ describe('§5 AC-7 fail-closed and empty-staging boundaries', () => {
 // fails closed at the SAME exit 2, and an exit-code-only assertion would go green for
 // that wrong reason.
 
-describe('CONFIG-08 §4.2 commit surface — union of common and git-additive protected paths', () => {
+describe('commit surface — union of common and git-additive protected paths', () => {
   it('blocks (exit 2) via a self-mod verdict when a staged file sits under a git-additive path', async () => {
     // 'packages/core/src' is listed ONLY in adapters.git, so this block proves the union
     // reached the judge.
@@ -341,7 +341,7 @@ describe('CONFIG-08 §4.2 commit surface — union of common and git-additive pr
   });
 });
 
-describe('CONFIG-08 §4.2 the union is normalized as ONE list (consumer-side normalization)', () => {
+describe('the union is normalized as ONE list (consumer-side normalization)', () => {
   it('judges normally (one verdict, exit 2) when the same path is listed in BOTH lists', async () => {
     // Dedupe belongs to the normalizer, so the union must survive a cross-list duplicate:
     // first-occurrence dedupe, one registration, one verdict per staged change. Bypassing
@@ -393,7 +393,7 @@ describe('CONFIG-08 §4.2 the union is normalized as ONE list (consumer-side nor
 /** The label the runner's fail-closed catch records under — never a judge's label. */
 const FAIL_CLOSED_LABEL = 'covenant-check';
 
-describe('ADAPTER-git-b §4.1 telemetry path precedence — spec, then config, then default', () => {
+describe('telemetry path precedence — spec, then config, then default', () => {
   /** Rows at the DEFAULT path — where the run must write when nobody names a path. */
   function defaultRows(): [string, string, string][] {
     return telemetryRows(join(repoRoot, '.polydeukes', 'roi.log'));

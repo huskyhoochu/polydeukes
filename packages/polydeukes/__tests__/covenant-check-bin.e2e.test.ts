@@ -44,7 +44,7 @@ function spawnCheck(...extra: string[]) {
   });
 }
 
-describe('§5 AC-6 pdks covenant check — the three domain forms on a clean repository', () => {
+describe('pdks covenant check — the three domain forms on a clean repository', () => {
   it.each([
     ['staged (no flags)', []],
     ['--worktree', ['--worktree']],
@@ -61,7 +61,7 @@ describe('§5 AC-6 pdks covenant check — the three domain forms on a clean rep
   });
 });
 
-describe('§5 AC-6 pdks covenant check — every other combination is usage exit 2', () => {
+describe('pdks covenant check — every other combination is usage exit 2', () => {
   it.each([
     ['--range with no argument', ['--range']],
     ['--range without `..`', ['--range', 'HEAD']],

@@ -240,7 +240,7 @@ function generatedToken(): string {
   return match[1];
 }
 
-describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () => {
+describe('tarball install, init, and two real judgments', () => {
   it('pdks init claude-code exits 0 from the tarball install and writes the hook and config', () => {
     // A packaging defect anywhere in the chain — the bin not shipped or not executable,
     // the session subpath missing from the packed exports map, a scoped tarball the
@@ -307,7 +307,7 @@ describe('DIST-03 AC-3 — tarball install, init, and two real judgments', () =>
   }, 60_000);
 });
 
-describe('DIST-03 AC-4 — the witness valve spawns live in the generated tree', () => {
+describe('the witness valve spawns live in the generated tree', () => {
   it('a human transcript carrying the generated token first-line-alone opens the block: exit 0, witnessed row', () => {
     // The valve executing in a generated tree. A dropped witness block, or a token
     // diverging from what the assembled judge reads, freezes a consumer's first real block
@@ -343,7 +343,7 @@ describe('DIST-03 AC-4 — the witness valve spawns live in the generated tree',
   }, 60_000);
 });
 
-describe('DIST-03 AC-5 — the core schema resolves from the installed tree', () => {
+describe('the core schema resolves from the installed tree', () => {
   it('the schema subpath resolves through the real pnpm layout and the file exists', () => {
     // In a real pnpm layout only direct dependencies surface in the consumer's
     // node_modules, so this resolution must walk the umbrella's own dependency links.
@@ -362,12 +362,12 @@ describe('DIST-03 AC-5 — the core schema resolves from the installed tree', ()
     // invalidating the documented path; the machine-specific head stays unpinned.
     expect(resolved.endsWith('/@polydeukes/core/schema/polydeukes.schema.json')).toBe(true);
     // The measured consumer-side form.
-    console.info(`AC-5 measured: ${CORE_SCHEMA_SPECIFIER} resolves to ${resolved}`);
+    console.info(`measured: ${CORE_SCHEMA_SPECIFIER} resolves to ${resolved}`);
   }, 60_000);
 });
 
-describe('DIST-05 AC-2/AC-3/AC-4 — the umbrella ships the schema at one consumer spelling', () => {
-  it('the umbrella schema subpath resolves from the installed tree (AC-2, module axis)', () => {
+describe('the umbrella ships the schema at one consumer spelling', () => {
+  it('the umbrella schema subpath resolves from the installed tree (module axis)', () => {
     // The runtime axis: code that READS the schema reaches it by module specifier, and
     // resolution is what a `./schema.json` exports entry buys. A subpath registered
     // against a path the build does not produce — a `schema/` entry copied from core's
@@ -384,7 +384,7 @@ describe('DIST-05 AC-2/AC-3/AC-4 — the umbrella ships the schema at one consum
     expect(resolved.endsWith('/polydeukes/dist/schema/polydeukes.schema.json')).toBe(true);
   }, 60_000);
 
-  it('the consumer-root-relative file path exists on disk (AC-3, editor axis)', () => {
+  it('the consumer-root-relative file path exists on disk (editor axis)', () => {
     // A DIFFERENT axis from the case above. What a consumer writes on the config's first
     // line is a static string an editor reads: no module resolver runs, no exports map is
     // consulted, no symlink is realpathed. So the literal path is walked from the consumer
@@ -395,7 +395,7 @@ describe('DIST-05 AC-2/AC-3/AC-4 — the umbrella ships the schema at one consum
     expect(existsSync(join(consumerRoot, UMBRELLA_SCHEMA_FILE_REL))).toBe(true);
   }, 60_000);
 
-  it('the shipped file is byte-identical to the core schema in the same install (AC-1/AC-4)', () => {
+  it('the shipped file is byte-identical to the core schema in the same install', () => {
     // Measured on the artifact rather than on the build step: core owns the one source and
     // the umbrella's copy is derived. A copy reading a stale or hand-edited file is a
     // divergence the byte check in copy-schema.test.ts cannot see, because that suite feeds
@@ -414,7 +414,7 @@ describe('DIST-05 AC-2/AC-3/AC-4 — the umbrella ships the schema at one consum
   }, 60_000);
 });
 
-describe('DOCS-02 AC-7 — the bundled docs answer from the installed tree', () => {
+describe('the bundled docs answer from the installed tree', () => {
   /**
    * Spawn the consumer's own `pdks`, the binary a user's PATH reaches. cwd is the consumer
    * root and the tree sits outside this repository, so an answer cannot have come from the

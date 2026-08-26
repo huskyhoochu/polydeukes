@@ -82,7 +82,7 @@ async function precedentDecision(
   return outcome.exitCode === 0 ? 'found' : 'missing';
 }
 
-describe('COVENANT-13b §4.3 command evidence — anchored at a simple command (AC 7)', () => {
+describe('command evidence — anchored at a simple command', () => {
   it('refuses a quoted mention inside an echo, while the same words alone still qualify', async () => {
     // The tokenizer does not preserve quoting, so the joined words read `echo npm view yaml`
     // — the pattern is present, only not at the start. The second assertion is a vacuity
@@ -192,7 +192,7 @@ describe('COVENANT-13b §4.3 command evidence — anchored at a simple command (
   });
 });
 
-describe('COVENANT-13b §4.3 command evidence — an unread span (AC 8)', () => {
+describe('command evidence — an unread span', () => {
   it('refuses a command line with an unclosed quote, judging it rather than skipping the entry', async () => {
     // This consumer's polarity is inverted from the rest of the scanner: elsewhere `false`
     // withholds a block, but here it means "evidence missing", which blocks. Trusting the
@@ -215,7 +215,7 @@ describe('COVENANT-13b §4.3 command evidence — an unread span (AC 8)', () => 
   });
 });
 
-describe('COVENANT-13b §4.3 command evidence — anchoring by position, not by pattern rewrite (AC 9)', () => {
+describe('command evidence — anchoring by position, not by pattern rewrite', () => {
   it('anchors every branch of an alternation, not just the first', async () => {
     // The anchor is a POSITION, never a pattern rewrite. `new RegExp('^' + pattern)` binds
     // `^` to the first branch only — `^npm view |pnpm view ` reads as "starts with npm view"
@@ -244,7 +244,7 @@ describe('COVENANT-13b §4.3 command evidence — anchoring by position, not by 
   });
 });
 
-describe('COVENANT-13b §4.6 command evidence — the recovery path stays open (AC 10)', () => {
+describe('command evidence — the recovery path stays open', () => {
   it('reopens the gate when the required command is re-run on its own after a compound failure', async () => {
     // What makes the known over-block survivable. The two axes judge at different
     // granularities: the anchor sees individual simple commands, the outcome is one exit

@@ -16,7 +16,7 @@ import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './hel
 /** A body that does nothing — used where only routing (not spawn) is asserted. */
 const noopBody = exitThunk(0);
 
-describe('matchRegistrations — matches predicate seam (PRD §4.4)', () => {
+describe('matchRegistrations — matches predicate seam', () => {
   it('includes a registration whose matches returns a string, using it as mentionedPath', () => {
     // A matches registration routes on its predicate even though protectedPaths is [] and
     // no protected path is mentioned.
@@ -121,7 +121,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('dispatchCovenants — matches seam end-to-end (PRD §4.4, AC §5.5)', () => {
+describe('dispatchCovenants — matches seam end-to-end', () => {
   it('spawns the body of a matches registration and logs one record with subject=the returned string', async () => {
     // The subject on the row must be threaded from the matches return value.
     const outFile = join(dir, 'body-ran.txt');

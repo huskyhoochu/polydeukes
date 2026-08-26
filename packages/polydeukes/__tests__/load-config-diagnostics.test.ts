@@ -38,7 +38,7 @@ function loadAndCatch(contents: string): Error {
   return error as Error;
 }
 
-describe('§4.3 parse diagnostics — every problem enumerated (AC-6)', () => {
+describe('parse diagnostics — every problem enumerated', () => {
   it('carries BOTH problem messages when the yaml has two parse problems', () => {
     // A truncated report costs one fix-rerun loop per hidden problem. Reporting only the
     // first problem is caught here: the BAD_INDENT text never appears in the DUPLICATE_KEY

@@ -35,7 +35,7 @@ function spawnExplain(...extra: string[]) {
   });
 }
 
-describe('CLI-01 AC-9 — pdks explain on the built bin', () => {
+describe('pdks explain on the built bin', () => {
   it('prints both surfaces to stdout and exits 0 with a valid config in cwd', () => {
     writeConfigAt(projectRoot, join(projectRoot, 'roi.log'), {
       disciplines: [{ id: ENTRY_ID, forbid: 'FIXME' }],

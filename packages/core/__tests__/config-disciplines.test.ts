@@ -36,7 +36,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('defineConfig disciplines — valid entries (AC §5.1)', () => {
+describe('defineConfig disciplines — valid entries', () => {
   it('accepts one entry per predicate family (plus a string-shorthand forbid) and carries them verbatim', () => {
     // A well-formed array must reach ResolvedConfig.disciplines byte-for-byte — compiling
     // patterns is the covenant package's job, not core's. The assertion catches the
@@ -69,7 +69,7 @@ describe('defineConfig disciplines — valid entries (AC §5.1)', () => {
   });
 });
 
-describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => {
+describe('defineConfig disciplines — predicate cardinality', () => {
   it('rejects an entry with zero predicate keys, naming the entry index', () => {
     // An entry with no forbid/immutable/forbidCommand is unjudgeable; accepting it yields a
     // dead discipline that protects nothing while appearing registered.
@@ -100,7 +100,7 @@ describe('defineConfig disciplines — predicate cardinality (AC §5.1)', () => 
   });
 });
 
-describe('defineConfig disciplines — forbid object variants (COVENANT-12 deferral, AC §5.1)', () => {
+describe('defineConfig disciplines — forbid object variants', () => {
   it('rejects forbid: { removed: ... } (removed is deferred)', () => {
     // `{ added }` is the only accepted direction key; the object-form validator must not
     // admit an arbitrary one.
@@ -136,7 +136,7 @@ describe('defineConfig disciplines — forbid object variants (COVENANT-12 defer
   });
 });
 
-describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred-axis)', () => {
+describe('defineConfig disciplines — unknown key rejection (deferred-axis)', () => {
   it('rejects an entry carrying an unknown `witness` key, naming that key', () => {
     // `witness` is a top-level key only. On an entry it must be refused rather than
     // silently dropped: an author who believes the key took effect gets a fail-open gate.
@@ -148,7 +148,7 @@ describe('defineConfig disciplines — unknown key rejection (AC §5.1, deferred
   });
 });
 
-describe('defineConfig disciplines — scope keys are forbid-only (AC §5.1)', () => {
+describe('defineConfig disciplines — scope keys are forbid-only', () => {
   it('rejects `in` on an immutable entry', () => {
     // An immutable entry's glob is already its scope, so `in` would imply a narrowing that
     // is never applied.
@@ -169,7 +169,7 @@ describe('defineConfig disciplines — scope keys are forbid-only (AC §5.1)', (
   });
 });
 
-describe('defineConfig disciplines — id constraints (AC §5.1)', () => {
+describe('defineConfig disciplines — id constraints', () => {
   it('rejects duplicate ids across entries, naming the duplicated id', () => {
     // An id is the telemetry label and the verdict-reason prefix, so a collision silently
     // merges two disciplines' measurements.
@@ -196,7 +196,7 @@ describe('defineConfig disciplines — id constraints (AC §5.1)', () => {
 });
 
 // Core checks that a pattern compiles; it never runs one.
-describe('defineConfig disciplines — regex compilability (AC §5.1)', () => {
+describe('defineConfig disciplines — regex compilability', () => {
   it('rejects a non-compilable forbid regex string (unbalanced paren)', () => {
     // A pattern `new RegExp` cannot compile is a broken discipline: refuse it at authoring
     // time rather than let it reach the covenant compiler and fail at judge time.
@@ -208,7 +208,7 @@ describe('defineConfig disciplines — regex compilability (AC §5.1)', () => {
   });
 });
 
-describe('defineConfig disciplines — container/entry shape (AC §5.1)', () => {
+describe('defineConfig disciplines — container/entry shape', () => {
   it('rejects disciplines that is not an array', () => {
     // A single entry object is the plausible mistake here, and it is typeof 'object' like
     // the array — only an explicit Array.isArray check separates them.

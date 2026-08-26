@@ -107,7 +107,7 @@ function toJsonl(entries: unknown[]): string {
   return entries.map((entry) => JSON.stringify(entry)).join('\n');
 }
 
-describe('ADAPTER-04 §5.2 witness integration — real dists, injected clock', () => {
+describe('witness integration — real dists, injected clock', () => {
   it('witnesses when a human token message sits inside the TTL window (true)', () => {
     // The assembled provider must surface the human message WITH its timestamp: dropping the
     // timestamp fails closed even inside the window, and not surfacing the message at all

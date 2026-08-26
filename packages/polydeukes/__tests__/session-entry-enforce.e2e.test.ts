@@ -113,7 +113,7 @@ const hardEntry = {
 /** The call that breaks the command entry: the forbidden command at the head of the line. */
 const breakingCall = bashPayload(`${FORBIDDEN_COMMAND} --run`);
 
-describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an entry at advise', () => {
+describe('real hook spawn: the session surface honours an entry at advise', () => {
   it("a call breaking an enforce: 'advise' entry exits 0 with ONE advised row and the why on stderr", () => {
     // Three things separate a real advise from the ways this can be green for the wrong
     // reason: exit 0 alone is also a no-match pass, so the row must be advised rather than
@@ -127,7 +127,7 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
     expect(result.stderr).toContain(SOFT_WHY);
   });
 
-  it('the same call against the same entry WITHOUT enforce exits 0 · ONE advised row · why on stderr (POSTURE-01 AC-2)', () => {
+  it('the same call against the same entry WITHOUT enforce exits 0 · ONE advised row · why on stderr', () => {
     // The default rung: identical payload, identical predicate, only the key is absent.
     // The row must be advised under the entry id and the why must still reach stderr —
     // advise is a recorded break, not silence.
@@ -138,7 +138,7 @@ describe('CONFIG-11 AC-4 — real hook spawn: the session surface honours an ent
     expect(result.stderr).toContain(SOFT_WHY);
   });
 
-  it("the same call against an explicit enforce: 'block' entry exits 2 · ONE blocked row (POSTURE-01 AC-3)", () => {
+  it("the same call against an explicit enforce: 'block' entry exits 2 · ONE blocked row", () => {
     // The promotion rung, and the control proving the advise default above is a default
     // rather than the whole axis collapsing: a compiler normalising every value to advise,
     // or a dispatcher reading the field as a presence flag, would leave an author's

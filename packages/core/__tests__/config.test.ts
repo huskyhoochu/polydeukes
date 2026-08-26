@@ -29,7 +29,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('§5.1 template testCmd — valid path and {scope} substitution', () => {
+describe('template testCmd — valid path and {scope} substitution', () => {
   it('accepts a template testCmd and substitutes {scope} into the compiled command', () => {
     const resolved = defineConfig(validTwoLanguageConfig);
 
@@ -122,7 +122,7 @@ describe('§5.1 template testCmd — valid path and {scope} substitution', () =>
   });
 });
 
-describe('§5.1 telemetry default-fill (v1 valid-path regression, v2 fixtures)', () => {
+describe('telemetry default-fill (v1 valid-path regression, v2 fixtures)', () => {
   it('fills the default telemetry.logPath when telemetry is omitted entirely', () => {
     const resolved = defineConfig(validTwoLanguageConfig);
 
@@ -159,7 +159,7 @@ describe('§5.1 telemetry default-fill (v1 valid-path regression, v2 fixtures)',
   });
 });
 
-describe('§5.2 testCmd rejection — function and non-string templates', () => {
+describe('testCmd rejection — function and non-string templates', () => {
   it('rejects a function testCmd and its message names the string-template migration', () => {
     // A function testCmd is the shape an older schema accepted, so the message has to
     // guide migration rather than merely reject.
@@ -196,7 +196,7 @@ describe('§5.2 testCmd rejection — function and non-string templates', () => 
   });
 });
 
-describe('§5.2 top-level non-object input', () => {
+describe('top-level non-object input', () => {
   it('rejects null input', () => {
     // A null top level must surface as a validation error, not a raw TypeError.
     expectConfigValidationError(null);
@@ -209,7 +209,7 @@ describe('§5.2 top-level non-object input', () => {
   });
 });
 
-describe('§5.2 unknown key rejection (fail-closed — typos must not silently disable discipline)', () => {
+describe('unknown key rejection (fail-closed — typos must not silently disable discipline)', () => {
   it('rejects an unknown top-level key (protectedPath typo), naming the offending key', () => {
     // A `protectedPath:` typo (missing `s`) would silently drop the protection surface —
     // a fail-open accident.
@@ -250,7 +250,7 @@ describe('§5.2 unknown key rejection (fail-closed — typos must not silently d
   });
 });
 
-describe('§5.2 telemetry.logPath type (CONFIG-01 intentional-non-scope narrow re-review)', () => {
+describe('telemetry.logPath type', () => {
   it('rejects a non-string telemetry.logPath', () => {
     // The validator must agree with the published JSON Schema, so a number here has to
     // be rejected rather than passed through.
@@ -264,7 +264,7 @@ describe('§5.2 telemetry.logPath type (CONFIG-01 intentional-non-scope narrow r
   });
 });
 
-describe('§5.2 v1 failure-path regression (fixtures ported to v2 templates)', () => {
+describe('v1 failure-path regression (fixtures ported to v2 templates)', () => {
   it('rejects a missing productionGlob, naming the language key and field', () => {
     const invalidConfig = {
       languages: {
@@ -344,7 +344,7 @@ describe('§5.2 v1 failure-path regression (fixtures ported to v2 templates)', (
   });
 });
 
-describe('§5.2 top-level $schema key (CONFIG-03 core opening)', () => {
+describe('top-level $schema key', () => {
   it('accepts a string $schema key and omits it from the resolution output', () => {
     // `$schema` is an IDE reference: accepted, and absent from the resolution output.
     const resolved = defineConfig({
@@ -372,7 +372,7 @@ describe('§5.2 top-level $schema key (CONFIG-03 core opening)', () => {
 // them, yet a YAML parser produces them from `.inf`/`.nan` — `defineConfig` is the only
 // check on that path. The pass-through assertions inspect the ResolvedConfig object
 // shape, which the accept/reject schema-contract file does not exercise.
-describe('§4.2 witness — validator-only non-finite ttlMinutes rejection', () => {
+describe('witness — validator-only non-finite ttlMinutes rejection', () => {
   it('rejects ttlMinutes Infinity, naming the witness.ttlMinutes field path', () => {
     // Infinity > 0 is true, so finiteness is the gate — catches a bare `ttlMinutes > 0`
     // check that drops the `Number.isFinite` half.
@@ -394,7 +394,7 @@ describe('§4.2 witness — validator-only non-finite ttlMinutes rejection', () 
   });
 });
 
-describe('§4.2 witness — field-path-named error messages', () => {
+describe('witness — field-path-named error messages', () => {
   it('names witness.token when the token is whitespace-only', () => {
     // Catches a `trim()` dropped from the emptiness check, which would admit '   '.
     const error = expectConfigValidationError({
@@ -414,7 +414,7 @@ describe('§4.2 witness — field-path-named error messages', () => {
   });
 });
 
-describe('§4.1 witness — verbatim pass-through and absence in ResolvedConfig', () => {
+describe('witness — verbatim pass-through and absence in ResolvedConfig', () => {
   it('passes a valid witness through verbatim with no unit conversion', () => {
     // The unit conversion is the consumer's arithmetic, never the core's: ttlMinutes
     // must survive resolution unchanged rather than becoming milliseconds.

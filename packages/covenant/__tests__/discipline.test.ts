@@ -43,7 +43,7 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
   return { toolCalls: [{ name, args }], subagentSpawns: [], userMessages: [] };
 }
 
-describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
+describe('judgeDiscipline — forbid delta family', () => {
   const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
 
   it('breaks when an in-scope edit ADDS a new match, naming the id and the added text', () => {
@@ -160,7 +160,7 @@ describe('judgeDiscipline — forbid delta family (AC §5.2)', () => {
   });
 });
 
-describe('judgeDiscipline — immutable path family (AC §5.3)', () => {
+describe('judgeDiscipline — immutable path family', () => {
   const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
 
   it('breaks a modification (pre !== null) of a glob-matching file, naming id and path', () => {
@@ -191,7 +191,7 @@ describe('judgeDiscipline — immutable path family (AC §5.3)', () => {
   });
 });
 
-describe('judgeDiscipline — forbidCommand command family (AC §5.4)', () => {
+describe('judgeDiscipline — forbidCommand command family', () => {
   const forbidCmd: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
   it('breaks a shell tool call whose command arg matches the pattern', () => {
@@ -224,7 +224,7 @@ describe('judgeDiscipline — forbidCommand command family (AC §5.4)', () => {
   });
 });
 
-describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () => {
+describe('compileDisciplineRegistrations — registration shape', () => {
   const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
   const cmdEntry: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
@@ -291,7 +291,7 @@ describe('compileDisciplineRegistrations — registration shape (AC §5.5)', () 
   });
 });
 
-describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.4)', () => {
+describe('compileDisciplineRegistrations — matches closure', () => {
   const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
   const immutableEntry: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
   const cmdEntry: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
@@ -348,7 +348,7 @@ describe('compileDisciplineRegistrations — matches closure (AC §5.5, PRD §4.
   });
 });
 
-describe('discipline extensibility — a fresh entry works with no other setup (AC §5.5)', () => {
+describe('discipline extensibility — a fresh entry works with no other setup', () => {
   it('compiles and judges an arbitrary third discipline through the same code path', () => {
     // Adding a discipline is data, not code: an entry the source never saw must compile
     // into a working registration and judge correctly, so any per-id special-casing in the

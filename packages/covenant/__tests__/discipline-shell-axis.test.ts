@@ -77,7 +77,7 @@ function skipArmsOf(regs: CovenantRegistration[], label: string): CovenantRegist
   return regs.filter((reg) => reg.label === label && reg.skip !== undefined);
 }
 
-describe('compileDisciplineRegistrations — delta matches joins shell-derived targets (§2-b)', () => {
+describe('compileDisciplineRegistrations — delta matches joins shell-derived targets', () => {
   function compileDeltaMain(): CovenantRegistration | undefined {
     return bodyRegOf(compileDisciplineRegistrations(specWith([deltaEntry])), deltaEntry.id);
   }
@@ -120,7 +120,7 @@ describe('compileDisciplineRegistrations — delta matches joins shell-derived t
   });
 });
 
-describe('compileDisciplineRegistrations — context matches routes shell targets when-blind (§2-b)', () => {
+describe('compileDisciplineRegistrations — context matches routes shell targets when-blind', () => {
   it('routes a computable in-scope shell write even though its content never matches when', () => {
     // A when-bearing context entry routes shell-derived targets WITHOUT the when judgment,
     // because no pre-state exists at routing time. Applying the when pattern to derived
@@ -140,7 +140,7 @@ describe('compileDisciplineRegistrations — context matches routes shell target
   });
 });
 
-describe('compileDisciplineRegistrations — per-entry skip registration (§2-c)', () => {
+describe('compileDisciplineRegistrations — per-entry skip registration', () => {
   it('adds exactly one skip-arm registration per delta entry, labeled with the entry id', () => {
     // Labelling the skip with the entry id keeps the gain aggregation in one group. Without
     // the registration entirely, a scoped `sed -i` stays silent — a call that passes with no
@@ -214,7 +214,7 @@ describe('compileDisciplineRegistrations — per-entry skip registration (§2-c)
   });
 });
 
-describe('compileDisciplineRegistrations — common shell-unjudgeable registration (§2-c)', () => {
+describe('compileDisciplineRegistrations — common shell-unjudgeable registration', () => {
   function commonRegOf(regs: CovenantRegistration[]): CovenantRegistration | undefined {
     return regs.find((reg) => reg.label === 'shell-unjudgeable');
   }
@@ -377,7 +377,7 @@ async function judgeShellPayload(
   return outcome ?? { exitCode: 2 };
 }
 
-describe('compiled discipline thunk — shell evidence enrichment (§2-b)', () => {
+describe('compiled discipline thunk — shell evidence enrichment', () => {
   let dir: string;
   let target: string;
 
@@ -396,7 +396,7 @@ describe('compiled discipline thunk — shell evidence enrichment (§2-b)', () =
     return judgeShellPayload(entry, command, dir);
   }
 
-  it('breaks an append that adds the pattern over a clean disk pre (AC §3.1)', async () => {
+  it('breaks an append that adds the pattern over a clean disk pre', async () => {
     // Append composes real disk pre with derived content, and the added direction then sees
     // the new match. This pins the whole seam — derive, read pre, judge — since a body that
     // performs no enrichment at all upholds here.
@@ -419,7 +419,7 @@ describe('compiled discipline thunk — shell evidence enrichment (§2-b)', () =
     expect(result.exitCode).toBe(1);
   });
 
-  it('upholds a clean append onto a clean file (passed direction, AC §3.3)', async () => {
+  it('upholds a clean append onto a clean file (passed direction)', async () => {
     // Computable with no violation is exit 0. Enrichment that blocks whenever any derivation
     // exists would block every ordinary shell write in scope.
     writeFileSync(target, 'plain line\n');
@@ -429,7 +429,7 @@ describe('compiled discipline thunk — shell evidence enrichment (§2-b)', () =
     expect(result.exitCode).toBe(0);
   });
 
-  it('breaks a heredoc CREATE of an absent file whose body carries the pattern (AC §3.1)', async () => {
+  it('breaks a heredoc CREATE of an absent file whose body carries the pattern', async () => {
     // An absent file means create, so the whole post is added. If the disk read's ENOENT
     // degrades the evidence to unjudgeable, the brand-new violation silently upholds.
     const command = lines(`cat > ${target} <<'EOF'`, `${BANNED} rides in the body`, 'EOF');
@@ -546,7 +546,7 @@ describe('compiled discipline thunk — absent-file append, same-path chaining, 
   });
 });
 
-describe('review-round regressions (PR #36) — routing scope spelling', () => {
+describe('review-round regressions — routing scope spelling', () => {
   it('a ./-prefixed spelling of an in-scope target still routes the judged arm', () => {
     // Verbatim glob matching lets an equivalent spelling escape every scope.
     const [judged] = compileDisciplineRegistrations(specWith([deltaEntry]));
@@ -567,7 +567,7 @@ describe('review-round regressions (PR #36) — routing scope spelling', () => {
   });
 });
 
-describe('review-round regressions (PR #36) — thunk pre-read failure', () => {
+describe('review-round regressions — thunk pre-read failure', () => {
   let dir: string;
 
   beforeEach(() => {

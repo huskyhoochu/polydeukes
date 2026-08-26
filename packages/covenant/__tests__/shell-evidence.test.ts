@@ -15,7 +15,7 @@ function lines(...parts: string[]): string {
   return parts.join('\n');
 }
 
-describe('deriveShellChanges — computable evidence (§2-a judged rows)', () => {
+describe('deriveShellChanges — computable evidence (judged rows)', () => {
   it('computes an echo append write with mode append', () => {
     // Collapsing `>>` into truncate makes the body judge the appended line as the whole file,
     // overwriting the pre baseline.
@@ -135,7 +135,7 @@ describe('deriveShellChanges — computable evidence (§2-a judged rows)', () =>
   });
 });
 
-describe('deriveShellChanges — per-item unjudgeable, target known (§2-a skip rows)', () => {
+describe('deriveShellChanges — per-item unjudgeable, target known (skip rows)', () => {
   /** Assert the per-item shape: no evidence, one entry carrying the path. */
   function expectPathSkip(command: string, path: string): void {
     const result = deriveShellChanges(command);
@@ -211,7 +211,7 @@ describe('deriveShellChanges — per-item unjudgeable, target known (§2-a skip 
   });
 });
 
-describe('deriveShellChanges — target unknown, no path carried (§2-a common rows)', () => {
+describe('deriveShellChanges — target unknown, no path carried (common rows)', () => {
   /** Assert the target-unknown shape: no evidence, pathless unjudgeable entries. */
   function expectPathlessSkip(command: string): void {
     const result = deriveShellChanges(command);
@@ -255,7 +255,7 @@ describe('deriveShellChanges — target unknown, no path carried (§2-a common r
   });
 });
 
-describe('deriveShellChanges — signal-free commands stay silent (§2-a volume defence)', () => {
+describe('deriveShellChanges — signal-free commands stay silent (volume defence)', () => {
   it('answers empty evidence AND empty unjudgeable for signal-free commands', () => {
     // Reads with globs, allowlisted heads over expansions, and plain non-allowlisted runs
     // carry no mutation signal. Applying the opaque-token rule without the allowlist gate
@@ -268,7 +268,7 @@ describe('deriveShellChanges — signal-free commands stay silent (§2-a volume 
   });
 });
 
-describe('deriveShellChanges — no reasonless skip (AC §3.2)', () => {
+describe('deriveShellChanges — no reasonless skip', () => {
   it('carries a non-empty reason on every unjudgeable entry across the corpus', () => {
     // A skip filed with an empty or missing reason is a row nobody can act on.
     const corpus = [
@@ -453,7 +453,7 @@ describe('deriveShellChanges — an unread span is a recorded common skip (audit
   });
 });
 
-describe('deriveShellChanges — forms COVENANT-18 moved out of the tokenize-failure bucket', () => {
+describe('deriveShellChanges — forms moved out of the tokenize-failure bucket', () => {
   it('files a pathless entry for a process-substitution target, now that it tokenizes', () => {
     // The spaced `>(…)` target is readable, so the line reaches precise judgment — where the
     // target is opaque and its real path, a /dev/fd entry, is knowable only to execution.
@@ -516,7 +516,7 @@ describe('deriveShellChanges — target unknown edge forms (audit G11/G12/G10)',
   });
 });
 
-describe('deriveShellChanges — review-round regressions (PR #36)', () => {
+describe('deriveShellChanges — review-round regressions', () => {
   it('reports a tee operand even when a write redirect rides the same command', () => {
     // An early return on write redirects swallows rule-detected targets, and a banned word
     // then lands in the tee file with no row of any kind.

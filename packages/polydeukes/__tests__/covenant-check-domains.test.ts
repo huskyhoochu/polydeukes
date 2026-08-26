@@ -80,7 +80,7 @@ function sortedRows(path: string): [string, string, string][] {
   return [...telemetryRows(path)].sort((a, b) => a.join('|').localeCompare(b.join('|')));
 }
 
-describe('§5 AC-3 covenant check — the three domains judge one violation identically', () => {
+describe('covenant check — the three domains judge one violation identically', () => {
   it('collects the same (path, status, pre, post) rows, exits the same, and records the same (event, label, subject) set', async () => {
     // The symmetry is checked at every layer, not just the exit code: a collector reading
     // post from the wrong source, a domain branch skipping the discipline registrations,
@@ -147,7 +147,7 @@ describe('§5 AC-3 covenant check — the three domains judge one violation iden
   });
 });
 
-describe('§5 AC-4 covenant check — the witness valve stands on staged only', () => {
+describe('covenant check — the witness valve stands on staged only', () => {
   // Staged prompting is pinned by covenant-check-prompt.test.ts.
 
   it('under worktree a protected-path break never consults ttyPrompt and exits 2', async () => {
@@ -197,7 +197,7 @@ describe('§5 AC-4 covenant check — the witness valve stands on staged only', 
   });
 });
 
-describe('§5 AC-5 covenant check — empty domains and an unresolvable range', () => {
+describe('covenant check — empty domains and an unresolvable range', () => {
   it('an empty range (HEAD..HEAD) exits 0 with zero rows', async () => {
     commitCleanBaseline();
 

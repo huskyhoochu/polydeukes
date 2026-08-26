@@ -126,7 +126,7 @@ function breakReason(
   return verdict.upheld === false ? verdict.reason : '';
 }
 
-describe('judgeDiscipline — why appended to the break reason (COVENANT-19 §4.1)', () => {
+describe('judgeDiscipline — why appended to the break reason', () => {
   it('delta family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
     expect(breakReason(deltaEntry(DELTA_WHY), deltaBreakInput())).toBe(
       `${DELTA_CURRENT} — why: ${DELTA_WHY}`,
@@ -157,7 +157,7 @@ describe('judgeDiscipline — why appended to the break reason (COVENANT-19 §4.
 // Exact `toBe`, never `toContain`: a leaked separator (`… — why: undefined`, or a trailing
 // ` — why: `) still CONTAINS the phrase, so only strict equality proves the no-why end is
 // untouched. Every other reason assertion in this suite is a substring check.
-describe('judgeDiscipline — no why leaves the current phrase untouched (COVENANT-19 §7-2)', () => {
+describe('judgeDiscipline — no why leaves the current phrase untouched', () => {
   it('delta family: reason equals the current phrase exactly', () => {
     expect(breakReason(deltaEntry(), deltaBreakInput())).toBe(DELTA_CURRENT);
   });
@@ -168,7 +168,7 @@ describe('judgeDiscipline — no why leaves the current phrase untouched (COVENA
   });
 });
 
-describe('judgeDiscipline — context family carries hint and why in order (COVENANT-19 §4.2)', () => {
+describe('judgeDiscipline — context family carries hint and why in order', () => {
   it('the recovery hint appears before the why in one reason string', () => {
     // The reader's next action (the hint) must not sit behind the longest sentence.
     const reason = breakReason(contextEntry(CONTEXT_WHY), contextBreakInput(), noPrecedent);
@@ -181,7 +181,7 @@ describe('judgeDiscipline — context family carries hint and why in order (COVE
   });
 });
 
-describe('judgeDiscipline — empty why is treated as absent (COVENANT-19 §4.1)', () => {
+describe('judgeDiscipline — empty why is treated as absent', () => {
   it('why="" yields the current phrase exactly, with no dangling separator', () => {
     // The schema admits '', so `why !== undefined` alone as the gate leaves the empty
     // string appending a bare trailing separator.
@@ -189,7 +189,7 @@ describe('judgeDiscipline — empty why is treated as absent (COVENANT-19 §4.1)
   });
 });
 
-describe('judgeDiscipline — the appended reason stays one line (COVENANT-19 §7-5)', () => {
+describe('judgeDiscipline — the appended reason stays one line', () => {
   // The newline can come from the why itself: a YAML block scalar (`why: |`) produces one,
   // and neither the JSON Schema nor defineConfig constrains it. The reason is a single line
   // an agent reads off stderr, so the why is normalized on the way in — verbatim yields to
@@ -204,7 +204,7 @@ describe('judgeDiscipline — the appended reason stays one line (COVENANT-19 §
     );
   });
 
-  it('a why carrying a bare carriage return folds it too (PR #61 review)', () => {
+  it('a why carrying a bare carriage return folds it too', () => {
     // YAML preserves a lone CR without an LF beside it, and a terminal treats it as a
     // return to column zero — an unfolded CR does not merely survive, it repaints the
     // rationale over the discipline id and the path the reason already named. A `\r?\n`

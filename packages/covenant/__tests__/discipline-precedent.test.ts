@@ -110,7 +110,7 @@ async function precedentDecision(
   return outcome?.exitCode === 0 ? 'found' : 'missing';
 }
 
-describe('judgeDiscipline — requirePrecedent context family (AC 7)', () => {
+describe('judgeDiscipline — requirePrecedent context family', () => {
   it('breaks a trigger-matched edit without evidence, naming id, path, and required evidence', () => {
     // The reason must carry the discipline id, the matched path, and the evidence being
     // demanded — those three are what tells the reader how to get through the gate.
@@ -139,7 +139,7 @@ describe('judgeDiscipline — requirePrecedent context family (AC 7)', () => {
   });
 });
 
-describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => {
+describe('judgeDiscipline — requirePrecedent trigger non-match', () => {
   it('upholds an out-of-scope edit regardless of missing evidence', () => {
     // Dropping the `in` glob turns a scoped entry into a global gate.
     const input = inputWithEvidence([
@@ -178,7 +178,7 @@ describe('judgeDiscipline — requirePrecedent trigger non-match (AC 8)', () => 
 
 // The modify arm of this matrix is covered by the reason-shape test above, which judges
 // the very same triggeredInput() fixture.
-describe('judgeDiscipline — when-present trigger kind disposition (AC 8)', () => {
+describe('judgeDiscipline — when-present trigger kind disposition', () => {
   it('create: the whole post is added, so a matching post triggers (breaks without evidence)', () => {
     // Pre-less evidence feeds the added direction as all-added; skipping the create arm
     // leaves a hole at first authorship.
@@ -201,7 +201,7 @@ describe('judgeDiscipline — when-present trigger kind disposition (AC 8)', () 
   });
 });
 
-describe('judgeDiscipline — when-absent trigger kind disposition (AC 8)', () => {
+describe('judgeDiscipline — when-absent trigger kind disposition', () => {
   it('create in scope triggers without when (breaks without evidence)', () => {
     // An absent `when` means every in-scope mutation is the trigger, creation included;
     // defaulting to "trigger nothing" leaves the entry inert.
@@ -229,7 +229,7 @@ describe('judgeDiscipline — when-absent trigger kind disposition (AC 8)', () =
   });
 });
 
-describe('judgeDiscipline — precedentFound does not leak into other families (AC 9)', () => {
+describe('judgeDiscipline — precedentFound does not leak into other families', () => {
   it('existing family verdicts ignore the precedentFound option in both directions', () => {
     // The option can neither open nor close the other families' gates: consulted in the
     // shared judged body, true would wave a forbid break through and false would break a
@@ -256,7 +256,7 @@ describe('judgeDiscipline — precedentFound does not leak into other families (
   });
 });
 
-describe('compileDisciplineRegistrations — command evidence transport (AC 7)', () => {
+describe('compileDisciplineRegistrations — command evidence transport', () => {
   it('transports --precedent-found when a shell tool call command matches the pattern', async () => {
     // No evaluatePrecedent is injected: the compiler owns the command vocabulary itself, so
     // delegating `command` to the absent seam would throw.
@@ -323,7 +323,7 @@ describe('compileDisciplineRegistrations — command evidence transport (AC 7)',
   // that is pinned in discipline-unjudgeable.test.ts.
 });
 
-describe('compileDisciplineRegistrations — adapter evidence via the injected seam (AC 7)', () => {
+describe('compileDisciplineRegistrations — adapter evidence via the injected seam', () => {
   const subagentEntry = {
     id: 'plan-before-touch',
     in: ['sacred/**'],
@@ -373,7 +373,7 @@ describe('compileDisciplineRegistrations — adapter evidence via the injected s
 // discipline-unjudgeable.test.ts: a throw took every sibling registration and the witness
 // valve down with it.
 
-describe('compileDisciplineRegistrations — requirePrecedent matches routes on trigger only (PRD §4.4)', () => {
+describe('compileDisciplineRegistrations — requirePrecedent matches routes on trigger only', () => {
   it('routes a trigger-matched input even when the evidence was found (observation, not waste)', () => {
     // Found evidence must NOT suppress the route: the body runs and records `passed`, which
     // is the family's measurement value. An optimization that skips the judgment when
@@ -430,7 +430,7 @@ describe('compileDisciplineRegistrations — requirePrecedent matches routes on 
   });
 });
 
-describe('compiled discipline thunk — precedent gate (AC 9)', () => {
+describe('compiled discipline thunk — precedent gate', () => {
   /** Judge one entry's thunk against `input`, with the evidence decision the spec implies. */
   async function judgeEntry(
     entry: DisciplineEntry,

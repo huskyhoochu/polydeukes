@@ -129,7 +129,7 @@ function lineOf(text: string, header: string, kind: Kind, label: string): string
   return linesOf(surfaceSection(text, header), kind, label).join('\n');
 }
 
-describe("CLI-01 §7 invariant 1 / AC-2 — explain renders the roots' own assembly", () => {
+describe("explain renders the roots' own assembly", () => {
   it('renders the commit surface in the exact label order assembleCommitRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
     const { config } = loadConfig(repoRoot);
@@ -164,7 +164,7 @@ describe("CLI-01 §7 invariant 1 / AC-2 — explain renders the roots' own assem
   });
 });
 
-describe('CLI-01 AC-3 — the four skip reasons surface with their entry', () => {
+describe('the four skip reasons surface with their entry', () => {
   it('commit surface: a requirePrecedent command entry skips with the absent-transcript reason', async () => {
     writeFixtureConfig([npmViewEntry]);
 
@@ -218,7 +218,7 @@ describe('CLI-01 AC-3 — the four skip reasons surface with their entry', () =>
   });
 });
 
-describe('CLI-01 AC-4 / AC-5 — surface placement', () => {
+describe('surface placement', () => {
   it('renders a forbidCommand entry as excluded on the commit surface and as judge on the session surface', async () => {
     writeFixtureConfig([hooksEntry]);
 
@@ -255,7 +255,7 @@ describe('CLI-01 AC-4 / AC-5 — surface placement', () => {
   });
 });
 
-describe('CLI-01 AC-6 / AC-7 — routing scope per family and the why mark', () => {
+describe('routing scope per family and the why mark', () => {
   it('renders the delta scope as `in` globs and the `except` globs, with why ✓', async () => {
     writeFixtureConfig([vocabEntry]);
 
@@ -308,7 +308,7 @@ describe('CLI-01 AC-6 / AC-7 — routing scope per family and the why mark', () 
   });
 });
 
-describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () => {
+describe('the tallies are the rendered lines', () => {
   it('a multi-entry config: registrations N equals the counted registration lines on each surface', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
@@ -381,7 +381,7 @@ describe('CLI-01 AC-8 / §7 inv. 2 — the tallies are the rendered lines', () =
   });
 });
 
-describe('CLI-01 — the commit surface names its enforce level', () => {
+describe('the commit surface names its enforce level', () => {
   it('renders enforce: block by default and enforce: advise when the namespace says so', async () => {
     writeFixtureConfig([]);
     expect(surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER)).toContain(
@@ -399,7 +399,7 @@ describe('CLI-01 — the commit surface names its enforce level', () => {
   });
 });
 
-describe('CLI-01 — the live config format', () => {
+describe('the live config format', () => {
   it('reads a yaml config and names it in the header', async () => {
     writeFileSync(
       join(repoRoot, 'polydeukes.config.yaml'),
@@ -422,7 +422,7 @@ describe('CLI-01 — the live config format', () => {
   });
 });
 
-describe('CLI-01 §7 inv. 2-3 / failure shape — explain observes, never judges', () => {
+describe('failure shape — explain observes, never judges', () => {
   it('writes no telemetry row and no baseline file', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
@@ -441,7 +441,7 @@ describe('CLI-01 §7 inv. 2-3 / failure shape — explain observes, never judges
   });
 });
 
-describe('CLI-01 §7 inv. 1 — the roots assemble through the extracted functions', () => {
+describe('the roots assemble through the extracted functions', () => {
   it.each([
     ['claude-code-hook.ts', 'assembleSessionRegistrations'],
     ['covenant-check.ts', 'assembleCommitRegistrations'],
@@ -453,7 +453,7 @@ describe('CLI-01 §7 inv. 1 — the roots assemble through the extracted functio
   });
 });
 
-describe('CLI-01 AC-10 — explain stays off the covenant check load path', () => {
+describe('explain stays off the covenant check load path', () => {
   it('bin.ts imports ./explain only dynamically', () => {
     const source = readFileSync(resolve(import.meta.dirname, '../src/bin.ts'), 'utf-8');
 

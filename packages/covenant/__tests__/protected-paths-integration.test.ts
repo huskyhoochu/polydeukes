@@ -17,7 +17,7 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
   };
 }
 
-describe('adapter directory protection wired through normalizeProtectedPaths (PRD §5.3)', () => {
+describe('adapter directory protection wired through normalizeProtectedPaths', () => {
   it('an Edit inside a listed adapter directory breaks (unprotected-adapter hole is closed)', () => {
     // Listing a directory in protectedPaths must put it on the protection surface. An entry
     // dropped in normalization leaves a judge that reports no violations forever.

@@ -14,7 +14,7 @@ const dummySecondArgRule: MutationRule = {
   },
 };
 
-describe('§5.2 rule seam — mutation detection', () => {
+describe('rule seam — mutation detection', () => {
   it('an injected dummy rule reports the mutation target it detects', () => {
     const result = extractMutations('mutate f', [dummySecondArgRule]);
 
@@ -52,7 +52,7 @@ describe('§5.2 rule seam — mutation detection', () => {
   });
 });
 
-describe('§5.2 nested shell execution is indeterminate', () => {
+describe('nested shell execution is indeterminate', () => {
   it('"eval \'...\'" is indeterminate regardless of the inner string, even with zero rules', () => {
     // A nested shell is a reinterpretation boundary, never parsed into recursively.
     const result = extractMutations("eval 'rm -rf /'", []);
@@ -83,7 +83,7 @@ describe('§5.2 nested shell execution is indeterminate', () => {
   });
 });
 
-describe('§5.2 opaque token in target position', () => {
+describe('opaque token in target position', () => {
   it('an opaque redirect target is indeterminate even with zero rules', () => {
     // An opacity scan that inspects command.words only answers mutations:[] AND
     // indeterminate:[] for an append-write to an unknowable path — a confident pass over
@@ -104,7 +104,7 @@ describe('§5.2 opaque token in target position', () => {
   });
 });
 
-describe('§5.2 clean input with no rules', () => {
+describe('clean input with no rules', () => {
   it('no rules and no indeterminate constructs yields both arrays empty', () => {
     const result = extractMutations('echo hello', []);
 
@@ -113,7 +113,7 @@ describe('§5.2 clean input with no rules', () => {
   });
 });
 
-describe('§5.2/§5.3 an unread span surfaces as indeterminate, not a throw', () => {
+describe('an unread span surfaces as indeterminate, not a throw', () => {
   it('an unclosed quote line is reported via indeterminate rather than thrown', () => {
     expect(() => extractMutations("echo 'oops", [])).not.toThrow();
     const result = extractMutations("echo 'oops", []);
@@ -123,7 +123,7 @@ describe('§5.2/§5.3 an unread span surfaces as indeterminate, not a throw', ()
   });
 });
 
-describe('§5.3 fail-closed no-throw fuzz cases', () => {
+describe('fail-closed no-throw fuzz cases', () => {
   it('never throws on an empty string', () => {
     expect(() => extractMutations('', [])).not.toThrow();
     const result = extractMutations('', []);
@@ -144,7 +144,7 @@ describe('§5.3 fail-closed no-throw fuzz cases', () => {
   });
 });
 
-describe('§5.5 nested-shell boundary uses command basename (SSOT with shell-mod)', () => {
+describe('nested-shell boundary uses command basename (SSOT with shell-mod)', () => {
   it('"/bin/sh -c \'...\'" is indeterminate — matched by basename, not raw first.text', () => {
     // Comparing the raw first word (`/bin/sh`) against the bare-name set instead of its
     // basename misses this, so the inner `> packages/core/src/y` write surfaces neither as a

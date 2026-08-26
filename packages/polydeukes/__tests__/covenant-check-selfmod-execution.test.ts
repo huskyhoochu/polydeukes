@@ -22,7 +22,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('DISPATCH-01 AC-9 — the commit self-mod judge observably executes in-process', () => {
+describe('the commit self-mod judge observably executes in-process', () => {
   it('a staged protected change under advise puts the judge reason, naming the entry, on the spyable stderr', async () => {
     // An advised self-mod row written without the judge running is a fabricated verdict;
     // the reason text is producible only by an executed judgment.

@@ -5,7 +5,7 @@ import { untokenizableLineCandidates } from '../src/mention.js';
 // run of shell metacharacters (; & | < >). Candidate ORDER is incidental, so every assertion
 // here is a membership property, never an exact array.
 
-describe('untokenizableLineCandidates — fallback-only union decomposition (COVENANT-07d §2-c)', () => {
+describe('untokenizableLineCandidates — fallback-only union decomposition', () => {
   it('keeps the input line itself verbatim as a candidate when fragments exist', () => {
     // A fragments-only decomposition shatters any protected path whose own segment carries a
     // metacharacter.

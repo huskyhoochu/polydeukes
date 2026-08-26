@@ -33,7 +33,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('dispatchCovenants — transcript seam wiring (PRD §5.2)', () => {
+describe('dispatchCovenants — transcript seam wiring', () => {
   it('injects spec.transcript as the second witness argument: a 2-arg witness that keys on a marker user message opens the valve after the verdict', async () => {
     // The witness returns true only when it observes the marker message, so a relaxed block
     // proves the injected transcript — not undefined, not the empty default — was passed.

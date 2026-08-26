@@ -68,7 +68,7 @@ function registrationsOf(section: string): number {
   return Number((match as RegExpExecArray)[1]);
 }
 
-describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both surfaces', () => {
+describe('explain renders the draft as unpromoted on both surfaces', () => {
   it('renders one `draft <id>` line with the fixed unpromoted description per surface', async () => {
     // A draft rendered as `skip` or `excluded` would claim a judgment disposition it never
     // had, so the kind word is pinned exactly, on both surfaces.
@@ -144,7 +144,7 @@ describe('CONFIG-10 AC-6 — explain renders the draft as unpromoted on both sur
   });
 });
 
-describe('CONFIG-10 AC-4 — judgment invariance: assembly never sees the draft', () => {
+describe('judgment invariance: assembly never sees the draft', () => {
   it('both roots assemble identical label lists with and without the draft entry', () => {
     // The covenant compiler has no path that receives a draft, so the assembled
     // registrations stay label-for-label identical. A resolution split leaking the draft

@@ -37,7 +37,7 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-describe('§4.2 collectStagedChanges — modified file', () => {
+describe('collectStagedChanges — modified file', () => {
   it('reports a modified file with pre=HEAD content and post=staged content', () => {
     write('a.txt', 'first\n');
     git('add', 'a.txt');
@@ -56,7 +56,7 @@ describe('§4.2 collectStagedChanges — modified file', () => {
   });
 });
 
-describe('§4.2 collectStagedChanges — added file', () => {
+describe('collectStagedChanges — added file', () => {
   it('reports a newly staged file as added with pre=null', () => {
     // pre must be null, never '': the delta layer distinguishes "no prior file" from
     // "empty prior file".
@@ -77,7 +77,7 @@ describe('§4.2 collectStagedChanges — added file', () => {
   });
 });
 
-describe('§4.2 collectStagedChanges — deleted file', () => {
+describe('collectStagedChanges — deleted file', () => {
   it('reports a staged deletion with status deleted and post=null', () => {
     write('doomed.txt', 'to be removed\n');
     git('add', 'doomed.txt');
@@ -95,7 +95,7 @@ describe('§4.2 collectStagedChanges — deleted file', () => {
   });
 });
 
-describe('§4.2 collectStagedChanges — staged then re-edited in the worktree', () => {
+describe('collectStagedChanges — staged then re-edited in the worktree', () => {
   it('reads post from the STAGED blob, not the current worktree content', () => {
     // The judgment must see what will actually be committed — the staged blob — never the
     // newer worktree bytes.
@@ -111,7 +111,7 @@ describe('§4.2 collectStagedChanges — staged then re-edited in the worktree',
   });
 });
 
-describe('§4.2 collectStagedChanges — first commit with no HEAD', () => {
+describe('collectStagedChanges — first commit with no HEAD', () => {
   it('reports every staged file as added with pre=null when HEAD is absent', () => {
     // A repo with no commits has no HEAD blob. The collector must narrow to the best
     // judgeable reading — all added, pre=null — never throw.
@@ -136,7 +136,7 @@ describe('§4.2 collectStagedChanges — first commit with no HEAD', () => {
   });
 });
 
-describe('§4.2 collectStagedChanges — staged rename surfaces as delete + add (review F1)', () => {
+describe('collectStagedChanges — staged rename surfaces as delete + add (review F1)', () => {
   it('reports the rename source as deleted and the destination as added', () => {
     // git enables rename detection by default, collapsing `git mv` into a single R entry
     // whose source path vanishes from judgment — renaming a protected file away would
@@ -164,7 +164,7 @@ describe('§4.2 collectStagedChanges — staged rename surfaces as delete + add 
   });
 });
 
-describe('§4.2 collectStagedChanges — staged blob over 1MB (review F2)', () => {
+describe('collectStagedChanges — staged blob over 1MB (review F2)', () => {
   it('collects a large staged file instead of failing on the spawn buffer default', () => {
     // execFileSync defaults maxBuffer to 1MB, so `git show :<path>` on a legitimately
     // large staged file (lockfile, fixture, bundle) throws ENOBUFS without the override
@@ -179,7 +179,7 @@ describe('§4.2 collectStagedChanges — staged blob over 1MB (review F2)', () =
   });
 });
 
-describe('§4.2 collectStagedChanges — binary staged blob (review F4, PRD §4.2)', () => {
+describe('collectStagedChanges — binary staged blob (review F4)', () => {
   it('yields null content for a binary blob instead of lossily decoded text', () => {
     // A binary blob decoded as utf-8 replaces invalid sequences with U+FFFD, so a delta
     // judge would scan corrupted bytes and a forbidden pattern could be mangled away —
@@ -195,7 +195,7 @@ describe('§4.2 collectStagedChanges — binary staged blob (review F4, PRD §4.
   });
 });
 
-describe('§4.2 collectStagedChanges — empty staging area', () => {
+describe('collectStagedChanges — empty staging area', () => {
   it('returns an empty array when nothing is staged', () => {
     write('committed.txt', 'content\n');
     git('add', 'committed.txt');

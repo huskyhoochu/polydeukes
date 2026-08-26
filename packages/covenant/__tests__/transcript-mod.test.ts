@@ -48,7 +48,7 @@ function baseSpec(overrides: Partial<TranscriptModificationSpec> = {}): Transcri
   };
 }
 
-describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07c §3)', () => {
+describe('judgeTranscriptModification — Bash axis break direction', () => {
   it('an append redirect through the "~" spelling breaks — audit B2 itself', () => {
     // Without home-spelling normalization the raw segments ['~', ...] never equal
     // ['home', 'u', ...], so a forgery appending a fake human utterance — which the TTL witness
@@ -149,7 +149,7 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
     expect(verdict.upheld).toBe(false);
   });
 
-  it('a half-read line carrying the "~" spelling breaks (§4.1 home resolution)', () => {
+  it('a half-read line carrying the "~" spelling breaks (home resolution)', () => {
     // An unclosed quote sitting next to the forgery must not save it. The forgery is in the
     // READ half, so the home spelling has to resolve inside precise judgment and not only in
     // the span scan.
@@ -203,7 +203,7 @@ describe('judgeTranscriptModification — Bash axis break direction (COVENANT-07
   });
 });
 
-describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-07c §3)', () => {
+describe('judgeTranscriptModification — Bash axis uphold direction', () => {
   it('cd ~, cd $HOME, and mv x ~ uphold (non-allowlisted heads with a bare home argument)', () => {
     // cd and mv are NOT read-only entries, so no absolution can rescue a false mention here:
     // an ancestor-matching predicate blocks all three at the backstop, with no valve but the
@@ -215,7 +215,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
     expect(judgeTranscriptModification(shellCall('mv x ~'), baseSpec())).toEqual({ upheld: true });
   });
 
-  it('cd into the literal absolute home upholds — the COVENANT-13 over-block dissolves (§3 AC)', () => {
+  it('cd into the literal absolute home upholds — the over-block dissolves', () => {
     // Listing the transcript among the protected paths makes home a protected ANCESTOR and
     // blocks `cd /home/<user>`. Building this predicate on the shared ancestor/descendant
     // primitive instead of file equality reproduces that.
@@ -224,7 +224,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
     });
   });
 
-  it('rm -rf of transcript ancestor directories upholds — out of observation scope BY DESIGN (§2)', () => {
+  it('rm -rf of transcript ancestor directories upholds — out of observation scope BY DESIGN', () => {
     // A designed pass, pinned so it stays visible: the predicate protects the transcript FILE
     // only, and out-of-repo ancestor destruction is outside this project's observation scope,
     // owned by the agent's own deny policy. Widening the equality toward ancestors grows the
@@ -311,7 +311,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction (COVENANT-0
   });
 });
 
-describe('judgeTranscriptModification — home-shape validation (COVENANT-07c §0/§3)', () => {
+describe('judgeTranscriptModification — home-shape validation', () => {
   const tildeForgery = shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`);
   const absoluteForgery = shellCall(`echo forged >> ${TRANSCRIPT}`);
 
@@ -347,7 +347,7 @@ describe('judgeTranscriptModification — home-shape validation (COVENANT-07c §
   });
 });
 
-describe('judgeTranscriptModification — degenerate transcript path (COVENANT-07c)', () => {
+describe('judgeTranscriptModification — degenerate transcript path', () => {
   it('a zero-segment transcriptPath ("", "/", ".") is inert: forged appends uphold and nothing throws', () => {
     // A degenerate transcript path makes the registration INERT, following the same
     // convention as an empty protected-path entry: ignored, never a total lock-up. The hook
@@ -365,7 +365,7 @@ describe('judgeTranscriptModification — degenerate transcript path (COVENANT-0
   });
 });
 
-describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
+describe('judgeTranscriptModification — tool axis', () => {
   it('modify evidence naming the transcript breaks', () => {
     // An Edit writing the transcript directly, with no shell involved, is the forgery with the
     // fewest steps.
@@ -489,7 +489,7 @@ describe('judgeTranscriptModification — tool axis (COVENANT-07c §3)', () => {
   });
 });
 
-describe('transcriptModRegistration — factory shape (COVENANT-07c §2)', () => {
+describe('transcriptModRegistration — factory shape', () => {
   /** A forgery the judge must break on — the input every axis assertion below binds. */
   const FORGERY = shellCall(`echo forged >> ~/${TRANSCRIPT_TAIL}`);
 
@@ -591,7 +591,7 @@ async function judgeThroughThunk(input: CovenantInput): Promise<{
   return (await reg.body?.(input)) ?? { exitCode: 2 };
 }
 
-describe('transcript-mod judge thunk (COVENANT-07c)', () => {
+describe('transcript-mod judge thunk', () => {
   it('a structurally malformed toolCalls element yields the exit-2 equivalent, never a crash', async () => {
     // `toolCalls: [null]` passes core's parse — element shapes are an unvalidated boundary —
     // and crashes the judge, which uncaught escapes the wrapper as a rejection instead of a

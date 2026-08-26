@@ -76,7 +76,7 @@ function toJsonl(entries: unknown[]): string {
   return entries.map((entry) => JSON.stringify(entry)).join('\n');
 }
 
-describe('§5.1 findUserMessages — human-utterance trust contract', () => {
+describe('findUserMessages — human-utterance trust contract', () => {
   it('extracts origin.kind==="human" string entries as {text, timestampMs}, order preserved', () => {
     const jsonl = toJsonl([
       humanEntry('first human line', '2026-07-21T04:00:00.000Z'),
@@ -154,7 +154,7 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   });
 });
 
-describe('§5.3 findSubagentInvocations — detection by subagent_type field presence', () => {
+describe('findSubagentInvocations — detection by subagent_type field presence', () => {
   it('yields {kind} for every tool_use block with a string subagent_type, order preserved', () => {
     // Detection keys on input.subagent_type, not on the tool name: the spawn tool has been
     // renamed (Task -> Agent) in the ecosystem, so the fixture deliberately carries both
@@ -214,7 +214,7 @@ describe('§5.3 findSubagentInvocations — detection by subagent_type field pre
   });
 });
 
-describe('§5.4 robustness — malformed input reduces evidence, never throws', () => {
+describe('robustness — malformed input reduces evidence, never throws', () => {
   it('skips only the broken/non-object lines and still extracts the surrounding valid ones', () => {
     // A broken line must be skipped alone: a parse failure that throws blanks the whole
     // transcript and crashes the hook, and one that aborts the scan silently discards every
@@ -275,7 +275,7 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
   });
 });
 
-describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_use blocks', () => {
+describe('findToolCalls — tool-call extraction from tool_use blocks', () => {
   it('extracts {name, args} from tool_use blocks across entries, observation order preserved', () => {
     const jsonl = toJsonl([
       assistantSpawnEntry([

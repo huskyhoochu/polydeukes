@@ -38,7 +38,7 @@ function bashInput(command: string): CovenantInput {
   return { toolCalls: [{ name: 'Bash', args: { command } }], subagentSpawns: [], userMessages: [] };
 }
 
-describe('live root config — work-stays-recoverable flag boundary (CONFIG-09 AC-2)', () => {
+describe('live root config — work-stays-recoverable flag boundary', () => {
   it('upholds git push --force-with-lease (the recoverable spelling)', () => {
     // --force-with-lease keeps the remote work recoverable, so it must not block. A
     // --force pattern without a flag boundary matches the lease form as a prefix.

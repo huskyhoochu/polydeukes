@@ -5,7 +5,7 @@ import { normalizeProtectedPaths } from '../src/index.ts';
 // All path strings below are injected fixture values; the core source must never carry
 // such literals.
 
-describe('normalizeProtectedPaths — protectedPaths list (PRD §5.1)', () => {
+describe('normalizeProtectedPaths — protectedPaths list', () => {
   it('includes every protectedPaths entry in the output, in first-occurrence order', () => {
     // Catches an entry silently dropped, or input order not preserved — the hole where a
     // listed path ends up unprotected.
@@ -33,7 +33,7 @@ describe('normalizeProtectedPaths — protectedPaths list (PRD §5.1)', () => {
   });
 });
 
-describe('normalizeProtectedPaths — per-entry normalization rules (PRD §5.1)', () => {
+describe('normalizeProtectedPaths — per-entry normalization rules', () => {
   it('strips a leading "./" from a path', () => {
     // Without the strip, 'x/y' and './x/y' are distinct substrings that match differently
     // against the dispatcher.
@@ -74,7 +74,7 @@ describe('normalizeProtectedPaths — per-entry normalization rules (PRD §5.1)'
   });
 });
 
-describe('normalizeProtectedPaths — empty-equivalent entries dropped (PRD §5.1)', () => {
+describe('normalizeProtectedPaths — empty-equivalent entries dropped', () => {
   it('drops an empty-string entry from the output', () => {
     // An unchecked '' substring-matches every input, turning the protection surface into a
     // match-everything sieve.
@@ -100,7 +100,7 @@ describe('normalizeProtectedPaths — empty-equivalent entries dropped (PRD §5.
   });
 });
 
-describe('normalizeProtectedPaths — deduplication after normalization (PRD §5.1)', () => {
+describe('normalizeProtectedPaths — deduplication after normalization', () => {
   it('collapses post-normalization duplicates into one, preserving first occurrence', () => {
     // Catches dedup done on raw strings before normalization, which would treat 'x/y' and
     // './x/y/' as distinct.

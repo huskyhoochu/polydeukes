@@ -28,7 +28,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
+describe('covenant check — advise passes and records', () => {
   it('exit 0 (not 2) with an advised record and the TTY valve NEVER consulted for a protected-path commit', async () => {
     // Under advise the witness is structurally not assembled: even with a witness
     // configured and a ttyPrompt returning the exact token, the prompt is never called,
@@ -91,7 +91,7 @@ describe('CONFIG-06 §4.6 covenant check — advise passes and records', () => {
   });
 });
 
-describe('CONFIG-06 §4.6 covenant check — advise misconfiguration never softens (fail-closed)', () => {
+describe('covenant check — advise misconfiguration never softens (fail-closed)', () => {
   it('a reserved enforce level (measure) fails closed: exit 2 + one blocked record', async () => {
     // A validation throw is outside the enforce-level axis: it must block, never fall
     // back to any level.
@@ -110,7 +110,7 @@ describe('CONFIG-06 §4.6 covenant check — advise misconfiguration never softe
   });
 });
 
-describe('CONFIG-06 §4.6 covenant check — block regression (default fill)', () => {
+describe('covenant check — block regression (default fill)', () => {
   it('an empty git namespace (default fill block) still blocks a protected-path commit at exit 2', async () => {
     // An empty adapters.git resolves to block; a default fill of advise would silently
     // relax every repository that does not opt in.

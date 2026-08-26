@@ -36,7 +36,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('defineConfig disciplines — enforce acceptance (CONFIG-11 §4.1)', () => {
+describe('defineConfig disciplines — enforce acceptance', () => {
   it("accepts a judged entry with enforce: 'advise' and carries it verbatim into disciplines", () => {
     // The compiler reads the level off the resolved entry and defaults a missing one to
     // advise, so a validator that strips the key on the way through fails OPEN: an entry
@@ -64,7 +64,7 @@ describe('defineConfig disciplines — enforce acceptance (CONFIG-11 §4.1)', ()
   });
 });
 
-describe('defineConfig disciplines — enforce rejections (CONFIG-11 §4.1)', () => {
+describe('defineConfig disciplines — enforce rejections', () => {
   it("rejects the unknown level 'measure', naming the entry", () => {
     // The enumeration is closed rather than "any string": a typo'd or speculative level
     // would otherwise judge silently at whichever branch default the code falls into.

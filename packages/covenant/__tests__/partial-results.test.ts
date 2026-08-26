@@ -85,7 +85,7 @@ function transcriptSpec(): TranscriptModificationSpec {
 // The return contract itself. Tokenizer-surface assertions are confined to this block; every
 // behavioural claim below is made on a judge.
 
-describe('COVENANT-18 B2 — tokenizeCommandLine returns partial results, never a discarded line', () => {
+describe('tokenizeCommandLine returns partial results, never a discarded line', () => {
   it('answers an empty unread list for a fully read line, with no ok discriminant left', () => {
     // An `ok` discriminant kept alongside `unread` lets every consumer keep branching on
     // `!ok`, so the narrowing silently does not happen while the suite stays green. The empty
@@ -184,7 +184,7 @@ describe('COVENANT-18 B2 — tokenizeCommandLine returns partial results, never 
   });
 });
 
-describe('COVENANT-18 B3 — judgeShellModification judges the read half precisely', () => {
+describe('judgeShellModification judges the read half precisely', () => {
   it('answers a partially read protected write with the write rule, not the mention fallback', () => {
     // Keeping "any unread means scan the whole raw line" never judges the commands the
     // tokenizer returned, and the verdict alone cannot see that because the fallback blocks
@@ -369,7 +369,7 @@ describe('COVENANT-18 B3 — judgeShellModification judges the read half precise
   });
 });
 
-describe('COVENANT-18 B3 — judgeTranscriptModification narrows its own fallback', () => {
+describe('judgeTranscriptModification narrows its own fallback', () => {
   it('answers a partially read transcript forgery with the write rule, not the fallback', () => {
     // The transcript branch is a separate site with its own fallback, so fixing shell-mod
     // alone leaves it behind. A forgery answered by a crude mention scan carries no target, so
@@ -458,7 +458,7 @@ describe('COVENANT-18 B3 — judgeTranscriptModification narrows its own fallbac
   });
 });
 
-describe('COVENANT-18 B4 — deriveShellChanges keeps the evidence AND the unjudgeable row', () => {
+describe('deriveShellChanges keeps the evidence AND the unjudgeable row', () => {
   it('files the read half as evidence while still recording the unread span', () => {
     // Two opposite failures on one line. An `if (!ok) return` throws the computed write away,
     // so a discipline that judges written bytes never sees them. Answering the partial success
@@ -501,7 +501,7 @@ describe('COVENANT-18 B4 — deriveShellChanges keeps the evidence AND the unjud
   });
 });
 
-describe('COVENANT-18 B4 — matchRegistrations never narrows routing on a partial read', () => {
+describe('matchRegistrations never narrows routing on a partial read', () => {
   function registration(protectedPaths: string[]): CovenantRegistration {
     return {
       label: 'shell-mod',
@@ -537,7 +537,7 @@ describe('COVENANT-18 B4 — matchRegistrations never narrows routing on a parti
   });
 });
 
-describe('COVENANT-18 B4 — precedent evidence refuses a partially read command line', () => {
+describe('precedent evidence refuses a partially read command line', () => {
   const ROOT = '/repo';
   const PRECEDENT_COMMAND = 'npm view ';
 
@@ -609,7 +609,7 @@ describe('COVENANT-18 B4 — precedent evidence refuses a partially read command
   });
 });
 
-describe('COVENANT-18 §2-b top invariant — a scan that ran off the end says so', () => {
+describe('a scan that ran off the end says so', () => {
   it('records a span when a quote inside a command substitution never closes', () => {
     // `matchParen` has to report WHETHER it arrived, not only where it stopped. Its two quote
     // bail-outs run to end of input and the caller turns that into one opaque word covering
@@ -643,7 +643,7 @@ describe('COVENANT-18 §2-b top invariant — a scan that ran off the end says s
   });
 });
 
-describe('COVENANT-18 §2-a A7 — an escape the table cannot translate is not knowledge', () => {
+describe('an escape the table cannot translate is not knowledge', () => {
   it('marks the word opaque instead of filing source spelling as written content', () => {
     // The word text becomes the `content` of CONFIDENT file-change evidence, so an ANSI-C
     // scanner returning the untranslated spelling while the word still reads as decided files
@@ -670,7 +670,7 @@ describe('COVENANT-18 §2-a A7 — an escape the table cannot translate is not k
   });
 });
 
-describe('COVENANT-18 §2-a A6/A5 — the evidence axis accepts what the judging axis does', () => {
+describe('the evidence axis accepts what the judging axis does', () => {
   it('computes a >| write, on the plain and fd-prefixed spellings', () => {
     // `>|` has to reach `STDOUT_WRITE_OPERATORS`, not only `scanRedirect` and the detection
     // rules. The tokenizer emits it as a write operator and the rules grade it by the `>` it

@@ -99,7 +99,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('CONFIG-06b §4.3 covenant check — a resolvable dist is judged exactly as before', () => {
+describe('covenant check — a resolvable dist is judged exactly as before', () => {
   it('an injected COMPLETE mirror judges the protected change exactly as the real dist', async () => {
     // The existence proof belongs to the function that PRODUCES a path, not to a manifest
     // over the dist: the commit surface has no shell axis, so a fixed-list check would

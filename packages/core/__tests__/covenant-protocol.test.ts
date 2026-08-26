@@ -31,7 +31,7 @@ const emptyCollectionsInput: CovenantInput = {
 // mistaken for a valid input: on success it carries the restored value, on failure the
 // blocking exit code.
 
-describe('§5.1 round-trip serialization', () => {
+describe('round-trip serialization', () => {
   it('deserializes a valid stdin-JSON string into a CovenantInput', () => {
     const result = parseInput(JSON.stringify(fullInput));
 
@@ -79,7 +79,7 @@ describe('§5.1 round-trip serialization', () => {
   });
 });
 
-describe('§5.2 fail-closed (security boundary P0 — cannot judge = block)', () => {
+describe('fail-closed (security boundary — cannot judge = block)', () => {
   // Parsing failure, missing required fields, and empty input all mean "cannot judge" and
   // must resolve to exit-2. The gate fails CLOSED by RETURNING 2, never by throwing — an
   // unhandled throw could be caught upstream and treated as a pass.

@@ -45,7 +45,7 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — modified file', () => {
+describe('collectWorktreeChanges — modified file', () => {
   it('reports pre=HEAD content and post=the bytes on disk, not the index', () => {
     // The index deliberately holds a third, middle version so HEAD, index, and disk are
     // all distinguishable — otherwise the staged collector's behaviour leaking in here
@@ -66,7 +66,7 @@ describe('§5 AC-1 collectWorktreeChanges — modified file', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — untracked file', () => {
+describe('collectWorktreeChanges — untracked file', () => {
   it('reports an untracked, non-ignored file as added with pre=null', () => {
     // Without the `ls-files --others` pass a brand-new file on disk — the most common
     // worktree state — is never judged at all.
@@ -92,7 +92,7 @@ describe('§5 AC-1 collectWorktreeChanges — untracked file', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — file deleted on disk', () => {
+describe('collectWorktreeChanges — file deleted on disk', () => {
   it('reports a tracked file removed from disk (not via git rm) as deleted with post=null', () => {
     // The index still holds the file, so only the disk observation says it is gone.
     commitFile('doomed.txt', 'to be removed\n');
@@ -109,7 +109,7 @@ describe('§5 AC-1 collectWorktreeChanges — file deleted on disk', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — binary content', () => {
+describe('collectWorktreeChanges — binary content', () => {
   it('yields null for a binary file on disk instead of lossily decoded text', () => {
     // The NUL-byte heuristic must cover the disk read path too, not only blob reads: a
     // forbidden pattern mangled by U+FFFD replacement slips past the delta judge.
@@ -123,7 +123,7 @@ describe('§5 AC-1 collectWorktreeChanges — binary content', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — rename on disk surfaces as delete + add', () => {
+describe('collectWorktreeChanges — rename on disk surfaces as delete + add', () => {
   it('reports the rename source as deleted and the destination as added', () => {
     // A protected file moved away on disk must still be judged at its protected location,
     // which needs rename detection off and the untracked destination paired with the
@@ -148,7 +148,7 @@ describe('§5 AC-1 collectWorktreeChanges — rename on disk surfaces as delete 
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — unborn HEAD', () => {
+describe('collectWorktreeChanges — unborn HEAD', () => {
   it('reports every tracked and untracked file as added with pre=null when HEAD is absent', () => {
     // `git diff HEAD` fails with no commits. The collector must narrow to "all added" for
     // both the staged file and the untracked one, never throw and never drop the staged
@@ -174,7 +174,7 @@ describe('§5 AC-1 collectWorktreeChanges — unborn HEAD', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — clean worktree', () => {
+describe('collectWorktreeChanges — clean worktree', () => {
   it('returns an empty array when disk matches HEAD', () => {
     commitFile('committed.txt', 'content\n');
 
@@ -182,7 +182,7 @@ describe('§5 AC-1 collectWorktreeChanges — clean worktree', () => {
   });
 });
 
-describe('§5 AC-1 collectWorktreeChanges — file over 1MB on disk', () => {
+describe('collectWorktreeChanges — file over 1MB on disk', () => {
   it('collects a large modified file with post equal to the disk bytes', () => {
     // Both read paths must escape the 1MB spawn maxBuffer default: the disk read by not
     // going through a spawn at all, the HEAD-side read by carrying the override. Either
@@ -199,7 +199,7 @@ describe('§5 AC-1 collectWorktreeChanges — file over 1MB on disk', () => {
 });
 
 // Three worktree-only inputs with no counterpart on the staged or range surfaces.
-describe('PR #67 review — index-only file removed from disk (status AD)', () => {
+describe('index-only file removed from disk (status AD)', () => {
   it('reports a file added to the index and then deleted from disk as deleted with pre=null', () => {
     commitFile('base.txt', 'base\n');
     write('n.txt', 'new\n');
@@ -221,7 +221,7 @@ describe('PR #67 review — index-only file removed from disk (status AD)', () =
   });
 });
 
-describe('PR #67 review — an unreadable path on disk', () => {
+describe('an unreadable path on disk', () => {
   it('yields null content for a dangling symlink instead of refusing the whole domain', () => {
     commitFile('base.txt', 'base\n');
     symlinkSync('/nonexistent/target', join(repoRoot, 'link'));
@@ -231,7 +231,7 @@ describe('PR #67 review — an unreadable path on disk', () => {
   });
 });
 
-describe('PR #67 review — a ref that also names a file', () => {
+describe('a ref that also names a file', () => {
   it('lists the working tree even when a file at the root is named HEAD', () => {
     commitFile('base.txt', 'base\n');
     write('HEAD', 'not a ref\n');

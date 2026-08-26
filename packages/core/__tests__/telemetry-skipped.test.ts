@@ -33,7 +33,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('COVENANT-13 §4.5 skipped — round-trip', () => {
+describe('skipped — round-trip', () => {
   it('formatRecordLine → parseRecordLine round-trips a skipped record', () => {
     // If `skipped` is missing from the accepted-events set the record is written and then
     // thrown away on every read, which is the silent skip this event exists to prevent.
@@ -51,7 +51,7 @@ describe('COVENANT-13 §4.5 skipped — round-trip', () => {
   });
 });
 
-describe('COVENANT-13 §4.5 skipped — aggregation', () => {
+describe('skipped — aggregation', () => {
   it('aggregateGain initializes every label with skipped: 0 and counts skipped records', () => {
     // A missing skipped slot in the per-label initializer yields NaN, and a count bleeding
     // into passed/blocked/advised disguises "not judged at all" as a verdict.
@@ -74,7 +74,7 @@ describe('COVENANT-13 §4.5 skipped — aggregation', () => {
   });
 });
 
-describe('COVENANT-13 §4.5 skipped — render (the skipped=N collision)', () => {
+describe('skipped — render (the skipped=N collision)', () => {
   it('runGain reports the per-label skipped EVENT count separately from the corrupt-line skip count', () => {
     // `runGain` reports unparseable lines as "skipped=N" and the event column is also named
     // skipped, so both meanings can appear in one render. The fixture uses different numbers

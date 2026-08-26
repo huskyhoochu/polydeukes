@@ -68,7 +68,7 @@ function dispatch(registrations: RegistrationWithEnforce[], dispatchEnforce?: En
 // The cells with no registration level stay pinned by dispatch.test.ts and
 // enforce-advise.test.ts; only the composition's own branches are fixtured here. A body
 // exiting 1 is a real break throughout.
-describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two axes, lenient wins', () => {
+describe('dispatchCovenants — effective level composes the two axes, lenient wins', () => {
   it("dispatch block (omitted) × registration 'advise' → exit 0 · advised (row 2, THE ticket)", async () => {
     // The session surface has no dispatch level, so a per-entry level is the only way an
     // author can lower one entry.
@@ -100,7 +100,7 @@ describe('CONFIG-11 §4.2 dispatchCovenants — effective level composes the two
   });
 });
 
-describe('CONFIG-11 §4.3 dispatchCovenants — the registration level stays on its own registration', () => {
+describe('dispatchCovenants — the registration level stays on its own registration', () => {
   it('an advise registration lands advised while its enforce-less neighbour in the same dispatch blocks', async () => {
     // One dispatch, two breaks, two different outcomes. A level that leaks from the first
     // registration into the dispatch is a fail-open on every other entry.
@@ -121,7 +121,7 @@ describe('CONFIG-11 §4.3 dispatchCovenants — the registration level stays on 
   });
 });
 
-describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudgeable body', () => {
+describe('a registration at advise does not soften an unjudgeable body', () => {
   it('a judge that crashes stays exit 2 · blocked under registration advise', async () => {
     // A crash is not a verdict, so no entry level relaxes it.
     const result = await dispatch([
@@ -170,7 +170,7 @@ describe('CONFIG-11 AC-3 — a registration at advise does not soften an unjudge
   });
 });
 
-describe('POSTURE-01 review [1] — a routing that could not answer stays outside the level axis', () => {
+describe('a routing that could not answer stays outside the level axis', () => {
   it('a body-bearing registration at advise whose predicate throws still exits 2 · blocked', async () => {
     // matchRegistrations routes a throwing predicate fail-closed with subject '-', and a
     // body-bearing arm carries that verdict out by judging and breaking. Every compiled
@@ -190,7 +190,7 @@ describe('POSTURE-01 review [1] — a routing that could not answer stays outsid
   });
 });
 
-describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reaches the body-bearing registration only', () => {
+describe('compileDisciplineRegistrations — entry enforce reaches the body-bearing registration only', () => {
   const ROOT = '/repo';
   const SHELL_TOOL = 'Bash';
   const COMMAND_ARG = 'command';
@@ -243,7 +243,7 @@ describe('CONFIG-11 §4.3 compileDisciplineRegistrations — entry enforce reach
     expect(body).toEqual({ label: 'no-banned', skip: false, enforce: 'block' });
   });
 
-  it("fills enforce: 'advise' on the body-bearing registration when the entry omits it (POSTURE-01 §4.1)", () => {
+  it("fills enforce: 'advise' on the body-bearing registration when the entry omits it", () => {
     // The default is advise, decided here and nowhere downstream: the dispatcher reads
     // `registration.enforce === 'advise'` and falls back to the surface level otherwise, so
     // an absent field on the registration means block on the session surface. Copying the

@@ -32,7 +32,7 @@ const deletedChange: StagedChange = {
   post: null,
 };
 
-describe('covenantInputFromStagedChanges — call-nested union evidence (AC 3)', () => {
+describe('covenantInputFromStagedChanges — call-nested union evidence', () => {
   it('attaches evidence to all three staged calls: create/modify/delete, each on its own call', () => {
     // Three staged changes must yield three calls each carrying its own evidence — the
     // count assertion pins that the deletion is not the one silently omitted, and the

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tokenizeCommandLine } from '../src/bash-line.js';
 
-describe('§5.1 quote preservation', () => {
+describe('quote preservation', () => {
   it('keeps a single-quoted string containing a command separator as one word', () => {
     // Splitting on `;` regardless of quote state produces more than one command and loses
     // the literal semicolon inside the word.
@@ -38,7 +38,7 @@ describe('§5.1 quote preservation', () => {
   });
 });
 
-describe('§5.1 command splitting on control operators', () => {
+describe('command splitting on control operators', () => {
   it('splits "a && b | c; d" into four simple commands', () => {
     // Both an off-by-one in the split and a control operator read as a word fail this.
     const result = tokenizeCommandLine('a && b | c; d');
@@ -63,7 +63,7 @@ describe('§5.1 command splitting on control operators', () => {
   });
 });
 
-describe('§5.1 redirect operator separation', () => {
+describe('redirect operator separation', () => {
   it('separates a spaced redirect operator (">") from its target word', () => {
     const result = tokenizeCommandLine('echo hi > f');
 
@@ -193,7 +193,7 @@ describe('§5.1 redirect operator separation', () => {
   });
 });
 
-describe('§5.1 opacity detection', () => {
+describe('opacity detection', () => {
   it('marks a command-substitution token "$(echo f)" as opaque', () => {
     const result = tokenizeCommandLine('cat $(echo f)');
 
@@ -249,7 +249,7 @@ describe('§5.1 opacity detection', () => {
   });
 });
 
-describe('§5.1 tokenization failure (fail-closed)', () => {
+describe('tokenization failure (fail-closed)', () => {
   // The claim each case makes is that the input is not read cleanly, and a non-empty `unread`
   // list is what carries it.
   it('reports an unread span for an unclosed single quote instead of throwing', () => {

@@ -32,7 +32,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('CONFIG-06 §4.3 advised — round-trip', () => {
+describe('advised — round-trip', () => {
   it('formatRecordLine → parseRecordLine round-trips an advised record', () => {
     // If `advised` is missing from the accepted-events set the round-trip returns null and
     // the recorded verdict is lost on every read.
@@ -50,7 +50,7 @@ describe('CONFIG-06 §4.3 advised — round-trip', () => {
   });
 });
 
-describe('CONFIG-06 §4.3 advised — aggregation', () => {
+describe('advised — aggregation', () => {
   it('aggregateGain initializes every label with advised: 0 and counts advised records', () => {
     // A missing advised slot in the per-label initializer yields NaN or throws, and a count
     // bleeding into passed/blocked loses the distinction the event exists to record.
@@ -73,7 +73,7 @@ describe('CONFIG-06 §4.3 advised — aggregation', () => {
   });
 });
 
-describe('CONFIG-06 §4.3 advised — render', () => {
+describe('advised — render', () => {
   it('runGain output carries an advised= column for a label', () => {
     // Omitting the advised count from the render line hides the recorded-but-passed verdicts.
     appendRecord(logPath, advisedRecord);

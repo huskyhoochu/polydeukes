@@ -122,7 +122,7 @@ function tarManifest(dir: string): string {
   return result.stdout;
 }
 
-describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => {
+describe('tarball contents match the published enumeration', () => {
   it.each(
     PACKAGE_DIRS,
   )('the %s tarball ships the runnable set: manifest, dist, README, LICENSE', (dir) => {
@@ -151,7 +151,7 @@ describe('DIST-03 AC-1 — tarball contents match the §3-a enumeration', () => 
   }, 30_000);
 });
 
-describe('DOCS-02 AC-1 — the umbrella tarball carries the docs bundle', () => {
+describe('the umbrella tarball carries the docs bundle', () => {
   it('ships the eight English documents under dist/docs', () => {
     // A copy step dropped from the build script, a member lost from its list, or
     // `dist/docs` excluded from what npm packs each install a package whose `pdks docs`
@@ -175,7 +175,7 @@ describe('DOCS-02 AC-1 — the umbrella tarball carries the docs bundle', () => 
   }, 30_000);
 });
 
-describe('DIST-03 AC-2 — packed manifests carry no workspace-only specifier', () => {
+describe('packed manifests carry no workspace-only specifier', () => {
   it.each(
     PACKAGE_DIRS,
   )('the %s packed manifest has zero workspace: and zero catalog: occurrences', (dir) => {

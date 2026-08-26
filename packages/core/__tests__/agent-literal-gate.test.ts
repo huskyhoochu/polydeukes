@@ -80,7 +80,7 @@ function findViolations(pattern: RegExp): string[] {
   return violations;
 }
 
-describe('core source carries no agent, tool, or language literals (CORE-01 §5.3 grep gate)', () => {
+describe('core source carries no agent, tool, or language literals (grep gate)', () => {
   it('scans a non-empty source tree — the gate cannot pass vacuously', () => {
     // A gate that silently scans zero files always passes. If the source directory moves
     // or the recursive walk drops every file, every assertion below becomes a no-op fence.

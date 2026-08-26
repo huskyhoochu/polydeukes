@@ -65,7 +65,7 @@ afterEach(() => {
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
-describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer', () => {
+describe('scaffoldProject — the shared project-side layer', () => {
   it('creates the canonical config and the .polydeukes/ ignore line on an empty tree, reporting both as created', () => {
     // A consumer without a config fails closed on every call; without the ignore line
     // every consumer commits its own telemetry. The report must also agree with the disk —
@@ -79,7 +79,7 @@ describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer
     expect(result.skipped).toEqual([]);
   });
 
-  it('creates NO registration artifact — no hook file and no .claude/settings.json (AC-9)', () => {
+  it('creates NO registration artifact — no hook file and no .claude/settings.json', () => {
     // A registration output moved back into this shared layer voids the reuse: another
     // distribution path calls this function for a case whose registration lives outside
     // the project, so a hook file written here would ship a second, unregistered
@@ -91,8 +91,8 @@ describe('DIST-02 §3-i / AC-9 scaffoldProject — the shared project-side layer
   });
 });
 
-describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction', () => {
-  it('passes loadConfig and carries the §3-d minimum protectedPaths', () => {
+describe('generated config — valid by construction', () => {
+  it('passes loadConfig and carries the minimum protectedPaths', () => {
     // loadConfig throwing here is the worst case: the session surface is fail-closed, so
     // an invalid generated config blocks every call right after install. Dropping the
     // languages placeholder makes validation reject the config; a missing resolution-path
@@ -104,7 +104,7 @@ describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction'
     expect(config.protectedPaths).toEqual(expect.arrayContaining(MINIMUM_PROTECTED_PATHS));
   });
 
-  it('carries a witness block — a valveless generated config makes the first block a lockout (§3-e)', () => {
+  it('carries a witness block — a valveless generated config makes the first block a lockout', () => {
     // The schema keeps witness optional, so the loadConfig pass above proves nothing about
     // it. Without the block no human can open ANY blocked verdict, and .claude/hooks is on
     // the protection list, so the first block would freeze the project for good.
@@ -115,7 +115,7 @@ describe('DIST-02 §3-d/§3-e / AC-4 generated config — valid by construction'
   });
 });
 
-describe('DIST-02 §3-a / AC-10 config existence looks at all three discovery candidates', () => {
+describe('config existence looks at all three discovery candidates', () => {
   it('does not create the canonical name next to an existing .yml config', () => {
     // An existence check narrowed to the canonical filename writes .yaml next to a
     // project's .yml, which makes loadConfig throw on ambiguity, and the fail-closed
@@ -144,7 +144,7 @@ describe('DIST-02 §3-a / AC-10 config existence looks at all three discovery ca
   });
 });
 
-describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', () => {
+describe('nothing existing is ever overwritten', () => {
   it('leaves an existing canonical config byte-identical and reports it skipped', () => {
     // A regenerator that emits identical bytes would survive a second-run byte
     // comparison, so this fixture deliberately differs from anything the scaffold would
@@ -160,7 +160,7 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
     expect(result.created).not.toContain(CONFIG_CANONICAL);
   });
 
-  it('leaves an unparseable config untouched — existence is file presence, not parse success (AC-11)', () => {
+  it('leaves an unparseable config untouched — existence is file presence, not parse success', () => {
     // An existence check implemented as a parse or loadConfig attempt reads a broken
     // config as "absent" and overwrites it, destroying the very file the consumer was
     // midway through fixing. The hand-tuned case above cannot catch that variant — its
@@ -217,7 +217,7 @@ describe('DIST-02 §5-d invariant 1 — nothing existing is ever overwritten', (
   });
 });
 
-describe('DIST-05 AC-5 — the generated config points an editor at the shipped schema', () => {
+describe('the generated config points an editor at the shipped schema', () => {
   /** The schema as the directive's own value spells it, relative to the config's directory. */
   function installSchemaBeside(root: string): void {
     const dir = join(root, 'node_modules', 'polydeukes', 'dist', 'schema');
@@ -277,7 +277,7 @@ describe('DIST-05 AC-5 — the generated config points an editor at the shipped 
   });
 });
 
-describe('POSTURE-01 AC-7 / §4.5 — the generated config shows the promotion ladder as comments', () => {
+describe('the generated config shows the promotion ladder as comments', () => {
   /** The three rungs the commented example must spell, in the generated text. */
   const LADDER_RUNGS = [
     '#     draft: true',

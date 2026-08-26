@@ -113,7 +113,7 @@ function runHook(payload: Record<string, unknown>) {
   );
 }
 
-describe('DISPATCH-01 AC-1 ① — session surface, passing payload (measured pre-conversion)', () => {
+describe('① session surface, passing payload (measured pre-conversion)', () => {
   it('a scoped Write mentioning the protected entry passes every matched registration: exit 0, four passed rows in registration order', () => {
     // Order, labels, and subjects are all load-bearing here.
     const transcript = transcriptWithPrecedent();
@@ -163,7 +163,7 @@ describe('DISPATCH-01 AC-1 ① — session surface, passing payload (measured pr
   });
 });
 
-describe('DISPATCH-01 AC-1 ② — session surface, blocking payload (measured pre-conversion)', () => {
+describe('② session surface, blocking payload (measured pre-conversion)', () => {
   it('a Write targeting a protected file blocks: exit 2, blocked self-mod then passed shell-mod, the reason verbatim on stderr', () => {
     // The reason reaches stderr verbatim — never reformatted, dropped, or written twice.
     const result = runHook({
@@ -215,7 +215,7 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
   });
 }
 
-describe('DISPATCH-01 AC-1 ③ — commit surface advise translation (the domain W1 never measured)', () => {
+describe('③ commit surface advise translation (the domain W1 never measured)', () => {
   it('a staged delta violation under adapters.git advise: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
     // Advise is not mute: the reason line, the entry's `why`, and one advisory summary
     // all reach stderr.

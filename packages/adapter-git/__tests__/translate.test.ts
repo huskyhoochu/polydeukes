@@ -28,7 +28,7 @@ const deletedChange: StagedChange = {
   post: null,
 };
 
-describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
+describe('covenantInputFromStagedChanges — toolCalls', () => {
   it('emits STAGED_WRITE for an added file, carrying the path as file_path', () => {
     const result = covenantInputFromStagedChanges([addedChange]);
 
@@ -84,7 +84,7 @@ describe('§5 AC-1 covenantInputFromStagedChanges — toolCalls', () => {
   });
 });
 
-describe('§5 AC-1 covenantInputFromStagedChanges — nested evidence', () => {
+describe('covenantInputFromStagedChanges — nested evidence', () => {
   it('tags an added file as create evidence on its own call', () => {
     // A creation tagged modify would make an immutable discipline break on first
     // authoring.
@@ -111,7 +111,7 @@ describe('§5 AC-1 covenantInputFromStagedChanges — nested evidence', () => {
   });
 });
 
-describe('§5 AC-1 covenantInputFromStagedChanges — session-less collections', () => {
+describe('covenantInputFromStagedChanges — session-less collections', () => {
   it('fixes subagentSpawns and userMessages to empty arrays', () => {
     // The commit surface has no session, so the two collections must be honestly empty —
     // never filled with a placeholder, and never omitted (parseInput rejects that).
@@ -132,7 +132,7 @@ describe('§5 AC-1 covenantInputFromStagedChanges — session-less collections',
   });
 });
 
-describe('§5 AC-1 covenantInputFromStagedChanges — core protocol compatibility', () => {
+describe('covenantInputFromStagedChanges — core protocol compatibility', () => {
   it('round-trips through JSON.stringify and core parseInput', () => {
     // IR neutrality: this adapter must feed the core the same shape the claude-code
     // adapter does. Parsing alone is not enough — the parsed value must deep-equal what

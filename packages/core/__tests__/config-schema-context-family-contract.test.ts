@@ -107,7 +107,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('§4.1 context-family schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
+describe('context-family schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid context-family fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
@@ -116,7 +116,7 @@ describe('§4.1 context-family schema ⟺ defineConfig equivalence (VALID fixtur
   });
 });
 
-describe('§4.1 context-family schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
+describe('context-family schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid context-family fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

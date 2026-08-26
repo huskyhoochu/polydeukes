@@ -34,7 +34,7 @@ function inputWithEvidence(changes: FileChange[]): CovenantInput {
   };
 }
 
-describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
+describe('judgeDiscipline — forbid {added} delete semantics', () => {
   const forbidHex: DisciplineEntry = {
     id: 'no-hex',
     in: ['src/**'],
@@ -78,7 +78,7 @@ describe('judgeDiscipline — forbid {added} delete semantics (AC 5)', () => {
   });
 });
 
-describe('judgeDiscipline — immutable delete judgment (AC 6)', () => {
+describe('judgeDiscipline — immutable delete judgment', () => {
   const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
 
   it('breaks a delete of an immutable-matched file, naming id and path (the fail-open hole)', () => {

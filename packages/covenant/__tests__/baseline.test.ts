@@ -61,7 +61,7 @@ afterEach(() => {
   rmSync(rootDir, { recursive: true, force: true });
 });
 
-describe('COVENANT-14 §2-b snapshotBaseline — full content hashing over a fixture tree', () => {
+describe('snapshotBaseline — full content hashing over a fixture tree', () => {
   it('an unchanged tree snapshots to the same value twice, one key per entry', () => {
     // A timestamp, nonce, or unsorted-iteration term folded into the hash makes every
     // comparison read as a change, flooding the log with unattributed rows.
@@ -170,7 +170,7 @@ function row(
   return { timestamp, event, label: 'self-mod', subject };
 }
 
-describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots', () => {
+describe('findUnattributed — pure attribution over snapshots', () => {
   it('a changed entry with an empty window is unattributed', () => {
     const result = findUnattributed({
       previous: { [ENTRY_A]: 'h1' },
@@ -340,7 +340,7 @@ describe('COVENANT-14 §2-c findUnattributed — pure attribution over snapshots
   });
 });
 
-describe('COVENANT-14 §2-e baseline file I/O — absence and corruption read as null', () => {
+describe('baseline file I/O — absence and corruption read as null', () => {
   it('writeBaseline → readBaseline round-trips a snapshot', () => {
     // An asymmetric serialization (write one shape, read another) makes every restart
     // re-establish, so the comparison never spans two calls.
@@ -378,7 +378,7 @@ describe('COVENANT-14 §2-e baseline file I/O — absence and corruption read as
   });
 });
 
-describe('COVENANT-14 §2-c the attribution window is cut by time, not by position', () => {
+describe('the attribution window is cut by time, not by position', () => {
   const path = () => join(rootDir, 'baseline.json');
 
   it('readBaseline returns the snapshot AND the cut together, from one parse', () => {

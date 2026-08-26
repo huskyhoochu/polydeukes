@@ -14,13 +14,13 @@ const policyTable: { kind: string; expectedMode: FailMode }[] = [
   { kind: 'observability', expectedMode: 'open' },
 ];
 
-describe('resolveFailMode — registered kinds (PRD §4.1 policy table)', () => {
+describe('resolveFailMode — registered kinds', () => {
   it.each(policyTable)('resolves $kind to fail-$expectedMode', ({ kind, expectedMode }) => {
     expect(resolveFailMode(kind)).toBe(expectedMode);
   });
 });
 
-describe('resolveFailMode — fail-closed default (PRD §5.2)', () => {
+describe('resolveFailMode — fail-closed default', () => {
   it.each([
     'unknown-kind',
     '',
@@ -44,7 +44,7 @@ describe('resolveFailMode — fail-closed default (PRD §5.2)', () => {
   });
 });
 
-describe('failModeToExitCode — mode → exit-code mapping (PRD §4.2)', () => {
+describe('failModeToExitCode — mode → exit-code mapping', () => {
   it('maps fail-closed to the blocking exit code 2', () => {
     // Asserting the exact value AND the named constant is deliberate: it catches both a
     // wrong literal in the mapper and EXIT_BREAK_BLOCKING itself drifting away from 2.

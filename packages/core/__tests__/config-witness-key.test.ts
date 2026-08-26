@@ -31,7 +31,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('COVENANT-17 §4.2 witness key — old-key rejection', () => {
+describe('witness key — old-key rejection', () => {
   it('rejects the old waiver key as an unknown top-level key', () => {
     // The old key must fail loud, naming the key, so an unfinished migration is visible at
     // load time. Accepting it silently resolves to a config whose valve values are ignored,
@@ -44,7 +44,7 @@ describe('COVENANT-17 §4.2 witness key — old-key rejection', () => {
   });
 });
 
-describe('COVENANT-17 §4.2 published JSON Schema — witness present, old vocabulary gone', () => {
+describe('published JSON Schema — witness present, old vocabulary gone', () => {
   it('the schema declares a witness property and $defs entry and never mentions the old key', () => {
     // The published schema moves with the validator. Renaming the runtime validator while
     // the schema still advertises the old key steers every IDE-guided config author straight

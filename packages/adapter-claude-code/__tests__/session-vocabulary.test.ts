@@ -18,7 +18,7 @@ function rawPayload(overrides: Record<string, unknown>): string {
   });
 }
 
-describe('DIST-01 §3-b session tool vocabulary — the adapter owns the literals', () => {
+describe('session tool vocabulary — the adapter owns the literals', () => {
   it('exports MUTATING_TOOLS as exactly the four evidence-bearing mutating tools', () => {
     // The only defence for a dropped entry: judgeSelfModification skips a call
     // outright when mutatingNames.includes() is false, so a tool missing from this
@@ -29,7 +29,7 @@ describe('DIST-01 §3-b session tool vocabulary — the adapter owns the literal
   });
 });
 
-describe('DIST-01 §3-b transcriptPathFromPayload — evidence loss narrows to undefined', () => {
+describe('transcriptPathFromPayload — evidence loss narrows to undefined', () => {
   it('extracts transcript_path from a well-formed payload', () => {
     // Reading the wrong envelope key, or extracting from the up-translated IR where
     // the field no longer exists, silently loses the valve's and the context family's

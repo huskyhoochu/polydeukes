@@ -24,7 +24,7 @@ const inputWithFileChanges: CovenantInput = {
   userMessages: [],
 };
 
-describe('parseInput — file-change evidence round-trip (PRD §4.2, AC §5.6)', () => {
+describe('parseInput — file-change evidence round-trip', () => {
   it('preserves each call element evidence through a JSON round-trip', () => {
     // A payload carrying evidence must deserialize with every element intact and identical —
     // no field dropped during validation, no kind/pre/post/path rewritten.
@@ -38,7 +38,7 @@ describe('parseInput — file-change evidence round-trip (PRD §4.2, AC §5.6)',
   });
 });
 
-describe('parseInput — file-change absence (PRD §4.2, no key fabrication)', () => {
+describe('parseInput — file-change absence (no key fabrication)', () => {
   it('accepts a payload with no evidence and does not fabricate the key', () => {
     // An IR whose calls carry no evidence must parse without a default-fill inventing the
     // key: a fabricated `fileChange` is indistinguishable from real evidence downstream.

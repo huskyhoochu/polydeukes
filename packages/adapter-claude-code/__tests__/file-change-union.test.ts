@@ -22,7 +22,7 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
   return (fp: string) => (fp === filePath ? content : null);
 }
 
-describe('collectFileChanges — union tagging (AC 4)', () => {
+describe('collectFileChanges — union tagging', () => {
   it('tags a Write with no pre-state (reader returns null) as kind create with no pre field', () => {
     // Absence of a file IS the create discriminant. Catches an untagged flat shape,
     // which downstream switches cannot judge, and a leftover pre:null sentinel riding
@@ -81,7 +81,7 @@ function capturingDispatch(): {
   };
 }
 
-describe('runAdapterPath — evidence nested on the tool-call element (AC 4)', () => {
+describe('runAdapterPath — evidence nested on the tool-call element', () => {
   it('an Edit payload dispatches an IR whose toolCalls[0].fileChange is the modify evidence', async () => {
     // Attribution wiring: the IR handed to dispatch carries the evidence INSIDE the
     // mutating call element. Evidence shipped as a top-level array instead would leave

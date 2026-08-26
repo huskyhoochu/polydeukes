@@ -30,7 +30,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('COVENANT-17 §4.1 witnessed event — write always new, read accepts legacy', () => {
+describe('witnessed event — write always new, read accepts legacy', () => {
   it('a legacy bypassed line parses one-way into a witnessed record (migration seam)', () => {
     // Legacy rows must surface as witnessed data, not as corrupt lines: dropping the legacy
     // branch loses them, and passing the old name through verbatim splits every aggregation

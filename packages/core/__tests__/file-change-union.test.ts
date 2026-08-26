@@ -20,7 +20,7 @@ const deleteEvidence: FileChange = {
 // Each `@ts-expect-error` must sit on the offending PROPERTY line: TypeScript anchors
 // excess-property errors there, not on the opening-brace line.
 
-describe('FileChange union — type locks (AC 1)', () => {
+describe('FileChange union — type locks', () => {
   it('rejects a delete variant carrying a post', () => {
     // Catches the delete variant widening to carry post — a deletion with "resulting
     // content" is the shape this union exists to outlaw.
@@ -64,7 +64,7 @@ describe('FileChange union — type locks (AC 1)', () => {
   });
 });
 
-describe('CovenantInput — call-nested evidence attribution (AC 2)', () => {
+describe('CovenantInput — call-nested evidence attribution', () => {
   it('preserves nesting through a JSON round-trip: evidence stays on its own call only', () => {
     // Evidence on the second call only, so the assertions can catch a parse/serialize
     // step hoisting evidence into a shared home where it would forgive a sibling call.
@@ -106,7 +106,7 @@ describe('CovenantInput — call-nested evidence attribution (AC 2)', () => {
 // parseInput validates that the three collections exist; it does not validate their
 // element shapes. These pin that boundary.
 
-describe('parseInput — fail-closed axis unchanged after the field removal (§4.1)', () => {
+describe('parseInput — fail-closed axis unchanged after the field removal', () => {
   it('still fails closed with exit 2 when a required collection is missing', () => {
     // Catches the toolCalls presence check being dropped alongside the removed
     // top-level fileChanges validation.

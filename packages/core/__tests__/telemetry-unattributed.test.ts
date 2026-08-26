@@ -36,7 +36,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('COVENANT-14 §2-d unattributed — round-trip', () => {
+describe('unattributed — round-trip', () => {
   it('formatRecordLine → parseRecordLine round-trips an unattributed record', () => {
     // If `unattributed` is missing from the accepted-events set, every reader silently drops
     // the row instead of surfacing the attribution failure.
@@ -54,7 +54,7 @@ describe('COVENANT-14 §2-d unattributed — round-trip', () => {
   });
 });
 
-describe('COVENANT-14 §2-d unattributed — aggregation', () => {
+describe('unattributed — aggregation', () => {
   it('aggregateGain initializes every label with unattributed: 0 and counts unattributed records', () => {
     // A missing unattributed slot in the per-label initializer yields NaN, and a count
     // bleeding into passed disguises "changed with no explaining judgment" as a normal pass.
@@ -77,7 +77,7 @@ describe('COVENANT-14 §2-d unattributed — aggregation', () => {
   });
 });
 
-describe('COVENANT-14 §3.5 unattributed — render', () => {
+describe('unattributed — render', () => {
   it('runGain shows unattributed as its own column, never summed into the five', () => {
     // The column must stand on its own: omitting it makes the alarm invisible in the report,
     // and folding it into passed or skipped hides it behind a number that looks normal.

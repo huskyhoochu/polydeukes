@@ -10,7 +10,7 @@ function inputWithToolCalls(toolCalls: CovenantInput['toolCalls']): CovenantInpu
   return { toolCalls, subagentSpawns: [], userMessages: [] };
 }
 
-describe('§4.2 noopTranscript.findToolCalls — always-empty default', () => {
+describe('noopTranscript.findToolCalls — always-empty default', () => {
   it('returns [] with and without a name argument', () => {
     // The injection-absent default answers "no evidence", which keeps the requirePrecedent
     // gate closed. A non-empty stub would open that gate from fabricated evidence.
@@ -19,7 +19,7 @@ describe('§4.2 noopTranscript.findToolCalls — always-empty default', () => {
   });
 });
 
-describe('§4.2 transcriptFromInput.findToolCalls — IR-backed projection', () => {
+describe('transcriptFromInput.findToolCalls — IR-backed projection', () => {
   it('projects input.toolCalls to { name, args } in observation order when no name is given', () => {
     // Each call carries distinctive args so a swap between calls is visible, and the two
     // 'shell-tool' entries sit either side of a different name so a reorder shows up.
@@ -57,7 +57,7 @@ describe('§4.2 transcriptFromInput.findToolCalls — IR-backed projection', () 
     expect(transcript.findToolCalls('never-called')).toEqual([]);
   });
 
-  it('does not leak fileChange evidence through the projection (CORE-06 boundary)', () => {
+  it('does not leak fileChange evidence through the projection', () => {
     // Tool-call elements carry per-call fileChange evidence, but the transcript is a
     // history-query seam and evidence is judgment input — the two vocabularies stay
     // separate. A projection that spreads the whole IR element instead of picking

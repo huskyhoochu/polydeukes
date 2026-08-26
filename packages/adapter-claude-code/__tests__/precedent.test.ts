@@ -60,7 +60,7 @@ function toolBlock(id: string, name: string) {
   return { type: 'tool_use', id, name, input: {} };
 }
 
-describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn-kind match)', () => {
+describe('evaluatePrecedent — subagent evidence (exact spawn-kind match)', () => {
   it('returns true when a spawn of exactly the required kind exists in the transcript', () => {
     const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
@@ -98,7 +98,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — subagent evidence (exact spawn
   });
 });
 
-describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex)', () => {
+describe('evaluatePrecedent — tool evidence (tool-name regex)', () => {
   it('returns true when an observed tool name matches the value as a regular expression', () => {
     // The value is honoured as a regex, not compared as a literal. Comparing with === here
     // (subagent semantics leaking into tool) makes every regex-valued discipline
@@ -135,7 +135,7 @@ describe('COVENANT-13 §4.4 evaluatePrecedent — tool evidence (tool-name regex
   });
 });
 
-describe('COVENANT-13 §4.4 evaluatePrecedent — vocabulary boundary', () => {
+describe('evaluatePrecedent — vocabulary boundary', () => {
   it('returns undefined for an evidence key outside the adapter vocabulary', () => {
     // undefined is the exact signal that makes compileDisciplineRegistrations throw on an
     // unrecognized key. Answering false for a typo'd key would silently convert a
@@ -194,7 +194,7 @@ function transcriptWithOutcomes(blocks: { id: string }[], failed: boolean[]) {
   );
 }
 
-describe("COVENANT-13b §4.4 evaluatePrecedent — this file's fixture helpers under mixed outcomes", () => {
+describe("evaluatePrecedent — this file's fixture helpers under mixed outcomes", () => {
   it('attributes each outcome to its own call when one of two sibling tool calls failed', () => {
     // Each call needs its own id. Two calls sharing one id collide, and the join in
     // transcript.ts keeps the FIRST result per id, so the failure landing first stamps

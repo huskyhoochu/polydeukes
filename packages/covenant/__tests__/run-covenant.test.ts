@@ -20,7 +20,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('§5.1 exit-code translation', () => {
+describe('exit-code translation', () => {
   it('a body exiting 0 (uphold) yields wrapper exitCode 0 and bodyExitCode 0', async () => {
     const result = await runCovenant({
       body: exitThunk(0),
@@ -82,7 +82,7 @@ describe('§5.1 exit-code translation', () => {
   });
 });
 
-describe('§5.3 per-call logging', () => {
+describe('per-call logging', () => {
   it('a single passing call appends exactly one line, recovered as event=passed with matching label/subject', async () => {
     await runCovenant({
       body: exitThunk(0),
@@ -145,7 +145,7 @@ describe('§5.3 per-call logging', () => {
   });
 });
 
-describe('§4 mkdir-p before telemetry append (COVENANT-01b retrofit)', () => {
+describe('mkdir-p before telemetry append', () => {
   it('creates a missing nested parent directory and appends the record instead of dropping it', async () => {
     // appendRecord is fail-open and does not create missing directories, so the wrapper
     // must ensure the parent exists BEFORE calling it — otherwise a fresh checkout with no

@@ -18,7 +18,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('§4.2 empty-pattern rejection — discipline predicate fields', () => {
+describe('empty-pattern rejection — discipline predicate fields', () => {
   it('rejects a string-form forbid of "", naming the forbid field', () => {
     // '' compiles as a regex and matches everywhere, so the delta entry would break every
     // in-scope edit; a type-only check accepts it.
@@ -53,7 +53,7 @@ describe('§4.2 empty-pattern rejection — discipline predicate fields', () => 
   });
 });
 
-describe('§4.2 empty-element rejection — protectedPaths', () => {
+describe('empty-element rejection — protectedPaths', () => {
   it('rejects an empty-string element among valid ones, naming protectedPaths', () => {
     // The empty entry is placed beside a valid one deliberately: it catches a some/every
     // inversion that lets one empty element hide behind valid siblings, as well as an
@@ -67,7 +67,7 @@ describe('§4.2 empty-element rejection — protectedPaths', () => {
   });
 });
 
-describe('§4.2 telemetry.logPath — trim-then-non-empty (the witness.token idiom)', () => {
+describe('telemetry.logPath — trim-then-non-empty (the witness.token idiom)', () => {
   it('rejects logPath: "", naming logPath', () => {
     // A type-only check lets '' through and resolves telemetry to an empty path.
     const error = expectConfigValidationError({
@@ -90,7 +90,7 @@ describe('§4.2 telemetry.logPath — trim-then-non-empty (the witness.token idi
   });
 });
 
-describe('§6 invariant — non-empty values in the same five spots stay accepted', () => {
+describe('invariant — non-empty values in the same five spots stay accepted', () => {
   it('accepts non-empty forbid (both forms) and forbidCommand entries', () => {
     // The mirror direction: the rejections must not over-reach. Catches a non-empty check
     // inverted or applied to the wrong field.

@@ -81,7 +81,7 @@ function stubDispatchingRegistrations(
   };
 }
 
-describe('§5.1 translate-failure measurement', () => {
+describe('translate-failure measurement', () => {
   it('a non-JSON rawPayload blocks (exit 2) and appends exactly one adapter blocked record, dispatch never called', async () => {
     // Unparseable input must fail closed AND be measured: an unmeasured refusal leaves the
     // funnel denominator short, and reaching dispatch at all would judge an input nobody
@@ -149,7 +149,7 @@ describe('§5.1 translate-failure measurement', () => {
   });
 });
 
-describe('§5.2 funnel supplement — exactly-one-record arithmetic', () => {
+describe('funnel supplement — exactly-one-record arithmetic', () => {
   it('a no-match dispatch (exit 0, results []) passes (exit 0) and the adapter appends exactly one passed record', async () => {
     // Matched-zero passing is measured at the ADAPTER level: the dispatcher wrote nothing,
     // so the adapter supplies one passed row and the gain denominator counts this call.
@@ -259,7 +259,7 @@ describe('§5.2 funnel supplement — exactly-one-record arithmetic', () => {
   });
 });
 
-describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', () => {
+describe('roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', () => {
   it('records exactly one row per adapter-path entry across 10 mixed scenarios', async () => {
     // The exactly-one-row invariant, over 5 scenario kinds ×2: every entry leaves
     // exactly one row regardless of match/translate outcome, so a broken supplement
@@ -360,7 +360,7 @@ describe('§5.3 roadmap-AC arithmetic — 10 mixed calls yield exactly 10 record
   });
 });
 
-describe('§5.4 fail-open logging', () => {
+describe('fail-open logging', () => {
   it('creates a missing parent directory so the record is still written (mkdir guarantee)', async () => {
     // A telemetry path under a not-yet-created directory must still record. Without
     // the mkdir step the append silently fails and the no-match passed row is lost.

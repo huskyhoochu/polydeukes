@@ -42,7 +42,7 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-describe('§5 AC-2 collectRangeChanges — two-dot range', () => {
+describe('collectRangeChanges — two-dot range', () => {
   it('reads pre from the base ref blob and post from the head ref blob, ignoring index and disk', () => {
     // Index and disk each hold a distinct fourth and fifth version, so reading from any
     // of the other collectors' sources produces a visibly different answer.
@@ -89,7 +89,7 @@ describe('§5 AC-2 collectRangeChanges — two-dot range', () => {
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — three-dot range uses the merge-base', () => {
+describe('collectRangeChanges — three-dot range uses the merge-base', () => {
   it('takes pre from merge-base(A, B) under A...B, while A..B takes pre from A itself', () => {
     // `...` parsed as `..` would judge a PR against main's newest commit and report
     // main's own edits as the PR's. The branches diverge on the SAME file so the two
@@ -118,7 +118,7 @@ describe('§5 AC-2 collectRangeChanges — three-dot range uses the merge-base',
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — unresolvable ref', () => {
+describe('collectRangeChanges — unresolvable ref', () => {
   it('throws when one side of the range does not exist', () => {
     // A git failure must surface as a throw so the runner records one blocked row rather
     // than exiting 0 on a typo. The message must carry git's own naming of the ref, so a
@@ -129,7 +129,7 @@ describe('§5 AC-2 collectRangeChanges — unresolvable ref', () => {
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — identical refs', () => {
+describe('collectRangeChanges — identical refs', () => {
   it('returns an empty array for HEAD..HEAD', () => {
     commitFile('a.txt', 'one\n');
 
@@ -137,7 +137,7 @@ describe('§5 AC-2 collectRangeChanges — identical refs', () => {
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — unresolvable head ref', () => {
+describe('collectRangeChanges — unresolvable head ref', () => {
   it('throws naming the ref when the head side of the range does not exist', () => {
     // The two sides resolve on different code paths — base may pass through merge-base,
     // head never does — so validating only the base side would let a typo in the PR tip
@@ -148,7 +148,7 @@ describe('§5 AC-2 collectRangeChanges — unresolvable head ref', () => {
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — three-dot range with no common ancestor', () => {
+describe('collectRangeChanges — three-dot range with no common ancestor', () => {
   it('throws for A...B when the two refs share no merge-base', () => {
     // merge-base fails on unrelated histories and the collector must fail closed. Reading
     // its empty output as "no base" would report the range as [] — exit 0 on a diff
@@ -166,7 +166,7 @@ describe('§5 AC-2 collectRangeChanges — three-dot range with no common ancest
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — binary on either side', () => {
+describe('collectRangeChanges — binary on either side', () => {
   const BINARY = Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]);
 
   function commitBytes(relPath: string, bytes: Buffer | string): string {
@@ -205,7 +205,7 @@ describe('§5 AC-2 collectRangeChanges — binary on either side', () => {
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — rename between refs surfaces as delete + add', () => {
+describe('collectRangeChanges — rename between refs surfaces as delete + add', () => {
   it('reports a 100% identical rename as the source deleted and the destination added', () => {
     // Without `--no-renames` git emits one R100 row: the source is never judged at its
     // protected location, and the status parser meets a letter it has no mapping for.
@@ -231,7 +231,7 @@ describe('§5 AC-2 collectRangeChanges — rename between refs surfaces as delet
   });
 });
 
-describe('§5 AC-2 collectRangeChanges — blob over 1MB between refs', () => {
+describe('collectRangeChanges — blob over 1MB between refs', () => {
   it('collects a large head blob instead of failing on the spawn buffer default', () => {
     // execFileSync caps stdout at 1MB unless overridden, so without the override on the
     // ref-blob read path a lockfile-sized blob throws ENOBUFS and fails the whole range
@@ -247,7 +247,7 @@ describe('§5 AC-2 collectRangeChanges — blob over 1MB between refs', () => {
 });
 
 // Inputs git itself treats specially.
-describe('PR #67 review — a ref that also names a file', () => {
+describe('a ref that also names a file', () => {
   it('judges the range when a branch and a root file share the name', () => {
     commitFile('base.txt', 'base\n');
     git('branch', 'amb');
@@ -264,7 +264,7 @@ describe('PR #67 review — a ref that also names a file', () => {
   });
 });
 
-describe('PR #67 review — a type change (T) keeps its pre side', () => {
+describe('a type change (T) keeps its pre side', () => {
   it('reports a symlink replaced by a regular file as modified with pre=the link target', () => {
     commitFile('base.txt', 'base\n');
     symlinkSync('base.txt', join(repoRoot, 'link'));

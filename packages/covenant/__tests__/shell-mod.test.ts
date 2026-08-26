@@ -45,7 +45,7 @@ function baseSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModifica
   };
 }
 
-describe('judgeShellModification — break direction (PRD §5.1)', () => {
+describe('judgeShellModification — break direction', () => {
   it('sed -i on the protected path breaks, with reason carrying the rule name and path', () => {
     // The rule set must carry sedInPlaceRule and its detected target must be matched against
     // protectedPaths, or `sed -i 's/exit 2/exit 0/' <judge>` rewrites the judge and passes.
@@ -101,7 +101,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('a protected-path mention inside a command substitution breaks (§4.1(c) opaque mention)', () => {
+  it('a protected-path mention inside a command substitution breaks (opaque mention)', () => {
     // A protected path inside a command substitution is undecidable, so it blocks. Treating
     // the mention as a transparent read upholds it instead.
     const verdict = judgeShellModification(shellCall(`echo $(cat ${PROTECTED})`), baseSpec());
@@ -112,7 +112,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('an allowlisted reader with an opaque write target breaks (§4.1(d) opaque redirect target)', () => {
+  it('an allowlisted reader with an opaque write target breaks (opaque redirect target)', () => {
     // The clause order is the invariant: with the allowlist evaluated before the opaque-write
     // check, `cat <protected> > $(x)` is absolved by `cat` even though the write target could
     // resolve to the protected path.
@@ -124,7 +124,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('a plain mention by a non-allowlisted command breaks (§4.1(f) backstop)', () => {
+  it('a plain mention by a non-allowlisted command breaks (backstop)', () => {
     // The mention backstop: `node x.js <protected>` names the path, is not allowlisted, and
     // has no write or opaque structure, so nothing else on the ladder can answer it. The
     // reason carries the first word so the backstop is diagnosable.
@@ -152,7 +152,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('a line left half-read still breaks on the path its read half names (§4.1 step 2)', () => {
+  it('a line left half-read still breaks on the path its read half names', () => {
     // The read half reaches precise judgment, so what fails closed here is the allowlist:
     // `cat` would normally be absolved, and the unread span withholds that, because what the
     // scanner never read could be anything and no head vouches for the whole line.
@@ -179,7 +179,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
     }
   });
 
-  it('a shell-tool call with no string value under any command-arg key breaks (§4.1 step 1 misassembly)', () => {
+  it('a shell-tool call with no string value under any command-arg key breaks (misassembly)', () => {
     // A shell-tool call whose command cannot be read — an arg-name typo, or a non-string
     // value — fails closed, so a misassembled meta-covenant cannot wave everything through.
     const input = inputWithToolCall(SHELL_TOOL, { notTheCommandKey: 123, another: false });
@@ -251,7 +251,7 @@ describe('judgeShellModification — break direction (PRD §5.1)', () => {
   });
 });
 
-describe('judgeShellModification — uphold direction (PRD §5.2)', () => {
+describe('judgeShellModification — uphold direction', () => {
   it('sed -i, tee, and printf redirect on an UNPROTECTED path all uphold (roadmap AC "non-protected same command")', () => {
     // Matching on "is a write" alone, rather than against the protected-path list,
     // over-blocks every write regardless of destination.
@@ -370,7 +370,7 @@ function realSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModifica
   };
 }
 
-describe('judgeShellModification — parent-of-protected operations (PRD §5.1)', () => {
+describe('judgeShellModification — parent-of-protected operations', () => {
   it('rm -rf on the protected parent directory breaks (ancestor match)', () => {
     // `packages/core` does not contain `packages/core/src` as a substring, so a substring
     // primitive passes this parent-of-protected deletion. Only ancestor matching blocks it.
@@ -394,7 +394,7 @@ describe('judgeShellModification — parent-of-protected operations (PRD §5.1)'
   });
 });
 
-describe('judgeShellModification — quote/escape/line-continuation split path (PRD §5.2)', () => {
+describe('judgeShellModification — quote/escape/line-continuation split path', () => {
   it('a quote-split protected path in a redirect target breaks (tokenizer strips quotes)', () => {
     // The raw `packages/core/sr"c"/index.ts` carries no contiguous `packages/core/src`, so a
     // judge matching the raw string rather than the quote-stripped word misses it while the
@@ -424,7 +424,7 @@ describe('judgeShellModification — quote/escape/line-continuation split path (
   });
 });
 
-describe('shell-mod E2E through dispatchCovenants (PRD §5.4)', () => {
+describe('shell-mod E2E through dispatchCovenants', () => {
   let dir: string;
   let telemetryPath: string;
 

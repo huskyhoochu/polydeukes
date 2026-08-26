@@ -226,7 +226,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('§5.3 JSON Schema artifact', () => {
+describe('JSON Schema artifact', () => {
   it('declares the draft 2020-12 $schema', () => {
     // A schema authored against an older draft would be silently misinterpreted by
     // ajv/dist/2020 rather than failing outright.
@@ -234,7 +234,7 @@ describe('§5.3 JSON Schema artifact', () => {
   });
 });
 
-describe('§5.3 schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
+describe('schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   it.each(
     VALID_CONFIGS.map((config, index) => [index, config] as const),
   )('valid fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
@@ -243,7 +243,7 @@ describe('§5.3 schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
   });
 });
 
-describe('§5.3 schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
+describe('schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

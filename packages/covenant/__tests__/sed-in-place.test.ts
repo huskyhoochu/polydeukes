@@ -4,7 +4,7 @@ import { sedInPlaceRule } from '../src/mutation-rules.js';
 
 // Driven through extractMutations with real shell lines rather than by calling the rule
 // directly, so each case exercises the assembled surface.
-describe('§5.2 sed-in-place rule', () => {
+describe('sed-in-place rule', () => {
   it('detects the file operand of the original assessment vector', () => {
     // The one-liner shape that defeats a check keyed on tool names alone: a shell command
     // rewrites a file with no mutating tool call involved.

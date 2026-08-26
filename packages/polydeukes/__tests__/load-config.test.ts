@@ -43,7 +43,7 @@ function writeInRoot(filename: string, contents: string): void {
   writeFileSync(join(rootDir, filename), contents);
 }
 
-describe('§5.1 discovery — the three candidate filenames', () => {
+describe('discovery — the three candidate filenames', () => {
   it('discovers polydeukes.config.yaml and returns the resolved config plus its rootDir-relative path', () => {
     // `config` is the defineConfig resolution, so testCmd is callable. A loader returning
     // the raw parsed object would leave it a string.
@@ -75,7 +75,7 @@ describe('§5.1 discovery — the three candidate filenames', () => {
   });
 });
 
-describe('§5.1 fail-closed — no config, ambiguous config', () => {
+describe('fail-closed — no config, ambiguous config', () => {
   it('throws when zero config files exist, naming all three candidate filenames', () => {
     // Silent defaults are forbidden — a missing config must fail loud, and the message
     // must name all three candidates or a user cannot tell which filenames are searched.
@@ -113,7 +113,7 @@ describe('§5.1 fail-closed — no config, ambiguous config', () => {
   });
 });
 
-describe('§5.1 parse failure — surfaced with file path', () => {
+describe('parse failure — surfaced with file path', () => {
   it('throws on a YAML syntax error, including the file path in the message', () => {
     // A parse failure must name the offending file so the author can find it — never a
     // generic message, and never one that omits the path.
@@ -152,7 +152,7 @@ describe('§5.1 parse failure — surfaced with file path', () => {
   });
 });
 
-describe('§5.1 validation delegation — ConfigValidationError with file context', () => {
+describe('validation delegation — ConfigValidationError with file context', () => {
   it('propagates ConfigValidationError with the file path when the config has an unknown top-level key', () => {
     // The loader owns no structural validation — it delegates to core defineConfig and
     // re-throws WITH file-path context. Rethrowing a plain Error would lose the
@@ -181,7 +181,7 @@ describe('§5.1 validation delegation — ConfigValidationError with file contex
   });
 });
 
-describe('§5.1 self-protection — configPath auto-attached to protectedPaths', () => {
+describe('self-protection — configPath auto-attached to protectedPaths', () => {
   it('appends the configPath to protectedPaths when the user did not list it', () => {
     // The discovered config file is itself part of the protection surface, and the loader
     // is the only place that can guarantee it. Here the user listed a different path, so

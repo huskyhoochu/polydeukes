@@ -24,7 +24,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('CONFIG-06 §4.4 translateExitCode — advise level (pure)', () => {
+describe('translateExitCode — advise level (pure)', () => {
   it('body exit 0 (uphold) stays exit 0 · passed under advise', () => {
     // Advise does not touch the uphold cell.
     expect(translateExitCode(0, 'advise')).toEqual({ exitCode: 0, event: 'passed' });
@@ -61,7 +61,7 @@ describe('CONFIG-06 §4.4 translateExitCode — advise level (pure)', () => {
   });
 });
 
-describe('CONFIG-06 §4.4 runCovenant — enforce threaded to the wrapper', () => {
+describe('runCovenant — enforce threaded to the wrapper', () => {
   it('a body exiting 1 under enforce advise yields exit 0 plus one advised telemetry line', async () => {
     // The spec-level enforce must reach translateExitCode, not merely be accepted on the
     // spec: a real break passes as exit 0 AND lands the distinct advised event.
@@ -79,7 +79,7 @@ describe('CONFIG-06 §4.4 runCovenant — enforce threaded to the wrapper', () =
   });
 });
 
-describe('CONFIG-06 §4.5 dispatchCovenants — enforce threading + results event field', () => {
+describe('dispatchCovenants — enforce threading + results event field', () => {
   it('a matched exit-1 body under enforce advise yields overall exit 0 and a results entry with event advised', async () => {
     // The dispatcher threads enforce into every runCovenant call and surfaces the
     // per-registration event on results.

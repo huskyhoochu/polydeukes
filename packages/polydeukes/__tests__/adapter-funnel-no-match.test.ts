@@ -57,7 +57,7 @@ function rows(): [string, string][] {
   return readRecords(telemetryPath).records.map((record) => [record.event, record.label]);
 }
 
-describe('DISPATCH-01 AC-8 — a no-match call leaves no dispatcher row through the real funnel', () => {
+describe('a no-match call leaves no dispatcher row through the real funnel', () => {
   it('session: a Write touching nothing protected leaves ONLY the adapter supplement (zero dispatcher rows)', async () => {
     // No-match is no-record at the dispatch boundary.
     const result = await runFunnel('notes/ordinary.txt');

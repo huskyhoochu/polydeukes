@@ -35,7 +35,7 @@ function inputWithCall(call: CovenantInput['toolCalls'][number]): CovenantInput 
 // A mutating call without its own `fileChange` is judged by the arbitrary-depth args mention
 // traversal — the permanent conservative fallback.
 
-describe('judgeSelfModification — evidence-free fallback (COVENANT-03 §5.1 / COVENANT-09 §4.1 ②)', () => {
+describe('judgeSelfModification — evidence-free fallback', () => {
   it('a mutating tool call mentioning the protected path in a top-level arg breaks, with reason containing the tool name and path', () => {
     // The reason must carry the tool name and path, or the break is undiagnosable.
     const input = inputWithToolCall('Edit', { file_path: PROTECTED });
@@ -147,7 +147,7 @@ describe('judgeSelfModification — evidence-free fallback (COVENANT-03 §5.1 / 
 // would trip over, and the true-self-mod cases make their evidence the only protected signal in
 // the input. A body of `content: 'x'` would leave both branches indistinguishable.
 
-describe('judgeSelfModification — AC1 mention-target distinction (COVENANT-09 §5.1)', () => {
+describe('judgeSelfModification — mention-target distinction', () => {
   it('a Write creating a non-protected doc whose content quotes the protected path verbatim is upheld when the call carries create evidence', () => {
     // The false-positive class: consulting the args mention traversal for a mutating call
     // that carries its own fileChange blocks a document merely quoting the protected path.
@@ -207,7 +207,7 @@ describe('judgeSelfModification — AC1 mention-target distinction (COVENANT-09 
   });
 });
 
-describe('judgeSelfModification — AC2 true self-mod unchanged (COVENANT-09 §5.2)', () => {
+describe('judgeSelfModification — true self-mod unchanged', () => {
   it('evidence naming an ABSOLUTE protected descendant breaks even though the args mention no protected path, with the tool name and change path in the reason', () => {
     // The fixture the fallback cannot rescue: the args name only a non-protected path, so a
     // judge that drops the evidence branch upholds and fails open on true self-mod. The change
@@ -283,7 +283,7 @@ describe('judgeSelfModification — AC2 true self-mod unchanged (COVENANT-09 §5
   });
 });
 
-describe('judgeSelfModification — AC3 evidence-free fallback conservatism (COVENANT-09 §5.3)', () => {
+describe('judgeSelfModification — evidence-free fallback conservatism', () => {
   it('sibling-absolution regression pin: one call carrying non-protected evidence never absolves an evidence-free sibling mentioning a protected path', () => {
     // A flat input-level evidence array lets any call's evidence stand in for an unproven
     // sibling. Evidence nests per call so that this is structurally impossible; gating the
@@ -398,7 +398,7 @@ describe('judgeSelfModification — AC3 evidence-free fallback conservatism (COV
   });
 });
 
-describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5.4)', () => {
+describe('judgeSelfModification — axis boundary unchanged', () => {
   it('a non-mutating Bash-shaped call is upheld even when it carries evidence naming the protected path', () => {
     // The Bash axis belongs to shell-mod. Hoisting the evidence comparison out of the
     // per-call mutating-tool check into an input-level scan breaks on every input carrying
@@ -418,7 +418,7 @@ describe('judgeSelfModification — AC4 axis boundary unchanged (COVENANT-09 §5
   });
 });
 
-describe('self-mod E2E through dispatchCovenants (COVENANT-03 §5.3)', () => {
+describe('self-mod E2E through dispatchCovenants', () => {
   let dir: string;
   let telemetryPath: string;
   const TEST_VAR = 'PDKS_TEST_SELF_MOD_E2E_HATCH_VAR';

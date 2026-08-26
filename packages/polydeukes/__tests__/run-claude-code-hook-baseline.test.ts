@@ -85,7 +85,7 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-describe('COVENANT-14 §3.4 baseline re-establishment', () => {
+describe('baseline re-establishment', () => {
   it('first call re-establishes an absent baseline: one unattributed row (subject = the baseline file), judgment untouched', async () => {
     // Absence is an event, not a protected path: putting the baseline file on the
     // protection list would be an infinite regress, so instead its deletion stays legible
@@ -124,7 +124,7 @@ describe('COVENANT-14 §3.4 baseline re-establishment', () => {
   }, 30_000);
 });
 
-describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattributed rows', () => {
+describe('detection — out-of-band changes surface as unattributed rows', () => {
   it('an out-of-band edit under a protected entry leaves one row, subject = the ENTRY, before the judgment rows', async () => {
     // The mechanism itself: a write no tool call declared — an interpreter, a test runner
     // child, an out-of-repo script — leaves no row, and the state comparison is what makes
@@ -184,7 +184,7 @@ describe('COVENANT-14 §3.1 detection — out-of-band changes surface as unattri
   }, 30_000);
 });
 
-describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', () => {
+describe('attribution — a judged change raises no alarm', () => {
   it('the residue a blocked call left raises no alarm on the call after it', async () => {
     // A block stops the call, not what it already wrote: an Edit failing partway leaves
     // its earlier writes on disk, present before the judgment that refuses the rest. The
@@ -288,7 +288,7 @@ describe('COVENANT-14 §3.2 attribution — a judged change raises no alarm', ()
   }, 30_000);
 });
 
-describe('COVENANT-14 §3.3 noise defence — a quiet session stays quiet', () => {
+describe('noise defence — a quiet session stays quiet', () => {
   it('10 consecutive ordinary calls leave zero unattributed rows beyond the first-run one', async () => {
     // The telemetry log and the baseline file live side by side in .polydeukes/ and BOTH
     // change on every call — the log gains this call's rows, the baseline is rewritten at
@@ -311,7 +311,7 @@ describe('COVENANT-14 §3.3 noise defence — a quiet session stays quiet', () =
   }, 120_000);
 });
 
-describe('COVENANT-14 §3.4 fail-open — a comparison failure never touches the judgment', () => {
+describe('fail-open — a comparison failure never touches the judgment', () => {
   it('an unreadable protected entry leaves the exit code and judgment rows of a comparison-free run', async () => {
     // An unreadable entry is absorbed by the walk rather than thrown: absence is a state,
     // so a permission-denied entry hashes like a vanished one. A walk that propagated

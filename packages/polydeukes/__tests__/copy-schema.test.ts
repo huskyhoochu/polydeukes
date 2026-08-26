@@ -73,7 +73,7 @@ afterEach(() => {
   }
 });
 
-describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist', () => {
+describe('the umbrella build copies the core schema into dist', () => {
   it('writes dist/schema/polydeukes.schema.json byte-identical to the core source', () => {
     // A copy that transforms what passes through it — a JSON.parse/stringify round trip,
     // an appended banner — still produces a file at the right path, so an existence check
@@ -112,7 +112,7 @@ describe('DIST-05 AC-1 — the umbrella build copies the core schema into dist',
   });
 });
 
-describe('DIST-05 AC-7 — an absent source schema fails the build', () => {
+describe('an absent source schema fails the build', () => {
   it('exits non-zero when the core schema is missing', () => {
     // Fail-open is the defect class here: a copy wrapped in an existsSync check, or a
     // try/catch swallowing ENOENT, exits 0, the build goes green, and the tarball ships

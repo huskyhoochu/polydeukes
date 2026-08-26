@@ -108,7 +108,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, recorded', () => {
+describe('runClaudeCodeHook — every failure resolves to exit 2, recorded', () => {
   it('resolves { exitCode: 2 } and records ONE hook blocked row when no config file exists', async () => {
     // loadConfig's throw escaping as a rejection would still exit 2 through the delegator
     // but lose the row; translating the missing config to exit 0 would leave an unjudged
@@ -218,7 +218,7 @@ describe('DIST-01 §3-c runClaudeCodeHook — every failure resolves to exit 2, 
   });
 });
 
-describe('DIST-01 §3-e parity shape — the assembled session judgment', () => {
+describe('parity shape — the assembled session judgment', () => {
   it('passes (exit 0) a Write payload touching no protected path, leaving one adapter passed row', async () => {
     // The over-blocking half carries the same weight as the block: a registration set
     // matching every path sends every ordinary edit to the valve. The row is the funnel
@@ -267,7 +267,7 @@ describe('DIST-01 §3-e parity shape — the assembled session judgment', () => 
 // REAL umbrella location, so a fixture tree cannot redirect that resolution and the
 // covenantDist seam is where these cases live.
 
-describe('DIST-01 / CONFIG-06b — a registration this run never composes costs it nothing', () => {
+describe('a registration this run never composes costs it nothing', () => {
   it('a payload carrying NO transcript composes no transcript-mod registration (exit 0)', async () => {
     // The existence proof happens where the path is PRODUCED: no transcript means no
     // transcript-mod registration, so its body path is never composed and its absence

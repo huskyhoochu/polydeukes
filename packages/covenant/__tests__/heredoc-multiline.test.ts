@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { extractMutations, tokenizeCommandLine } from '../src/bash-line.js';
 import { redirectWriteRule } from '../src/mutation-rules.js';
 
-describe('§5.1 newline as command separator', () => {
+describe('newline as command separator', () => {
   it('splits "echo a\\necho b > f" into two commands with only {path: f}', () => {
     // Folding the newline into a word glues "a\necho" together, losing the second command
     // and its write redirect.
@@ -51,7 +51,7 @@ describe('§5.1 newline as command separator', () => {
   });
 });
 
-describe('§5.1 heredoc recognition and body consumption', () => {
+describe('heredoc recognition and body consumption', () => {
   it('tokenizes "cat > f <<EOF\\nhello\\nEOF" to one redirect-write mutation on f', () => {
     // Read naively, the second "<" of "<<EOF" scans an empty redirect target and fails the
     // whole line closed.
@@ -146,7 +146,7 @@ describe('§5.1 heredoc recognition and body consumption', () => {
   });
 });
 
-describe('§5.3 fail-closed no-throw fuzz cases', () => {
+describe('fail-closed no-throw fuzz cases', () => {
   it('never throws on a lone "<<" heredoc operator with no delimiter', () => {
     expect(() => extractMutations('<<', [redirectWriteRule])).not.toThrow();
   });

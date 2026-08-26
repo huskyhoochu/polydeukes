@@ -53,7 +53,7 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
 
 const readNotebook = readerFor(NOTEBOOK_PATH, notebookJson);
 
-describe('collectFileChanges — NotebookEdit cell evidence (COVENANT-10b §2-d)', () => {
+describe('collectFileChanges — NotebookEdit cell evidence', () => {
   it('replace yields modify evidence with the target cell source as pre and new_source as post', () => {
     // Catches whole-notebook JSON standing in for the cell pre, and a lookup pinned to cells[0].
     const change = collectFileChanges(
@@ -146,7 +146,7 @@ describe('collectFileChanges — NotebookEdit cell evidence (COVENANT-10b §2-d)
 // Omission dispositions: evidence is omitted, never raised as an error — the mention
 // fallback owns the call.
 
-describe('collectFileChanges — NotebookEdit omission dispositions (COVENANT-10b §2-d)', () => {
+describe('collectFileChanges — NotebookEdit omission dispositions', () => {
   it('yields nothing in any mode when the notebook does not exist', () => {
     // Absence must omit evidence, never fabricate a create — the real tool rejects the edit.
     const reader = () => null;
@@ -215,7 +215,7 @@ describe('collectFileChanges — NotebookEdit omission dispositions (COVENANT-10
   });
 });
 
-describe('collectFileChanges — NotebookEdit malformed forms (COVENANT-10b gap round)', () => {
+describe('collectFileChanges — NotebookEdit malformed forms', () => {
   /** Parseable notebooks whose target cell carries a non-string source. */
   const numberSourceJson = JSON.stringify({
     cells: [{ id: 'cell-one', cell_type: 'code', source: 42, metadata: {} }],

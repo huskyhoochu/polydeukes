@@ -6,7 +6,7 @@ import { captureBaseline, diffBaselines, judgeAddedViolations } from '../src/del
 /** Matches a hardcoded 6-digit hex colour literal, e.g. `#ffffff`. */
 const HEX = /#[0-9a-f]{6}/g;
 
-describe('judgeAddedViolations — debt amnesty (PRD §5.1)', () => {
+describe('judgeAddedViolations — debt amnesty', () => {
   it('upholds when pre already has two matches and the edit touches neither', () => {
     // Pre-existing debt must be forgiven, or every edit to a debt-bearing file blocks:
     // judgment is on the delta, never on presence of any match in post.
@@ -25,7 +25,7 @@ describe('judgeAddedViolations — debt amnesty (PRD §5.1)', () => {
   });
 });
 
-describe('judgeAddedViolations — new violation (PRD §5.2)', () => {
+describe('judgeAddedViolations — new violation', () => {
   it('blocks when the edit adds one new match and names it in the reason', () => {
     // The reason must cite the newly matched string — a break with no evidence names
     // nothing the reader can act on.
@@ -52,7 +52,7 @@ describe('judgeAddedViolations — new violation (PRD §5.2)', () => {
   });
 });
 
-describe('judgeAddedViolations — swap detection (PRD §5.3)', () => {
+describe('judgeAddedViolations — swap detection', () => {
   it('blocks when one match is replaced by a different match at equal total count', () => {
     // A total-count comparison passes this (one in, one out). Only the per-string multiset
     // makes #abcdef an added instance, so counting alone collapses swap detection.
@@ -78,7 +78,7 @@ describe('judgeAddedViolations — swap detection (PRD §5.3)', () => {
   });
 });
 
-describe('judgeAddedViolations — new file (PRD §5.4)', () => {
+describe('judgeAddedViolations — new file', () => {
   it('blocks when pre is null and post has one match (empty baseline, all post is added)', () => {
     // File creation has no debt to forgive — every post match is added. Coercing a null pre
     // to an equal-to-post baseline forgives brand-new violations in a created file.
@@ -98,7 +98,7 @@ describe('judgeAddedViolations — new file (PRD §5.4)', () => {
   });
 });
 
-describe('judgeAddedViolations — deletion only (PRD §5.5)', () => {
+describe('judgeAddedViolations — deletion only', () => {
   it('upholds when a match is removed and nothing is added', () => {
     // Judgment exposes the added direction only, so removing a violation never blocks —
     // cleanup is always allowed. A symmetric-difference emptiness test would block it.
@@ -108,7 +108,7 @@ describe('judgeAddedViolations — deletion only (PRD §5.5)', () => {
   });
 });
 
-describe('captureBaseline — multiset extraction (PRD §5.6)', () => {
+describe('captureBaseline — multiset extraction', () => {
   it('returns an empty baseline for null content', () => {
     // Null content (no file) is an empty multiset. Stringifying null to "null" happens to
     // contain no hex, but breaks the pre=null contract for other patterns.
@@ -143,7 +143,7 @@ describe('captureBaseline — multiset extraction (PRD §5.6)', () => {
   });
 });
 
-describe('diffBaselines — symmetric difference (PRD §5.6)', () => {
+describe('diffBaselines — symmetric difference', () => {
   it('computes added and removed with intersection cancellation', () => {
     // Shared entries cancel; only the surplus in each direction remains. Dropping the
     // min-cancellation leaks the shared entry into both sides.
@@ -177,7 +177,7 @@ describe('diffBaselines — symmetric difference (PRD §5.6)', () => {
   });
 });
 
-describe('captureBaseline / judgeAddedViolations — determinism (PRD §5.7)', () => {
+describe('captureBaseline / judgeAddedViolations — determinism', () => {
   it('returns identical baselines when captureBaseline is called twice with the same args', () => {
     // Matching against the caller's RegExp directly advances its lastIndex between calls,
     // so the second call starts mid-string and undercounts. The layer clones instead.

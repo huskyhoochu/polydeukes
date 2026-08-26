@@ -41,7 +41,7 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   throw new Error('defineConfig should have thrown');
 }
 
-describe('defineConfig disciplines — draft acceptance and resolution split (CONFIG-10 AC-1)', () => {
+describe('defineConfig disciplines — draft acceptance and resolution split', () => {
   it('accepts { id, why, draft: true } and carries it verbatim into drafts', () => {
     // The promotion ladder's first rung: the entry must survive verbatim, not be rewritten.
     const resolved = defineConfig(withDisciplines([draftEntry])) as ResolvedWithDrafts;
@@ -94,7 +94,7 @@ describe('defineConfig disciplines — draft acceptance and resolution split (CO
 
 // Every rejection must name the offending entry's id, so the author can find it.
 
-describe('defineConfig disciplines — draft rejections (CONFIG-10 AC-2)', () => {
+describe('defineConfig disciplines — draft rejections', () => {
   it('rejects draft: true with why absent, naming the entry', () => {
     // A draft's only body is its prose, so why is required here even though the judged
     // branch keeps it optional — without it the entry says nothing about the practice.

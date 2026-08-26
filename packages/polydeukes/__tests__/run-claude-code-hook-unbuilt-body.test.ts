@@ -98,7 +98,7 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-describe('DIST-01 / CONFIG-06b — an injected dist judges the session surface normally', () => {
+describe('an injected dist judges the session surface normally', () => {
   it('the COMPLETE mirror behaves normally (exit 0, one adapter passed row)', async () => {
     // The premise the cases below rest on: a broken mirror, or a seam that rejects any
     // injected covenantDist, would fail closed at the SAME exit 2 under the SAME label

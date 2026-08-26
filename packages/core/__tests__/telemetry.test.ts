@@ -32,7 +32,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('§5.1 record', () => {
+describe('record', () => {
   it('a single appendRecord() call writes exactly one tab-separated 4-field line ending in a newline', () => {
     const result = appendRecord(logPath, baseRecord);
 
@@ -88,7 +88,7 @@ describe('§5.1 record', () => {
   });
 });
 
-describe('§5.2 integrity', () => {
+describe('integrity', () => {
   it('10 concurrent appends yield exactly 10 lines, each valid under parseRecordLine() (no interleaving)', async () => {
     // Atomicity rests on 1 record = 1 write call, using POSIX O_APPEND single-write
     // semantics. Promise.all over microtasks would NOT catch a real multi-process race;
@@ -139,7 +139,7 @@ describe('§5.2 integrity', () => {
   });
 });
 
-describe('§5.3 gain', () => {
+describe('gain', () => {
   // A fixed distribution over 100 records so per-label counts can be asserted exactly
   // rather than "> 0": passed 50 + blocked 30 + witnessed 20. The zero-count events carry
   // no records but must stay — aggregateGain reports every event in the vocabulary, so

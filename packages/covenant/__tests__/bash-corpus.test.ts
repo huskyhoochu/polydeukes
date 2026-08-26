@@ -121,7 +121,7 @@ const CORPUS_LINES: ReadonlyArray<{
   },
 ];
 
-describe('COVENANT-18 §2-e axis ① — every corpus construct tokenizes cleanly', () => {
+describe('every corpus construct tokenizes cleanly', () => {
   it('leaves no unread span for any of the twelve constructs', () => {
     // The count is asserted so a truncated ledger fails instead of shrinking silently.
     expect(CORPUS_LINES).toHaveLength(12);
@@ -141,7 +141,7 @@ describe('COVENANT-18 §2-e axis ① — every corpus construct tokenizes cleanl
 /** The six operand spellings measured to pass. Bash accepts every one (5.3.9). */
 const OPERAND_SPELLINGS = [':-', ':=', ':+', ':?', '-', '/x/'] as const;
 
-describe('COVENANT-07e tripwire — a protected path as a parameter-expansion operand', () => {
+describe('tripwire — a protected path as a parameter-expansion operand', () => {
   it('lets every operand spelling through today, while the sibling $VAR-prefixed path blocks', () => {
     // TRIPWIRE — this pins a known open defect, not a decided behavior.
     //

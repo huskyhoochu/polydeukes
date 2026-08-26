@@ -43,7 +43,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('ttlWitness — verdict (PRD §5.1)', () => {
+describe('ttlWitness — verdict', () => {
   it('bypasses a token-bearing user message that is within the TTL window', () => {
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([
@@ -107,7 +107,7 @@ describe('ttlWitness — verdict (PRD §5.1)', () => {
 // The token invokes only when the FIRST LINE of the message, trimmed, equals it exactly.
 // Every case below merely MENTIONS the token and must stay false.
 
-describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
+describe('ttlWitness — mention exclusion', () => {
   it('does not witness when the token sits mid-sentence in a question about the witness', () => {
     // Asking ABOUT the valve must not open it, which substring matching cannot distinguish.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
@@ -127,7 +127,7 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
-  it('does not witness when the token is wrapped in backticks (PRD §4.3)', () => {
+  it('does not witness when the token is wrapped in backticks', () => {
     // Code formatting signals mention, not intent. Exact match excludes it with no
     // stripping code at all, so any normalisation that peels backticks reopens it.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
@@ -145,7 +145,7 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
     expect(predicate(inputWithArgs({}), transcript)).toBe(false);
   });
 
-  it('does not witness when a leading blank line precedes the token (PRD §4.1)', () => {
+  it('does not witness when a leading blank line precedes the token', () => {
     // The token IS the start of the utterance: forgiving a leading blank line reintroduces
     // the "how many lines do we search" boundary the exact rule removes.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
@@ -156,7 +156,7 @@ describe('ttlWitness — mention exclusion (COVENANT-15 §5.1)', () => {
 
 // The narrowing above must not break real invocations.
 
-describe('ttlWitness — invocation preserved (COVENANT-15 §5.2)', () => {
+describe('ttlWitness — invocation preserved', () => {
   it('witnesses when the whole utterance is the bare token', () => {
     // The canonical invocation form must keep working, or the narrowing has produced a
     // dead valve.
@@ -192,7 +192,7 @@ describe('ttlWitness — invocation preserved (COVENANT-15 §5.2)', () => {
   });
 });
 
-describe('ttlWitness — layer boundary (PRD §5.2)', () => {
+describe('ttlWitness — layer boundary', () => {
   it('ignores a token planted outside user messages (invocations and toolCalls args)', () => {
     // The token may ride on user messages only. Here it lives in an invocation kind and in
     // the tool-call args, so a predicate scanning invocations or the input itself would let
@@ -209,7 +209,7 @@ describe('ttlWitness — layer boundary (PRD §5.2)', () => {
   });
 });
 
-describe('ttlWitness — factory validation (PRD §5.3)', () => {
+describe('ttlWitness — factory validation', () => {
   it('throws when the token is empty or whitespace-only', () => {
     // A blank token matches every message, witnessing everything.
     expect(() => ttlWitness({ token: '', ttlMs: 5000, now: fakeNow })).toThrow();
@@ -258,7 +258,7 @@ describe('ttlWitness — factory validation (PRD §5.3)', () => {
   });
 });
 
-describe('ttlWitness — dispatcher integration (PRD §5.4)', () => {
+describe('ttlWitness — dispatcher integration', () => {
   it('a fresh-token transcript opens the valve after the verdict and records exactly one witnessed event', async () => {
     // Wired as the witness, a valid token relaxes the body's break and measures
     // `witnessed`. The marker file proves the judge still ran.

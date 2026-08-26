@@ -60,7 +60,7 @@ function spawnWithClosedReader(...args: string[]): Promise<ClosedReaderResult> {
   });
 }
 
-describe('§5 AC-7 pdks docs / explain — a reader that closes after one byte', () => {
+describe('pdks docs / explain — a reader that closes after one byte', () => {
   it.each([
     ['docs', ['docs']],
     ['explain', ['explain']],

@@ -7,7 +7,7 @@ import { inputWithArgs } from './helpers.js';
 
 const PROTECTED = 'core/src';
 
-describe('pathMatchesProtected — ancestor / descendant / equal (PRD §5.1)', () => {
+describe('pathMatchesProtected — ancestor / descendant / equal', () => {
   it('an ancestor of the protected path matches (parent directory)', () => {
     // Without the ancestor relation, `rm -rf packages/core` destroys the protected path by
     // operating on its parent and passes.
@@ -26,7 +26,7 @@ describe('pathMatchesProtected — ancestor / descendant / equal (PRD §5.1)', (
   });
 });
 
-describe('pathMatchesProtected — segment-boundary prefix trap (PRD §5.1)', () => {
+describe('pathMatchesProtected — segment-boundary prefix trap', () => {
   it('a sibling sharing a path-segment prefix does NOT match (core/src-generated)', () => {
     // Substring semantics (`value.includes(path)`) report `core/src-generated` as a match.
     expect(pathMatchesProtected('core/src-generated', PROTECTED)).toBe(false);
@@ -69,7 +69,7 @@ describe('pathMatchesProtected — ancestor is root-anchored, not any suffix (re
   });
 });
 
-describe('pathMatchesProtected — normalization (PRD §4.1 segment normalize)', () => {
+describe('pathMatchesProtected — segment normalization', () => {
   it('a leading "./" and trailing "/" on the candidate are normalized before matching', () => {
     // Unnormalized, `./core/src/` splits into segments with a leading `.` and an empty
     // trailing one and fails to equal `core/src`.
@@ -83,7 +83,7 @@ describe('pathMatchesProtected — normalization (PRD §4.1 segment normalize)',
   });
 });
 
-describe('mentionsPath — recursive traversal with segment semantics (PRD §5.1)', () => {
+describe('mentionsPath — recursive traversal with segment semantics', () => {
   it('does NOT match a sibling sharing a segment prefix nested inside args (src-gen)', () => {
     // Substring semantics inside the traversal make `packages/core/src-gen/x.ts` hit
     // `packages/core/src` and produce a false block.

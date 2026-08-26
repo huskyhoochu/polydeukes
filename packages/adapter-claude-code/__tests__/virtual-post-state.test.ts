@@ -38,7 +38,7 @@ function multiEditPayload(filePath: string, edits: unknown[]) {
   };
 }
 
-describe('§4.1 per-tool post-state compute', () => {
+describe('per-tool post-state compute', () => {
   it('Write returns content verbatim and preserves file_path, even with preState null', () => {
     // Write must be independent of preState — it overwrites whatever was there.
     const result = virtualPostState(writePayload, null);
@@ -115,7 +115,7 @@ describe('§4.1 per-tool post-state compute', () => {
   });
 });
 
-describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
+describe('MultiEdit file-creation convention (real-tool parity)', () => {
   it('MultiEdit with preState null and an empty first old_string creates the file', () => {
     // The real MultiEdit tool accepts this shape as file creation: the first edit's
     // empty old_string seeds the content, subsequent edits apply sequentially. A blanket
@@ -154,7 +154,7 @@ describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
   });
 });
 
-describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, never throws)', () => {
+describe('fail-closed axis (security boundary — cannot classify = fail, never throws)', () => {
   it('non-object payloads fail closed without throwing', () => {
     // A hostile payload must never reach ok:true, and a throw escaping the function
     // would break the fail-closed guarantee just as surely.
@@ -273,7 +273,7 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
   });
 });
 
-describe('§4.3 core sufficiency — post-state alone judges a protectedPaths covenant', () => {
+describe('core sufficiency — post-state alone judges a protectedPaths covenant', () => {
   // This test covenant imports ONLY @polydeukes/core — never the adapter's internals or
   // Claude vocabulary — so it proves all judgment-relevant evidence already lives inside
   // the { filePath, content } output. normalizeProtectedPaths only normalizes path strings

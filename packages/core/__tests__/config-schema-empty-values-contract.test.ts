@@ -29,7 +29,7 @@ function defineConfigAccepts(config: unknown): boolean {
   }
 }
 
-describe('AC-5 schema ⟺ defineConfig equivalence — empty-value fixtures (INVALID)', () => {
+describe('schema ⟺ defineConfig equivalence — empty-value fixtures (INVALID)', () => {
   it.each(
     INVALID_CONFIGS.map((config, index) => [index, config] as const),
   )('invalid fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {

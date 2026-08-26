@@ -25,7 +25,7 @@ const RECOVERY_COMMAND = 'pnpm build';
 const PROTECTED_ENTRY = 'secret.txt';
 const SESSION_PROTECTED_ENTRY = 'gate';
 
-describe('DISPATCH-01 AC-3 — commit surface: a module-gutted covenant dist fails closed', () => {
+describe('commit surface: a module-gutted covenant dist fails closed', () => {
   let repo: CheckRepo;
 
   beforeEach(() => {
@@ -102,7 +102,7 @@ describe('DISPATCH-01 AC-3 — commit surface: a module-gutted covenant dist fai
   });
 });
 
-describe('DISPATCH-01 AC-3 — session surface: a module-gutted covenant dist fails closed', () => {
+describe('session surface: a module-gutted covenant dist fails closed', () => {
   let repoRoot: string;
   let telemetryPath: string;
 

@@ -34,7 +34,7 @@ const taskFixture: ClaudePreToolUsePayload = {
   tool_input: { subagent_type: 'tdd-writer', prompt: 'write failing tests' },
 };
 
-describe('§5.1 fixture up-translate', () => {
+describe('up-translate builds the IR from payload fixtures', () => {
   it('translates an Edit fixture into a toolCall carrying tool_input as args', () => {
     const result = translateEvent(editFixture);
 
@@ -89,7 +89,7 @@ describe('§5.1 fixture up-translate', () => {
   });
 });
 
-describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fail)', () => {
+describe('fail-closed axis (security boundary — cannot classify = fail)', () => {
   it('translateEvent never throws and fails closed on non-object payloads', () => {
     // A hostile payload must never reach ok:true, and a throw escaping the function
     // would break the fail-closed guarantee just as surely.
@@ -152,7 +152,7 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
   });
 });
 
-describe('§5.3 IR sufficiency — core judges from CovenantInput alone (PRD §4.3)', () => {
+describe('IR sufficiency — core judges from CovenantInput alone', () => {
   // This test covenant imports ONLY core types — never the adapter's translate functions
   // or Claude Code vocabulary — so it proves all judgment-relevant evidence already lives
   // inside the IR that buildCovenantInput produces.

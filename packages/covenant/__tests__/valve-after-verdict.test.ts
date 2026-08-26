@@ -42,7 +42,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('runCovenant — valve consulted only after a blocked verdict (COVENANT-17 §4.3)', () => {
+describe('runCovenant — valve consulted only after a blocked verdict', () => {
   it('a body exiting 0 with a valve present resolves passed without consulting the valve', async () => {
     // A passing body has no blocked translation, so the valve is never asked. Consulted on
     // every outcome, it would turn every clean call into a `witnessed` row.
@@ -187,7 +187,7 @@ function markerTranscript(): CanonicalTranscript {
   };
 }
 
-describe('dispatchCovenants — valve moves behind the verdict (COVENANT-17 §4.3/§4.4)', () => {
+describe('dispatchCovenants — valve moves behind the verdict', () => {
   it('a matched registration whose body upholds never consults the witness and records passed (F6)', async () => {
     // Evaluated at routing time instead, the witness fires for every MATCHED registration,
     // so a clean commit touching an observed scope records `witnessed` with no judgment

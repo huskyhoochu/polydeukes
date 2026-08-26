@@ -40,7 +40,7 @@ function stageSoftBreak(): void {
   git('add', 'lib/a.ts');
 }
 
-describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surface', () => {
+describe('covenant check — an advise entry under a block surface', () => {
   it('passes (exit 0) and records one advised row under the entry id', async () => {
     // The advised row must carry the entry's own id, not the dispatcher label.
     stageSoftBreak();
@@ -98,7 +98,7 @@ describe('CONFIG-11 AC-5 covenant check — an advise entry under a block surfac
 // The two commit-surface combinations the block above does not reach: an absent level
 // under a block surface, and an explicit block under an advise surface. The stage helper
 // mirrors stageSoftBreak with the entry as the only variable.
-describe('POSTURE-01 AC-4 covenant check — the entry default is advise, explicit block is the promotion', () => {
+describe('covenant check — the entry default is advise, explicit block is the promotion', () => {
   function stageBreakUnder(entry: Record<string, unknown>): void {
     writeConfig({ disciplines: [{ forbid: { added: 'TODO' }, in: 'lib/**/*.ts', ...entry }] });
     write('lib/a.ts', 'export const x = 1;\n');

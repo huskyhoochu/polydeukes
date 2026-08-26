@@ -64,7 +64,7 @@ function transcriptSpec(): TranscriptModificationSpec {
   };
 }
 
-describe('judgeShellModification — glued metachar mentions break (COVENANT-07d §2-a)', () => {
+describe('judgeShellModification — glued metachar mentions break', () => {
   it('a ">"-glued write into a protected descendant breaks', () => {
     // `hi>…/dist/x.js` hides the descendant target inside one candidate, which is how a forge
     // into the judge executable once rode an unclosed quote through. The write now reaches the
@@ -94,7 +94,7 @@ describe('judgeShellModification — glued metachar mentions break (COVENANT-07d
   });
 });
 
-describe('judgeTranscriptModification — glued spellings break (COVENANT-07d §2-a)', () => {
+describe('judgeTranscriptModification — glued spellings break', () => {
   it('the "$HOME" and "~" spellings break when ";"-glued (all three spellings close)', () => {
     // All three spellings must block: comparing only the absolute one leaves the
     // home-relative forgeries open.
@@ -119,7 +119,7 @@ describe('judgeTranscriptModification — glued spellings break (COVENANT-07d §
   });
 });
 
-describe('untokenizable fallback — metachar matrix, both directions (COVENANT-07d §3)', () => {
+describe('untokenizable fallback — metachar matrix, both directions', () => {
   it('each metachar glued AFTER the protected path breaks (shell axis)', () => {
     // Each of the five metacharacters is its own spelling of the glue, and one missed as a
     // boundary reopens that spelling. The path stands in the read half, so the destroy is
@@ -167,7 +167,7 @@ describe('untokenizable fallback — metachar matrix, both directions (COVENANT-
   });
 });
 
-describe('untokenizable fallback — decomposition contract properties (COVENANT-07d §2-c)', () => {
+describe('untokenizable fallback — decomposition contract properties', () => {
   it('a metachar inside a protected segment still breaks (the raw line stays a candidate)', () => {
     // Splitting at '&' shatters the `a&b` segment, so only the whole candidate kept alongside
     // the fragments matches — a fragments-only decomposition loses this path. The fixture is
@@ -217,7 +217,7 @@ describe('untokenizable fallback — decomposition contract properties (COVENANT
   });
 });
 
-describe('untokenizable fallback — escape-glued spellings break (COVENANT-07d review)', () => {
+describe('untokenizable fallback — escape-glued spellings break', () => {
   // A backslash line continuation is erased by the shell before execution, so a path carrying
   // one is a real target — and the line it appears in is valid bash, not a typo.
   const CONTINUED = `rm -rf ${PROTECTED_DIST}\\\n;cat <<$D\nhi\n$D`;
@@ -252,7 +252,7 @@ describe('untokenizable fallback — escape-glued spellings break (COVENANT-07d 
   });
 });
 
-describe('untokenizable fallback — the ancestor direction widens with the split (COVENANT-07d review)', () => {
+describe('untokenizable fallback — the ancestor direction widens with the split', () => {
   it('a bare ancestor segment exposed by a fragment boundary blocks', () => {
     // The fragment boundary exposes a bare `packages`, which the match accepts as a
     // root-anchored ancestor. Narrowing that would also drop the glued ancestor destroy below,
@@ -285,7 +285,7 @@ describe('untokenizable fallback — the ancestor direction widens with the spli
   });
 });
 
-describe('untokenizable fallback — existing blocks stay blocked (COVENANT-07d §2-a pins)', () => {
+describe('untokenizable fallback — existing blocks stay blocked', () => {
   it('whitespace-separated mentions in untokenizable lines still break via the fallback', () => {
     // The spaced spellings must keep their verdict through every change to the layer that
     // answers them. That layer is the precise ladder, so the precise vocabulary is asserted:
@@ -321,7 +321,7 @@ describe('untokenizable fallback — existing blocks stay blocked (COVENANT-07d 
   });
 });
 
-describe('untokenizable fallback — over-block regression zero (COVENANT-07d §3)', () => {
+describe('untokenizable fallback — over-block regression zero', () => {
   it('a tokenizable allowlisted read under the protected dist upholds', () => {
     // Applying the wider decomposition to TOKENIZABLE lines costs `cat` its allowlist
     // absolution, and every read of dist then needs a witness.
@@ -369,7 +369,7 @@ describe('untokenizable fallback — over-block regression zero (COVENANT-07d §
   });
 });
 
-describe('untokenizable fallback — conservative widening (COVENANT-07d §2-c)', () => {
+describe('untokenizable fallback — conservative widening', () => {
   it('a URL embedding the protected run breaks once "&"-glued in an untokenizable line', () => {
     // The other end of the URL axis: the "&" fragment ends exactly on the protected segment
     // run, so the offset-free mention matches. The union decomposition accepts that

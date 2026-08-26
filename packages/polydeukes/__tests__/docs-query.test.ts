@@ -43,7 +43,7 @@ function md(...rows: string[]): string {
   return `${rows.join('\n')}\n`;
 }
 
-describe('DOCS-02 §3-c TOPICS — the finite query domain', () => {
+describe('TOPICS — the finite query domain', () => {
   it('pins the topic list to exactly the five shipped names', () => {
     // A topic added without a mapping row, or a rename desyncing the list from the
     // answers the map can produce, makes `pdks docs` advertise a query that exits 2 or
@@ -52,7 +52,7 @@ describe('DOCS-02 §3-c TOPICS — the finite query domain', () => {
   });
 });
 
-describe('DOCS-02 §3-d extractSection — fenced # lines are content, never boundaries', () => {
+describe('extractSection — fenced # lines are content, never boundaries', () => {
   it('reads past a # line inside a backtick fence', () => {
     // A line scanner with no fence state cuts the section at the fenced
     // `# Judged at commit time:` line and still LOOKS successful — silent truncation is
@@ -132,7 +132,7 @@ describe('DOCS-02 §3-d extractSection — fenced # lines are content, never bou
   });
 });
 
-describe('DOCS-02 §3-d extractSection — the boundary is heading LEVEL', () => {
+describe('extractSection — the boundary is heading LEVEL', () => {
   it('starts at the heading line and stops before the next same-level heading', () => {
     // The section must carry its own heading line, and the boundary scan must stop at a
     // same-level sibling rather than running into its body.
@@ -182,7 +182,7 @@ describe('DOCS-02 §3-d extractSection — the boundary is heading LEVEL', () =>
   });
 });
 
-describe('DOCS-02 §3-d extractSection — exact-string match, failing loud', () => {
+describe('extractSection — exact-string match, failing loud', () => {
   it.each([
     ['a case-folded spelling', '## reference'],
     ['a trailing-punctuation variant', '## Reference:'],
@@ -196,7 +196,7 @@ describe('DOCS-02 §3-d extractSection — exact-string match, failing loud', ()
   });
 });
 
-describe('DOCS-02 §3-b/§3-c queryDocs — over a bundle copied from the real docs', () => {
+describe('queryDocs — over a bundle copied from the real docs', () => {
   let docsRoot: string;
 
   beforeEach(() => {

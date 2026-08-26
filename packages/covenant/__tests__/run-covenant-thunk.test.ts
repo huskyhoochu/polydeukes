@@ -55,7 +55,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit codes did', () => {
+describe('thunk verdicts translate exactly as body exit codes did', () => {
   it('a thunk resolving exitCode 0 passes: exit 0, one passed row, valve never consulted', async () => {
     let consulted = 0;
     const result = await runThunk({
@@ -132,7 +132,7 @@ describe('DISPATCH-01 §4.1 — thunk verdicts translate exactly as body exit co
   });
 });
 
-describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, valve consulted', () => {
+describe('a thunk THROW is the body-crash cell: blocked, valve consulted', () => {
   it.each([
     'block',
     'advise',
@@ -211,7 +211,7 @@ describe('DISPATCH-01 §4.1 — a thunk THROW is the body-crash cell: blocked, v
   });
 });
 
-describe('DISPATCH-01 §4.1 — an out-of-shape thunk result fails closed (old-dist skew)', () => {
+describe('an out-of-shape thunk result fails closed (old-dist skew)', () => {
   it.each([
     ['block', 3],
     ['advise', 3],

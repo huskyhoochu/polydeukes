@@ -62,7 +62,7 @@ function transcriptOf(entries: unknown[]) {
   return transcriptFromJsonl(entries.map((entry) => JSON.stringify(entry)).join('\n'));
 }
 
-describe('COVENANT-13b §4.4 evaluatePrecedent — tool evidence requires a successful call (AC 11)', () => {
+describe('evaluatePrecedent — tool evidence requires a successful call', () => {
   it('stays shut on a tool call that failed, while a successful sibling still opens', () => {
     // Without the outcome, the mere REQUEST of an MCP query opens the gate, so a query that
     // never returned a single word of documentation satisfies "consult the docs first". The
@@ -82,7 +82,7 @@ describe('COVENANT-13b §4.4 evaluatePrecedent — tool evidence requires a succ
   });
 });
 
-describe('COVENANT-13b §4.4 evaluatePrecedent — subagent evidence requires a successful spawn (AC 12)', () => {
+describe('evaluatePrecedent — subagent evidence requires a successful spawn', () => {
   it('stays shut on a spawn the human rejected, while a successful spawn of another kind opens', () => {
     // A rejected spawn is the case where a human explicitly said no, so counting it as
     // precedent makes the refusal itself into the key. It also catches the likeliest

@@ -4,7 +4,7 @@ import { redirectWriteRule, teeRule } from '../src/mutation-rules.js';
 
 // Both rules are driven through extractMutations with real shell lines rather than called
 // directly, so each case exercises the assembled surface.
-describe('§5.1 redirect-write rule', () => {
+describe('redirect-write rule', () => {
   it('detects a plain write redirect target (printf coverage proof)', () => {
     // printf writes nothing without a redirect: the redirect structure, not the command
     // word, is what this rule catches.
@@ -112,7 +112,7 @@ describe('§5.1 redirect-write rule', () => {
   });
 });
 
-describe('§5.2 tee rule', () => {
+describe('tee rule', () => {
   it('detects the single non-flag argument of tee', () => {
     const result = extractMutations('tee f', [teeRule]);
 
@@ -191,7 +191,7 @@ describe('§5.2 tee rule', () => {
   });
 });
 
-describe('§5.3 fail-closed no-throw with both rules injected', () => {
+describe('fail-closed no-throw with both rules injected', () => {
   const bothRules = [redirectWriteRule, teeRule];
 
   it('never throws on an empty string and returns the result shape', () => {
