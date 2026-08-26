@@ -3,19 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// COVENANT-10 §4.3 / AC §5.6 — the adapter computes fileChanges from a raw PreToolUse
-// payload. `collectFileChanges(rawPayload, readPreState)` reads pre-state via an injected
-// reader (no disk in unit tests) and computes post via virtualPostState; unresolvable
-// post-states are OMITTED (the specified disposition), and non-mutating payloads yield [].
-// The file-changes module does not exist yet, so this file is RED by construction.
 import { collectFileChanges } from '../src/file-changes.ts';
 import type { DispatchOutcome } from '../src/index.ts';
 import { runAdapterPath } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures — realistic Claude Code PreToolUse payloads (snake_case, PRD §4.1).
-// Claude vocabulary (old_string / new_string) lives here and in the adapter, never core.
-// ---------------------------------------------------------------------------
+// Realistic Claude Code PreToolUse payloads (snake_case). Claude vocabulary
+// (old_string / new_string) lives here and in the adapter, never in core.
 
 const editPayload = {
   hook_event_name: 'PreToolUse',
@@ -64,14 +57,10 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
   return (fp: string) => (fp === filePath ? content : null);
 }
 
-// ===========================================================================
-// AC §5.6 — collectFileChanges per-tool computation (injected reader, no disk)
-// ===========================================================================
-
 describe('collectFileChanges — Write (AC §5.6)', () => {
   it('produces create evidence for a new file (reader returns null)', () => {
-    // P0 creation: Write to a non-existent file is tagged create with post=content. Mutation
-    // caught: absence tagged modify (a debt-forgiveness hole downstream), or content dropped.
+    // Absence of a file is the create discriminant. Tagging it modify opens a
+    // debt-forgiveness hole downstream.
     const change = collectFileChanges(writePayload, () => null);
 
     expect(change).toEqual({
@@ -84,8 +73,8 @@ describe('collectFileChanges — Write (AC §5.6)', () => {
 
 describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
   it('applies edits sequentially so the post reflects all edits', () => {
-    // P0 sequential application: the 2nd edit targets the 1st edit's result. Mutation caught:
-    // edits applied against pre independently (post would be 'value = two', not 'three').
+    // The 2nd edit targets the 1st edit's result, so edits applied against pre
+    // independently would yield 'value = two'.
     const change = collectFileChanges(multiEditPayload, readerFor('src/seq.ts', 'value = one'));
 
     expect(change).toEqual({
@@ -99,9 +88,8 @@ describe('collectFileChanges — MultiEdit (AC §5.6)', () => {
 
 describe('collectFileChanges — omission of unresolvable post-state (AC §5.6, PRD §4.3)', () => {
   it('yields nothing when the Edit old_string is absent from pre (null, not an error)', () => {
-    // P0 specified disposition (PRD §4.3): an Edit whose virtual application fails is OMITTED,
-    // not surfaced as an error and not fabricated with a bogus post. Mutation caught: the
-    // element pushed with a wrong/undefined post, or the whole call throwing on a failed apply.
+    // An Edit whose virtual application fails omits evidence — it is neither an error
+    // nor a fabricated post.
     const change = collectFileChanges(editPayload, readerFor('src/app.ts', 'no match here'));
 
     expect(change).toBeNull();
@@ -110,16 +98,10 @@ describe('collectFileChanges — omission of unresolvable post-state (AC §5.6, 
 
 describe('collectFileChanges — non-mutating payloads (AC §5.6)', () => {
   it('returns null for a Bash payload', () => {
-    // P0: a non-file-mutating tool contributes no fileChanges. Mutation caught: a default
-    // branch fabricating a FileChange for a Bash command (there is no file to judge).
+    // A non-file-mutating tool contributes no evidence — there is no file to judge.
     expect(collectFileChanges(bashPayload, () => null)).toBeNull();
   });
 });
-
-// ===========================================================================
-// AC §5.6 — runAdapterPath integration: the IR handed to dispatch carries fileChanges
-// (real disk pre-state via a temp dir, following run-adapter-path.test.ts conventions)
-// ===========================================================================
 
 let tmpRoot: string;
 let telemetryPath: string;
@@ -150,9 +132,6 @@ function capturingDispatch(): {
 
 describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () => {
   it('an Edit payload hands dispatch an IR whose evidence carries the disk pre and applied post', async () => {
-    // P0 end-to-end: runAdapterPath reads real pre-state from disk and the IR it forwards to
-    // dispatch carries the computed evidence. Mutation caught: evidence never wired into
-    // the IR (a discipline would see no evidence), or pre read as the post-applied content.
     const filePath = join(tmpRoot, 'app.ts');
     writeFileSync(filePath, 'const v = alpha;');
     const payload = {
@@ -177,10 +156,8 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
   });
 
   it('a Bash payload hands dispatch an IR whose call carries no fileChange key (no fabrication)', async () => {
-    // P0 no-fabrication (mirrors core CORE-04 precedent): a non-mutating payload's call must
-    // not carry a fabricated fileChange key — absence is what marks the call unproven.
-    // Mutation caught: the adapter always assigning evidence, which a judge would then read
-    // as a proven call rather than an absent one.
+    // Absence of the key is what marks the call unproven; always assigning evidence
+    // would let a judge read an unproven call as a proven one.
     const { dispatch, calls } = capturingDispatch();
 
     await runAdapterPath({
@@ -197,9 +174,9 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
   });
 
   it('a Write to a nonexistent path dispatches create evidence (ENOENT survives as absence)', async () => {
-    // P0 absence semantics: ENOENT is the ONE read failure that legitimately means
-    // "no file yet" — the fileChange must still be emitted, tagged create. Mutation
-    // caught: the fail-closed read check over-reaching and blocking real creations.
+    // ENOENT is the one read failure that legitimately means "no file yet", so the
+    // evidence must still be emitted; a broader fail-closed read check would block
+    // real creations.
     const filePath = join(tmpRoot, 'brand-new.ts');
     const payload = {
       ...writePayload,
@@ -227,10 +204,10 @@ describe('runAdapterPath — fileChanges in the dispatched IR (AC §5.6)', () =>
   });
 
   it('a pre-state read failure that is not absence blocks (exit 2, one adapter blocked row, no dispatch)', async () => {
-    // P0 fail-closed (PR #23 review, CONFIRMED): a read error other than ENOENT must
-    // not masquerade as pre=null — a Write over an existing-but-unreadable file would
-    // otherwise carry creation evidence and let an immutable discipline uphold the
-    // overwrite. A directory target raises EISDIR deterministically without chmod tricks.
+    // A read error other than ENOENT must not masquerade as pre=null: a Write over an
+    // existing-but-unreadable file would otherwise carry creation evidence and let an
+    // immutable discipline uphold the overwrite. A directory target raises EISDIR
+    // deterministically without chmod tricks.
     const payload = {
       ...writePayload,
       cwd: tmpRoot,

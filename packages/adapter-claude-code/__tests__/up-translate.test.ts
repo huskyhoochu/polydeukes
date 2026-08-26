@@ -1,14 +1,11 @@
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { parseInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// ADAPTER-01. Import from the package entry point (src/index.ts) — the same
-// surface that `@polydeukes/adapter-claude-code` will publish.
+// Imported from the package entry point — the same surface the package publishes.
 import { buildCovenantInput, type ClaudePreToolUsePayload, translateEvent } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures — realistic Claude Code PreToolUse hook payloads (snake_case, PRD §4.1).
-// Agent/tool literals live in this test file and in the adapter — never in core.
-// ---------------------------------------------------------------------------
+// Realistic Claude Code PreToolUse hook payloads (snake_case). Agent/tool literals
+// live here and in the adapter, never in core.
 
 const editFixture: ClaudePreToolUsePayload = {
   hook_event_name: 'PreToolUse',
@@ -39,7 +36,6 @@ const taskFixture: ClaudePreToolUsePayload = {
 
 describe('§5.1 fixture up-translate', () => {
   it('translates an Edit fixture into a toolCall carrying tool_input as args', () => {
-    // Mutation caught: kind swapped to subagentSpawn, name dropped, or args stripped.
     const result = translateEvent(editFixture);
 
     expect(result).toEqual({
@@ -50,8 +46,7 @@ describe('§5.1 fixture up-translate', () => {
   });
 
   it('translates a Task fixture with subagent_type into a subagentSpawn, not a toolCall', () => {
-    // Mutation caught: Task demoted to a plain toolCall (spawn evidence silently lost),
-    // or kind picked from tool_name instead of tool_input.subagent_type.
+    // The spawn kind comes from tool_input.subagent_type, not from tool_name.
     const result = translateEvent(taskFixture);
 
     expect(result).toEqual({
@@ -62,8 +57,7 @@ describe('§5.1 fixture up-translate', () => {
   });
 
   it('buildCovenantInput folds Edit + Task + Write in observation order', () => {
-    // Mutation caught: order not preserved, subagentSpawns/toolCalls arrays swapped or
-    // merged, userMessages not fixed to [].
+    // Observation order is what a precedent judgment reads, so the fold must preserve it.
     const result = buildCovenantInput([editFixture, taskFixture, writeFixture]);
 
     expect(result.ok).toBe(true);
@@ -80,9 +74,8 @@ describe('§5.1 fixture up-translate', () => {
   });
 
   it('round-trips through JSON.stringify and core parseInput', () => {
-    // Proves stdin-JSON compatibility with CORE-01's protocol (PRD §5.1 last bullet).
-    // Mutation caught: buildCovenantInput producing a shape parseInput rejects, or a
-    // shape that parses but does not deep-equal the original built value.
+    // The adapter's output crosses to the judge as stdin JSON, so a shape core's parser
+    // rejects — or one that parses to something different — breaks the wire contract.
     const built = buildCovenantInput([editFixture, taskFixture, writeFixture]);
     expect(built.ok).toBe(true);
     if (built.ok !== true) return;
@@ -98,8 +91,8 @@ describe('§5.1 fixture up-translate', () => {
 
 describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fail)', () => {
   it('translateEvent never throws and fails closed on non-object payloads', () => {
-    // Mutation caught: a typeof/Array.isArray check removed, letting a hostile payload
-    // through as ok:true, or an unhandled throw escaping the function.
+    // A hostile payload must never reach ok:true, and a throw escaping the function
+    // would break the fail-closed guarantee just as surely.
     for (const hostile of ['not an object', null, []]) {
       let result: ReturnType<typeof translateEvent> | undefined;
       expect(() => {
@@ -110,7 +103,6 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
   });
 
   it('a payload missing tool_name fails classification', () => {
-    // Mutation caught: tool_name presence check dropped, defaulting to undefined-as-name.
     const missingToolName = { tool_input: { file_path: 'src/app.ts' } };
 
     const result = translateEvent(missingToolName);
@@ -119,7 +111,7 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
   });
 
   it('a payload missing tool_input fails classification', () => {
-    // Mutation caught: tool_input presence check dropped, defaulting to {} silently.
+    // Missing tool_input must fail rather than default to {}.
     const missingToolInput = { tool_name: 'Edit' };
 
     const result = translateEvent(missingToolInput);
@@ -128,9 +120,8 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
   });
 
   it('a Task fixture without subagent_type fails classification, never demoting to a toolCall', () => {
-    // P0: Task without subagent_type must NOT be demoted to a plain toolCall — that
-    // would silently lose spawn evidence and let a writer-less edit through undetected.
-    // Mutation caught: the subagent_type check removed, falling through to toolCall.
+    // Falling through to a plain toolCall would silently lose the spawn evidence and let
+    // a writer-less edit pass undetected.
     const taskWithoutSubagentType: ClaudePreToolUsePayload = {
       hook_event_name: 'PreToolUse',
       session_id: 's-1',
@@ -146,8 +137,8 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
   });
 
   it('buildCovenantInput fails closed with exit-2 and a non-empty reason if any element fails', () => {
-    // P0: a single malformed payload in the batch must block the whole build, not be
-    // silently dropped (a silent drop is a bypass vector, per PRD §4.2/§7).
+    // Silently dropping the bad element is a bypass vector: the batch would be judged
+    // as if the call it described had never happened.
     const malformed = { tool_name: 'Edit' }; // missing tool_input
 
     const result = buildCovenantInput([editFixture, malformed]);
@@ -162,9 +153,9 @@ describe('§5.2 fail-closed axis (security boundary P0 — cannot classify = fai
 });
 
 describe('§5.3 IR sufficiency — core judges from CovenantInput alone (PRD §4.3)', () => {
-  // This test covenant imports ONLY core types — never the adapter's translate
-  // functions or Claude Code vocabulary — proving all judgment-relevant evidence
-  // already lives inside the IR that buildCovenantInput produces.
+  // This test covenant imports ONLY core types — never the adapter's translate functions
+  // or Claude Code vocabulary — so it proves all judgment-relevant evidence already lives
+  // inside the IR that buildCovenantInput produces.
 
   const PRODUCTION_PREFIX = 'src/'; // test-injected value, not baked into core or adapter
   const REQUIRED_SPAWN_KIND = 'tdd-writer'; // test-injected value
@@ -183,7 +174,6 @@ describe('§5.3 IR sufficiency — core judges from CovenantInput alone (PRD §4
   }
 
   it('an Edit-only input (no spawn) on a production path is NOT upheld', () => {
-    // Mutation caught: the covenant's spawn check inverted or removed, always upholding.
     const built = buildCovenantInput([editFixture]);
     expect(built.ok).toBe(true);
     if (built.ok !== true) return;
@@ -197,8 +187,6 @@ describe('§5.3 IR sufficiency — core judges from CovenantInput alone (PRD §4
   });
 
   it('a Task(tdd-writer) followed by an Edit on a production path IS upheld', () => {
-    // Mutation caught: the covenant ignoring subagentSpawns entirely, or requiring
-    // spawn kind to equal something other than the injected REQUIRED_SPAWN_KIND.
     const built = buildCovenantInput([taskFixture, editFixture]);
     expect(built.ok).toBe(true);
     if (built.ok !== true) return;

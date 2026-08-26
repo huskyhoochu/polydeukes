@@ -3,15 +3,13 @@ import { mkdtempSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// DIAG-01 §4.1 / §5 AC-1 RED phase — the worktree collector: pre = `HEAD:<path>`, post =
-// the bytes on disk, untracked non-ignored files included. Same `StagedChange[]` shape as
-// the staged collector, so the translation core stays at zero lines changed.
+// The worktree collector: pre = `HEAD:<path>`, post = the bytes on disk, untracked
+// non-ignored files included. It reuses the staged collector's `StagedChange[]` shape so
+// the translation core needs no branch of its own.
 import { collectWorktreeChanges, type StagedChange } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Real throwaway git repositories (collect.test.ts precedent): the contract is defined
-// against actual `git diff HEAD` / `git ls-files --others` output and disk reads.
-// ---------------------------------------------------------------------------
+// Real throwaway git repositories: the contract is defined against actual `git diff HEAD`
+// and `git ls-files --others` output plus disk reads.
 
 let repoRoot: string;
 
@@ -49,9 +47,9 @@ afterEach(() => {
 
 describe('§5 AC-1 collectWorktreeChanges — modified file', () => {
   it('reports pre=HEAD content and post=the bytes on disk, not the index', () => {
-    // Mutation caught: post read from the index (`:<path>`) instead of the disk — the
-    // staged collector's behaviour leaking in — or pre/post swapped. The index holds a
-    // middle version so the three sources are all distinguishable.
+    // The index deliberately holds a third, middle version so HEAD, index, and disk are
+    // all distinguishable — otherwise the staged collector's behaviour leaking in here
+    // would look correct.
     commitFile('a.txt', 'first\n');
     write('a.txt', 'staged middle\n');
     git('add', 'a.txt');
@@ -70,8 +68,8 @@ describe('§5 AC-1 collectWorktreeChanges — modified file', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — untracked file', () => {
   it('reports an untracked, non-ignored file as added with pre=null', () => {
-    // Mutation caught: the `ls-files --others` pass dropped, so a brand-new file on disk
-    // (the most common worktree state) is never judged — fail-open.
+    // Without the `ls-files --others` pass a brand-new file on disk — the most common
+    // worktree state — is never judged at all.
     commitFile('base.txt', 'base\n');
     write('fresh.txt', 'brand new\n');
 
@@ -86,8 +84,7 @@ describe('§5 AC-1 collectWorktreeChanges — untracked file', () => {
   });
 
   it('omits an untracked file that .gitignore excludes', () => {
-    // Mutation caught: `--exclude-standard` dropped, so build output and dependencies
-    // would flood the judgment (§7 risk 2 names the cost; the contract is the filter).
+    // Without `--exclude-standard`, build output and dependencies flood the judgment.
     commitFile('.gitignore', 'ignored.txt\n');
     write('ignored.txt', 'noise\n');
 
@@ -97,9 +94,7 @@ describe('§5 AC-1 collectWorktreeChanges — untracked file', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — file deleted on disk', () => {
   it('reports a tracked file removed from disk (not via git rm) as deleted with post=null', () => {
-    // Mutation caught: a missing disk file coerced to '' or thrown on read instead of
-    // status deleted / post null — the index still holds the file, so only the disk
-    // observation says it is gone.
+    // The index still holds the file, so only the disk observation says it is gone.
     commitFile('doomed.txt', 'to be removed\n');
     unlinkSync(join(repoRoot, 'doomed.txt'));
 
@@ -116,9 +111,8 @@ describe('§5 AC-1 collectWorktreeChanges — file deleted on disk', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — binary content', () => {
   it('yields null for a binary file on disk instead of lossily decoded text', () => {
-    // Mutation caught: the NUL-byte heuristic applied to blob reads but not to the disk
-    // read path — a forbidden pattern mangled by U+FFFD replacement slips past the delta
-    // judge (fail-open direction, review F4 of the commit adapter).
+    // The NUL-byte heuristic must cover the disk read path too, not only blob reads: a
+    // forbidden pattern mangled by U+FFFD replacement slips past the delta judge.
     commitFile('base.txt', 'base\n');
     writeFileSync(join(repoRoot, 'blob.bin'), Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]));
 
@@ -131,9 +125,9 @@ describe('§5 AC-1 collectWorktreeChanges — binary content', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — rename on disk surfaces as delete + add', () => {
   it('reports the rename source as deleted and the destination as added', () => {
-    // Mutation caught: rename detection left on (`--no-renames` dropped) or the untracked
-    // destination not paired with the tracked-but-missing source — a protected file moved
-    // away on disk must still be judged at its protected location.
+    // A protected file moved away on disk must still be judged at its protected location,
+    // which needs rename detection off and the untracked destination paired with the
+    // tracked-but-missing source.
     commitFile('protected-here.txt', 'locked content\n');
     renameSync(join(repoRoot, 'protected-here.txt'), join(repoRoot, 'elsewhere.txt'));
 
@@ -156,10 +150,9 @@ describe('§5 AC-1 collectWorktreeChanges — rename on disk surfaces as delete 
 
 describe('§5 AC-1 collectWorktreeChanges — unborn HEAD', () => {
   it('reports every tracked and untracked file as added with pre=null when HEAD is absent', () => {
-    // Boundary: `git diff HEAD` fails with no commits. The collector must narrow to "all
-    // added" for both the staged file and the untracked one, never throw. Mutation
-    // caught: the HEAD failure bubbling, or the staged file dropped because the diff
-    // command produced nothing.
+    // `git diff HEAD` fails with no commits. The collector must narrow to "all added" for
+    // both the staged file and the untracked one, never throw and never drop the staged
+    // file just because the diff command produced nothing.
     write('one.txt', 'one\n');
     git('add', 'one.txt');
     write('two.txt', 'two\n');
@@ -183,8 +176,6 @@ describe('§5 AC-1 collectWorktreeChanges — unborn HEAD', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — clean worktree', () => {
   it('returns an empty array when disk matches HEAD', () => {
-    // Boundary: nothing changed → []. Mutation caught: committed files reported as
-    // changes (a diff against the empty tree instead of HEAD).
     commitFile('committed.txt', 'content\n');
 
     expect(collectWorktreeChanges(repoRoot)).toEqual([]);
@@ -193,10 +184,9 @@ describe('§5 AC-1 collectWorktreeChanges — clean worktree', () => {
 
 describe('§5 AC-1 collectWorktreeChanges — file over 1MB on disk', () => {
   it('collects a large modified file with post equal to the disk bytes', () => {
-    // collect.test.ts "staged blob over 1MB" precedent: the disk read must not go
-    // through a spawn with the 1MB maxBuffer default (`git show`, `git cat-file`), and
-    // the HEAD-side read must carry the override. Mutation caught: either read path
-    // throwing ENOBUFS and failing the diagnostic closed on a lockfile-sized edit.
+    // Both read paths must escape the 1MB spawn maxBuffer default: the disk read by not
+    // going through a spawn at all, the HEAD-side read by carrying the override. Either
+    // one throws ENOBUFS on a lockfile-sized edit and fails the diagnostic closed.
     const twoMegabytes = 'x'.repeat(2 * 1024 * 1024);
     commitFile('big.txt', 'small\n');
     write('big.txt', twoMegabytes);
@@ -208,7 +198,7 @@ describe('§5 AC-1 collectWorktreeChanges — file over 1MB on disk', () => {
   });
 });
 
-// PR #67 review — three worktree-only inputs the first cut mishandled.
+// Three worktree-only inputs with no counterpart on the staged or range surfaces.
 describe('PR #67 review — index-only file removed from disk (status AD)', () => {
   it('reports a file added to the index and then deleted from disk as deleted with pre=null', () => {
     commitFile('base.txt', 'base\n');

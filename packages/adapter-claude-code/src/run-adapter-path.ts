@@ -1,10 +1,9 @@
 /**
- * `runAdapterPath` — the adapter path's single wiring entry point (ADAPTER-03).
+ * `runAdapterPath` — the adapter path's single wiring entry point.
  *
  * Composes translation → injected dispatch → funnel-supplement recording so every
  * adapter-path call leaves exactly one telemetry row when summed with downstream
- * records (PRD §4.3 table is canonical). I/O lives here and only here — the
- * translate layer (index.ts) stays pure.
+ * records. I/O lives here and only here — the translate layer (index.ts) stays pure.
  */
 
 import { readFileSync } from 'node:fs';
@@ -13,7 +12,7 @@ import { collectFileChanges } from './file-changes.js';
 import { buildCovenantInput } from './up-translate.js';
 
 /**
- * `DispatchOutcome` — structural mirror of the dispatcher's return (PRD §4.2).
+ * `DispatchOutcome` — structural mirror of the dispatcher's return.
  *
  * Deliberately declared here instead of imported: dependencies are one-way (adapter →
  * core only), so the covenant package is never imported. Contract drift is caught by
@@ -33,7 +32,7 @@ const DEFAULT_ADAPTER_LABEL = 'adapter-claude-code';
  * Any other read failure (permissions, a directory target, fd exhaustion) throws:
  * `null` is the IR's creation sentinel, and a poisoned `pre: null` on an existing
  * file would let a path-family discipline uphold the overwrite (fail-open). The
- * caller converts the throw into one adapter `blocked` record (PR #23 review).
+ * caller converts the throw into one adapter `blocked` record.
  */
 function readPreStateFromDisk(filePath: string): string | null {
   try {
@@ -45,14 +44,14 @@ function readPreStateFromDisk(filePath: string): string | null {
 }
 
 /**
- * Run one PreToolUse payload through the adapter path (PRD §4.1).
+ * Run one PreToolUse payload through the adapter path.
  *
  * Fail-closed on the verdict axis: an unparseable payload, a classification failure,
  * or a rejecting dispatch all resolve to `{ exitCode: 2 }` with one adapter `blocked`
  * record — never a thrown error (an unhandled rejection would exit the hook
  * non-blocking, a bypass vector). The funnel supplement is the exact rule
  * `exitCode 0 && results.length 0 → one adapter passed record`; every other outcome
- * appends nothing because downstream already recorded (PRD §4.3, no double counting).
+ * appends nothing because downstream already recorded, so nothing double-counts.
  */
 export async function runAdapterPath(spec: {
   /** Raw hook stdin — one PreToolUse payload as a JSON string. */
@@ -81,8 +80,8 @@ export async function runAdapterPath(spec: {
     return blockAndRecord();
   }
 
-  // Attach pre/post evidence to the call it belongs to (CORE-06 §4.2) — this path
-  // translates exactly one payload, so the one evidence rides toolCalls[0]. Attached
+  // Attach pre/post evidence to the call it belongs to — this path translates
+  // exactly one payload, so the one evidence rides toolCalls[0]. Attached
   // only when provable: a non-mutating payload leaves its call unproven. A pre-state
   // read failure that is not absence blocks: evidence that cannot be gathered must not
   // dispatch a shape that reads as creation.

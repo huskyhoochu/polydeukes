@@ -1,7 +1,7 @@
 /**
- * Git-backed change collectors (ADAPTER-git §4.2, DIAG-01 §4.1) — read a real repository
- * into the structured shape the pure translation core consumes. Three observation points
- * of the same commit surface: the staging area, the working tree, and a ref range.
+ * Git-backed change collectors — read a real repository into the structured shape the
+ * pure translation core consumes. Three observation points of the same commit surface:
+ * the staging area, the working tree, and a ref range.
  *
  * Synchronous `git` spawns belong in this package: an adapter accessing its payload
  * source is the same axis as `transcriptFromJsonlFile` reading a file. Each collector
@@ -31,7 +31,7 @@ function git(repoRoot: string, args: string[]): string {
 /**
  * Read one blob as judgeable text, or null for a binary blob (NUL-byte heuristic — the
  * same one git uses). A lossy utf-8 decode would hand the delta judges corrupted bytes,
- * so "no judgeable text" is surfaced as null instead (review F4, PRD §4.2).
+ * so "no judgeable text" is surfaced as null instead.
  */
 function gitBlobText(repoRoot: string, ref: string): string | null {
   const blob = execFileSync('git', ['show', ref], {
@@ -71,8 +71,7 @@ function pathList(listing: string): string[] {
  * Read one file on disk as judgeable text, or null when there is none — binary content
  * (the NUL-byte heuristic {@link gitBlobText} applies to a blob) or a path that cannot be
  * read at all (a dangling symlink, a permission refusal). Either way the change survives
- * for path judgment with no content, the disposition a binary staged blob already has
- * (PR #67 review).
+ * for path judgment with no content, the disposition a binary staged blob already has.
  */
 function diskText(repoRoot: string, path: string): string | null {
   let bytes: Buffer;
@@ -87,9 +86,8 @@ function diskText(repoRoot: string, path: string): string | null {
 /**
  * Listing flags every collector shares. `--no-renames` forces D+A reporting, so a rename
  * away from a protected path surfaces as a judged deletion instead of one R entry whose
- * source path never reaches judgment (review F1, PRD §4.1). The trailing `--` closes the
- * revision list, so a ref that also names a file is not an ambiguous argument (PR #67
- * review).
+ * source path never reaches judgment. The trailing `--` closes the revision list, so a
+ * ref that also names a file is not an ambiguous argument.
  */
 const NO_RENAMES = ['--name-status', '-z', '--no-renames'];
 const END_OF_REVISIONS = '--';
@@ -119,7 +117,7 @@ function changeFromEntry(
 }
 
 /**
- * Collect the staged changes of `repoRoot` (PRD §4.2).
+ * Collect the staged changes of `repoRoot`.
  *
  * `git diff --cached --name-status -z` lists the entries; blobs are read per entry.
  * On the unborn first commit (no HEAD) every staged file is `added` with `pre: null`
@@ -141,7 +139,7 @@ export function collectStagedChanges(repoRoot: string): StagedChange[] {
 }
 
 /**
- * Collect the working-tree changes of `repoRoot` (DIAG-01 §4.1).
+ * Collect the working-tree changes of `repoRoot`.
  *
  * `pre` is the HEAD blob and `post` the bytes on disk; the index is not consulted.
  * Untracked, non-ignored files (`--exclude-standard`) join as `added`, and a file missing
@@ -214,7 +212,7 @@ function resolveRange(repoRoot: string, range: string): [string, string] {
 }
 
 /**
- * Collect the changes between two refs of `repoRoot` (DIAG-01 §4.1).
+ * Collect the changes between two refs of `repoRoot`.
  *
  * `pre` is the base ref's blob and `post` the head ref's; neither the index nor the disk
  * is read. An unresolvable ref lets git's own failure throw rather than yielding an empty

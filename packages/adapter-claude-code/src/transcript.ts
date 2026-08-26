@@ -1,11 +1,11 @@
 /**
- * JSONL-backed `CanonicalTranscript` provider (ADAPTER-04) — parses a Claude Code
- * session transcript into the agent-neutral query seam the witness valve judges over.
+ * JSONL-backed `CanonicalTranscript` provider — parses a Claude Code session
+ * transcript into the agent-neutral query seam the witness valve judges over.
  *
  * JSONL vocabulary (`origin`, `subagent_type`, ISO timestamps) stays confined to this
  * package, never the core. Parsing happens once (a snapshot); the queries are pure
  * reads. Every failure — unreadable file, broken line, shape mismatch — reduces
- * evidence instead of throwing (fail-closed, PRD §4.4).
+ * evidence instead of throwing, fail-closed.
  */
 
 import { readFileSync } from 'node:fs';
@@ -19,7 +19,7 @@ import {
 } from '@polydeukes/core';
 
 /**
- * Extract a human utterance from one entry, or `undefined` (PRD §4.2).
+ * Extract a human utterance from one entry, or `undefined`.
  *
  * The allowlist is positive identification: `type === 'user'`, `origin.kind === 'human'`,
  * and a plain-string `message.content`. Anything else — tool_result blocks,
@@ -45,7 +45,7 @@ function toUserMessage(entry: Record<string, unknown>): TranscriptUserMessage | 
 }
 
 /**
- * Extract subagent invocations from one entry (PRD §4.3).
+ * Extract subagent invocations from one entry.
  *
  * Detection keys on the *field*, not the tool name (the real tool has been renamed
  * Task → Agent): any `tool_use` block whose `input.subagent_type` is a string is an
@@ -77,7 +77,7 @@ function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocati
 type ObservedToolCall = { name: string; args: Record<string, unknown>; id?: string };
 
 /**
- * Extract tool calls from one entry (COVENANT-13 §4.3).
+ * Extract tool calls from one entry.
  *
  * Positive identification on the *name*: any `tool_use` block with a string `name` is a
  * call, in observation order. A non-plain `input` empties the args but keeps the block —
@@ -108,12 +108,12 @@ function toToolCalls(entry: Record<string, unknown>): ObservedToolCall[] {
 }
 
 /**
- * Extract the outcomes reported by one entry's result blocks (COVENANT-13b §4.2).
+ * Extract the outcomes reported by one entry's result blocks.
  *
  * Results ride `user` entries and reference the call they answer; only that reference and
  * the error marker are read, never the result body. Success is ENUMERATED — no marker, or
  * a marker of exactly `false` — so every other value, boolean or not, reads as a failure
- * and a shape mismatch can only ever reduce evidence (§7). A block that cannot prove a
+ * and a shape mismatch can only ever reduce evidence. A block that cannot prove a
  * string reference is dropped alone.
  */
 function toToolResults(entry: Record<string, unknown>): { id: string; succeeded: boolean }[] {
@@ -141,7 +141,7 @@ function toToolResults(entry: Record<string, unknown>): { id: string; succeeded:
 }
 
 /**
- * Parse JSONL transcript text into a {@link CanonicalTranscript} (PRD §4.2–4.4).
+ * Parse JSONL transcript text into a {@link CanonicalTranscript}.
  *
  * One pass over the lines builds an immutable snapshot; the queries only read it.
  * Unparseable lines, non-object lines, and shape-mismatched entries are skipped
@@ -177,9 +177,9 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
     }
   }
 
-  // The join (COVENANT-13b §4.2). No result found is not ignorance: this provider CAN
-  // read the result channel, so silence is success it failed to prove — `undefined` stays
-  // reserved for a provider that cannot see results at all.
+  // The join. No result found is not ignorance: this provider CAN read the result
+  // channel, so silence is success it failed to prove — `undefined` stays reserved
+  // for a provider that cannot see results at all.
   const toolCalls: TranscriptToolCall[] = observedCalls.map((call) => ({
     name: call.name,
     args: call.args,
@@ -203,7 +203,7 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
 }
 
 /**
- * Read a transcript file and parse it (PRD §5.4).
+ * Read a transcript file and parse it.
  *
  * ANY read failure — missing file, permission, directory — answers `undefined`, never a
  * throw. It is deliberately NOT an empty transcript: the two are different facts, and
@@ -211,7 +211,7 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
  * nothing yet, and judging against it is correct. An unreadable one is no evidence channel
  * at all, so the context family must skip rather than demand evidence from a session
  * nobody can read — while the witness valve reads the same absence and stays shut, leaving
- * a dead end with no message naming the cause (COVENANT-13 §4.5).
+ * a dead end with no message naming the cause.
  *
  * Either way the valve turns off, never open: `undefined` leaves the dispatcher on its
  * `noopTranscript` default.

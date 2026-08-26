@@ -1,5 +1,5 @@
 /**
- * Adapter-owned precedent evidence evaluator (COVENANT-13 §4.4).
+ * Adapter-owned precedent evidence evaluator.
  *
  * The core owns the `command` evidence vocabulary and validates only the container
  * shape of everything else; ecosystem values — spawn kinds and tool names — are this
@@ -12,16 +12,16 @@
 import type { CanonicalTranscript } from '@polydeukes/core';
 
 /**
- * Judge one `requirePrecedent` evidence object against the session (PRD §4.4).
+ * Judge one `requirePrecedent` evidence object against the session.
  *
  * - `subagent`: exact spawn-kind equality (a kind is a value, not a pattern).
  * - `tool`: the observed tool names matched as a regular expression.
  * - anything else: `undefined` — outside this adapter's vocabulary, including the core's
  *   own `command` key, which the covenant compiler evaluates itself.
  *
- * Both vocabularies require the call to have RUN and reported success (COVENANT-13b
- * §4.4): a call the covenant blocked, one the human refused, and one that simply failed
- * carry the same outcome, and none of them did the work the discipline demands. The spawn
+ * Both vocabularies require the call to have RUN and reported success: a call the
+ * covenant blocked, one the human refused, and one that simply failed carry the same
+ * outcome, and none of them did the work the discipline demands. The spawn
  * axis therefore reads the joined tool calls — the spawn query carries no outcome —
  * identifying a spawn by the same field the transcript provider does.
  *

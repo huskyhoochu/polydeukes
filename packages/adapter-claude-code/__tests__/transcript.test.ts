@@ -2,16 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-// ADAPTER-04 RED phase. The JSONL-backed CanonicalTranscript provider does not exist
-// yet, so this import is unresolvable and the whole file is RED by construction. The
-// behaviours asserted here become the GREEN contract (PRD §4.2–4.4, §5.1/5.3/5.4).
 import { transcriptFromJsonl, transcriptFromJsonlFile } from '../src/transcript.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures — realistic Claude Code transcript JSONL entries (PRD §4 profiling).
-// JSONL vocabulary (`origin`, `subagent_type`, ISO timestamps) lives in this test
-// file and in the adapter — never in core (CORE-04 §5.3 isolation gate).
-// ---------------------------------------------------------------------------
+// JSONL vocabulary (`origin`, `subagent_type`, ISO timestamps) lives in this test file and
+// in the adapter — never in core.
 
 const TOKEN = 'PDKS-WITNESS-42';
 
@@ -82,16 +76,8 @@ function toJsonl(entries: unknown[]): string {
   return entries.map((entry) => JSON.stringify(entry)).join('\n');
 }
 
-// ===========================================================================
-// §5.1 — human-utterance extraction (findUserMessages trust contract, PRD §4.2)
-// ===========================================================================
-
 describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   it('extracts origin.kind==="human" string entries as {text, timestampMs}, order preserved', () => {
-    // P0 business rule: only positively-identified human entries surface, and they surface
-    // in observation order with the ISO timestamp converted to epoch ms. Mutation caught:
-    // Date.parse dropped (timestampMs undefined for a parseable ts), the text field mapped
-    // from the wrong path, or the observation order reversed/reordered.
     const jsonl = toJsonl([
       humanEntry('first human line', '2026-07-21T04:00:00.000Z'),
       humanEntry('second human line', '2026-07-21T04:05:00.000Z'),
@@ -106,19 +92,18 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   });
 
   it('excludes user entries whose content is an array of tool_result blocks', () => {
-    // P0 fail-closed: tool_result injections (3,400+ real entries) are not human utterances.
-    // Mutation caught: the "content must be a plain string" check dropped, letting an array
-    // content through — a huge non-human surface would then flow into the witness.
+    // tool_result injections are the largest user-role surface in a real transcript and none
+    // of them is a human utterance; without the plain-string check that whole surface would
+    // flow into the witness.
     const jsonl = toJsonl([toolResultEntry(`smuggled ${TOKEN}`)]);
 
     expect(transcriptFromJsonl(jsonl).findUserMessages()).toEqual([]);
   });
 
   it('excludes origin.kind==="task-notification" entries even when the text carries a token', () => {
-    // P0 forgery vector: task-notification is an AI-controlled surface. A token smuggled
-    // there must NOT count as a human utterance. Mutation caught: the origin.kind==="human"
-    // allowlist relaxed to "origin present" or "any user entry" — the single most dangerous
-    // fail-open hole in this file (a subagent could then self-issue witnesses).
+    // task-notification is an AI-controlled surface. Relaxing the origin.kind==="human"
+    // allowlist to "origin present" or "any user entry" would let a subagent self-issue a
+    // witness by printing the token here.
     const jsonl = toJsonl([
       taskNotificationEntry(`<task-notification>${TOKEN}</task-notification>`),
     ]);
@@ -127,19 +112,18 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   });
 
   it('excludes string-content user entries that have no origin field (command wrappers, legacy)', () => {
-    // P0 allowlist: absence of origin means the entry cannot be positively identified as
-    // human. Mutation caught: the origin presence/kind check reduced to "content is a
-    // string", which would admit slash-command wrappers and isMeta injections.
+    // Absence of origin means the entry cannot be positively identified as human. Reducing
+    // the check to "content is a string" would admit slash-command wrappers and isMeta
+    // injections.
     const jsonl = toJsonl([commandWrapperEntry('<command-name>/clear</command-name>')]);
 
     expect(transcriptFromJsonl(jsonl).findUserMessages()).toEqual([]);
   });
 
   it('keeps a human entry with an absent/unparseable timestamp, exposing timestampMs undefined', () => {
-    // P1 fact-only supplier: a missing or non-ISO timestamp must NOT drop the message — it
-    // is kept with timestampMs undefined so the witness consumer applies its own fail-closed
-    // rule. Mutation caught: the entry being dropped when timestamp is absent, or Date.parse
-    // NaN being written through as a number instead of collapsed to undefined.
+    // This provider reports facts and judges nothing: a missing or non-ISO timestamp keeps
+    // the message with timestampMs undefined, so the witness consumer applies its own
+    // fail-closed rule. A Date.parse NaN collapses to undefined rather than a number.
     const jsonl = toJsonl([
       humanEntry('no timestamp here'),
       humanEntry('bad timestamp here', 'not-an-iso-date'),
@@ -152,9 +136,8 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   });
 
   it('keeps only human entries when all entry shapes are interleaved (blocklist would leak)', () => {
-    // P0 composite invariant: given every non-human shape mixed with humans, exactly the two
-    // human entries survive, in order. Mutation caught: any single exclusion branch removed
-    // (tool_result / task-notification / no-origin) would let an extra entry through here.
+    // Every non-human shape at once: removing any single exclusion branch lets an extra
+    // entry through here, which a blocklist written shape by shape would not catch.
     const jsonl = toJsonl([
       toolResultEntry('ignored'),
       humanEntry('human A', '2026-07-21T04:00:00.000Z'),
@@ -171,17 +154,11 @@ describe('§5.1 findUserMessages — human-utterance trust contract', () => {
   });
 });
 
-// ===========================================================================
-// §5.3 — spawn query (findSubagentInvocations by field presence, PRD §4.3)
-// ===========================================================================
-
 describe('§5.3 findSubagentInvocations — detection by subagent_type field presence', () => {
   it('yields {kind} for every tool_use block with a string subagent_type, order preserved', () => {
-    // P1 field-presence contract: detection keys on input.subagent_type, NOT on tool name
-    // (real tools have been renamed Task -> Agent). Here blocks are named "Agent" and "Task"
-    // and both surface, in order; the optional kind filter narrows to an exact match.
-    // Mutation caught: detection keyed off block.name instead of input.subagent_type, or the
-    // kind filter comparing with != instead of ===, or order not preserved.
+    // Detection keys on input.subagent_type, not on the tool name: the spawn tool has been
+    // renamed (Task -> Agent) in the ecosystem, so the fixture deliberately carries both
+    // spellings and expects both to surface.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 'x', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
@@ -200,9 +177,8 @@ describe('§5.3 findSubagentInvocations — detection by subagent_type field pre
   });
 
   it('excludes tool_use blocks with no string subagent_type (default-agent spawns, Bash calls)', () => {
-    // P1 evidence-reduction: a block that cannot prove its kind is dropped (safe direction).
-    // Mutation caught: the "subagent_type is a string" check removed, which would emit a
-    // {kind: undefined} phantom invocation for a Bash call or a default-agent spawn.
+    // A block that cannot prove its kind is dropped rather than emitted as a
+    // {kind: undefined} phantom invocation.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 'x', name: 'Bash', input: { command: 'ls' } },
@@ -217,10 +193,9 @@ describe('§5.3 findSubagentInvocations — detection by subagent_type field pre
   });
 
   it('returns fresh objects — mutating a query result does not corrupt the snapshot', () => {
-    // PR-review finding: alias-safety is the CanonicalTranscript contract the core
-    // transcriptFromInput pins (core transcript tests) — queries must return fresh objects.
-    // Mutation caught: filter() results returned as live aliases into the snapshot, so a
-    // consumer writing invocation.kind would rewrite what every later query reads.
+    // Alias-safety is part of the CanonicalTranscript contract: returning filter() results
+    // as live aliases into the snapshot would let a consumer writing invocation.kind rewrite
+    // what every later query reads.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 'x', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
@@ -239,16 +214,11 @@ describe('§5.3 findSubagentInvocations — detection by subagent_type field pre
   });
 });
 
-// ===========================================================================
-// §5.4 — robustness (all failures reduce evidence, never throw, PRD §4.4)
-// ===========================================================================
-
 describe('§5.4 robustness — malformed input reduces evidence, never throws', () => {
   it('skips only the broken/non-object lines and still extracts the surrounding valid ones', () => {
-    // P0 fail-closed robustness: an unparseable line, a JSON non-object line, and a
-    // shape-mismatched entry are each skipped silently; the remaining valid human entries
-    // still surface. Mutation caught: a parse failure throwing (blanking the whole
-    // transcript, or crashing the hook), or a broken line aborting the rest of the scan.
+    // A broken line must be skipped alone: a parse failure that throws blanks the whole
+    // transcript and crashes the hook, and one that aborts the scan silently discards every
+    // entry after it.
     const jsonl = [
       JSON.stringify(humanEntry('before break', '2026-07-21T04:00:00.000Z')),
       '{broken',
@@ -269,13 +239,11 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
   });
 
   it('answers undefined for a nonexistent file — absence, not an empty session', () => {
-    // Valve-off-not-valve-open still holds: undefined leaves the dispatcher on its noop
-    // default, so the witness stays shut either way. What changed is that an unreadable
-    // file no longer impersonates a session that has said nothing. The two demand
-    // opposite dispositions from the context family — judge an empty session, skip an
-    // absent one — and collapsing them blocked in-scope edits for the rest of a session
-    // with no message naming the cause (COVENANT-13 §4.5). Mutation caught: the fs error
-    // escaping (crashing the hook), or the empty-transcript fallback restored.
+    // undefined leaves the dispatcher on its noop default, so the witness stays shut either
+    // way — but an unreadable file must not impersonate a session that has said nothing. The
+    // two demand opposite dispositions from the context family (judge an empty session, skip
+    // an absent one), and collapsing them blocked in-scope edits for the rest of a session
+    // with no message naming the cause.
     const dir = mkdtempSync(join(tmpdir(), 'pdks-transcript-'));
     const missingPath = join(dir, 'does-not-exist.jsonl');
     try {
@@ -287,8 +255,8 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
   });
 
   it('still answers an empty-but-real transcript for a file that exists and is empty', () => {
-    // The contrast that makes the change meaningful: a readable file with nothing in it
-    // is a session, and the context family must judge against it rather than skip.
+    // The contrast to the case above: a readable file with nothing in it IS a session, and
+    // the context family must judge against it rather than skip.
     const dir = mkdtempSync(join(tmpdir(), 'pdks-transcript-'));
     const emptyPath = join(dir, 'empty.jsonl');
     try {
@@ -298,8 +266,8 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
       expect(transcript).toBeDefined();
       expect(transcript?.findUserMessages()).toEqual([]);
       expect(transcript?.findToolCalls()).toEqual([]);
-      // The success branch of the file wrapper is only exercised here, so all three
-      // queries are pinned — `subagent` is the witness's sibling evidence vocabulary.
+      // The success branch of the file wrapper is only exercised here, so all three queries
+      // are pinned.
       expect(transcript?.findSubagentInvocations()).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -307,18 +275,8 @@ describe('§5.4 robustness — malformed input reduces evidence, never throws', 
   });
 });
 
-// ===========================================================================
-// COVENANT-13 §5.2(5) — findToolCalls (tool-call query; ADAPTER-04 §4.2 trust
-// contract inherited: positive identification, every failure reduces evidence).
-// RED phase: the query does not exist on the JSONL provider yet.
-// ===========================================================================
-
 describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_use blocks', () => {
   it('extracts {name, args} from tool_use blocks across entries, observation order preserved', () => {
-    // P0 extraction contract: every tool_use block with a string name surfaces as
-    // {name, args} in observation order, across multiple assistant entries, args taken
-    // from `input`. Mutation caught: args mapped from the wrong field, text blocks
-    // emitted as calls, order lost, or entries after the first assistant entry dropped.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'text', text: 'let me check the registry first' },
@@ -336,8 +294,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
       ]),
     ]);
 
-    // Every fixture in this describe block is resultless, so COVENANT-13b's join reports
-    // `succeeded: false` throughout — the outcome axis itself is pinned next door in
+    // Every fixture in this describe block is resultless, so the result join reports
+    // `succeeded: false` throughout — the outcome axis itself is pinned in
     // transcript-tool-results.test.ts; here it is only part of the extracted shape.
     expect(transcriptFromJsonl(jsonl).findToolCalls()).toEqual([
       { name: 'Bash', args: { command: 'npm view yaml version' }, succeeded: false },
@@ -351,10 +309,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('filters by exact tool name when given, and returns every call when omitted', () => {
-    // P1 filter contract: findToolCalls('Bash') narrows by strict name equality — a
-    // prefix-sharing tool (BashOutput) must not leak in. Mutation caught: the filter
-    // comparing with startsWith/includes, keeping only the first match, or the
-    // no-argument path returning a filtered subset.
+    // The filter is strict name equality: the fixture carries a prefix-sharing tool
+    // (BashOutput) so a startsWith/includes comparison would leak it in.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'npm view yaml version' } },
@@ -374,9 +330,8 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('excludes tool_use blocks whose name is not a string (numeric or absent)', () => {
-    // P1 positive-identification allowlist: a block that cannot prove a string name is
-    // dropped. Mutation caught: the string check relaxed, emitting a {name: 42} or
-    // {name: undefined} phantom call that a tool evidence regex could then match.
+    // A block that cannot prove a string name is dropped: a {name: 42} or {name: undefined}
+    // phantom call is something a tool evidence regex could then match.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 't1', name: 42, input: { command: 'ls' } },
@@ -391,11 +346,10 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('keeps a block whose input is not a plain object, reducing args to {} — call still counts', () => {
-    // P0 evidence-reduction boundary (PRD §4.3): a string/array/null/absent input empties
-    // the args but the call itself remains evidence — dropping the block would flip a
-    // requirePrecedent gate from found to missing for a name-only pattern. Mutation
-    // caught: the block excluded instead of kept, or a non-plain input (an array passes
-    // typeof === 'object') written through as args verbatim.
+    // A string/array/null/absent input empties the args but the call itself remains
+    // evidence — dropping the block would flip a requirePrecedent gate from found to
+    // missing for a name-only pattern. An array is included deliberately: it passes
+    // typeof === 'object' and would be written through as args by a laxer check.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 't1', name: 'Glob', input: 'src/**/*.ts' },
@@ -416,10 +370,6 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('skips broken/non-object lines without affecting extraction from surrounding lines', () => {
-    // P0 fail-closed robustness (§5.4 pattern extended to the new query): a parse failure
-    // must neither throw nor abort the scan. Mutation caught: an unparseable line
-    // blanking the whole tool-call history (evidence lost beyond the broken line) or
-    // crashing the hook assembly.
     const jsonl = [
       JSON.stringify(
         assistantSpawnEntry([
@@ -442,12 +392,9 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('coexists with the shipped queries — a subagent spawn is both a spawn and a tool call', () => {
-    // P0 regression + disposition pin: adding the tool-call query must not change what
-    // findUserMessages/findSubagentInvocations return, and a spawn block (a tool_use
-    // identified by input.subagent_type) surfaces in BOTH findSubagentInvocations and
-    // findToolCalls — two queries over the same fact. Mutation caught: spawn blocks
-    // carved out of findToolCalls, or the single-pass scan consuming entries so a later
-    // query sees fewer of them.
+    // A spawn block is a tool_use identified by input.subagent_type, so it deliberately
+    // surfaces in BOTH findSubagentInvocations and findToolCalls — two queries over one
+    // fact, not a double count to be carved out.
     const jsonl = toJsonl([
       humanEntry('please run the tdd cycle', '2026-07-26T01:00:00.000Z'),
       assistantSpawnEntry([
@@ -468,10 +415,9 @@ describe('COVENANT-13 §5.2(5) findToolCalls — tool-call extraction from tool_
   });
 
   it('returns fresh objects — mutating a returned call or its args leaves later queries intact', () => {
-    // P1 alias-safety (the same contract the shipped queries pin), extended to the nested
-    // args object. Mutation caught: a shallow copy sharing args with the snapshot, so
-    // writing call.args.subagent_type would rewrite what a later findToolCalls — or the
-    // spawn query reading the same block — returns.
+    // Alias-safety extended to the nested args object: a shallow copy would share args with
+    // the snapshot, so writing call.args.subagent_type rewrites what a later findToolCalls —
+    // or the spawn query reading the same block — returns.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'tdd-writer' } },

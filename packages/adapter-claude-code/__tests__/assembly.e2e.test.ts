@@ -13,12 +13,9 @@ import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-// Dogfooding-assembly E2E (ADAPTER-03 archived PRD §8 carry-over): spawn the REAL
-// PreToolUse hook as a black box — real adapter dist, real dispatcher, real judge
-// bodies — and pin the cross-package behavioral contract the funnel supplement
-// depends on ("results: [] + exit 0 ⟺ dispatcher wrote zero rows"). Spawning the
-// repo-level hook keeps the package dependency graph one-way (no covenant import),
-// the same precedent as the covenant package's own dist-spawning E2E.
+// Spawns the REAL PreToolUse hook as a black box — real adapter dist, real dispatcher,
+// real judge bodies. Spawning the repo-level hook (rather than importing the judge) keeps
+// the package dependency graph one-way: this package must not depend on covenant.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
@@ -41,13 +38,11 @@ afterEach(() => {
 });
 
 /**
- * Spawn the real hook with one payload. The valve is the TTL witness (the 2026-07-21
- * assembly removed the env witness): a test that wants the valve open passes
- * `transcriptPath` pointing at a JSONL transcript carrying a fresh human-typed
- * token, and the hook parses it out of the raw payload. Block cases simply omit it —
- * no transcript, no valve (the dispatcher stays on its noopTranscript default).
- * `env` entries are spread over the spawn env last, so a test can hand the hook a
- * real HOME (the COVENANT-07c block) without touching the telemetry seam callers rely on.
+ * Spawn the real hook with one payload. The valve is the TTL witness: a test that wants
+ * the valve open passes `transcriptPath` pointing at a JSONL transcript carrying a fresh
+ * human-typed token, and the hook parses it out of the raw payload. Block cases simply
+ * omit it — no transcript, no valve. `env` entries are spread over the spawn env last, so
+ * a test can hand the hook a real HOME without touching the telemetry seam callers rely on.
  */
 function runHook(
   payload: unknown,
@@ -71,10 +66,8 @@ function runHook(
 }
 
 /**
- * The witness token the hook will judge against comes from the real root config (this
- * file IS the dogfooding-assembly E2E — it already couples to the repo's own config
- * for protected paths, and the token is no different). Extracted textually so the
- * adapter package gains no dependency on the umbrella loader.
+ * The witness token the hook will judge against comes from the real root config.
+ * Extracted textually so the adapter package gains no dependency on the umbrella loader.
  */
 function configuredToken(): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
@@ -85,14 +78,12 @@ function configuredToken(): string {
 
 /**
  * Read one discipline's `why` out of the live root config — textual for the same reason
- * {@link configuredToken} is: the adapter package gains no dependency on the umbrella
- * loader to read the repository's own dogfooding data.
+ * {@link configuredToken} is.
  *
  * A single-quoted YAML scalar escapes an apostrophe by doubling it, and these values are
  * prose sentences where an apostrophe is ordinary. Matching `[^']*` would stop at the first
  * half of such a pair and hand back a prefix, so the assertion using it would silently check
- * less than it claims (PR #61 review). The pair is consumed here and unescaped on the way
- * out, which is the whole of the single-quoted grammar.
+ * less than it claims. The pair is consumed here and unescaped on the way out.
  */
 function configuredWhy(id: string): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
@@ -133,15 +124,11 @@ function bashPayload(command: string) {
 }
 
 describe('context family across the session boundary (COVENANT-13 §4.5)', () => {
-  // The live config's `manifest-needs-npm-view` entry is scoped to package manifests, which
-  // are not protected AT THE SESSION SURFACE this suite drives (CONFIG-08 put them on the
-  // commit surface's additive list) — so these payloads reach the context family alone,
-  // with no meta-covenant verdict mixed in. Until now the whole family was exercised by
-  // hand at assembly time and pinned by nothing; the first review found it inert on the
-  // very cases it exists for, and the third found the session boundary mishandled.
-  // Two context entries share this scope — one wants a measured version (`command`), one
-  // wants the docs read (`tool`, the adapter's own vocabulary). Neither carries a `when`,
-  // so the content below is irrelevant to the trigger: touching a manifest is the trigger.
+  // Package manifests are not protected at the session surface this suite drives (they sit
+  // on the commit surface's additive list), so these payloads reach the context family
+  // alone, with no meta-covenant verdict mixed in. Two context entries share this scope,
+  // and neither carries a `when`: the content below is irrelevant to the trigger — touching
+  // a manifest is the trigger.
   const manifest = 'packages/scratch/package.json';
   const dependencyLine = '{\n  "left-pad": "^1.3.0"\n}\n';
   const CONTEXT_ENTRIES = ['manifest-needs-context7', 'manifest-needs-npm-view'];
@@ -164,9 +151,8 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
 
   it('judges the same write when a session exists but carries no npm view (advised, not skipped)', () => {
     // The contrast that keeps the skip honest: a readable, empty transcript IS a session,
-    // and a session with no evidence is a real break — landing `advised` since POSTURE-01,
-    // never `skipped`. Mutation caught: the skip widened to swallow this case, which would
-    // make the discipline inert on its own purpose.
+    // and a session with no evidence is a real break — `advised`, never `skipped`. A skip
+    // widened to swallow this case would make the discipline inert on its own purpose.
     const transcriptPath = join(tmpRoot, 'no-evidence.jsonl');
     writeFileSync(transcriptPath, '');
 
@@ -187,8 +173,7 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
     // on purpose. The transcript is what the context family reads AND what the witness
     // reads, it lives outside the repository so no config `protectedPaths` entry can
     // reach it, and deleting it would disable every context discipline while shutting
-    // the human valve on the same absence. Assembly knows the path, so assembly protects
-    // it. Mutation caught: the payload's transcript_path dropped from the protected set.
+    // the human valve on the same absence. Assembly knows the path, so assembly protects it.
     const transcriptPath = join(tmpRoot, 'live-session.jsonl');
     writeFileSync(transcriptPath, '');
 
@@ -209,10 +194,9 @@ describe('context family across the session boundary (COVENANT-13 §4.5)', () =>
   });
 
   it('skips when the transcript path is present but unreadable', () => {
-    // The likelier anomaly, and the one the previous attempt missed: a rotated or deleted
-    // session file used to arrive as an empty transcript, indistinguishable from a fresh
-    // session, so it blocked with no message naming the cause and no `npm view` able to
-    // help — the evidence was read from the same unreadable file.
+    // A rotated or deleted session file must not arrive as an empty transcript,
+    // indistinguishable from a fresh session: that would block with no message naming the
+    // cause and no evidence able to help — it lives in the same unreadable file.
     const result = runHook(writePayload(manifest, dependencyLine), {
       transcriptPath: join(tmpRoot, 'rotated-away.jsonl'),
     });
@@ -227,7 +211,7 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     // when nothing matches, the real dispatcher writes zero rows, so the assembled
     // funnel total is exactly the one adapter-supplied passed row. If a future
     // dispatcher starts recording no-match calls itself, this total becomes 2 and
-    // the gain double-count is caught HERE, not in a gain report months later.
+    // the gain double-count is caught here rather than in a gain report months later.
     const result = runHook(editPayload('docs/example.md'));
 
     expect(result.status).toBe(0);
@@ -275,14 +259,12 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
   });
 
   it('a fresh human-typed witness token witnesses the blocked edit open (exit 0), would-block only', () => {
-    // The valve property the removed env witness used to pin, restated for the TTL
-    // witness AFTER COVENANT-17 moved it behind the verdict: a transcript carrying the
-    // config token as a fresh human utterance (first line, alone — COVENANT-15) lets a
-    // judgment that actually BLOCKED through as `witnessed`, while the sibling
-    // registration that upheld records its true `passed` — under the old routing-time
-    // valve both rows collapsed into bypasses. This is the only hook-level test of the
-    // transcript_path → dispatcher → witness wiring; the predicate itself is pinned in
-    // the covenant package and the provider in transcript-witness.e2e.
+    // The valve sits behind the verdict: a transcript carrying the config token as a fresh
+    // human utterance (first line, alone) lets a judgment that actually BLOCKED through as
+    // `witnessed`, while the sibling registration that upheld records its true `passed`.
+    // This is the only hook-level test of the transcript_path → dispatcher → witness
+    // wiring; the predicate itself is pinned in the covenant package and the provider in
+    // transcript-witness.e2e.
     const result = runHook(editPayload('.claude/hooks/covenant-pretooluse.mjs'), {
       transcriptPath: invokingTranscript(),
     });
@@ -306,12 +288,6 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
   });
 });
 
-// ===========================================================================
-// COVENANT-10 §4.6 / AC §5.7 — real wired disciplines: the routing gap closes.
-// A command mentioning NO protected path now reaches a registration (content-
-// predicate routing), and a delta discipline judges real file-change evidence end to end.
-// ===========================================================================
-
 function writePayload(filePath: string, content: string) {
   return {
     hook_event_name: 'PreToolUse',
@@ -320,38 +296,36 @@ function writePayload(filePath: string, content: string) {
   };
 }
 
-// POSTURE-01: the live root config carries no `enforce` on its disciplines, so every
-// user-discipline break below lands `advised` (exit 0). The judgment — routing, evidence
-// composition, the message — is unchanged; only the disposition moved. Meta-covenants
-// (self-mod · shell-mod · transcript-mod) keep exit 2 in the suites above and below.
+// These assertions read the live root config, so a disposition here follows that file: an
+// entry with no `enforce` lands `advised` (exit 0), one carrying an explicit block rung
+// stops the call. Meta-covenants (self-mod, shell-mod, transcript-mod) carry no entry rung
+// and keep exit 2 in the suites above and below.
 describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
-  it('a gate-disarming command mentioning no protected path is judged by hooks-stay-armed (exit 0, advised)', () => {
-    // The routing-gap pin: before COVENANT-10 this command matched NO registration
-    // (path-mention only) and sailed through; the content predicate now routes it.
+  it('a gate-disarming command mentioning no protected path is judged by hooks-stay-armed', () => {
+    // A command mentioning no protected path still reaches a registration: the content
+    // predicate, not path mention, is what routes it. The entry carries an explicit block
+    // rung in the live root config, so the break stops the call instead of advising.
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
-    expect(result.status).toBe(0);
+    expect(result.status).toBe(2);
     const { records } = readRecords(telemetryPath);
     expect(records.length).toBe(1);
     expect(records[0].label).toBe('hooks-stay-armed');
-    expect(records[0].event).toBe('advised');
+    expect(records[0].event).toBe('blocked');
   });
 
   it("the break message carries the entry's why to stderr (COVENANT-19 §5 axis 6)", () => {
-    // What an agent receives, read where it actually receives it. The pure judge is covered
-    // by the covenant package's unit tests; what only this surface exercises is the round
-    // trip — the assembly serializes the whole entry into argv, the body re-parses it, and
-    // the reason is built on the far side. The em dash of the separator crosses that
-    // encoding here, and the sentence asserted comes from the live root config rather than
-    // a fixture, so this asserts the message this repository judges itself by.
+    // What only this surface exercises is the round trip: the assembly serializes the whole
+    // entry into argv, the body re-parses it, and the reason is built on the far side. The
+    // em dash of the separator crosses that encoding here, and the sentence asserted comes
+    // from the live root config rather than a fixture.
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
-    expect(result.status).toBe(0);
+    expect(result.status).toBe(2);
     // The whole stream, not fragments of it. Substring checks plus a "no newline" check are
     // jointly satisfied by any single line containing both pieces, so a body appending the
-    // separator twice — or padding the message — passes all three while shipping something
-    // no one would accept (PR #61 review; the double-append mutant was executed and passed).
-    // Asserting the full line is what makes this surface's test discriminate at all.
+    // separator twice — or padding the message — passes all three. Asserting the full line
+    // is what makes this test discriminate at all.
     expect(result.stderr).toBe(
       `discipline 'hooks-stay-armed' broken: command matches forbidden pattern` +
         ` — why: ${configuredWhy('hooks-stay-armed')}\n`,
@@ -374,9 +348,9 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
 
   it('a Write adding banned vocabulary to an in-scope source path is judged by covenant-vocabulary (advised)', () => {
     // Absolute in-scope path that does not exist on disk: pre=null, so the Write's whole
-    // content is the added direction. Since the protected surface narrowed to gate files
-    // (2026-07-26) the meta-covenants no longer route here at all, so this is the
-    // discipline judging alone — which is what a user's own repository looks like.
+    // content is the added direction. The protected surface is gate files only, so no
+    // meta-covenant routes here — this is the discipline judging alone, which is what a
+    // user's own repository looks like.
     const result = runHook(
       writePayload(
         join(repoRoot, 'packages/core/src/e2e-probe.ts'),
@@ -410,17 +384,11 @@ describe('dogfooding assembly E2E — wired disciplines (COVENANT-10)', () => {
   });
 });
 
-// ===========================================================================
-// CONFIG-03 §5.3 — config-file consumption: config-absence fail-closed and the
-// config file itself joining the protection surface.
-// ===========================================================================
-
 describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-protecting', () => {
   it('an Edit targeting polydeukes.config.yaml itself is blocked (exit 2, config self-protection)', () => {
-    // AC §5.3 (last item): after the dogfooding migration the discovered config file is
-    // auto-attached to the protection surface (schema rule 6), so editing it must block.
-    // Mutation caught: the loader failing to self-attach configPath, leaving the config
-    // file editable. This passes only AFTER migration — expected to fail in RED.
+    // The discovered config file is auto-attached to the protection surface by the loader,
+    // so editing it must block. A loader that fails to self-attach configPath would leave
+    // the config file — and so every protection it declares — editable.
     const result = runHook(editPayload('polydeukes.config.yaml'));
 
     expect(result.status).toBe(2);
@@ -431,25 +399,22 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
   });
 
   it('the hook fails closed (exit 2) when spawned against a rootDir that has no config file', () => {
-    // AC §5.3 (item "config 파일이 없는 rootDir → exit 2"): silent defaults are
-    // forbidden, so a repoRoot with no polydeukes.config.{yaml,yml,json} must block
-    // EVERY call. Mutation caught: the loader returning an empty/default config on
-    // absence instead of throwing (the whole covenant surface would silently vanish).
+    // Silent defaults are forbidden: a repoRoot with no polydeukes.config.{yaml,yml,json}
+    // must block EVERY call — a loader returning an empty config on absence would make the
+    // whole covenant surface silently vanish.
     //
-    // Harness note: the real hook resolves repoRoot purely from its own file location
-    // (`.claude/hooks/../..`) with no env override. To exercise a configless rootDir at
-    // the E2E level we copy the hook into a temp tree that has NO config file. Since
-    // DIST-01 the delegator resolves the judge by package NAME, so what makes that copy
-    // runnable is the `node_modules` link below, not the `packages` one — the latter is
-    // kept because loadConfig and the discipline globs still anchor on this tree.
-    // This is the most faithful configless-root spawn the current harness supports; if a
-    // future hook gains a repoRoot seam this can collapse to a plain env override.
+    // The real hook resolves repoRoot purely from its own file location
+    // (`.claude/hooks/../..`) with no env override, so exercising a configless rootDir
+    // means copying the hook into a temp tree that has no config file. The delegator
+    // resolves the judge by package NAME, so what makes that copy runnable is the
+    // `node_modules` link below; the `packages` one is there because loadConfig and the
+    // discipline globs still anchor on this tree.
     const configlessRoot = mkdtempSync(join(tmpdir(), 'pdks-configless-'));
     try {
       mkdirSync(join(configlessRoot, '.claude', 'hooks'), { recursive: true });
       cpSync(hookPath, join(configlessRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
       symlinkSync(join(repoRoot, 'packages'), join(configlessRoot, 'packages'), 'dir');
-      // DIST-01: the delegator hook resolves its packages through BARE specifiers
+      // The delegator hook resolves its packages through BARE specifiers
       // (`await import('polydeukes')`), so the fixture tree must also reach the real
       // installation graph. Without this link the spawn dies ERR_MODULE_NOT_FOUND at
       // the SAME exit 2 this case asserts — green for the wrong reason.
@@ -471,7 +436,7 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
       // ERR_MODULE_NOT_FOUND at the same exit 2 this case asserts — green for the wrong
       // reason, pinning module resolution instead of the loader's refusal to default a
       // missing config. The fail-closed row is what separates them: it exists only when
-      // the assembly loaded and then refused (PR #46 review).
+      // the assembly loaded and then refused.
       expect(
         readRecords(telemetryPath).records.map((record) => [record.event, record.label]),
       ).toEqual([['blocked', 'hook']]);
@@ -481,19 +446,15 @@ describe('CONFIG-03 assembly E2E — config discovery is fail-closed and self-pr
   });
 });
 
-// ===========================================================================
-// COVENANT-07b §3.4 — path NOTATION at the assembly boundary. Every spawn above
-// names its target literally, which is how seven measured bypass forms stayed
-// green underneath a passing suite (PRD §2-c): the mention never formed, so no
-// judgment step ever ran on them. One spawn per notation family, each pinning
-// WHICH judge answered — a fail-closed collapse is also exit 2, but it records
+// Path NOTATION at the assembly boundary. Every spawn above names its target literally,
+// which is how measured bypass forms stayed green underneath a passing suite: the mention
+// never formed, so no judgment step ever ran on them. One spawn per notation family, each
+// pinning WHICH judge answered — a fail-closed collapse is also exit 2, but it records
 // against the adapter, so only the label separates a verdict from a crash.
-// ===========================================================================
 
-// The transcript fixture the 07c block below spawns against (hoisted out of the 07b
-// block when its B2 pin flipped). The definite tail is what a path-notation form is
-// matched on, which is why the fixture can live under the temp root and still be the
-// comparison the real session makes.
+// The transcript fixture the transcript-protection block below spawns against. The
+// definite tail is what a path-notation form is matched on, which is why the fixture can
+// live under the temp root and still be the comparison the real session makes.
 const TRANSCRIPT_DIR_PARTS = ['.claude', 'projects', '-home-u-proj'];
 const TRANSCRIPT_FILE = 'session.jsonl';
 const TRANSCRIPT_TAIL = [...TRANSCRIPT_DIR_PARTS, TRANSCRIPT_FILE].join('/');
@@ -508,19 +469,16 @@ function sessionTranscript(): string {
 }
 
 describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', () => {
-  // The transcript assembly attaches from the payload (COVENANT-13) is the surface `~`
-  // and `$HOME` are written against. The path-mention judges expand neither — but since
-  // COVENANT-07c the home value IS injected, as plain data, into the transcript-mod
+  // The transcript the assembly attaches from the payload is the surface `~` and `$HOME`
+  // are written against. The home value is injected as plain data into the transcript-mod
   // predicate alone (its block sits below this one); the path-mention judges exercised
-  // here still expand nothing, so a notation form is matched on the definite tail only.
+  // here expand nothing, so a notation form is matched on the definite tail only.
   const rowsFor = (label: string) =>
     readRecords(telemetryPath).records.filter((r) => r.label === label);
 
   it('a redirect written through an interior "." is blocked on the Bash axis (exit 2)', () => {
-    // Measured bypass, interior-dot family. The target names a judge executable and the
-    // command is nowhere near read-only, yet today it exits 0 with no judge row at all.
-    // Mutation caught: the fix landing in the predicate but never reaching the assembled
-    // hook — the failure mode this file exists to catch and previously did not.
+    // Interior-dot bypass family. Spawned rather than unit-tested because the failure mode
+    // is a fix that lands in the predicate but never reaches the assembled hook.
     const result = runHook(bashPayload('echo x >> packages/core/./dist/index.js'));
 
     expect(result.status).toBe(2);
@@ -529,9 +487,9 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
 
   it('a sed -i whose target cancels through ".." is blocked on the Bash axis (exit 2)', () => {
     // Same family, different write-detection rule: the target here is extracted by the
-    // sed-in-place rule rather than read off a redirect. Mutation caught: normalization
-    // added at one extraction site instead of in the shared primitive, which leaves the
-    // other rules judging raw strings (the drift that produced COVENANT-07 itself).
+    // sed-in-place rule rather than read off a redirect. Normalization added at one
+    // extraction site instead of in the shared primitive leaves the other rules judging
+    // raw strings.
     const result = runHook(bashPayload('sed -i s/a/b/ packages/core/src/../dist/index.js'));
 
     expect(result.status).toBe(2);
@@ -539,10 +497,9 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
   });
 
   it('a cancelling prefix that descends again is blocked on the Bash axis (exit 2)', () => {
-    // The axis end that broke the previous attempt: cancellation in the MIDDLE of a path
-    // rather than at its end. `tmp/../.claude` is the same directory as `.claude`, and a
-    // resolution pass that only handles a trailing `..` loses the match while every fixture
-    // it wrote stayed green.
+    // Cancellation in the MIDDLE of a path rather than at its end. `tmp/../.claude` is the
+    // same directory as `.claude`, and a resolution pass that only handles a trailing `..`
+    // loses the match.
     const result = runHook(bashPayload('rm -rf tmp/../.claude/hooks'));
 
     expect(result.status).toBe(2);
@@ -551,10 +508,9 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
   });
 
   it('a glob spelling of the same target is recorded skipped — the silence removed (COVENANT-10b)', () => {
-    // 07b's silence pin, flipped by 10b exactly as its comment promised. The pass stays —
-    // expanding a glob still needs the filesystem, so no judge guesses a target — but a
-    // mutation-capable command whose target cannot be judged now leaves ONE common skipped
-    // row instead of nothing (PRD §3.2).
+    // Expanding a glob needs the filesystem, so no judge guesses a target and the call
+    // passes — but a mutation-capable command whose target cannot be judged must leave one
+    // common skipped row rather than nothing.
     const result = runHook(bashPayload('rm packages/*/dist/index.js'));
 
     expect(result.status).toBe(0);
@@ -563,13 +519,11 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
   });
 
   it('a tool call whose absolute file_path carries an interior "." is blocked by self-mod (exit 2)', () => {
-    // One primitive, three consumers (PRD §6): the tool axis reads the same predicate
-    // through a different judge, so a fix verified only on Bash payloads leaves the
-    // primary axis open. This is the real payload shape — absolute file_path — which is
-    // the input form whose absence hid COVENANT-07's regression. Write rather than Edit:
-    // Edit's virtual apply depends on what the built dist happens to contain, and a failed
-    // apply falls back to the mention branch, so the test would keep passing while no
-    // longer pinning the proven-target branch COVENANT-09 introduced.
+    // One primitive, three consumers: the tool axis reads the same predicate through a
+    // different judge, so a fix verified only on Bash payloads leaves the primary axis
+    // open. Write rather than Edit: Edit's virtual apply depends on what the built dist
+    // happens to contain, and a failed apply falls back to the mention branch, so the test
+    // would keep passing while no longer pinning the proven-target branch.
     const result = runHook(writePayload(`${repoRoot}/packages/core/./dist/index.js`, 'x'));
 
     expect(result.status).toBe(2);
@@ -577,13 +531,8 @@ describe('dogfooding assembly E2E — path notation variants (COVENANT-07b)', ()
   });
 });
 
-// ===========================================================================
-// COVENANT-07c — the transcript moves off protectedPaths into its own matches
-// predicate, so protecting it stops making the home directory a protected
-// ancestor. The forgery spellings close (audit B2, pinned OPEN by 07b in this
-// file until now) and the COVENANT-13 over-block on the literal absolute home
-// dissolves with the root that caused it.
-// ===========================================================================
+// The transcript is protected by its own equality predicate rather than by protectedPaths,
+// so protecting it does not make the home directory a protected ancestor.
 
 describe('dogfooding assembly E2E — transcript protection without a home ancestor (COVENANT-07c)', () => {
   // Every spawn hands the hook a real HOME (raw env, injected into the transcript-mod
@@ -593,11 +542,10 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
     readRecords(telemetryPath).records.filter((r) => r.label === label);
 
   it('a "~" append to the transcript is blocked by transcript-mod, not shell-mod (exit 2) — audit B2 closes', () => {
-    // The flip of 07b's "audit B2 stays open" pin, which lived in the block above until
-    // this ticket. Asserting WHO answered: the subject must be the ABSOLUTE transcript
-    // path (the canonical spelling, not the typed one — roi.log rows must name the real
-    // file), and shell-mod must stay silent — the transcript is no longer in its
-    // protectedPaths, so a shell-mod row here means the home-ancestor root is back.
+    // Asserting WHO answered: the subject must be the ABSOLUTE transcript path (the
+    // canonical spelling, not the typed one — telemetry rows must name the real file), and
+    // shell-mod must stay silent — the transcript is not in its protectedPaths, so a
+    // shell-mod row here means the home-ancestor root is back.
     const transcriptPath = sessionTranscript();
 
     const result = runHook(bashPayload(`echo forged >> ~/${TRANSCRIPT_TAIL}`), {
@@ -613,11 +561,9 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
   });
 
   it('cd into the literal absolute home passes with no judge row (exit 0) — the COVENANT-13 over-block dissolves', () => {
-    // `cd /home/<user>` has blocked since COVENANT-13: the transcript in protectedPaths
-    // made home a protected ANCESTOR (§1 — unnoticed only because nobody types the
-    // absolute spelling). Mutation caught: a fix that closes the `~` spellings but keeps
-    // the transcript in protectedPaths (07b's withdrawn shape) leaves this blocked —
-    // §3 demands the root goes, not the symptom.
+    // Putting the transcript in protectedPaths would make home a protected ANCESTOR, so
+    // `cd` into the literal absolute home would block — a fix that closes the `~` spellings
+    // while keeping the transcript in protectedPaths leaves this case blocked.
     const transcriptPath = sessionTranscript();
 
     const result = runHook(bashPayload(`cd ${tmpRoot}`), {
@@ -631,12 +577,10 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
   });
 
   it('ancestor destruction outside the repo stays out of scope — transcript-mod silent (exit 0)', () => {
-    // §2 scope principle, designed pass made audible (07b's non-goal convention): the
-    // predicate protects the transcript FILE only, never an ancestor directory — that
-    // surface is declared out of observation scope and parked with agent deny policy.
-    // The disciplines layer MAY leave a shell-unjudgeable skipped row for the rm;
-    // deliberately not asserted either way — the pin is that the transcript predicate
-    // stays silent and nothing blocks.
+    // The predicate protects the transcript FILE only, never an ancestor directory — that
+    // surface is out of observation scope and belongs to the agent's own deny policy. The
+    // disciplines layer may leave a shell-unjudgeable skipped row for the rm, so the
+    // assertion covers only the transcript predicate's silence and the exit code.
     const transcriptPath = sessionTranscript();
 
     const result = runHook(bashPayload('rm -rf ~/.claude/projects'), {
@@ -649,10 +593,9 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
   });
 
   it('an edit whose CONTENT carries a bare "~" and the transcript spelling passes (exit 0)', () => {
-    // Content is mention, not target: the Edit's own fileChange proves the unrelated
-    // file, so the tool axis never reads args. Mutation caught: the predicate's fallback
-    // (or an args scan on the evidence branch) breaking on the spelling inside
-    // new_string — the withdrawn 07b registration refused exactly this edit shape.
+    // Content is mention, not target: the Edit's own fileChange proves the unrelated file,
+    // so the tool axis never reads args. An args scan on the evidence branch would break
+    // on the transcript spelling that sits inside new_string.
     const transcriptPath = sessionTranscript();
     const notesPath = join(tmpRoot, 'notes.md');
     writeFileSync(notesPath, 'draft line\n');
@@ -675,21 +618,15 @@ describe('dogfooding assembly E2E — transcript protection without a home ances
   });
 });
 
-// ===========================================================================
-// COVENANT-10b §3.1–3.3 — the shell axis stops passing mutations silently.
-// The same banned content a Write delivers blocked (COVENANT-10 above) arrived
-// by heredoc/redirect as exit 0 with ZERO rows (audit B3): no evidence, no
-// routing, not even a skipped. 10b derives evidence where the command text
-// makes it computable, records an entry-scoped or common `skipped` where it
-// does not, and keeps signal-free calls silent. NotebookEdit closes the same
-// gap's tool-axis form. Every case spawns the real hook; all but the two
-// volume-defence pins are RED against the current dist by design.
-// ===========================================================================
+// The shell axis must not pass mutations silently: content a Write delivers blocked can
+// also arrive by heredoc or redirect. The axis derives evidence where the command text
+// makes it computable, records an entry-scoped or common `skipped` where it does not, and
+// keeps signal-free calls silent. NotebookEdit is the same gap's tool-axis form.
 
 describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit (COVENANT-10b)', () => {
   // A probe path inside covenant-vocabulary's scope that never exists on disk, so the
   // judgment-time pre read answers ENOENT and the whole delivered text is the added
-  // direction — same fixture logic as the COVENANT-10 Write block above.
+  // direction.
   const SCOPED_SOURCE = 'packages/core/src/e2e-probe.ts';
   const BANNED_LINE = 'export const note = 1; // the guard word';
 
@@ -698,7 +635,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
   const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
 
   it('a heredoc delivering a banned word into a discipline-scoped file is judged (exit 0, advised)', () => {
-    // The B3 bypass itself: a quoted delimiter makes the body literal, so the text is computable.
+    // A quoted delimiter makes the heredoc body literal, so the delivered text is computable.
     const result = runHook(
       bashPayload([`cat > ${SCOPED_SOURCE} <<'EOF'`, BANNED_LINE, 'EOF'].join('\n')),
     );
@@ -717,13 +654,10 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
   it('a sed -i over a scoped file is recorded skipped under EACH discipline scoping it (exit 0)', () => {
     // Content incomputable, target known: one row per entry whose scope covers this path,
-    // attributed to the entry id and never the common label. Since the CONFIG-08 review
-    // widened covenant-vocabulary to the wildcard pair, adapter-git src is inside two
-    // scopes — this pin also proves the widening reached the live config.
-    //
-    // The third row skips for a DIFFERENT reason: it is a context-family entry, and this
-    // run injects no transcript, so its evidence question cannot be asked at all. Two
-    // reasons share one lane, which is why the pin enumerates rather than counts.
+    // attributed to the entry id and never the common label. The third row skips for a
+    // DIFFERENT reason — it is a context-family entry and this run injects no transcript,
+    // so its evidence question cannot be asked at all. Two reasons share one lane, which is
+    // why this enumerates the rows rather than counting them.
     const result = runHook(
       bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
     );
@@ -745,7 +679,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
   });
 
   it('a nested shell invocation leaves one common skipped row (exit 0)', () => {
-    // 04a already answers nested shells indeterminate; 10b records that answer instead of dropping it.
+    // A nested shell is indeterminate, and that answer is recorded rather than dropped.
     const result = runHook(bashPayload('bash x.sh'));
 
     expect(result.status).toBe(0);
@@ -783,8 +717,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
   });
 
   it('a NotebookEdit delivering a banned word into a scoped cell is judged (exit 0, advised)', () => {
-    // The tool-axis half of B3: the hook matcher names four tools, the evidence set covered
-    // three. The notebook must exist — cell evidence reads the target cell's pre from it.
+    // The notebook must exist on disk: cell evidence reads the target cell's pre from it.
     const notebookPath = join(repoRoot, 'packages/core/src/e2e-probe.ipynb');
     writeFileSync(
       notebookPath,
@@ -816,17 +749,10 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
   });
 });
 
-// ===========================================================================
-// COVENANT-10b §2-d / §3.1–3.3 — gap-closing round (set-level audit). The 10b
-// block above pins each disposition once; these pin the set ends it never
-// tried: a protected-path notebook surviving the evidence takeover (§2-d,
-// "evidence must not narrow existing blocking"), both attribution boundaries
-// of the computable axis (out of every scope / clean in scope), a real
-// on-disk pre for append composition, and a violation arriving second in a
-// chain. G4' and G2' hold against the current dist (mention fallback, silent
-// no-match) and exist to keep holding once the derivation lands; the rest
-// are RED by design.
-// ===========================================================================
+// The block above pins each disposition once; these pin the set ends it does not reach: a
+// protected-path notebook surviving the evidence takeover, both attribution boundaries of
+// the computable axis (out of every scope / clean in scope), a real on-disk pre for append
+// composition, and a violation arriving second in a chain.
 
 describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)', () => {
   const SCOPED_SOURCE = 'packages/core/src/e2e-probe.ts';
@@ -837,11 +763,10 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
   const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
 
   it('a NotebookEdit on a protected-path notebook stays blocked by self-mod (exit 2)', () => {
-    // G4' — the fail-open direction §2-d names: today the mention fallback blocks this
-    // call; once NotebookEdit carries cell evidence the proven-target branch answers
-    // instead, and an evidence path that passes validity while dodging protected matching
-    // would replay the 07b fail-open shape. The notebook is real and parseable ON PURPOSE
-    // so evidence lands and the pin holds across the takeover.
+    // Evidence must not narrow existing blocking: when NotebookEdit carries cell evidence
+    // the proven-target branch answers instead of the mention fallback, and an evidence
+    // path that passes validity while dodging protected matching would fail open. The
+    // notebook is real and parseable on purpose so evidence actually lands.
     const notebookPath = join(repoRoot, 'packages/core/dist/e2e-probe.ipynb');
     writeFileSync(
       notebookPath,
@@ -874,8 +799,8 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
   });
 
   it('a computable write outside every scope leaves only the adapter funnel row (exit 0)', () => {
-    // G2' — computable-but-unmatched is a pass, not an unjudgeable: a target no entry
-    // scopes must produce zero discipline rows AND zero common-skip rows.
+    // Computable-but-unmatched is a pass, not an unjudgeable: a target no entry scopes must
+    // produce zero discipline rows AND zero common-skip rows.
     const result = runHook(bashPayload('echo x > /tmp/y.ts'));
 
     expect(result.status).toBe(0);
@@ -890,23 +815,23 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
   });
 
   it('a clean computable write into scope is passed and never also skipped (exit 0)', () => {
-    // G3' — one derivation, one answer: a judged write that ALSO drops a skipped row
-    // would double-record every computable call and drown the skip lane it feeds.
+    // One derivation, one answer: a judged write that ALSO drops a skipped row would
+    // double-record every computable call and drown the skip lane it feeds.
     const result = runHook(bashPayload(`echo 'const ok = 1;' >> ${SCOPED_SOURCE}`));
 
     expect(result.status).toBe(0);
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['passed']);
     // Every entry that JUDGED this write is absent from the skip lane, and a computable
-    // derivation forbids the common shell-unjudgeable row — that pair is G3'. The one row
-    // left belongs to a context-family entry, which judged nothing: this run injects no
-    // transcript, so its question was unaskable rather than answered a second time.
+    // derivation forbids the common shell-unjudgeable row. The one row left belongs to a
+    // context-family entry, which judged nothing: this run injects no transcript, so its
+    // question was unaskable rather than answered a second time.
     expect(skippedRows().map((r) => r.label)).toEqual(['core-needs-knowledge-read']);
   });
 
   it('an append composing a real on-disk pre still judges the banned addition (exit 0, advised)', () => {
-    // G1' — every sibling's pre is ENOENT (= create); a real pre exercises the judgment-
-    // time disk read and pre/post composition, and the relative target sits where only a
-    // repo-root resolution finds it — the hook process cwd holds no such file.
+    // Every sibling's pre is ENOENT (= create); a real pre exercises the judgment-time disk
+    // read and pre/post composition. The relative target sits where only a repo-root
+    // resolution finds it — the hook process cwd holds no such file.
     const realTarget = 'packages/core/src/e2e-probe-real.ts';
     const realTargetAbs = join(repoRoot, realTarget);
     writeFileSync(realTargetAbs, 'export const cleanBase = 1;\n');
@@ -921,8 +846,8 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
   });
 
   it('a violation delivered by the second command of a chain is still judged (exit 0, advised)', () => {
-    // G5' — two writes, two targets, the banned one second: an implementation keeping a
-    // single evidence per call would let chain position launder the violation.
+    // Two writes, two targets, the banned one second: an implementation keeping a single
+    // evidence per call would let chain position launder the violation.
     const chained = `echo probe > /tmp/pdks-chain.ts && echo '${BANNED_LINE}' > ${SCOPED_SOURCE}`;
     const result = runHook(bashPayload(chained));
 
@@ -931,35 +856,30 @@ describe('dogfooding assembly E2E — evidence set gaps (COVENANT-10b gap round)
   });
 });
 
-// ===========================================================================
-// CONFIG-08 §4.2 — the session surface never reads the git namespace. The
-// commit-only additive list (adapters.git.protectedPaths) exists so judgment-
-// chain sources can block at promotion time while staying free during work;
-// that split only holds if the hook's observation scope stays the COMMON
-// list. Spawned through the configless-root harness shape (hook copied into
-// a fixture tree whose packages/ symlinks back to the real dist) because the
-// pinned vocabulary must live in a config the TEST authors — the real repo
-// config cannot carry throwaway entries.
-// ===========================================================================
+// The session surface never reads the git namespace. The commit-only additive list
+// (adapters.git.protectedPaths) exists so judgment-chain sources can block at promotion
+// time while staying free during work, and that split only holds if the hook's observation
+// scope stays the COMMON list. These spawn against a fixture tree carrying a config the
+// test authors, because the entries pinned here cannot live in the real repo config.
 
 describe('dogfooding assembly E2E — session surface ignores the git-additive list (CONFIG-08)', () => {
-  // Injected fixture values: the additive entry names the exact target the session
-  // payload edits, and the common list carries the M2 untracked-directory entry.
+  // The additive entry names the exact target the session payload edits, so any reading of
+  // the git namespace shows up; the common list carries an untracked directory.
   const GIT_ADDITIVE_ENTRY = 'packages/core/src';
   const COMMON_UNTRACKED_ENTRY = '.git/hooks';
 
   const rowsFor = (label: string) =>
     readRecords(telemetryPath).records.filter((r) => r.label === label);
 
-  /** Copy the real hook into a fixture tree carrying the CONFIG-08 target-state config. */
+  /** Copy the real hook into a fixture tree carrying a test-authored config. */
   function runHookWithFixtureConfig(payload: unknown) {
     const fixtureRoot = join(tmpRoot, 'fixture-tree');
     mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
     cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
     symlinkSync(join(repoRoot, 'packages'), join(fixtureRoot, 'packages'), 'dir');
-    // DIST-01: the delegator hook resolves its packages through BARE specifiers, so
-    // the fixture tree must also reach the real installation graph — without this
-    // link the spawn dies ERR_MODULE_NOT_FOUND before any judgment.
+    // The delegator hook resolves its packages through BARE specifiers, so the fixture
+    // tree must also reach the real installation graph — without this link the spawn dies
+    // ERR_MODULE_NOT_FOUND before any judgment.
     symlinkSync(join(repoRoot, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
     writeFileSync(
       join(fixtureRoot, 'polydeukes.config.json'),
@@ -986,12 +906,9 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
   }
 
   it('an Edit under a git-additive path passes the session surface with no witness (exit 0)', () => {
-    // §4.2 contract pin: "the hook does not read the git namespace" is a promise, not
-    // an omission — source stays free during work and gates only at promotion. The
-    // additive entry names this exact target, so ANY reading of it shows up here.
-    // Mutation caught: the hook assembly unioning adapters.git.protectedPaths (self-mod
-    // blocks, exit 2), or loadConfig fail-fasting on the new vocabulary (fail-closed
-    // exit 2 with an adapter blocked row instead of the passed funnel row).
+    // "The hook does not read the git namespace" is a promise, not an omission: source
+    // stays free during work and gates only at promotion. A hook assembly that unioned
+    // adapters.git.protectedPaths would block here on self-mod.
     const result = runHookWithFixtureConfig(editPayload(`${GIT_ADDITIVE_ENTRY}/index.ts`));
 
     expect(result.status).toBe(0);
@@ -1006,12 +923,10 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
   });
 
   it('a Write into .git/hooks is blocked by self-mod on the session surface (exit 2)', () => {
-    // M2's session half: .git/hooks is git-untracked, so the commit surface can never
-    // observe it — the common list is the ONE layer that can watch the generated hook,
-    // and the session must own that block. The self-mod label separates a verdict from
-    // a fail-closed collapse on the same exit code. Mutation caught: an untracked
-    // directory entry dropped from tool-axis ancestor matching, or the fixture config
-    // dying in loadConfig (adapter blocked row, no self-mod row).
+    // .git/hooks is git-untracked, so the commit surface can never observe it — the common
+    // list is the one layer that can watch the generated hook, and the session must own
+    // that block. The self-mod label is asserted because a fail-closed collapse carries the
+    // same exit code and only the label separates the two.
     const result = runHookWithFixtureConfig(
       writePayload(`${COMMON_UNTRACKED_ENTRY}/pre-commit`, '#!/bin/sh\nexit 0\n'),
     );

@@ -1,13 +1,11 @@
 /**
- * File-change evidence computation (COVENANT-10 §4.3) — turns one Edit/Write/MultiEdit/
- * NotebookEdit payload into the agent-neutral `FileChange` evidence the discipline layer
- * judges.
+ * File-change evidence computation — turns one Edit/Write/MultiEdit/NotebookEdit
+ * payload into the agent-neutral `FileChange` evidence the discipline layer judges.
  *
  * Pure translation: pre-state comes through an injected reader (disk is the caller's
  * choice), post-state through `virtualPostState`. An unresolvable post-state OMITS the
- * element (the specified disposition, PRD §4.3 — the real tool rejects the same edit,
- * so there is no change to judge); non-mutating tools and unparseable envelopes yield
- * an empty array, never an error.
+ * element — the real tool rejects the same edit, so there is no change to judge;
+ * non-mutating tools and unparseable envelopes yield an empty array, never an error.
  */
 
 import type { FileChange } from '@polydeukes/core';
@@ -45,7 +43,7 @@ function cellSource(cells: unknown[], cellId: unknown): string | null {
 }
 
 /**
- * Cell-level evidence for one NotebookEdit payload (COVENANT-10b §2-d).
+ * Cell-level evidence for one NotebookEdit payload.
  *
  * The judged quantity is the target CELL's source, not the notebook's serialization:
  * `path` names the notebook while `pre`/`post` carry the cell's text, so a banned word
@@ -90,11 +88,11 @@ function collectNotebookChange(
 }
 
 /**
- * Collect the file-change evidence of one raw PreToolUse payload (COVENANT-10 §4.3).
+ * Collect the file-change evidence of one raw PreToolUse payload.
  *
  * `readPreState` returns the target file's current content, `null` when it does not
- * exist — that absence IS the union discriminant (CORE-06 §4.2): no pre-state tags a
- * `create`, an existing one a `modify` (these tools cannot delete). Evidence is
+ * exist — that absence IS the union discriminant: no pre-state tags a `create`, an
+ * existing one a `modify` (these tools cannot delete). Evidence is
  * singular like its IR home (`toolCall.fileChange`): one payload proves at most one
  * change, and `null` means nothing provable. NotebookEdit names its target differently
  * and proves a cell rather than a file, so it branches into its own computation.

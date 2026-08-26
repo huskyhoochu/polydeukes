@@ -3,17 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// CORE-06 §4.2 / AC 4 — the session adapter tags its evidence with the union
-// (pre === null → create, else modify) and attaches it to the one mutating tool-call
-// element of the dispatched IR, not to a top-level array. Today collectFileChanges
-// emits the flat {path, pre, post} shape and runAdapterPath ships it at the top level,
-// so this file is RED by construction.
+// The session adapter tags its evidence with the union (pre === null → create, else
+// modify) and attaches it to the one mutating tool-call element of the dispatched IR,
+// not to a top-level array.
 import { collectFileChanges, type DispatchOutcome, runAdapterPath } from '../src/index.ts';
-
-// ---------------------------------------------------------------------------
-// Fixtures — realistic Claude Code PreToolUse payloads (snake_case), following
-// file-changes.test.ts conventions. Claude vocabulary stays in this package.
-// ---------------------------------------------------------------------------
 
 const writePayload = {
   hook_event_name: 'PreToolUse',
@@ -29,15 +22,11 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
   return (fp: string) => (fp === filePath ? content : null);
 }
 
-// ===========================================================================
-// AC 4 — collectFileChanges tags the union (injected reader, no disk)
-// ===========================================================================
-
 describe('collectFileChanges — union tagging (AC 4)', () => {
   it('tags a Write with no pre-state (reader returns null) as kind create with no pre field', () => {
-    // P0 tagging: absence of a file IS the create discriminant. Mutation caught: the flat
-    // shape kept (no kind — downstream switches cannot judge), or a leftover pre:null
-    // sentinel riding the create variant (toEqual rejects a defined null field).
+    // Absence of a file IS the create discriminant. Catches an untagged flat shape,
+    // which downstream switches cannot judge, and a leftover pre:null sentinel riding
+    // the create variant — toEqual rejects a defined null field.
     const change = collectFileChanges(writePayload, () => null);
 
     expect(change).toEqual({
@@ -48,10 +37,9 @@ describe('collectFileChanges — union tagging (AC 4)', () => {
   });
 
   it('tags a Write over existing content as kind modify carrying both the pre and the post', () => {
-    // P0 tagging boundary partner: a real pre-state makes the SAME payload a modify — the
-    // discriminant is the evidence, not the tool. Mutation caught: existing content tagged
-    // create (an immutable discipline would uphold an overwrite as first authoring), or
-    // pre/post swapped.
+    // A real pre-state makes the SAME payload a modify — the discriminant is the
+    // evidence, not the tool. Existing content tagged create would let an immutable
+    // discipline uphold an overwrite as first authoring.
     const change = collectFileChanges(
       writePayload,
       readerFor('src/new-file.ts', 'export const seed = 1;'),
@@ -65,12 +53,6 @@ describe('collectFileChanges — union tagging (AC 4)', () => {
     });
   });
 });
-
-// ===========================================================================
-// AC 4 — runAdapterPath nests the evidence on the tool-call element of the
-// dispatched IR (real disk pre-state via a temp dir, captured dispatch seam —
-// following the file-changes.test.ts integration conventions).
-// ===========================================================================
 
 let tmpRoot: string;
 let telemetryPath: string;
@@ -101,11 +83,9 @@ function capturingDispatch(): {
 
 describe('runAdapterPath — evidence nested on the tool-call element (AC 4)', () => {
   it('an Edit payload dispatches an IR whose toolCalls[0].fileChange is the modify evidence', async () => {
-    // P0 attribution wiring: the IR handed to dispatch carries the evidence INSIDE the
-    // mutating call element, and the removed top-level home is gone. Mutation caught:
-    // evidence still shipped as a top-level fileChanges array (a covenant reading the
-    // nested position would see an unproven call — the fail-open channel), or the modify
-    // tagged create despite a real disk pre-state.
+    // Attribution wiring: the IR handed to dispatch carries the evidence INSIDE the
+    // mutating call element. Evidence shipped as a top-level array instead would leave
+    // a covenant reading the nested position seeing an unproven call — fail-open.
     const filePath = join(tmpRoot, 'app.ts');
     writeFileSync(filePath, 'const v = alpha;');
     const payload = {

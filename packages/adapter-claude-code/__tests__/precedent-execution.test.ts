@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
-// COVENANT-13b §4.4 / AC 11–12 — the adapter's own evidence vocabularies (`tool`, `subagent`)
-// take the same execution rule as core's `command`: a call is evidence only when the
-// transcript shows it ran and reported success. A call the covenant blocked, a call the
-// human rejected, and a call that simply failed all carry the same marker and none of them
-// is precedent. The spawn axis reads the same join — a spawn that never happened cannot
-// have done the work the discipline demands. That rule does not exist yet, so every
-// expectation below that names a denied call is RED by construction.
+// The adapter's own evidence vocabularies (`tool`, `subagent`) take the same execution rule
+// as core's `command`: a call is evidence only when the transcript shows it ran and reported
+// success. A call the covenant blocked, a call the human rejected, and a call that simply
+// failed all carry the same marker, and none of them is precedent. The spawn axis reads the
+// same join — a spawn that never happened cannot have done the work the discipline demands.
 import { evaluatePrecedent } from '../src/precedent.ts';
 import { transcriptFromJsonl } from '../src/transcript.ts';
-
-// ---------------------------------------------------------------------------
-// Fixtures — real transcript shapes, mirroring the shipped precedent suite. Spawn kinds,
-// tool names, and result prose are ecosystem values injected here, never source literals.
-// ---------------------------------------------------------------------------
 
 const SPAWN_KIND = 'tdd-implementer';
 const OTHER_SPAWN_KIND = 'code-reviewer';
@@ -25,7 +18,7 @@ const SHELL_PATTERN = '^Bash$';
 const USER_REJECTED_CONTENT =
   "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.";
 
-/** What a failed MCP query leaves behind — the live `manifest-needs-context7` risk. */
+/** What a failed MCP query leaves behind. */
 const MCP_FAILURE_CONTENT = 'Error: MCP server "context7" request failed: fetch failed';
 
 function assistantEntry(uuid: string, blocks: unknown[]) {
@@ -69,18 +62,13 @@ function transcriptOf(entries: unknown[]) {
   return transcriptFromJsonl(entries.map((entry) => JSON.stringify(entry)).join('\n'));
 }
 
-// ===========================================================================
-// AC 11 — tool evidence follows the execution rule
-// ===========================================================================
-
 describe('COVENANT-13b §4.4 evaluatePrecedent — tool evidence requires a successful call (AC 11)', () => {
   it('stays shut on a tool call that failed, while a successful sibling still opens', () => {
-    // P0 the fail-open this ticket closes on the adapter's own vocabulary: today the mere
-    // REQUEST of an MCP query opens the gate, so a query that never returned a single word
-    // of documentation satisfies "consult the docs first". The shell assertion is not
-    // decoration — without it this expectation would also hold if the result join were
-    // broken outright (no result at all also yields a shut gate), and the test would go
-    // green while verifying nothing. Mutation caught: the outcome ignored on the tool path.
+    // Without the outcome, the mere REQUEST of an MCP query opens the gate, so a query that
+    // never returned a single word of documentation satisfies "consult the docs first". The
+    // shell assertion is not decoration: without it this expectation would also hold if the
+    // result join were broken outright (no result at all also yields a shut gate), and the
+    // test would go green while verifying nothing.
     const transcript = transcriptOf([
       assistantEntry('a-1', [toolBlock('toolu_01', MCP_TOOL), toolBlock('toolu_02', SHELL_TOOL)]),
       resultEntry('u-1', [
@@ -94,18 +82,13 @@ describe('COVENANT-13b §4.4 evaluatePrecedent — tool evidence requires a succ
   });
 });
 
-// ===========================================================================
-// AC 12 — subagent evidence follows the same rule
-// ===========================================================================
-
 describe('COVENANT-13b §4.4 evaluatePrecedent — subagent evidence requires a successful spawn (AC 12)', () => {
   it('stays shut on a spawn the human rejected, while a successful spawn of another kind opens', () => {
-    // P0 the reason the spawn axis cannot be exempt: a rejected spawn is the case where a
-    // human explicitly said no, and counting it as precedent means the refusal itself
-    // becomes the key. It also catches the likeliest implementation slip — reading the
-    // spawn-invocation query, which carries no outcome, instead of the joined tool calls:
-    // that reads true here. The other-kind assertion pins the branch, so this cannot pass
-    // merely because spawn evidence stopped working altogether.
+    // A rejected spawn is the case where a human explicitly said no, so counting it as
+    // precedent makes the refusal itself into the key. It also catches the likeliest
+    // implementation slip — reading the spawn-invocation query, which carries no outcome,
+    // instead of the joined tool calls, which reads true here. The other-kind assertion pins
+    // the branch, so this cannot pass merely because spawn evidence stopped working.
     const transcript = transcriptOf([
       assistantEntry('a-1', [
         spawnBlock('toolu_01', SPAWN_KIND),
@@ -122,12 +105,12 @@ describe('COVENANT-13b §4.4 evaluatePrecedent — subagent evidence requires a 
   });
 
   it('opens when a rejected spawn is followed by a successful spawn of the same kind', () => {
-    // P0 the recovery path, the spawn-axis twin of §4.6: a first attempt refused (or
-    // crashed) must not poison the kind for the rest of the session. Mutation caught: an
-    // evaluator that finds the first spawn of the required kind and returns ITS outcome —
-    // the gate would then stay shut however many times the subagent is spawned and finishes,
-    // and the only way forward would be the witness. The rejected spawn is deliberately
-    // FIRST, because with the success first that mutation would answer true and hide.
+    // The recovery path: a first attempt refused or crashed must not poison the kind for the
+    // rest of the session. An evaluator that finds the FIRST spawn of the required kind and
+    // returns its outcome would keep the gate shut however many times the subagent is
+    // spawned and finishes, leaving the witness as the only way forward. The rejected spawn
+    // is deliberately first, because with the success first that mistake answers true and
+    // hides.
     const transcript = transcriptOf([
       assistantEntry('a-1', [spawnBlock('toolu_01', SPAWN_KIND)]),
       resultEntry('u-1', [errorResult('toolu_01', USER_REJECTED_CONTENT)]),

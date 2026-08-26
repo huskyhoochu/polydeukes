@@ -3,13 +3,10 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-// ADAPTER-04 §5.2 witness-integration E2E. The witness predicate lives in the covenant
-// package; the JSONL transcript provider lives in this adapter package. Importing the
-// covenant package directly would violate the one-way dependency rule (adapter depends
-// only on core), so — mirroring assembly.e2e.test.ts — we drive both from BUILT dists
-// via a spawned `node -e` script that imports each dist by absolute file URL. The
-// script constructs ttlWitness, feeds it transcriptFromJsonl(<fixture>), and prints
-// the boolean verdict; this file only asserts that verdict. This keeps the package
+// The witness predicate lives in the covenant package; the JSONL transcript provider lives
+// in this adapter package. Importing the covenant package directly would violate the one-way
+// dependency rule (adapter depends only on core), so both are driven from BUILT dists via a
+// spawned `node -e` script that imports each by absolute file URL. That keeps the package
 // dependency graph one-way while still verifying the cross-package assembly end to end.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
@@ -18,20 +15,20 @@ const adapterDist = resolve(repoRoot, 'packages/adapter-claude-code/dist/index.j
 
 const TOKEN = 'PDKS-WITNESS-42';
 // A fixed "message sent at" instant and a fixed clock: the assembled predicate is judged
-// against these injected values only, so the verdict is deterministic (no wall clock).
+// against these injected values only, so the verdict never depends on the wall clock.
 const SENT_AT = Date.parse('2026-07-21T04:00:00.000Z');
-const TTL_MS = 600_000; // 10 minutes, the roadmap's proposed default window.
+const TTL_MS = 600_000;
 
 beforeAll(() => {
-  // The spawned script imports built dist; turbo caching makes repeat runs ~1s.
+  // The spawned script imports built dist.
   execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
 }, 120_000);
 
 /**
  * Spawn a node process that assembles ttlWitness (covenant dist) over
  * transcriptFromJsonl (adapter dist) and prints the boolean verdict on the last line.
- * The fixture JSONL, token, TTL and fixed clock value are passed as JSON via env so the
- * inline script stays free of interpolation hazards.
+ * The fixture JSONL, token, TTL and fixed clock value go through env as JSON so the inline
+ * script stays free of interpolation hazards.
  */
 function witnessVerdict(params: {
   jsonl: string;
@@ -65,10 +62,6 @@ function witnessVerdict(params: {
   }
   return printed === 'true';
 }
-
-// ---------------------------------------------------------------------------
-// Fixture entry builders (JSONL vocabulary stays in the adapter test surface).
-// ---------------------------------------------------------------------------
 
 function humanEntry(content: string, timestampMs?: number) {
   return {
@@ -116,13 +109,11 @@ function toJsonl(entries: unknown[]): string {
 
 describe('ADAPTER-04 §5.2 witness integration — real dists, injected clock', () => {
   it('witnesses when a human token message sits inside the TTL window (true)', () => {
-    // AC "witness valid when a user message matches within 10 minutes": the assembled provider
-    // must surface the human message WITH its timestamp so the fresh-token case witnesses.
-    // Mutation caught: the provider dropping the timestamp (would fail-closed even inside the
-    // window), or not surfacing the human message at all — either breaks the witness end to end.
-    // The token stands alone on the first line because COVENANT-15 narrowed matching from
-    // substring to first-line-exact; the transport under test here is the timestamp, not the
-    // match shape, so the fixture carries the token in its invoking form.
+    // The assembled provider must surface the human message WITH its timestamp: dropping the
+    // timestamp fails closed even inside the window, and not surfacing the message at all
+    // breaks the witness end to end. The token stands alone on the first line because that is
+    // its invoking form — matching is first-line-exact, not substring — and what this test
+    // exercises is the timestamp transport, not the match shape.
     const jsonl = toJsonl([humanEntry(`${TOKEN}\nplease do the thing`, SENT_AT)]);
 
     const verdict = witnessVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });
@@ -130,19 +121,12 @@ describe('ADAPTER-04 §5.2 witness integration — real dists, injected clock', 
     expect(verdict).toBe(true);
   });
 
-  // AUDIT: the past-TTL expiry case was pruned — the covenant package's ttl-witness tests
-  // already pin the expiry boundary to the millisecond against fake transcripts, and the
-  // provider→predicate wiring is covered by the in-window case above (same seam, same path).
-
   it('does not witness when the token rides only on non-human entries (false)', () => {
-    // AC "AI-synthesised non-user entries do not qualify" — the forgery-vector case. A fresh
-    // token planted in task-notification, tool_result and no-origin entries must NOT witness.
-    // Mutation caught: the provider relaxing its origin.kind==="human" allowlist, which would
-    // let a subagent self-issue a witness by printing the token into an AI-controlled surface.
-    // Each entry's text is the BARE token in its invoking form (first line, alone): if the
-    // allowlist ever admitted one of these entries, the match would succeed and this test
-    // would fail. Decorated tokens would be refused on the match instead, leaving the
-    // provenance check unexercised — the silent-green failure the COVENANT-15 review caught.
+    // The forgery vector: relaxing the provider's origin.kind==="human" allowlist would let a
+    // subagent self-issue a witness by printing the token into an AI-controlled surface. Each
+    // entry's text is the BARE token in its invoking form (first line, alone) so that the
+    // provenance check is what refuses it — a decorated token would be refused on the match
+    // instead, leaving provenance unexercised and this test green for the wrong reason.
     const jsonl = toJsonl([
       taskNotificationEntry(TOKEN, SENT_AT),
       toolResultEntry(TOKEN, SENT_AT),
@@ -155,12 +139,10 @@ describe('ADAPTER-04 §5.2 witness integration — real dists, injected clock', 
   });
 
   it('does not witness when the human token message has no timestamp (false)', () => {
-    // AC "timestamp-less entry is fail-closed": the message is kept (timestampMs undefined) but
-    // freshness is unprovable, so the witness predicate must refuse it. Mutation caught: the
-    // provider fabricating a timestamp for a timestamp-less entry, converting an unprovable
-    // message into a witnessing one. The token must match on the first line (COVENANT-15) or the
-    // predicate would refuse on the match instead, and this test would go green without ever
-    // reaching the freshness check it exists to pin.
+    // The message is kept (timestampMs undefined) but its freshness is unprovable, so the
+    // predicate refuses it; a provider that fabricated a timestamp would turn an unprovable
+    // message into a witnessing one. The token must match on the first line or the predicate
+    // refuses on the match instead, never reaching the freshness check this test pins.
     const jsonl = toJsonl([humanEntry(TOKEN)]);
 
     const verdict = witnessVerdict({ jsonl, token: TOKEN, ttlMs: TTL_MS, nowMs: SENT_AT + 1000 });

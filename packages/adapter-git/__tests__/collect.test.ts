@@ -3,15 +3,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// ADAPTER-git §4.2 — the git-backed collector reads a real staging area.
 import { collectStagedChanges, type StagedChange } from '../src/index.ts';
 
-// ---------------------------------------------------------------------------
-// Real throwaway git repositories under os.tmpdir(). These are integration tests:
-// the collector's contract is defined against actual `git diff --cached` output and
-// blob reads, so a real repo is the only honest fixture. user.email/user.name are set
-// locally so commits succeed in a clean CI environment.
-// ---------------------------------------------------------------------------
+// Real throwaway git repositories under os.tmpdir(). The collector's contract is defined
+// against actual `git diff --cached` output and blob reads, so a real repo is the only
+// honest fixture. user.email/user.name are set locally so commits succeed in a clean CI
+// environment.
 
 let repoRoot: string;
 
@@ -42,7 +39,6 @@ afterEach(() => {
 
 describe('§4.2 collectStagedChanges — modified file', () => {
   it('reports a modified file with pre=HEAD content and post=staged content', () => {
-    // Mutation caught: pre read from the worktree instead of HEAD, or post/pre swapped.
     write('a.txt', 'first\n');
     git('add', 'a.txt');
     git('commit', '--quiet', '-m', 'initial');
@@ -62,8 +58,8 @@ describe('§4.2 collectStagedChanges — modified file', () => {
 
 describe('§4.2 collectStagedChanges — added file', () => {
   it('reports a newly staged file as added with pre=null', () => {
-    // Mutation caught: added misreported as modified, or pre defaulted to '' instead of
-    // null (the delta layer distinguishes "no prior file" from "empty prior file").
+    // pre must be null, never '': the delta layer distinguishes "no prior file" from
+    // "empty prior file".
     write('base.txt', 'base\n');
     git('add', 'base.txt');
     git('commit', '--quiet', '-m', 'initial');
@@ -83,8 +79,6 @@ describe('§4.2 collectStagedChanges — added file', () => {
 
 describe('§4.2 collectStagedChanges — deleted file', () => {
   it('reports a staged deletion with status deleted and post=null', () => {
-    // Mutation caught: deletion dropped from the diff, or post read as the (absent) staged
-    // blob and coerced to '' instead of null.
     write('doomed.txt', 'to be removed\n');
     git('add', 'doomed.txt');
     git('commit', '--quiet', '-m', 'initial');
@@ -103,11 +97,8 @@ describe('§4.2 collectStagedChanges — deleted file', () => {
 
 describe('§4.2 collectStagedChanges — staged then re-edited in the worktree', () => {
   it('reads post from the STAGED blob, not the current worktree content', () => {
-    // P0 (load-bearing for a pre-commit adapter): after `git add`, the file is edited
-    // again in the worktree. The judgment must see what will actually be committed (the
-    // staged blob), never the newer worktree bytes. Mutation caught: post read via
-    // `git show HEAD:<path>` mistakenly pointing at the worktree, or reading the file
-    // from disk instead of `git show :<path>`.
+    // The judgment must see what will actually be committed — the staged blob — never the
+    // newer worktree bytes.
     write('staged.txt', 'committed version\n');
     git('add', 'staged.txt');
     // Diverge the worktree from the index AFTER staging.
@@ -122,9 +113,8 @@ describe('§4.2 collectStagedChanges — staged then re-edited in the worktree',
 
 describe('§4.2 collectStagedChanges — first commit with no HEAD', () => {
   it('reports every staged file as added with pre=null when HEAD is absent', () => {
-    // Boundary: a repo with no commits has no HEAD blob. The collector must narrow to
-    // "best judgeable" (all added, pre=null), never throw. Mutation caught: a `git show
-    // HEAD:<path>` failure bubbling as an exception instead of yielding added.
+    // A repo with no commits has no HEAD blob. The collector must narrow to the best
+    // judgeable reading — all added, pre=null — never throw.
     write('one.txt', 'one\n');
     write('two.txt', 'two\n');
     git('add', 'one.txt', 'two.txt');
@@ -148,10 +138,10 @@ describe('§4.2 collectStagedChanges — first commit with no HEAD', () => {
 
 describe('§4.2 collectStagedChanges — staged rename surfaces as delete + add (review F1)', () => {
   it('reports the rename source as deleted and the destination as added', () => {
-    // P0: git enables rename detection by default, collapsing `git mv` into a single R
-    // entry whose SOURCE path would vanish from judgment — renaming a protected file
-    // away would bypass the covenant entirely. The collector must force D+A reporting
-    // (--no-renames) so the disappearance from the protected location is judged.
+    // git enables rename detection by default, collapsing `git mv` into a single R entry
+    // whose source path vanishes from judgment — renaming a protected file away would
+    // then escape the covenant. `--no-renames` forces D+A so the disappearance from the
+    // protected location is judged.
     write('protected-here.txt', 'locked content\n');
     git('add', 'protected-here.txt');
     git('commit', '--quiet', '-m', 'initial');
@@ -176,10 +166,9 @@ describe('§4.2 collectStagedChanges — staged rename surfaces as delete + add 
 
 describe('§4.2 collectStagedChanges — staged blob over 1MB (review F2)', () => {
   it('collects a large staged file instead of failing on the spawn buffer default', () => {
-    // P0 availability: execFileSync defaults maxBuffer to 1MB, so `git show :<path>` on a
-    // legitimately large staged file (lockfile, fixture, bundle) would throw ENOBUFS and
-    // the runner would fail the whole commit closed. Mutation caught: the maxBuffer
-    // override dropped.
+    // execFileSync defaults maxBuffer to 1MB, so `git show :<path>` on a legitimately
+    // large staged file (lockfile, fixture, bundle) throws ENOBUFS without the override
+    // and the runner fails the whole commit closed.
     const twoMegabytes = 'x'.repeat(2 * 1024 * 1024);
     write('big.txt', twoMegabytes);
     git('add', 'big.txt');
@@ -193,10 +182,9 @@ describe('§4.2 collectStagedChanges — staged blob over 1MB (review F2)', () =
 describe('§4.2 collectStagedChanges — binary staged blob (review F4, PRD §4.2)', () => {
   it('yields null content for a binary blob instead of lossily decoded text', () => {
     // A binary blob decoded as utf-8 replaces invalid sequences with U+FFFD, so a delta
-    // judge would scan corrupted bytes — a forbidden pattern could be mangled away
-    // (fail-open direction). PRD §4.2: no judgeable text content → the element is
-    // omitted downstream; at the collector level that is post=null with the toolCall
-    // surviving via status. Mutation caught: the NUL-byte binary detection dropped.
+    // judge would scan corrupted bytes and a forbidden pattern could be mangled away —
+    // the fail-open direction. No judgeable text content means post=null, with the
+    // toolCall still surviving via its status.
     writeFileSync(join(repoRoot, 'blob.bin'), Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]));
     git('add', 'blob.bin');
 
@@ -209,8 +197,6 @@ describe('§4.2 collectStagedChanges — binary staged blob (review F4, PRD §4.
 
 describe('§4.2 collectStagedChanges — empty staging area', () => {
   it('returns an empty array when nothing is staged', () => {
-    // Boundary: no staged changes → []. Mutation caught: returning worktree-dirty or
-    // committed files as if they were staged.
     write('committed.txt', 'content\n');
     git('add', 'committed.txt');
     git('commit', '--quiet', '-m', 'initial');

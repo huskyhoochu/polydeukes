@@ -1,8 +1,8 @@
 /**
- * `resolveGitAdapterSettings` — the adapter-git namespace validator (CONFIG-06 §4.2).
+ * `resolveGitAdapterSettings` — the adapter-git namespace validator.
  *
- * The first tenant of the CONFIG-07 adapter namespace container: the core validated the
- * container shape only, so this pure function owns the `adapters.git` vocabulary.
+ * The core validates the adapter namespace container's shape only, so this pure
+ * function owns the `adapters.git` vocabulary.
  * Absence fills the strictest level (`block` — no silent relaxation); unknown keys and
  * values fail-fast with the full field path in the message.
  */
@@ -11,7 +11,7 @@ import { isPlainObject } from '@polydeukes/core';
 
 /**
  * The resolved adapter-git settings — the enforcement level and the commit surface's
- * additive protection scope (CONFIG-08 §4.1).
+ * additive protection scope.
  */
 export type GitAdapterSettings = { enforce: 'block' | 'advise'; protectedPaths: string[] };
 

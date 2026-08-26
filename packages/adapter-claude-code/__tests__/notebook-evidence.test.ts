@@ -1,20 +1,15 @@
 import { describe, expect, it } from 'vitest';
-// COVENANT-10b §2-d — NotebookEdit joins the adapter's mutating set, and its evidence is
-// CELL-level: path = the notebook file, pre/post = the target cell's source before/after
-// the edit. The FileChange is evidence vocabulary, not a reproduction of the serialized
-// file, so a banned word in a cell is judged without JSON-escape noise. The NotebookEdit
-// branch does not exist yet (MUTATING_TOOLS is three tools), so every evidence case here
-// is RED by construction; the omission cases pass today because null IS the current
-// answer — they lock that disposition against a future branch that judges on a guess.
+// NotebookEdit evidence is CELL-level: path = the notebook file, pre/post = the target
+// cell's source before/after the edit. The evidence is not a reproduction of the
+// serialized file, so a banned word in a cell is judged without JSON-escape noise.
 import { collectFileChanges } from '../src/file-changes.ts';
 
-// ---------------------------------------------------------------------------
-// Fixtures — the measured NotebookEdit PreToolUse shape (live transcript, 2026-07-27):
+// The measured NotebookEdit PreToolUse shape (live transcript, 2026-07-27):
 // notebook_path and new_source are always present; edit_mode ∈ replace|insert|delete and
 // DEFAULTS TO replace when absent; cell_id targets the cell (insert: the new cell lands
 // after it, or at the notebook start when cell_id is absent); cell_type is required for
-// insert only. The `changes[]` array shape in hooks.md is stale doc — this is the payload.
-// ---------------------------------------------------------------------------
+// insert only. The `changes[]` array shape in the published hook docs is stale — this is
+// the payload the tool actually sends.
 
 const NOTEBOOK_PATH = 'src/analysis.ipynb';
 const NEW_SOURCE = "print('replaced by probe')";
@@ -57,10 +52,6 @@ function readerFor(filePath: string, content: string | null): (fp: string) => st
 }
 
 const readNotebook = readerFor(NOTEBOOK_PATH, notebookJson);
-
-// ===========================================================================
-// COVENANT-10b §2-d — cell-level evidence per edit_mode
-// ===========================================================================
 
 describe('collectFileChanges — NotebookEdit cell evidence (COVENANT-10b §2-d)', () => {
   it('replace yields modify evidence with the target cell source as pre and new_source as post', () => {
@@ -152,10 +143,8 @@ describe('collectFileChanges — NotebookEdit cell evidence (COVENANT-10b §2-d)
   });
 });
 
-// ===========================================================================
-// COVENANT-10b §2-d — omission dispositions (evidence omitted, never an error;
-// the mention fallback owns the call)
-// ===========================================================================
+// Omission dispositions: evidence is omitted, never raised as an error — the mention
+// fallback owns the call.
 
 describe('collectFileChanges — NotebookEdit omission dispositions (COVENANT-10b §2-d)', () => {
   it('yields nothing in any mode when the notebook does not exist', () => {
@@ -215,8 +204,8 @@ describe('collectFileChanges — NotebookEdit omission dispositions (COVENANT-10
   });
 
   it('yields nothing when new_source is missing', () => {
-    // The shared envelope gates only tool_name/tool_input shape (measured in
-    // payload-envelope), so the NotebookEdit branch itself must refuse a post it cannot state.
+    // The shared envelope check gates only tool_name/tool_input shape, so the NotebookEdit
+    // branch itself must refuse a post it cannot state.
     const change = collectFileChanges(
       notebookPayload({ cell_id: 'cell-one', edit_mode: 'replace' }),
       readNotebook,
@@ -225,13 +214,6 @@ describe('collectFileChanges — NotebookEdit omission dispositions (COVENANT-10
     expect(change).toBeNull();
   });
 });
-
-// ===========================================================================
-// COVENANT-10b §2-d — gap-closing round (set-level audit): payload and cell
-// forms the fixture set above never tries. Both pass vacuously today — no
-// NotebookEdit branch exists, so null is the answer by absence — and pin the
-// disposition against a future branch that judges these forms on a guess.
-// ===========================================================================
 
 describe('collectFileChanges — NotebookEdit malformed forms (COVENANT-10b gap round)', () => {
   /** Parseable notebooks whose target cell carries a non-string source. */
@@ -249,9 +231,9 @@ describe('collectFileChanges — NotebookEdit malformed forms (COVENANT-10b gap 
   });
 
   it('yields nothing for an insert whose cell_type is absent', () => {
-    // G6: cell_type is required for insert (measured payload), so the real tool refuses
-    // this call — and insert evidence never reads cell_type, so a guessing branch would
-    // happily fabricate a judgment for a mutation that will not happen.
+    // cell_type is required for insert, so the real tool refuses this call — and insert
+    // evidence never reads cell_type, so a guessing branch would fabricate a judgment
+    // for a mutation that will not happen.
     const change = collectFileChanges(
       notebookPayload({ cell_id: 'cell-one', new_source: NEW_SOURCE, edit_mode: 'insert' }),
       readNotebook,
@@ -261,8 +243,8 @@ describe('collectFileChanges — NotebookEdit malformed forms (COVENANT-10b gap 
   });
 
   it('yields nothing when the target cell source is a number or null', () => {
-    // G7: a String()-coerced pre ('42', 'null') would judge the added direction against
-    // text no cell ever contained.
+    // A String()-coerced pre ('42', 'null') would judge the added direction against text
+    // no cell ever contained.
     const fromNumberSource = collectFileChanges(
       notebookPayload({ cell_id: 'cell-one', new_source: NEW_SOURCE, edit_mode: 'replace' }),
       readerFor(NOTEBOOK_PATH, numberSourceJson),

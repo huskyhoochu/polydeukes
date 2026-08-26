@@ -1,6 +1,6 @@
 /**
  * @polydeukes/adapter-claude-code — up-translates Claude Code PreToolUse hook
- * payloads into the agent-neutral covenant input IR (ADAPTER-01).
+ * payloads into the agent-neutral covenant input IR.
  *
  * Pre-alpha. Pure translation only — no I/O, no process spawning. Agent and tool
  * literals live here by design: this package is the boundary where Claude Code's

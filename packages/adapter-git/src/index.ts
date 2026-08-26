@@ -1,11 +1,11 @@
 /**
  * @polydeukes/adapter-git — up-translates a git staged diff into the agent-neutral
- * covenant input IR at commit time (ADAPTER-git §4.1).
+ * covenant input IR at commit time.
  *
  * Pre-alpha. This module is the pure translation core — no I/O, no process spawning.
- * The tool-name constants are adapter-owned values (ADAPTER-01 precedent): the core
- * type stays literal-free, and this boundary is where git's vocabulary is translated
- * away before it reaches the core.
+ * The tool-name constants are adapter-owned values: the core type stays literal-free,
+ * and this boundary is where git's vocabulary is translated away before it reaches
+ * the core.
  */
 
 import type { CovenantInput, FileChange } from '@polydeukes/core';
@@ -24,7 +24,7 @@ export const STAGED_WRITE = 'staged-write';
 export const STAGED_DELETE = 'staged-delete';
 
 /**
- * `StagedChange` — one structured staged change (PRD §4.1).
+ * `StagedChange` — one structured staged change.
  *
  * The collector fills it from a real repository; the translation core knows only this
  * shape. `pre` is the HEAD blob (`null` for a creation), `post` is the staged blob
@@ -32,8 +32,8 @@ export const STAGED_DELETE = 'staged-delete';
  * side — its toolCall survives for path judgment while no corrupted content reaches the
  * delta judges. Paths are repo-root-relative.
  *
- * The worktree and ref-range collectors fill this same shape from their own sources
- * (DIAG-01 §4.1) — every domain is one observation of the commit surface.
+ * The worktree and ref-range collectors fill this same shape from their own sources —
+ * every domain is one observation of the commit surface.
  */
 export type StagedChange = {
   path: string;
@@ -43,7 +43,7 @@ export type StagedChange = {
 };
 
 /**
- * Fold staged changes into one {@link CovenantInput} (pure, PRD §4.1 / CORE-06 §4.2).
+ * Fold staged changes into one {@link CovenantInput} (pure).
  *
  * One `toolCall` per change in input order, each carrying its own union evidence:
  * `added` → `create`, `modified` → `modify`, `deleted` → `delete` — a deletion carries
@@ -51,7 +51,7 @@ export type StagedChange = {
  * binary). Only a non-deletion whose staged content is unreadable (binary) gets no
  * evidence — that call stays unproven while its toolCall survives for path judgment.
  * The commit surface has no session, so `subagentSpawns`/`userMessages` are honestly
- * empty (CORE-04).
+ * empty.
  */
 export function covenantInputFromStagedChanges(changes: StagedChange[]): CovenantInput {
   const input: CovenantInput = {
@@ -80,7 +80,7 @@ export function covenantInputFromStagedChanges(changes: StagedChange[]): Covenan
  * A deletion always carries evidence: the judgment needs no content, so an unreadable
  * (binary) HEAD blob merely drops the optional `pre` baseline. A `modified` change whose
  * HEAD blob is unreadable maps to `create` — an unreadable baseline forgives nothing, so
- * the whole staged content is judged as added (the same judgment main produced).
+ * the whole staged content is judged as added.
  */
 function stagedEvidence(change: StagedChange): FileChange | null {
   if (change.status === 'deleted') {

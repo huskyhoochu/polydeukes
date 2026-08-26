@@ -1,5 +1,5 @@
 /**
- * Virtual post-state parser (ADAPTER-02) — computes the file content *after* an
+ * Virtual post-state parser — computes the file content *after* an
  * Edit/Write/MultiEdit payload would be applied, from `tool_input` alone.
  *
  * Pure computation only — no I/O, no process spawning. Reading the pre-state from
@@ -11,18 +11,18 @@ import { isPlainObject } from '@polydeukes/core';
 import { parsePayloadEnvelope } from './payload-envelope.js';
 
 /**
- * `VirtualPostState` — the result of computing one payload's post-state (PRD §3.1).
+ * `VirtualPostState` — the result of computing one payload's post-state.
  *
  * Success carries the virtual file `{ filePath, content }`; failure carries a
  * human-readable `reason`. A failure is never silently replaced by the pre-state —
- * that would disguise the change as "no change" (a bypass vector, PRD §6).
+ * that would disguise the change as "no change", a bypass vector.
  */
 export type VirtualPostState =
   | { ok: true; value: { filePath: string; content: string } }
   | { ok: false; reason: string };
 
 /**
- * Apply one `old_string` → `new_string` substitution to `content` (PRD §3.2).
+ * Apply one `old_string` → `new_string` substitution to `content`.
  *
  * Preconditions mirror the Edit tool's own acceptance rules: non-empty `old_string`,
  * `old_string !== new_string`, and occurrence count exactly 1 (or ≥1 with
@@ -62,13 +62,13 @@ function applyEdit(
 }
 
 /**
- * Compute the virtual post-state of one Claude Code payload (pure, PRD §3.1).
+ * Compute the virtual post-state of one Claude Code payload (pure).
  *
  * `preState` is the target file's current content, `null` when the file does not
  * exist. Never throws: any input that cannot be classified — a non-object payload,
  * a missing `tool_name`/`tool_input`/`file_path`, an unsatisfiable Edit, a partial
  * MultiEdit, or any tool other than Write/Edit/MultiEdit — resolves to
- * `{ ok: false, reason }` (fail-closed, PRD §4.2).
+ * `{ ok: false, reason }`, fail-closed.
  */
 export function virtualPostState(payload: unknown, preState: string | null): VirtualPostState {
   const envelope = parsePayloadEnvelope(payload);
@@ -130,7 +130,7 @@ export function virtualPostState(payload: unknown, preState: string | null): Vir
   }
 
   // Sequential application: edit N targets the result of edit N-1. Any failure
-  // fails the whole call — a partial result must never leak (PRD §6).
+  // fails the whole call — a partial result must never leak.
   for (let index = startIndex; index < edits.length; index++) {
     const edit = edits[index];
     if (!isPlainObject(edit)) {

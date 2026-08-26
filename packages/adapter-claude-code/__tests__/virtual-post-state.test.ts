@@ -1,14 +1,9 @@
 import { normalizeProtectedPaths } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// ADAPTER-02. Import from the not-yet-existing implementation module — module-not-found
-// is the expected RED failure on first run.
 import { type VirtualPostState, virtualPostState } from '../src/virtual-post-state.js';
 
-// ---------------------------------------------------------------------------
-// Fixtures — realistic Claude Code PreToolUse hook payloads (snake_case, PRD §4.1).
-// Claude vocabulary (old_string / new_string / replace_all) lives in this test file
-// and in the adapter — never in core.
-// ---------------------------------------------------------------------------
+// Realistic Claude Code PreToolUse hook payloads (snake_case). Claude vocabulary
+// (old_string / new_string / replace_all) lives here and in the adapter, never in core.
 
 const writePayload = {
   hook_event_name: 'PreToolUse',
@@ -28,8 +23,6 @@ const editPayload = {
   tool_input: { file_path: 'src/app.ts', old_string: 'alpha', new_string: 'beta' },
 };
 
-// -- Helpers to keep only the varying axis explicit in each test --------------
-
 function editPayloadWith(toolInput: Record<string, unknown>) {
   return { ...editPayload, tool_input: toolInput };
 }
@@ -47,8 +40,7 @@ function multiEditPayload(filePath: string, edits: unknown[]) {
 
 describe('§4.1 per-tool post-state compute', () => {
   it('Write returns content verbatim and preserves file_path, even with preState null', () => {
-    // Mutation caught: content replaced by preState, file_path dropped, or the preState-null
-    // path made to fail (Write must be independent of preState per PRD §3.2).
+    // Write must be independent of preState — it overwrites whatever was there.
     const result = virtualPostState(writePayload, null);
 
     expect(result).toEqual({
@@ -58,8 +50,6 @@ describe('§4.1 per-tool post-state compute', () => {
   });
 
   it('Edit substitutes old_string with new_string and preserves file_path', () => {
-    // Mutation caught: substitution direction reversed (new->old), file_path dropped, or
-    // the replacement not applied at all (post-state === preState).
     const result = virtualPostState(editPayload, 'const v = alpha;');
 
     expect(result).toEqual({
@@ -69,8 +59,7 @@ describe('§4.1 per-tool post-state compute', () => {
   });
 
   it('Edit with replace_all true replaces every occurrence', () => {
-    // Mutation caught: replace_all ignored (only first replaced), or replaceAll downgraded
-    // to a single replace. preState has old_string twice.
+    // preState carries old_string twice, so a single replace leaves the second occurrence.
     const payload = editPayloadWith({
       file_path: 'src/app.ts',
       old_string: 'x',
@@ -88,9 +77,9 @@ describe('§4.1 per-tool post-state compute', () => {
 
   it('Edit inserts new_string literally — $-replacement patterns are never expanded', () => {
     // String.prototype.replace/replaceAll interpret $-patterns ($&, $$, $') in the
-    // replacement argument; the real Edit tool substitutes literally. A divergence here
-    // hands COVENANT-05 the wrong post-state (both bypass and false-block directions).
-    // Mutation caught: passing new_string directly as the replacement argument.
+    // replacement argument; the real Edit tool substitutes literally. Passing new_string
+    // straight through as the replacement argument diverges from the tool and hands the
+    // judge a wrong post-state, in both the false-pass and false-block directions.
     const single = virtualPostState(
       editPayloadWith({ file_path: 'src/app.ts', old_string: 'foo', new_string: '$&bar' }),
       'foo',
@@ -111,9 +100,7 @@ describe('§4.1 per-tool post-state compute', () => {
 
   it('MultiEdit applies edits sequentially — the 2nd edit targets the 1st edit result', () => {
     // The 2nd edit's old_string ('two') only exists AFTER the 1st edit turns 'one' into
-    // 'two'. An order-ignoring / parallel implementation cannot produce 'three' and fails.
-    // Mutation caught: edits applied against preState independently, or applied in reverse
-    // order.
+    // 'two'. An order-ignoring or parallel implementation cannot produce 'three'.
     const payload = multiEditPayload('src/seq.ts', [
       { old_string: 'one', new_string: 'two' },
       { old_string: 'two', new_string: 'three' },
@@ -131,9 +118,8 @@ describe('§4.1 per-tool post-state compute', () => {
 describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
   it('MultiEdit with preState null and an empty first old_string creates the file', () => {
     // The real MultiEdit tool accepts this shape as file creation: the first edit's
-    // empty old_string seeds the content, subsequent edits apply sequentially.
-    // Mutation caught: the preState-null check rejecting the creation convention,
-    // falsely blocking a tool-accepted payload (high-review finding, PRD §3.2 parity).
+    // empty old_string seeds the content, subsequent edits apply sequentially. A blanket
+    // preState-null rejection would falsely block a payload the tool accepts.
     const payload = multiEditPayload('src/created.ts', [
       { old_string: '', new_string: 'const a = 1;' },
       { old_string: 'a', new_string: 'b' },
@@ -148,15 +134,15 @@ describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
   });
 
   it('MultiEdit with preState null and a non-empty first old_string still fails closed', () => {
-    // Mutation caught: the creation convention widened into accepting any null-preState
-    // MultiEdit, fabricating a post-state with no file to edit.
+    // The creation convention must not widen into accepting any null-preState MultiEdit,
+    // which would fabricate a post-state with no file to edit.
     const payload = multiEditPayload('src/created.ts', [{ old_string: 'a', new_string: 'b' }]);
 
     expect(virtualPostState(payload, null).ok).toBe(false);
   });
 
   it('an empty old_string in a non-first edit or with a non-null preState still fails closed', () => {
-    // Mutation caught: the empty-old_string rejection relaxed beyond the creation seat.
+    // An empty old_string is legal only in the first edit of a creating MultiEdit.
     const nonFirst = multiEditPayload('src/seq.ts', [
       { old_string: 'one', new_string: 'two' },
       { old_string: '', new_string: 'three' },
@@ -170,8 +156,8 @@ describe('§4.1b MultiEdit file-creation convention (real-tool parity)', () => {
 
 describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, never throws)', () => {
   it('non-object payloads fail closed without throwing', () => {
-    // Mutation caught: a typeof / Array.isArray check removed, letting a hostile payload
-    // through as ok:true, or an unhandled throw escaping the function.
+    // A hostile payload must never reach ok:true, and a throw escaping the function
+    // would break the fail-closed guarantee just as surely.
     for (const hostile of ['a string', null, [], 42]) {
       let result: VirtualPostState | undefined;
       expect(() => {
@@ -182,33 +168,29 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
   });
 
   it('payload missing tool_name fails closed', () => {
-    // Mutation caught: tool_name presence check dropped.
     const result = virtualPostState({ tool_input: { file_path: 'src/app.ts' } }, 'pre');
 
     expect(result.ok).toBe(false);
   });
 
   it('payload missing tool_input fails closed', () => {
-    // Mutation caught: tool_input presence check dropped, defaulting to {}.
+    // Missing tool_input must fail rather than default to {}.
     const result = virtualPostState({ tool_name: 'Edit' }, 'pre');
 
     expect(result.ok).toBe(false);
   });
 
   it('Edit with preState null fails closed', () => {
-    // Mutation caught: the preState !== null precondition removed for Edit — an Edit with no
-    // prior content cannot be substituted, and silently succeeding would fabricate a
-    // post-state (PRD §3.2).
+    // An Edit with no prior content has nothing to substitute into; succeeding would
+    // fabricate a post-state.
     const result = virtualPostState(editPayload, null);
 
     expect(result.ok).toBe(false);
   });
 
   it('Edit failure modes each fail closed with distinguishable reasons', () => {
-    // Four distinct rejection causes (PRD §4.2) must produce four distinct reason strings so
-    // the diagnostic is not collapsed into one generic message.
-    // Mutation caught: any one of the four preconditions removed (making that input succeed),
-    // or all reasons collapsed to a single constant.
+    // Zero occurrences, multiple occurrences, old === new, and an empty old_string are
+    // four separate causes; collapsing them into one message destroys the diagnostic.
     const zeroOccurrence = virtualPostState(
       editPayloadWith({ file_path: 'src/app.ts', old_string: 'absent', new_string: 'z' }),
       'nothing matches here',
@@ -233,13 +215,12 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
     const reasons = [zeroOccurrence, multiOccurrence, oldEqualsNew, emptyOld].map((r) =>
       r.ok === false ? r.reason : '',
     );
-    // All four reasons must be pairwise distinct.
     expect(new Set(reasons).size).toBe(4);
   });
 
   it('Edit with a non-boolean replace_all fails closed (no loose truthy interpretation)', () => {
-    // Mutation caught: replace_all coerced with a truthy check instead of a strict boolean
-    // type check (PRD §3.2 forbids loose truthy interpretation).
+    // replace_all is checked for the boolean type, not for truthiness — the string
+    // 'true' is a malformed payload, not a request to replace everywhere.
     const payload = editPayloadWith({
       file_path: 'src/app.ts',
       old_string: 'x',
@@ -253,18 +234,16 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
   });
 
   it('MultiEdit with an empty edits array fails closed', () => {
-    // Mutation caught: the non-empty edits precondition removed, letting a no-op MultiEdit
-    // masquerade as an ok post-state equal to preState.
+    // An empty edits array would otherwise produce an ok post-state equal to preState.
     const result = virtualPostState(multiEditPayload('src/seq.ts', []), 'value = one');
 
     expect(result.ok).toBe(false);
   });
 
   it('MultiEdit whose middle edit fails fails the whole call with no partial content', () => {
-    // A partial-application result would be a "no change" disguise (PRD §6). The 2nd edit's
-    // old_string is absent from the 1st edit result, so the whole call must fail — and no
-    // intermediate content may appear anywhere in the result.
-    // Mutation caught: partial result emitted, or per-edit failure swallowed.
+    // The real tool applies MultiEdit atomically, so a partial result would describe a
+    // file state that never exists. The 2nd edit's old_string is absent from the 1st
+    // edit's result, and no intermediate content may appear anywhere in the result.
     const payload = multiEditPayload('src/seq.ts', [
       { old_string: 'one', new_string: 'two' },
       { old_string: 'missing', new_string: 'three' },
@@ -273,12 +252,12 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
     const result = virtualPostState(payload, 'value = one');
 
     expect(result.ok).toBe(false);
-    // The partially-applied intermediate ('value = two') must not leak into any field.
+    // 'value = two' is the intermediate; it must not leak into any field of the result.
     expect(JSON.stringify(result)).not.toContain('two');
   });
 
   it('a non-edit tool (Bash) fails closed', () => {
-    // Mutation caught: a default branch that treats unknown tools as ok.
+    // Unknown tools have no computable post-state, so the default branch must not be ok.
     const bashPayload = {
       hook_event_name: 'PreToolUse',
       session_id: 's-1',
@@ -295,12 +274,11 @@ describe('§4.2 fail-closed axis (security boundary — cannot classify = fail, 
 });
 
 describe('§4.3 core sufficiency — post-state alone judges a protectedPaths covenant', () => {
-  // This test covenant imports ONLY @polydeukes/core (normalizeProtectedPaths + its input
-  // shape) — never the adapter's virtualPostState internals or Claude vocabulary — proving
-  // all judgment-relevant evidence lives inside the { filePath, content } output.
-  // normalizeProtectedPaths only normalizes path strings (trim / strip ./ / strip trailing
-  // /); it performs no glob expansion, so the covenant does prefix matching on the segment
-  // before a trailing '/**' glob (PRD §3.3, protected-paths semantics).
+  // This test covenant imports ONLY @polydeukes/core — never the adapter's internals or
+  // Claude vocabulary — so it proves all judgment-relevant evidence already lives inside
+  // the { filePath, content } output. normalizeProtectedPaths only normalizes path strings
+  // (trim, strip './', strip a trailing '/') and expands no globs, which is why the
+  // covenant below prefix-matches on the segment before a trailing '/**'.
 
   const PROTECTED_SPEC = { protectedPaths: ['./src/**'] };
 
@@ -317,7 +295,6 @@ describe('§4.3 core sufficiency — post-state alone judges a protectedPaths co
   }
 
   it('a protected-path post-state is NOT upheld', () => {
-    // Mutation caught: the covenant's match inverted or dropped, always upholding.
     const result = virtualPostState(writePayload, null); // file_path 'src/new-file.ts'
     expect(result.ok).toBe(true);
     if (result.ok !== true) return;
@@ -328,7 +305,6 @@ describe('§4.3 core sufficiency — post-state alone judges a protectedPaths co
   });
 
   it('an unprotected-path post-state IS upheld', () => {
-    // Mutation caught: the prefix match widened to match everything.
     const unprotectedWrite = {
       ...writePayload,
       tool_input: { file_path: 'docs/readme.md', content: '# hi' },
