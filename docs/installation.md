@@ -51,8 +51,8 @@ package resolves there **before writing anything** — if it does not (say, the 
 was skipped), it prints the install command and exits 2 with zero files written, never a
 half-wired tree.
 
-Five artifacts, none ever overwritten. What exists is reported and kept — the hook, the
-config, and the discipline file are left alone, the settings file is merged, and
+Six artifacts, none ever overwritten. What exists is reported and kept — the hook, the
+config, and the discipline files are left alone, the settings file is merged, and
 `.gitignore` is only ever appended to — so re-running is always safe:
 
 | Artifact | What it is |
@@ -61,6 +61,7 @@ config, and the discipline file are left alone, the settings file is merged, and
 | `.claude/settings.json` | The PreToolUse registration for editing tools and shell calls. **Merged, never replaced** — your other hooks and permissions stay. |
 | `polydeukes.config.yaml` | The starter protection policy: a placeholder `languages` block, a minimum `protectedPaths` list, and the witness block. The comments in the file explain why each entry is there. |
 | `.claude/rules/polydeukes.md` | A scoped discipline file telling your AI partner that `pdks docs` exists and which topic answers what. It carries `paths` frontmatter, so it loads when a Polydeukes path is in play rather than sitting in every session's context. |
+| `.claude/skills/discipline-draft/SKILL.md` | The classification procedure. Describe a recurring problem to your AI partner and it lands as a config entry — judged at advise when a current family can express it, a `draft: true` entry otherwise — and the same file tells the agent to consult `advised` rows in the telemetry log at task boundaries. |
 | `.gitignore` | An appended ignore rule for `.polydeukes/`, with its comment line — telemetry is local observation data and never belongs in history. |
 
 ## First edit — `languages`

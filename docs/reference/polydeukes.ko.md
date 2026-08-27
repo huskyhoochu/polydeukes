@@ -61,7 +61,7 @@ claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 �
 ### `pdks init claude-code`
 
 세션 표면 설치기입니다. **무엇을 쓰기 전에** 자기가 호출된 디렉터리에서 `polydeukes`가
-해소되는지 먼저 증명하고, 그다음 산출물 다섯을 만듭니다.
+해소되는지 먼저 증명하고, 그다음 산출물 여섯을 만듭니다.
 
 | 산출물 | 방식 |
 |---|---|
@@ -69,6 +69,7 @@ claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 �
 | `.claude/settings.json` | 병합. PreToolUse 등록을 파일이 이미 담고 있는 것 위에 더합니다 |
 | `polydeukes.config.yaml` | 생성. 자리표시자 `languages` 블록을 담은 출발 정책입니다 |
 | `.claude/rules/polydeukes.md` | 생성. 웹을 검색하는 대신 [`pdks docs`](#pdks-docs-topic)에 물으라고 AI 파트너에게 일러 줍니다 |
+| `.claude/skills/discipline-draft/SKILL.md` | 생성. 분류 절차입니다 — 서술된 문제가 설정 항목이 되고(advise 판정 항목 또는 `draft: true`), `advised` 행은 텔레메트리 로그에서 소비하도록 안내합니다 |
 | `.gitignore` | 덧붙이기. `.polydeukes/` 한 줄입니다 |
 
 이미 있는 것은 무엇도 덮어쓰지 않습니다. 실재하는 산출물은 건너뛴 것으로 보고하고 그대로

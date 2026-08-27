@@ -21,6 +21,10 @@ pdks explain             # print what each surface judges, skips, and excludes �
 pdks docs [topic]        # read the bundled documentation, offline
 ```
 
+The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
+recurring problem to your AI partner and the skill classifies it into a config entry — judged
+at advise when the current families can express it, a `draft: true` entry otherwise.
+
 The documentation ships inside the package, so `pdks docs` answers from the same version that
 does the judging — no network, and no drift between what a search engine indexed and what is
 installed. The [Documents](#documents) table below is the same set plus the narrative layer,

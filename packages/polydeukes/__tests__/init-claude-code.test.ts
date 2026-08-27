@@ -33,7 +33,8 @@ const SETTINGS_REL = '.claude/settings.json';
 const CONFIG_REL = 'polydeukes.config.yaml';
 const GITIGNORE_REL = '.gitignore';
 const DISCOVERY_REL = '.claude/rules/polydeukes.md';
-const ARTIFACTS = [HOOK_REL, SETTINGS_REL, CONFIG_REL, GITIGNORE_REL, DISCOVERY_REL];
+const SKILL_REL = '.claude/skills/discipline-draft/SKILL.md';
+const ARTIFACTS = [HOOK_REL, SETTINGS_REL, CONFIG_REL, GITIGNORE_REL, DISCOVERY_REL, SKILL_REL];
 /** The sibling config spelling used by the already-ambiguous fixture. */
 const CONFIG_YML_SIBLING = 'polydeukes.config.yml';
 /** How OUR settings registration is recognized: its command names the delegator file. */
@@ -115,12 +116,13 @@ afterEach(() => {
 });
 
 describe('initClaudeCode — absent-project creation', () => {
-  it('creates all five artifacts on an empty tree and reports each as created', () => {
+  it('creates all six artifacts on an empty tree and reports each as created', () => {
     // Each artifact answers for a different failure: no hook file and nothing ever judges;
     // no settings registration and the hook exists but never spawns; no config and
     // fail-closed blocks every call; no ignore line and every consumer commits its
     // telemetry; no discovery file and the query surface ships with no agent ever learning
-    // to call it. The registration count pins that the created settings file actually
+    // to call it; no classification skill and a problem description has no path into the
+    // config. The registration count pins that the created settings file actually
     // carries our entry, not an empty object that merely exists.
     const result = init();
 
@@ -178,7 +180,7 @@ describe('initClaudeCode — absent-project creation', () => {
 });
 
 describe('non-destructive idempotence', () => {
-  it('leaves all five artifacts byte-identical on a second run and reports zero created', () => {
+  it('leaves all six artifacts byte-identical on a second run and reports zero created', () => {
     // Any writer that appends or rewrites on re-run breaks here — the likeliest being the
     // ignore line appended unconditionally, growing .gitignore by one line per run. The
     // skipped report is the other half of the stdout contract: a silent skip leaves the

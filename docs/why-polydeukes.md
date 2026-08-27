@@ -431,6 +431,12 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      the primary source — this section quotes it, never precedes it. Cite ratios with the
      shaping bias stated: `passed` is an upper bound, `blocked` a lower one.
 
+     Parked candidate (2026-08-27): an advisory channel must be measured, not assumed.
+     The advise pivot's delivery design was settled by a live probe pair — the documented
+     "reason reaches the model on allow" channel fired but delivered nothing, so the only
+     working delivery is the one the installed skill teaches (consult the telemetry log at
+     task boundaries). Publish with the v0.5.0 gate post, where the pivot narrative lands.
+
      Parked candidate (DIST-01, 2026-08-02): dogfooding turned into product verification.
      The hook judging this repository used to be a prototype of an unshipped product — 266
      lines of assembly living inside the repo, which any other project would have had to

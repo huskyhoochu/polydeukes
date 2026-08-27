@@ -140,3 +140,9 @@ disciplines:
       - 'packages/adapter-git/__tests__/**'
     requirePrecedent:
       command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.'
+  # The first entry landed by the discipline-draft skill's own procedure. The demand is a
+  # recorded one — the knowledge store's SQLite lives where gitignore-by-location keeps it
+  # out of history — and no current family expresses a kind-to-location bond.
+  - id: 'sqlite-only-under-knowledge'
+    why: 'naming-convention shape — a *.db file may exist only under _docs/knowledge/; one created anywhere else is a break. immutable protects one named path and cannot bind a file kind to a location, so this waits as a draft for a scope-plus-empty-delta declaration.'
+    draft: true

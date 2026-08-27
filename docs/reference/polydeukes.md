@@ -64,7 +64,7 @@ permanent condition of the commit surface, not a fault.
 ### `pdks init claude-code`
 
 The session-surface installer. It proves that `polydeukes` resolves from the directory it
-was invoked in **before writing anything**, then creates five artifacts:
+was invoked in **before writing anything**, then creates six artifacts:
 
 | Artifact | Kind |
 |---|---|
@@ -72,6 +72,7 @@ was invoked in **before writing anything**, then creates five artifacts:
 | `.claude/settings.json` | Merged — the PreToolUse registration is added to whatever the file already carries |
 | `polydeukes.config.yaml` | Created — the starter policy, with a placeholder `languages` block |
 | `.claude/rules/polydeukes.md` | Created — tells the AI partner to ask [`pdks docs`](#pdks-docs-topic) instead of searching the web |
+| `.claude/skills/discipline-draft/SKILL.md` | Created — the classification procedure: a described problem becomes a config entry (judged at advise, or `draft: true`), and advised rows are consulted in the telemetry log |
 | `.gitignore` | Appended — one line for `.polydeukes/` |
 
 Nothing existing is overwritten: an artifact already present is reported as skipped and left
