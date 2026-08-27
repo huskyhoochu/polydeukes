@@ -9,8 +9,7 @@
 **Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol),
 `@polydeukes/covenant` (the judge), the two adapters (`adapter-claude-code`, `adapter-git`), and
 the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
-memory, and verify packages are still blueprint. Four subcommands ship today (the set as of
-the v0.5.0 release; npm versions before v0.3.0 are a name-reservation stub):
+memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init claude-code    # wire the session surface into a project

@@ -8,9 +8,7 @@
 **상태: 알파(alpha).** 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
 프로토콜), `@polydeukes/covenant`(판정기), 어댑터 둘(`adapter-claude-code` ·
 `adapter-git`), 그리고 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지
-`polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘 실린
-서브커맨드는 넷입니다(v0.5.0 릴리스 기준이고, v0.3.0 전의 npm 버전은 이름 선점용
-스텁입니다).
+`polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
 ```sh
 pdks init claude-code    # 프로젝트에 세션 표면을 배선
