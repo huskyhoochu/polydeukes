@@ -420,6 +420,20 @@ enough to mean something when it fires; 47 unattributed rows mean the framework 
 changes no declared call explains, which is a category it could not name at all three
 milestones ago.
 
+The v0.5.0 round is the first with the advisory default live, and it reports the number the
+pivot exists to collect: **9.9% of advisories were consumed** — 73 of 735 advised rows saw
+a later pass on the same target in the same session, with the denominator call-weighted (one
+ignored advisory repeats on every call, so fewer decisions were made than rows written) and
+the variance wide: one read-first discipline's advisories were acted on at 77%, another's
+at 0% across 292 rows. Blocking, meanwhile, behaved exactly as the pivot promised: 88% of
+162 blocks were the chain protecting itself, zero false-block reports were filed, and an
+assembly crash was refused fail-closed — eight calls in 71 seconds, every one recorded,
+none passed unrecorded. One round of ignore-dominance is on the books; a second consecutive
+one puts the delivery channel, not the posture, on trial — a live probe already showed the
+documented "reason reaches the model" channel delivers nothing, so the only working
+delivery today is an agent consulting the telemetry log. Read all of it with the standing
+bias: `passed` is an upper bound, `blocked` a lower one.
+
 One more property the record enforces on us: **measured history is never renamed.** When
 the valve's vocabulary changed, the sweep touched every living surface — but the dated post
 that published the old numbers kept them as published and gained an editor's note instead.
@@ -430,12 +444,6 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      (verdict counts + what the numbers changed); never rewrite past rounds. The journal is
      the primary source — this section quotes it, never precedes it. Cite ratios with the
      shaping bias stated: `passed` is an upper bound, `blocked` a lower one.
-
-     Parked candidate (2026-08-27): an advisory channel must be measured, not assumed.
-     The advise pivot's delivery design was settled by a live probe pair — the documented
-     "reason reaches the model on allow" channel fired but delivered nothing, so the only
-     working delivery is the one the installed skill teaches (consult the telemetry log at
-     task boundaries). Publish with the v0.5.0 gate post, where the pivot narrative lands.
 
      Parked candidate (DIST-01, 2026-08-02): dogfooding turned into product verification.
      The hook judging this repository used to be a prototype of an unshipped product — 266

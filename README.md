@@ -9,8 +9,8 @@
 **Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol),
 `@polydeukes/covenant` (the judge), the two adapters (`adapter-claude-code`, `adapter-git`), and
 the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
-memory, and verify packages are still blueprint. Three subcommands ship today (published
-with the v0.3.0 release; earlier npm versions are a name-reservation stub):
+memory, and verify packages are still blueprint. Four subcommands ship today (the set as of
+the v0.5.0 release; npm versions before v0.3.0 are a name-reservation stub):
 
 ```sh
 pdks init claude-code    # wire the session surface into a project
@@ -24,6 +24,12 @@ pdks docs [topic]        # read the bundled documentation, offline
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
 recurring problem to your AI partner and the skill classifies it into a config entry — judged
 at advise when the current families can express it, a `draft: true` entry otherwise.
+
+Since v0.5.0 the default posture is diagnostic. A broken discipline lands as a recorded
+advisory — exit 0, one `advised` telemetry row, the entry's own `why` on stderr — rather
+than a refused call. What blocks unasked is the judging chain's self-protection;
+`enforce: block` on an entry is a promotion its author chooses, and the promotion ladder
+is `draft` → advise → block.
 
 The documentation ships inside the package, so `pdks docs` answers from the same version that
 does the judging — no network, and no drift between what a search engine indexed and what is
@@ -55,7 +61,7 @@ knows nothing of the others.
 | Package | Role |
 |---------|------|
 | `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), config loader, transcript interface — a minimal core that is agnostic to domain and agent |
-| `@polydeukes/covenant` | Deterministic PreToolUse hooks at edit and push time, plus a self-mod meta-covenant that protects the covenants themselves |
+| `@polydeukes/covenant` | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
 | `@polydeukes/memory` | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
 | `@polydeukes/verify` | A multi-agent adversarial verification orchestrator |
@@ -94,9 +100,6 @@ Three separations:
   "that file happens to live on S3" is incidental (a sync adapter).
 - **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then
   feed it back in a closed loop. Prove "it produces safer code" with data.
-
-Three verified gaps to close before extraction: the Bash bypass route around self-protection, the
-`status` leak in completion judgment, and the dormant measurement infrastructure.
 
 ## Documents
 

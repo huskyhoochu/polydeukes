@@ -9,7 +9,7 @@
 프로토콜), `@polydeukes/covenant`(판정기), 어댑터 둘(`adapter-claude-code` ·
 `adapter-git`), 그리고 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지
 `polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘 실린
-서브커맨드는 셋입니다(v0.3.0 릴리스로 출판됐고, 그 전의 npm 버전은 이름 선점용
+서브커맨드는 넷입니다(v0.5.0 릴리스 기준이고, v0.3.0 전의 npm 버전은 이름 선점용
 스텁입니다).
 
 ```sh
@@ -24,6 +24,11 @@ pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
 설치기는 `.claude/skills/`에 `discipline-draft` skill도 놓습니다. 반복되는 문제를 AI
 파트너에게 서술하면 skill이 그것을 설정 항목으로 분류합니다 — 현행 계열(family)로 표현되면
 advise 판정 항목으로, 아니면 `draft: true` 항목으로.
+
+v0.5.0부터 기본 자세는 진단입니다. 깨진 규율은 거부된 호출이 아니라 기록된 권고로
+착지합니다 — exit 0, `advised` 텔레메트리 1행, 항목 자신의 `why`가 stderr에 실립니다.
+묻지 않고 차단하는 것은 판정 사슬의 자기 보호뿐이고, 항목의 `enforce: block`은 작성자가
+선택하는 승격이며, 승격 사다리는 `draft` → advise → block입니다.
 
 문서는 패키지 안에 함께 실립니다. 그래서 `pdks docs`는 판정을 수행하는 바로 그 판본의 답을
 돌려주고, 검색 엔진이 색인한 판본과 설치된 판본이 어긋나는 일이 없습니다. 아래
@@ -51,7 +56,7 @@ Polydeukes는 AI 에이전트(Claude Code 등)와 함께 일할 때 개발자가
 | 패키지 | 역할 |
 |--------|------|
 | `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), config 로더, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어 |
-| `@polydeukes/covenant` | 편집·push 시점의 결정론적 PreToolUse 훅 + 약속 자체를 보호하는 self-mod 메타-약속(meta-covenant) |
+| `@polydeukes/covenant` | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant) |
 | `@polydeukes/ledger` | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전 |
 | `@polydeukes/memory` | 로컬 SQLite + FTS5 기반 저장소. 결정·시행착오를 검색 가능한 기억으로. 동기화는 선택 어댑터(기본 로컬) |
 | `@polydeukes/verify` | 멀티에이전트 적대적 검증 오케스트레이터 |
@@ -84,8 +89,6 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 - **본질 대 우연.** "검증은 exit code로 판정한다"가 본질이고 "그 명령이 vitest다"는 우연이라 config로 갑니다. "지식은 로컬 SQLite 파일이다"가
   본질이고 "그 파일이 S3에 산다"는 우연이라 동기화 어댑터로 갑니다.
 - **측정을 1급 시민으로.** covenant ROI와 기억(memory) 검색 텔레메트리를 수집해 폐루프로 되돌립니다. "더 안전한 코드를 만든다"를 데이터로 입증합니다.
-
-추출 전에 먼저 메울 검증된 구멍은 셋입니다. 자가보호의 Bash 우회 경로, 완료 판정의 `status` 누수, 그리고 측정 인프라 미가동입니다.
 
 ## 문서
 
