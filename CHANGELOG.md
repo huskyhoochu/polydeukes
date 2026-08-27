@@ -13,6 +13,26 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.5.0](https://github.com/b95labs/polydeukes/compare/v0.4.0...v0.5.0) (2026-08-27)
+
+
+### Features
+
+* **adapter-git:** generalise covenant check over staged, worktree, and ref-range domains (DIAG-01) ([#67](https://github.com/b95labs/polydeukes/issues/67)) ([99ecfee](https://github.com/b95labs/polydeukes/commit/99ecfee7bcb67c3dd368e9d3f876549364083a41))
+* **config:** judge published comments for citations nobody can follow ([62cc2f7](https://github.com/b95labs/polydeukes/commit/62cc2f76fd80d5557a79ca02e4e8b4e45d984782))
+* **core:** default posture advise — disciplines land advised, block is the promotion (POSTURE-01) ([#66](https://github.com/b95labs/polydeukes/issues/66)) ([b3cc0d8](https://github.com/b95labs/polydeukes/commit/b3cc0d8ed24bcd99cd6f8c4ee78f35ca06f0cf96))
+* **core:** draft disciplines — unpromoted id+why entries (CONFIG-10) ([#64](https://github.com/b95labs/polydeukes/issues/64)) ([a330d3b](https://github.com/b95labs/polydeukes/commit/a330d3b28002309923310455f7ea92ed8bf7e547))
+* **core:** per-entry enforce — session surface honours advise (CONFIG-11) ([#65](https://github.com/b95labs/polydeukes/issues/65)) ([4098c4d](https://github.com/b95labs/polydeukes/commit/4098c4dadca9a17f5261da8d42b204f8ba80172c))
+* **covenant:** carry each discipline's why into its break message (COVENANT-19) ([#61](https://github.com/b95labs/polydeukes/issues/61)) ([1bdfe98](https://github.com/b95labs/polydeukes/commit/1bdfe98b2cfffa20245778ff9affb1faffb7936d))
+* **covenant:** consolidated dispatch — in-process judge thunks (DISPATCH-01) ([#68](https://github.com/b95labs/polydeukes/issues/68)) ([01466e2](https://github.com/b95labs/polydeukes/commit/01466e2a0b0d8c8f7c8f03d26b13dafc55475392))
+* **polydeukes:** discipline-draft skill — the sixth init artifact (DIAG-02) ([#69](https://github.com/b95labs/polydeukes/issues/69)) ([e3a9d6e](https://github.com/b95labs/polydeukes/commit/e3a9d6ed9e916d4bf41f5b0c5e0f899714134afd))
+* **polydeukes:** render both surfaces' assembly with pdks explain (CLI-01) ([#63](https://github.com/b95labs/polydeukes/issues/63)) ([76457e8](https://github.com/b95labs/polydeukes/commit/76457e808128a94a528fdd8c38bf132f9c20b946))
+
+
+### Bug Fixes
+
+* **config:** answer the bare defect labels, and AC written with a space ([5050801](https://github.com/b95labs/polydeukes/commit/505080108fdd2f503cc0ff5d7376c98066e7a029))
+
 ## [0.4.0](https://github.com/b95labs/polydeukes/compare/v0.3.0...v0.4.0) (2026-08-18)
 
 
