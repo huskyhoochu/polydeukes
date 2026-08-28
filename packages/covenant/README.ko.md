@@ -53,6 +53,12 @@
   등록과 두 메타 약속(covenant), 증인(witness) 밸브까지 함께 죽으면 그 원인이 된 config를
   고칠 방법이 사라지기 때문입니다. 설정 잘못은 stderr에 자기 이름을 적고, 세션 부재는
   조용합니다.
+- **선언 엔진** — `compileDeclaration` · `judgeDeclaration` · `witnessOpens`가 대수
+  선언(`@polydeukes/core`의 `AlgebraDeclaration`)을 `World` 값 위에서 실행합니다. 이름 붙은
+  추출 파이프라인이 단항 단계 등재 표(`EXTRACT_STEPS`)와 이진 결합자 셋을 거치고, 그 위에서
+  관계 일곱이 불리언이 아니라 증인(witness) 목록으로 답합니다. 엔진은 건네받은 `World` 밖의
+  것을 읽지 않으며(파일도 프로세스도 세션도), 등재 표 밖의 단계 이름은 예외가 아니라 컴파일
+  시점에 돌려주는 설정 결함(config fault)입니다.
 
 ## 설계 태도
 

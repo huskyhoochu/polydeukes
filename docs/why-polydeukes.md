@@ -474,7 +474,16 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      vacuity failure the judging discipline exists to prevent: with one relation, every
      declaration reads as "the filtered set is empty" and nothing about the mechanism is
      visible. Publish with the v0.6.0 gate post, once the engine has judged live
-     declarations on both surfaces. -->
+     declarations on both surfaces.
+
+     Parked candidate (ALGEBRA-02, 2026-08-29): a judgment has one address for its last
+     comparison, and the engine makes that structural rather than conventional. Every
+     extract step maps a list of items to a list of items — the type has no room for a
+     yes/no — and a relation answers with the elements that broke it, so "which key",
+     "which task's field", "which line" is the verdict's data, not a message someone
+     formatted afterwards. The closed relation list only means something while no step can
+     smuggle the comparison out of it; the engine is where that stopped being a review
+     rule and became a type. Publish alongside the ALGEBRA-01 candidate. -->
 
 ## Where it stands
 

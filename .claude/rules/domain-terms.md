@@ -103,6 +103,18 @@ module; a name outside a closed list is rejected by validation, never coerced.
   *witness element* — the valve is named after what it supplies.
 - **Relate entry** — `{ id, relation, message | messageBySide }`. Never `rule` in any name —
   the closed-vocabulary jargon rule above applies; `relate` is the primitive's own verb.
+- **Item / items** — the engine's value model (`ALGEBRA-02`, `packages/covenant/src/declaration-engine.ts`):
+  every extract step maps `Items → Items`, where an item is `{ key, value }`. `key` is the unit
+  of combination and of keyed comparison (`onlyIn`, `intersect`, `Implies`, `Unchanged`);
+  `value` is what a relation compares, by structural equality. A scalar source is one item
+  under key `'0'`; a list without an index keys its elements by position.
+- **Paired source** — `source: state` reads `World.state = { pre, post }` and runs the same
+  pipeline over both, producing a pre/post pair. Only `Unchanged` accepts a pair; a pair in any
+  other relation, or a single extraction under `Unchanged`, is a config fault at compile time.
+- **Config fault** — the value `compileDeclaration` returns instead of a compiled declaration:
+  a step name outside the registry, an argument outside a step's closed key set, an
+  uncompilable regex, or a paired/single shape mismatch. It names a `location` and is never a
+  throw; the surface turns it into a skip registration that tells the author.
 
 ## Term usage rules
 

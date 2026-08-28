@@ -54,6 +54,13 @@ telemetry.
   therefore never throws: one unresolvable entry cannot take down its siblings, both
   meta-covenants, and the witness valve, which would leave no way to fix the config that caused
   it. A configuration fault names itself on stderr; an absent session stays quiet.
+- **Declaration engine** — `compileDeclaration` · `judgeDeclaration` · `witnessOpens` run an
+  algebra declaration (`@polydeukes/core`'s `AlgebraDeclaration`) over a `World` value: named
+  extract pipelines over a registry of unary steps (`EXTRACT_STEPS`) and three binary
+  combinators, then the seven relations, each answering a witness list rather than a boolean.
+  The engine reads nothing but the `World` it is handed — no files, no process, no session —
+  and a step name outside the registry is a config fault returned at compile time, never a
+  throw.
 
 ## Design stance
 

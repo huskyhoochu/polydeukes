@@ -31,6 +31,22 @@ export {
   type WordToken,
 } from './bash-line.js';
 export {
+  type Break,
+  type CompiledDeclaration,
+  type ConfigFault,
+  compileDeclaration,
+  type DeclarationVerdict,
+  EXTRACT_STEPS,
+  type Item,
+  type Items,
+  judgeDeclaration,
+  type PairedItems,
+  UNARY_STEP_NAMES,
+  type Witness,
+  type World,
+  witnessOpens,
+} from './declaration-engine.js';
+export {
   type Baseline,
   captureBaseline,
   diffBaselines,
