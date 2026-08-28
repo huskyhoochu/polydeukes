@@ -179,7 +179,8 @@ Optional. Each entry is one discipline: a practice the team imposes on itself, d
 data. An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
 telemetry label), and optionally a `why` (the reason, which travels with the block message
 the agent reads) plus, on a `forbid` or `requirePrecedent` entry, `in` (the file globs it
-judges) and `except` (globs carved out of that scope).
+judges) and `except` (globs carved out of that scope). The fifth predicate, `declare`, carries
+its own scope inside the block and takes none of those three keys.
 
 **`draft` — an unpromoted entry.** The one shape that carries no predicate:
 `{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of
@@ -333,6 +334,44 @@ scope, since the declared scope is the whole mutation.
 AI's own surface, so it is not forgery-proof. It does not need to be: the least effortful
 way to open this gate is to actually call the tool, and that is exactly the behaviour the
 discipline exists to induce.
+
+**`declare` — declaration family.** One judgment written as data, in the algebra grammar
+the core publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The
+block carries the declaration's `scope`, `supply`, `extract`, `relate`, and optional
+`witness`; the entry's `id` is the declaration's name, so the block never carries a
+`discipline` key, and `in`/`except`/`when` are refused — the `scope` block is the scope.
+
+```yaml
+  - id: 'db-only-under-knowledge'
+    why: 'a *.db file may exist only under _docs/knowledge/'
+    declare:
+      scope: { source: 'target.path', include: ['\.db$'] }
+      extract:
+        outside:
+          - { op: 'source', of: 'target.path' }
+          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+      relate:
+        - id: 'placed'
+          relation: { op: 'Empty', of: 'outside' }
+          message: '{value} is outside _docs/knowledge/'
+```
+
+Each file change is judged as one **world** with four source names: `target.path` (the
+repo-relative path), `pre` and `post` (the file's text on the side the change carries —
+a creation has no `pre`, a deletion no `post`), and `state` (`{ pre, post }`, present only
+on a modification). A source the change does not carry is absent, and the declaration's
+`supply` block says what that means: `error` (the default) makes the call unjudgeable —
+recorded `blocked` at either enforce level — and `pass` leaves it unjudged. A declaration
+comparing before with after therefore needs `supply: { state: pass }` to let a file
+creation through.
+
+A break is recorded like any other family's, with one addition: the telemetry row carries a
+fifth field naming the elements the relation failed on (at most eight per relate entry, with
+the true count beside them). A block the compiler cannot resolve — a step name outside the
+registry, an argument outside a step's keys — becomes a skip registration that names its
+location on stderr and routes nothing. A shell write into the declaration's scope has no
+file text to judge and records `skipped`. The declaration's own `witness` block joins the
+human's witness as a second way to open a blocked verdict.
 
 Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the
 escape layer for the few rules data cannot express.

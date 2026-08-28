@@ -1,7 +1,8 @@
 /**
  * ROI telemetry — the single shared collector and its `gain` aggregation.
  *
- * One record is one line of 4-field TSV; one append is one write call. I/O is confined to
+ * One record is one line of TSV — four fields, or five when a judgment names witnesses;
+ * one append is one write call. I/O is confined to
  * exactly two functions — {@link appendRecord} (the only write) and {@link readRecords}
  * (the only read). Formatting, parsing, and aggregation are pure.
  */
@@ -34,12 +35,17 @@ export type TelemetryEvent =
  *
  * `subject` is the judged target (a file path, etc.); `-` is the documented sentinel
  * for "no subject", carried round-trip like any other value.
+ *
+ * `witnesses` is the optional fifth field: an already-serialized JSON string naming what
+ * a judgment found broken. Only a judgment that produced witness elements carries it, so
+ * every other producer's row keeps its four fields.
  */
 export type TelemetryRecord = {
   timestamp: string;
   event: TelemetryEvent;
   label: string;
   subject: string;
+  witnesses?: string;
 };
 
 /** Per-label event counts, keyed by label then event. */
@@ -80,14 +86,27 @@ function sanitize(value: string): string {
   return value.replace(/[\t\n\r]/g, ' ');
 }
 
+/** True when `text` parses as a JSON array — the only shape the fifth field takes. */
+function isJsonArray(text: string): boolean {
+  try {
+    return Array.isArray(JSON.parse(text));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Serialize a {@link TelemetryRecord} into one newline-terminated TSV line (pure).
  *
  * The returned string already includes the trailing `\n`, so {@link appendRecord}
- * writes it verbatim in a single call.
+ * writes it verbatim in a single call. The fifth field appears only when the record
+ * carries `witnesses`; a record without it writes the four-field line unchanged.
  */
 export function formatRecordLine(record: TelemetryRecord): string {
   const fields = [record.timestamp, record.event, sanitize(record.label), sanitize(record.subject)];
+  if (record.witnesses !== undefined) {
+    fields.push(sanitize(record.witnesses));
+  }
   return `${fields.join(TAB)}\n`;
 }
 
@@ -95,8 +114,8 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for the wrong field count, an event outside the six valid events, or an
- * empty line — a malformed line is rejected, never coerced into a bogus record. The one
+ * `null` for a field count outside four (no witnesses) and five (with them), a fifth field
+ * that is not a JSON array, an event outside the six valid events, or an empty line — a malformed line is rejected, never coerced into a bogus record. The one
  * exception is {@link LEGACY_WITNESSED_EVENT}, which reads back as `witnessed`.
  */
 export function parseRecordLine(line: string): TelemetryRecord | null {
@@ -106,17 +125,28 @@ export function parseRecordLine(line: string): TelemetryRecord | null {
   }
 
   const fields = trimmed.split(TAB);
-  if (fields.length !== 4) {
+  if (fields.length !== 4 && fields.length !== 5) {
     return null;
   }
 
-  const [timestamp, event, label, subject] = fields;
+  const [timestamp, event, label, subject, witnesses] = fields;
   const resolved = event === LEGACY_WITNESSED_EVENT ? 'witnessed' : event;
   if (!VALID_EVENTS.includes(resolved as TelemetryEvent)) {
     return null;
   }
+  // The fifth field is a JSON array or the line is corrupt: a stray tab inside a subject
+  // would otherwise read as a record with the wrong subject and no witnesses.
+  if (witnesses !== undefined && !isJsonArray(witnesses)) {
+    return null;
+  }
 
-  return { timestamp, event: resolved as TelemetryEvent, label, subject };
+  return {
+    timestamp,
+    event: resolved as TelemetryEvent,
+    label,
+    subject,
+    ...(witnesses !== undefined && { witnesses }),
+  };
 }
 
 /**

@@ -5,6 +5,8 @@ import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import type { TelemetryRecord } from '@polydeukes/core';
+import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
 
@@ -30,6 +32,39 @@ const DISCIPLINES = [
   { id: DELTA_ID, forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE, why: DELTA_WHY },
   { id: COMMAND_ID, forbidCommand: 'zzz_probe_cmd', why: 'the probe reshapes unseen state' },
   { id: CONTEXT_ID, requirePrecedent: { tool: CONTEXT_TOOL }, in: DISCIPLINE_SCOPE },
+];
+
+// The declare entry judges the path alone, so a create on either surface supplies every
+// source it reads; its scope routes only `.db` paths, so the sibling entries' rows stay as
+// they are above.
+const DECLARE_ID = 'db-only-under-knowledge';
+const DECLARE_RELATE_ID = 'placed';
+const DB_OUTSIDE = 'lib/x.db';
+const DB_INSIDE = 'memory/knowledge/y.db';
+const declareEntry = {
+  id: DECLARE_ID,
+  why: 'a *.db file may exist only under memory/knowledge/',
+  declare: {
+    scope: { source: 'target.path', include: ['\\.db$'] },
+    extract: {
+      outside: [
+        { op: 'source', of: 'target.path' },
+        { op: 'matches', re: '^(?!memory/knowledge/)' },
+      ],
+    },
+    relate: [
+      {
+        id: DECLARE_RELATE_ID,
+        relation: { op: 'Empty', of: 'outside' },
+        message: '{value} is outside memory/knowledge/',
+      },
+    ],
+  },
+};
+const WITH_DECLARE = [...DISCIPLINES, declareEntry];
+/** The break the declare entry records for `DB_OUTSIDE`: one relate id, one witness, keyed `'0'`. */
+const EXPECTED_WITNESSES = [
+  { id: DECLARE_RELATE_ID, witnesses: [{ key: '0', value: DB_OUTSIDE }], total: 1 },
 ];
 
 let tmpRoot: string;
@@ -82,7 +117,7 @@ function transcriptWithPrecedent(): string {
 }
 
 /** Copy the real hook into a fixture tree carrying the parity config, spawn it on `payload`. */
-function runHook(payload: Record<string, unknown>) {
+function runHook(payload: Record<string, unknown>, disciplines: unknown[] = DISCIPLINES) {
   const fixtureRoot = join(tmpRoot, 'fixture-tree');
   mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
   cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
@@ -95,7 +130,7 @@ function runHook(payload: Record<string, unknown>) {
         languages: { typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' } },
         telemetry: { logPath: telemetryPath },
         protectedPaths: [PROTECTED_ENTRY],
-        disciplines: DISCIPLINES,
+        disciplines,
       },
       null,
       2,
@@ -183,9 +218,9 @@ describe('② session surface, blocking payload (measured pre-conversion)', () =
   });
 });
 
-/** Build a throwaway commit repo with `config` keys, stage an initial-then-edited scoped file, run the bin. */
-function runCommitCheck(config: Record<string, unknown>, editedContent: string) {
-  const projectRoot = join(tmpRoot, 'commit-repo');
+/** A throwaway commit repo under `tmpRoot/<name>` carrying the parity config plus `config` keys. */
+function initCommitRepo(name: string, config: Record<string, unknown>) {
+  const projectRoot = join(tmpRoot, name);
   mkdirSync(projectRoot, { recursive: true });
   const git = (...args: string[]): string =>
     execFileSync('git', args, { cwd: projectRoot, encoding: 'utf-8' });
@@ -201,6 +236,12 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
       ...config,
     }),
   );
+  return { projectRoot, git };
+}
+
+/** Build a throwaway commit repo with `config` keys, stage an initial-then-edited scoped file, run the bin. */
+function runCommitCheck(config: Record<string, unknown>, editedContent: string) {
+  const { projectRoot, git } = initCommitRepo('commit-repo', config);
   const target = join(projectRoot, SCOPED_TARGET);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, 'export const y = 1;\n');
@@ -252,5 +293,110 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
     expect(rows()).toEqual([['skipped', CONTEXT_ID, SCOPED_TARGET]]);
+  });
+});
+
+/** Commit the config alone, then stage `relPath` as a NEW file and run the bin on it. */
+function runCommitCheckCreating(name: string, relPath: string, content: string) {
+  const { projectRoot, git } = initCommitRepo(name, { disciplines: WITH_DECLARE });
+  git('add', 'polydeukes.config.json');
+  git('commit', '--quiet', '-m', 'initial');
+  const target = join(projectRoot, relPath);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content);
+  git('add', relPath);
+
+  return spawnSync(process.execPath, [BIN, 'covenant', 'check'], {
+    cwd: projectRoot,
+    encoding: 'utf-8',
+  });
+}
+
+/** Every record the declare entry wrote, with the witnesses field the row may carry. */
+function declareRecords(): (TelemetryRecord & { witnesses?: string })[] {
+  return readRecords(telemetryPath).records.filter((record) => record.label === DECLARE_ID);
+}
+
+/** A session `Write` of `relPath` with `content` under the config carrying the declare entry. */
+function writeViaHook(relPath: string, content: string) {
+  rmSync(join(tmpRoot, 'fixture-tree'), { recursive: true, force: true });
+  return runHook(
+    {
+      hook_event_name: 'PreToolUse',
+      session_id: 's-1',
+      tool_name: 'Write',
+      tool_input: { file_path: relPath, content },
+    },
+    WITH_DECLARE,
+  );
+}
+
+describe('④ two surfaces, one declare verdict', () => {
+  it('session: a Write of a .db outside the allowed root lands ONE advised row carrying the witnesses; inside lands passed with none', () => {
+    // The row must come from the declare entry (label) about the judged path (subject),
+    // and the fifth field must carry the engine's witness list — a `passed` row, a row
+    // under the wrong subject, or a row with no witnesses would each be a judgment that
+    // never named what broke.
+    expect(writeViaHook(DB_OUTSIDE, 'x').status).toBe(0);
+    expect(rows()).toContainEqual(['advised', DECLARE_ID, DB_OUTSIDE]);
+    const [advised] = declareRecords();
+    expect(advised.witnesses).toBeDefined();
+    expect(JSON.parse(advised.witnesses as string)).toEqual(EXPECTED_WITNESSES);
+
+    expect(writeViaHook(DB_INSIDE, 'y').status).toBe(0);
+    expect(declareRecords().map((r) => [r.event, r.subject, r.witnesses])).toEqual([
+      ['advised', DB_OUTSIDE, expect.any(String)],
+      ['passed', DB_INSIDE, undefined],
+    ]);
+  });
+
+  it('session: a Write outside the declare scope leaves the sibling rows exactly as without the entry', () => {
+    // A declare registration that routes on every world — scope ignored — would add a row
+    // here; the row set of the passing payload is pinned unchanged.
+    const transcript = transcriptWithPrecedent();
+    const result = runHook(
+      {
+        hook_event_name: 'PreToolUse',
+        session_id: 's-1',
+        tool_name: 'Write',
+        tool_input: {
+          file_path: SCOPED_TARGET,
+          content: `// see ${PROTECTED_ENTRY} before touching this\nexport const y = 2;\n`,
+        },
+        transcript_path: transcript,
+      },
+      WITH_DECLARE,
+    );
+
+    expect(result.status).toBe(0);
+    expect(rows()).toEqual([
+      BASELINE_FIRST_RUN_ROW,
+      ['passed', 'self-mod', PROTECTED_ENTRY],
+      ['passed', 'shell-mod', PROTECTED_ENTRY],
+      ['passed', DELTA_ID, SCOPED_TARGET],
+      ['passed', CONTEXT_ID, SCOPED_TARGET],
+    ]);
+  });
+
+  it('commit: the same staged .db lands the same advised row with the byte-identical witnesses string; inside lands passed', () => {
+    // Two observers, one verdict: the commit surface must serialise the same witness list
+    // the session surface did — same order, same keys — so the fifth field is compared
+    // as the string the log carries, not as a parsed shape.
+    expect(writeViaHook(DB_OUTSIDE, 'x').status).toBe(0);
+
+    const commit = runCommitCheckCreating('commit-outside', DB_OUTSIDE, 'x');
+    expect(commit.status).toBe(0);
+    expect(rows().filter(([, label]) => label === DECLARE_ID)).toEqual([
+      ['advised', DECLARE_ID, DB_OUTSIDE],
+      ['advised', DECLARE_ID, DB_OUTSIDE],
+    ]);
+    const [fromSession, fromCommit] = declareRecords();
+    expect(fromSession.witnesses).toBeDefined();
+    expect(fromCommit.witnesses).toBe(fromSession.witnesses);
+
+    const inside = runCommitCheckCreating('commit-inside', DB_INSIDE, 'y');
+    expect(inside.status).toBe(0);
+    expect(declareRecords().at(-1)).toMatchObject({ event: 'passed', subject: DB_INSIDE });
+    expect(declareRecords().at(-1)?.witnesses).toBeUndefined();
   });
 });

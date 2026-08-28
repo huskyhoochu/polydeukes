@@ -36,7 +36,9 @@ telemetry.
   line of code: `forbid` (delta family — new occurrences only), `immutable` (path family —
   modification blocks, creation passes), `forbidCommand` (command family — a content predicate
   that routes commands mentioning *no* protected path, closing the path-mention routing gap), and
-  `requirePrecedent` (context family — see below). One entry compiles into one registration:
+  `requirePrecedent` (context family — see below), and `declare` (declaration family — an
+  algebra declaration the engine below judges, each file change supplied as one world). One
+  entry compiles into one registration:
   per-discipline telemetry labels, a generic judged body, and the same witness seam.
 - **Context family (`requirePrecedent`)** — the one predicate whose subject is not the mutation
   but the *session history*: the change itself is legitimate, and what breaks the covenant is
@@ -60,7 +62,8 @@ telemetry.
   combinators, then the seven relations, each answering a witness list rather than a boolean.
   The engine reads nothing but the `World` it is handed — no files, no process, no session —
   and a step name outside the registry is a config fault returned at compile time, never a
-  throw.
+  throw. `worldsFromInput` is the live supply: one world per file change, under the source
+  names `target.path`, `pre`, `post`, and `state`.
 
 ## Design stance
 

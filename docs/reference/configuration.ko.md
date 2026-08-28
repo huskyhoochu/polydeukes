@@ -172,7 +172,7 @@ AI도 증언을 위조할 수 없습니다. 증언으로 통과한 판정은 조
 항목은 정확히 **하나의** 술어를 가지며(0개도 2개도 거부), `id`(텔레메트리 라벨)와 함께
 선택적으로 `why`(에이전트가 읽는 차단 메시지에 함께 실리는 이유)를 가집니다. `forbid`와
 `requirePrecedent` 항목에서는 `in`(판정할 파일 glob)과 `except`(그 범위에서 덜어낼 glob)도
-쓸 수 있습니다.
+쓸 수 있습니다. 다섯째 술어 `declare`는 범위를 블록 안에 지니므로 이 세 키를 받지 않습니다.
 
 **`draft` — 미승격 항목.** 술어를 갖지 않는 유일한 형태입니다. `{ id, why, draft: true }`
 세 키뿐입니다. 초안(draft)은 승격 전의 실천을 산문으로 등재합니다 — 두 표면 어디에서도
@@ -315,6 +315,42 @@ disciplines:
 **가장 싼 통과 경로가 곧 정직한 경로입니다.** 증인과 달리 이 증거는 AI 자신의 표면에
 있으므로 위조를 막지 못합니다. 막을 필요도 없습니다. 이 관문을 여는 가장 품이 덜 드는
 길이 실제로 그 도구를 호출하는 것이고, 그것이 바로 규율이 끌어내려는 행동입니다.
+
+**`declare`는 선언 계열입니다.** 판정 하나를 데이터로 적습니다. 코어가
+`algebra-declaration.schema.json`으로 공개하는 대수 문법 `judge = relate ∘ extract`입니다.
+블록은 선언의 `scope` · `supply` · `extract` · `relate`와 선택인 `witness`를 지니고, 항목의
+`id`가 선언의 이름이므로 블록은 `discipline` 키를 갖지 않습니다. `in` · `except` · `when`은
+거부됩니다. `scope` 블록이 곧 범위입니다.
+
+```yaml
+  - id: 'db-only-under-knowledge'
+    why: 'a *.db file may exist only under _docs/knowledge/'
+    declare:
+      scope: { source: 'target.path', include: ['\.db$'] }
+      extract:
+        outside:
+          - { op: 'source', of: 'target.path' }
+          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+      relate:
+        - id: 'placed'
+          relation: { op: 'Empty', of: 'outside' }
+          message: '{value} is outside _docs/knowledge/'
+```
+
+파일 변경 하나가 **세계(world)** 하나로 판정되며 소스 이름은 넷입니다. `target.path`(저장소
+상대 경로), `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가
+없습니다), `state`(`{ pre, post }`, 수정에만 있습니다). 변경이 지니지 않은 소스는 없는
+것이고, 그것이 무슨 뜻인지는 선언의 `supply` 블록이 적습니다. `error`(기본값)는 호출을 판정
+불가로 만들어 강제 수준과 무관하게 `blocked`로 기록하고, `pass`는 판정하지 않고 지나가게
+합니다. 그래서 전후를 비교하는 선언이 파일 생성을 지나가게 하려면 `supply: { state: pass }`가
+필요합니다.
+
+위반은 다른 계열과 같이 기록되되 하나가 더해집니다. 텔레메트리 행이 다섯째 필드에 관계가
+성립하지 않은 요소들을 싣습니다(relate 항목마다 최대 여덟, 실제 개수를 곁에 적습니다).
+컴파일러가 해석하지 못하는 블록(등재 표 밖의 단계 이름, 단계의 키 밖의 인자)은 stderr에
+위치를 적고 아무것도 라우팅하지 않는 skip 등록이 됩니다. 선언의 범위 안으로 들어오는 셸
+쓰기는 판정할 파일 본문이 없어 `skipped`를 기록합니다. 선언 자신의 `witness` 블록은 사람의
+증인과 함께 차단된 판정 결과를 여는 둘째 길이 됩니다.
 
 규율 추가는 데이터 편집입니다. 코드도 배관도 필요 없습니다. 데이터로 표현할 수 없는
 소수의 규칙을 위해 커스텀 판정 본체가 탈출층으로 남아 있습니다.

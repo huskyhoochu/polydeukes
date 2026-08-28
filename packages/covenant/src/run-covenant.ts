@@ -17,15 +17,62 @@ import {
   EXIT_UPHOLD,
   type TelemetryEvent,
 } from '@polydeukes/core';
+import type { Break } from './declaration-engine.js';
 
 /** The wrapper's final verdict — `1` never escapes: a break becomes the blocking `2`. */
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
 
 /**
  * What a judge thunk answers: `0` uphold, `1` break, `2` unjudgeable, and `reason` naming
- * the break for the agent that has to read it.
+ * the break for the agent that has to read it. `witnesses` carries the elements a
+ * declaration's break was found on; the body answers with values and the wrapper turns
+ * them into the row's fifth field.
  */
-export type JudgeOutcome = { exitCode: number; reason?: string };
+export type JudgeOutcome = { exitCode: number; reason?: string; witnesses?: readonly Break[] };
+
+/**
+ * How many witness elements one break contributes to a telemetry row. A relation over a
+ * large file can return thousands, and the row is one line — the true count rides beside
+ * the truncated list rather than being lost with it.
+ */
+const WITNESSES_PER_BREAK = 8;
+
+/**
+ * How many characters of one witness value the row keeps. A witness over a bare `source`
+ * step is the whole file, and the row is one line — the value is cut with its true length
+ * beside it rather than dropped.
+ */
+const WITNESS_VALUE_CHARS = 200;
+
+/** A witness whose serialized value fits the row; a longer one is cut and says so. */
+function boundedWitness(witness: Break['witnesses'][number]): Record<string, unknown> {
+  const serialized = JSON.stringify(witness.value);
+  if (serialized === undefined || serialized.length <= WITNESS_VALUE_CHARS) return witness;
+  return {
+    ...witness,
+    value: serialized.slice(0, WITNESS_VALUE_CHARS),
+    truncated: serialized.length,
+  };
+}
+
+/**
+ * Serialize a body's breaks into the row's fifth field: id, capped witnesses, true total —
+ * or nothing when a value cannot be serialized. Telemetry is fail-open, so a witness
+ * carrying a value `JSON.stringify` refuses costs the row its fifth field, never the verdict.
+ */
+function serializeWitnesses(breaks: readonly Break[]): string | undefined {
+  try {
+    return JSON.stringify(
+      breaks.map((entry) => ({
+        id: entry.id,
+        witnesses: entry.witnesses.slice(0, WITNESSES_PER_BREAK).map(boundedWitness),
+        total: entry.witnesses.length,
+      })),
+    );
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * `runCovenant` specification.
@@ -149,10 +196,14 @@ export async function runCovenant(
       ? { exitCode: EXIT_UPHOLD, event: 'witnessed' }
       : verdict;
 
+  const serialized = Array.isArray(outcome.witnesses)
+    ? serializeWitnesses(outcome.witnesses)
+    : undefined;
   appendRecordFailOpen(spec.telemetryPath, {
     event,
     label: spec.label,
     subject: spec.subject ?? '-',
+    ...(serialized !== undefined && { witnesses: serialized }),
   });
 
   return { exitCode, bodyExitCode, event };

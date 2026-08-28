@@ -24,6 +24,16 @@ import {
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { tokenizeCommandLine } from './bash-line.js';
+import {
+  type Break,
+  type CompiledDeclaration,
+  type ConfigFault,
+  compileDeclaration,
+  judgeDeclaration,
+  scopeAdmits,
+  type World,
+  witnessOpens,
+} from './declaration-engine.js';
 import { judgeAddedViolations } from './delta.js';
 import type { CovenantRegistration } from './dispatch.js';
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
@@ -128,6 +138,48 @@ function firstScopedPath(entry: DisciplineEntry, paths: string[], rootDir: strin
     if (scoped !== null && isInScope(scoped)) return scoped;
   }
   return null;
+}
+
+/** One change as one world, under the repo-relative path the declaration's scope reads. */
+export type SuppliedWorld = { readonly path: string; readonly world: World };
+
+/**
+ * Turn each file change into one world, in input order.
+ *
+ * The four source names are fixed: `target.path`, `pre`, `post`, and the paired `state`.
+ * A side the change does not carry is an ABSENT key, never a fabricated default — what a
+ * missing source means is the declaration's own `supply` policy to state. `state` exists
+ * only where both sides do, so a declaration comparing before with after refuses a change
+ * that has no before. A path outside the root is dropped, as everywhere else in this
+ * module: a declaration's scope is written repo-relative.
+ */
+export function worldsFromInput(input: CovenantInput, rootDir: string): SuppliedWorld[] {
+  const worlds: SuppliedWorld[] = [];
+  for (const change of allFileChanges(input)) {
+    const path = relativizeForScope(change.path, rootDir);
+    if (path === null) continue;
+    const world: Record<string, unknown> = { 'target.path': path };
+    // A kind this host does not know (a stale adapter dist) yields no world at all: a key
+    // holding `undefined` would satisfy the engine's presence check and skip the supply
+    // policy, so the step would run over nothing and could answer pass.
+    switch (change.kind) {
+      case 'create':
+        world.post = change.post;
+        break;
+      case 'modify':
+        world.pre = change.pre;
+        world.post = change.post;
+        world.state = { pre: change.pre, post: change.post };
+        break;
+      case 'delete':
+        if (change.pre !== undefined) world.pre = change.pre;
+        break;
+      default:
+        continue;
+    }
+    worlds.push({ path, world });
+  }
+  return worlds;
 }
 
 /** File changes matching the immutable glob(s), with their relativized paths. */
@@ -648,6 +700,49 @@ function evaluateEvidence(entry: DisciplineEntry, spec: CompileDisciplinesSpec):
   return answer ? { kind: 'found' } : { kind: 'missing' };
 }
 
+/** The declaration compiler's fault value, distinguished from a compiled declaration. */
+function isFault(value: CompiledDeclaration | ConfigFault): value is ConfigFault {
+  return (value as { kind?: unknown }).kind === 'config-fault';
+}
+
+/** Compile a declare entry's block, the entry's id supplying the declaration's name. */
+function compileEntryDeclaration(entry: DisciplineEntry): CompiledDeclaration | ConfigFault {
+  return compileDeclaration({
+    discipline: entry.id,
+    ...(entry.declare as NonNullable<DisciplineEntry['declare']>),
+  });
+}
+
+/** Every write target a shell line delivers, computable or not, in line order. */
+function shellTargets(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+  const signals = deriveShellSignals(input, opts);
+  return [
+    ...signals.evidence.map((derived) => derived.change.path),
+    ...signals.unjudgeable.flatMap((signal) => signal.path ?? []),
+  ];
+}
+
+/**
+ * The first of `paths` the declaration's scope admits, judged as a world of that path alone.
+ *
+ * A shell line delivers a path and nothing else, so only a scope over `target.path` can be
+ * tested here. A scope over any other source admits every path: the write may be in scope
+ * and this layer cannot tell, which is exactly what the skip row is for.
+ */
+function firstAdmittedPath(
+  compiled: CompiledDeclaration,
+  paths: string[],
+  rootDir: string,
+): string | null {
+  const testable = compiled.scope === undefined || compiled.scope.source === 'target.path';
+  for (const path of paths) {
+    const scoped = relativizeForScope(path, rootDir);
+    if (scoped === null) continue;
+    if (!testable || scopeAdmits(compiled, { 'target.path': scoped })) return scoped;
+  }
+  return null;
+}
+
 /**
  * Describe the first pattern on an entry that does not compile, or `undefined` when all of
  * them do. Every family is covered: containing only the context family would leave the
@@ -681,6 +776,7 @@ function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): 
   // never fire, so registering it would only misreport the entry as unjudgeable there.
   if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) return false;
   if (patternFault(entry) !== undefined) return false;
+  if (entry.declare !== undefined) return !isFault(compileEntryDeclaration(entry));
   return entry.forbid !== undefined || entry.requirePrecedent !== undefined;
 }
 
@@ -695,15 +791,25 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
   };
+  // A declaration's scope is its own; every other family reads the entry-level globs. A
+  // shell line delivers no file change, so even a computable write leaves the declaration
+  // no world to judge — its whole shell axis is this arm.
+  const compiled = entry.declare === undefined ? undefined : compileEntryDeclaration(entry);
+  const scoped =
+    compiled === undefined || isFault(compiled)
+      ? (input: CovenantInput) =>
+          firstScopedPath(
+            entry,
+            deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []),
+            spec.rootDir,
+          )
+      : (input: CovenantInput) =>
+          firstAdmittedPath(compiled, shellTargets(input, opts), spec.rootDir);
+
   return {
     label: entry.id,
     protectedPaths: [],
-    matches: (input) =>
-      firstScopedPath(
-        entry,
-        deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []),
-        spec.rootDir,
-      ),
+    matches: scoped,
     skip: { reason: 'a shell write in scope whose result this layer cannot compute' },
   };
 }
@@ -727,6 +833,120 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
         ? '-'
         : null,
     skip: { reason: 'a shell command whose write target this layer cannot determine' },
+  };
+}
+
+/** The first non-pass world of one input, or pass — what the body reports and the valve reads. */
+type DeclareJudgment =
+  | { readonly kind: 'pass' }
+  | { readonly kind: 'broken'; readonly supplied: SuppliedWorld; readonly breaks: readonly Break[] }
+  | {
+      readonly kind: 'unjudgeable';
+      readonly supplied: SuppliedWorld;
+      readonly source: string;
+      readonly reason: string;
+    };
+
+/**
+ * Compile one declaration entry into its registration.
+ *
+ * An assembly fault is the author's mistake, so it becomes a skip that names its location
+ * on stderr and routes nothing: a declaration that could never judge must not record a
+ * `skipped` row per change as though the call were at fault. Otherwise routing and judging
+ * share the declaration's own scope — the subject is the first world it admits, and the
+ * body walks every admitted world in input order, reporting the first that breaks.
+ *
+ * The declaration's `witness` block joins the injected valve with OR: either the human's
+ * pass condition or the declaration's own opens a blocked verdict — the declaration's on
+ * the very world the body reported broken, never on an unjudgeable one.
+ */
+function declareRegistration(
+  entry: DisciplineEntry,
+  spec: CompileDisciplinesSpec,
+  witness: { witness?: CovenantRegistration['witness'] },
+  nameFault: (reason: string) => void,
+): CovenantRegistration {
+  const compiled = compileEntryDeclaration(entry);
+  if (isFault(compiled)) {
+    const reason = `${compiled.location}: ${compiled.reason}`;
+    nameFault(reason);
+    return {
+      label: entry.id,
+      protectedPaths: [],
+      matches: () => null,
+      ...witness,
+      skip: { reason },
+    };
+  }
+
+  // One derivation per input, shared by routing, the body, and the valve: the valve must
+  // see the same first non-pass world the body reported — a valve that re-judged on its
+  // own could open on a later break while the body had stopped at an unjudgeable world.
+  const admittedOf = new WeakMap<CovenantInput, SuppliedWorld[]>();
+  const admitted = (input: CovenantInput): SuppliedWorld[] => {
+    const cached = admittedOf.get(input);
+    if (cached !== undefined) return cached;
+    const worlds = worldsFromInput(input, spec.rootDir).filter((supplied) =>
+      scopeAdmits(compiled, supplied.world),
+    );
+    admittedOf.set(input, worlds);
+    return worlds;
+  };
+  const judgedOf = new WeakMap<CovenantInput, DeclareJudgment>();
+  const judged = (input: CovenantInput): DeclareJudgment => {
+    const cached = judgedOf.get(input);
+    if (cached !== undefined) return cached;
+    let result: DeclareJudgment = { kind: 'pass' };
+    for (const supplied of admitted(input)) {
+      const verdict = judgeDeclaration(compiled, supplied.world);
+      if (verdict.kind === 'broken') {
+        result = { kind: 'broken', supplied, breaks: verdict.breaks };
+        break;
+      }
+      if (verdict.kind === 'supply-error') {
+        result = { kind: 'unjudgeable', supplied, source: verdict.source, reason: verdict.reason };
+        break;
+      }
+    }
+    judgedOf.set(input, result);
+    return result;
+  };
+
+  return {
+    label: entry.id,
+    protectedPaths: [],
+    matches: (input) => admitted(input)[0]?.path ?? null,
+    enforce: entry.enforce ?? 'advise',
+    witness: (input, transcript, ctx) => {
+      if (spec.witness?.(input, transcript, ctx) === true) return true;
+      const judgment = judged(input);
+      return judgment.kind === 'broken' && witnessOpens(compiled, judgment.supplied.world);
+    },
+    body: async (input: CovenantInput) => {
+      try {
+        const judgment = judged(input);
+        if (judgment.kind === 'broken') {
+          return {
+            exitCode: 1,
+            reason: withWhy(
+              `discipline '${entry.id}' broken on ${judgment.supplied.path}: ${judgment.breaks[0]?.message}`,
+              entry.why,
+            ),
+            witnesses: judgment.breaks,
+          };
+        }
+        if (judgment.kind === 'unjudgeable') {
+          process.stderr.write(
+            `discipline '${entry.id}' cannot judge ${judgment.supplied.path}: ${judgment.source} — ${judgment.reason}\n`,
+          );
+          return UNJUDGEABLE_OUTCOME;
+        }
+        return { exitCode: 0 };
+      } catch {
+        // An input no supply layer could read is unjudgeable, like every other body here.
+        return UNJUDGEABLE_OUTCOME;
+      }
+    },
   };
 }
 
@@ -764,6 +984,10 @@ export function compileDisciplineRegistrations(
     // that same pattern eagerly. It also routes to nothing: a pattern is what defines
     // which inputs the entry is about, so a broken one leaves no match to record. That
     // separates it from unevaluable evidence below, whose trigger is intact.
+    if (entry.declare !== undefined) {
+      return declareRegistration(entry, spec, witness, nameFault);
+    }
+
     const fault = patternFault(entry);
     if (fault !== undefined) {
       nameFault(fault);

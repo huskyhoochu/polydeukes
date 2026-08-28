@@ -129,7 +129,7 @@
       }
     },
     "discipline": {
-      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent), or a draft (id + why + draft: true, no predicate); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
+      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent | declare), or a draft (id + why + draft: true, no predicate); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
       "oneOf": [
         {
           "type": "object",
@@ -222,8 +222,34 @@
             },
             "requirePrecedent": { "$ref": "#/$defs/requirePrecedent" }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "declare"],
+          "properties": {
+            "id": { "$ref": "#/$defs/disciplineId" },
+            "why": { "$ref": "#/$defs/disciplineWhy" },
+            "enforce": { "$ref": "#/$defs/enforceLevel" },
+            "declare": { "$ref": "#/$defs/declarationBody" }
+          }
         }
       ]
+    },
+    "declarationBody": {
+      "description": "Declaration family — one judgment written as data, in the grammar of the algebra declaration schema published beside this one, minus its 'discipline' key: the entry id is the declaration's name. The blocks' interiors are validated against that schema by the runtime validator.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extract", "relate"],
+      "properties": {
+        "mechanism": { "type": "string" },
+        "axis": { "type": "string" },
+        "scope": { "type": "object" },
+        "supply": { "type": "object" },
+        "extract": { "type": "object", "minProperties": 1 },
+        "relate": { "type": "array", "minItems": 1 },
+        "witness": { "type": "object" }
+      }
     }
   }
 }

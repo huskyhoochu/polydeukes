@@ -7,6 +7,7 @@
  * hand-rolled, and the published JSON Schema is a sibling artifact this source never reads.
  */
 
+import { type AlgebraDeclaration, validateAlgebraDeclaration } from './algebra.js';
 import { isPlainObject } from './is-plain-object.js';
 import {
   ConfigValidationError,
@@ -46,6 +47,14 @@ export type LanguageProfile = {
 export type DisciplineForbid = string | { added: string };
 
 /**
+ * `AlgebraDeclarationBody` — an algebra declaration minus its name.
+ *
+ * The declaration family names itself with the entry's `id`, so the block under `declare`
+ * carries every other key and never `discipline`.
+ */
+export type AlgebraDeclarationBody = Omit<AlgebraDeclaration, 'discipline'>;
+
+/**
  * `EnforceLevel` — an entry's own rung on the promotion ladder. `advise` records a break
  * without stopping it; `block` pins the entry at block whatever default the ladder later
  * adopts. Absence means advise; `block` is the promotion rung.
@@ -56,7 +65,8 @@ export type EnforceLevel = 'block' | 'advise';
  * `DisciplineEntry` — one user-declared discipline. Pure JSON data.
  *
  * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand` |
- * `requirePrecedent`) per entry; `in`/`except` scope the delta and context families.
+ * `requirePrecedent` | `declare`) per entry; `in`/`except` scope the delta and context
+ * families.
  * Compilation is the covenant package's job — the core validates compilability of regex
  * strings but never executes them.
  */
@@ -85,6 +95,12 @@ export type DisciplineEntry = {
    * adapter vocabulary whose value passes through verbatim.
    */
   requirePrecedent?: Record<string, unknown>;
+  /**
+   * declaration family — one judgment written as data. The entry's `id` is the
+   * declaration's name and the block's own `scope` is its scope, so an entry carrying
+   * `declare` takes neither `in`/`except` nor `when`.
+   */
+  declare?: AlgebraDeclarationBody;
 };
 
 /**
@@ -211,10 +227,17 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'forbidCommand',
   'when',
   'requirePrecedent',
+  'declare',
 ]);
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
-const PREDICATE_KEYS = ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent'] as const;
+const PREDICATE_KEYS = [
+  'forbid',
+  'immutable',
+  'forbidCommand',
+  'requirePrecedent',
+  'declare',
+] as const;
 /** Predicate families that `in`/`except` may scope — delta and context. */
 const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
 
@@ -293,8 +316,8 @@ function validateDraft(entry: RawEntry, id: string, location: string): Disciplin
   return { id, why: entry.why, draft: true };
 }
 
-/** Validate the family-independent rules of a judged entry and return its predicate key. */
-function validateJudgedHead(entry: RawEntry, location: string): (typeof PREDICATE_KEYS)[number] {
+/** Validate the head of a judged entry — the closed key set, `why`, and `enforce`. */
+function validateEntryHead(entry: RawEntry, location: string): void {
   rejectUnknownKeys(entry, DISCIPLINE_KEYS, location);
   if (entry.why !== undefined && typeof entry.why !== 'string') {
     throw new ConfigValidationError(`${location} why must be a string`);
@@ -305,12 +328,15 @@ function validateJudgedHead(entry: RawEntry, location: string): (typeof PREDICAT
   ) {
     throw new ConfigValidationError(`${location} enforce must be 'block' or 'advise'`);
   }
+}
 
+/** Select the entry's family — exactly one predicate key, plus the keys that family admits. */
+function selectFamily(entry: RawEntry, location: string): (typeof PREDICATE_KEYS)[number] {
   const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
   if (predicates.length !== 1) {
     throw new ConfigValidationError(
       `${location} must have exactly one predicate key ` +
-        `(forbid | immutable | forbidCommand | requirePrecedent)`,
+        `(forbid | immutable | forbidCommand | requirePrecedent | declare)`,
     );
   }
   const predicate = predicates[0];
@@ -398,6 +424,27 @@ function validateContextEntry(entry: RawEntry, location: string): void {
   validateRequirePrecedent(entry.requirePrecedent, location);
 }
 
+/**
+ * Validate a declaration-family entry by delegating the block to the algebra validator.
+ *
+ * The entry's `id` supplies the declaration's name, so the block carrying its own
+ * `discipline` is refused rather than silently overwritten. The delegated messages arrive
+ * with the entry's location in front of them, which is what places a failure among many
+ * entries.
+ */
+function validateDeclareEntry(entry: RawEntry, location: string): void {
+  const block = entry.declare;
+  if (!isPlainObject(block)) {
+    throw new ConfigValidationError(`${location} declare must be an object`);
+  }
+  if ('discipline' in block) {
+    throw new ConfigValidationError(
+      `${location} declare must not carry discipline — the entry id is the name`,
+    );
+  }
+  validateAlgebraDeclaration({ discipline: entry.id, ...block }, `${location} declare`);
+}
+
 /** One validator per family, keyed by the predicate that selects the family. */
 const PREDICATE_VALIDATORS: Record<
   (typeof PREDICATE_KEYS)[number],
@@ -407,6 +454,7 @@ const PREDICATE_VALIDATORS: Record<
   immutable: validateImmutable,
   forbidCommand: validateForbidCommand,
   requirePrecedent: validateContextEntry,
+  declare: validateDeclareEntry,
 };
 
 /**
@@ -451,7 +499,8 @@ function validateDisciplines(disciplines: unknown): {
       return;
     }
 
-    const predicate = validateJudgedHead(entry, location);
+    validateEntryHead(entry, location);
+    const predicate = selectFamily(entry, location);
     PREDICATE_VALIDATORS[predicate](entry, location);
     judged.push(entry as DisciplineEntry);
   });

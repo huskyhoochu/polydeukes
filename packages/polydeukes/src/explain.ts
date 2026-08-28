@@ -57,6 +57,19 @@ function scopeOf(entry: DisciplineEntry): string {
   return `${family} · ${scope}${except}`;
 }
 
+/**
+ * The description of a declaration entry: what it routes on, how large its two regex lists
+ * are, and which relate entries decide it. An absent scope block admits every world.
+ */
+function declareDescription(entry: DisciplineEntry): string {
+  const declare = entry.declare as NonNullable<DisciplineEntry['declare']>;
+  const scope = declare.scope === undefined ? 'scope every world' : `scope ${declare.scope.source}`;
+  const include = declare.scope?.include?.length ?? 0;
+  const exclude = declare.scope?.exclude?.length ?? 0;
+  const relate = declare.relate.map((relateEntry) => relateEntry.id).join(', ');
+  return `${scope} · include ${include} · exclude ${exclude} · relate ${relate}`;
+}
+
 /** One rendered line: the kind column, the label column, then the description. */
 function row(kind: string, label: string, width: number, description: string): string {
   return `  ${kind.padEnd(8)} ${label.padEnd(width)} ${description}`;
@@ -86,6 +99,7 @@ function renderSurface(spec: {
     ...spec.drafts.map((draft) => draft.id.length),
   );
   let judged = 0;
+  let declare = 0;
   let skip = 0;
   let meta = 0;
 
@@ -101,12 +115,25 @@ function renderSurface(spec: {
       lines.push(row('skip', registration.label, width, registration.skip.reason));
       continue;
     }
-    judged += 1;
     const entry = spec.disciplines.find((candidate) => candidate.id === registration.label);
     // The DECLARED level is rendered, never the effective one: an omission stays unmarked
     // so the default and an author's explicit choice of it never read alike, and the
     // surface header states what the omission resolves to.
     const level = entry?.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
+    if (entry?.declare !== undefined) {
+      declare += 1;
+      const why = entry.why === undefined ? '—' : '✓';
+      lines.push(
+        row(
+          'declare',
+          registration.label,
+          width,
+          `${declareDescription(entry)} · why ${why}${level}`,
+        ),
+      );
+      continue;
+    }
+    judged += 1;
     const description =
       entry === undefined
         ? ''
@@ -123,8 +150,9 @@ function renderSurface(spec: {
   }
 
   const tally =
-    `  registrations ${meta + judged + skip} · judged ${judged} · skip ${skip} · ` +
-    `meta ${meta} · excluded ${spec.excluded.length} · draft ${spec.drafts.length}`;
+    `  registrations ${meta + judged + declare + skip} · judged ${judged} · ` +
+    `declare ${declare} · skip ${skip} · meta ${meta} · excluded ${spec.excluded.length} · ` +
+    `draft ${spec.drafts.length}`;
   return [spec.header, tally, ...lines].join('\n');
 }
 

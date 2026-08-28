@@ -121,9 +121,10 @@ function compilePipeline(
 ): CompiledPipeline | ConfigFault {
   const [first, ...rest] = steps;
   if (first === undefined || (!isCombinator(first) && first.op !== 'source')) {
+    const found = first === undefined ? 'an empty pipeline' : `'${first.op}'`;
     return fault(
       location,
-      `a pipeline begins with 'source' or one of ${BINARY_COMBINATOR_NAMES.join(', ')}`,
+      `a pipeline begins with 'source' or one of ${BINARY_COMBINATOR_NAMES.join(', ')} — found ${found}`,
     );
   }
   const combinator = isCombinator(first) ? first : undefined;
@@ -488,6 +489,15 @@ function verdictFor(problem: SupplyProblem): DeclarationVerdict {
   return problem.kind === 'pass'
     ? { kind: 'not-applicable', reason: 'supply-pass', source: problem.source }
     : { kind: 'supply-error', source: problem.source, reason: problem.reason };
+}
+
+/**
+ * Whether the declaration's scope admits this world — the routing question, asked without
+ * judging. A surface routes on the same predicate the judgment starts with, so a world it
+ * sends to the body is never one the body answers `not-applicable` for.
+ */
+export function scopeAdmits(compiled: CompiledDeclaration, world: World): boolean {
+  return inScope(compiled.scope, world);
 }
 
 /**

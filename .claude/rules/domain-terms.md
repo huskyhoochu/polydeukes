@@ -51,6 +51,7 @@ carries. The family determines what evidence the judgment needs.
 | **command** | `forbidCommand` | The command line itself. No file evidence needed. |
 | **context** | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one. Needs a transcript channel; without one the entry records `skipped`. |
 | **path** | (protected paths) | Whole-path mention or mutation target. |
+| **declaration** | `declare` | One algebra declaration (below) over each file change as a world. Its `scope` block is its scope; the entry takes no `in`/`except`/`when`. |
 
 `when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
 nothing else.
@@ -111,6 +112,10 @@ module; a name outside a closed list is rejected by validation, never coerced.
 - **Paired source** — `source: state` reads `World.state = { pre, post }` and runs the same
   pipeline over both, producing a pre/post pair. Only `Unchanged` accepts a pair; a pair in any
   other relation, or a single extraction under `Unchanged`, is a config fault at compile time.
+- **World source names** — the four names `worldsFromInput` supplies per file change:
+  `target.path` (repo-relative path), `pre`, `post` (the side the change carries), `state`
+  (`{ pre, post }`, modifications only). A side the change lacks is an absent key — the
+  declaration's `supply` policy, never the host, says what that means.
 - **Config fault** — the value `compileDeclaration` returns instead of a compiled declaration:
   a step name outside the registry, an argument outside a step's closed key set, an
   uncompilable regex, or a paired/single shape mismatch. It names a `location` and is never a

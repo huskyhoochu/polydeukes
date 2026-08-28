@@ -247,7 +247,9 @@ describe('gain', () => {
 
   it('parseRecordLine() returns null for wrong field counts and unknown events', () => {
     expect(parseRecordLine('2026-07-03T12:00:00Z\tpassed\tself-mod')).toBeNull(); // 3 fields
-    expect(parseRecordLine('2026-07-03T12:00:00Z\tpassed\tself-mod\ta.ts\textra')).toBeNull(); // 5 fields
+    expect(
+      parseRecordLine('2026-07-03T12:00:00Z\tpassed\tself-mod\ta.ts\twitnesses\textra'),
+    ).toBeNull(); // 6 fields
     expect(parseRecordLine('2026-07-03T12:00:00Z\tmaybe\tself-mod\ta.ts')).toBeNull(); // bad event
     expect(parseRecordLine('')).toBeNull(); // empty line
   });

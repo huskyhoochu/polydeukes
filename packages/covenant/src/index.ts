@@ -41,6 +41,7 @@ export {
   type Items,
   judgeDeclaration,
   type PairedItems,
+  scopeAdmits,
   UNARY_STEP_NAMES,
   type Witness,
   type World,
@@ -58,6 +59,8 @@ export {
   compileDisciplineRegistrations,
   type DisciplineJudgeOptions,
   judgeDiscipline,
+  type SuppliedWorld,
+  worldsFromInput,
 } from './discipline.js';
 export { type CovenantRegistration, dispatchCovenants, matchRegistrations } from './dispatch.js';
 export { mentionsPath, pathMatchesProtected } from './mention.js';

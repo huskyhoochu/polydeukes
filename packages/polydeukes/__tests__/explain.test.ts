@@ -107,9 +107,11 @@ function kindLabelRows(section: string): [Kind, string][] {
 
 function summary(section: string): Record<string, number> {
   const match =
-    /registrations (\d+) · judged (\d+) · skip (\d+) · meta (\d+) · excluded (\d+)/.exec(section);
+    /registrations (\d+) · judged (\d+) · declare (\d+) · skip (\d+) · meta (\d+) · excluded (\d+)/.exec(
+      section,
+    );
   expect(match, 'summary line missing').not.toBeNull();
-  const [, registrations, judged, skip, meta, excluded] = match as RegExpExecArray;
+  const [, registrations, judged, , skip, meta, excluded] = match as RegExpExecArray;
   return {
     registrations: Number(registrations),
     judged: Number(judged),

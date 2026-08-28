@@ -120,30 +120,31 @@ claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 �
 pdks explain — polydeukes.config.yaml
 
 surface: session (claude-code hook)
-  registrations 23 · judged 11 · skip 9 · meta 3 · excluded 0 · draft 1
+  registrations 23 · judged 11 · declare 0 · skip 9 · meta 3 · excluded 0 · draft 1
   meta     self-mod                 paths 13 (common; includes the config file itself)
   judge    covenant-vocabulary      forbid · in packages/*/src/** · except … · why ✓
   skip     covenant-vocabulary      a shell write in scope whose result this layer cannot compute
   draft    bilingual-docs-sync      unpromoted — no judgment
   ...
 surface: commit (git pre-commit) · enforce: advise
-  registrations 10 · judged 3 · skip 6 · meta 1 · excluded 3 · draft 1
+  registrations 10 · judged 3 · declare 0 · skip 6 · meta 1 · excluded 3 · draft 1
   skip     manifest-needs-npm-view  no session transcript to read
   excluded hooks-stay-armed         forbidCommand — no shell axis on this surface
   draft    bilingual-docs-sync      unpromoted — no judgment
 ```
 
-등록 하나가 한 줄이고, 순서는 그 표면이 디스패치하는 순서입니다. 종류 열의 낱말은 다섯입니다.
+등록 하나가 한 줄이고, 순서는 그 표면이 디스패치하는 순서입니다. 종류 열의 낱말은 여섯입니다.
 
 | 종류 | 뜻 |
 |---|---|
 | `meta` | 판정 사슬 자체를 보호하는 등록입니다. `self-mod`, `shell-mod`, 그리고 세션 표면의 `transcript-mod` |
 | `judge` | 판정 본체를 가진 항목입니다. 계열과 라우팅 스코프, `why` 유무를 함께 적습니다 |
+| `declare` | 선언 항목입니다. 범위 소스, include·exclude 목록의 크기, relate 항목 id를 함께 적습니다 |
 | `skip` | 판정 대신 `skipped`를 기록하는 등록입니다. 컴파일러가 준 사유를 함께 적습니다. 평소에는 설정 결함일 때만 stderr에 닿는 그 사유입니다 |
 | `excluded` | 커밋 표면의 `forbidCommand` 항목입니다. 이 표면에는 셸 축이 없습니다 |
 | `draft` | 미승격 `draft: true` 항목입니다. 어느 표면에도 속하지 않으므로 양쪽에 표시됩니다 |
 
-`registrations`는 앞의 셋을 세고, `excluded`와 `draft`는 등록이 되지 않는 항목이라 따로
+`registrations`는 `meta` · `judge` · `declare` · `skip`을 세고, `excluded`와 `draft`는 등록이 되지 않는 항목이라 따로
 셉니다. 커밋 표면 머리에는 `adapters.git.enforce` 강제 수준도 같이 적습니다. 권고하는
 표면은 같은 표를 기록하되 아무것도 차단하지 않기 때문입니다.
 

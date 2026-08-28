@@ -13,6 +13,27 @@ const SESSION_HEADER = 'surface: session (claude-code hook)';
 const COMMIT_HEADER = 'surface: commit (git pre-commit)';
 
 const ENTRY_ID = 'no-fixme-anywhere';
+const DECLARE_ID = 'db-only-under-knowledge';
+const declareEntry = {
+  id: DECLARE_ID,
+  why: 'a *.db file may exist only under memory/knowledge/',
+  declare: {
+    scope: { source: 'target.path', include: ['\\.db$'] },
+    extract: {
+      outside: [
+        { op: 'source', of: 'target.path' },
+        { op: 'matches', re: '^(?!memory/knowledge/)' },
+      ],
+    },
+    relate: [
+      {
+        id: 'placed',
+        relation: { op: 'Empty', of: 'outside' },
+        message: '{value} is outside memory/knowledge/',
+      },
+    ],
+  },
+};
 
 let projectRoot: string;
 
@@ -47,6 +68,20 @@ describe('pdks explain on the built bin', () => {
     expect(result.stdout).toContain(SESSION_HEADER);
     expect(result.stdout).toContain(COMMIT_HEADER);
     expect(result.stdout).toContain(ENTRY_ID);
+    expect(result.stderr).not.toContain('pdks explain:');
+  });
+
+  it('renders a declare entry through the built bin: exit 0, the `declare` kind and the id on stdout', () => {
+    // The bin reads the shipped dist, so a config carrying `declare` must be accepted by
+    // the built core and rendered by the built explain — an in-process pass proves neither.
+    writeConfigAt(projectRoot, join(projectRoot, 'roi.log'), { disciplines: [declareEntry] });
+
+    const result = spawnExplain();
+
+    expect(result.status).toBe(0);
+    // The kind column, not the word: the tally line says `declare N` for every config, so
+    // only a row whose kind is `declare` proves the built core accepted the key.
+    expect(result.stdout).toMatch(new RegExp(`^\\s+declare\\s+${DECLARE_ID}\\s`, 'm'));
     expect(result.stderr).not.toContain('pdks explain:');
   });
 

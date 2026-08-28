@@ -476,6 +476,15 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      visible. Publish with the v0.6.0 gate post, once the engine has judged live
      declarations on both surfaces.
 
+     Parked candidate (ALGEBRA-02b, 2026-08-30): the host fabricates no defaults. When a
+     declaration is judged live, each file change becomes one world, and a side the change
+     does not carry — the `pre` of a creation, the `post` of a deletion — is an absent key,
+     never an empty string the host invents. What absence means is written in the
+     declaration's own `supply` policy: refuse (the default, recorded `blocked` at either
+     level) or pass unjudged. The earlier spike substituted an empty ledger for a missing
+     disk and its verdicts blurred; here the author states it. Publish with the first live
+     declaration's rows in the v0.6.0 gate post.
+
      Parked candidate (ALGEBRA-02, 2026-08-29): a judgment has one address for its last
      comparison, and the engine makes that structural rather than conventional. Every
      extract step maps a list of items to a list of items — the type has no room for a

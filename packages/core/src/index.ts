@@ -30,6 +30,7 @@ export {
   type Witnesses,
 } from './algebra.js';
 export {
+  type AlgebraDeclarationBody,
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,
   type DisciplineDraft,
