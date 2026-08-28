@@ -223,5 +223,5 @@ is the vocabulary only.
 | **spec** | A verb's only input, typed `<Verb>Spec`. | Not `Options`, not `Params`. |
 | **Verdict / Outcome** | A verb's result type: `<Verb>Verdict` when it carries the judgment vocabulary above, `<Verb>Outcome` otherwise. Or a core-named type. | Never an anonymous literal. |
 | **spec ingredient** | The only constant a contract may carry: a value used to fill a field of an exported spec type. | A constant no spec consumes is implementation. |
-| **entry point** | An `exports` subpath. Three kinds: `.`, `./*.schema.json`, `./<surface>` (umbrella only, closed list). | Sibling packages have `.` alone. |
+| **entry point** | An `exports` subpath. Three kinds: `.`, a `.json` data file (`./schema.json`), `./<surface>` (umbrella only, closed list). Condition keys (`types` / `import` / `default`) are not entry points. | Sibling packages have `.` alone. |
 | **barrel** | The `src/index.ts` behind an entry point. Re-exports only; the consumer contract, not the test surface — a package's own tests import `../src/<module>.ts`. | No definitions, no `export *`, no second barrel. |

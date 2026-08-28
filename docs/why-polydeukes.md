@@ -492,7 +492,17 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      "which task's field", "which line" is the verdict's data, not a message someone
      formatted afterwards. The closed relation list only means something while no step can
      smuggle the comparison out of it; the engine is where that stopped being a review
-     rule and became a type. Publish alongside the ALGEBRA-01 candidate. -->
+     rule and became a type. Publish alongside the ALGEBRA-01 candidate.
+
+     Parked candidate (CONTRACT-01, 2026-08-30): a simple interface, in this project's
+     words, is a contract that exports nothing beyond what a caller must know to fill one
+     spec. Ousterhout measures a module by leverage per thing the caller learns; the
+     mechanical form of that here is one spec object in, one named result out, and a
+     barrel that re-exports only what a sibling, the umbrella, or the README needs. The
+     first measurement found the judging package exporting 72 names of which its only
+     consumer used 11 — the contract had no author, so it had grown to the size of the
+     implementation. A ratchet test now holds the shape; publish once the application
+     tickets shrink it. -->
 
 ## Where it stands
 

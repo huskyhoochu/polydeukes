@@ -41,6 +41,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,
   `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
   re-export them, but core must never depend on any sibling. Enforce this when adding packages.
+- **What a package exports is governed by `package-contract.md`** (entry-point kinds, barrels as
+  re-export-only consumer contracts, the executor/vocabulary skeletons) — it auto-loads for
+  barrels, manifests, and READMEs.
 
 ## New-package scaffold checklist
 
