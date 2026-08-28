@@ -208,3 +208,20 @@ records keep the wording they shipped with.
   v0.1 post) and gains an editor's note instead. The line runs *through* a dated post, not
   around it: a term already banned when the post was written is still a violation and gets
   corrected. Reference docs are the opposite — they speak only the present.
+
+## Package contract
+
+The shape every package's outer boundary takes. The full skeleton and the test that keeps it
+are `_docs/prd/CONTRACT-01.md` §2 (archived under `foundation.prd.*` after merge); this table
+is the vocabulary only.
+
+| Term | Meaning | Not |
+|---|---|---|
+| **contract** | Everything a package promises its consumers: the `exports` subpath set plus the symbols each entry-point barrel re-exports. README-named symbols are part of it. | Not a *surface* — surfaces are session and commit. Never "export surface". |
+| **executor skeleton** | The contract shape of covenant, adapter-*, polydeukes: every runtime export is a **verb**, and a verb takes **one spec object** and returns **one result**. Other exports are the types a spec needs and spec ingredients. | A verb with two or more positional parameters, or an anonymous return literal, breaks it. |
+| **vocabulary skeleton** | core's contract shape: types, `as const` tuples, positional pure functions and protocol primitives. **No function in core takes a spec** — that is the one discriminator between the two skeletons. | There is no third skeleton. |
+| **spec** | A verb's only input, typed `<Verb>Spec`. | Not `Options`, not `Params`. |
+| **Verdict / Outcome** | A verb's result type: `<Verb>Verdict` when it carries the judgment vocabulary above, `<Verb>Outcome` otherwise. Or a core-named type. | Never an anonymous literal. |
+| **spec ingredient** | The only constant a contract may carry: a value used to fill a field of an exported spec type. | A constant no spec consumes is implementation. |
+| **entry point** | An `exports` subpath. Three kinds: `.`, `./*.schema.json`, `./<surface>` (umbrella only, closed list). | Sibling packages have `.` alone. |
+| **barrel** | The `src/index.ts` behind an entry point. Re-exports only; the consumer contract, not the test surface — a package's own tests import `../src/<module>.ts`. | No definitions, no `export *`, no second barrel. |
