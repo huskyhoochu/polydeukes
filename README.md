@@ -59,7 +59,7 @@ knows nothing of the others.
 
 | Package | Role |
 |---------|------|
-| `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), config loader, transcript interface — a minimal core that is agnostic to domain and agent |
+| `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), config loader, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent |
 | `@polydeukes/covenant` | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
 | `@polydeukes/memory` | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |

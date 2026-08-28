@@ -4,8 +4,9 @@ A development *discipline* framework for building alongside an AI coding partner
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
 **This repo is alpha.** Five packages ship today: `core` (the covenant protocol — stdin-JSON
-in, exit code out — with file-change evidence and the config schema), `covenant` (the judge:
-Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline library),
+in, exit code out — with file-change evidence, the config schema, and the algebra declaration
+schema), `covenant` (the judge: Bash analysis, path-routing dispatcher, meta-covenants, TTL
+witness, discipline library),
 `adapter-claude-code` and `adapter-git` (two payloads onto one input IR), and the `polydeukes`
 umbrella (the `pdks` bin, `loadConfig`, and both surfaces' composition roots — only the umbrella
 may depend sideways). Details live in the code and the archived PRDs (the merged contracts).

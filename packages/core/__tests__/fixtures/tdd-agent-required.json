@@ -1,0 +1,99 @@
+{
+  "discipline": "tdd-agent-required",
+  "mechanism": "required precedent",
+  "axis": "history axis: the host supplies the session timeline (transcript plus sidecar)",
+  "scope": {
+    "source": "target.path",
+    "include": ["(apps|packages)/[^/]+/src/.*\\.(ts|tsx)$", "apps/pipeline/(ml/.*|api)\\.py$"],
+    "exclude": [
+      "\\.(test|spec)\\.(ts|tsx)$",
+      "\\.d\\.ts$",
+      "(__tests__|_lib)/",
+      "\\.(expo|next|stryker-tmp|dist|build|venv)/",
+      "apps/pipeline/conftest\\.py$"
+    ]
+  },
+  "supply": {
+    "transcript": "pass",
+    "sidecar": "error"
+  },
+  "extract": {
+    "writerToolUses": [
+      {
+        "op": "source",
+        "of": "transcript"
+      },
+      {
+        "op": "toolUses",
+        "names": ["Agent", "Task"],
+        "subagentType": "tdd-test-writer"
+      }
+    ],
+    "writerSidecars": [
+      {
+        "op": "source",
+        "of": "sidecar"
+      },
+      {
+        "op": "agentType",
+        "is": "tdd-test-writer"
+      }
+    ],
+    "writerEvidence": [
+      {
+        "op": "union",
+        "of": ["writerToolUses", "writerSidecars"]
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "writer-precedent",
+      "relation": {
+        "op": "NonEmpty",
+        "of": "writerEvidence"
+      },
+      "message": "production source edit without a tdd-test-writer subagent invocation in this session"
+    }
+  ],
+  "witness": {
+    "extract": {
+      "skipAgeMs": [
+        {
+          "op": "source",
+          "of": "transcript"
+        },
+        {
+          "op": "userTexts",
+          "re": "/tdd\\s+skip\\b",
+          "i": true
+        },
+        {
+          "op": "first"
+        },
+        {
+          "op": "ageMs"
+        },
+        {
+          "op": "filter",
+          "when": [
+            {
+              "field": "value",
+              "lte": 600000
+            }
+          ]
+        }
+      ]
+    },
+    "relate": [
+      {
+        "id": "skip-recent",
+        "relation": {
+          "op": "NonEmpty",
+          "of": "skipAgeMs"
+        },
+        "message": "a /tdd skip utterance within the last ten minutes opens the body's relations"
+      }
+    ]
+  }
+}

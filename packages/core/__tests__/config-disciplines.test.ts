@@ -219,3 +219,37 @@ describe('defineConfig disciplines — container/entry shape', () => {
     expectConfigValidationError(withDisciplines(['not-an-object']));
   });
 });
+
+// An algebra declaration is a separate document with its own validator; the `disciplines`
+// surface does not carry its blocks. An entry smuggling `extract` or `relate` in beside a
+// predicate must be refused by the closed key set, and the message must name the key.
+
+describe('defineConfig disciplines — algebra blocks are not entry keys', () => {
+  it('rejects an entry carrying an `extract` block, naming that key', () => {
+    // Opening the entry to `extract` without a judgment path would register a discipline
+    // nothing judges — a fail-open entry that reads as armed.
+    const error = expectConfigValidationError(
+      withDisciplines([
+        { id: 'has-extract', forbid: 'x', extract: { a: [{ op: 'source', of: 'pre' }] } },
+      ]),
+    );
+
+    expect(error.message).toContain('extract');
+  });
+
+  it('rejects an entry carrying a `relate` block, naming that key', () => {
+    // Same gate, second key: an implementation opening the set by name rather than by
+    // closing it would let the second one through.
+    const error = expectConfigValidationError(
+      withDisciplines([
+        {
+          id: 'has-relate',
+          forbid: 'x',
+          relate: [{ id: 'r', relation: { op: 'Empty', of: 'a' }, message: 'm' }],
+        },
+      ]),
+    );
+
+    expect(error.message).toContain('relate');
+  });
+});

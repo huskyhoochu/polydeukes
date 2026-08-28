@@ -32,3 +32,26 @@ export const validLanguages = {
     typescript: { productionGlob: 'packages/core/src/**/*', testCmd: 'fake-runner {scope}' },
   },
 };
+
+/**
+ * The algebra declaration schema, compiled on first use rather than at import: the config
+ * contract suites above share this module and must not fail when only this file is absent.
+ */
+const algebraSchemaPath = fileURLToPath(
+  new URL('../schema/algebra-declaration.schema.json', import.meta.url),
+);
+
+let compiledAlgebra: ((input: unknown) => boolean) | undefined;
+
+/** Validate an algebra declaration against its published schema. */
+export function validateAlgebra(input: unknown): boolean {
+  if (compiledAlgebra === undefined) {
+    const algebraSchema = JSON.parse(readFileSync(algebraSchemaPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const compiled = ajv.compile(algebraSchema);
+    compiledAlgebra = (candidate: unknown) => compiled(candidate) === true;
+  }
+  return compiledAlgebra(input);
+}

@@ -11,6 +11,25 @@ import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from './exi
 import { isPlainObject } from './is-plain-object.js';
 
 export {
+  type AlgebraDeclaration,
+  BINARY_COMBINATOR_NAMES,
+  type BinaryStep,
+  type ExtractBlock,
+  type ExtractStep,
+  RELATION_NAMES,
+  type RelateEntry,
+  type RelationDecl,
+  type RelationName,
+  type ScopeBlock,
+  SUPPLY_POLICIES,
+  type SupplyBlock,
+  type UnaryStep,
+  validateAlgebraDeclaration,
+  type Witness,
+  type WitnessBlock,
+  type Witnesses,
+} from './algebra.js';
+export {
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,
   type DisciplineDraft,

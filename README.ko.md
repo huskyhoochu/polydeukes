@@ -53,7 +53,7 @@ Polydeukes는 AI 에이전트(Claude Code 등)와 함께 일할 때 개발자가
 
 | 패키지 | 역할 |
 |--------|------|
-| `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), config 로더, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어 |
+| `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), config 로더, 대수 선언(algebra declaration) 스키마, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어 |
 | `@polydeukes/covenant` | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant) |
 | `@polydeukes/ledger` | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전 |
 | `@polydeukes/memory` | 로컬 SQLite + FTS5 기반 저장소. 결정·시행착오를 검색 가능한 기억으로. 동기화는 선택 어댑터(기본 로컬) |

@@ -463,7 +463,18 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      already did. The general form is worth stating: a pointer to where a decision was
      recorded is not a substitute for the decision still being true, and an unreachable
      pointer removes the reader's ability to notice. Publish it once a second measurement
-     confirms the pattern outside this one sweep. -->
+     confirms the pattern outside this one sweep.
+
+     Parked candidate (ALGEBRA-01, 2026-08-29): the relation vocabulary is closed at seven
+     and deliberately not reduced to its two-primitive kernel. `Within` was dropped because a
+     constant bound belongs to extraction, not to the relation position — the one place the
+     last comparison is allowed to happen — and keeping the single exception would have made
+     every later refusal on that ground cite it as precedent. The surface stays at seven
+     rather than the provable minimum of two because a minimal basis is exactly the
+     vacuity failure the judging discipline exists to prevent: with one relation, every
+     declaration reads as "the filtered set is empty" and nothing about the mechanism is
+     visible. Publish with the v0.6.0 gate post, once the engine has judged live
+     declarations on both surfaces. -->
 
 ## Where it stands
 

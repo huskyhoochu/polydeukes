@@ -1,6 +1,8 @@
 ---
 paths:
   - "packages/core/src/config.ts"
+  - "packages/core/src/algebra.ts"
+  - "packages/core/src/validation.ts"
   - "packages/core/schema/**"
   - "polydeukes.config.yaml"
 ---

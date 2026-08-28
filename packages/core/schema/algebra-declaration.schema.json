@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huskyhoochu/polydeukes/schema/algebra-declaration.schema.json",
+  "title": "Polydeukes algebra declaration",
+  "description": "One algebra declaration: five blocks, a relation position closed to seven names, a binary combinator position closed to three, and an open unary extraction vocabulary. Reference resolution, relate-entry id uniqueness, and cycle detection are validator-only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["discipline", "extract", "relate"],
+  "properties": {
+    "discipline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mechanism": {
+      "type": "string"
+    },
+    "axis": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "supply": {
+      "$ref": "#/$defs/supply"
+    },
+    "extract": {
+      "$ref": "#/$defs/extract"
+    },
+    "relate": {
+      "$ref": "#/$defs/relate"
+    },
+    "witness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relate"],
+      "properties": {
+        "extract": {
+          "$ref": "#/$defs/extract"
+        },
+        "relate": {
+          "$ref": "#/$defs/relate"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "extractName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "regex"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "regex"
+          }
+        },
+        "excludeIgnoreCase": {
+          "type": "boolean"
+        }
+      }
+    },
+    "supply": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": ["error", "pass"]
+      }
+    },
+    "extract": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/pipeline"
+      }
+    },
+    "pipeline": {
+      "description": "A combinator stands only as the first step: prefixItems governs position 0, items governs the rest.",
+      "type": "array",
+      "minItems": 1,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/step"
+        }
+      ],
+      "items": {
+        "$ref": "#/$defs/unaryStep"
+      }
+    },
+    "step": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/combinatorStep"
+        },
+        {
+          "$ref": "#/$defs/unaryStep"
+        }
+      ]
+    },
+    "combinatorStep": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "enum": ["union", "onlyIn", "intersect"]
+        }
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["op", "of"],
+          "properties": {
+            "op": {
+              "enum": ["union", "intersect"]
+            },
+            "of": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/extractName"
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "of", "notIn"],
+          "properties": {
+            "op": {
+              "const": "onlyIn"
+            },
+            "of": {
+              "$ref": "#/$defs/extractName"
+            },
+            "notIn": {
+              "$ref": "#/$defs/extractName"
+            }
+          }
+        }
+      ]
+    },
+    "unaryStep": {
+      "description": "Open vocabulary: any name outside the three combinators, arguments unconstrained — except that referencing two extractions (an array `of`, or a `notIn`) makes the step a combinator by shape.",
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": ["union", "onlyIn", "intersect"]
+          }
+        },
+        "of": {
+          "not": {
+            "type": "array"
+          }
+        }
+      },
+      "not": {
+        "required": ["notIn"]
+      }
+    },
+    "relate": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/relateEntry"
+      }
+    },
+    "relateEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "relation"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "$ref": "#/$defs/relation"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "messageBySide": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["left", "right"],
+          "properties": {
+            "left": {
+              "type": "string",
+              "minLength": 1
+            },
+            "right": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "description": "A plain message, on any relation.",
+          "required": ["message"],
+          "not": {
+            "required": ["messageBySide"]
+          }
+        },
+        {
+          "description": "Side-keyed messages, only on Equal — the one relation with two sides.",
+          "required": ["messageBySide"],
+          "not": {
+            "required": ["message"]
+          },
+          "properties": {
+            "relation": {
+              "properties": {
+                "op": {
+                  "const": "Equal"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relation": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "enum": ["Empty", "NonEmpty", "Equal", "Subset", "Implies", "Ordered", "Unchanged"]
+        }
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["op", "of"],
+          "properties": {
+            "op": {
+              "enum": ["Empty", "NonEmpty", "Unchanged"]
+            },
+            "of": {
+              "$ref": "#/$defs/extractName"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "of"],
+          "properties": {
+            "op": {
+              "const": "Equal"
+            },
+            "of": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/extractName"
+              }
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "of", "in"],
+          "properties": {
+            "op": {
+              "const": "Subset"
+            },
+            "of": {
+              "$ref": "#/$defs/extractName"
+            },
+            "in": {
+              "$ref": "#/$defs/extractName"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "of", "requires"],
+          "properties": {
+            "op": {
+              "const": "Implies"
+            },
+            "of": {
+              "$ref": "#/$defs/extractName"
+            },
+            "requires": {
+              "$ref": "#/$defs/extractName"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "of"],
+          "properties": {
+            "op": {
+              "const": "Ordered"
+            },
+            "of": {
+              "$ref": "#/$defs/extractName"
+            },
+            "strict": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

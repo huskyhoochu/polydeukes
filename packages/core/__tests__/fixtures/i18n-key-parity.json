@@ -1,0 +1,56 @@
+{
+  "discipline": "i18n-key-parity",
+  "mechanism": "pair parity",
+  "axis": "world axis: the host supplies two files outside the target",
+  "supply": {
+    "ko": "error",
+    "en": "error"
+  },
+  "extract": {
+    "koKeys": [
+      {
+        "op": "source",
+        "of": "ko"
+      },
+      {
+        "op": "json",
+        "as": "ko"
+      },
+      {
+        "op": "flattenKeys"
+      },
+      {
+        "op": "sort"
+      }
+    ],
+    "enKeys": [
+      {
+        "op": "source",
+        "of": "en"
+      },
+      {
+        "op": "json",
+        "as": "en"
+      },
+      {
+        "op": "flattenKeys"
+      },
+      {
+        "op": "sort"
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "key-parity",
+      "relation": {
+        "op": "Equal",
+        "of": ["koKeys", "enKeys"]
+      },
+      "messageBySide": {
+        "left": "en.json — missing key '{value}' (present in ko.json)",
+        "right": "ko.json — missing key '{value}' (present in en.json)"
+      }
+    }
+  ]
+}

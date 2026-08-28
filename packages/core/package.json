@@ -17,7 +17,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./schema.json": "./schema/polydeukes.schema.json"
+    "./schema.json": "./schema/polydeukes.schema.json",
+    "./algebra-declaration.schema.json": "./schema/algebra-declaration.schema.json"
   },
   "files": [
     "dist",

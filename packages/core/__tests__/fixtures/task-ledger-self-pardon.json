@@ -1,0 +1,200 @@
+{
+  "discipline": "task-ledger-self-pardon",
+  "mechanism": "no self-pardon",
+  "axis": "change axis: the host supplies a before/after state pair",
+  "scope": {
+    "source": "target.path",
+    "include": ["(?:^|/)docs/ledger/[^/]+\\.json$"]
+  },
+  "supply": {
+    "pre": "error",
+    "post": "pass"
+  },
+  "extract": {
+    "preTasks": [
+      {
+        "op": "source",
+        "of": "pre"
+      },
+      {
+        "op": "json",
+        "as": "pre"
+      },
+      {
+        "op": "select",
+        "path": "tasks"
+      },
+      {
+        "op": "keyBy",
+        "field": "id"
+      }
+    ],
+    "postTasks": [
+      {
+        "op": "source",
+        "of": "post"
+      },
+      {
+        "op": "json",
+        "as": "post"
+      },
+      {
+        "op": "select",
+        "path": "tasks"
+      },
+      {
+        "op": "keyBy",
+        "field": "id"
+      }
+    ],
+    "ownedPasses": [
+      {
+        "op": "source",
+        "of": "state"
+      },
+      {
+        "op": "json",
+        "as": "state"
+      },
+      {
+        "op": "select",
+        "path": "tasks"
+      },
+      {
+        "op": "keyBy",
+        "field": "id"
+      },
+      {
+        "op": "field",
+        "name": "passes"
+      }
+    ],
+    "ownedRetries": [
+      {
+        "op": "source",
+        "of": "state"
+      },
+      {
+        "op": "json",
+        "as": "state"
+      },
+      {
+        "op": "select",
+        "path": "tasks"
+      },
+      {
+        "op": "keyBy",
+        "field": "id"
+      },
+      {
+        "op": "field",
+        "name": "retries"
+      }
+    ],
+    "unspecifiedTasks": [
+      {
+        "op": "source",
+        "of": "post"
+      },
+      {
+        "op": "json",
+        "as": "post"
+      },
+      {
+        "op": "select",
+        "path": "tasks"
+      },
+      {
+        "op": "keyBy",
+        "field": "id"
+      },
+      {
+        "op": "filter",
+        "when": [
+          {
+            "field": "verification_actions",
+            "size": 0
+          },
+          {
+            "field": "status",
+            "ne": "needs_spec"
+          }
+        ]
+      }
+    ],
+    "newTasksClaimingPass": [
+      {
+        "op": "onlyIn",
+        "of": "postTasks",
+        "notIn": "preTasks"
+      },
+      {
+        "op": "filter",
+        "when": [
+          {
+            "field": "passes",
+            "eq": true
+          }
+        ]
+      }
+    ],
+    "newTasksClaimingRetries": [
+      {
+        "op": "onlyIn",
+        "of": "postTasks",
+        "notIn": "preTasks"
+      },
+      {
+        "op": "filter",
+        "when": [
+          {
+            "field": "retries",
+            "notIn": [0, null]
+          }
+        ]
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "schema-d4",
+      "relation": {
+        "op": "Empty",
+        "of": "unspecifiedTasks"
+      },
+      "message": "task '{key}': verification_actions is empty — add a judgement command or set status: needs_spec (D4)"
+    },
+    {
+      "id": "passes-runner-owned",
+      "relation": {
+        "op": "Unchanged",
+        "of": "ownedPasses"
+      },
+      "message": "task '{key}': passes is runner-owned (D3) — only ledger-verify.ts may change it (was {before}, now {value})"
+    },
+    {
+      "id": "retries-runner-owned",
+      "relation": {
+        "op": "Unchanged",
+        "of": "ownedRetries"
+      },
+      "message": "task '{key}': retries is runner-owned (D3) — only ledger-verify.ts may change it (was {before}, now {value})"
+    },
+    {
+      "id": "new-task-passes-start",
+      "relation": {
+        "op": "Empty",
+        "of": "newTasksClaimingPass"
+      },
+      "message": "new task '{key}': passes must start false — the runner sets it true after verification (D3)"
+    },
+    {
+      "id": "new-task-retries-start",
+      "relation": {
+        "op": "Empty",
+        "of": "newTasksClaimingRetries"
+      },
+      "message": "new task '{key}': retries must start 0 — the runner owns it (D3)"
+    }
+  ]
+}

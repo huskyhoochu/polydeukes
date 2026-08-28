@@ -1,0 +1,54 @@
+{
+  "discipline": "invariant-comment-marker",
+  "mechanism": "irreversible marker",
+  "axis": "change axis: directed inclusion, the host supplies a before/after pair per edit",
+  "scope": {
+    "source": "target.path",
+    "include": [".*"],
+    "exclude": ["\\.(md|mdx|markdown|txt)$"],
+    "excludeIgnoreCase": true
+  },
+  "supply": {
+    "pre": "error",
+    "post": "error"
+  },
+  "extract": {
+    "preInvariants": [
+      {
+        "op": "source",
+        "of": "pre"
+      },
+      {
+        "op": "lines"
+      },
+      {
+        "op": "matches",
+        "re": "(?://|#|--|\\*)\\s*INVARIANT\\("
+      }
+    ],
+    "postInvariants": [
+      {
+        "op": "source",
+        "of": "post"
+      },
+      {
+        "op": "lines"
+      },
+      {
+        "op": "matches",
+        "re": "(?://|#|--|\\*)\\s*INVARIANT\\("
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "invariant-preserved",
+      "relation": {
+        "op": "Subset",
+        "of": "preInvariants",
+        "in": "postInvariants"
+      },
+      "message": "{value}"
+    }
+  ]
+}

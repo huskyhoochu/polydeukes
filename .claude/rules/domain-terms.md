@@ -73,6 +73,37 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
   passes with NO row, or is recorded `passed` while never judged. They look alike in a diff
   and are opposite in meaning. The telemetry row is what separates them.
 
+## Algebra vocabulary
+
+The declaration grammar `ALGEBRA-01` fixed in the core (`packages/core/src/algebra.ts`). Every
+list below is a closed enumeration whose single source is the `as const` tuple in that
+module; a name outside a closed list is rejected by validation, never coerced.
+
+- **Declaration** — one judgment written as data: `judge = relate ∘ extract`. Five blocks:
+  **`scope`** (does this declaration apply — a source name plus constant regex lists),
+  **`supply`** (what a missing source does: `error` refuses, `pass` leaves the call unjudged),
+  **`extract`** (named pipelines producing values), **`relate`** (entries pairing an extract
+  name with a relation), **`witness`** (the valve that stands *after* the verdict — its own
+  `extract` + `relate`, same grammar; it sees the body's extract names, the body never sees
+  its). `mechanism` and `axis` are labels until `ALGEBRA-06` locks them.
+- **Relation** — the closed position where the last comparison happens. Seven names:
+  `Empty` · `NonEmpty` · `Equal` · `Subset` · `Implies` · `Ordered` · `Unchanged`. `Empty` and
+  `Subset` are the primitives; the rest expand to them (`NonEmpty ≡ ¬Empty`,
+  `Equal ≡ Subset` both ways, `Implies ≡ Subset` of key projections, `Unchanged ≡ Equal` over
+  shared keys) — the expansion is engine-internal and lives in comments here. A constant
+  bound is compared in extraction (`filter`), never in the relation position.
+- **Extract step** — unary (open vocabulary, registered per `ALGEBRA-02`'s procedure, arguments
+  pass through) or **binary combinator** (closed: `union` · `onlyIn` · `intersect`, only as a
+  pipeline's first step). A combinator name is read as a combinator whatever its shape; a
+  name outside the three that references two extractions is refused.
+- **Witness (value)** — one element for which a relation does not hold. A relation returns a
+  **witness list**, never a boolean; an empty list means it holds, and the order preserves
+  the extraction's input order (the premise on which two surfaces reach the same verdict).
+  Same word, two senses: the *witness valve* (above, the human's pass condition) and the
+  *witness element* — the valve is named after what it supplies.
+- **Relate entry** — `{ id, relation, message | messageBySide }`. Never `rule` in any name —
+  the closed-vocabulary jargon rule above applies; `relate` is the primitive's own verb.
+
 ## Term usage rules
 
 1. **Code / package names:** English concept word. `@polydeukes/covenant`, `upholdCovenant()`.
