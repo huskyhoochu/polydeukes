@@ -212,7 +212,7 @@ records keep the wording they shipped with.
 ## Package contract
 
 The shape every package's outer boundary takes. The full skeleton and the test that keeps it
-are `_docs/prd/CONTRACT-01.md` §2 (archived under `foundation.prd.*` after merge); this table
+are the archived `foundation.prd.package-contract-skeleton.md` §2 and `package-contract.md`; this table
 is the vocabulary only.
 
 | Term | Meaning | Not |
