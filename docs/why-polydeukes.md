@@ -485,6 +485,14 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      disk and its verdicts blurred; here the author states it. Publish with the first live
      declaration's rows in the v0.6.0 gate post.
 
+     Parked candidate (ALGEBRA-02d, 2026-08-29): a line no valid input can reach still has
+     an answer, and the answer is "cannot judge", never "upheld". The judge's closed list of
+     predicate families is kept in step with the schema's by hand; between the schema
+     widening and the judge learning the new family, the judge's fallback is live code. It
+     used to say upheld — a `passed` no judgment produced. Now it says unjudgeable (exit 2),
+     so the interim state shows up red in the suite instead of as universal passes. Publish
+     with the fail-closed section, as the smallest example of its rule.
+
      Parked candidate (ALGEBRA-02, 2026-08-29): a judgment has one address for its last
      comparison, and the engine makes that structural rather than conventional. Every
      extract step maps a list of items to a list of items — the type has no room for a

@@ -468,6 +468,12 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
  * Every break reason carries the entry's `why` when it has one, appended by {@link withWhy}
  * once the verdict is settled, so the rationale reaches the agent reading stderr without
  * ever entering the judgment.
+ *
+ * An entry whose predicate no family judges throws, and the compiled body folds that into
+ * unjudgeable (exit 2) — never `upheld`. A caller outside that body owns the catch.
+ *
+ * @throws Error - when no family judges the entry's predicate (core admitted a key this
+ *   judge has no branch for); validated data never reaches it.
  */
 export function judgeDiscipline(
   entry: DisciplineEntry,
@@ -544,8 +550,9 @@ export function judgeDiscipline(
     return { upheld: true };
   }
 
-  // Entries reach here only unvalidated; validated data always carries one predicate.
-  return { upheld: true };
+  // Validated data always carries one predicate, so this line is reached only when core
+  // admits a family covenant does not judge yet. That is unjudgeable, never upheld.
+  throw new Error(`discipline '${entry.id}': no judged predicate key`);
 }
 
 /** Build the family-specific routing predicate for one entry. */

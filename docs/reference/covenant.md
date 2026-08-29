@@ -99,7 +99,9 @@ No import. The umbrella assembles this package for both surfaces.
 - **An unjudgeable entry compiles to a skip registration** — routing intact, no body. A
   pattern that does not compile skips the same way. Assembly therefore never throws: one
   unresolvable entry cannot take down its siblings, the meta-covenants, and the valve,
-  which would leave no way to fix the config that caused it.
+  which would leave no way to fix the config that caused it. The one shape that is not a
+  skip is an entry whose predicate no family judges yet — core admitted it, covenant has no
+  branch for it: it routes, and its body answers unjudgeable (exit 2), never upheld.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected
   path blocks unless proven safe. Residual vectors such as indirect path computation are

@@ -1,4 +1,9 @@
-import type { CanonicalTranscript, DisciplineEntry } from '@polydeukes/core';
+import type {
+  CanonicalTranscript,
+  CovenantInput,
+  DisciplineEntry,
+  FileChange,
+} from '@polydeukes/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 // Evidence evaluation yields THREE results, not two: found, missing, and unjudgeable. An
 // unjudgeable entry compiles into a SKIP registration — no body, so the dispatcher records
@@ -213,5 +218,44 @@ describe('compileDisciplineRegistrations — a configuration fault names itself 
 
     expectSkip(registration);
     expect(stderr).not.toHaveBeenCalled();
+  });
+});
+
+describe('compileDisciplineRegistrations — an entry no family judges', () => {
+  /** A CovenantInput whose single call is one create of `path`, so the body has a world to see. */
+  function inputWithOneCreate(path: string): CovenantInput {
+    return {
+      toolCalls: [
+        {
+          name: 'call-0',
+          args: { file_path: path },
+          fileChange: { kind: 'create', path, post: 'content' } satisfies FileChange,
+        },
+      ],
+      subagentSpawns: [],
+      userMessages: [],
+    };
+  }
+
+  it('an entry core admits but no family judges is unjudgeable, not upheld', async () => {
+    // Core's predicate enumeration and covenant's family list are two lists kept in step by
+    // hand. An entry carrying no predicate key reaches the judge with nothing to judge it, and
+    // a fallback that answers `upheld` there is a `passed` row no judgment ever produced.
+    const orphan = { id: 'orphan-family' } as unknown as DisciplineEntry;
+
+    const registration = compileDisciplineRegistrations(contextSpec([orphan]))[0];
+
+    // Judged as unjudgeable, not skipped: a skip registration has no body to fold into 2.
+    if (registration?.body === undefined) {
+      throw new Error('an orphan entry must compile to a judged registration, not a skip');
+    }
+    expect(registration.skip).toBeUndefined();
+    // The probe must route, or the body below is never spawned in production and this
+    // assertion proves nothing about it.
+    expect(registration.matches?.(inputWithOneCreate('src/a.ts'))).toBeTypeOf('string');
+    const outcome = (await registration.body(inputWithOneCreate('src/a.ts'))) as {
+      exitCode: number;
+    };
+    expect(outcome.exitCode).toBe(2);
   });
 });
