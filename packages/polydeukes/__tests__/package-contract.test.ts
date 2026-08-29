@@ -28,8 +28,6 @@ interface Violation {
  * shrink this; it ends as []. Adding an entry is a review event.
  */
 const KNOWN_VIOLATIONS: { package: string; check: Check; entryPoint: string }[] = [
-  { package: '@polydeukes/core', check: '②', entryPoint: '.' }, // index.ts defines FileChange, CovenantInput, CovenantVerdict, parseInput, allFileChanges, verdictToExitCode
-  { package: '@polydeukes/adapter-git', check: '②', entryPoint: '.' }, // index.ts defines STAGED_WRITE, STAGED_DELETE, StagedChange, covenantInputFromStagedChanges
   { package: 'polydeukes', check: '②', entryPoint: './claude-code' }, // points at src/claude-code-hook.ts, a module, not a barrel
 ];
 

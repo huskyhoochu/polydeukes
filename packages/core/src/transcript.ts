@@ -7,7 +7,7 @@
  * the query vocabulary. Pure types and functions, zero I/O.
  */
 
-import type { CovenantInput } from './index.js';
+import type { CovenantInput } from './protocol.js';
 
 /** One subagent invocation observed in the session. `kind` is an adapter-supplied value. */
 export type SubagentInvocation = { kind: string };
