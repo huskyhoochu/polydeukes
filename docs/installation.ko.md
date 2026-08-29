@@ -55,8 +55,11 @@ pnpm exec pdks init grok           # Grok
 그대로 두고, settings 파일은 병합하며, `.gitignore`에는 덧붙이기만 합니다. 그래서 재실행은
 언제나 안전합니다. command 필드만 예외입니다. `.grok/hooks/covenant-pretooluse.json`이
 아직 Grok 위임자를 가리키고 Claude 위임자가 디스크에 있으면, JSON `command`를 그 Claude
-파일로 고쳐 호스트가 판정기를 둘 스폰하지 않게 합니다. matcher와 timeout은 그대로입니다.
-다른 곳을 가리키게 한 command는 손대지 않습니다.
+파일로 고쳐 호스트가 판정기를 둘 스폰하지 않게 합니다. Grok는 `command`와 `matcher`가
+모두 같을 때만 등록 둘을 하나로 접으므로, 그 Claude 파일을 가리키는 grok 항목마다 같은
+command를 등록한 `.claude/settings.json` 항목의 matcher를 가져옵니다. 처음 쓸 때도, 다시
+돌릴 때마다도 그렇습니다. `timeout`은 그대로입니다. 다른 곳을 가리키게 한 command는 손대지
+않습니다.
 
 `pdks init claude-code`는 산출물 여섯을 씁니다.
 
@@ -75,7 +78,7 @@ pnpm exec pdks init grok           # Grok
 | 생성물 | 무엇인가 |
 |---|---|
 | `.grok/hooks/covenant-pretooluse.mjs` | 훅입니다. Claude 위임자가 이미 없을 때만 같은 위임자 텍스트를 씁니다. |
-| `.grok/hooks/covenant-pretooluse.json` | PreToolUse matcher, `timeout` 60(호스트 기본값은 5초이고 타임아웃된 훅은 fail-open), 위임자 파일 하나를 가리키는 command입니다. |
+| `.grok/hooks/covenant-pretooluse.json` | PreToolUse matcher, `timeout` 60(호스트 기본값은 5초이고 타임아웃된 훅은 fail-open), 위임자 파일 하나를 가리키는 command입니다. `.claude/settings.json`도 있는 트리에서는 같은 command를 등록한 settings 항목의 matcher를 복사합니다. Grok는 그 파일도 읽고, `command`와 `matcher`가 정확히 같을 때만 두 등록을 스폰 하나로 접기 때문입니다. 이 복사는 Grok의 도구 이름 별칭에 기대므로, 나중에 `.claude/settings.json`을 지우면 이 JSON을 지우고 `pdks init grok`를 다시 돌려 Grok 원어 matcher를 되찾으세요. |
 | `polydeukes.config.yaml` | 위의 출발 정책과 같습니다. |
 | `.gitignore` | 같은 무시 줄입니다. |
 

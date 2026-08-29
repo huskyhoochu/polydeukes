@@ -84,8 +84,9 @@ Grok 세션 표면 설치기입니다. 선행 검사와 공유 스캐폴드(설�
 `.claude/` 디렉터리는 없습니다. JSON 등록의 `timeout`은 60초입니다(호스트 기본값은 5초이고,
 타임아웃된 훅은 fail-open입니다). `.claude/hooks/covenant-pretooluse.mjs`가 이미 있으면
 JSON command가 그 파일을 가리켜 판정기를 둘 스폰하지 않습니다. 나중에 어느 설치기를
-다시 돌려도, 설치기가 심은 grok-mjs command는 같은 방식으로 재조준되고, 다른 곳을
-가리키게 한 command는 그대로 둡니다.
+다시 돌려도, 설치기가 심은 grok-mjs command는 같은 방식으로 재조준되고, JSON matcher는
+그 command의 `.claude/settings.json` 항목을 따릅니다(Grok는 command와 matcher가 모두 같을
+때만 등록 둘을 하나로 접습니다). 다른 곳을 가리키게 한 command는 그대로 둡니다.
 
 이미 열린 Grok 세션은 시작 때 훅 스냅샷을 유지합니다. Hooks 탭의 `r`로 리로드하거나 새
 세션을 엽니다. 증인 밸브는 Grok에서 열리지 않습니다. 대화 기록이 ACP `updates.jsonl`입니다.

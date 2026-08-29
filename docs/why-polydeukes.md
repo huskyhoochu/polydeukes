@@ -493,6 +493,13 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      so the interim state shows up red in the suite instead of as universal passes. Publish
      with the fail-closed section, as the smallest example of its rule.
 
+     Parked candidate (DIST-06b, 2026-08-30): a host's duplicate key is measured, not
+     read. Grok merges two hook registrations into one spawn only when command AND
+     matcher are byte-identical; unifying the command alone still spawned the judge twice
+     (two telemetry rows, 79 ms apart). Four live probes fixed the key in one sitting.
+     Publish with the "external contracts are fixed by live probing" thread from the Grok
+     tool-name dev-log.
+
      Parked candidate (ALGEBRA-02, 2026-08-29): a judgment has one address for its last
      comparison, and the engine makes that structural rather than conventional. Every
      extract step maps a list of items to a list of items — the type has no room for a

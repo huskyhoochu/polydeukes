@@ -30,8 +30,8 @@
 
 **회복.** git에서 파일을 복원하세요. 세션 경로라면 `pnpm exec pdks init claude-code`나
 `pdks init grok`가 없는 파일을 다시 만듭니다. 이미 있는 grok JSON은 덮지 않습니다. 다만
-`command`가 아직 Grok 위임자를 가리키고 Claude 위임자가 디스크에 있으면 그 command 필드만
-재조준합니다. 커밋 경로의 설정은 손으로 쓰는 파일이니
+`command`가 아직 Grok 위임자를 가리키고 Claude 위임자가 디스크에 있으면 그 command를
+재조준하고 matcher는 settings 항목을 따릅니다. 커밋 경로의 설정은 손으로 쓰는 파일이니
 [설치 가이드](./installation.ko.md)의 커밋 표면 절에 출발점이 있습니다.
 
 ## 설정 파일이 둘 이상이다
@@ -71,6 +71,19 @@
 
 **회복.** Hooks 탭에서 `r`을 누르거나 새 세션을 엽니다. 증인 밸브도 Grok에서는 열리지
 않습니다. 차단의 회복은 다른 터미널이나 커밋 표면 TTY입니다.
+
+## Grok 도구 호출 하나가 텔레메트리 행을 둘 남긴다
+
+**증상.** Claude Code와 Grok가 함께 배선된 트리에서, Grok 세션의 `write`나
+`run_terminal_command` 하나마다 `.polydeukes/roi.log`에 행이 둘씩, 몇 ms 간격으로 붙습니다.
+
+**원인.** Grok는 `.grok/hooks/*.json`과 함께 `.claude/settings.json`도 읽고, `command`와
+`matcher`가 모두 같을 때만 두 등록을 하나로 접습니다. settings 항목과 matcher가 다른 grok
+JSON은 판정기를 한 번 더 스폰합니다.
+
+**회복.** grok JSON의 `matcher`를 같은 command를 등록한 settings 항목과 같은 문자열로
+맞춥니다. 어느 설치기든 다시 돌리면 됩니다. Claude 훅을 가리키는 grok 항목마다 settings
+항목의 matcher를 가져옵니다.
 
 ## `pdks init claude-code`가 실행을 거부한다
 

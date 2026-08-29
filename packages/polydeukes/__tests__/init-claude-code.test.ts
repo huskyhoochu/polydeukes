@@ -102,6 +102,13 @@ function delegatorRegistrations(): number {
     .filter((hook) => hook.command?.includes(HOOK_FILENAME)).length;
 }
 
+/** The matcher this installer registered on its own delegator entry. */
+function delegatorMatcher(): string | undefined {
+  return (readSettings().hooks?.PreToolUse ?? []).find((entry) =>
+    (entry.hooks ?? []).some((hook) => hook.command?.includes(HOOK_FILENAME)),
+  )?.matcher;
+}
+
 /** PreToolUse command entries carrying the pre-existing foreign command, counted. */
 function foreignRegistrations(): number {
   return (readSettings().hooks?.PreToolUse ?? [])
@@ -512,13 +519,16 @@ describe('existing grok JSON is retargeted when this installer writes the Claude
     return body;
   }
 
-  it('rewrites a grok-mjs command to the Claude-hook command; matcher, timeout, and the grok mjs stay', () => {
+  it('rewrites a grok-mjs command to the Claude-hook command and takes the matcher this run registered; timeout and the grok mjs stay', () => {
     // A grok JSON that already names the grok mjs is the second command string once this
     // installer writes the Claude hook. Leaving it in place means the host spawns two
     // judges per call. Checking for a Claude file before this run writes it would skip
-    // the rewrite on the grok-then-claude order. Rebuilding the JSON from a template also
-    // resets matcher and timeout; deleting the grok mjs removes a file that was not the
-    // rewrite target.
+    // the rewrite on the grok-then-claude order. The host collapses the two registrations
+    // only when command AND matcher agree, so a rewrite that keeps the old matcher still
+    // spawns twice; the matcher is read from the settings entry, since a hardcoded roster
+    // would pass a rewrite that copied a constant rather than the entry. Timeout is not
+    // part of the pair and must survive; deleting the grok mjs removes a file that was
+    // not the rewrite target.
     writeGrokJson(GROK_HOOK_COMMAND);
     const grokMjs = '// consumer grok delegator — must survive retarget\n';
     mkdirSync(join(projectRoot, dirname(GROK_HOOK_REL)), { recursive: true });
@@ -526,11 +536,30 @@ describe('existing grok JSON is retargeted when this installer writes the Claude
 
     init();
 
+    const registered = delegatorMatcher();
+    expect(registered).toEqual(expect.any(String));
+    expect(registered).not.toBe(MATCHER_PIN);
     expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
-    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(MATCHER_PIN);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(registered);
     expect(readGrokJson().hooks?.PreToolUse?.[0]?.hooks?.[0]?.timeout).toBe(TIMEOUT_PIN);
     expect(existsSync(join(projectRoot, GROK_HOOK_REL))).toBe(true);
     expect(read(GROK_HOOK_REL)).toBe(grokMjs);
+  });
+
+  it('syncs the matcher of a grok entry that already names the Claude-hook command', () => {
+    // grok-then-claude on a tree whose grok JSON was written under an older rule: the
+    // command is already the Claude hook, the matcher is still the grok roster. This run
+    // registers the delegator in settings under its own matcher; a copy gated on a command
+    // rewrite skips this entry and the host keeps spawning two judges per call.
+    writeGrokJson(CLAUDE_HOOK_COMMAND);
+
+    init();
+
+    const registered = delegatorMatcher();
+    expect(registered).toBeDefined();
+    expect(registered).not.toBe(MATCHER_PIN);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(registered);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.hooks?.[0]?.timeout).toBe(TIMEOUT_PIN);
   });
 
   it('leaves a consumer-custom command byte-identical', () => {

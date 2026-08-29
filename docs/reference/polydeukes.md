@@ -88,8 +88,9 @@ delegator, config, ignore line) and no `.claude/` directory. The JSON registrati
 `timeout` 60 (the host default is 5 seconds; a timed-out hook fails open). If
 `.claude/hooks/covenant-pretooluse.mjs` already exists, the JSON command points at that file
 so the host does not spawn two judges. A later run of either installer retargets an
-installer-generated grok-mjs command the same way; a command pointed elsewhere is left
-alone.
+installer-generated grok-mjs command the same way, and the JSON matcher follows the
+`.claude/settings.json` entry for that command (Grok collapses two registrations only when
+command and matcher both match); a command pointed elsewhere is left alone.
 
 An already-open Grok session keeps the hook snapshot from start; reload from the Hooks tab
 (`r`) or start a new session. The witness valve does not open on Grok: the session log is

@@ -44,6 +44,13 @@ const GROK_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${HOOK_REL}`;
 const CLAUDE_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${CLAUDE_HOOK_REL}`;
 /** A consumer-owned grok command — not the installer-generated grok-mjs string. */
 const CUSTOM_GROK_COMMAND = 'echo consumer-owned-grok-pretooluse';
+/** The Claude settings file whose delegator entry the grok matcher must agree with. */
+const CLAUDE_SETTINGS_REL = '.claude/settings.json';
+/** A matcher only a consumer would have written — no roster constant can reproduce it. */
+const CONSUMER_MATCHER = 'Edit|Write|consumer-kept|Bash';
+/** A registration some other tool installed — its matcher is never ours to copy. */
+const FOREIGN_COMMAND = 'echo consumer-owned-pretooluse';
+const FOREIGN_MATCHER = 'WebFetch';
 
 /** Preflight stub, success side — injected wherever the run must get past preflight. */
 const resolvesFine = (): void => undefined;
@@ -99,6 +106,25 @@ function grokMatcherTokens(): string[] {
 /** The happy-path invocation — preflight injected as succeeding. */
 function init(): { created: string[]; skipped: string[] } {
   return initGrok({ projectRoot, resolvePolydeukes: resolvesFine });
+}
+
+type ClaudeSettingsEntry = { matcher: string; hooks: { type: string; command: string }[] };
+
+function claudeEntry(command: string, matcher: string): ClaudeSettingsEntry {
+  return { matcher, hooks: [{ type: 'command', command }] };
+}
+
+function writeClaudeSettings(entries: ClaudeSettingsEntry[]): void {
+  mkdirSync(join(projectRoot, dirname(CLAUDE_SETTINGS_REL)), { recursive: true });
+  writeFileSync(
+    join(projectRoot, CLAUDE_SETTINGS_REL),
+    JSON.stringify({ hooks: { PreToolUse: entries } }, null, 2),
+  );
+}
+
+function plantClaudeHook(): void {
+  mkdirSync(join(projectRoot, dirname(CLAUDE_HOOK_REL)), { recursive: true });
+  writeFileSync(join(projectRoot, CLAUDE_HOOK_REL), '// existing Claude delegator\n');
 }
 
 beforeEach(() => {
@@ -230,6 +256,43 @@ describe('existing Claude delegator is reused — one command string, never two'
   });
 });
 
+describe('the matcher follows the Claude settings entry — one (command, matcher) pair, never two', () => {
+  it('copies the matcher of the settings entry whose command is the Claude delegator, verbatim', () => {
+    // The host merges both registrations and collapses them only when command AND matcher
+    // are byte-identical. A grok JSON that reuses the Claude command under the roster
+    // matcher is a distinct pair, so the host spawns the judge twice per call. The
+    // consumer's matcher is unreachable from any constant, and the entry with our command
+    // is second in the file: a copy of PreToolUse[0].matcher lands on the foreign one.
+    plantClaudeHook();
+    writeClaudeSettings([
+      claudeEntry(FOREIGN_COMMAND, FOREIGN_MATCHER),
+      claudeEntry(CLAUDE_HOOK_COMMAND, CONSUMER_MATCHER),
+    ]);
+
+    init();
+
+    expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(CONSUMER_MATCHER);
+    expect(grokInnerHook()?.timeout).toBe(60);
+  });
+
+  it('keeps the native+alias roster when settings carries no entry for the Claude delegator', () => {
+    // A settings file whose only entry belongs to another tool has nothing to copy.
+    // Taking that entry's matcher anyway narrows the grok registration to whatever the
+    // foreign tool watches — every mutating tool outside it goes unjudged.
+    plantClaudeHook();
+    writeClaudeSettings([claudeEntry(FOREIGN_COMMAND, FOREIGN_MATCHER)]);
+
+    init();
+
+    const tokens = grokMatcherTokens();
+    expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
+    expect(tokens).toEqual(expect.arrayContaining(GROK_TOOL_NAMES));
+    expect(tokens).toEqual(expect.arrayContaining(CLAUDE_ALIASES));
+    expect(tokens).not.toContain(FOREIGN_MATCHER);
+  });
+});
+
 describe('existing grok JSON is retargeted when a Claude delegator appears', () => {
   /** Values a template rewrite would not re-emit — the stay-pin for matcher and timeout. */
   const MATCHER_PIN = 'write|consumer-kept-matcher|Bash';
@@ -248,11 +311,6 @@ describe('existing grok JSON is retargeted when a Claude delegator appears', () 
     const body = compactGrokJson(command);
     writeFileSync(join(projectRoot, JSON_REL), body);
     return body;
-  }
-
-  function plantClaudeHook(): void {
-    mkdirSync(join(projectRoot, dirname(CLAUDE_HOOK_REL)), { recursive: true });
-    writeFileSync(join(projectRoot, CLAUDE_HOOK_REL), '// existing Claude delegator\n');
   }
 
   it('rewrites a grok-mjs command to the Claude-hook command; matcher, timeout, and the grok mjs stay', () => {
@@ -282,6 +340,52 @@ describe('existing grok JSON is retargeted when a Claude delegator appears', () 
     // that happens to keep the command still rewrote their file.
     const body = writeGrokJson(CUSTOM_GROK_COMMAND);
     plantClaudeHook();
+
+    init();
+
+    expect(read(JSON_REL)).toBe(body);
+  });
+
+  it('retargets the command AND takes the matcher of the Claude settings entry; timeout stays', () => {
+    // A retarget that rewrites only the command leaves the grok JSON as (Claude command,
+    // old matcher) — a pair the host does not collapse against (Claude command, settings
+    // matcher), so the judge spawns twice per call. The timeout is not part of the pair
+    // and a consumer's value must survive.
+    writeGrokJson(GROK_HOOK_COMMAND);
+    plantClaudeHook();
+    writeClaudeSettings([claudeEntry(CLAUDE_HOOK_COMMAND, CONSUMER_MATCHER)]);
+
+    init();
+
+    expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(CONSUMER_MATCHER);
+    expect(grokInnerHook()?.timeout).toBe(TIMEOUT_PIN);
+  });
+
+  it('syncs the matcher of an entry that already names the Claude-hook command; timeout stays', () => {
+    // A tree installed before the matcher rule exists — or written by the fallback while
+    // settings had no entry yet — already carries the Claude command with the old roster
+    // matcher. Gating the copy on a command rewrite leaves that pair different for good:
+    // re-running either installer writes nothing, and only a hand edit or deleting the
+    // JSON ends the double spawn.
+    writeGrokJson(CLAUDE_HOOK_COMMAND);
+    plantClaudeHook();
+    writeClaudeSettings([claudeEntry(CLAUDE_HOOK_COMMAND, CONSUMER_MATCHER)]);
+
+    init();
+
+    expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(CONSUMER_MATCHER);
+    expect(grokInnerHook()?.timeout).toBe(TIMEOUT_PIN);
+  });
+
+  it('leaves a consumer-custom command byte-identical even when settings carries a Claude entry', () => {
+    // The matcher copy is keyed on the rewrite, not on the settings file: a sync that
+    // runs over every grok entry once a Claude settings entry exists overwrites the
+    // matcher of a registration the consumer pointed elsewhere.
+    const body = writeGrokJson(CUSTOM_GROK_COMMAND);
+    plantClaudeHook();
+    writeClaudeSettings([claudeEntry(CLAUDE_HOOK_COMMAND, CONSUMER_MATCHER)]);
 
     init();
 

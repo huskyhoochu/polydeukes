@@ -8,8 +8,11 @@
  *
  * Nothing existing is overwritten, with one command-field exception: a grok JSON whose
  * `command` is still the grok-mjs string is rewritten to the Claude-hook command when that
- * Claude file is on disk — otherwise grok-then-claude leaves two command strings. Matcher
- * and timeout stay. A command that is not the grok-mjs string is left byte-identical.
+ * Claude file is on disk — otherwise grok-then-claude leaves two command strings. Any entry
+ * naming the Claude-hook command also takes the matcher of the `.claude/settings.json` entry
+ * carrying that command, because the host collapses the two registrations only when command
+ * and matcher are byte-identical; with no such entry the matcher stays. Timeout stays either
+ * way, and a command that is not the grok-mjs string is left byte-identical.
  *
  * Rules and skills are not copied; `.claude/settings.json` is not written.
  */
@@ -27,6 +30,8 @@ const GROK_HOOK_RELATIVE = '.grok/hooks/covenant-pretooluse.mjs';
 const GROK_JSON_RELATIVE = '.grok/hooks/covenant-pretooluse.json';
 /** The Claude delegator this installer reuses when it is already on disk. */
 const CLAUDE_HOOK_RELATIVE = '.claude/hooks/covenant-pretooluse.mjs';
+/** Where that delegator's own registration — and the matcher it was registered under — lives. */
+const CLAUDE_SETTINGS_RELATIVE = '.claude/settings.json';
 const GROK_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${GROK_HOOK_RELATIVE}`;
 const CLAUDE_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${CLAUDE_HOOK_RELATIVE}`;
 /**
@@ -136,13 +141,45 @@ function writeIfAbsent(
   report.created.push(relative);
 }
 
-function grokHookJson(command: string): string {
+/**
+ * The matcher `.claude/settings.json` registered `command` under, when it has one. Anything
+ * unreadable, unparseable, or shaped otherwise answers `undefined` — the caller then keeps its
+ * own roster rather than narrowing the registration to a shape it could not read.
+ */
+function claudeSettingsMatcherFor(projectRoot: string, command: string): string | undefined {
+  const path = join(projectRoot, CLAUDE_SETTINGS_RELATIVE);
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  let root: unknown;
+  try {
+    root = JSON.parse(readFileSync(path, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+  if (!isPlainObject(root) || !isPlainObject(root.hooks) || !Array.isArray(root.hooks.PreToolUse)) {
+    return undefined;
+  }
+
+  for (const entry of root.hooks.PreToolUse) {
+    if (!isPlainObject(entry) || !Array.isArray(entry.hooks)) {
+      continue;
+    }
+    if (entry.hooks.some((hook) => isPlainObject(hook) && hook.command === command)) {
+      return typeof entry.matcher === 'string' ? entry.matcher : undefined;
+    }
+  }
+  return undefined;
+}
+
+function grokHookJson(command: string, matcher: string): string {
   return `${JSON.stringify(
     {
       hooks: {
         PreToolUse: [
           {
-            matcher: HOOK_MATCHER,
+            matcher,
             hooks: [{ type: 'command', command, timeout: 60 }],
           },
         ],
@@ -159,7 +196,10 @@ function grokHookJson(command: string): string {
  * The Claude installer calls this after writing its delegator; this installer calls it on
  * re-run when that file is already on disk. Only the installer-generated grok-mjs command
  * is rewritten; any other string is the consumer's spawn target and the file is not touched.
- * Parse failure leaves the file as it was — existence is presence, not parse success.
+ * Every entry naming the Claude-hook command — rewritten now or by an earlier install — takes
+ * the matcher the Claude settings file registered that command under, so the host sees one
+ * pair rather than two and a re-run converges. Parse failure leaves the file as it was —
+ * existence is presence, not parse success.
  */
 export function retargetGrokHookCommandToClaude(projectRoot: string): void {
   const path = join(projectRoot, GROK_JSON_RELATIVE);
@@ -177,16 +217,28 @@ export function retargetGrokHookCommandToClaude(projectRoot: string): void {
     return;
   }
 
+  const settingsMatcher = claudeSettingsMatcherFor(projectRoot, CLAUDE_HOOK_COMMAND);
   let changed = false;
   for (const entry of root.hooks.PreToolUse) {
     if (!isPlainObject(entry) || !Array.isArray(entry.hooks)) {
       continue;
     }
+    let namesClaudeHook = false;
     for (const hook of entry.hooks) {
-      if (isPlainObject(hook) && hook.command === GROK_HOOK_COMMAND) {
+      if (!isPlainObject(hook)) {
+        continue;
+      }
+      if (hook.command === GROK_HOOK_COMMAND) {
         hook.command = CLAUDE_HOOK_COMMAND;
         changed = true;
       }
+      namesClaudeHook ||= hook.command === CLAUDE_HOOK_COMMAND;
+    }
+    // Whether this pass rewrote the command or an earlier install already did, an entry
+    // naming the Claude hook pairs with the settings entry only on the same matcher.
+    if (namesClaudeHook && settingsMatcher !== undefined && entry.matcher !== settingsMatcher) {
+      entry.matcher = settingsMatcher;
+      changed = true;
     }
   }
   if (changed) {
@@ -218,12 +270,11 @@ export function initGrok(spec: InitGrokSpec): ScaffoldReport {
   if (!claudeHookExists) {
     writeIfAbsent(spec.projectRoot, GROK_HOOK_RELATIVE, GENERATED_HOOK, report);
   }
-  writeIfAbsent(
-    spec.projectRoot,
-    GROK_JSON_RELATIVE,
-    grokHookJson(claudeHookExists ? CLAUDE_HOOK_COMMAND : GROK_HOOK_COMMAND),
-    report,
-  );
+  const command = claudeHookExists ? CLAUDE_HOOK_COMMAND : GROK_HOOK_COMMAND;
+  const matcher = claudeHookExists
+    ? (claudeSettingsMatcherFor(spec.projectRoot, CLAUDE_HOOK_COMMAND) ?? HOOK_MATCHER)
+    : HOOK_MATCHER;
+  writeIfAbsent(spec.projectRoot, GROK_JSON_RELATIVE, grokHookJson(command, matcher), report);
   if (claudeHookExists) {
     retargetGrokHookCommandToClaude(spec.projectRoot);
   }

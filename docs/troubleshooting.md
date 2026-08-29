@@ -31,8 +31,8 @@ defaults — silent defaults would mean silently unprotected.
 **Recovery.** Restore the file from git. On the session path,
 `pnpm exec pdks init claude-code` or `pdks init grok` recreates files that
 are absent. An existing grok JSON is not rewritten except when its `command`
-still names the grok delegator and a Claude delegator is on disk — then only
-that command field is retargeted. On the commit path the
+still names the grok delegator and a Claude delegator is on disk — then that
+command is retargeted and the matcher follows the settings entry. On the commit path the
 config is hand-written — the [install guide](./installation.md)'s commit-surface section
 has a starting point.
 
@@ -70,6 +70,20 @@ leave no telemetry row.
 
 **Recovery.** Press `r` in the Hooks tab, or start a new session. The witness valve also
 does not open on Grok — a block is recovered from another terminal or the commit-surface TTY.
+
+## One Grok tool call leaves two telemetry rows
+
+**Symptom.** In a tree wired for both Claude Code and Grok, every `write` or
+`run_terminal_command` in a Grok session appends two rows to `.polydeukes/roi.log`,
+milliseconds apart.
+
+**Cause.** Grok reads `.claude/settings.json` as well as `.grok/hooks/*.json` and collapses
+the two registrations only when `command` and `matcher` are both identical. A grok JSON
+whose matcher differs from the settings entry spawns the judge a second time.
+
+**Recovery.** Make the grok JSON's `matcher` the same string as the settings entry that
+registers the same command. Re-running either installer does it: every grok entry that
+names the Claude hook takes the settings entry's matcher.
 
 ## `pdks init claude-code` refuses to run
 

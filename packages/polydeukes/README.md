@@ -49,8 +49,10 @@ one-way, through the core alone.
   this path owns `.grok/hooks/` (JSON registration with timeout 60, and a delegator file only when
   no Claude delegator is on disk). If the Claude hook file already exists, the JSON command points
   at it so two judges are not spawned. A later run of either installer retargets an
-  installer-generated grok-mjs command the same way. An already-open Grok session keeps the hook
-  snapshot from start. The witness valve does not open on Grok.
+  installer-generated grok-mjs command the same way, and the JSON matcher follows the
+  `.claude/settings.json` entry for that command — Grok collapses two registrations only when
+  command and matcher both match. An already-open Grok session keeps the hook snapshot from
+  start. The witness valve does not open on Grok.
 - **`pdks docs [topic]`** — the offline documentation reader. The English guides and the reference
   layer are copied into `dist/docs` at build time, so a consumer's AI partner reads the
   documentation that shipped with the code doing the judging instead of whichever release a search

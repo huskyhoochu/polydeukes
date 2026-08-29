@@ -57,8 +57,10 @@ and the discipline files are left alone, the settings file is merged, and `.giti
 only ever appended to — so re-running is always safe. One command-field exception: if
 `.grok/hooks/covenant-pretooluse.json` still names the grok delegator and a Claude
 delegator is on disk, the JSON `command` is rewritten to that Claude file so the host
-does not spawn two judges. Matcher and timeout stay. A command you pointed elsewhere is
-left as it was.
+does not spawn two judges. Grok collapses two registrations only when `command` AND
+`matcher` are identical, so every grok entry naming that Claude file also takes the matcher
+of the `.claude/settings.json` entry that registers the same command — on a fresh write and
+on every re-run; `timeout` stays. A command you pointed elsewhere is left as it was.
 
 `pdks init claude-code` writes six artifacts:
 
@@ -77,7 +79,7 @@ registration. A Grok-only tree has four artifacts, and no `.claude/` directory:
 | Artifact | What it is |
 |---|---|
 | `.grok/hooks/covenant-pretooluse.mjs` | The hook — the same delegator text, only when no Claude delegator is already on disk. |
-| `.grok/hooks/covenant-pretooluse.json` | The PreToolUse matcher, `timeout` 60 (the host default is 5 seconds, and a timed-out hook fails open), and the command that names one delegator file. |
+| `.grok/hooks/covenant-pretooluse.json` | The PreToolUse matcher, `timeout` 60 (the host default is 5 seconds, and a timed-out hook fails open), and the command that names one delegator file. In a tree that also has `.claude/settings.json`, the matcher is copied from the settings entry with the same command — Grok reads that file too, and collapses the two registrations into one spawn only when `command` and `matcher` match exactly. That copy leans on Grok's tool-name aliases, so if you later remove `.claude/settings.json`, delete this JSON and run `pdks init grok` again to get the Grok-native matcher back. |
 | `polydeukes.config.yaml` | The same starter policy as above. |
 | `.gitignore` | The same appended ignore line. |
 
