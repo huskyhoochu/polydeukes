@@ -337,6 +337,8 @@ disciplines:
           message: '{value} is outside _docs/knowledge/'
 ```
 
+이 저장소의 라이브 설정은 같은 선언을 `sqlite-only-under-knowledge`로 싣습니다.
+
 파일 변경 하나가 **세계(world)** 하나로 판정되며 소스 이름은 넷입니다. `target.path`(저장소
 상대 경로), `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가
 없습니다), `state`(`{ pre, post }`, 수정에만 있습니다). 변경이 지니지 않은 소스는 없는

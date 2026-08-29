@@ -356,6 +356,8 @@ block carries the declaration's `scope`, `supply`, `extract`, `relate`, and opti
           message: '{value} is outside _docs/knowledge/'
 ```
 
+This repository's live config carries the same declaration as `sqlite-only-under-knowledge`.
+
 Each file change is judged as one **world** with four source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
 a creation has no `pre`, a deletion no `post`), and `state` (`{ pre, post }`, present only

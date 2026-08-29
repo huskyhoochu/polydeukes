@@ -140,9 +140,18 @@ disciplines:
       - 'packages/adapter-git/__tests__/**'
     requirePrecedent:
       command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.'
-  # The first entry landed by the discipline-draft skill's own procedure. The demand is a
-  # recorded one — the knowledge store's SQLite lives where gitignore-by-location keeps it
-  # out of history — and no current family expresses a kind-to-location bond.
+  # A *.db file may exist only under _docs/knowledge/ — the knowledge store sits there so
+  # gitignore-by-location keeps it out of history. Kind-to-location is a declaration:
+  # scope the path, extract those outside the directory, Empty must hold.
   - id: 'sqlite-only-under-knowledge'
-    why: 'naming-convention shape — a *.db file may exist only under _docs/knowledge/; one created anywhere else is a break. immutable protects one named path and cannot bind a file kind to a location, so this waits as a draft for a scope-plus-empty-delta declaration.'
-    draft: true
+    why: 'a *.db file may exist only under _docs/knowledge/; one created anywhere else is a break. the knowledge store sits there so gitignore-by-location keeps it out of history.'
+    declare:
+      scope: { source: 'target.path', include: ['\.db$'] }
+      extract:
+        outside:
+          - { op: 'source', of: 'target.path' }
+          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+      relate:
+        - id: 'placed'
+          relation: { op: 'Empty', of: 'outside' }
+          message: '{value} is outside _docs/knowledge/'

@@ -124,17 +124,17 @@ read.
 pdks explain — polydeukes.config.yaml
 
 surface: session (claude-code hook)
-  registrations 23 · judged 11 · declare 0 · skip 9 · meta 3 · excluded 0 · draft 1
-  meta     self-mod                 paths 13 (common; includes the config file itself)
-  judge    covenant-vocabulary      forbid · in packages/*/src/** · except … · why ✓
-  skip     covenant-vocabulary      a shell write in scope whose result this layer cannot compute
-  draft    bilingual-docs-sync      unpromoted — no judgment
+  registrations 29 · judged 13 · declare 1 · skip 12 · meta 3 · excluded 0 · draft 0
+  meta     self-mod                      paths 13 (common; includes the config file itself)
+  judge    covenant-vocabulary           forbid · in packages/*/src/** · except … · why ✓
+  declare  sqlite-only-under-knowledge   scope target.path · include 1 · exclude 0 · relate placed · why ✓
+  skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...
 surface: commit (git pre-commit) · enforce: advise
-  registrations 10 · judged 3 · declare 0 · skip 6 · meta 1 · excluded 3 · draft 1
-  skip     manifest-needs-npm-view  no session transcript to read
-  excluded hooks-stay-armed         forbidCommand — no shell axis on this surface
-  draft    bilingual-docs-sync      unpromoted — no judgment
+  registrations 13 · judged 5 · declare 1 · skip 6 · meta 1 · excluded 3 · draft 0
+  skip     manifest-needs-npm-view       no session transcript to read
+  excluded hooks-stay-armed              forbidCommand — no shell axis on this surface
+  declare  sqlite-only-under-knowledge   scope target.path · include 1 · exclude 0 · relate placed · why ✓
 ```
 
 One line per registration, in the order the surface dispatches them. The kind column has
