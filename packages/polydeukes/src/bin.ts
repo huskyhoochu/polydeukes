@@ -2,7 +2,7 @@
 /**
  * `pdks` / `polydeukes` — the umbrella bin.
  *
- * A thin argv shim: four subcommands, each matched by direct comparison against a finite
+ * A thin argv shim: each subcommand is matched by direct comparison against a finite
  * table. Anything else prints usage and exits 2 — an unknown argument must never pass
  * silently (fail-closed, the same posture as an unjudgeable payload).
  *
@@ -94,6 +94,25 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
   }
 }
 
+if (args.length === 2 && args[0] === 'init' && args[1] === 'grok') {
+  try {
+    const { initGrok } = await import('./init-grok.js');
+    const { created, skipped } = initGrok({ projectRoot: process.cwd() });
+    for (const path of created) {
+      process.stdout.write(`created ${path}\n`);
+    }
+    for (const path of skipped) {
+      process.stdout.write(`skipped ${path} (already present)\n`);
+    }
+    process.exit(0);
+  } catch (error) {
+    process.stderr.write(
+      `pdks init grok failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exit(2);
+  }
+}
+
 if (args[0] === 'docs' && args.length <= 2) {
   try {
     // Imported inside the try for the same reason `init` is: the query core and the
@@ -156,7 +175,7 @@ const domain =
 
 if (domain === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks docs [topic]\n',
+    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic]\n',
   );
   process.exit(2);
 }

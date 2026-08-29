@@ -47,6 +47,13 @@ const FOREIGN_SETTINGS = {
     PreToolUse: [{ matcher: 'WebFetch', hooks: [{ type: 'command', command: FOREIGN_COMMAND }] }],
   },
 };
+/** Grok registration this installer retargets when its command still names the grok mjs. */
+const GROK_HOOK_REL = '.grok/hooks/covenant-pretooluse.mjs';
+const GROK_JSON_REL = '.grok/hooks/covenant-pretooluse.json';
+const GROK_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${GROK_HOOK_REL}`;
+const CLAUDE_HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${HOOK_REL}`;
+/** A consumer-owned grok command — not the installer-generated grok-mjs string. */
+const CUSTOM_GROK_COMMAND = 'echo consumer-owned-grok-pretooluse';
 
 /** Preflight stub, success side — injected wherever the run must get past preflight. */
 const resolvesFine = (): void => undefined;
@@ -467,5 +474,74 @@ describe('the discovery file — the fifth artifact', () => {
     expect(read(DISCOVERY_REL)).toBe(custom);
     expect(result.skipped).toContain(DISCOVERY_REL);
     expect(result.created).toContain(HOOK_REL);
+  });
+});
+
+describe('existing grok JSON is retargeted when this installer writes the Claude delegator', () => {
+  /** Values a template rewrite would not re-emit — the stay-pin for matcher and timeout. */
+  const MATCHER_PIN = 'write|consumer-kept-matcher|Bash';
+  const TIMEOUT_PIN = 90;
+
+  type GrokCommandHook = { type?: string; command?: string; timeout?: number };
+  type GrokMatcherEntry = { matcher?: string; hooks?: GrokCommandHook[] };
+  type GrokHookFile = { hooks?: { PreToolUse?: GrokMatcherEntry[] } };
+
+  function readGrokJson(): GrokHookFile {
+    return JSON.parse(read(GROK_JSON_REL)) as GrokHookFile;
+  }
+
+  function grokCommands(): string[] {
+    return (readGrokJson().hooks?.PreToolUse ?? [])
+      .flatMap((entry) => entry.hooks ?? [])
+      .map((hook) => hook.command)
+      .filter((command): command is string => typeof command === 'string');
+  }
+
+  /**
+   * Compact JSON plus a trailing newline. `JSON.stringify(obj, null, 2)` cannot emit this
+   * shape, so a parse-and-dump that kept the command still fails byte-identity.
+   */
+  function compactGrokJson(command: string): string {
+    return `{"hooks":{"PreToolUse":[{"matcher":${JSON.stringify(MATCHER_PIN)},"hooks":[{"type":"command","command":${JSON.stringify(command)},"timeout":${TIMEOUT_PIN}}]}]}}\n`;
+  }
+
+  function writeGrokJson(command: string): string {
+    mkdirSync(join(projectRoot, dirname(GROK_JSON_REL)), { recursive: true });
+    const body = compactGrokJson(command);
+    writeFileSync(join(projectRoot, GROK_JSON_REL), body);
+    return body;
+  }
+
+  it('rewrites a grok-mjs command to the Claude-hook command; matcher, timeout, and the grok mjs stay', () => {
+    // A grok JSON that already names the grok mjs is the second command string once this
+    // installer writes the Claude hook. Leaving it in place means the host spawns two
+    // judges per call. Checking for a Claude file before this run writes it would skip
+    // the rewrite on the grok-then-claude order. Rebuilding the JSON from a template also
+    // resets matcher and timeout; deleting the grok mjs removes a file that was not the
+    // rewrite target.
+    writeGrokJson(GROK_HOOK_COMMAND);
+    const grokMjs = '// consumer grok delegator — must survive retarget\n';
+    mkdirSync(join(projectRoot, dirname(GROK_HOOK_REL)), { recursive: true });
+    writeFileSync(join(projectRoot, GROK_HOOK_REL), grokMjs);
+
+    init();
+
+    expect(grokCommands()).toEqual([CLAUDE_HOOK_COMMAND]);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.matcher).toBe(MATCHER_PIN);
+    expect(readGrokJson().hooks?.PreToolUse?.[0]?.hooks?.[0]?.timeout).toBe(TIMEOUT_PIN);
+    expect(existsSync(join(projectRoot, GROK_HOOK_REL))).toBe(true);
+    expect(read(GROK_HOOK_REL)).toBe(grokMjs);
+  });
+
+  it('leaves a consumer-custom command byte-identical', () => {
+    // The rewrite key is exact equality with the grok-mjs command. Any other string is
+    // the consumer's spawn target — replacing it with the Claude hook steals a
+    // registration they pointed elsewhere. Byte-identity is the pin: parse-and-dump
+    // that happens to keep the command still rewrote their file.
+    const body = writeGrokJson(CUSTOM_GROK_COMMAND);
+
+    init();
+
+    expect(read(GROK_JSON_REL)).toBe(body);
   });
 });

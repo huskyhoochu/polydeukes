@@ -87,14 +87,18 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   would reach the review but never `main`, while multiplying the witness prompts above by the
   number of commits. **Opens when the merge strategy stops squashing** — until then the
   benefit is review granularity alone, which does not pay for the prompts.
-- Review by launching the repo's vendored review workflow:
-  `Workflow({ name: "pdks-code-review", args: "high <PR# or target> — <context>" })`.
-  This is a fork of the built-in `/code-review` workflow living at
-  `.claude/workflows/pdks-code-review.js` — vendored because the built-in skill is
-  user-invocable only (`disable-model-invocation`), which stalled this phase on a manual
-  step. This skill instructing the launch is the sanctioned Workflow opt-in; do not treat
-  the launch as needing separate user approval. In the args, pass the PRD's invariants and
-  severity framing as review context (the finder/verifier agents honor it). Findings land
+- Review by launching the repo's review workflow. On Claude Code:
+  `Workflow({ name: "pdks-code-review", args: "high <PR# or target> — <context>" })`
+  (`.claude/workflows/pdks-code-review.js`). On Grok Build:
+  `workflow({ source: { type: "name", name: "pdks-code-review" },
+  args: { target: "<PR# or branch>", level: "high",
+  context: "<PRD invariants>" } })`
+  (`.grok/workflows/pdks-code-review.rhai` — same topology: Scope → Find → Verify → Synthesize).
+  The Claude JS file is a fork of the built-in `/code-review` workflow, vendored because that
+  skill is user-invocable only (`disable-model-invocation`). Grok cannot execute that JS file.
+  This skill instructing the launch is the sanctioned opt-in; do not treat the launch as
+  needing separate user approval. In the args, pass the PRD's invariants and severity
+  framing as review context (the finder/verifier agents honor it). Findings land
   in-session; triage them the project's way: reviewer confidence is hypothesis strength,
   not a verdict — judge each finding against the PRD text.
 - **Two constraints belong in the args, and a review without them leans one way.** A finding

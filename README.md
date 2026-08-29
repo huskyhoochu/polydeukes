@@ -12,7 +12,8 @@ the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CL
 memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
-pdks init claude-code    # wire the session surface into a project
+pdks init claude-code    # wire the Claude Code session surface into a project
+pdks init grok           # wire the Grok session surface into a project
 pdks covenant check      # judge the staged diff (the pre-commit entry point)
 pdks covenant check --worktree            # the same judgment over the working tree
 pdks covenant check --range main...HEAD   # ... or over a ref range (a PR's scope)
@@ -110,7 +111,7 @@ start at the top layer you need.
 
 | Document | Contents |
 |----------|----------|
-| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code`) and the manually wired commit surface |
+| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code` · `pdks init grok`) and the manually wired commit surface |
 
 ### Guides
 

@@ -22,8 +22,8 @@ you do not install and do not import.
 ## Subcommands
 
 The bin is `pdks`, with `polydeukes` as an alias. Every argument form is matched against a
-finite table: `covenant check` takes an optional domain flag, `init claude-code` is exact,
-`explain` takes one word, and `docs` takes an optional topic.
+finite table: `covenant check` takes an optional domain flag, `init claude-code` and
+`init grok` are exact, `explain` takes one word, and `docs` takes an optional topic.
 
 ### `pdks covenant check`
 
@@ -79,6 +79,21 @@ Nothing existing is overwritten: an artifact already present is reported as skip
 alone, so a re-run is a no-op. A precondition failure — the package not resolving, two
 coexisting config spellings, an unparseable settings file — writes zero files and exits `2`,
 never a half-wired tree.
+
+### `pdks init grok`
+
+The Grok session-surface installer. Same preflight and the same shared scaffold (config and
+the `.polydeukes/` ignore line). A Grok-only tree gets four artifacts (hook JSON, the grok
+delegator, config, ignore line) and no `.claude/` directory. The JSON registration carries
+`timeout` 60 (the host default is 5 seconds; a timed-out hook fails open). If
+`.claude/hooks/covenant-pretooluse.mjs` already exists, the JSON command points at that file
+so the host does not spawn two judges. A later run of either installer retargets an
+installer-generated grok-mjs command the same way; a command pointed elsewhere is left
+alone.
+
+An already-open Grok session keeps the hook snapshot from start; reload from the Hooks tab
+(`r`) or start a new session. The witness valve does not open on Grok: the session log is
+ACP `updates.jsonl`, not Claude's JSONL.
 
 ### `pdks docs [topic]`
 
@@ -167,7 +182,7 @@ permanent condition.
 
 Anything that is not one of these forms writes the usage line —
 `usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain |
-pdks init claude-code | pdks docs [topic]` — to stderr and exits `2`.
+pdks init claude-code | pdks init grok | pdks docs [topic]` — to stderr and exits `2`.
 
 ## Exit codes
 

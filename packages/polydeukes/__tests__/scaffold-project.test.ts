@@ -37,8 +37,10 @@ const SCHEMA_LINE =
  * The minimum protection set for a generated config — the gate definitions the session
  * layer creates. A generated list ships as a minimum a consumer adds to, so an entry
  * belongs here only when editing that path removes a judgment rather than failing one.
+ * `.grok/hooks` holds the Grok spawn registration; deleting it silences that host rather
+ * than failing a call.
  */
-const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json'];
+const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json', '.grok/hooks'];
 /** A minimal valid sibling config — languages is the schema's only required key. */
 const VALID_SIBLING_YML = [
   'languages:',

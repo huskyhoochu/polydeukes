@@ -51,7 +51,7 @@ pre-commit spawns `pdks covenant check` over the staged diff — two observation
 promises. The hook is a thin delegator calling `runClaudeCodeHook` through the package's session
 subpath (the barrel is eager and would load the commit surface on every session call), so what we
 are judged by every day is the shipped artifact itself; `pdks init claude-code` generates the same
-delegator for a consumer project.
+delegator for a consumer project, and `pdks init grok` reuses that file when it already exists.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
 `biome.json`, `.git/hooks`), the five packages' gitignored `dist`, and the root config. Package

@@ -42,7 +42,8 @@ pnpm add -D polydeukes
 프로젝트 루트에서 실행합니다.
 
 ```sh
-pnpm exec pdks init claude-code
+pnpm exec pdks init claude-code    # Claude Code
+pnpm exec pdks init grok           # Grok
 ```
 
 이 명령은 호출된 디렉터리에 설치하며, **어떤 파일도 쓰기 전에** 그 자리에서
@@ -50,9 +51,14 @@ pnpm exec pdks init claude-code
 경우 등) 설치 명령을 출력하고 파일 0개 생성 상태로 exit 2로 끝납니다. 반쯤 배선된
 트리는 만들지 않습니다.
 
-생성물은 여섯이고, 이미 있는 것은 절대 덮어쓰지 않습니다. 있는 것은 보고하고 지킵니다.
-훅과 설정과 규율 파일들은 그대로 두고, settings 파일은 병합하며, `.gitignore`에는 덧붙이기만
-합니다. 그래서 재실행은 언제나 안전합니다.
+이미 있는 것은 덮어쓰지 않습니다. 있는 것은 보고하고 지킵니다. 훅과 설정과 규율 파일은
+그대로 두고, settings 파일은 병합하며, `.gitignore`에는 덧붙이기만 합니다. 그래서 재실행은
+언제나 안전합니다. command 필드만 예외입니다. `.grok/hooks/covenant-pretooluse.json`이
+아직 Grok 위임자를 가리키고 Claude 위임자가 디스크에 있으면, JSON `command`를 그 Claude
+파일로 고쳐 호스트가 판정기를 둘 스폰하지 않게 합니다. matcher와 timeout은 그대로입니다.
+다른 곳을 가리키게 한 command는 손대지 않습니다.
+
+`pdks init claude-code`는 산출물 여섯을 씁니다.
 
 | 생성물 | 무엇인가 |
 |---|---|
@@ -62,6 +68,25 @@ pnpm exec pdks init claude-code
 | `.claude/rules/polydeukes.md` | `pdks docs`가 있다는 것과 어느 토픽이 무엇에 답하는지를 AI 파트너에게 알리는 범위 한정 규율 파일입니다. `paths` frontmatter가 붙어 있어 폴리데우케스 경로를 다룰 때 로드되고 모든 세션에 상주하지 않습니다. |
 | `.claude/skills/discipline-draft/SKILL.md` | 분류 절차입니다. 반복되는 문제를 AI 파트너에게 서술하면 설정 항목으로 착지합니다 — 현행 계열로 표현되면 advise 판정 항목으로, 아니면 `draft: true` 항목으로. 같은 파일이 작업 경계에서 텔레메트리 로그의 `advised` 행을 소비하라고 에이전트에게 안내합니다. |
 | `.gitignore` | `.polydeukes/` 무시 규칙을 주석 줄과 함께 덧붙입니다. 텔레메트리는 로컬 관측 데이터라 이력에 들어가지 않습니다. |
+
+`pdks init grok`는 그 스캐폴드(설정과 무시 줄)를 공유하고 Grok 등록을 씁니다. Grok만 있는
+트리는 산출물이 넷이고 `.claude/` 디렉터리는 없습니다.
+
+| 생성물 | 무엇인가 |
+|---|---|
+| `.grok/hooks/covenant-pretooluse.mjs` | 훅입니다. Claude 위임자가 이미 없을 때만 같은 위임자 텍스트를 씁니다. |
+| `.grok/hooks/covenant-pretooluse.json` | PreToolUse matcher, `timeout` 60(호스트 기본값은 5초이고 타임아웃된 훅은 fail-open), 위임자 파일 하나를 가리키는 command입니다. |
+| `polydeukes.config.yaml` | 위의 출발 정책과 같습니다. |
+| `.gitignore` | 같은 무시 줄입니다. |
+
+`.claude/hooks/covenant-pretooluse.mjs`가 이미 있으면 JSON command가 그 파일을 가리켜
+판정기를 하나 더 심지 않습니다. 나중에 `pdks init grok`나 `pdks init claude-code`를 다시
+돌려도, 설치기가 심은 grok-mjs command는 같은 방식으로 재조준됩니다.
+
+이미 열린 Grok 세션은 시작 때 로드한 훅 스냅샷을 유지합니다. Hooks 탭에서 `r`로 리로드하거나
+새 세션을 엽니다. 증인 밸브는 Grok에서 열리지 않습니다. 대화 기록이 ACP `updates.jsonl`이라
+Claude JSONL 리더가 사람 발화를 읽지 못합니다. 차단의 회복은 다른 터미널이나 커밋 표면
+TTY입니다.
 
 ## `languages` 첫 편집
 
@@ -183,8 +208,8 @@ witness:
 
 토큰과 창은 원하는 대로 바꾸세요. 토큰은 비밀이 아닙니다. 방어의 근거는 비밀성이 아니라
 출처 증명입니다. **블록은 지우지 마세요.** 세션 표면에서는 생성된 보호 목록이
-`.claude/hooks`를 덮고 있어서, 밸브가 없으면 첫 차단이 곧 프로젝트 정지가 되고 사람이
-자기 터미널에서 설정을 고칠 때까지 풀리지 않습니다.
+`.claude/hooks`와 `.grok/hooks`를 덮고 있어서, 밸브가 없으면 첫 차단이 곧 프로젝트 정지가
+되고 사람이 자기 터미널에서 설정을 고칠 때까지 풀리지 않습니다.
 
 ## 관문이 살아 있는지 확인
 

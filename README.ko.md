@@ -11,7 +11,8 @@
 `polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
 ```sh
-pdks init claude-code    # 프로젝트에 세션 표면을 배선
+pdks init claude-code    # 프로젝트에 Claude Code 세션 표면을 배선
+pdks init grok           # 프로젝트에 Grok 세션 표면을 배선
 pdks covenant check      # staged diff 판정 (pre-commit 진입점)
 pdks covenant check --worktree            # 같은 판정을 작업 트리에
 pdks covenant check --range main...HEAD   # ... 또는 ref 범위(PR의 범위)에
@@ -98,7 +99,7 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 
 | 문서 | 내용 |
 |------|------|
-| [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code`)과 수동 배선 커밋 표면 |
+| [`docs/installation.ko.md`](./docs/installation.ko.md) | 설치 가이드 — 세션 표면(`pdks init claude-code` · `pdks init grok`)과 수동 배선 커밋 표면 |
 
 ### 가이드
 

@@ -34,7 +34,7 @@ one-way, through the core alone.
   it carries a `why`, and for each skip the compiler's reason — the one that otherwise reaches
   stderr only when the cause is a config fault. No judge thunk is called and no telemetry row is
   written. A config that cannot be loaded fails at exit `2` with stdout at zero bytes.
-- **`pdks init claude-code`** — the session-surface installer. It proves `polydeukes` resolves
+- **`pdks init claude-code`** — the Claude Code session-surface installer. It proves `polydeukes` resolves
   from the target project before writing anything, then creates what every distribution path
   shares (the data config and its `.polydeukes/` ignore line) and what this path owns (a delegator
   hook, its `.claude/settings.json` registration merged into whatever that file already carries,
@@ -45,6 +45,12 @@ one-way, through the core alone.
   hook it just registered is itself protected. Two coexisting config spellings, an unparseable
   settings file, and a package that cannot be resolved are all precondition failures: each leaves
   zero files rather than a half-wired tree.
+- **`pdks init grok`** — the Grok session-surface installer. Same preflight and shared scaffold;
+  this path owns `.grok/hooks/` (JSON registration with timeout 60, and a delegator file only when
+  no Claude delegator is on disk). If the Claude hook file already exists, the JSON command points
+  at it so two judges are not spawned. A later run of either installer retargets an
+  installer-generated grok-mjs command the same way. An already-open Grok session keeps the hook
+  snapshot from start. The witness valve does not open on Grok.
 - **`pdks docs [topic]`** — the offline documentation reader. The English guides and the reference
   layer are copied into `dist/docs` at build time, so a consumer's AI partner reads the
   documentation that shipped with the code doing the judging instead of whichever release a search

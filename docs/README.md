@@ -52,7 +52,7 @@ reading code.
 
 | Surface | Judges | Wired by | For |
 |---|---|---|---|
-| **Session** | A tool call, before it runs | `pdks init claude-code` | A project developed with an AI partner |
+| **Session** | A tool call, before it runs | `pdks init claude-code` or `pdks init grok` | A project developed with an AI partner |
 | **Commit** | A diff — staged, the working tree, or a ref range | A pre-commit hook, or run on demand | A human developing alone, and CI |
 
 The commit judge also answers on demand: `pdks covenant check --worktree` after a task,

@@ -14,7 +14,9 @@
  *
  * Nothing existing is overwritten. The settings file in particular is merged, never
  * replaced: a consumer's other PreToolUse registrations and permissions are live
- * configuration, and replacing them would disarm every other tool they wired.
+ * configuration, and replacing them would disarm every other tool they wired. A grok JSON
+ * whose command still names the grok mjs is rewritten to this hook's command so the two
+ * installers do not leave two spawn strings.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,6 +25,7 @@ import { dirname, join } from 'node:path';
 import { MUTATING_TOOLS, SHELL_TOOLS } from '@polydeukes/adapter-claude-code';
 import { isPlainObject } from '@polydeukes/core';
 import { TOPICS } from './docs-query.js';
+import { retargetGrokHookCommandToClaude } from './init-grok.js';
 import { CONFIG_FILENAMES } from './load-config.js';
 import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
 
@@ -471,5 +474,6 @@ export function initClaudeCode(spec: InitClaudeCodeSpec): ScaffoldReport {
   // a failure costs least.
   writeIfAbsent(spec.projectRoot, DISCOVERY_RELATIVE, GENERATED_DISCOVERY, report);
   writeIfAbsent(spec.projectRoot, SKILL_RELATIVE, GENERATED_SKILL, report);
+  retargetGrokHookCommandToClaude(spec.projectRoot);
   return report;
 }

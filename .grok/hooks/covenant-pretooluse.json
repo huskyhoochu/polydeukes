@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "write|search_replace|run_terminal_command|Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/covenant-pretooluse.mjs",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

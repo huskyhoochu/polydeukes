@@ -40,6 +40,7 @@ import {
   appendRecordFailOpen,
   type CanonicalTranscript,
   DEFAULT_TELEMETRY_LOG_PATH,
+  isPlainObject,
   normalizeProtectedPaths,
   readRecords,
 } from '@polydeukes/core';
@@ -264,6 +265,41 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
 }
 
 /**
+ * This runtime's mutating+shell roster, rewritten onto the Claude vocabulary the adapter
+ * already judges. Claude names are not keys, so an existing Write/Edit/Bash envelope
+ * passes through. A name outside the table is left alone — that is a declared limit,
+ * recorded as the adapter's funnel pass, never a parse fault. The map lives here, not in
+ * the adapter, so the adapter stays Claude-vocabulary-only.
+ */
+const GROK_TOOL_NAME_MAP: Record<string, string> = {
+  write: 'Write',
+  search_replace: 'Edit',
+  run_terminal_command: 'Bash',
+};
+
+/**
+ * Rewrite Grok tool names in a raw PreToolUse payload. Invalid JSON is left as the original
+ * string so the existing fail-closed path still runs — this function must not throw.
+ */
+function rewriteGrokToolNames(rawPayload: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawPayload);
+  } catch {
+    return rawPayload;
+  }
+  if (!isPlainObject(parsed)) return rawPayload;
+
+  for (const key of ['tool_name', 'toolName']) {
+    const value = parsed[key];
+    if (typeof value !== 'string') continue;
+    const mapped = GROK_TOOL_NAME_MAP[value];
+    if (mapped !== undefined) parsed[key] = mapped;
+  }
+  return JSON.stringify(parsed);
+}
+
+/**
  * Judge one declared tool call before it runs. Async because the dispatcher spawns covenant
  * bodies — a synchronous runner would mean reimplementing the judge, which the
  * single-dispatcher principle forbids.
@@ -294,7 +330,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
     // dispatch seam below takes this const instead.
     const logPath = telemetryPath;
 
-    const rawPayload = spec.rawPayload ?? readFileSync(0, 'utf-8');
+    const rawPayload = rewriteGrokToolNames(spec.rawPayload ?? readFileSync(0, 'utf-8'));
 
     // The transcript path travels in the raw payload only — up-translation drops it, so the
     // adapter reads it from the string. Every failure narrows to `undefined`, which leaves

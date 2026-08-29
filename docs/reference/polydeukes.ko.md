@@ -22,7 +22,7 @@
 
 실행 파일 이름은 `pdks`이고 `polydeukes`가 별칭입니다. 모든 인자 형태는 유한한 표와
 대조됩니다. `covenant check`는 관측 범위 플래그 하나를 선택적으로 받고, `init
-claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 선택적 주제를 받습니다.
+claude-code`와 `init grok`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 선택적 주제를 받습니다.
 
 ### `pdks covenant check`
 
@@ -76,6 +76,19 @@ claude-code`는 정확히 그 형태이며, `explain`은 한 단어, `docs`는 �
 두므로 재실행은 언제나 아무 일도 하지 않습니다. 선행 조건 실패는 파일을 하나도 쓰지 않고
 종료 `2`를 냅니다. 패키지가 해소되지 않는 경우, 설정 철자가 둘 공존하는 경우, settings
 파일을 파싱할 수 없는 경우가 여기 듭니다. 반쯤 배선된 트리는 남지 않습니다.
+
+### `pdks init grok`
+
+Grok 세션 표면 설치기입니다. 선행 검사와 공유 스캐폴드(설정과 `.polydeukes/` 무시 줄)는
+같습니다. Grok만 있는 트리는 산출물이 넷(훅 JSON, Grok 위임자, 설정, 무시 줄)이고
+`.claude/` 디렉터리는 없습니다. JSON 등록의 `timeout`은 60초입니다(호스트 기본값은 5초이고,
+타임아웃된 훅은 fail-open입니다). `.claude/hooks/covenant-pretooluse.mjs`가 이미 있으면
+JSON command가 그 파일을 가리켜 판정기를 둘 스폰하지 않습니다. 나중에 어느 설치기를
+다시 돌려도, 설치기가 심은 grok-mjs command는 같은 방식으로 재조준되고, 다른 곳을
+가리키게 한 command는 그대로 둡니다.
+
+이미 열린 Grok 세션은 시작 때 훅 스냅샷을 유지합니다. Hooks 탭의 `r`로 리로드하거나 새
+세션을 엽니다. 증인 밸브는 Grok에서 열리지 않습니다. 대화 기록이 ACP `updates.jsonl`입니다.
 
 ### `pdks docs [topic]`
 
@@ -161,7 +174,7 @@ skip으로 보여 줍니다. 그것이 그 표면의 영구 조건입니다.
 ### 그 밖의 인자 형태
 
 이 형태들이 아닌 것은 `usage: pdks covenant check [--worktree | --range <base>..<head>] |
-pdks explain | pdks init claude-code | pdks docs [topic]`을 stderr에 쓰고 종료 `2`를 냅니다.
+pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic]`을 stderr에 쓰고 종료 `2`를 냅니다.
 
 ## 종료 코드
 

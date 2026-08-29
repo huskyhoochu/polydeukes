@@ -53,9 +53,9 @@ languages:
 # The protection list. A tool call whose proven target is one of these paths is blocked, and
 # so is a shell command that mentions one without a read-only head.
 #
-#   .claude/hooks, .claude/settings.json — the gate definitions themselves. Editing them
-#     does not evade a judgment, it removes the judgment; the session surface is the only
-#     layer that can watch it happen.
+#   .claude/hooks, .claude/settings.json, .grok/hooks — the gate definitions themselves.
+#     Editing them does not evade a judgment, it removes the judgment; the session surface
+#     is the only layer that can watch it happen.
 #
 # A minimum. Add entries as you find you want them.
 #
@@ -64,6 +64,7 @@ languages:
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
+  - '.grok/hooks'
 
 # The time-boxed witness — the human valve on a blocked verdict. A human types this token so
 # it stands alone on a message's FIRST line, the window holds for ttlMinutes, then blocking
@@ -71,9 +72,9 @@ protectedPaths:
 # window is always recorded as \`witnessed\` and never silent, and no agent can open one for
 # itself. The token is not a secret: the defence is provenance, not confidentiality.
 #
-# Keep this block. Without it no block can be opened by anyone, and .claude/hooks is on the
-# list above — so the first block would freeze the project until a human edits these files
-# from their own terminal.
+# Keep this block. Without it no block can be opened by anyone, and the hook directories
+# are on the list above — so the first block would freeze the project until a human edits
+# these files from their own terminal.
 witness:
   token: 'pdks witness'
   ttlMinutes: 10

@@ -29,7 +29,10 @@ Discovery looks for exactly these, in this order: `polydeukes.config.yaml`,
 defaults — silent defaults would mean silently unprotected.
 
 **Recovery.** Restore the file from git. On the session path,
-`pnpm exec pdks init claude-code` recreates the missing artifacts; on the commit path the
+`pnpm exec pdks init claude-code` or `pdks init grok` recreates files that
+are absent. An existing grok JSON is not rewritten except when its `command`
+still names the grok delegator and a Claude delegator is on disk — then only
+that command field is retargeted. On the commit path the
 config is hand-written — the [install guide](./installation.md)'s commit-surface section
 has a starting point.
 
@@ -57,6 +60,16 @@ empty `languages` block, the schema's one required entry.
 
 **Recovery.** Fix the named key in the named file. The error is specific on purpose — no
 rewrite-and-hope needed.
+
+## A Grok session does not pick up a newly installed hook
+
+**Symptom.** `pdks init grok` reported created files, but this session's tool calls still
+leave no telemetry row.
+
+**Cause.** Grok loads hooks at session start. An already-open session keeps that snapshot.
+
+**Recovery.** Press `r` in the Hooks tab, or start a new session. The witness valve also
+does not open on Grok — a block is recovered from another terminal or the commit-surface TTY.
 
 ## `pdks init claude-code` refuses to run
 

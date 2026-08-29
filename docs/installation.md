@@ -43,7 +43,8 @@ judge from your project's own installed package.
 From the project root:
 
 ```sh
-pnpm exec pdks init claude-code
+pnpm exec pdks init claude-code    # Claude Code
+pnpm exec pdks init grok           # Grok
 ```
 
 The command installs into the directory it is invoked from, and it proves the `polydeukes`
@@ -51,9 +52,15 @@ package resolves there **before writing anything** — if it does not (say, the 
 was skipped), it prints the install command and exits 2 with zero files written, never a
 half-wired tree.
 
-Six artifacts, none ever overwritten. What exists is reported and kept — the hook, the
-config, and the discipline files are left alone, the settings file is merged, and
-`.gitignore` is only ever appended to — so re-running is always safe:
+Nothing existing is overwritten. What exists is reported and kept — the hook, the config,
+and the discipline files are left alone, the settings file is merged, and `.gitignore` is
+only ever appended to — so re-running is always safe. One command-field exception: if
+`.grok/hooks/covenant-pretooluse.json` still names the grok delegator and a Claude
+delegator is on disk, the JSON `command` is rewritten to that Claude file so the host
+does not spawn two judges. Matcher and timeout stay. A command you pointed elsewhere is
+left as it was.
+
+`pdks init claude-code` writes six artifacts:
 
 | Artifact | What it is |
 |---|---|
@@ -63,6 +70,25 @@ config, and the discipline files are left alone, the settings file is merged, an
 | `.claude/rules/polydeukes.md` | A scoped discipline file telling your AI partner that `pdks docs` exists and which topic answers what. It carries `paths` frontmatter, so it loads when a Polydeukes path is in play rather than sitting in every session's context. |
 | `.claude/skills/discipline-draft/SKILL.md` | The classification procedure. Describe a recurring problem to your AI partner and it lands as a config entry — judged at advise when a current family can express it, a `draft: true` entry otherwise — and the same file tells the agent to consult `advised` rows in the telemetry log at task boundaries. |
 | `.gitignore` | An appended ignore rule for `.polydeukes/`, with its comment line — telemetry is local observation data and never belongs in history. |
+
+`pdks init grok` shares the scaffold (config and the ignore line) and writes Grok's own
+registration. A Grok-only tree has four artifacts, and no `.claude/` directory:
+
+| Artifact | What it is |
+|---|---|
+| `.grok/hooks/covenant-pretooluse.mjs` | The hook — the same delegator text, only when no Claude delegator is already on disk. |
+| `.grok/hooks/covenant-pretooluse.json` | The PreToolUse matcher, `timeout` 60 (the host default is 5 seconds, and a timed-out hook fails open), and the command that names one delegator file. |
+| `polydeukes.config.yaml` | The same starter policy as above. |
+| `.gitignore` | The same appended ignore line. |
+
+If `.claude/hooks/covenant-pretooluse.mjs` already exists, the JSON command points at that
+file instead of planting a second one. A later `pdks init grok` or `pdks init claude-code`
+retargets an installer-generated grok-mjs command the same way.
+
+An already-open Grok session keeps the hook snapshot from start. Reload from the Hooks tab
+(`r`) or start a new session. The witness valve does not open on Grok — the session log is
+ACP `updates.jsonl`, not Claude's JSONL. A block is recovered from another terminal or the
+commit-surface TTY.
 
 ## First edit — `languages`
 
@@ -185,8 +211,9 @@ witness:
 
 Change the token and window as you like — the token is not a secret; the defence is
 provenance, not confidentiality. **Keep the block**: on the session surface the generated
-protection list covers `.claude/hooks`, so without a valve the first blocked call would
-freeze the project until a human edits the config from their own terminal.
+protection list covers `.claude/hooks` and `.grok/hooks`, so without a valve the first
+blocked call would freeze the project until a human edits the config from their own
+terminal.
 
 ## Prove the gate is live
 
