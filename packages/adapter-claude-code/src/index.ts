@@ -7,20 +7,12 @@
  * vocabulary is translated away before it reaches the core.
  */
 
-export { collectFileChanges } from './file-changes.js';
 export { evaluatePrecedent } from './precedent.js';
-export { type DispatchOutcome, runAdapterPath } from './run-adapter-path.js';
+export { type DispatchAdapterView, runAdapterPath } from './run-adapter-path.js';
 export {
   COMMAND_ARGS,
   MUTATING_TOOLS,
   SHELL_TOOLS,
   transcriptPathFromPayload,
 } from './session-vocabulary.js';
-export { transcriptFromJsonl, transcriptFromJsonlFile } from './transcript.js';
-export {
-  buildCovenantInput,
-  type ClaudePreToolUsePayload,
-  type TranslatedEvent,
-  translateEvent,
-} from './up-translate.js';
-export { type VirtualPostState, virtualPostState } from './virtual-post-state.js';
+export { transcriptFromJsonlFile } from './transcript.js';

@@ -37,8 +37,8 @@
       "import": "./dist/index.js"
     },
     "./claude-code": {
-      "types": "./dist/claude-code-hook.d.ts",
-      "import": "./dist/claude-code-hook.js"
+      "types": "./dist/claude-code.d.ts",
+      "import": "./dist/claude-code.js"
     },
     "./schema.json": "./dist/schema/polydeukes.schema.json"
   },

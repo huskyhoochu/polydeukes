@@ -1,13 +1,13 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { TelemetryEvent } from '@polydeukes/core';
+import type { DispatchOutcome, TelemetryEvent } from '@polydeukes/core';
 import { appendRecord, parseInput, readRecords, runGain } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ClaudePreToolUsePayload } from '../src/index.ts';
-// Imported from the package entry point rather than the module itself, so these exercise
+// Imported from the package entry point rather than the module itself, so this exercises
 // the same surface `@polydeukes/adapter-claude-code` publishes.
-import { type DispatchOutcome, runAdapterPath } from '../src/index.ts';
+import { runAdapterPath } from '../src/index.ts';
+import type { ClaudePreToolUsePayload } from '../src/up-translate.ts';
 
 let tmpRoot: string;
 let telemetryPath: string;
@@ -74,7 +74,11 @@ function stubDispatchingRegistrations(
         label: reg.label,
         subject: reg.subject,
       });
-      results.push({ label: reg.label, exitCode: reg.event === 'blocked' ? 2 : 0 });
+      results.push({
+        label: reg.label,
+        exitCode: reg.event === 'blocked' ? 2 : 0,
+        event: reg.event,
+      });
     }
     const anyBlocked = registrations.some((reg) => reg.event === 'blocked');
     return { exitCode: anyBlocked ? 2 : 0, results };

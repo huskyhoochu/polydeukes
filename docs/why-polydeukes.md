@@ -475,6 +475,18 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      than written by hand beside the list it checks. Publish it with the milestone round that
      can cite what the narrowed contract let the next change do.
 
+     Parked candidate (CONTRACT-04, 2026-08-30): a number you inherited is not evidence.
+     Two consecutive tickets narrowing a contract each opened with a size that was wrong —
+     the set of symbols to keep was right both times, and only the count summarising it was
+     off, because a reader counts the lines of a table while a contract is measured in
+     symbols, and one line can re-export three. The second time, the wrong number had been
+     copied forward from an archived document into the roadmap and from there into the
+     ticket, gathering the appearance of a settled fact at each hop. What caught it was
+     refusing to spend the inherited figure: count from the supply side with a parser, count
+     again from the demand side, and let the ticket proceed on the set while the summary is
+     corrected. Publish it with the CONTRACT-03 candidate — they are one argument about
+     measurement seen from two sides.
+
      Parked candidate (ALGEBRA-01, 2026-08-29): the relation vocabulary is closed at seven
      and deliberately not reduced to its two-primitive kernel. `Within` was dropped because a
      constant bound belongs to extraction, not to the relation position — the one place the

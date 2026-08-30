@@ -1,8 +1,11 @@
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { parseInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-// Imported from the package entry point — the same surface the package publishes.
-import { buildCovenantInput, type ClaudePreToolUsePayload, translateEvent } from '../src/index.ts';
+import {
+  buildCovenantInput,
+  type ClaudePreToolUsePayload,
+  translateEvent,
+} from '../src/up-translate.ts';
 
 // Realistic Claude Code PreToolUse hook payloads (snake_case). Agent/tool literals
 // live here and in the adapter, never in core.

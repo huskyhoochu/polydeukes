@@ -27,9 +27,7 @@ interface Violation {
  * Current violations, each scoped to the one entry point that carries it. Application tickets
  * shrink this; it ends as []. Adding an entry is a review event.
  */
-const KNOWN_VIOLATIONS: { package: string; check: Check; entryPoint: string }[] = [
-  { package: 'polydeukes', check: '②', entryPoint: './claude-code' }, // points at src/claude-code-hook.ts, a module, not a barrel
-];
+const KNOWN_VIOLATIONS: { package: string; check: Check; entryPoint: string }[] = [];
 
 /** The only manifest allowed to publish surface entry points. */
 const UMBRELLA_NAME = 'polydeukes';
@@ -467,5 +465,29 @@ describe('synthetic fixtures', () => {
       .map((v) => v.detail);
     if (violates) expect(details.length, 'expected a violation, got none').toBeGreaterThan(0);
     else expect(details, `unexpected ${check} violations:\n${details.join('\n')}`).toEqual([]);
+  });
+});
+
+// The umbrella's session entry point, pinned by symbol: check ② proves the barrel shape,
+// but an empty barrel passes it — and a `./claude-code` that stops carrying
+// `runClaudeCodeHook` crashes the live hook on import, before any verdict, where the
+// witness valve is never consulted.
+describe('the ./claude-code entry point', () => {
+  const umbrella = PACKAGES.find((p) => p.name === UMBRELLA_NAME);
+
+  // A map target left on the hook module serves consumers the module's whole export
+  // surface instead of the one-line barrel.
+  it('resolves both conditions to the claude-code barrel dist', () => {
+    expect(umbrella?.exports['./claude-code']).toEqual({
+      types: './dist/claude-code.d.ts',
+      import: './dist/claude-code.js',
+    });
+  });
+
+  // Dropping the verb strands the delegator; dropping the spec type leaves a caller no name
+  // for the argument. An added name widens the surface without review.
+  it('re-exports exactly the hook verb and its spec type', () => {
+    const names = exportedNames(umbrella?.readFile('src/claude-code.ts') ?? '');
+    expect([...names].sort()).toEqual(['ClaudeCodeHookSpec', 'runClaudeCodeHook']);
   });
 });

@@ -3,25 +3,30 @@
  *
  * Composes translation → injected dispatch → funnel-supplement recording so every
  * adapter-path call leaves exactly one telemetry row when summed with downstream
- * records. I/O lives here and only here — the translate layer (index.ts) stays pure.
+ * records. I/O lives here and only here — the translation modules stay pure.
  */
 
 import { readFileSync } from 'node:fs';
-import { appendRecordFailOpen, EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '@polydeukes/core';
+import {
+  appendRecordFailOpen,
+  type DispatchOutcome,
+  EXIT_BREAK_BLOCKING,
+  EXIT_UPHOLD,
+} from '@polydeukes/core';
 import { collectFileChanges } from './file-changes.js';
 import { buildCovenantInput } from './up-translate.js';
 
 /**
- * `DispatchOutcome` — the part of the dispatcher's return this path reads.
+ * The part of a dispatch result this path reads — a structural view, not a second protocol.
  *
- * Declared here rather than imported: dependencies run one way (adapter → core only), so
- * the covenant package is never imported. The real dispatcher carries more per entry; a
- * wider return satisfies this shape structurally, so the assembler's typecheck bites when
- * the dispatcher stops carrying a field named here, not when it starts carrying a new one.
+ * Derived from core's `DispatchOutcome` by `Pick`, so it cannot drift from the protocol type:
+ * a field renamed there stops compiling here. It is narrower on purpose — the entries carry
+ * a telemetry word this path never reads, and demanding it would make every dispatcher the
+ * adapter accepts name a core type its own consumers may not be able to resolve.
  */
-export type DispatchOutcome = {
-  exitCode: 0 | 2;
-  results: { label: string; exitCode: 0 | 2 }[];
+export type DispatchAdapterView = {
+  exitCode: DispatchOutcome['exitCode'];
+  results: readonly unknown[];
 };
 
 /** Default label for adapter-level telemetry records. */
@@ -57,9 +62,17 @@ function readPreStateFromDisk(filePath: string): string | null {
 export async function runAdapterPath(spec: {
   /** Raw hook stdin — one PreToolUse payload as a JSON string. */
   rawPayload: string;
+  /** Where adapter-level records append. */
   telemetryPath: string;
-  /** Injected dispatch seam — the assembler binds the real dispatcher here. */
-  dispatch: (stdinPayload: string) => Promise<DispatchOutcome>;
+  /**
+   * Injected dispatch seam — the assembler binds the real dispatcher here.
+   *
+   * Typed by what this path reads, not by what the dispatcher returns: the supplement rule
+   * below needs the exit code and whether any covenant produced an entry. A dispatcher
+   * carrying more per entry — core's `DispatchOutcome`, which adds the telemetry word the
+   * wrapper already recorded — satisfies this structurally, so binding one costs no cast.
+   */
+  dispatch: (stdinPayload: string) => Promise<DispatchAdapterView>;
   /** Label for adapter-level records. Default: 'adapter-claude-code'. */
   adapterLabel?: string;
 }): Promise<{ exitCode: 0 | 2 }> {
@@ -102,7 +115,7 @@ export async function runAdapterPath(spec: {
           ),
         };
 
-  let outcome: DispatchOutcome;
+  let outcome: DispatchAdapterView;
   try {
     outcome = await spec.dispatch(JSON.stringify(input));
   } catch {

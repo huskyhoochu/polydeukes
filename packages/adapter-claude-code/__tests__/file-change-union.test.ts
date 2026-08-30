@@ -1,12 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { DispatchOutcome } from '@polydeukes/core';
 import { parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The session adapter tags its evidence with the union (pre === null → create, else
 // modify) and attaches it to the one mutating tool-call element of the dispatched IR,
 // not to a top-level array.
-import { collectFileChanges, type DispatchOutcome, runAdapterPath } from '../src/index.ts';
+import { collectFileChanges } from '../src/file-changes.ts';
+import { runAdapterPath } from '../src/index.ts';
 
 const writePayload = {
   hook_event_name: 'PreToolUse',

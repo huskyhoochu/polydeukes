@@ -1,10 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { DispatchOutcome } from '@polydeukes/core';
 import { parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { collectFileChanges } from '../src/file-changes.ts';
-import type { DispatchOutcome } from '../src/index.ts';
 import { runAdapterPath } from '../src/index.ts';
 
 // Realistic Claude Code PreToolUse payloads (snake_case). Claude vocabulary

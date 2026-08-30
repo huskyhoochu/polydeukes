@@ -11,7 +11,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const covenantDist = resolve(repoRoot, 'packages/covenant/dist/index.js');
-const adapterDist = resolve(repoRoot, 'packages/adapter-claude-code/dist/index.js');
+const adapterDist = resolve(repoRoot, 'packages/adapter-claude-code/dist/transcript.js');
 
 const TOKEN = 'PDKS-WITNESS-42';
 // A fixed "message sent at" instant and a fixed clock: the assembled predicate is judged

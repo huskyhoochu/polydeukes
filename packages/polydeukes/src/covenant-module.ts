@@ -17,8 +17,15 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type * as covenant from '@polydeukes/covenant';
 
-/** The covenant surface both roots assemble against. */
-export type CovenantModule = typeof covenant;
+/** The covenant surface both roots assemble against — the members they call, and no more. */
+export type CovenantModule = Pick<
+  typeof covenant,
+  | 'dispatchCovenants'
+  | 'compileDisciplineRegistrations'
+  | 'selfModRegistration'
+  | 'shellModRegistration'
+  | 'transcriptModRegistration'
+>;
 
 /** Where real Node resolution puts the covenant package's built barrel. */
 export function resolveCovenantDist(): string {
