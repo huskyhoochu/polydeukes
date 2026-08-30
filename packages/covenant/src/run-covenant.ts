@@ -173,16 +173,15 @@ function witnessOpens(witness: () => boolean): boolean {
  * whatever the final event: gating it on the verdict would leave `advised` mute and the
  * valve silent about what it opened.
  *
- * Resolves with the wrapper's final `exitCode` (`0` or `2`), the raw `bodyExitCode` for
- * observation (`null` when the body answered no interpretable code), and the telemetry
- * `event` that was recorded. The event is surfaced rather than left to callers: the valve
- * is impure, so recomputing the event would consult it a second time. Logging is fail-open
+ * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the telemetry `event` that
+ * was recorded. The event is surfaced rather than left to callers: the valve is impure, so
+ * recomputing the event would consult it a second time. Logging is fail-open
  * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and never
  * throws. The gate closes; the measurement stays open.
  */
 export async function runCovenant(
   spec: RunCovenantSpec,
-): Promise<{ exitCode: WrapperExitCode; bodyExitCode: number | null; event: TelemetryEvent }> {
+): Promise<{ exitCode: typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING; event: TelemetryEvent }> {
   const outcome = await runBody(spec.body);
   // A code the outcome does not carry as a number is uninterpretable, and `null` is the
   // table's existing cell for exactly that — no new row in translateExitCode.
@@ -206,5 +205,5 @@ export async function runCovenant(
     ...(serialized !== undefined && { witnesses: serialized }),
   });
 
-  return { exitCode, bodyExitCode, event };
+  return { exitCode, event };
 }

@@ -3,9 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// Imports go through the package entry point so the tests also pin the public export
-// surface.
-import { runCovenant } from '../src/index.ts';
+import { runCovenant } from '../src/run-covenant.ts';
 import { exitThunk, readTelemetryLines } from './helpers.js';
 
 let dir: string;
@@ -21,14 +19,14 @@ afterEach(() => {
 });
 
 describe('exit-code translation', () => {
-  it('a body exiting 0 (uphold) yields wrapper exitCode 0 and bodyExitCode 0', async () => {
+  it('a body exiting 0 (uphold) yields wrapper exitCode 0 · passed', async () => {
     const result = await runCovenant({
       body: exitThunk(0),
       label: 'test-covenant',
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
+    expect(result).toEqual({ exitCode: 0, event: 'passed' });
   });
 
   it('a body exiting 1 (non-blocking break report) is translated up to wrapper exitCode 2', async () => {
@@ -40,34 +38,33 @@ describe('exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 1, event: 'blocked' });
+    expect(result).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
   it('a body exiting 2 (body-side fail-closed) stays wrapper exitCode 2', async () => {
-    // bodyExitCode is asserted too, so a wrapper that treats 2 as an unknown code and
-    // happens to land on 2 cannot pass by coincidence.
+    // The body's own fail-closed keeps the blocking code: a wrapper that read 2 as an
+    // uninterpretable code would land here by a different route and record the same row.
     const result = await runCovenant({
       body: exitThunk(2),
       label: 'test-covenant',
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 2, event: 'blocked' });
+    expect(result).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
   it('an uninterpretable body exit code (3) is fail-closed to wrapper exitCode 2', async () => {
-    // 3 and above must not fall through to a passing result or an undefined branch, and
-    // bodyExitCode still reflects the raw code.
+    // 3 and above must not fall through to a passing result or an undefined branch.
     const result = await runCovenant({
       body: exitThunk(3),
       label: 'test-covenant',
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 3, event: 'blocked' });
+    expect(result).toEqual({ exitCode: 2, event: 'blocked' });
   });
 
-  it('a thunk that throws resolves to exitCode 2 and bodyExitCode 2 without rejecting', async () => {
+  it('a thunk that throws resolves to exitCode 2 · blocked without rejecting', async () => {
     // "Cannot judge" must never resolve as passing, and never propagate as a rejection
     // either — a rejected promise fails this await on its own.
     const result = await runCovenant({
@@ -78,7 +75,7 @@ describe('exit-code translation', () => {
       telemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 2, bodyExitCode: 2, event: 'blocked' });
+    expect(result).toEqual({ exitCode: 2, event: 'blocked' });
   });
 });
 
@@ -141,7 +138,7 @@ describe('per-call logging', () => {
       telemetryPath: missingDirTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
+    expect(result).toEqual({ exitCode: 0, event: 'passed' });
   });
 });
 
@@ -158,7 +155,7 @@ describe('mkdir-p before telemetry append', () => {
       telemetryPath: nestedTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
+    expect(result).toEqual({ exitCode: 0, event: 'passed' });
     const lines = readTelemetryLines(nestedTelemetryPath);
     expect(lines).toHaveLength(1);
     const record = parseRecordLine(lines[0]);
@@ -181,6 +178,6 @@ describe('mkdir-p before telemetry append', () => {
       telemetryPath: impossibleTelemetryPath,
     });
 
-    expect(result).toEqual({ exitCode: 0, bodyExitCode: 0, event: 'passed' });
+    expect(result).toEqual({ exitCode: 0, event: 'passed' });
   });
 });

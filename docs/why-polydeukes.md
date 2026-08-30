@@ -465,6 +465,16 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      pointer removes the reader's ability to notice. Publish it once a second measurement
      confirms the pattern outside this one sweep.
 
+     Parked candidate (CONTRACT-03, 2026-08-30): a published symbol nobody imports is not
+     free. Narrowing this package's judging core from 72 exported symbols to 23 found that
+     only six had a consumer outside the package at all; the rest were reachable because the
+     package's own tests had been importing through the front door. The cost is not size —
+     it is that every one of those names is a promise a consumer may build on, and the ones
+     no consumer named could be dropped without a single test going red. What made that
+     visible was a check whose expected value is derived from the consumer's source rather
+     than written by hand beside the list it checks. Publish it with the milestone round that
+     can cite what the narrowed contract let the next change do.
+
      Parked candidate (ALGEBRA-01, 2026-08-29): the relation vocabulary is closed at seven
      and deliberately not reduced to its two-primitive kernel. `Within` was dropped because a
      constant bound belongs to extraction, not to the relation position — the one place the

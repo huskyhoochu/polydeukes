@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 // by the four fixed source names: `target.path` (repo-relative), `pre`, `post`, and `state`
 // (`{ pre, post }`, modify only). A side the change does not carry is an ABSENT key — the
 // host never invents a default; what an absent source does is the declaration's `supply`
-// policy. Imported through the package entry point so the contract is pinned.
-import { worldsFromInput } from '../src/index.ts';
+// policy.
+import { worldsFromInput } from '../src/discipline.ts';
 
 const ROOT = '/repo';
 const PATH_SOURCE = 'target.path';

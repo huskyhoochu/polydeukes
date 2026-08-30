@@ -12,12 +12,12 @@ import {
   appendRecordFailOpen,
   type CanonicalTranscript,
   type CovenantInput,
+  type DispatchOutcome,
   type EnforceLevel,
   EXIT_BREAK_BLOCKING,
   EXIT_UPHOLD,
   noopTranscript,
   parseInput,
-  type TelemetryEvent,
 } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
@@ -205,11 +205,8 @@ export async function dispatchCovenants(spec: {
   dispatcherLabel?: string;
   transcript?: CanonicalTranscript;
   enforce?: EnforceLevel;
-}): Promise<{
-  exitCode: 0 | 2;
-  results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[];
-}> {
-  const blockedByDispatcher = (): { exitCode: 2; results: [] } => {
+}): Promise<DispatchOutcome> {
+  const blockedByDispatcher = (): DispatchOutcome => {
     appendRecordFailOpen(spec.telemetryPath, {
       event: 'blocked',
       label: spec.dispatcherLabel ?? 'dispatcher',
@@ -233,7 +230,7 @@ export async function dispatchCovenants(spec: {
   }
 
   const transcript = spec.transcript ?? noopTranscript;
-  const results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[] = [];
+  const results: DispatchOutcome['results'] = [];
   for (const { registration, mentionedPath, routingFailed } of matches) {
     if (registration.skip !== undefined) {
       if (routingFailed === true) {

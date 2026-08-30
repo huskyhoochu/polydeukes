@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 // modified nor deleted).
 import {
   compileDisciplineRegistrations,
-  type DisciplineJudgeOptions,
+  type JudgeDisciplineSpec,
   judgeDiscipline,
 } from '../src/discipline.ts';
 
@@ -15,7 +15,7 @@ import {
 
 const ROOT = '/repo';
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
@@ -50,7 +50,9 @@ describe('judgeDiscipline — forbid {added} delete semantics', () => {
       { kind: 'delete', path: 'src/legacy.css', pre: 'a: #123456;\nb: #abcdef;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('breaks a create (nested evidence) whose post carries a match — regression pairing', () => {
@@ -58,7 +60,7 @@ describe('judgeDiscipline — forbid {added} delete semantics', () => {
     // proving the judge actually reads the nested evidence rather than upholding blanket.
     const input = inputWithEvidence([{ kind: 'create', path: 'src/new.css', post: 'b: #123456;' }]);
 
-    const verdict = judgeDiscipline(forbidHex, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -74,7 +76,7 @@ describe('judgeDiscipline — forbid {added} delete semantics', () => {
       { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input }).upheld).toBe(false);
   });
 });
 
@@ -88,7 +90,7 @@ describe('judgeDiscipline — immutable delete judgment', () => {
       { kind: 'delete', path: 'config/a.lock', pre: 'locked = true' },
     ]);
 
-    const verdict = judgeDiscipline(immutable, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: immutable, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -103,7 +105,7 @@ describe('judgeDiscipline — immutable delete judgment', () => {
       { kind: 'modify', path: 'config/a.lock', pre: 'old', post: 'new' },
     ]);
 
-    expect(judgeDiscipline(immutable, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input }).upheld).toBe(false);
   });
 
   it('still upholds creation of an immutable-matched file', () => {
@@ -111,7 +113,9 @@ describe('judgeDiscipline — immutable delete judgment', () => {
     // evidence, the immutable file could never be created in the first place.
     const input = inputWithEvidence([{ kind: 'create', path: 'config/a.lock', post: 'seed' }]);
 
-    expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('breaks a delete of an immutable-matched binary file — evidence without a pre baseline', () => {
@@ -119,7 +123,7 @@ describe('judgeDiscipline — immutable delete judgment', () => {
     // immutable reads path and kind only. Requiring pre lets a binary deletion uphold.
     const input = inputWithEvidence([{ kind: 'delete', path: 'config/a.lock' }]);
 
-    expect(judgeDiscipline(immutable, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input }).upheld).toBe(false);
   });
 });
 
@@ -140,7 +144,7 @@ describe('judgeDiscipline — unrecognized evidence kind (review round 1)', () =
       userMessages: [],
     } as unknown as CovenantInput;
 
-    expect(() => judgeDiscipline(forbidHex, legacy, judgeOpts)).toThrow(
+    expect(() => judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: legacy })).toThrow(
       /unjudgeable evidence kind/,
     );
   });

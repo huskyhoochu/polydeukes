@@ -56,10 +56,10 @@
   조용합니다.
 - **선언 엔진** — `compileDeclaration` · `judgeDeclaration` · `witnessOpens`가 대수
   선언(`@polydeukes/core`의 `AlgebraDeclaration`)을 `World` 값 위에서 실행합니다. 이름 붙은
-  추출 파이프라인이 단항 단계 등재 표(`EXTRACT_STEPS`)와 이진 결합자 셋을 거치고, 그 위에서
-  관계 일곱이 불리언이 아니라 증인(witness) 목록으로 답합니다. 엔진은 건네받은 `World` 밖의
-  것을 읽지 않으며(파일도 프로세스도 세션도), 등재 표 밖의 단계 이름은 예외가 아니라 컴파일
-  시점에 돌려주는 설정 결함(config fault)입니다. `worldsFromInput`이 라이브 공급입니다.
+  추출 파이프라인이 단항 단계 등재 표와 이진 결합자 셋을 거치고, 그 위에서 관계 일곱이
+  불리언이 아니라 증인(witness) 목록으로 답합니다. 엔진은 건네받은 `World` 밖의 것을 읽지
+  않으며(파일도 프로세스도 세션도), 등재 표 밖의 단계 이름은 예외가 아니라 컴파일 시점에
+  돌려주는 설정 결함(config fault)입니다. `worldsFromInput`이 라이브 공급입니다.
   파일 변경마다 세계 하나를 `target.path` · `pre` · `post` · `state`의 소스 이름으로 만듭니다.
 
 ## 설계 태도

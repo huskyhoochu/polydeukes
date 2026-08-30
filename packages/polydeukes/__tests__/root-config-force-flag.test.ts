@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
-import { type DisciplineJudgeOptions, judgeDiscipline } from '@polydeukes/covenant';
 import { describe, expect, it } from 'vitest';
+import { type JudgeDisciplineSpec, judgeDiscipline } from '../../covenant/src/discipline.ts';
 import { loadConfig } from '../src/index.ts';
 
 // The live root-config contract: this repository's own config, loaded for real through
@@ -16,7 +16,7 @@ import { loadConfig } from '../src/index.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: REPO_ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
@@ -42,11 +42,11 @@ describe('live root config — work-stays-recoverable flag boundary', () => {
   it('upholds git push --force-with-lease (the recoverable spelling)', () => {
     // --force-with-lease keeps the remote work recoverable, so it must not block. A
     // --force pattern without a flag boundary matches the lease form as a prefix.
-    const verdict = judgeDiscipline(
-      recoveryEntry(),
-      bashInput('git push --force-with-lease'),
-      judgeOpts,
-    );
+    const verdict = judgeDiscipline({
+      ...judgeOpts,
+      entry: recoveryEntry(),
+      input: bashInput('git push --force-with-lease'),
+    });
 
     expect(verdict).toEqual({ upheld: true });
   });
@@ -55,18 +55,22 @@ describe('live root config — work-stays-recoverable flag boundary', () => {
     // The mirror direction: the boundary must not widen into a pass for the real
     // destructive spelling. Anchoring --force to end-of-string would kill the block this
     // entry exists for.
-    const bare = judgeDiscipline(recoveryEntry(), bashInput('git push --force'), judgeOpts);
+    const bare = judgeDiscipline({
+      ...judgeOpts,
+      entry: recoveryEntry(),
+      input: bashInput('git push --force'),
+    });
     expect(bare.upheld).toBe(false);
     if (bare.upheld === false) {
       expect(bare.reason).toContain('work-stays-recoverable');
     }
 
     // The flag followed by more arguments must still break (kills a $-anchored mutant).
-    const withArgs = judgeDiscipline(
-      recoveryEntry(),
-      bashInput('git push --force origin main'),
-      judgeOpts,
-    );
+    const withArgs = judgeDiscipline({
+      ...judgeOpts,
+      entry: recoveryEntry(),
+      input: bashInput('git push --force origin main'),
+    });
     expect(withArgs.upheld).toBe(false);
   });
 });

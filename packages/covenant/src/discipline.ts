@@ -40,16 +40,25 @@ import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './shell-evidence.js';
 
 /**
- * `DisciplineJudgeOptions` — assembly values the judge needs beside the entry.
- *
- * `shellTools`/`commandArgs` name the shell surface as injected values, never source
- * literals; `rootDir` anchors glob relativization. `precedentFound` is the context family's
- * evidence verdict, evaluated at assembly time and bound into the judge thunk.
+ * The shell surface as injected values, never source literals, plus the root the globs
+ * relativize against. The routing closures and the judged body share it.
  */
-export type DisciplineJudgeOptions = {
+type ShellSurface = {
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+};
+
+/**
+ * `JudgeDisciplineSpec` — one validated entry, the input it is judged against, and the
+ * assembly values the judgment needs.
+ *
+ * `precedentFound` is the context family's evidence verdict, evaluated at assembly time and
+ * bound into the judge thunk.
+ */
+export type JudgeDisciplineSpec = ShellSurface & {
+  entry: DisciplineEntry;
+  input: CovenantInput;
   precedentFound?: boolean;
 };
 
@@ -256,7 +265,7 @@ function filterShellCommands(
 }
 
 /** Shell command strings of the input: values of the named args on shell-tool calls. */
-function shellCommands(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+function shellCommands(input: CovenantInput, opts: ShellSurface): string[] {
   return filterShellCommands(input.toolCalls, opts.shellTools, opts.commandArgs);
 }
 
@@ -287,7 +296,7 @@ export type ShellSignals = {
  * proves. Pure: completing the evidence with a pre-state is the body's job, since routing
  * may not read disk.
  */
-function deriveShellSignals(input: CovenantInput, opts: DisciplineJudgeOptions): ShellSignals {
+function deriveShellSignals(input: CovenantInput, opts: ShellSurface): ShellSignals {
   const signals: ShellSignals = { evidence: [], unjudgeable: [] };
   for (const call of filterShellCalls(input.toolCalls, opts.shellTools, opts.commandArgs)) {
     const derived = deriveShellChanges(call.command);
@@ -324,10 +333,7 @@ function readPreState(location: string): string | null | undefined {
  * disk, and every later one composes onto its predecessor's post, or a truncate followed by
  * a re-add would be forgiven as pre-existing debt.
  */
-function enrichWithShellEvidence(
-  input: CovenantInput,
-  opts: DisciplineJudgeOptions,
-): CovenantInput {
+function enrichWithShellEvidence(input: CovenantInput, opts: ShellSurface): CovenantInput {
   const derived = deriveShellSignals(input, opts);
   if (derived.evidence.length === 0) return input;
 
@@ -356,7 +362,7 @@ function enrichWithShellEvidence(
 }
 
 /** Shell-derived targets whose content is computable — routing's half of the derivation. */
-function derivedTargets(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+function derivedTargets(input: CovenantInput, opts: ShellSurface): string[] {
   return deriveShellSignals(input, opts).evidence.map((derived) => derived.change.path);
 }
 
@@ -475,16 +481,13 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
  * @throws Error - when no family judges the entry's predicate (core admitted a key this
  *   judge has no branch for); validated data never reaches it.
  */
-export function judgeDiscipline(
-  entry: DisciplineEntry,
-  input: CovenantInput,
-  opts: DisciplineJudgeOptions,
-): CovenantVerdict {
+export function judgeDiscipline(spec: JudgeDisciplineSpec): CovenantVerdict {
+  const { entry, input } = spec;
   const fileChanges = allFileChanges(input);
 
   if (entry.forbid !== undefined) {
     const pattern = new RegExp(forbidPatternSource(entry.forbid));
-    for (const target of forbidScope(entry, fileChanges, opts.rootDir)) {
+    for (const target of forbidScope(entry, fileChanges, spec.rootDir)) {
       const verdict = judgeAddedForChange(target.change, pattern);
       if (verdict.upheld === false) {
         return {
@@ -500,7 +503,7 @@ export function judgeDiscipline(
   }
 
   if (entry.immutable !== undefined) {
-    for (const target of immutableScope(entry, fileChanges, opts.rootDir)) {
+    for (const target of immutableScope(entry, fileChanges, spec.rootDir)) {
       if (target.change.kind !== 'create') {
         return {
           upheld: false,
@@ -516,7 +519,7 @@ export function judgeDiscipline(
 
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
-    for (const command of shellCommands(input, opts)) {
+    for (const command of shellCommands(input, spec)) {
       if (commandLineMatches(command, pattern)) {
         return {
           upheld: false,
@@ -531,9 +534,9 @@ export function judgeDiscipline(
   }
 
   if (entry.requirePrecedent !== undefined) {
-    const triggered = precedentTrigger(entry, input, opts.rootDir);
+    const triggered = precedentTrigger(entry, input, spec.rootDir);
     // Absent evidence is missing evidence: only an explicit true opens the gate.
-    if (triggered !== null && opts.precedentFound !== true) {
+    if (triggered !== null && spec.precedentFound !== true) {
       return {
         upheld: false,
         // The reason names the recovery path, not just the requirement. Because evidence
@@ -560,7 +563,7 @@ function buildMatches(
   entry: DisciplineEntry,
   spec: CompileDisciplinesSpec,
 ): (input: CovenantInput) => string | null {
-  const opts: DisciplineJudgeOptions = {
+  const opts: ShellSurface = {
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
@@ -721,7 +724,7 @@ function compileEntryDeclaration(entry: DisciplineEntry): CompiledDeclaration | 
 }
 
 /** Every write target a shell line delivers, computable or not, in line order. */
-function shellTargets(input: CovenantInput, opts: DisciplineJudgeOptions): string[] {
+function shellTargets(input: CovenantInput, opts: ShellSurface): string[] {
   const signals = deriveShellSignals(input, opts);
   return [
     ...signals.evidence.map((derived) => derived.change.path),
@@ -793,7 +796,7 @@ function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): 
  * aggregation in one group instead of falling to the common backstop.
  */
 function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): CovenantRegistration {
-  const opts: DisciplineJudgeOptions = {
+  const opts: ShellSurface = {
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
@@ -827,7 +830,7 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
  * for a fabricated attribution — one row, one subject `'-'`.
  */
 function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantRegistration {
-  const opts: DisciplineJudgeOptions = {
+  const opts: ShellSurface = {
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
@@ -1022,7 +1025,7 @@ export function compileDisciplineRegistrations(
       return { ...routing, skip: { reason: outcome.reason } };
     }
 
-    const opts: DisciplineJudgeOptions = {
+    const opts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
       rootDir: spec.rootDir,
       shellTools: spec.shellTools,
       commandArgs: spec.commandArgs,
@@ -1048,7 +1051,7 @@ export function compileDisciplineRegistrations(
         }
         try {
           return outcomeFromVerdict(
-            judgeDiscipline(entry, enrichWithShellEvidence(input, opts), opts),
+            judgeDiscipline({ ...opts, entry, input: enrichWithShellEvidence(input, opts) }),
           );
         } catch {
           // A structurally unjudgeable input, an unreadable pre-state, or a broken pattern

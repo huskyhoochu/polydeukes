@@ -6,8 +6,10 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The valve stands AFTER the verdict: judge, translate, and consult the valve only when the
 // translated event is 'blocked'.
-import type { CovenantRegistration, RunCovenantSpec } from '../src/index.ts';
-import { dispatchCovenants, runCovenant } from '../src/index.ts';
+import type { CovenantRegistration } from '../src/dispatch.ts';
+import { dispatchCovenants } from '../src/dispatch.ts';
+import type { RunCovenantSpec } from '../src/run-covenant.ts';
+import { runCovenant } from '../src/run-covenant.ts';
 import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 // The protected entry is a DIRECTORY and the mention a nested file, so the telemetry
@@ -23,7 +25,7 @@ const DISPATCHER_LABEL = 'my-dispatcher';
 type ValveRunCovenantSpec = RunCovenantSpec & { witness?: () => boolean };
 
 /** The resolve shape: the event is surfaced so callers never recompute it. */
-type ValveRunResult = { exitCode: 0 | 2; bodyExitCode: number | null; event?: TelemetryEvent };
+type ValveRunResult = { exitCode: 0 | 2; event?: TelemetryEvent };
 
 /** Typed pass-through. */
 async function runWithValve(spec: ValveRunCovenantSpec): Promise<ValveRunResult> {
@@ -159,8 +161,9 @@ describe('runCovenant — valve consulted only after a blocked verdict', () => {
 
   it('a body exiting 2 with an open valve resolves witnessed — the deferred tightening stays whole', async () => {
     // The unjudgeable outcomes are ONE set: the crash case above covers the thrown half and
-    // this covers the body's own fail-closed exit 2, so carving out one while keeping the
-    // other witnessable fails here.
+    // this covers the body's own fail-closed exit 2. Both reach the valve, so making only one
+    // of them witnessable fails here. Which half a run took is not part of the wrapper's
+    // result, so these two inputs are what tells them apart.
     const result = await runWithValve({
       body: exitThunk(2),
       label: 'test-covenant',
@@ -169,7 +172,6 @@ describe('runCovenant — valve consulted only after a blocked verdict', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(result.bodyExitCode).toBe(2);
     expect(result.event).toBe('witnessed');
     expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('witnessed');
   });

@@ -1,14 +1,15 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { TelemetryEvent } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // RunCovenantSpec.body is an in-process judge thunk. The wrapper's order is judge,
 // translate, consult the valve, write one row; a THROW lands in the unjudgeable cell with
 // the valve still consulted; and the reason reaches stderr at every level, which is how an
 // advised break is delivered at all.
-import type { RunCovenantSpec, TelemetryEvent } from '../src/index.ts';
-import { runCovenant } from '../src/index.ts';
+import type { RunCovenantSpec } from '../src/run-covenant.ts';
+import { runCovenant } from '../src/run-covenant.ts';
 import { readTelemetryLines } from './helpers.js';
 
 const LABEL = 'thunk-covenant';

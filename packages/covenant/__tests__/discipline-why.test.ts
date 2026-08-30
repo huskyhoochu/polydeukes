@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 // `<phrase> — why: <why verbatim>`. An absent or empty `why` leaves the phrase
 // byte-for-byte unchanged, separator and all; the context family keeps its recovery hint
 // BEFORE the why (violation, then recovery, then rationale); the reason stays one line.
-import { type DisciplineJudgeOptions, judgeDiscipline } from '../src/discipline.ts';
+import { type JudgeDisciplineSpec, judgeDiscipline } from '../src/discipline.ts';
 
 // Each `why` below is real rationale prose rather than a tag: live entries carry sentences,
 // and the appended text must survive verbatim.
 
 const ROOT = '/repo';
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
@@ -113,15 +113,18 @@ function contextBreakInput(): CovenantInput {
   ]);
 }
 
-const noPrecedent: DisciplineJudgeOptions = { ...judgeOpts, precedentFound: false };
+const noPrecedent: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
+  ...judgeOpts,
+  precedentFound: false,
+};
 
 /** Judge and return the break reason, failing the test if the entry upheld. */
 function breakReason(
   entry: DisciplineEntry,
   input: CovenantInput,
-  opts: DisciplineJudgeOptions = judgeOpts,
+  opts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = judgeOpts,
 ): string {
-  const verdict = judgeDiscipline(entry, input, opts);
+  const verdict = judgeDiscipline({ ...opts, entry: entry, input: input });
   expect(verdict.upheld).toBe(false);
   return verdict.upheld === false ? verdict.reason : '';
 }

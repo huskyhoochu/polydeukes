@@ -7,8 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // A command-family entry compiled against an empty shell surface must fail closed at the
 // judge thunk itself: the unjudgeable outcome, blocked at BOTH enforce levels, since advise
 // softens judged breaks and never the inability to judge.
-import type { CompileDisciplinesSpec, RunCovenantSpec } from '../src/index.ts';
-import { compileDisciplineRegistrations, runCovenant } from '../src/index.ts';
+import type { CompileDisciplinesSpec } from '../src/discipline.ts';
+import { compileDisciplineRegistrations } from '../src/discipline.ts';
+import type { RunCovenantSpec } from '../src/run-covenant.ts';
+import { runCovenant } from '../src/run-covenant.ts';
 import { readTelemetryLines } from './helpers.js';
 
 const ROOT = '/repo';

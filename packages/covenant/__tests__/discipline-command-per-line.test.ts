@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
-  type DisciplineJudgeOptions,
+  type JudgeDisciplineSpec,
   judgeDiscipline,
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
@@ -18,7 +18,7 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 
 const ROOT = '/repo';
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
@@ -59,7 +59,7 @@ describe('judgeDiscipline — command family judges per line', () => {
     // position 0, so a second-line violation passes with nothing failing loudly.
     const input = inputWithToolCall('Bash', { command: 'echo setup\nyarn install' });
 
-    const verdict = judgeDiscipline(anchoredEntry, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: anchoredEntry, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -72,7 +72,9 @@ describe('judgeDiscipline — command family judges per line', () => {
     // only) line, or indexes off by one, loses it.
     const input = inputWithToolCall('Bash', { command: 'yarn install' });
 
-    expect(judgeDiscipline(anchoredEntry, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: anchoredEntry, input: input }).upheld).toBe(
+      false,
+    );
   });
 
   it('still breaks a pattern that spans the line boundary (whole-string half of the union)', () => {
@@ -81,7 +83,7 @@ describe('judgeDiscipline — command family judges per line', () => {
     // lines alone would lose.
     const input = inputWithToolCall('Bash', { command: 'echo setup\nyarn install' });
 
-    const verdict = judgeDiscipline(straddlingEntry, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: straddlingEntry, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -94,7 +96,9 @@ describe('judgeDiscipline — command family judges per line', () => {
     // survive.
     const input = inputWithToolCall('Bash', { command: 'echo one\necho two\nyarn install' });
 
-    expect(judgeDiscipline(anchoredEntry, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: anchoredEntry, input: input }).upheld).toBe(
+      false,
+    );
   });
 
   it('strips the \\r of a CRLF line ending before judging the line', () => {
@@ -103,7 +107,7 @@ describe('judgeDiscipline — command family judges per line', () => {
     const crlfEndEntry: DisciplineEntry = { id: 'crlf-end', forbidCommand: 'install$' };
     const input = inputWithToolCall('Bash', { command: 'yarn install\r\necho done' });
 
-    expect(judgeDiscipline(crlfEndEntry, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: crlfEndEntry, input: input }).upheld).toBe(false);
   });
 });
 

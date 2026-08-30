@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
-  type DisciplineJudgeOptions,
+  type JudgeDisciplineSpec,
   judgeDiscipline,
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
@@ -21,15 +21,15 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 
 const ROOT = '/repo';
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
 };
 
 /** judgeOpts extended with the precedentFound option. */
-function withPrecedent(found: boolean): DisciplineJudgeOptions {
-  return { ...judgeOpts, precedentFound: found } as DisciplineJudgeOptions;
+function withPrecedent(found: boolean): Omit<JudgeDisciplineSpec, 'entry' | 'input'> {
+  return { ...judgeOpts, precedentFound: found };
 }
 
 /** A context-family entry WITH a `when` trigger. */
@@ -114,7 +114,11 @@ describe('judgeDiscipline — requirePrecedent context family', () => {
   it('breaks a trigger-matched edit without evidence, naming id, path, and required evidence', () => {
     // The reason must carry the discipline id, the matched path, and the evidence being
     // demanded — those three are what tells the reader how to get through the gate.
-    const verdict = judgeDiscipline(whenEntry, triggeredInput(), withPrecedent(false));
+    const verdict = judgeDiscipline({
+      ...withPrecedent(false),
+      entry: whenEntry,
+      input: triggeredInput(),
+    });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -127,7 +131,9 @@ describe('judgeDiscipline — requirePrecedent context family', () => {
   it('upholds the same trigger-matched edit when precedentFound is true', () => {
     // The evidence flag is the ONLY thing separating this fixture from the break above.
     // Ignoring it makes the family block every matched edit — a gate with no way through.
-    expect(judgeDiscipline(whenEntry, triggeredInput(), withPrecedent(true))).toEqual({
+    expect(
+      judgeDiscipline({ ...withPrecedent(true), entry: whenEntry, input: triggeredInput() }),
+    ).toEqual({
       upheld: true,
     });
   });
@@ -135,7 +141,9 @@ describe('judgeDiscipline — requirePrecedent context family', () => {
   it('treats an unspecified precedentFound as missing evidence (breaks)', () => {
     // The rule is `precedentFound !== true`: an assembly that forgets the option must land
     // on the blocking side, never on a silent fail-open.
-    expect(judgeDiscipline(whenEntry, triggeredInput(), judgeOpts).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...judgeOpts, entry: whenEntry, input: triggeredInput() }).upheld,
+    ).toBe(false);
   });
 });
 
@@ -146,7 +154,9 @@ describe('judgeDiscipline — requirePrecedent trigger non-match', () => {
       { kind: 'modify', path: 'docs/dep.json', pre: 'a;', post: 'a;\nneeds-precedent;' },
     ]);
 
-    expect(judgeDiscipline(whenEntry, input, withPrecedent(false))).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: whenEntry, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('upholds an in-scope edit whose added lines do not match when', () => {
@@ -156,7 +166,9 @@ describe('judgeDiscipline — requirePrecedent trigger non-match', () => {
       { kind: 'modify', path: 'pkg/dep.json', pre: 'a;', post: 'a;\nunrelated;' },
     ]);
 
-    expect(judgeDiscipline(whenEntry, input, withPrecedent(false))).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: whenEntry, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('upholds a debt-only edit — when matches pre content but nothing added matches', () => {
@@ -172,7 +184,9 @@ describe('judgeDiscipline — requirePrecedent trigger non-match', () => {
       },
     ]);
 
-    expect(judgeDiscipline(whenEntry, input, withPrecedent(false))).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: whenEntry, input: input })).toEqual({
+      upheld: true,
+    });
   });
 });
 
@@ -186,7 +200,9 @@ describe('judgeDiscipline — when-present trigger kind disposition', () => {
       { kind: 'create', path: 'pkg/new.json', post: 'needs-precedent;' },
     ]);
 
-    expect(judgeDiscipline(whenEntry, input, withPrecedent(false)).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...withPrecedent(false), entry: whenEntry, input: input }).upheld,
+    ).toBe(false);
   });
 
   it('delete: never triggers a when entry — deletion adds no content (upholds without evidence)', () => {
@@ -197,7 +213,9 @@ describe('judgeDiscipline — when-present trigger kind disposition', () => {
       { kind: 'delete', path: 'pkg/dep.json', pre: 'needs-precedent;\nneeds-precedent;' },
     ]);
 
-    expect(judgeDiscipline(whenEntry, input, withPrecedent(false))).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: whenEntry, input: input })).toEqual({
+      upheld: true,
+    });
   });
 });
 
@@ -207,7 +225,9 @@ describe('judgeDiscipline — when-absent trigger kind disposition', () => {
     // defaulting to "trigger nothing" leaves the entry inert.
     const input = inputWithEvidence([{ kind: 'create', path: 'sacred/x.ts', post: 'seed' }]);
 
-    expect(judgeDiscipline(anyMutationEntry, input, withPrecedent(false)).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...withPrecedent(false), entry: anyMutationEntry, input: input }).upheld,
+    ).toBe(false);
   });
 
   it('modify in scope triggers without when (breaks without evidence)', () => {
@@ -217,7 +237,9 @@ describe('judgeDiscipline — when-absent trigger kind disposition', () => {
       { kind: 'modify', path: 'sacred/x.ts', pre: 'old', post: 'new' },
     ]);
 
-    expect(judgeDiscipline(anyMutationEntry, input, withPrecedent(false)).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...withPrecedent(false), entry: anyMutationEntry, input: input }).upheld,
+    ).toBe(false);
   });
 
   it('delete in scope triggers without when — erasing without precedent is judged (breaks)', () => {
@@ -225,7 +247,9 @@ describe('judgeDiscipline — when-absent trigger kind disposition', () => {
     // the delete kind opens a fail-open erase channel around the whole family.
     const input = inputWithEvidence([{ kind: 'delete', path: 'sacred/x.ts' }]);
 
-    expect(judgeDiscipline(anyMutationEntry, input, withPrecedent(false)).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...withPrecedent(false), entry: anyMutationEntry, input: input }).upheld,
+    ).toBe(false);
   });
 });
 
@@ -242,8 +266,12 @@ describe('judgeDiscipline — precedentFound does not leak into other families',
       { kind: 'modify', path: 'src/a.css', pre: 'a: #123456;', post: 'a: #123456;\nm: 0;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, breaking, withPrecedent(true)).upheld).toBe(false);
-    expect(judgeDiscipline(forbidHex, debtOnly, withPrecedent(false))).toEqual({ upheld: true });
+    expect(
+      judgeDiscipline({ ...withPrecedent(true), entry: forbidHex, input: breaking }).upheld,
+    ).toBe(false);
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: forbidHex, input: debtOnly })).toEqual(
+      { upheld: true },
+    );
 
     const forbidCmd: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=0\\b' };
     const cmdInput: CovenantInput = {
@@ -252,7 +280,9 @@ describe('judgeDiscipline — precedentFound does not leak into other families',
       userMessages: [],
     };
 
-    expect(judgeDiscipline(forbidCmd, cmdInput, withPrecedent(true)).upheld).toBe(false);
+    expect(
+      judgeDiscipline({ ...withPrecedent(true), entry: forbidCmd, input: cmdInput }).upheld,
+    ).toBe(false);
   });
 });
 

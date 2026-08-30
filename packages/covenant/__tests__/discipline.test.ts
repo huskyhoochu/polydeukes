@@ -6,14 +6,14 @@ import { describe, expect, it } from 'vitest';
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
-  type DisciplineJudgeOptions,
+  type JudgeDisciplineSpec,
   judgeDiscipline,
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
 const ROOT = '/repo';
 
-const judgeOpts: DisciplineJudgeOptions = {
+const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
@@ -52,7 +52,7 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    const verdict = judgeDiscipline(forbidHex, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -68,7 +68,9 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'src/a.css', pre: 'a: #123456;', post: 'a: #123456;\nmargin: 0;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('upholds a violation added to an out-of-scope file (in scope excludes it)', () => {
@@ -77,7 +79,9 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'docs/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('upholds a violation added to an except-matched file (except wins over in)', () => {
@@ -92,7 +96,9 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'src/vendor/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(scoped, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: scoped, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('judges every file change when `in` is absent (absent = all)', () => {
@@ -102,7 +108,7 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'anywhere/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(noScope, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: noScope, input: input }).upheld).toBe(false);
   });
 
   it('relativizes an absolute in-scope path against rootDir before matching', () => {
@@ -112,7 +118,7 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: '/repo/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input }).upheld).toBe(false);
   });
 
   it('upholds when an absolute path is outside rootDir (never matches)', () => {
@@ -122,7 +128,9 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: '/elsewhere/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('breaks a new file (pre=null) whose post contains a match (all post is added)', () => {
@@ -130,7 +138,7 @@ describe('judgeDiscipline — forbid delta family', () => {
     // post-equal baseline forgives brand-new violations.
     const input = inputWithFileChanges([{ path: 'src/new.css', pre: null, post: 'b: #123456;' }]);
 
-    expect(judgeDiscipline(forbidHex, input, judgeOpts).upheld).toBe(false);
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input }).upheld).toBe(false);
   });
 
   it('produces the same verdict for the string shorthand and the { added } object form', () => {
@@ -146,8 +154,8 @@ describe('judgeDiscipline — forbid delta family', () => {
       { path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
     ]);
 
-    expect(judgeDiscipline(stringForm, input, judgeOpts)).toEqual(
-      judgeDiscipline(objectForm, input, judgeOpts),
+    expect(judgeDiscipline({ ...judgeOpts, entry: stringForm, input: input })).toEqual(
+      judgeDiscipline({ ...judgeOpts, entry: objectForm, input: input }),
     );
   });
 
@@ -156,7 +164,9 @@ describe('judgeDiscipline — forbid delta family', () => {
     // there is no file-change evidence at all.
     const noFc: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
 
-    expect(judgeDiscipline(forbidHex, noFc, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: noFc })).toEqual({
+      upheld: true,
+    });
   });
 });
 
@@ -167,7 +177,7 @@ describe('judgeDiscipline — immutable path family', () => {
     // The reason must name both the id and the path.
     const input = inputWithFileChanges([{ path: 'config/a.lock', pre: 'old', post: 'new' }]);
 
-    const verdict = judgeDiscipline(immutable, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: immutable, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -181,13 +191,17 @@ describe('judgeDiscipline — immutable path family', () => {
     // authored in the first place.
     const input = inputWithFileChanges([{ path: 'config/a.lock', pre: null, post: 'seed' }]);
 
-    expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('upholds a modification of a non-matching path', () => {
     const input = inputWithFileChanges([{ path: 'src/a.ts', pre: 'old', post: 'new' }]);
 
-    expect(judgeDiscipline(immutable, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input })).toEqual({
+      upheld: true,
+    });
   });
 });
 
@@ -197,7 +211,7 @@ describe('judgeDiscipline — forbidCommand command family', () => {
   it('breaks a shell tool call whose command arg matches the pattern', () => {
     const input = inputWithToolCall('Bash', { command: 'LEFTHOOK=0 git push' });
 
-    const verdict = judgeDiscipline(forbidCmd, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: forbidCmd, input: input });
 
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
@@ -208,7 +222,9 @@ describe('judgeDiscipline — forbidCommand command family', () => {
   it('upholds a shell tool call whose command does not match', () => {
     const input = inputWithToolCall('Bash', { command: 'git status' });
 
-    expect(judgeDiscipline(forbidCmd, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidCmd, input: input })).toEqual({
+      upheld: true,
+    });
   });
 
   it('does not judge a matching command string on a NON-shell tool call', () => {
@@ -220,7 +236,9 @@ describe('judgeDiscipline — forbidCommand command family', () => {
       new_string: 'LEFTHOOK=0 make',
     });
 
-    expect(judgeDiscipline(forbidCmd, input, judgeOpts)).toEqual({ upheld: true });
+    expect(judgeDiscipline({ ...judgeOpts, entry: forbidCmd, input: input })).toEqual({
+      upheld: true,
+    });
   });
 });
 
@@ -367,7 +385,7 @@ describe('discipline extensibility — a fresh entry works with no other setup',
 
     expect(reg.label).toBe('no-todo');
     expect(reg.matches?.(input)).toBe('app/x.ts');
-    const verdict = judgeDiscipline(fresh, input, judgeOpts);
+    const verdict = judgeDiscipline({ ...judgeOpts, entry: fresh, input: input });
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
       expect(verdict.reason).toContain('no-todo');

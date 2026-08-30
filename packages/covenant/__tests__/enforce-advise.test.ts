@@ -7,9 +7,8 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 // The enforce-level translation and its dispatcher threading. Advise relaxes ONLY the
 // verdict cell — body exit 1 becomes exit 0 · 'advised'; every unjudgeable outcome (2, 3+,
-// null) stays exit 2 · 'blocked'. Imported from the package entry point so the tests also
-// pin the published surface.
-import { runCovenant, translateExitCode } from '../src/index.ts';
+// null) stays exit 2 · 'blocked'.
+import { runCovenant, translateExitCode } from '../src/run-covenant.ts';
 import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 let dir: string;

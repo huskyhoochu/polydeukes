@@ -5,6 +5,7 @@
 
 import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from './exit-codes.js';
 import { isPlainObject } from './is-plain-object.js';
+import type { TelemetryEvent } from './telemetry.js';
 
 /**
  * `FileChange` — one file's mutation evidence around the judged call.
@@ -47,13 +48,14 @@ export type CovenantVerdict = { upheld: true } | { upheld: false; reason: string
 /**
  * `DispatchOutcome` — the protocol-level result of one dispatch over many covenants.
  *
- * The partial shape an adapter reads: the blocking exit code and one entry per judged
- * covenant. The dispatcher's own return may carry more (a telemetry event per entry);
- * only what a consumer needs is contract, and it widens when a consumer starts reading more.
+ * The blocking exit code plus one entry per judged covenant: `label` names which covenant
+ * produced the entry, and `event` is the telemetry word the wrapper already recorded for
+ * it. The event rides on the entry rather than being recomputed by a reader — the witness
+ * valve is impure, so recomputing would consult it a second time for one verdict.
  */
 export type DispatchOutcome = {
   exitCode: 0 | 2;
-  results: { label: string; exitCode: 0 | 2 }[];
+  results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[];
 };
 
 /**

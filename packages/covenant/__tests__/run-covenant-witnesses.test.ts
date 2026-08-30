@@ -6,8 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // into a fifth tab-separated field — per break its id, at most eight witnesses, and the true
 // total — so an advised break can be read back from the log alone. An outcome without
 // witnesses keeps the four-field row.
-import type { Break, RunCovenantSpec } from '../src/index.ts';
-import { runCovenant } from '../src/index.ts';
+import type { Break } from '../src/declaration-engine.ts';
+import type { RunCovenantSpec } from '../src/run-covenant.ts';
+import { runCovenant } from '../src/run-covenant.ts';
 
 const LABEL = 'declared-covenant';
 const SUBJECT = 'lib/x.db';

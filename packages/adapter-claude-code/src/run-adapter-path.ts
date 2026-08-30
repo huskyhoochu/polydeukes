@@ -12,11 +12,12 @@ import { collectFileChanges } from './file-changes.js';
 import { buildCovenantInput } from './up-translate.js';
 
 /**
- * `DispatchOutcome` — structural mirror of the dispatcher's return.
+ * `DispatchOutcome` — the part of the dispatcher's return this path reads.
  *
- * Deliberately declared here instead of imported: dependencies are one-way (adapter →
- * core only), so the covenant package is never imported. Contract drift is caught by
- * the assembler's typecheck when the real dispatcher is bound to the seam.
+ * Declared here rather than imported: dependencies run one way (adapter → core only), so
+ * the covenant package is never imported. The real dispatcher carries more per entry; a
+ * wider return satisfies this shape structurally, so the assembler's typecheck bites when
+ * the dispatcher stops carrying a field named here, not when it starts carrying a new one.
  */
 export type DispatchOutcome = {
   exitCode: 0 | 2;

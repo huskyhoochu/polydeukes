@@ -58,12 +58,12 @@ telemetry.
   it. A configuration fault names itself on stderr; an absent session stays quiet.
 - **Declaration engine** — `compileDeclaration` · `judgeDeclaration` · `witnessOpens` run an
   algebra declaration (`@polydeukes/core`'s `AlgebraDeclaration`) over a `World` value: named
-  extract pipelines over a registry of unary steps (`EXTRACT_STEPS`) and three binary
-  combinators, then the seven relations, each answering a witness list rather than a boolean.
-  The engine reads nothing but the `World` it is handed — no files, no process, no session —
-  and a step name outside the registry is a config fault returned at compile time, never a
-  throw. `worldsFromInput` is the live supply: one world per file change, under the source
-  names `target.path`, `pre`, `post`, and `state`.
+  extract pipelines over a registry of unary steps and three binary combinators, then the
+  seven relations, each answering a witness list rather than a boolean. The engine reads
+  nothing but the `World` it is handed — no files, no process, no session — and a step name
+  outside the registry is a config fault returned at compile time, never a throw.
+  `worldsFromInput` is the live supply: one world per file change, under the source names
+  `target.path`, `pre`, `post`, and `state`.
 
 ## Design stance
 

@@ -7,13 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // Each meta-covenant's registration builder takes its axis lists as options and the call set
 // from the dispatcher at judge time. An empty axis list must never degrade into universal
 // uphold, at either enforce level.
-import type { RunCovenantSpec } from '../src/index.ts';
-import {
-  runCovenant,
-  selfModRegistration,
-  shellModRegistration,
-  transcriptModRegistration,
-} from '../src/index.ts';
+import type { RunCovenantSpec } from '../src/run-covenant.ts';
+import { runCovenant } from '../src/run-covenant.ts';
+import { selfModRegistration } from '../src/self-mod.ts';
+import { shellModRegistration } from '../src/shell-mod.ts';
+import { transcriptModRegistration } from '../src/transcript-mod.ts';
 import { inputWithArgs, readTelemetryLines } from './helpers.js';
 
 const PROTECTED_ENTRY = 'sub/protected';
