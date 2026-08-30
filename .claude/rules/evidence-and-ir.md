@@ -50,3 +50,13 @@ been the stale side more than once.
 
 A summed count across surfaces or entries conceals which unit was judged, and the missing unit
 invents risks that do not exist. Report per-unit, then aggregate — never the reverse.
+
+## The world axis is supplied, never read by the judge
+
+`CovenantInput.world` is the third axis beside the changes and the transcript: `files` are
+texts the composition root read for the declarations that named them, `changes` is the
+observation unit's change set when the surface dispatches narrower than it observes (the
+commit surface judges one staged change per dispatch). An absent file is an absent key —
+`null` is `FileChange.pre`'s creation marker and means something else. A root supplies what it
+read and nothing more; which text a judged change sees is the judge's rule (the change's own
+`post` wins over the disk, since the session surface judges before the edit lands).

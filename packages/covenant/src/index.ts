@@ -37,6 +37,14 @@ export { type RunCovenantSpec, runCovenant } from './run-covenant.js';
 export { type SelfModRegistrationSpec, selfModRegistration } from './self-mod.js';
 export { type ShellModRegistrationSpec, shellModRegistration } from './shell-mod.js';
 export {
+  type PlanSourcesSpec,
+  planSources,
+  type SourcePlan,
+  type SuppliedSources,
+  type SupplySourcesSpec,
+  supplySources,
+} from './supply.js';
+export {
   type TranscriptModRegistrationSpec,
   transcriptModRegistration,
 } from './transcript-mod.js';

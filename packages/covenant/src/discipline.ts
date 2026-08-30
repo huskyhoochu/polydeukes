@@ -155,19 +155,29 @@ export type SuppliedWorld = { readonly path: string; readonly world: World };
 /**
  * Turn each file change into one world, in input order.
  *
- * The four source names are fixed: `target.path`, `pre`, `post`, and the paired `state`.
- * A side the change does not carry is an ABSENT key, never a fabricated default — what a
- * missing source means is the declaration's own `supply` policy to state. `state` exists
- * only where both sides do, so a declaration comparing before with after refuses a change
- * that has no before. A path outside the root is dropped, as everywhere else in this
+ * The five source names are fixed: `target.path`, `pre`, `post`, the paired `state`, and
+ * `changes`. A side the change does not carry is an ABSENT key, never a fabricated default
+ * — what a missing source means is the declaration's own `supply` policy to state. `state`
+ * exists only where both sides do, so a declaration comparing before with after refuses a
+ * change that has no before. A path outside the root is dropped, as everywhere else in this
  * module: a declaration's scope is written repo-relative.
+ *
+ * `changes` is the observation unit's change set, the same array instance in every world so
+ * a large commit costs one list rather than one per change. It is derived from this input
+ * unless the host supplied its own — a host whose observation is wider than the changes it
+ * dispatches at once has a set no derivation here could reach.
  */
 export function worldsFromInput(input: CovenantInput, rootDir: string): SuppliedWorld[] {
-  const worlds: SuppliedWorld[] = [];
+  const scoped: { path: string; change: FileChange }[] = [];
   for (const change of allFileChanges(input)) {
     const path = relativizeForScope(change.path, rootDir);
-    if (path === null) continue;
-    const world: Record<string, unknown> = { 'target.path': path };
+    if (path !== null) scoped.push({ path, change });
+  }
+  const changes = input.world?.changes ?? scoped.map((entry) => entry.path);
+
+  const worlds: SuppliedWorld[] = [];
+  for (const { path, change } of scoped) {
+    const world: Record<string, unknown> = { 'target.path': path, changes };
     // A kind this host does not know (a stale adapter dist) yields no world at all: a key
     // holding `undefined` would satisfy the engine's presence check and skip the supply
     // policy, so the step would run over nothing and could answer pass.
@@ -846,6 +856,48 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
   };
 }
 
+/**
+ * The `sources` bindings of a declare entry, in declaration order; none is an empty list.
+ *
+ * Each path is normalized once, here, so the plan, the supplied keys, and the match against
+ * the change set all see one spelling: a `./locales/en.json` an author wrote is otherwise
+ * read under one name and looked up under another, and the change's own text never wins.
+ */
+function sourceBindings(entry: DisciplineEntry): { name: string; file: string }[] {
+  return Object.entries(entry.declare?.sources ?? {}).map(([name, source]) => ({
+    name,
+    file: posix.normalize(source.file),
+  }));
+}
+
+/**
+ * What each named source is worth on this input: the change's own `post` when the file is
+ * one this input changes, the host-supplied text otherwise, absent when neither exists.
+ *
+ * The change set wins over the supplied text because the two surfaces read the tree at
+ * different moments — a session call is judged while the disk still holds the pre-edit
+ * state — and the change carries the state the call will produce. A deletion leaves the
+ * key absent, since after it there is no file for the declaration's `supply` policy to
+ * dispose of by any other reading.
+ */
+function sourceValues(
+  bindings: readonly { name: string; file: string }[],
+  worlds: readonly SuppliedWorld[],
+  files: Record<string, string> | undefined,
+): Record<string, unknown> {
+  const values: Record<string, unknown> = {};
+  for (const { name, file } of bindings) {
+    const changed = worlds.find((supplied) => supplied.path === file);
+    if (changed !== undefined) {
+      if ('post' in changed.world) values[name] = changed.world.post;
+      continue;
+    }
+    const supplied = files?.[file];
+    if (supplied !== undefined) values[name] = supplied;
+  }
+  return values;
+}
+
 /** The first non-pass world of one input, or pass — what the body reports and the valve reads. */
 type DeclareJudgment =
   | { readonly kind: 'pass' }
@@ -889,16 +941,23 @@ function declareRegistration(
     };
   }
 
+  const bindings = sourceBindings(entry);
+
   // One derivation per input, shared by routing, the body, and the valve: the valve must
   // see the same first non-pass world the body reported — a valve that re-judged on its
   // own could open on a later break while the body had stopped at an unjudgeable world.
+  //
+  // The named sources join the world here rather than in `worldsFromInput`: what a source
+  // name means is this declaration's own binding, and the fixed world knows none of them.
   const admittedOf = new WeakMap<CovenantInput, SuppliedWorld[]>();
   const admitted = (input: CovenantInput): SuppliedWorld[] => {
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
-    const worlds = worldsFromInput(input, spec.rootDir).filter((supplied) =>
-      scopeAdmits(compiled, supplied.world),
-    );
+    const fixed = worldsFromInput(input, spec.rootDir);
+    const values = sourceValues(bindings, fixed, input.world?.files);
+    const worlds = fixed
+      .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
+      .filter((supplied) => scopeAdmits(compiled, supplied.world));
     admittedOf.set(input, worlds);
     return worlds;
   };
@@ -925,6 +984,7 @@ function declareRegistration(
   return {
     label: entry.id,
     protectedPaths: [],
+    ...(entry.declare?.sources !== undefined && { sources: bindings }),
     matches: (input) => admitted(input)[0]?.path ?? null,
     enforce: entry.enforce ?? 'advise',
     witness: (input, transcript, ctx) => {

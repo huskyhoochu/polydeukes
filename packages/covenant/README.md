@@ -63,7 +63,15 @@ telemetry.
   nothing but the `World` it is handed — no files, no process, no session — and a step name
   outside the registry is a config fault returned at compile time, never a throw.
   `worldsFromInput` is the live supply: one world per file change, under the source names
-  `target.path`, `pre`, `post`, and `state`.
+  `target.path`, `pre`, `post`, `state`, and `changes` (the observation's change set — the
+  input's own, or the host's `world.changes` when it observes more than it dispatches). A
+  declaration's `sources` bindings join each world from the change's own `post` when the input
+  changes that file, from `world.files` otherwise.
+- **Supply layer** — `planSources` folds the registrations' `sources` bindings into one
+  deduplicated path list, and `supplySources` fills it through the reader a composition root
+  injects (`read(path)` answers `undefined` for an absent file and throws for any other
+  failure). Neither opens a file: how a surface observes the tree — disk, index, or a commit —
+  belongs to the root that hands the result to `dispatchCovenants` as `world`.
 
 ## Design stance
 

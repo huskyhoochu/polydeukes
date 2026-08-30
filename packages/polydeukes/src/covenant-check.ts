@@ -11,6 +11,7 @@
  * blocked record. An empty domain is an explicit pass with no records.
  */
 
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import {
   collectRangeChanges,
@@ -30,6 +31,7 @@ import {
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
+import { readDiskSource } from './read-source.js';
 
 /**
  * Which observation of the commit surface a run judges. Only the collector differs between
@@ -192,6 +194,78 @@ function settleConfig(
   }
 }
 
+/** Run git under `repoRoot` and return its raw bytes; a non-zero exit throws. */
+function git(repoRoot: string, args: string[]): Buffer {
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: Infinity,
+  });
+}
+
+/**
+ * The space-separated fields of the listing entry FOR `path`, or `undefined` when the
+ * listing names no such entry.
+ *
+ * Both listings answer a directory with the entries under it rather than with nothing, so
+ * the entry's own path decides: `locales/nested` is not the file `locales/nested/inner.json`.
+ */
+function firstEntry(listing: Buffer, path: string): { fields: string[] } | undefined {
+  for (const record of listing.toString('utf-8').split('\0')) {
+    const [head, entryPath] = record.split('\t');
+    if (entryPath === path && head !== undefined) return { fields: head.split(' ') };
+  }
+  return undefined;
+}
+
+/** One object's text, or absence for bytes carrying a NUL — no judgeable text is no source. */
+function blobText(repoRoot: string, hash: string): string | undefined {
+  const bytes = git(repoRoot, ['cat-file', 'blob', hash]);
+  return bytes.includes(0) ? undefined : bytes.toString('utf-8');
+}
+
+/**
+ * Read one repo-relative path the way `domain` observes the tree: the index for a staged
+ * run, the working tree for a `--worktree` one, the `<to>` commit for a range.
+ *
+ * The three readings are three different texts on one path at the same instant, which is
+ * why the domain — not the disk — decides which one a declaration judges.
+ *
+ * Whether the observed tree carries the path, and as what, comes from git's machine-readable
+ * listings (`ls-files --stage`, `ls-tree`) rather than from a message; the text then comes
+ * from the object the listing named. Anything the domain holds but cannot give as a
+ * judgeable text — no entry, a directory, a submodule, a blob carrying a NUL — answers
+ * `undefined`, which the declaration's `supply` policy disposes of. Every git failure
+ * throws, so an unreadable repository fails the run closed instead of passing for a file
+ * that is not there.
+ */
+function readForDomain(
+  repoRoot: string,
+  domain: CheckDomain,
+): (path: string) => string | undefined {
+  if (domain.kind === 'worktree') return readDiskSource(repoRoot);
+
+  if (domain.kind === 'range') {
+    const { head } = domain;
+    return (path) => {
+      const entry = firstEntry(git(repoRoot, ['ls-tree', '-z', head, '--', path]), path);
+      if (entry === undefined) return undefined;
+      const [, type, hash] = entry.fields;
+      if (type !== 'blob' || hash === undefined) return undefined;
+      return blobText(repoRoot, hash);
+    };
+  }
+
+  return (path) => {
+    const entry = firstEntry(git(repoRoot, ['ls-files', '--stage', '-z', '--', path]), path);
+    if (entry === undefined) return undefined;
+    const [mode, hash] = entry.fields;
+    // `100`* is the regular-file mode family; a symlink or a gitlink is not a file's text.
+    if (mode === undefined || !mode.startsWith('100') || hash === undefined) return undefined;
+    return blobText(repoRoot, hash);
+  };
+}
+
 /**
  * Collect the changes of one domain. The three collectors return the same shape, so
  * everything downstream of this dispatch is one path.
@@ -203,6 +277,23 @@ function collectDomain(repoRoot: string, domain: CheckDomain): StagedChange[] {
     return collectRangeChanges(repoRoot, `${domain.base}${separator}${domain.head}`);
   }
   return collectStagedChanges(repoRoot);
+}
+
+/**
+ * The observation's change set: the paths of the collected changes that carry file-change
+ * evidence, in collection order.
+ *
+ * The same definition the judge derives its own set from, so both surfaces name the same
+ * changes. A deletion carries evidence and stays; a binary blob, which the collector gives
+ * a call with no evidence, produces no world of its own — listing it would hand the
+ * change-set relations a path no world can ever answer for.
+ */
+function changedPaths(changes: StagedChange[]): string[] {
+  const paths: string[] = [];
+  for (const call of covenantInputFromStagedChanges(changes).toolCalls) {
+    if (call.fileChange !== undefined) paths.push(call.fileChange.path);
+  }
+  return paths;
 }
 
 /**
@@ -245,6 +336,16 @@ async function judgeChanges(
       witness,
     });
 
+    // One plan and one supply for the run: the per-change loop shares them, so the tree is
+    // read once per named file rather than once per change. `changes` carries the whole
+    // observation because this surface dispatches one change at a time to keep telemetry at
+    // one row per file — a set no judge could derive from the input it is handed.
+    const { files } = covenant.supplySources({
+      plan: covenant.planSources({ registrations }),
+      read: readForDomain(spec.repoRoot, domain),
+    });
+    const world = { files, changes: changedPaths(changes) };
+
     for (const change of changes) {
       const input = covenantInputFromStagedChanges([change]);
       const { exitCode, results } = await covenant.dispatchCovenants({
@@ -253,6 +354,7 @@ async function judgeChanges(
         telemetryPath,
         dispatcherLabel: 'covenant-check',
         enforce,
+        world,
       });
       if (exitCode === 2) blocked = true;
       advisedCount += results.filter((result) => result.event === 'advised').length;

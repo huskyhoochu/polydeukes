@@ -35,6 +35,12 @@ export const BINARY_COMBINATOR_NAMES = ['union', 'onlyIn', 'intersect'] as const
 /** What a missing source does: refuse the declaration, or let it pass unjudged. */
 export const SUPPLY_POLICIES = ['error', 'pass'] as const;
 
+/** The kind position of a `sources` entry, closed. Each entry carries exactly one of them. */
+export const SOURCE_KINDS = ['file'] as const;
+
+/** The source names the world supplies on its own; a `sources` entry may not shadow one. */
+export const FIXED_SOURCE_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
+
 /**
  * `RelationDecl` — the relation position of one relate entry, one branch per name.
  *
@@ -85,6 +91,14 @@ export type ScopeBlock = {
 export type SupplyBlock = Record<string, 'error' | 'pass'>;
 
 /**
+ * The `sources` block — per source name, the file outside the target it stands for.
+ *
+ * The path is repo-relative and the supply layer joins it onto the root, which is why an
+ * absolute path and a `..` segment are refused here rather than at read time.
+ */
+export type SourcesBlock = Record<string, { file: string }>;
+
+/**
  * `RelateEntry` — one (extract name, relation) pairing with its break text.
  *
  * Exactly one of `message` and `messageBySide`; the latter only on `Equal`, the one relation
@@ -112,6 +126,7 @@ export type AlgebraDeclaration = {
   mechanism?: string;
   axis?: string;
   scope?: ScopeBlock;
+  sources?: SourcesBlock;
   supply?: SupplyBlock;
   extract: ExtractBlock;
   relate: RelateEntry[];
@@ -132,6 +147,7 @@ const DECLARATION_KEYS: ReadonlySet<string> = new Set([
   'mechanism',
   'axis',
   'scope',
+  'sources',
   'supply',
   'extract',
   'relate',
@@ -198,6 +214,53 @@ function validateScope(scope: unknown, location: string): void {
   }
   if (scope.excludeIgnoreCase !== undefined && typeof scope.excludeIgnoreCase !== 'boolean') {
     throw new ConfigValidationError(`${location} scope.excludeIgnoreCase must be a boolean`);
+  }
+}
+
+/**
+ * Validate one `sources` entry's path: a repo-relative string the supply layer can join
+ * onto the root. `..` is rejected as a whole SEGMENT, so a name that merely contains two
+ * dots (`a..b`) stays legal while `a/../b` cannot climb out of the repository.
+ */
+function validateSourceFile(file: unknown, location: string): void {
+  if (!isNonEmptyString(file)) {
+    throw new ConfigValidationError(`${location}.file must be a non-empty string`);
+  }
+  if (file.startsWith('/')) {
+    throw new ConfigValidationError(`${location}.file must be a repo-relative path, not '${file}'`);
+  }
+  if (file.split('/').includes('..')) {
+    throw new ConfigValidationError(`${location}.file carries a '..' segment: '${file}'`);
+  }
+}
+
+function validateSources(sources: unknown, location: string): void {
+  if (!isPlainObject(sources)) {
+    throw new ConfigValidationError(`${location}.sources must be an object`);
+  }
+  for (const [name, entry] of Object.entries(sources)) {
+    if (name.length === 0) {
+      throw new ConfigValidationError(`${location}.sources carries an empty source name`);
+    }
+    if ((FIXED_SOURCE_NAMES as readonly string[]).includes(name)) {
+      throw new ConfigValidationError(
+        `${location}.sources.${name} shadows the world's own source of that name — the fixed names are ${quotedList(FIXED_SOURCE_NAMES)}`,
+      );
+    }
+    const where = `${location}.sources.${name}`;
+    if (!isPlainObject(entry)) {
+      throw new ConfigValidationError(`${where} must be an object naming one kind`);
+    }
+    const kinds = Object.keys(entry).filter((key) =>
+      (SOURCE_KINDS as readonly string[]).includes(key),
+    );
+    if (kinds.length !== 1) {
+      throw new ConfigValidationError(
+        `${where} must name exactly one kind, one of ${quotedList(SOURCE_KINDS)}`,
+      );
+    }
+    rejectUnknownKeys(entry, new Set(SOURCE_KINDS), where);
+    validateSourceFile(entry.file, where);
   }
 }
 
@@ -484,6 +547,7 @@ export function validateAlgebraDeclaration(
     }
   }
   if (input.scope !== undefined) validateScope(input.scope, location);
+  if (input.sources !== undefined) validateSources(input.sources, location);
   if (input.supply !== undefined) validateSupply(input.supply, location);
 
   if (input.extract === undefined) {

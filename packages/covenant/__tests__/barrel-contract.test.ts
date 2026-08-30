@@ -75,6 +75,12 @@ const KEPT_EXPORTS: readonly string[] = [
   'compileDisciplineRegistrations',
   'CompileDisciplinesSpec',
   'dispatchCovenants',
+  'planSources',
+  'PlanSourcesSpec',
+  'SourcePlan',
+  'supplySources',
+  'SupplySourcesSpec',
+  'SuppliedSources',
   // README-named symbols
   'runCovenant',
   'RunCovenantSpec',

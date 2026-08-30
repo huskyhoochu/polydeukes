@@ -54,6 +54,7 @@ import {
 } from '@polydeukes/covenant';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
+import { readDiskSource } from './read-source.js';
 
 /** `runClaudeCodeHook` input — the `CovenantCheckSpec` shape, session side. */
 export type ClaudeCodeHookSpec = {
@@ -378,6 +379,16 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
       witness,
     });
 
+    // The world axis, read from disk under the repository root. The disk is the pre-edit
+    // state on this surface; the rule that the judged change's own `post` overrides it
+    // belongs to the judge, so the root supplies what it read and nothing more. No
+    // `changes` list either — one PreToolUse call is the whole observation, and the judge
+    // derives that set from the input.
+    const { files } = covenant.supplySources({
+      plan: covenant.planSources({ registrations }),
+      read: readDiskSource(spec.repoRoot),
+    });
+
     return await runAdapterPath({
       rawPayload,
       telemetryPath: logPath,
@@ -387,6 +398,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
           registrations,
           telemetryPath: logPath,
           transcript,
+          world: { files },
         }),
     });
   } catch (error) {

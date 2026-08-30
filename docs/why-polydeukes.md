@@ -506,6 +506,11 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      level) or pass unjudged. The earlier spike substituted an empty ledger for a missing
      disk and its verdicts blurred; here the author states it. Publish with the first live
      declaration's rows in the v0.6.0 gate post.
+     Parked candidate (ALGEBRA-03a, 2026-08-30): the judge never builds its own world. What a
+     judgment sees is planned from the declarations, supplied by the surface through one
+     injected reader, and handed over as an argument — the kernel opens no file. Two surfaces
+     then agree by construction rather than by test, and a third surface costs a reader, not a
+     judge. Publish with the first content-parity declaration's rows.
 
      Parked candidate (ALGEBRA-02d, 2026-08-29): a line no valid input can reach still has
      an answer, and the answer is "cannot judge", never "upheld". The judge's closed list of

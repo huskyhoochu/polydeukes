@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
@@ -178,4 +187,79 @@ export function createCheckRepo(
     writeConfig,
     cleanup: () => rmSync(repoRoot, { recursive: true, force: true }),
   };
+}
+
+/** One call the recording dist observed — the plan's registrations, or one dispatch's world. */
+export type RecordedCall =
+  | { kind: 'plan'; labels: string[] }
+  | {
+      kind: 'dispatch';
+      hasWorld: boolean;
+      world?: { keys: string[]; files?: Record<string, string>; changes?: string[] };
+    };
+
+/**
+ * A covenant dist rooted at `dir` that re-exports the real build and replaces the three
+ * members the world axis touches: `planSources` answers `plannedFiles` whatever it is
+ * given (and records the registration labels it was given), `supplySources` folds the
+ * injected `read` over that plan, and `dispatchCovenants` records the `world` field of
+ * every spec before delegating to the real dispatcher.
+ *
+ * The plan is baked in rather than derived from the registrations on purpose: what this
+ * dist lets a suite observe is the ROOT's wiring — which `read` it built for its domain
+ * and what it handed each dispatch — not the covenant package's own derivation, which the
+ * covenant suite pins. `dir` must sit OUTSIDE any repository the run observes: a worktree
+ * domain collects untracked files, and the recording log is one.
+ */
+export function recordingDist(
+  dir: string,
+  plannedFiles: readonly string[],
+): { distDir: string; calls: () => RecordedCall[] } {
+  const distDir = join(dir, 'covenant-dist-recording');
+  const recordPath = join(dir, 'calls.jsonl');
+  mkdirSync(distDir, { recursive: true });
+  const realBarrel = JSON.stringify(join(REAL_COVENANT_DIST, 'index.js'));
+  writeFileSync(
+    join(distDir, 'index.js'),
+    [
+      "import { appendFileSync } from 'node:fs';",
+      `import { dispatchCovenants as realDispatch } from ${realBarrel};`,
+      `export * from ${realBarrel};`,
+      `const RECORD = ${JSON.stringify(recordPath)};`,
+      `const PLANNED = ${JSON.stringify(plannedFiles)};`,
+      "const record = (call) => appendFileSync(RECORD, JSON.stringify(call) + '\\n');",
+      'export function planSources(spec) {',
+      "  record({ kind: 'plan', labels: spec.registrations.map((r) => r.label) });",
+      '  return { files: PLANNED };',
+      '}',
+      'export function supplySources(spec) {',
+      '  const files = {};',
+      '  for (const path of spec.plan.files) {',
+      '    const text = spec.read(path);',
+      '    if (text !== undefined) files[path] = text;',
+      '  }',
+      '  return { files };',
+      '}',
+      'export function dispatchCovenants(spec) {',
+      '  record({',
+      "    kind: 'dispatch',",
+      '    hasWorld: spec.world !== undefined,',
+      '    world:',
+      '      spec.world === undefined',
+      '        ? undefined',
+      '        : { keys: Object.keys(spec.world), files: spec.world.files, changes: spec.world.changes },',
+      '  });',
+      '  return realDispatch(spec);',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  const calls = (): RecordedCall[] => {
+    if (!existsSync(recordPath)) return [];
+    return readFileSync(recordPath, 'utf-8')
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line) as RecordedCall);
+  };
+  return { distDir, calls };
 }

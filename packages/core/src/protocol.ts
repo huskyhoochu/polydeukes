@@ -35,6 +35,13 @@ export type CovenantInput = {
   toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
+  /**
+   * The world axis: files a supply layer read for the judgment (key = repo-relative path,
+   * an absent key = an absent file, never `null` — that is `FileChange.pre`'s creation
+   * marker), and the observation unit's change set when the host sees wider than the
+   * changes this input carries.
+   */
+  world?: { files?: Record<string, string>; changes?: string[] };
 };
 
 /**
@@ -59,12 +66,37 @@ export type DispatchOutcome = {
 };
 
 /**
+ * Whether a value is the world axis: a plain object carrying nothing but a `files` record
+ * of strings and a `changes` list of strings.
+ *
+ * Closed at two fields, and both shape-checked: a supplier writing under a misspelt key
+ * supplies nothing while looking like a supply, and a `null` under a path would pass the
+ * engine's key-presence test as a supplied file whose text is missing.
+ */
+function isWorld(value: unknown): boolean {
+  if (!isPlainObject(value)) return false;
+  for (const key of Object.keys(value)) {
+    if (key !== 'files' && key !== 'changes') return false;
+  }
+  const { files, changes } = value;
+  if (files !== undefined) {
+    if (!isPlainObject(files)) return false;
+    if (!Object.values(files).every((text) => typeof text === 'string')) return false;
+  }
+  if (changes !== undefined) {
+    if (!Array.isArray(changes)) return false;
+    if (!changes.every((path) => typeof path === 'string')) return false;
+  }
+  return true;
+}
+
+/**
  * Deserialize stdin-JSON into a {@link CovenantInput} (the protocol's reverse direction).
  *
  * fail-closed: this never throws. Any failure — unparseable JSON, an empty
- * payload, a parsed value that is not an object, or a missing required collection —
- * resolves to a blocking `{ ok: false, exitCode: 2 }`. "Cannot judge" means block,
- * so an unjudgeable input can never be mistaken for a valid one.
+ * payload, a parsed value that is not an object, a missing required collection, or a
+ * malformed world axis — resolves to a blocking `{ ok: false, exitCode: 2 }`. "Cannot
+ * judge" means block, so an unjudgeable input can never be mistaken for a valid one.
  */
 export function parseInput(
   stdinJson: string,
@@ -86,6 +118,10 @@ export function parseInput(
     !Array.isArray(candidate.subagentSpawns) ||
     !Array.isArray(candidate.userMessages)
   ) {
+    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+  }
+
+  if (candidate.world !== undefined && !isWorld(candidate.world)) {
     return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
   }
 

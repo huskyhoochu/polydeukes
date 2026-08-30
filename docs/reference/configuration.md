@@ -337,7 +337,7 @@ discipline exists to induce.
 
 **`declare` — declaration family.** One judgment written as data, in the algebra grammar
 the core publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The
-block carries the declaration's `scope`, `supply`, `extract`, `relate`, and optional
+block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate`, and optional
 `witness`; the entry's `id` is the declaration's name, so the block never carries a
 `discipline` key, and `in`/`except`/`when` are refused — the `scope` block is the scope.
 
@@ -358,10 +358,18 @@ block carries the declaration's `scope`, `supply`, `extract`, `relate`, and opti
 
 This repository's live config carries the same declaration as `sqlite-only-under-knowledge`.
 
-Each file change is judged as one **world** with four source names: `target.path` (the
+Each file change is judged as one **world** with five source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
-a creation has no `pre`, a deletion no `post`), and `state` (`{ pre, post }`, present only
-on a modification). A source the change does not carry is absent, and the declaration's
+a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
+on a modification), and `changes` (every path the observation changes — the one call on the
+session surface, the whole staged set on the commit surface). A declaration that needs a
+file outside the target names it in a `sources` block, `sources: { en: { file:
+'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
+repo-relative (no leading `/`, no `..` segment) and the name may not be one of the five. The
+surface reads the file the way it observes the tree — the disk in a session, the index for a
+staged commit, the `<to>` commit for a range — except that a named file the change itself
+touches is read from the change's `post`, so both surfaces judge the same text. A source the
+change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
 recorded `blocked` at either enforce level — and `pass` leaves it unjudged. A declaration
 comparing before with after therefore needs `supply: { state: pass }` to let a file

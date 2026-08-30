@@ -25,6 +25,8 @@ export type CovenantModule = Pick<
   | 'selfModRegistration'
   | 'shellModRegistration'
   | 'transcriptModRegistration'
+  | 'planSources'
+  | 'supplySources'
 >;
 
 /** Where real Node resolution puts the covenant package's built barrel. */

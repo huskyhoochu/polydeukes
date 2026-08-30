@@ -19,6 +19,8 @@ const COVENANT_MEMBERS = [
   'selfModRegistration',
   'shellModRegistration',
   'transcriptModRegistration',
+  'planSources',
+  'supplySources',
 ] as const;
 
 /** Every file that receives the loaded module and calls members on it. */
@@ -48,5 +50,22 @@ describe('the consumers against the member list', () => {
       }
     }
     expect([...accessed].sort()).toEqual([...COVENANT_MEMBERS].sort());
+  });
+});
+
+describe('the composition roots against the supply verbs', () => {
+  // Each root must plan and supply for ITSELF — the two surfaces read the tree differently
+  // (index, disk, or a commit), so a shared helper in one root would hand the other the wrong `read`. A root
+  // that never calls one of the verbs dispatches without a world, and every declaration
+  // naming a source refuses under `supply: error`.
+  it('BOTH composition roots call planSources and supplySources', () => {
+    for (const file of CONSUMER_FILES) {
+      const src = stripComments(readFileSync(join(srcDir, file), 'utf-8'));
+      const accessed = new Set([...src.matchAll(/\bcovenant\.([A-Za-z_]\w*)/g)].map((m) => m[1]));
+      expect(
+        [...accessed].filter((m) => m === 'planSources' || m === 'supplySources').sort(),
+        file,
+      ).toEqual(['planSources', 'supplySources']);
+    }
   });
 });

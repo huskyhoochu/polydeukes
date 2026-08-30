@@ -52,11 +52,15 @@ import { type JudgeOutcome, runCovenant } from './run-covenant.js';
  * `enforce` is the AUTHOR's level for this one registration, distinct from the observer's
  * dispatch-wide level; absence means the registration inherits whatever the dispatch
  * carries.
+ *
+ * `sources` are the files outside the target this registration's declaration names — the
+ * supply layer's only input. A family that names no file carries no key.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
   enforce?: EnforceLevel;
+  sources?: readonly { name: string; file: string }[];
   witness?: (
     input: CovenantInput,
     transcript: CanonicalTranscript,
@@ -179,6 +183,10 @@ export function matchRegistrations(
  * (run-all, no short-circuit); the verdict is `2` if any body blocks, else `0`. No matches
  * passes vacuously with zero judgments and zero telemetry.
  *
+ * World: `spec.world` is the supply layer's result, attached to the parsed input before
+ * routing so the body, the routing predicate, and the valve all judge one world. A world
+ * the payload itself carries stands only when the spec names none.
+ *
  * Witness: the dispatcher only BINDS the witness's arguments — the parsed input, the
  * injected `spec.transcript` (`noopTranscript` when omitted), and a `{ label, subject }`
  * context naming the registration and its matched path — and hands the thunk to
@@ -205,6 +213,7 @@ export async function dispatchCovenants(spec: {
   dispatcherLabel?: string;
   transcript?: CanonicalTranscript;
   enforce?: EnforceLevel;
+  world?: CovenantInput['world'];
 }): Promise<DispatchOutcome> {
   const blockedByDispatcher = (): DispatchOutcome => {
     appendRecordFailOpen(spec.telemetryPath, {
@@ -220,9 +229,16 @@ export async function dispatchCovenants(spec: {
     return blockedByDispatcher();
   }
 
+  // The world the supply layer built, spliced onto the parsed input here so a composition
+  // root never reopens the payload string its adapter path produced. Without one the key
+  // stays absent rather than holding `undefined`: the judge derives the change set from
+  // the field's absence, and an empty object would read as "supplied nothing".
+  const input: CovenantInput =
+    spec.world === undefined ? parsed.value : { ...parsed.value, world: spec.world };
+
   let matches: ReturnType<typeof matchRegistrations>;
   try {
-    matches = matchRegistrations(parsed.value, spec.registrations);
+    matches = matchRegistrations(input, spec.registrations);
   } catch {
     // Structurally unjudgeable input (parseInput validates the collection shapes, not the
     // element ones) — fail-closed, same as an unparseable payload.
@@ -282,7 +298,7 @@ export async function dispatchCovenants(spec: {
     // compiled registration set serves every payload.
     const body = registration.body;
     const { exitCode, event } = await runCovenant({
-      body: () => body(parsed.value),
+      body: () => body(input),
       label: registration.label,
       subject: mentionedPath,
       telemetryPath: spec.telemetryPath,
@@ -290,7 +306,7 @@ export async function dispatchCovenants(spec: {
       ...(witness !== undefined
         ? {
             witness: () =>
-              witness(parsed.value, transcript, {
+              witness(input, transcript, {
                 label: registration.label,
                 subject: mentionedPath,
               }),

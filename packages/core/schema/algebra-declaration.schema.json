@@ -20,6 +20,9 @@
     "scope": {
       "$ref": "#/$defs/scope"
     },
+    "sources": {
+      "$ref": "#/$defs/sources"
+    },
     "supply": {
       "$ref": "#/$defs/supply"
     },
@@ -73,6 +76,29 @@
         },
         "excludeIgnoreCase": {
           "type": "boolean"
+        }
+      }
+    },
+    "sources": {
+      "description": "Files outside the target, each under the name a declaration reads it by. The kind position is closed to 'file'; the path is repo-relative, so a leading '/' and a '..' segment are refused.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "not": {
+          "enum": ["target.path", "pre", "post", "state", "changes"]
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"
+          }
         }
       }
     },

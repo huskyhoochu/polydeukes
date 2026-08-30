@@ -318,7 +318,7 @@ disciplines:
 
 **`declare`는 선언 계열입니다.** 판정 하나를 데이터로 적습니다. 코어가
 `algebra-declaration.schema.json`으로 공개하는 대수 문법 `judge = relate ∘ extract`입니다.
-블록은 선언의 `scope` · `supply` · `extract` · `relate`와 선택인 `witness`를 지니고, 항목의
+블록은 선언의 `scope` · `sources` · `supply` · `extract` · `relate`와 선택인 `witness`를 지니고, 항목의
 `id`가 선언의 이름이므로 블록은 `discipline` 키를 갖지 않습니다. `in` · `except` · `when`은
 거부됩니다. `scope` 블록이 곧 범위입니다.
 
@@ -339,9 +339,15 @@ disciplines:
 
 이 저장소의 라이브 설정은 같은 선언을 `sqlite-only-under-knowledge`로 싣습니다.
 
-파일 변경 하나가 **세계(world)** 하나로 판정되며 소스 이름은 넷입니다. `target.path`(저장소
+파일 변경 하나가 **세계(world)** 하나로 판정되며 소스 이름은 다섯입니다. `target.path`(저장소
 상대 경로), `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가
-없습니다), `state`(`{ pre, post }`, 수정에만 있습니다). 변경이 지니지 않은 소스는 없는
+없습니다), `state`(`{ pre, post }`, 수정에만 있습니다), `changes`(이 관측이 바꾸는 경로 전부.
+세션 표면에서는 호출 하나, 커밋 표면에서는 staged 집합 전체). 대상 밖 파일이 필요한 선언은
+`sources` 블록에 이름을 붙이고(`sources: { en: { file: 'locales/en.json' } }`) `{ op:
+'source', of: 'en' }`로 읽습니다. 경로는 저장소 상대(선두 `/` 없음, `..` 세그먼트 없음)이고
+이름은 다섯 고정 이름과 겹칠 수 없습니다. 파일은 표면이 트리를 관측하는 방식대로
+읽습니다 — 세션은 디스크, staged 커밋은 index, range는 `<to>` 커밋. 단 변경 자신이 만지는
+파일은 변경의 `post`에서 읽으므로 두 표면이 같은 본문을 판정합니다. 변경이 지니지 않은 소스는 없는
 것이고, 그것이 무슨 뜻인지는 선언의 `supply` 블록이 적습니다. `error`(기본값)는 호출을 판정
 불가로 만들어 강제 수준과 무관하게 `blocked`로 기록하고, `pass`는 판정하지 않고 지나가게
 합니다. 그래서 전후를 비교하는 선언이 파일 생성을 지나가게 하려면 `supply: { state: pass }`가

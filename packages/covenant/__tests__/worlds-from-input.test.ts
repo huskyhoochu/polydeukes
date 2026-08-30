@@ -1,10 +1,10 @@
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
 // `worldsFromInput` turns each FileChange into one World, in `allFileChanges` order, keyed
-// by the four fixed source names: `target.path` (repo-relative), `pre`, `post`, and `state`
-// (`{ pre, post }`, modify only). A side the change does not carry is an ABSENT key — the
-// host never invents a default; what an absent source does is the declaration's `supply`
-// policy.
+// by the fixed source names: `target.path` (repo-relative), `pre`, `post`, `state`
+// (`{ pre, post }`, modify only), and `changes` (the observation unit's change set, on
+// every world). A side the change does not carry is an ABSENT key — the host never invents
+// a default; what an absent source does is the declaration's `supply` policy.
 import { worldsFromInput } from '../src/discipline.ts';
 
 const ROOT = '/repo';
@@ -34,8 +34,12 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
 
     expect(worlds).toHaveLength(1);
     expect(worlds[0]?.path).toBe('lib/new.db');
-    expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual(['post', PATH_SOURCE]);
-    expect(worlds[0]?.world).toEqual({ [PATH_SOURCE]: 'lib/new.db', post: 'body' });
+    expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual(['changes', 'post', PATH_SOURCE]);
+    expect(worlds[0]?.world).toEqual({
+      [PATH_SOURCE]: 'lib/new.db',
+      post: 'body',
+      changes: ['lib/new.db'],
+    });
   });
 
   it('a modify carries target.path, pre, post, and state = { pre, post }', () => {
@@ -47,6 +51,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
     );
 
     expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual([
+      'changes',
       'post',
       'pre',
       'state',
@@ -57,6 +62,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
       pre: 'before',
       post: 'after',
       state: { pre: 'before', post: 'after' },
+      changes: ['lib/a.db'],
     });
   });
 
@@ -68,8 +74,12 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
       ROOT,
     );
 
-    expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual(['pre', PATH_SOURCE]);
-    expect(worlds[0]?.world).toEqual({ [PATH_SOURCE]: 'lib/old.db', pre: 'gone' });
+    expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual(['changes', 'pre', PATH_SOURCE]);
+    expect(worlds[0]?.world).toEqual({
+      [PATH_SOURCE]: 'lib/old.db',
+      pre: 'gone',
+      changes: ['lib/old.db'],
+    });
   });
 
   it('a delete without a baseline carries target.path alone', () => {
@@ -80,8 +90,8 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
       ROOT,
     );
 
-    expect(Object.keys(worlds[0]?.world ?? {})).toEqual([PATH_SOURCE]);
-    expect(worlds[0]?.world).toEqual({ [PATH_SOURCE]: 'lib/blob.db' });
+    expect(Object.keys(worlds[0]?.world ?? {})).toEqual([PATH_SOURCE, 'changes']);
+    expect(worlds[0]?.world).toEqual({ [PATH_SOURCE]: 'lib/blob.db', changes: ['lib/blob.db'] });
   });
 });
 
