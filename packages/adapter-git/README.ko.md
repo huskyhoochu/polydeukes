@@ -20,6 +20,11 @@
   소유 이름(`staged-write`/`staged-delete`)의 도구 호출이 하나씩 실리고, 각 호출은 자기 판별 유니온(discriminated union)
   증거(`fileChange`, `create`/`modify`/`delete`)를 싣습니다. 삭제도 1급 증거이며, HEAD blob이 바이너리일 때만 선택 `pre` 기준선이
   빠집니다. 커밋 표면에는 세션이 없으니 세션 컬렉션 두 개는 정직하게 빈 배열이고, 키를 날조하지 않습니다.
+- **관측 소스 리더.** `observationSourceReader({ repoRoot, observation })`는 커밋 표면의 이름 붙은 파일 소스 공급
+  본체입니다. 저장소 상대 경로 하나를 `Observation`이 트리를 보는 방식대로 답하는 `SourceReader`입니다 — `staged`는
+  인덱스, `worktree`는 디스크, `range`는 head 커밋. 존재와 종류는 git의 기계 출력 목록에서 오고, 일반 파일 모드만 파일의
+  텍스트입니다. 심볼릭 링크의 blob은 링크 대상 문자열이고 gitlink는 커밋을 이름 부르므로 둘 다 부재로 답합니다. 부재는
+  `undefined`이고 선언의 `supply` 정책이 처분하며, git 실패는 전부 던져서 fail-closed입니다.
 - **어댑터 자신의 어휘.** `resolveGitAdapterSettings(namespace)`가 이 어댑터의 설정 네임스페이스(`adapters.git`)를 검증합니다.
   `enforce: block | advise`는 커밋 표면의 시행 수위이고, `protectedPaths`는 커밋 표면의 가산 관측 범위입니다. 공통 목록 위에 커밋 시점에만
   더해 판정하는 항목들이고, 세션 표면은 읽지 않습니다(수위가 관측자의 것이듯 범위도 그렇습니다). 코어는 컨테이너 구조(어댑터당 설정 객체 하나)만 검증하고 내용은 원형 그대로

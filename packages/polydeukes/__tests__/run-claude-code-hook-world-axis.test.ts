@@ -143,7 +143,7 @@ describe('session hook — the world is read from disk under repoRoot', () => {
     const worlds = dispatchedWorlds();
     expect(worlds).toHaveLength(1);
     expect(worlds[0]?.changes).toBeUndefined();
-    expect(worlds[0]?.keys).toEqual(['files']);
+    expect(worlds[0]?.keys).toEqual(['files', 'channels']);
   });
 });
 

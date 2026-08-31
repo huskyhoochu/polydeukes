@@ -368,8 +368,12 @@ file outside the target names it in a `sources` block, `sources: { en: { file:
 repo-relative (no leading `/`, no `..` segment) and the name may not be one of the five. The
 surface reads the file the way it observes the tree — the disk in a session, the index for a
 staged commit, the `<to>` commit for a range — except that a named file the change itself
-touches is read from the change's `post`, so both surfaces judge the same text. A source the
-change does not carry is absent, and the declaration's
+touches is read from the change's `post`, so both surfaces judge the same text. A second
+kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record channel
+instead of a path — the subagent records the host keeps beside the transcript, supplied as
+one JSON array; where the channel lives is the surface's fact, so the value is the marker
+`true`, and on the commit surface (which has no session) the channel is always absent. A
+source the change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
 recorded `blocked` at either enforce level — and `pass` leaves it unjudged. A declaration
 comparing before with after therefore needs `supply: { state: pass }` to let a file

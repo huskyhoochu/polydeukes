@@ -26,6 +26,13 @@ of virtual applies — and the core consumed both without a single changed line.
   `create`/`modify`/`delete` — deletion is first-class, its optional `pre` baseline dropping only
   for a binary HEAD blob), and honestly empty session collections — the commit surface has no
   session, and keys are never fabricated.
+- **Observation source reader** — `observationSourceReader({ repoRoot, observation })` is the
+  commit surface's supply body for named file sources: a `SourceReader` that answers one
+  repo-relative path the way the `Observation` sees the tree — the index for `staged`, the disk
+  for `worktree`, the head commit for a `range`. Existence and kind come from git's
+  machine-readable listings, and only a regular-file mode is a file's text: a symlink's blob is
+  the link target and a gitlink names a commit, so both answer absence. Absence is `undefined`
+  for the declaration's `supply` policy to dispose of; every git failure throws, fail-closed.
 - **The adapter's own vocabulary** — `resolveGitAdapterSettings(namespace)` validates this adapter's
   config namespace (`adapters.git`): `enforce: block | advise`, the commit surface's enforcement
   level, and `protectedPaths`, the commit surface's additive protection scope — entries judged at

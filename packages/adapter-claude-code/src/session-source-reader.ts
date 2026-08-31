@@ -1,12 +1,17 @@
 /**
- * The disk reading both composition roots supply a named source from.
+ * The session surface's supply body for named file sources — the working tree as this
+ * surface observes it.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { SourceReader } from '@polydeukes/core';
+
+/** {@link sessionSourceReader} input — the repository the paths are relative to. */
+export type SessionSourceReaderSpec = { repoRoot: string };
 
 /**
- * A `read` over the working tree under `root`: repo-relative path in, the file's text or
+ * A reader over the working tree under `repoRoot`: repo-relative path in, the file's text or
  * absence out.
  *
  * Absence covers every shape the disk can hold under a planned path that is not a readable
@@ -15,11 +20,11 @@ import { join } from 'node:path';
  * string. Everything else throws, so a permission refusal fails the run closed rather than
  * passing for a file that is not there.
  */
-export function readDiskSource(root: string): (path: string) => string | undefined {
+export function sessionSourceReader(spec: SessionSourceReaderSpec): SourceReader {
   return (path) => {
     let bytes: Buffer;
     try {
-      bytes = readFileSync(join(root, path));
+      bytes = readFileSync(join(spec.repoRoot, path));
     } catch (error) {
       const { code } = error as NodeJS.ErrnoException;
       if (code === 'ENOENT' || code === 'EISDIR' || code === 'ENOTDIR') return undefined;

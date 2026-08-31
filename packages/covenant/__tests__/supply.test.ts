@@ -60,7 +60,7 @@ describe('planSources — the path list the registrations name', () => {
       ],
     });
 
-    expect(plan).toEqual({ files: [KO.file, EN.file, GLOSSARY.file] });
+    expect(plan).toEqual({ files: [KO.file, EN.file, GLOSSARY.file], channels: [] });
   });
 
   it('keeps the first occurrence of a path named twice, not the last', () => {
@@ -80,7 +80,7 @@ describe('planSources — the path list the registrations name', () => {
       registrations: [plainReg('no-secrets'), declareReg('scoped-only', [])],
     });
 
-    expect(plan).toEqual({ files: [] });
+    expect(plan).toEqual({ files: [], channels: [] });
   });
 });
 
@@ -90,10 +90,13 @@ describe('supplySources — read once per planned path, keep what came back', ()
     // sorted order breaks the plan-order invariant witnesses are built on.
     const { read, asked } = tableRead({ [KO.file]: '{"a":1}', [EN.file]: '{"a":2}' });
 
-    const supplied = supplySources({ plan: { files: [KO.file, EN.file] }, read });
+    const supplied = supplySources({ plan: { files: [KO.file, EN.file], channels: [] }, read });
 
     expect(asked).toEqual([KO.file, EN.file]);
-    expect(supplied).toEqual({ files: { [KO.file]: '{"a":1}', [EN.file]: '{"a":2}' } });
+    expect(supplied).toEqual({
+      files: { [KO.file]: '{"a":1}', [EN.file]: '{"a":2}' },
+      channels: {},
+    });
     expect(Object.keys(supplied.files)).toEqual([KO.file, EN.file]);
   });
 
@@ -103,7 +106,7 @@ describe('supplySources — read once per planned path, keep what came back', ()
     // fires. That is the fail-open the `null` prohibition in the IR exists to prevent.
     const { read } = tableRead({ [KO.file]: '{}', [EN.file]: undefined });
 
-    const supplied = supplySources({ plan: { files: [KO.file, EN.file] }, read });
+    const supplied = supplySources({ plan: { files: [KO.file, EN.file], channels: [] }, read });
 
     expect(Object.keys(supplied.files)).toEqual([KO.file]);
     expect(EN.file in supplied.files).toBe(false);
@@ -114,7 +117,7 @@ describe('supplySources — read once per planned path, keep what came back', ()
     // refuses a declaration that should have judged an empty key set.
     const { read } = tableRead({ [EN.file]: '' });
 
-    const supplied = supplySources({ plan: { files: [EN.file] }, read });
+    const supplied = supplySources({ plan: { files: [EN.file], channels: [] }, read });
 
     expect(supplied.files).toEqual({ [EN.file]: '' });
   });
@@ -127,7 +130,7 @@ describe('supplySources — read once per planned path, keep what came back', ()
       throw new Error('EACCES: permission denied');
     };
 
-    expect(() => supplySources({ plan: { files: [EN.file] }, read })).toThrow(
+    expect(() => supplySources({ plan: { files: [EN.file], channels: [] }, read })).toThrow(
       'EACCES: permission denied',
     );
   });
@@ -136,10 +139,10 @@ describe('supplySources — read once per planned path, keep what came back', ()
     // A loop written over `plan.files[0]` or an off-by-one would read `undefined` as a path.
     const { read, asked } = tableRead({});
 
-    const supplied = supplySources({ plan: { files: [] }, read });
+    const supplied = supplySources({ plan: { files: [], channels: [] }, read });
 
     expect(asked).toEqual([]);
-    expect(supplied).toEqual({ files: {} });
+    expect(supplied).toEqual({ files: {}, channels: {} });
   });
 });
 

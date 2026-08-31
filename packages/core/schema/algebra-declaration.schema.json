@@ -80,7 +80,7 @@
       }
     },
     "sources": {
-      "description": "Files outside the target, each under the name a declaration reads it by. The kind position is closed to 'file'; the path is repo-relative, so a leading '/' and a '..' segment are refused.",
+      "description": "What each name outside the target stands for, under the name a declaration reads it by. The kind position is closed to 'file' and 'sidecar', exactly one per entry: a file path is repo-relative, so a leading '/' and a '..' segment are refused, and a sidecar channel's value is the marker true because its location is the host's fact.",
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -91,15 +91,28 @@
       },
       "additionalProperties": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["file"],
-        "properties": {
-          "file": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "required": ["file"],
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "required": ["sidecar"],
+            "properties": {
+              "sidecar": {
+                "const": true
+              }
+            }
           }
-        }
+        ]
       }
     },
     "supply": {

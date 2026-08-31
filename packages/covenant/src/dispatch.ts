@@ -53,14 +53,15 @@ import { type JudgeOutcome, runCovenant } from './run-covenant.js';
  * dispatch-wide level; absence means the registration inherits whatever the dispatch
  * carries.
  *
- * `sources` are the files outside the target this registration's declaration names — the
- * supply layer's only input. A family that names no file carries no key.
+ * `sources` are what outside the target this registration's declaration names, each element
+ * carrying its own kind — a repo-relative file, or a channel the surface supplies. They are
+ * the supply layer's only input; a family that names nothing carries no key.
  */
 export type CovenantRegistration = {
   label: string;
   protectedPaths: string[];
   enforce?: EnforceLevel;
-  sources?: readonly { name: string; file: string }[];
+  sources?: readonly ({ name: string; file: string } | { name: string; sidecar: true })[];
   witness?: (
     input: CovenantInput,
     transcript: CanonicalTranscript,

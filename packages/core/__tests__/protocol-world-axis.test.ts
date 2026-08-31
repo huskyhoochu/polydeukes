@@ -25,13 +25,14 @@ const worldInput: CovenantInput = {
 };
 
 describe('CovenantInput.world — type locks', () => {
-  it('is exactly the two-field world axis, both fields optional, and itself optional', () => {
+  it('is exactly the three-field world axis, every field optional, and itself optional', () => {
     // An exact lock: catches `files` widened to admit `null` values (the creation-marker
     // collision the header names), `changes` typed as anything but an ordered string list, and
-    // either field or the axis itself made required — which would break every embedder
+    // any field or the axis itself made required — which would break every embedder
     // that builds an input without a supply layer.
     expectTypeOf<CovenantInput['world']>().toEqualTypeOf<
-      { files?: Record<string, string>; changes?: string[] } | undefined
+      | { files?: Record<string, string>; changes?: string[]; channels?: { sidecar?: string } }
+      | undefined
     >();
   });
 });

@@ -59,6 +59,12 @@ const KEPT_EXPORTS: readonly string[] = [
   'DispatchAdapterView',
   'transcriptFromJsonlFile',
   'transcriptPathFromPayload',
+  // this surface's supply bodies — the readers the session root injects into the supply
+  // layer — each with the spec type its signature names
+  'sessionSourceReader',
+  'SessionSourceReaderSpec',
+  'sessionChannelReader',
+  'SessionChannelReaderSpec',
   // spec ingredients the composition root and the init generators both read
   'COMMAND_ARGS',
   'MUTATING_TOOLS',

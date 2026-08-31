@@ -31,6 +31,14 @@ the core, which is how the core's agent-neutrality stays a testable claim rather
   evidence. A read failure answers `undefined` rather than an empty transcript — an empty session
   has said nothing yet and is judged, an unreadable one is no evidence channel at all and is
   skipped. Either way the valve turns off, never open.
+- **Session supply readers** — `sessionSourceReader({ repoRoot })` is this surface's file
+  reader (a `SourceReader` over the working tree: absence — no entry, a directory, NUL bytes —
+  answers `undefined`, a permission refusal throws), and `sessionChannelReader({ transcriptPath })`
+  is its spawn-sidecar channel: the subagent records this host keeps at
+  `<dir>/<sessionId>/subagents/agent-*.meta.json` beside the transcript, answered as one JSON
+  array in filename order. `'[]'` is a channel that observed no spawn; `undefined` is no
+  channel at all — two different facts, and the declaration's `supply` policy disposes only of
+  the second.
 - **Precedent evidence evaluator** — `evaluatePrecedent` is this adapter's own evidence vocabulary
   for the context-family discipline, the same namespace stance as `resolveGitAdapterSettings` in the
   git adapter. It judges `subagent` (exact spawn-kind equality — a kind is a value, not a pattern)

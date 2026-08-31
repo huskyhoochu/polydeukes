@@ -33,6 +33,8 @@ import {
   MUTATING_TOOLS,
   runAdapterPath,
   SHELL_TOOLS,
+  sessionChannelReader,
+  sessionSourceReader,
   transcriptFromJsonlFile,
   transcriptPathFromPayload,
 } from '@polydeukes/adapter-claude-code';
@@ -54,7 +56,6 @@ import {
 } from '@polydeukes/covenant';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
-import { readDiskSource } from './read-source.js';
 
 /** `runClaudeCodeHook` input — the `CovenantCheckSpec` shape, session side. */
 export type ClaudeCodeHookSpec = {
@@ -379,14 +380,15 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
       witness,
     });
 
-    // The world axis, read from disk under the repository root. The disk is the pre-edit
-    // state on this surface; the rule that the judged change's own `post` overrides it
-    // belongs to the judge, so the root supplies what it read and nothing more. No
-    // `changes` list either — one PreToolUse call is the whole observation, and the judge
-    // derives that set from the input.
-    const { files } = covenant.supplySources({
+    // The world axis: files read from disk under the repository root, channels read beside
+    // the session's transcript. The disk is the pre-edit state on this surface; the rule
+    // that the judged change's own `post` overrides it belongs to the judge, so the root
+    // supplies what it read and nothing more. No `changes` list either — one PreToolUse call
+    // is the whole observation, and the judge derives that set from the input.
+    const { files, channels } = covenant.supplySources({
       plan: covenant.planSources({ registrations }),
-      read: readDiskSource(spec.repoRoot),
+      read: sessionSourceReader({ repoRoot: spec.repoRoot }),
+      readChannel: sessionChannelReader({ transcriptPath }),
     });
 
     return await runAdapterPath({
@@ -398,7 +400,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
           registrations,
           telemetryPath: logPath,
           transcript,
-          world: { files },
+          world: { files, channels },
         }),
     });
   } catch (error) {

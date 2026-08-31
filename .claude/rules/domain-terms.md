@@ -83,7 +83,9 @@ module; a name outside a closed list is rejected by validation, never coerced.
 - **Declaration** — one judgment written as data: `judge = relate ∘ extract`. Six blocks:
   **`scope`** (does this declaration apply — a source name plus constant regex lists),
   **`sources`** (what a name outside the fixed five stands for — `{ name: { file: '<repo-relative
-  path>' } }`, the kind position closed to `file`), **`supply`** (what a missing source does:
+  path>' } }` or `{ name: { sidecar: true } }`, the kind position closed to `file` · `sidecar`;
+  a sidecar binding names a channel the surface supplies, so its value is the marker `true`,
+  never a path), **`supply`** (what a missing source does:
   `error` refuses, `pass` leaves the call unjudged),
   **`extract`** (named pipelines producing values), **`relate`** (entries pairing an extract
   name with a relation), **`witness`** (the valve that stands *after* the verdict — its own
@@ -93,10 +95,16 @@ module; a name outside a closed list is rejected by validation, never coerced.
   come with every world (`target.path` · `pre` · `post` · `state` · `changes` — the observation
   unit's change set); a declaration's `sources` bindings add its own. The **supply layer**
   (`planSources` · `supplySources` in the covenant package) fills the IR's `world` field —
-  `files` read through the surface's injected reader, `changes` when the surface observes more
+  `files` read through the surface's injected reader, `channels` through its channel reader
+  (`sidecar` is the spawn-record list as JSON text; `'[]'` says the channel observed no spawn,
+  an absent key says there is no channel), `changes` when the surface observes more
   than it dispatches at once — and the judge merges them: a named file this input changes is
-  read from the change's `post` (absent on a deletion), any other from `world.files`. The
-  kernel opens no file; the reader is the composition root's.
+  read from the change's `post` (absent on a deletion), any other from `world.files`, a
+  channel binding from `world.channels` (a channel has no path, so the change set never
+  overlaps it). The kernel opens no file; the readers are the **supply bodies'** — each
+  adapter implements its surface's reading (`sessionSourceReader` · `sessionChannelReader`
+  on the session side, `observationSourceReader` on the commit side) and the composition
+  root only injects them.
 - **Relation** — the closed position where the last comparison happens. Seven names:
   `Empty` · `NonEmpty` · `Equal` · `Subset` · `Implies` · `Ordered` · `Unchanged`. `Empty` and
   `Subset` are the primitives; the rest expand to them (`NonEmpty ≡ ¬Empty`,

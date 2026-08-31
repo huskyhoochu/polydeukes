@@ -512,6 +512,13 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      then agree by construction rather than by test, and a third surface costs a reader, not a
      judge. Publish with the first content-parity declaration's rows.
 
+     Parked candidate (ALGEBRA-03b, 2026-08-31): evidence a session cannot see is not a
+     limitation to document — it is a channel to name. A subagent's spawns land beside the
+     transcript, not in it, and until now that was a declared limit; naming the sidecar as
+     a source kind turned the limit into a supply question, disposed of by the declaration's
+     own absence policy. The surface that lacks the channel answers absence honestly instead
+     of fabricating an empty observation. Publish when a live sidecar declaration lands.
+
      Parked candidate (ALGEBRA-02d, 2026-08-29): a line no valid input can reach still has
      an answer, and the answer is "cannot judge", never "upheld". The judge's closed list of
      predicate families is kept in step with the schema's by hand; between the schema

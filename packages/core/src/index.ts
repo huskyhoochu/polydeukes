@@ -60,6 +60,7 @@ export {
   type DispatchOutcome,
   type FileChange,
   parseInput,
+  type SourceReader,
   verdictToExitCode,
 } from './protocol.js';
 export {

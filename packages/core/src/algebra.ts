@@ -36,7 +36,7 @@ export const BINARY_COMBINATOR_NAMES = ['union', 'onlyIn', 'intersect'] as const
 export const SUPPLY_POLICIES = ['error', 'pass'] as const;
 
 /** The kind position of a `sources` entry, closed. Each entry carries exactly one of them. */
-export const SOURCE_KINDS = ['file'] as const;
+export const SOURCE_KINDS = ['file', 'sidecar'] as const;
 
 /** The source names the world supplies on its own; a `sources` entry may not shadow one. */
 export const FIXED_SOURCE_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
@@ -91,12 +91,14 @@ export type ScopeBlock = {
 export type SupplyBlock = Record<string, 'error' | 'pass'>;
 
 /**
- * The `sources` block — per source name, the file outside the target it stands for.
+ * The `sources` block — per source name, what outside the target it stands for.
  *
- * The path is repo-relative and the supply layer joins it onto the root, which is why an
- * absolute path and a `..` segment are refused here rather than at read time.
+ * A `file` path is repo-relative and the supply layer joins it onto the root, which is why an
+ * absolute path and a `..` segment are refused here rather than at read time. A `sidecar`
+ * binding names a channel the surface supplies; its location is the host's fact, not the
+ * declaration's, so the value is the marker `true` and never a path.
  */
-export type SourcesBlock = Record<string, { file: string }>;
+export type SourcesBlock = Record<string, { file: string } | { sidecar: true }>;
 
 /**
  * `RelateEntry` — one (extract name, relation) pairing with its break text.
@@ -260,6 +262,14 @@ function validateSources(sources: unknown, location: string): void {
       );
     }
     rejectUnknownKeys(entry, new Set(SOURCE_KINDS), where);
+    if (kinds[0] === 'sidecar') {
+      // The marker carries no information beyond the kind, so anything but the literal
+      // `true` would be a value the supply layer has to interpret.
+      if (entry.sidecar !== true) {
+        throw new ConfigValidationError(`${where}.sidecar must be the literal true`);
+      }
+      continue;
+    }
     validateSourceFile(entry.file, where);
   }
 }

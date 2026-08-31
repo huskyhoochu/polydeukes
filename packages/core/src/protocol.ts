@@ -23,6 +23,15 @@ export type FileChange =
   | { kind: 'delete'; path: string; pre?: string };
 
 /**
+ * `SourceReader` — a repo-relative path in, the text a surface observes there or absence out.
+ *
+ * The one signature the supply layer injects and every surface's reader implements. Absence
+ * is `undefined` and every other failure throws, so a permission refusal reaches the root's
+ * fail-closed path instead of passing for a file that is not there.
+ */
+export type SourceReader = (path: string) => string | undefined;
+
+/**
  * `CovenantInput` — the agent-neutral input IR a covenant judges.
  *
  * Adapters up-translate their own agent payloads into this shape and pipe it as
@@ -38,10 +47,12 @@ export type CovenantInput = {
   /**
    * The world axis: files a supply layer read for the judgment (key = repo-relative path,
    * an absent key = an absent file, never `null` — that is `FileChange.pre`'s creation
-   * marker), and the observation unit's change set when the host sees wider than the
-   * changes this input carries.
+   * marker), the observation unit's change set when the host sees wider than the changes
+   * this input carries, and the channels a surface supplied — `sidecar` is the spawn-record
+   * list as JSON text, where `'[]'` says the channel observed no spawn and an absent key
+   * says there is no channel at all.
    */
-  world?: { files?: Record<string, string>; changes?: string[] };
+  world?: { files?: Record<string, string>; changes?: string[]; channels?: { sidecar?: string } };
 };
 
 /**
@@ -65,20 +76,30 @@ export type DispatchOutcome = {
   results: { label: string; exitCode: 0 | 2; event: TelemetryEvent }[];
 };
 
+/** The channel kinds a world may carry, closed. A name outside it supplies nothing. */
+const CHANNEL_KINDS: ReadonlySet<string> = new Set(['sidecar']);
+
 /**
  * Whether a value is the world axis: a plain object carrying nothing but a `files` record
- * of strings and a `changes` list of strings.
+ * of strings, a `changes` list of strings, and a `channels` record of channel texts.
  *
- * Closed at two fields, and both shape-checked: a supplier writing under a misspelt key
- * supplies nothing while looking like a supply, and a `null` under a path would pass the
- * engine's key-presence test as a supplied file whose text is missing.
+ * Closed at three fields, and all shape-checked: a supplier writing under a misspelt key
+ * supplies nothing while looking like a supply, and a `null` under a path or a channel kind
+ * would pass the engine's key-presence test as a supplied value whose text is missing.
  */
 function isWorld(value: unknown): boolean {
   if (!isPlainObject(value)) return false;
   for (const key of Object.keys(value)) {
-    if (key !== 'files' && key !== 'changes') return false;
+    if (key !== 'files' && key !== 'changes' && key !== 'channels') return false;
   }
-  const { files, changes } = value;
+  const { files, changes, channels } = value;
+  if (channels !== undefined) {
+    if (!isPlainObject(channels)) return false;
+    for (const [kind, text] of Object.entries(channels)) {
+      if (!CHANNEL_KINDS.has(kind)) return false;
+      if (typeof text !== 'string') return false;
+    }
+  }
   if (files !== undefined) {
     if (!isPlainObject(files)) return false;
     if (!Object.values(files).every((text) => typeof text === 'string')) return false;

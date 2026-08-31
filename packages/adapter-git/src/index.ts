@@ -10,6 +10,11 @@ export {
   collectStagedChanges,
   collectWorktreeChanges,
 } from './collect.js';
+export {
+  type Observation,
+  type ObservationSourceReaderSpec,
+  observationSourceReader,
+} from './observation-source-reader.js';
 export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
 export {
   covenantInputFromStagedChanges,

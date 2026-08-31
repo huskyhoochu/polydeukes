@@ -195,18 +195,23 @@ export type RecordedCall =
   | {
       kind: 'dispatch';
       hasWorld: boolean;
-      world?: { keys: string[]; files?: Record<string, string>; changes?: string[] };
+      world?: {
+        keys: string[];
+        files?: Record<string, string>;
+        changes?: string[];
+        channels?: Record<string, string>;
+      };
     };
 
 /**
  * A covenant dist rooted at `dir` that re-exports the real build and replaces the three
- * members the world axis touches: `planSources` answers `plannedFiles` whatever it is
- * given (and records the registration labels it was given), `supplySources` folds the
- * injected `read` over that plan, and `dispatchCovenants` records the `world` field of
- * every spec before delegating to the real dispatcher.
+ * members the world axis touches: `planSources` answers `plannedFiles` and `plannedChannels`
+ * whatever it is given (and records the registration labels it was given), `supplySources`
+ * folds the injected `read` and `readChannel` over that plan, and `dispatchCovenants` records
+ * the `world` field of every spec before delegating to the real dispatcher.
  *
  * The plan is baked in rather than derived from the registrations on purpose: what this
- * dist lets a suite observe is the ROOT's wiring — which `read` it built for its domain
+ * dist lets a suite observe is the ROOT's wiring — which readers it built for its surface
  * and what it handed each dispatch — not the covenant package's own derivation, which the
  * covenant suite pins. `dir` must sit OUTSIDE any repository the run observes: a worktree
  * domain collects untracked files, and the recording log is one.
@@ -214,6 +219,7 @@ export type RecordedCall =
 export function recordingDist(
   dir: string,
   plannedFiles: readonly string[],
+  plannedChannels: readonly string[] = [],
 ): { distDir: string; calls: () => RecordedCall[] } {
   const distDir = join(dir, 'covenant-dist-recording');
   const recordPath = join(dir, 'calls.jsonl');
@@ -227,10 +233,11 @@ export function recordingDist(
       `export * from ${realBarrel};`,
       `const RECORD = ${JSON.stringify(recordPath)};`,
       `const PLANNED = ${JSON.stringify(plannedFiles)};`,
+      `const PLANNED_CHANNELS = ${JSON.stringify(plannedChannels)};`,
       "const record = (call) => appendFileSync(RECORD, JSON.stringify(call) + '\\n');",
       'export function planSources(spec) {',
       "  record({ kind: 'plan', labels: spec.registrations.map((r) => r.label) });",
-      '  return { files: PLANNED };',
+      '  return { files: PLANNED, channels: PLANNED_CHANNELS };',
       '}',
       'export function supplySources(spec) {',
       '  const files = {};',
@@ -238,7 +245,12 @@ export function recordingDist(
       '    const text = spec.read(path);',
       '    if (text !== undefined) files[path] = text;',
       '  }',
-      '  return { files };',
+      '  const channels = {};',
+      '  for (const kind of spec.plan.channels) {',
+      '    const text = spec.readChannel?.(kind);',
+      '    if (text !== undefined) channels[kind] = text;',
+      '  }',
+      '  return { files, channels };',
       '}',
       'export function dispatchCovenants(spec) {',
       '  record({',
@@ -247,7 +259,12 @@ export function recordingDist(
       '    world:',
       '      spec.world === undefined',
       '        ? undefined',
-      '        : { keys: Object.keys(spec.world), files: spec.world.files, changes: spec.world.changes },',
+      '        : {',
+      '            keys: Object.keys(spec.world),',
+      '            files: spec.world.files,',
+      '            changes: spec.world.changes,',
+      '            channels: spec.world.channels,',
+      '          },',
       '  });',
       '  return realDispatch(spec);',
       '}',

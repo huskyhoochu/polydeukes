@@ -859,40 +859,53 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
 /**
  * The `sources` bindings of a declare entry, in declaration order; none is an empty list.
  *
- * Each path is normalized once, here, so the plan, the supplied keys, and the match against
- * the change set all see one spelling: a `./locales/en.json` an author wrote is otherwise
- * read under one name and looked up under another, and the change's own text never wins.
+ * Each file path is normalized once, here, so the plan, the supplied keys, and the match
+ * against the change set all see one spelling: a `./locales/en.json` an author wrote is
+ * otherwise read under one name and looked up under another, and the change's own text never
+ * wins. A channel binding carries its kind instead — a channel is not a path.
  */
-function sourceBindings(entry: DisciplineEntry): { name: string; file: string }[] {
-  return Object.entries(entry.declare?.sources ?? {}).map(([name, source]) => ({
-    name,
-    file: posix.normalize(source.file),
-  }));
+function sourceBindings(entry: DisciplineEntry): SourceBinding[] {
+  return Object.entries(entry.declare?.sources ?? {}).map(([name, source]) =>
+    'sidecar' in source
+      ? { name, sidecar: true as const }
+      : { name, file: posix.normalize(source.file) },
+  );
 }
 
+/** One compiled `sources` binding: a repo-relative file, or a channel of the world axis. */
+type SourceBinding = { name: string; file: string } | { name: string; sidecar: true };
+
 /**
- * What each named source is worth on this input: the change's own `post` when the file is
- * one this input changes, the host-supplied text otherwise, absent when neither exists.
+ * What each named source is worth on this input: for a file, the change's own `post` when it
+ * is one this input changes and the host-supplied text otherwise; for a channel, the text the
+ * surface supplied. Absent when neither exists.
  *
  * The change set wins over the supplied text because the two surfaces read the tree at
  * different moments — a session call is judged while the disk still holds the pre-edit
  * state — and the change carries the state the call will produce. A deletion leaves the
  * key absent, since after it there is no file for the declaration's `supply` policy to
- * dispose of by any other reading.
+ * dispose of by any other reading. That rule never reaches a channel: a channel has no path,
+ * so it can never overlap the change set.
  */
 function sourceValues(
-  bindings: readonly { name: string; file: string }[],
+  bindings: readonly SourceBinding[],
   worlds: readonly SuppliedWorld[],
-  files: Record<string, string> | undefined,
+  world: CovenantInput['world'],
 ): Record<string, unknown> {
   const values: Record<string, unknown> = {};
-  for (const { name, file } of bindings) {
+  for (const binding of bindings) {
+    if ('sidecar' in binding) {
+      const text = world?.channels?.sidecar;
+      if (text !== undefined) values[binding.name] = text;
+      continue;
+    }
+    const { name, file } = binding;
     const changed = worlds.find((supplied) => supplied.path === file);
     if (changed !== undefined) {
       if ('post' in changed.world) values[name] = changed.world.post;
       continue;
     }
-    const supplied = files?.[file];
+    const supplied = world?.files?.[file];
     if (supplied !== undefined) values[name] = supplied;
   }
   return values;
@@ -954,7 +967,7 @@ function declareRegistration(
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
     const fixed = worldsFromInput(input, spec.rootDir);
-    const values = sourceValues(bindings, fixed, input.world?.files);
+    const values = sourceValues(bindings, fixed, input.world);
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
       .filter((supplied) => scopeAdmits(compiled, supplied.world));

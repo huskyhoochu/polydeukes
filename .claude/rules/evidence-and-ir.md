@@ -54,9 +54,16 @@ invents risks that do not exist. Report per-unit, then aggregate — never the r
 ## The world axis is supplied, never read by the judge
 
 `CovenantInput.world` is the third axis beside the changes and the transcript: `files` are
-texts the composition root read for the declarations that named them, `changes` is the
+texts the supply layer read for the declarations that named them, `channels` are the
+surface-resolved evidence channels (`sidecar` — the spawn records this host keeps beside the
+transcript, as JSON text; the commit surface has no session, so it injects no channel reader
+and every channel is absent there by design), `changes` is the
 observation unit's change set when the surface dispatches narrower than it observes (the
-commit surface judges one staged change per dispatch). An absent file is an absent key —
-`null` is `FileChange.pre`'s creation marker and means something else. A root supplies what it
-read and nothing more; which text a judged change sees is the judge's rule (the change's own
-`post` wins over the disk, since the session surface judges before the edit lands).
+commit surface judges one staged change per dispatch). An absent file or channel is an absent
+key — `null` is `FileChange.pre`'s creation marker and means something else, and `'[]'` under
+`sidecar` is a present channel that observed nothing, a different fact from no channel. A
+root supplies what its **supply body** read and nothing more — the readers live in the
+adapters (`sessionSourceReader` · `sessionChannelReader` · `observationSourceReader`), the
+root only injects them; which text a judged change sees is the judge's rule (the change's own
+`post` wins over the disk, since the session surface judges before the edit lands — a rule
+that never reaches a channel, which has no path to overlap).

@@ -167,10 +167,10 @@ describe('validateAlgebraDeclaration — sources block, the file path', () => {
 });
 
 describe('validateAlgebraDeclaration — sources block, the kind position is closed', () => {
-  it('rejects an unknown kind (sidecar) naming the closed list', () => {
+  it('rejects an unknown kind (transcript) naming the closed list', () => {
     // A kind outside the closed list binds a source the supply layer cannot read; admitting
     // it by name defers the fault to judgment time. The message shows the author what IS allowed.
-    const error = expectRejection(withSourceValue({ sidecar: 'x' }));
+    const error = expectRejection(withSourceValue({ transcript: true }));
 
     expect(error.message).toContain(`${LOCATION}.sources.${SOURCE_KO}`);
     for (const kind of SOURCE_KINDS) {

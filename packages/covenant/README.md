@@ -66,12 +66,16 @@ telemetry.
   `target.path`, `pre`, `post`, `state`, and `changes` (the observation's change set — the
   input's own, or the host's `world.changes` when it observes more than it dispatches). A
   declaration's `sources` bindings join each world from the change's own `post` when the input
-  changes that file, from `world.files` otherwise.
+  changes that file, from `world.files` otherwise — and a channel binding from
+  `world.channels`, which no change can overlap (a channel has no path).
 - **Supply layer** — `planSources` folds the registrations' `sources` bindings into one
-  deduplicated path list, and `supplySources` fills it through the reader a composition root
-  injects (`read(path)` answers `undefined` for an absent file and throws for any other
-  failure). Neither opens a file: how a surface observes the tree — disk, index, or a commit —
-  belongs to the root that hands the result to `dispatchCovenants` as `world`.
+  deduplicated path list plus the channel kinds they name, and `supplySources` fills both
+  through the readers a composition root injects (`read(path)` and the optional
+  `readChannel(kind)` answer `undefined` for an absence and throw for any other failure; a
+  root with no session injects no channel reader, and every channel is absent there).
+  Neither opens a file: how a surface observes the tree — disk, index, or a commit —
+  belongs to the supply body the root wires in, and the result reaches `dispatchCovenants`
+  as `world`.
 
 ## Design stance
 
