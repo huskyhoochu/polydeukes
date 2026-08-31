@@ -101,7 +101,7 @@ module; a name outside a closed list is rejected by validation, never coerced.
   than it dispatches at once — and the judge merges them: a named file this input changes is
   read from the change's `post` (absent on a deletion), any other from `world.files`, a
   channel binding from `world.channels` (a channel has no path, so the change set never
-  overlaps it). The kernel opens no file; the readers are the **supply bodies'** — each
+  overlaps it). core and covenant open no file; the readers are the **supply bodies'** — each
   adapter implements its surface's reading (`sessionSourceReader` · `sessionChannelReader`
   on the session side, `observationSourceReader` on the commit side) and the composition
   root only injects them.

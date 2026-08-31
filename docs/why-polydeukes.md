@@ -508,7 +508,7 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      declaration's rows in the v0.6.0 gate post.
      Parked candidate (ALGEBRA-03a, 2026-08-30): the judge never builds its own world. What a
      judgment sees is planned from the declarations, supplied by the surface through one
-     injected reader, and handed over as an argument — the kernel opens no file. Two surfaces
+     injected reader, and handed over as an argument — the judge opens no file. Two surfaces
      then agree by construction rather than by test, and a third surface costs a reader, not a
      judge. Publish with the first content-parity declaration's rows.
 
