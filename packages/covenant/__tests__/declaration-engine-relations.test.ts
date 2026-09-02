@@ -231,6 +231,36 @@ describe('Implies — keys(of) ⊆ keys(requires)', () => {
     );
     expect(witnessesOf(judge(decl, world))).toEqual([w('k1', 'a'), w('k3', 'a')]);
   });
+
+  it('over `lines` keys, an insertion above an item renames it', () => {
+    // `lines` keys each item by its source line number, so the key is a position rather
+    // than an identity: an insertion above an item renames it. Both sides open with a
+    // blank line, which `lines` drops while still consuming its number — so a step that
+    // renumbered after filtering would key the surviving lines densely and this
+    // comparison would hold.
+    const linePipeline = (source: string): ExtractStep[] => [
+      { op: 'source', of: source },
+      { op: 'lines' },
+      { op: 'matches', re: '^x' },
+    ];
+    const decl: AlgebraDeclaration = {
+      discipline: 'probe',
+      extract: {
+        [LEFT]: linePipeline(SRC_LEFT),
+        [RIGHT]: linePipeline(SRC_RIGHT),
+      },
+      relate: [
+        { id: ENTRY, relation: { op: 'Implies', of: LEFT, requires: RIGHT }, message: '{value}' },
+      ],
+    };
+    const right = 'x1\n\nbody\nx2';
+    // The same two `x` lines with one more body line between them: `x2` moves 4 → 5.
+    const left = 'x1\n\nbody\nbody\nx2';
+
+    expect(witnessesOf(judge(decl, { [SRC_LEFT]: left, [SRC_RIGHT]: right }), ENTRY)).toEqual([
+      w('5', 'x2'),
+    ]);
+  });
 });
 
 describe('Ordered — adjacent pairs are monotone by value', () => {
