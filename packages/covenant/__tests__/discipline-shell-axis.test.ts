@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CanonicalTranscript, CovenantInput, DisciplineEntry } from '@polydeukes/core';
@@ -19,6 +19,19 @@ const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';
 const BANNED = 'zzz_banned';
 
+/**
+ * The disk reader the session surface injects, restated here because these cases judge real
+ * files under a temp root. Tri-state: text, `null` for an absent file, and `undefined` for a
+ * location that cannot be read at all — the last is what the fail-closed case below drives.
+ */
+function readPreStateFromDisk(location: string): string | null | undefined {
+  try {
+    return readFileSync(location, 'utf-8');
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? null : undefined;
+  }
+}
+
 const deltaEntry: DisciplineEntry = {
   id: 'no-banned',
   in: ['packages/**/*.ts'],
@@ -34,6 +47,7 @@ function specWith(
     rootDir: ROOT,
     shellTools: [SHELL_TOOL],
     commandArgs: [COMMAND_ARG],
+    readPreState: readPreStateFromDisk,
     ...extra,
   };
 }
@@ -60,7 +74,6 @@ function transcriptWithToolCalls(
   calls: { name: string; args: Record<string, unknown>; succeeded?: boolean }[],
 ): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => [],
     findToolCalls: (name?: string) =>
       name === undefined ? calls : calls.filter((c) => c.name === name),
@@ -371,6 +384,7 @@ async function judgeShellPayload(
     rootDir,
     shellTools: [SHELL_TOOL],
     commandArgs: [COMMAND_ARG],
+    readPreState: readPreStateFromDisk,
     ...extra,
   });
   const outcome = await registration?.body?.(bashInput(command));

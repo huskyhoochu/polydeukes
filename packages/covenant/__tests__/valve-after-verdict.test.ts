@@ -183,7 +183,6 @@ describe('runCovenant — valve consulted only after a blocked verdict', () => {
 /** A fake transcript with one marker message — identity-asserted through the witness seam. */
 function markerTranscript(): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => [{ text: 'CONTEXT-SEAM-MARKER' }],
     findToolCalls: () => [],
   };

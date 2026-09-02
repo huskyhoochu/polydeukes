@@ -5,6 +5,11 @@ import { describe, expect, it } from 'vitest';
 // execution), and only a call the provider saw succeed counts at all.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // Every fixture states its execution outcome explicitly: `succeeded` is one of the two axes
 // under test, so a defaulted outcome would let a negative pass for the other axis's reason.
 
@@ -29,7 +34,6 @@ function shellCall(command: string, outcome: Outcome = 'succeeded'): ObservedCal
 /** Stub the canonical-transcript seam with a fixed tool-call history. */
 function transcriptWithToolCalls(calls: ObservedCall[]): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => [],
     findToolCalls: (name?: string) =>
       name === undefined ? calls : calls.filter((call) => call.name === name),
@@ -58,6 +62,7 @@ function contextSpec(entry: DisciplineEntry, calls: ObservedCall[]): CompileDisc
     rootDir: ROOT,
     shellTools: [SHELL_TOOL],
     commandArgs: [COMMAND_ARG],
+    readPreState,
     transcript: transcriptWithToolCalls(calls),
   };
 }

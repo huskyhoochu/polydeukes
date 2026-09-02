@@ -10,14 +10,6 @@
  */
 
 export {
-  type BaselineSnapshot,
-  findUnattributed,
-  readBaseline,
-  type StoredBaseline,
-  snapshotBaseline,
-  writeBaseline,
-} from './baseline.js';
-export {
   type CompiledDeclaration,
   type ConfigFault,
   compileDeclaration,

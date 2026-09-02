@@ -15,7 +15,6 @@ import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './hel
 /** A fake transcript whose findUserMessages returns exactly the given texts. */
 function transcriptWithUserMessages(texts: string[]): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => texts.map((text) => ({ text })),
     findToolCalls: () => [],
   };
@@ -66,7 +65,7 @@ describe('dispatchCovenants — transcript seam wiring', () => {
   it('defaults to noopTranscript when spec.transcript is omitted: a 2-arg witness receives a real CanonicalTranscript object (both queries callable), not undefined', async () => {
     // The injection-absent default must satisfy the interface, so a 2-arg witness never
     // crashes on undefined. The witness calls BOTH queries, proving the shape, and opens
-    // only when there are no user messages, which is true of the empty default.
+    // only when both answer empty, which is true of the empty default.
     const outFile = join(dir, 'body-ran.txt');
     const input = inputWithArgs({ target: 'sub/protected/file.txt' });
     const reg: CovenantRegistration = {
@@ -74,8 +73,7 @@ describe('dispatchCovenants — transcript seam wiring', () => {
       protectedPaths: ['sub/protected/file.txt'],
       body: markerThunk(outFile, 1),
       witness: (_input, transcript) =>
-        transcript.findSubagentInvocations().length === 0 &&
-        transcript.findUserMessages().length === 0,
+        transcript.findToolCalls().length === 0 && transcript.findUserMessages().length === 0,
     };
 
     const result = await dispatchCovenants({

@@ -10,6 +10,11 @@ import {
   judgeDiscipline,
 } from '../src/discipline.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // Deleted files' pre contents deliberately CONTAIN forbidden matches: a judge that scans
 // pre would wrongly break, and one that feeds delete into the added-delta path would throw.
 
@@ -19,6 +24,7 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
+  readPreState,
 };
 
 /** Build a CovenantInput whose evidence rides its own tool-call element. */
@@ -157,6 +163,7 @@ describe('forbid routing — deletions never spawn a body (review round 1)', () 
       rootDir: ROOT,
       shellTools: ['Bash'],
       commandArgs: ['command'],
+      readPreState,
     });
     return reg;
   }

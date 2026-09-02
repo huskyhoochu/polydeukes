@@ -23,7 +23,8 @@ AI or human.
 
 This is a pure library. It knows the staged-diff shape and nothing about installation, hook
 runners, or valves — wiring it into a pre-commit hook is a deployment act that lives in the
-umbrella.
+umbrella. It names `@polydeukes/core` as a `peerDependency`: the vocabulary is shared with
+the judge, not installed a second time here.
 
 ## Collection and the `adapters.git` namespace
 

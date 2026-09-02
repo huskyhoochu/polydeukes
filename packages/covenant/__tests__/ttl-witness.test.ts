@@ -16,16 +16,12 @@ const fakeNow = (): number => NOW;
 
 /**
  * A fake transcript whose findUserMessages returns exactly the given messages, each
- * carrying its own optional timestampMs. findSubagentInvocations returns the given
- * invocations, so a case can plant the token outside user messages.
+ * carrying its own optional timestampMs.
  */
 function fakeTranscript(
   userMessages: { text: string; timestampMs?: number }[],
-  invocations: { kind: string }[] = [],
 ): CanonicalTranscript {
   return {
-    findSubagentInvocations: (kind) =>
-      invocations.filter((inv) => kind === undefined || inv.kind === kind),
     findUserMessages: () => userMessages,
     findToolCalls: () => [],
   };
@@ -193,17 +189,14 @@ describe('ttlWitness — invocation preserved', () => {
 });
 
 describe('ttlWitness — layer boundary', () => {
-  it('ignores a token planted outside user messages (invocations and toolCalls args)', () => {
-    // The token may ride on user messages only. Here it lives in an invocation kind and in
-    // the tool-call args, so a predicate scanning invocations or the input itself would let
-    // an agent-synthesised token open the valve for itself. The planted tokens are BARE:
-    // under first-line-exact matching a decorated token never matches anywhere, so a
-    // decorated fixture would let a leaked scan pass this test unnoticed.
+  it('ignores a token planted outside user messages (toolCalls args)', () => {
+    // The token may ride on user messages only. Here it lives in the tool-call args, so a
+    // predicate scanning the input itself would let an agent-synthesised token open the
+    // valve for itself. The planted token is BARE: under first-line-exact matching a
+    // decorated token never matches anywhere, so a decorated fixture would let a leaked
+    // scan pass this test unnoticed.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
-    const transcript = fakeTranscript(
-      [{ text: 'ordinary message', timestampMs: NOW - 100 }],
-      [{ kind: TOKEN }],
-    );
+    const transcript = fakeTranscript([{ text: 'ordinary message', timestampMs: NOW - 100 }]);
     const input = inputWithArgs({ note: TOKEN });
     expect(predicate(input, transcript)).toBe(false);
   });

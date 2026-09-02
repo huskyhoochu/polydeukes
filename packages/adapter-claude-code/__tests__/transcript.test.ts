@@ -154,62 +154,17 @@ describe('findUserMessages — human-utterance trust contract', () => {
   });
 });
 
-describe('findSubagentInvocations — detection by subagent_type field presence', () => {
-  it('yields {kind} for every tool_use block with a string subagent_type, order preserved', () => {
-    // Detection keys on input.subagent_type, not on the tool name: the spawn tool has been
-    // renamed (Task -> Agent) in the ecosystem, so the fixture deliberately carries both
-    // spellings and expects both to surface.
-    const jsonl = toJsonl([
-      assistantSpawnEntry([
-        { type: 'tool_use', id: 'x', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
-        { type: 'tool_use', id: 'y', name: 'Task', input: { subagent_type: 'tdd-implementer' } },
-      ]),
-    ]);
-    const transcript = transcriptFromJsonl(jsonl);
-
-    expect(transcript.findSubagentInvocations()).toEqual([
-      { kind: 'tdd-writer' },
-      { kind: 'tdd-implementer' },
-    ]);
-    expect(transcript.findSubagentInvocations('tdd-implementer')).toEqual([
-      { kind: 'tdd-implementer' },
-    ]);
-  });
-
-  it('excludes tool_use blocks with no string subagent_type (default-agent spawns, Bash calls)', () => {
-    // A block that cannot prove its kind is dropped rather than emitted as a
-    // {kind: undefined} phantom invocation.
-    const jsonl = toJsonl([
-      assistantSpawnEntry([
-        { type: 'tool_use', id: 'x', name: 'Bash', input: { command: 'ls' } },
-        { type: 'tool_use', id: 'z', name: 'Agent', input: { prompt: 'no subagent_type here' } },
-        { type: 'tool_use', id: 'w', name: 'Agent', input: { subagent_type: 'code-reviewer' } },
-      ]),
-    ]);
-
-    expect(transcriptFromJsonl(jsonl).findSubagentInvocations()).toEqual([
-      { kind: 'code-reviewer' },
-    ]);
-  });
-
+describe('alias safety — query results are fresh objects', () => {
   it('returns fresh objects — mutating a query result does not corrupt the snapshot', () => {
     // Alias-safety is part of the CanonicalTranscript contract: returning filter() results
-    // as live aliases into the snapshot would let a consumer writing invocation.kind rewrite
+    // as live aliases into the snapshot would let a consumer writing message.text rewrite
     // what every later query reads.
-    const jsonl = toJsonl([
-      assistantSpawnEntry([
-        { type: 'tool_use', id: 'x', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
-      ]),
-      humanEntry('hello', '2026-07-21T04:00:00.000Z'),
-    ]);
+    const jsonl = toJsonl([humanEntry('hello', '2026-07-21T04:00:00.000Z')]);
     const transcript = transcriptFromJsonl(jsonl);
 
-    const [invocation] = transcript.findSubagentInvocations();
-    invocation.kind = 'rewritten';
     const [message] = transcript.findUserMessages();
     message.text = 'rewritten';
 
-    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
     expect(transcript.findUserMessages()[0]?.text).toBe('hello');
   });
 });
@@ -265,10 +220,9 @@ describe('robustness — malformed input reduces evidence, never throws', () => 
 
       expect(transcript).toBeDefined();
       expect(transcript?.findUserMessages()).toEqual([]);
-      expect(transcript?.findToolCalls()).toEqual([]);
-      // The success branch of the file wrapper is only exercised here, so all three queries
+      // The success branch of the file wrapper is only exercised here, so both queries
       // are pinned.
-      expect(transcript?.findSubagentInvocations()).toEqual([]);
+      expect(transcript?.findToolCalls()).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -391,10 +345,10 @@ describe('findToolCalls — tool-call extraction from tool_use blocks', () => {
     ]);
   });
 
-  it('coexists with the shipped queries — a subagent spawn is both a spawn and a tool call', () => {
-    // A spawn block is a tool_use identified by input.subagent_type, so it deliberately
-    // surfaces in BOTH findSubagentInvocations and findToolCalls — two queries over one
-    // fact, not a double count to be carved out.
+  it('reports a subagent spawn as an ordinary tool call, args intact', () => {
+    // A spawn block is a tool_use like any other; it carries subagent_type in its args and
+    // gets no special casing. Catches a spawn-shaped block being filtered out of the call
+    // stream on the theory that it is "not really" a tool call.
     const jsonl = toJsonl([
       humanEntry('please run the tdd cycle', '2026-07-26T01:00:00.000Z'),
       assistantSpawnEntry([
@@ -411,13 +365,12 @@ describe('findToolCalls — tool-call extraction from tool_use blocks', () => {
     expect(transcript.findUserMessages()).toEqual([
       { text: 'please run the tdd cycle', timestampMs: Date.parse('2026-07-26T01:00:00.000Z') },
     ]);
-    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-implementer' }]);
   });
 
   it('returns fresh objects — mutating a returned call or its args leaves later queries intact', () => {
     // Alias-safety extended to the nested args object: a shallow copy would share args with
-    // the snapshot, so writing call.args.subagent_type rewrites what a later findToolCalls —
-    // or the spawn query reading the same block — returns.
+    // the snapshot, so writing call.args.subagent_type rewrites what a later findToolCalls
+    // returns.
     const jsonl = toJsonl([
       assistantSpawnEntry([
         { type: 'tool_use', id: 't1', name: 'Agent', input: { subagent_type: 'tdd-writer' } },
@@ -432,6 +385,5 @@ describe('findToolCalls — tool-call extraction from tool_use blocks', () => {
     expect(transcript.findToolCalls()).toEqual([
       { name: 'Agent', args: { subagent_type: 'tdd-writer' }, succeeded: false },
     ]);
-    expect(transcript.findSubagentInvocations()).toEqual([{ kind: 'tdd-writer' }]);
   });
 });

@@ -35,13 +35,16 @@
     "access": "public"
   },
   "dependencies": {
-    "@polydeukes/core": "workspace:^",
     "picomatch": "4.0.5"
   },
   "devDependencies": {
+    "@polydeukes/core": "workspace:^",
     "@types/node": "catalog:",
     "@types/picomatch": "4.0.3",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@polydeukes/core": "workspace:^"
   }
 }

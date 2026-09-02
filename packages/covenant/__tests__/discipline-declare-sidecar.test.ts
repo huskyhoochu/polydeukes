@@ -20,6 +20,11 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { inputWithArgs } from './helpers.js';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 const ROOT = '/repo';
 const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';
@@ -60,7 +65,13 @@ function declareEntry(declare: Record<string, unknown>) {
 }
 
 function specWith(disciplines: DisciplineEntry[]): CompileDisciplinesSpec {
-  return { disciplines, rootDir: ROOT, shellTools: [SHELL_TOOL], commandArgs: [COMMAND_ARG] };
+  return {
+    disciplines,
+    rootDir: ROOT,
+    shellTools: [SHELL_TOOL],
+    commandArgs: [COMMAND_ARG],
+    readPreState,
+  };
 }
 
 /** A CovenantInput of one create, with an optional world axis (channels included). */

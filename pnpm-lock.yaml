@@ -43,11 +43,10 @@ importers:
         version: 2.10.5
 
   packages/adapter-claude-code:
-    dependencies:
+    devDependencies:
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core
-    devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -59,11 +58,10 @@ importers:
         version: 4.1.9(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))
 
   packages/adapter-git:
-    dependencies:
+    devDependencies:
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core
-    devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -94,13 +92,13 @@ importers:
 
   packages/covenant:
     dependencies:
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
       picomatch:
         specifier: 4.0.5
         version: 4.0.5
     devDependencies:
+      '@polydeukes/core':
+        specifier: workspace:^
+        version: link:../core
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2

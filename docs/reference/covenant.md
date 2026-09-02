@@ -13,6 +13,11 @@
 
 The judge. Everything that turns a declared promise into a verdict lives here.
 
+**This is the install unit for judgment.** An embedder that wants verdicts without the
+umbrella's surfaces installs this package and provides `@polydeukes/core` alongside it — core
+is a `peerDependency` here, so the vocabulary is shared rather than duplicated. The umbrella
+is what satisfies that peer for an ordinary consumer.
+
 | Unit | What it does |
 |---|---|
 | `runCovenant` wrapper | Runs a judge body, translates its non-blocking `1` into the blocking `2`, and logs every call. No covenant runs unmeasured |

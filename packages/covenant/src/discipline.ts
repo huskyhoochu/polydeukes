@@ -11,7 +11,6 @@
  * is a repo-relative declaration.
  */
 
-import { readFileSync } from 'node:fs';
 import { isAbsolute, posix, relative, resolve } from 'node:path';
 import {
   allFileChanges,
@@ -47,6 +46,14 @@ type ShellSurface = {
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+  /**
+   * The file's content before this call runs, `null` when it does not exist (a create), and
+   * `undefined` when it cannot be read at all — a permission error or a race is not an empty
+   * file. The reader belongs to the surface that observes the change, so this package opens
+   * no file; the third state is what keeps an unreadable pre-state from being recorded as a
+   * pass.
+   */
+  readPreState: (location: string) => string | null | undefined;
 };
 
 /**
@@ -80,6 +87,7 @@ export type CompileDisciplinesSpec = {
   rootDir: string;
   shellTools: string[];
   commandArgs: string[];
+  readPreState: (location: string) => string | null | undefined;
   witness?: CovenantRegistration['witness'];
   transcript?: CanonicalTranscript;
   evaluatePrecedent?: (
@@ -304,7 +312,7 @@ export type ShellSignals = {
  * Derive the shell-delivered signals of an input — the one derivation seam both the routing
  * closures and the judged body consume, so the two can never disagree on what a command
  * proves. Pure: completing the evidence with a pre-state is the body's job, since routing
- * may not read disk.
+ * may not consult the reader.
  */
 function deriveShellSignals(input: CovenantInput, opts: ShellSurface): ShellSignals {
   const signals: ShellSignals = { evidence: [], unjudgeable: [] };
@@ -319,29 +327,15 @@ function deriveShellSignals(input: CovenantInput, opts: ShellSurface): ShellSign
 }
 
 /**
- * The file's content before this call runs, `null` when it does not exist (a create), and
- * `undefined` when it cannot be read at all — a permission error or a race is not an empty
- * file. The caller escalates that to the fail-closed exit: routing already matched, so a
- * quiet drop here would record the run as `passed`.
- */
-function readPreState(location: string): string | null | undefined {
-  try {
-    return readFileSync(location, 'utf-8');
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? null : undefined;
-  }
-}
-
-/**
- * Complete shell-derived evidence with disk pre-state and attach it to the input. The hook
- * runs before the tool does, so disk IS the pre-state.
+ * Complete shell-derived evidence with the surface's pre-state and attach it to the input.
+ * The hook runs before the tool does, so what the surface observes now IS the pre-state.
  *
  * Two rules. **One evidence, one call element**: `toolCall.fileChange` is singular, so each
  * derived change rides its own element (same tool name, no args) rather than the shell call
  * it came from — an element without args carries nothing into the command family's
- * judgment. **Same-path evidence chains in command order**: only the first write reads
- * disk, and every later one composes onto its predecessor's post, or a truncate followed by
- * a re-add would be forgiven as pre-existing debt.
+ * judgment. **Same-path evidence chains in command order**: only the first write consults
+ * the reader, and every later one composes onto its predecessor's post, or a truncate
+ * followed by a re-add would be forgiven as pre-existing debt.
  */
 function enrichWithShellEvidence(input: CovenantInput, opts: ShellSurface): CovenantInput {
   const derived = deriveShellSignals(input, opts);
@@ -352,7 +346,7 @@ function enrichWithShellEvidence(input: CovenantInput, opts: ShellSurface): Cove
   for (const { toolName, change } of derived.evidence) {
     const location = resolve(opts.rootDir, change.path);
     const chained = composed.get(location);
-    const pre = chained !== undefined ? chained : readPreState(location);
+    const pre = chained !== undefined ? chained : opts.readPreState(location);
     if (pre === undefined) {
       // Cannot judge means block: the thunk-level catch turns this throw into the
       // undecidable-structure outcome — never a quiet uphold recorded as `passed`.
@@ -577,6 +571,7 @@ function buildMatches(
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
+    readPreState: spec.readPreState,
   };
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
@@ -810,6 +805,7 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
+    readPreState: spec.readPreState,
   };
   // A declaration's scope is its own; every other family reads the entry-level globs. A
   // shell line delivers no file change, so even a computable write leaves the declaration
@@ -844,6 +840,7 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
     commandArgs: spec.commandArgs,
+    readPreState: spec.readPreState,
   };
   return {
     label: 'shell-unjudgeable',
@@ -1102,6 +1099,7 @@ export function compileDisciplineRegistrations(
       rootDir: spec.rootDir,
       shellTools: spec.shellTools,
       commandArgs: spec.commandArgs,
+      readPreState: spec.readPreState,
       ...(outcome === undefined ? {} : { precedentFound: outcome.kind === 'found' }),
     };
 

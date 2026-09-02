@@ -16,6 +16,11 @@ import {
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // The `when` trigger pattern is a plain token so the added-direction delta is unambiguous
 // in every fixture.
 
@@ -25,6 +30,7 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
+  readPreState,
 };
 
 /** judgeOpts extended with the precedentFound option. */
@@ -76,7 +82,6 @@ type TranscriptToolCallish = { name: string; args: Record<string, unknown>; succ
 /** Stub the canonical-transcript seam with a fixed tool-call history. */
 function transcriptWithToolCalls(calls: TranscriptToolCallish[]): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => [],
     findToolCalls: (name?: string) =>
       name === undefined ? calls : calls.filter((c) => c.name === name),
@@ -93,6 +98,7 @@ function contextSpec(
     rootDir: ROOT,
     shellTools: ['Bash'],
     commandArgs: ['command'],
+    readPreState,
     ...extra,
   } as CompileDisciplinesSpec;
 }

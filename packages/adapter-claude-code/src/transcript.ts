@@ -13,7 +13,6 @@ import { readFileSync } from 'node:fs';
 import {
   type CanonicalTranscript,
   isPlainObject,
-  type SubagentInvocation,
   type TranscriptToolCall,
   type TranscriptUserMessage,
 } from '@polydeukes/core';
@@ -42,35 +41,6 @@ function toUserMessage(entry: Record<string, unknown>): TranscriptUserMessage | 
     text: entry.message.content,
     timestampMs: Number.isFinite(parsed) ? parsed : undefined,
   };
-}
-
-/**
- * Extract subagent invocations from one entry.
- *
- * Detection keys on the *field*, not the tool name (the real tool has been renamed
- * Task → Agent): any `tool_use` block whose `input.subagent_type` is a string is an
- * invocation. A block that cannot prove its kind is dropped (evidence reduction).
- */
-function toSubagentInvocations(entry: Record<string, unknown>): SubagentInvocation[] {
-  if (entry.type !== 'assistant' || !isPlainObject(entry.message)) {
-    return [];
-  }
-  const content = entry.message.content;
-  if (!Array.isArray(content)) {
-    return [];
-  }
-  const invocations: SubagentInvocation[] = [];
-  for (const block of content) {
-    if (
-      isPlainObject(block) &&
-      block.type === 'tool_use' &&
-      isPlainObject(block.input) &&
-      typeof block.input.subagent_type === 'string'
-    ) {
-      invocations.push({ kind: block.input.subagent_type });
-    }
-  }
-  return invocations;
 }
 
 /** One observed tool call, carrying the id its result block will reference. */
@@ -149,7 +119,6 @@ function toToolResults(entry: Record<string, unknown>): { id: string; succeeded:
  */
 export function transcriptFromJsonl(text: string): CanonicalTranscript {
   const userMessages: TranscriptUserMessage[] = [];
-  const subagentInvocations: SubagentInvocation[] = [];
   const observedCalls: ObservedToolCall[] = [];
   const outcomes = new Map<string, boolean>();
 
@@ -167,7 +136,6 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
     if (message !== undefined) {
       userMessages.push(message);
     }
-    subagentInvocations.push(...toSubagentInvocations(entry));
     observedCalls.push(...toToolCalls(entry));
     for (const result of toToolResults(entry)) {
       // First result wins. Real transcripts carry no duplicate reference within one file
@@ -190,10 +158,6 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
   // call's nested args — so a consumer mutating a result cannot corrupt what later
   // queries read (the same alias-safety contract the core transcriptFromInput upholds).
   return {
-    findSubagentInvocations: (kind) =>
-      subagentInvocations
-        .filter((invocation) => kind === undefined || invocation.kind === kind)
-        .map((invocation) => ({ ...invocation })),
     findUserMessages: () => userMessages.map((message) => ({ ...message })),
     findToolCalls: (name) =>
       toolCalls

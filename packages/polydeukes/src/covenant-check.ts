@@ -32,6 +32,7 @@ import {
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
+import { unobservedPreStateReader } from './pre-state-reader.js';
 
 /**
  * Which observation of the commit surface a run judges. Only the collector differs between
@@ -151,6 +152,7 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
       rootDir,
       shellTools: [],
       commandArgs: [],
+      readPreState: unobservedPreStateReader,
       witness,
     }),
   ];

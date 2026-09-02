@@ -9,8 +9,12 @@ schema), `covenant` (the judge: Bash analysis, path-routing dispatcher, meta-cov
 witness, discipline library, and the declaration engine — extract steps, seven relations,
 witness lists),
 `adapter-claude-code` and `adapter-git` (two payloads onto one input IR), and the `polydeukes`
-umbrella (the `pdks` bin, `loadConfig`, and both surfaces' composition roots — only the umbrella
-may depend sideways). Details live in the code and the archived PRDs (the merged contracts).
+umbrella (the `pdks` bin, `loadConfig`, both surfaces' composition roots, and the disk they
+need — only the umbrella may depend sideways). The judge and the two adapters take `core` as a
+`peerDependency` so one copy of the vocabulary is shared rather than duplicated; the umbrella's
+ordinary dependency is what satisfies it. `covenant` opens no file at all, and core's only file
+I/O is the telemetry log it appends every judgment to.
+Details live in the code and the archived PRDs (the merged contracts).
 The design docs own everything not yet implemented; when a design doc and shipped code disagree,
 neither side wins by default — triage against the archived PRD: it may be a stale doc, or a code
 bug to fix.

@@ -15,6 +15,11 @@ import {
 } from '../src/transcript-mod.js';
 import { exitThunk } from './helpers.js';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // The tokenizer never discards a line it could not finish reading: `TokenizeResult` is
 // `{ commands, unread }`, and the two judges narrow their mention fallback from the whole raw
 // line down to the unread spans.
@@ -551,7 +556,6 @@ describe('precedent evidence refuses a partially read command line', () => {
   /** Stub the canonical-transcript seam with a fixed tool-call history. */
   function transcriptWithToolCalls(calls: ObservedCall[]): CanonicalTranscript {
     return {
-      findSubagentInvocations: () => [],
       findUserMessages: () => [],
       findToolCalls: (name?: string) =>
         name === undefined ? calls : calls.filter((call) => call.name === name),
@@ -583,6 +587,7 @@ describe('precedent evidence refuses a partially read command line', () => {
       rootDir: ROOT,
       shellTools: [SHELL_TOOL],
       commandArgs: [COMMAND_ARG],
+      readPreState,
       transcript: transcriptWithToolCalls(calls),
     };
   }

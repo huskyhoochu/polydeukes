@@ -46,16 +46,11 @@ import {
   normalizeProtectedPaths,
   readRecords,
 } from '@polydeukes/core';
-import {
-  type CovenantRegistration,
-  findUnattributed,
-  readBaseline,
-  snapshotBaseline,
-  ttlWitness,
-  writeBaseline,
-} from '@polydeukes/covenant';
+import { type CovenantRegistration, ttlWitness } from '@polydeukes/covenant';
+import { findUnattributed, readBaseline, snapshotBaseline, writeBaseline } from './baseline.js';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
 import { loadConfig } from './load-config.js';
+import { sessionPreStateReader } from './pre-state-reader.js';
 
 /** `runClaudeCodeHook` input — the `CovenantCheckSpec` shape, session side. */
 export type ClaudeCodeHookSpec = {
@@ -253,6 +248,7 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
       rootDir,
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
+      readPreState: sessionPreStateReader,
       witness,
       // Context-family evidence is evaluated here, at assembly: a spawned body cannot hold
       // a transcript, and passing a path would leak JSONL knowledge into covenant. The

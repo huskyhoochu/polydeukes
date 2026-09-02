@@ -27,6 +27,13 @@ hand-rolled and the published JSON Schema is a sibling artifact the source never
 *values* supplied by configs and adapters, so the core's agent-neutrality is a claim a grep
 can check. Every other package depends on this one; this one depends on none of them.
 
+**The judge and the two adapters name it as a `peerDependency`, not a dependency of their
+own.** They share the vocabulary rather than each installing a copy — `SOURCE_KINDS` and
+`parseInput` have to be one set of values for the validator and the engine to agree, and two
+copies would disagree silently instead of failing at install time. The umbrella carries the
+ordinary dependency that satisfies that peer, which is why a consumer still installs one
+package and gets core transitively.
+
 ## The judged protocol
 
 This is the contract the shipped judges speak: a judge receives a `CovenantInput` — parsed

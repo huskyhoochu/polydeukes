@@ -25,7 +25,9 @@ agent-neutrality a claim a test can check rather than a slogan.
 | Telemetry wiring | Drives the full funnel so exactly one row lands per call |
 
 This package never imports the covenant package. The dispatch seam is *injected* by the
-umbrella, which keeps dependencies one-way, through the core alone.
+umbrella, which keeps dependencies one-way, through the core alone. It names
+`@polydeukes/core` as a `peerDependency`: the vocabulary is shared with the judge, not
+installed a second time here.
 
 ## Payload translation and the three axes
 

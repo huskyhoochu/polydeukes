@@ -24,8 +24,12 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), and `explain` (the assembled-registration renderer, since CLI-01).
   Since CONFIG-03 it owns the config discovery loader
-  (`loadConfig`) — the one place allowed to read and parse the data config file (core stays
-  file-I/O-free). Since DIST-01 it also owns **both surfaces' composition roots** —
+  (`loadConfig`) — the one place allowed to read and parse the data config file. Since
+  ALGEBRA-03c it also owns the surfaces' pre-state readers (`pre-state-reader.ts`) and the
+  baseline comparator (`baseline.ts`), so **`covenant` opens no file**: what the judge needs
+  from disk arrives injected. core keeps one file-I/O site of its own, the telemetry log
+  (`telemetry.ts`), which every surface appends a row to. Since DIST-01 it also owns **both
+  surfaces' composition roots** —
   `runCovenantCheck` (commit) and `runClaudeCodeHook` (session) — because assembly needs an
   adapter AND covenant at once, which no sibling may depend on. That is the umbrella's structural
   privilege, not a convenience: it is the only package allowed to reach sideways. Only
@@ -42,6 +46,13 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,
   `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
   re-export them, but core must never depend on any sibling. Enforce this when adding packages.
+- **The kind of that dependency is `peerDependencies`** (ALGEBRA-03c) for `covenant` and the two
+  adapters, paired with a `devDependencies` entry so each package still builds and tests alone.
+  The umbrella alone takes core as an ordinary dependency, and that is what satisfies the peer —
+  a consumer still installs one package. The reason is runtime identity rather than types: a
+  value tuple like `SOURCE_KINDS` and the `parseInput` validation have to be ONE copy for the
+  validator and the engine to agree, and two copies would disagree silently instead of failing
+  at install time.
 - **What a package exports is governed by `package-contract.md`** (entry-point kinds, barrels as
   re-export-only consumer contracts, the executor/vocabulary skeletons) — it auto-loads for
   barrels, manifests, and READMEs.

@@ -6,6 +6,11 @@ import { describe, expect, it } from 'vitest';
 // BEFORE the why (violation, then recovery, then rationale); the reason stays one line.
 import { type JudgeDisciplineSpec, judgeDiscipline } from '../src/discipline.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // Each `why` below is real rationale prose rather than a tag: live entries carry sentences,
 // and the appended text must survive verbatim.
 
@@ -15,6 +20,7 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
+  readPreState,
 };
 
 const DELTA_WHY =

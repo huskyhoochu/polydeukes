@@ -11,12 +11,18 @@ import {
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 const ROOT = '/repo';
 
 const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
+  readPreState,
 };
 
 /**
@@ -253,6 +259,7 @@ describe('compileDisciplineRegistrations — registration shape', () => {
       ...(input === undefined ? {} : { input }),
       shellTools: ['Bash'],
       commandArgs: ['command'],
+      readPreState,
     };
   }
 
@@ -320,6 +327,7 @@ describe('compileDisciplineRegistrations — matches closure', () => {
       rootDir: ROOT,
       shellTools: ['Bash'],
       commandArgs: ['command'],
+      readPreState,
     });
     return reg;
   }
@@ -378,6 +386,7 @@ describe('discipline extensibility — a fresh entry works with no other setup',
       rootDir: ROOT,
       shellTools: ['Bash'],
       commandArgs: ['command'],
+      readPreState,
     });
     const input = inputWithFileChanges([
       { path: 'app/x.ts', pre: 'const a = 1;', post: 'const a = 1; // TODO fix' },

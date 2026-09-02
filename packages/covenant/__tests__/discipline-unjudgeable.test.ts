@@ -19,7 +19,6 @@ function transcriptWithToolCalls(
   calls: { name: string; args: Record<string, unknown> }[],
 ): CanonicalTranscript {
   return {
-    findSubagentInvocations: () => [],
     findUserMessages: () => [],
     findToolCalls: (name?: string) =>
       name === undefined ? calls : calls.filter((c) => c.name === name),
@@ -35,6 +34,7 @@ function contextSpec(
     rootDir: ROOT,
     shellTools: ['Bash'],
     commandArgs: ['command'],
+    readPreState: () => null,
     ...extra,
   } as CompileDisciplinesSpec;
 }

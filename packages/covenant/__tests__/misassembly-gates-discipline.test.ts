@@ -27,6 +27,7 @@ function compileWithSurface(surface: { shellTools?: string[]; commandArgs?: stri
     rootDir: ROOT,
     shellTools: ['Bash'],
     commandArgs: ['command'],
+    readPreState: () => null,
     ...surface,
   } as unknown as CompileDisciplinesSpec;
   const [reg] = compileDisciplineRegistrations(spec);

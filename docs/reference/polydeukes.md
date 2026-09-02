@@ -12,6 +12,11 @@ every other dependency in this repository runs one way, through the core alone. 
 this page the consumer-facing surface: the four scoped packages are transitive dependencies
 you do not install and do not import.
 
+The judge and the two adapters take the core as a `peerDependency` rather than a dependency
+of their own, so they share one copy of the vocabulary instead of each carrying its own. The
+umbrella's ordinary dependency on the core is what satisfies that peer, which is why
+installing this one package is still all a consumer does.
+
 | Package | Reference | Owns |
 |---|---|---|
 | `@polydeukes/core` | [core](./core.md) | The protocol, the config schema, telemetry |

@@ -13,6 +13,11 @@ import {
 } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 // The anchored pattern is live-shaped: a forbidden spawn matches only at a command position —
 // start of a line or after ; & | ( — so a mid-line mention like `echo yarn` stays clean.
 
@@ -22,6 +27,7 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   rootDir: ROOT,
   shellTools: ['Bash'],
   commandArgs: ['command'],
+  readPreState,
 };
 
 const anchoredEntry: DisciplineEntry = {
@@ -48,6 +54,7 @@ function compileOne(entry: DisciplineEntry): CovenantRegistration {
     rootDir: ROOT,
     shellTools: ['Bash'],
     commandArgs: ['command'],
+    readPreState,
   };
   const [reg] = compileDisciplineRegistrations(spec);
   return reg;

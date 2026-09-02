@@ -56,13 +56,6 @@ const exportedNames = (text: string): Set<string> => {
 const KEPT_EXPORTS: readonly string[] = [
   // umbrella static imports
   'CovenantRegistration',
-  'findUnattributed',
-  'readBaseline',
-  'snapshotBaseline',
-  'writeBaseline',
-  // the baseline verbs' own parameter and result types
-  'BaselineSnapshot',
-  'StoredBaseline',
   'ttlWitness',
   'TtlWitnessSpec',
   // composition-root calls through the covenant module, each verb with its spec type
@@ -102,7 +95,6 @@ const KEPT_EXPORTS: readonly string[] = [
  * package's own tests reach it.
  */
 const MODULE_EXPORTS: Record<string, readonly string[]> = {
-  'src/baseline.ts': ['BaselineSnapshot', 'StoredBaseline'],
   'src/bash-line.ts': [
     'extractMutations',
     'Indeterminate',

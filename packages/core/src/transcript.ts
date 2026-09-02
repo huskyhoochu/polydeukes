@@ -9,9 +9,6 @@
 
 import type { CovenantInput } from './protocol.js';
 
-/** One subagent invocation observed in the session. `kind` is an adapter-supplied value. */
-export type SubagentInvocation = { kind: string };
-
 /**
  * One user message observed in the session.
  *
@@ -43,8 +40,6 @@ export type TranscriptToolCall = {
  * to the consumer.
  */
 export type CanonicalTranscript = {
-  /** Invocations of the given kind, or all of them when omitted. Observation order preserved. */
-  findSubagentInvocations(kind?: string): SubagentInvocation[];
   /** Every user message, observation order preserved. Missing timestampMs = freshness unprovable. */
   findUserMessages(): TranscriptUserMessage[];
   /** Tool calls with the given name, or all when omitted. Observation order preserved. */
@@ -57,7 +52,6 @@ export type CanonicalTranscript = {
  * so does a precedent consumer (no evidence, gate stays shut).
  */
 export const noopTranscript: CanonicalTranscript = {
-  findSubagentInvocations: () => [],
   findUserMessages: () => [],
   findToolCalls: () => [],
 };
@@ -65,8 +59,7 @@ export const noopTranscript: CanonicalTranscript = {
 /**
  * Wrap a {@link CovenantInput} as a {@link CanonicalTranscript}.
  *
- * Exposes `subagentSpawns` as invocations (filtered when a kind is given) and
- * `userMessages` with `timestampMs` omitted — the bare IR cannot prove freshness,
+ * Exposes `userMessages` with `timestampMs` omitted — the bare IR cannot prove freshness,
  * and that absence is the *correct* fail-closed signal for a witness consumer.
  * Order preserved; the input is never mutated, and every query returns fresh
  * objects so consumers never hold live aliases into the shared IR.
@@ -78,10 +71,6 @@ export const noopTranscript: CanonicalTranscript = {
  */
 export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
   return {
-    findSubagentInvocations: (kind) =>
-      input.subagentSpawns
-        .filter((spawn) => kind === undefined || spawn.kind === kind)
-        .map((spawn) => ({ kind: spawn.kind })),
     findUserMessages: () => input.userMessages.map((message) => ({ text: message.text })),
     findToolCalls: (name) =>
       input.toolCalls

@@ -12,6 +12,11 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
+// No fixture here drives a shell-derived write, so the injected pre-state reader is never
+// consulted; `null` — the file is not there — is the answer that would make a create if one
+// ever were.
+const readPreState = () => null;
+
 type EnforceLevel = 'block' | 'advise';
 type RegistrationWithEnforce = CovenantRegistration & { enforce?: EnforceLevel };
 type EntryWithEnforce = DisciplineEntry & { enforce?: EnforceLevel };
@@ -202,6 +207,7 @@ describe('compileDisciplineRegistrations — entry enforce reaches the body-bear
       rootDir: ROOT,
       shellTools: [SHELL_TOOL],
       commandArgs: [COMMAND_ARG],
+      readPreState,
     };
   }
 

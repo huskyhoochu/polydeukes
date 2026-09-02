@@ -33,12 +33,13 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@polydeukes/core": "workspace:^"
-  },
   "devDependencies": {
+    "@polydeukes/core": "workspace:^",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@polydeukes/core": "workspace:^"
   }
 }
