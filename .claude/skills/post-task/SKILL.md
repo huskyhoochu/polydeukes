@@ -79,6 +79,13 @@ so a candidate recorded nowhere else evaporates when the session ends (this exac
 ate the CONFIG-04 candidate before it was recovered by hand). If no, record
 `public docs: none` explicitly.
 
+**Discharge is part of this check.** Whenever this session published into
+`docs/build-in-public/` or `docs/why-polydeukes.md`, re-read the parked-candidates comment in
+**both** language files and delete every candidate the publication satisfied. Nothing else
+removes an entry, so a published candidate stays in the queue until this step does it (the
+2026-09-02 audit found two, and two more that existed in one language only). A candidate
+whose condition is only partly met stays, with the unmet half named.
+
 ## The mandatory block
 
 Emit this before proceeding to the PR (or the final commit):

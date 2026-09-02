@@ -60,7 +60,7 @@ knows nothing of the others.
 
 | Package | Role |
 |---------|------|
-| `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), config loader, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent |
+| `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
 | `@polydeukes/covenant` | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
 | `@polydeukes/memory` | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
@@ -72,9 +72,9 @@ scale of multiple worktrees and team workflows.
 
 ## Design blueprint (in brief)
 
-The core principle of the extraction strategy is that dependencies always point **inward (general
-core) → outward (domain), one direction only**. The core knows nothing of any specific product or AI
-runtime.
+The core principle of the extraction strategy is a one-way layering: **general core inward, domain
+outward**, with every dependency pointing inward at the core and none pointing back out. The core
+knows nothing of any specific product or AI runtime.
 
 ```text
 @polydeukes/core            domain- and agent-agnostic patterns

@@ -50,7 +50,7 @@ carries. The family determines what evidence the judgment needs.
 | **delta** | `forbid` | Added-direction content of a file change. Existing debt is forgiven; only new occurrences break. |
 | **command** | `forbidCommand` | The command line itself. No file evidence needed. |
 | **context** | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one. Needs a transcript channel; without one the entry records `skipped`. |
-| **path** | (protected paths) | Whole-path mention or mutation target. |
+| **path** | `immutable` | Whole-path mention or mutation target; the key's own glob is the scope. Distinct from the meta-covenants' protected-path matching, which judges the chain itself and is not a `disciplines:` entry. |
 | **declaration** | `declare` | One algebra declaration (below) over each file change as a world. Its `scope` block is its scope; the entry takes no `in`/`except`/`when`. |
 
 `when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
