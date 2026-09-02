@@ -126,7 +126,9 @@ module; a name outside a closed list is rejected by validation, never coerced.
   every extract step maps `Items → Items`, where an item is `{ key, value }`. `key` is the unit
   of combination and of keyed comparison (`onlyIn`, `intersect`, `Implies`, `Unchanged`);
   `value` is what a relation compares, by structural equality. A scalar source is one item
-  under key `'0'`; a list without an index keys its elements by position.
+  under key `'0'`; a list without an index keys its elements by position. A key comes from
+  one of three places — an element's position, a field of an object value, or a capture over
+  the value's own text — and the last is what lets two different values meet under one key.
 - **Paired source** — `source: state` reads `World.state = { pre, post }` and runs the same
   pipeline over both, producing a pre/post pair. Only `Unchanged` accepts a pair; a pair in any
   other relation, or a single extraction under `Unchanged`, is a config fault at compile time.

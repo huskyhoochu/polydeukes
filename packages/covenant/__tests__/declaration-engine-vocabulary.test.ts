@@ -8,9 +8,9 @@ import {
   type Items,
   UNARY_STEP_NAMES,
 } from '../src/declaration-engine.ts';
-import { extracted, isConfigFault } from './declaration-engine-helpers.ts';
+import { extracted, isConfigFault, judge, witnessesOf } from './declaration-engine-helpers.ts';
 
-// The extract registry: eleven unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: twelve unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -51,7 +51,7 @@ function positioned(values: readonly unknown[]): Items {
 }
 
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the eleven unary steps and no combinator', () => {
+  it('lists exactly the twelve unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
@@ -62,6 +62,7 @@ describe('extract registry — the closed set of unary steps', () => {
         'items',
         'json',
         'keyBy',
+        'keyByPattern',
         'lines',
         'matches',
         'select',
@@ -91,6 +92,7 @@ describe('extract registry — the closed set of unary steps', () => {
     lines: { step: { op: 'lines' }, items: positioned(['a\nb']) },
     matches: { step: { op: 'matches', re: 'b' }, items: positioned(['abc']) },
     items: { step: { op: 'items' }, items: positioned([['x', 'y']]) },
+    keyByPattern: { step: { op: 'keyByPattern', re: '^(.+)$' }, items: positioned(['x']) },
   };
 
   it.each(UNARY_STEP_NAMES)('%s: run returns an item list, never a boolean', (name) => {
@@ -522,5 +524,203 @@ describe('items — array to one item per element', () => {
     const raised = stepFault({ op: 'items', of: 'x' });
     expect(raised.location).toContain(EXTRACT);
     expect(raised.reason).toContain("does not take the argument 'of'");
+  });
+});
+
+describe('keyByPattern — re-key each item by capture group 1 of its value', () => {
+  // The expressions below capture the stem before a suffix, so a key that still reads as a
+  // position, as the whole match, or as the value itself is a different answer from the
+  // capture. Two suffixes over one stem are what lets two pipelines fold onto one key.
+  const step: UnaryStep = { op: 'keyByPattern', re: '^(.+)\\.src$' };
+
+  it('an empty input yields no items', () => {
+    // An implementation that reads the first item before checking there is one throws here.
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('keys a matching item by the capture and keeps the value as it was', () => {
+    // The value is the axis that separates re-keying from projection: a step that writes
+    // the capture into the value answers `'a'` there, and a step that keys by the whole
+    // match answers `'a.src'` in the key.
+    expect(run(step, [{ key: '0', value: 'a.src' }])).toEqual([{ key: 'a', value: 'a.src' }]);
+  });
+
+  it('drops an item whose value does not match', () => {
+    // A `matches`-style filter would keep 'b.txt' under its position; an unguarded
+    // `exec(...)[1]` throws on the null it returns.
+    expect(run(step, positioned(['b.txt']))).toEqual([]);
+  });
+
+  it('keeps every item in input order, including two that fold onto one key', () => {
+    // The stems are deliberately unsorted so a sort cannot hide, and the repeated stem
+    // catches a dedupe or a fold-into-array: three in, three out, keys b a b.
+    const folding: UnaryStep = { op: 'keyByPattern', re: '^(.+)\\.(?:src|gen)$' };
+    expect(run(folding, positioned(['b.src', 'a.src', 'b.gen']))).toEqual([
+      { key: 'b', value: 'b.src' },
+      { key: 'a', value: 'a.src' },
+      { key: 'b', value: 'b.gen' },
+    ]);
+  });
+
+  it('an empty capture is an empty-string key, not a dropped item', () => {
+    // `keyBy` keeps an empty-string key, and this step follows it; a falsy check on the
+    // capture would drop the item.
+    expect(run({ op: 'keyByPattern', re: '^(.*)\\.md$' }, positioned(['.md']))).toEqual([
+      { key: '', value: '.md' },
+    ]);
+  });
+
+  it('matches a non-string value through String() and keeps the original value', () => {
+    // A `typeof value === 'string'` gate drops the number; a stringifying step answers
+    // `'42'` as the value where the input carried `42`.
+    expect(run({ op: 'keyByPattern', re: '^(\\d+)$' }, positioned([42, null, true]))).toEqual([
+      { key: '42', value: 42 },
+    ]);
+  });
+
+  it('asks nothing of the value type: an array is keyed by its String() form', () => {
+    // No type gate, unlike `keyBy`, which drops an object-valued key. `String()`
+    // joins without a separator, so a one-element array is indistinguishable here from the
+    // string it holds — the object stringifies to '[object Object]' and simply misses.
+    expect(
+      run({ op: 'keyByPattern', re: '^(.+)\\.src$' }, positioned([['a.src'], { a: 1 }])),
+    ).toEqual([{ key: 'a', value: ['a.src'] }]);
+  });
+
+  it('is case-sensitive without `i` and case-insensitive with it', () => {
+    // A step copied from `matches` that forgets the flag drops the lower-case value.
+    const items = positioned(['a.SRC']);
+    expect(run(step, items)).toEqual([]);
+    expect(run({ op: 'keyByPattern', re: '^(.+)\\.src$', i: true }, items)).toEqual([
+      { key: 'a', value: 'a.SRC' },
+    ]);
+  });
+
+  it('uses capture group 1 alone when the expression has several', () => {
+    // The last group or a join of all groups reads 'src' or 'a.src' into the key.
+    expect(run({ op: 'keyByPattern', re: '^(.+)\\.(src|gen)$' }, positioned(['a.src']))).toEqual([
+      { key: 'a', value: 'a.src' },
+    ]);
+  });
+
+  it('admits a named group as a capture, and keys by position 1', () => {
+    // A group counter written as a scan for '(' not followed by '?' reads `(?<n>…)` as
+    // non-capturing and refuses a legal declaration. The refusal happens at compile time,
+    // so this has to compile rather than run the entry: `run` reaches no validator.
+    const named: UnaryStep = { op: 'keyByPattern', re: '^(?<stem>.+)\\.src$' };
+    expect(
+      compileDeclaration({
+        discipline: 'probe',
+        extract: { [EXTRACT]: [{ op: 'source', of: SRC }, named] },
+        relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
+      }),
+    ).not.toSatisfy(isConfigFault);
+    // The name is never read; the key comes from position 1 as it does for any group.
+    expect(run(named, positioned(['a.src']))).toEqual([{ key: 'a', value: 'a.src' }]);
+  });
+
+  it('drops a matching item whose group 1 did not take part in the match', () => {
+    // Group 1 can sit on an alternation branch the input does not take, or be optional,
+    // and then `exec` matches with an unbound slot. Writing that slot into `key` produces
+    // an item whose key is `undefined` despite the type, and every such item then folds
+    // onto one shared key in any relation that compares keys — so a break is reported as
+    // a pass. Like `keyBy` on a missing field, the step drops what it cannot key.
+    expect(
+      run({ op: 'keyByPattern', re: '^(?:(a)|(b))\\.src$' }, positioned(['b.src', 'a.src'])),
+    ).toEqual([{ key: 'a', value: 'a.src' }]);
+    expect(run({ op: 'keyByPattern', re: '^(x)?\\.src$' }, positioned(['.src']))).toEqual([]);
+  });
+
+  it('keeps input order when the dropped items are not all at the tail', () => {
+    // Drops interleaved with keeps: an implementation that partitions instead of mapping,
+    // or that keys by the surviving item's index, reorders or misnames these.
+    expect(
+      run(
+        { op: 'keyByPattern', re: '^(.+)\\.src$' },
+        positioned(['x.txt', 'b.src', 'y.txt', 'a.src']),
+      ),
+    ).toEqual([
+      { key: 'b', value: 'b.src' },
+      { key: 'a', value: 'a.src' },
+    ]);
+  });
+
+  it('rejects a non-string `re` and a missing `re`', () => {
+    // Compilation refuses an unregistered name and a bad argument at the same `location`,
+    // so the reason is what tells the two apart — asserting the location alone would pass
+    // while the step does not exist at all.
+    const wrongType = stepFault({ op: 'keyByPattern', re: 1 });
+    expect(wrongType.location).toContain(EXTRACT);
+    expect(wrongType.reason).toContain("needs 're'");
+    const missing = stepFault({ op: 'keyByPattern' });
+    expect(missing.location).toContain(EXTRACT);
+    expect(missing.reason).toContain("needs 're'");
+  });
+
+  it('rejects a non-boolean `i`', () => {
+    const raised = stepFault({ op: 'keyByPattern', re: '^(.+)$', i: 'yes' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toContain("'i' as a boolean");
+  });
+
+  it('rejects an argument key outside `re` and `i`', () => {
+    const raised = stepFault({ op: 'keyByPattern', re: '^(.+)$', field: 'x' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toContain("does not take the argument 'field'");
+  });
+
+  it('rejects an expression without a capture group at compile time', () => {
+    // A re-keying step with nothing to key by is well-formed and empty of meaning; a
+    // runtime drop would let the declaration compile and then silently produce no items.
+    // The non-capturing group is the mutant: a `(`-counting check reads it as a group.
+    for (const re of ['^.+\\.src$', '(?:x)']) {
+      const raised = stepFault({ op: 'keyByPattern', re });
+      expect(raised.location).toContain(EXTRACT);
+      expect(raised.reason).toContain('capture group');
+    }
+  });
+
+  it('rejects an expression that does not compile, as a fault rather than a throw', () => {
+    // The capture-group count is measured by compiling the expression; measured before the
+    // compile check, a bad expression throws out of validation instead of naming a location.
+    const raised = stepFault({ op: 'keyByPattern', re: '(' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toContain('compile');
+  });
+});
+
+describe('keyByPattern — two pipelines folded onto one key, related by Implies', () => {
+  // `Implies` compares keys, and until this step the only keys were positions and object
+  // fields, so two string values could never meet. The identifiers are arbitrary pairs of
+  // suffixed names; the declaration's expressions, not the engine, decide what pairs with what.
+  const RECORDS = 'records';
+  const SOURCES = 'sources';
+  const GENERATED = 'generated';
+  const decl: AlgebraDeclaration = {
+    discipline: 'probe',
+    extract: {
+      [SOURCES]: [
+        { op: 'source', of: RECORDS },
+        { op: 'items' },
+        { op: 'keyByPattern', re: '^(.+)\\.src$' },
+      ],
+      [GENERATED]: [
+        { op: 'source', of: RECORDS },
+        { op: 'items' },
+        { op: 'keyByPattern', re: '^(.+)\\.gen$' },
+      ],
+    },
+    relate: [
+      { id: ENTRY, relation: { op: 'Implies', of: SOURCES, requires: GENERATED }, message: 'm' },
+    ],
+  };
+
+  it('names the antecedent without a counterpart as the witness, value intact', () => {
+    // A pass-through in place of the step leaves both sides position-keyed and the relation
+    // holds vacuously; a value-projecting step reports `'b'` as the witness value.
+    // Compiling here also proves a well-formed step is admitted: the `run` cases bypass
+    // validation, so an over-strict validator would pass every one of them.
+    const verdict = judge(decl, { [RECORDS]: ['a.src', 'a.gen', 'b.src'] });
+    expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: 'b', value: 'b.src' }]);
   });
 });
