@@ -619,6 +619,18 @@ describe('keyByPattern — re-key each item by capture group 1 of its value', ()
     expect(run(named, positioned(['a.src']))).toEqual([{ key: 'a', value: 'a.src' }]);
   });
 
+  it('drops a matching item whose group 1 did not take part in the match', () => {
+    // Group 1 can sit on an alternation branch the input does not take, or be optional,
+    // and then `exec` matches with an unbound slot. Writing that slot into `key` produces
+    // an item whose key is `undefined` despite the type, and every such item then folds
+    // onto one shared key in any relation that compares keys — so a break is reported as
+    // a pass. Like `keyBy` on a missing field, the step drops what it cannot key.
+    expect(
+      run({ op: 'keyByPattern', re: '^(?:(a)|(b))\\.src$' }, positioned(['b.src', 'a.src'])),
+    ).toEqual([{ key: 'a', value: 'a.src' }]);
+    expect(run({ op: 'keyByPattern', re: '^(x)?\\.src$' }, positioned(['.src']))).toEqual([]);
+  });
+
   it('keeps input order when the dropped items are not all at the tail', () => {
     // Drops interleaved with keeps: an implementation that partitions instead of mapping,
     // or that keys by the surviving item's index, reorders or misnames these.
