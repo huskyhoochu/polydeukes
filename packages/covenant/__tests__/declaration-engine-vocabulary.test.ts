@@ -10,7 +10,7 @@ import {
 } from '../src/declaration-engine.ts';
 import { extracted, isConfigFault } from './declaration-engine-helpers.ts';
 
-// The extract registry: ten unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: eleven unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -51,7 +51,7 @@ function positioned(values: readonly unknown[]): Items {
 }
 
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the ten unary steps and no combinator', () => {
+  it('lists exactly the eleven unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
@@ -59,6 +59,7 @@ describe('extract registry — the closed set of unary steps', () => {
         'field',
         'filter',
         'flattenKeys',
+        'items',
         'json',
         'keyBy',
         'lines',
@@ -89,6 +90,7 @@ describe('extract registry — the closed set of unary steps', () => {
     sort: { step: { op: 'sort' }, items: positioned(['b', 'a']) },
     lines: { step: { op: 'lines' }, items: positioned(['a\nb']) },
     matches: { step: { op: 'matches', re: 'b' }, items: positioned(['abc']) },
+    items: { step: { op: 'items' }, items: positioned([['x', 'y']]) },
   };
 
   it.each(UNARY_STEP_NAMES)('%s: run returns an item list, never a boolean', (name) => {
@@ -428,5 +430,97 @@ describe('matches — keep items whose value matches a constant regex', () => {
     expect(stepFault({ op: 'matches' }).location).toContain(EXTRACT);
     expect(stepFault({ op: 'matches', re: 'x', i: 'yes' }).location).toContain(EXTRACT);
     expect(stepFault({ op: 'matches', re: 'x', g: true }).location).toContain(EXTRACT);
+  });
+});
+
+describe('items — array to one item per element', () => {
+  const step: UnaryStep = { op: 'items' };
+
+  // Every fixture below with a non-empty input is shaped so that handing the input back
+  // unchanged answers differently — a different item count or different keys — because
+  // a flat list of scalars is exactly what a pass-through would leave intact.
+
+  it('an empty input yields no items', () => {
+    // An implementation that reads the first item before checking there is one throws here.
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('spreads one array value into position-keyed items in array order', () => {
+    // The parent key is not composed into the child key: 'list' does not become 'list.0'.
+    // The elements are deliberately unsorted so a sorting step cannot hide behind them.
+    expect(run(step, [{ key: 'list', value: ['b', 'c', 'a'] }])).toEqual([
+      { key: '0', value: 'b' },
+      { key: '1', value: 'c' },
+      { key: '2', value: 'a' },
+    ]);
+  });
+
+  it('an empty array yields no items', () => {
+    // A pass-through keeps one item whose value is `[]`; the step keeps none.
+    expect(run(step, positioned([[]]))).toEqual([]);
+  });
+
+  it('drops a string, a number, a plain object, an array-like, null, and undefined', () => {
+    // A string is iterable, so a spread would split it into characters; a plain object
+    // holding an array is what `select` reaches into, and this step must not follow it.
+    // The `length`-bearing object separates a real array test from a duck-typed one:
+    // `Array.from` and any `typeof value.length === 'number'` check unfold it.
+    // A throw here would turn a malformed world into a crash instead of an empty extract.
+    const arrayLike = { length: 2, 0: 'a', 1: 'b' };
+    expect(run(step, positioned(['text', 7, { a: ['x'] }, arrayLike, null, undefined]))).toEqual(
+      [],
+    );
+  });
+
+  it('keeps falsy elements — an element is dropped for its position, never its value', () => {
+    // A `filter(Boolean)` anywhere in the unfolding silently loses these four; the count
+    // is what catches it, since every other fixture's elements are truthy.
+    expect(run(step, positioned([[0, '', null, false]]))).toEqual([
+      { key: '0', value: 0 },
+      { key: '1', value: '' },
+      { key: '2', value: null },
+      { key: '3', value: false },
+    ]);
+  });
+
+  it('unfolds one level — an element that is itself an array stays one item', () => {
+    // The neighbouring `flattenKeys` recurses, so an implementation copied from it would
+    // answer four items here. Depth is the axis: this step spreads the value it is given
+    // and does not look inside what comes out.
+    expect(run(step, positioned([[[1, 2], [3], 4]]))).toEqual([
+      { key: '0', value: [1, 2] },
+      { key: '1', value: [3] },
+      { key: '2', value: 4 },
+    ]);
+  });
+
+  it('unfolds only the items holding arrays, in input order, each keyed from zero', () => {
+    // Keys restart at '0' for every array item — the same key space `select` uses — so a
+    // renumbering across items ('0','1','2') or a dropped non-array position ('2') is wrong.
+    expect(run(step, positioned([['a', 'b'], 'text', ['c']]))).toEqual([
+      { key: '0', value: 'a' },
+      { key: '1', value: 'b' },
+      { key: '0', value: 'c' },
+    ]);
+  });
+
+  it('after `source`, one item per element of a list the source kept whole', () => {
+    // `source` seeds a list as one item under '0'; the step is what reaches its elements.
+    // Compiling here also proves a bare `{ op: 'items' }` is admitted — the `run` cases
+    // bypass validation, so an over-strict validator would pass every one of them.
+    expect(extracted(SRC, EXTRACT, [step], ['src/a.ts', 'src/b.ts', 'README.md'])).toEqual([
+      { key: '0', value: 'src/a.ts' },
+      { key: '1', value: 'src/b.ts' },
+      { key: '2', value: 'README.md' },
+    ]);
+  });
+
+  it('rejects any argument key — the step takes none', () => {
+    // Compilation refuses an unregistered name and a closed-key violation at the same
+    // `location`, so the reason is the only thing that tells the two apart. Asserting the
+    // location alone would pass while the step does not exist at all.
+    const raised = stepFault({ op: 'items', of: 'x' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toContain("does not take the argument 'of'");
   });
 });
