@@ -2,6 +2,8 @@
 
 **English** · [한국어](./README.ko.md)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/huskyhoochu/polydeukes)
+
 > A development *discipline* framework for building alongside an AI coding partner. Deterministic
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.

@@ -2,6 +2,8 @@
 
 **한국어** · [English](./README.md)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/huskyhoochu/polydeukes)
+
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
