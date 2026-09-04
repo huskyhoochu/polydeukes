@@ -41,6 +41,9 @@ const declareEntry = {
   id: DECLARE_ID,
   why: 'the English locale must carry at least one key',
   declare: {
+    // World axis with `nonEmpty`: `scoped-valve` is the one name that admits it, and it
+    // asks for the valve block below.
+    mechanism: 'scoped-valve',
     sources: { [SOURCE_NAME]: { file: EN_FILE } },
     supply: { [SOURCE_NAME]: 'pass' },
     scope: { source: 'target.path', include: ['^locales/'] },
@@ -50,10 +53,19 @@ const declareEntry = {
     relate: [
       {
         id: 'has-keys',
-        relation: { op: 'NonEmpty', of: 'enKeys' },
+        relation: { op: 'nonEmpty', of: 'enKeys' },
         message: 'the English locale carries no key',
       },
     ],
+    witness: {
+      extract: {
+        override: [
+          { op: 'source', of: 'target.path' },
+          { op: 'matches', re: '^$' },
+        ],
+      },
+      relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: 'override' }, message: 'w' }],
+    },
   },
 };
 

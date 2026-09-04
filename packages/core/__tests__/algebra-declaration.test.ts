@@ -26,7 +26,6 @@ const FIXTURE_NAMES = [
   'i18n-key-parity',
   'invariant-comment-marker',
   'task-ledger-self-pardon',
-  'tdd-agent-required',
 ] as const;
 
 // Extract names and source names below are fixture values: the validator only checks
@@ -42,18 +41,34 @@ const minimalExtract = {
   [EXTRACT_B]: [{ op: 'source', of: SOURCE_POST }],
 };
 
-const minimalRule = { id: 'items-empty', relation: { op: 'Empty', of: EXTRACT_A }, message: 'm' };
+const minimalRule = { id: 'items-empty', relation: { op: 'empty', of: EXTRACT_A }, message: 'm' };
 
 const minimalDeclaration = {
   discipline: 'probe',
+  // `added-only` admits exactly the shape above: the change axis and `empty`.
+  mechanism: 'added-only',
   extract: minimalExtract,
   relate: [minimalRule],
+};
+
+/**
+ * The minimal declaration under the one mechanism whose spec admits every axis and every
+ * relation — `scoped-valve`, which asks only for a witness block. The relation-position
+ * tests below swap the relation freely on top of it, so the mechanism check never decides
+ * what those tests are about.
+ */
+const anyShapeDeclaration = {
+  ...minimalDeclaration,
+  mechanism: 'scoped-valve',
+  witness: {
+    relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: EXTRACT_B }, message: 'w' }],
+  },
 };
 
 /** A declaration whose single entry carries the given relation. */
 function withRelation(relation: unknown): unknown {
   return {
-    ...minimalDeclaration,
+    ...anyShapeDeclaration,
     relate: [{ id: 'probe-entry', relation, message: 'm' }],
   };
 }
@@ -76,7 +91,7 @@ function expectRejection(input: unknown, location?: string): ConfigValidationErr
 
 describe('validateAlgebraDeclaration — accepted declarations', () => {
   it.each(FIXTURE_NAMES)('accepts the %s declaration and returns it verbatim', (name) => {
-    // The four real declarations exercise every block and every combinator; returning the
+    // The three real declarations exercise every block and every combinator; returning the
     // input unchanged is the contract, so a validator that normalizes (drops `mechanism`,
     // reorders relate, fills `strict: false`) shows up here.
     const declaration = loadFixture(name);
@@ -84,9 +99,18 @@ describe('validateAlgebraDeclaration — accepted declarations', () => {
     expect(validateAlgebraDeclaration(declaration)).toEqual(declaration);
   });
 
-  it('accepts the minimal declaration: discipline, extract, relate, nothing else', () => {
-    // scope, supply, witness, mechanism, axis are all optional — a validator requiring any
-    // of them refuses the smallest legal document.
+  it('refuses the tdd-agent-required declaration until the transcript source is registered', () => {
+    // The W2 precedent case reads `transcript` and `sidecar` as bare names. The engine's
+    // world supplies them, but the universe of source names is the fixed five plus the
+    // `sources` block, and the transcript kind is not registered yet.
+    expect(() => validateAlgebraDeclaration(loadFixture('tdd-agent-required'))).toThrow(
+      /'transcript'/,
+    );
+  });
+
+  it('accepts the minimal declaration: discipline, mechanism, extract, relate, nothing else', () => {
+    // scope, supply, witness are optional — a validator requiring any of them refuses the
+    // smallest legal document.
     expect(validateAlgebraDeclaration(minimalDeclaration)).toEqual(minimalDeclaration);
   });
 
@@ -116,20 +140,20 @@ describe('validateAlgebraDeclaration — accepted declarations', () => {
 
   it('accepts an Equal entry with a plain message', () => {
     // messageBySide is allowed on Equal, never required: Equal with `message` is legal.
-    const declaration = withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_B] });
+    const declaration = withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_B] });
 
     expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
   });
 
   it('accepts Ordered with strict: true', () => {
-    const declaration = withRelation({ op: 'Ordered', of: EXTRACT_A, strict: true });
+    const declaration = withRelation({ op: 'ordered', of: EXTRACT_A, strict: true });
 
     expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
   });
 
   it('accepts Ordered without strict', () => {
     // strict is optional; a validator requiring it refuses the plain monotone form.
-    const declaration = withRelation({ op: 'Ordered', of: EXTRACT_A });
+    const declaration = withRelation({ op: 'ordered', of: EXTRACT_A });
 
     expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
   });
@@ -137,7 +161,7 @@ describe('validateAlgebraDeclaration — accepted declarations', () => {
   it('accepts Implies when both of and requires resolve', () => {
     // The only relation whose second reference is `requires`; a resolver that checks
     // `of`/`in` slots alone and then refuses the unfamiliar key rejects the legal form.
-    const declaration = withRelation({ op: 'Implies', of: EXTRACT_A, requires: EXTRACT_B });
+    const declaration = withRelation({ op: 'implies', of: EXTRACT_A, requires: EXTRACT_B });
 
     expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
   });
@@ -146,9 +170,9 @@ describe('validateAlgebraDeclaration — accepted declarations', () => {
     // The third combinator in a non-cyclic position: the fixtures carry union and onlyIn
     // only, so a list missing intersect would pass every other acceptance test.
     const declaration = {
-      ...minimalDeclaration,
+      ...anyShapeDeclaration,
       extract: { ...minimalExtract, shared: [{ op: 'intersect', of: [EXTRACT_A, EXTRACT_B] }] },
-      relate: [{ id: 'shared-nonempty', relation: { op: 'NonEmpty', of: 'shared' }, message: 'm' }],
+      relate: [{ id: 'shared-nonempty', relation: { op: 'nonEmpty', of: 'shared' }, message: 'm' }],
     };
 
     expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
@@ -161,7 +185,7 @@ describe('validateAlgebraDeclaration — accepted declarations', () => {
       ...minimalDeclaration,
       witness: {
         relate: [
-          { id: 'witnessed-skip', relation: { op: 'NonEmpty', of: EXTRACT_B }, message: 'w' },
+          { id: 'witnessed-skip', relation: { op: 'nonEmpty', of: EXTRACT_B }, message: 'w' },
         ],
       },
     };
@@ -191,9 +215,10 @@ describe('validateAlgebraDeclaration — the relation position is closed to seve
     expect(error.message).toContain('Contains');
   });
 
-  it('rejects a relation name in the wrong case (empty)', () => {
-    // Discriminated unions match exactly; a case-folding comparison would admit it.
-    expectRejection(withRelation({ op: 'empty', of: EXTRACT_A }));
+  it('rejects a relation name in the wrong case (Empty)', () => {
+    // Discriminated unions match exactly; a case-folding comparison would admit the
+    // capitalised spelling the relations carried before they became camelCase.
+    expectRejection(withRelation({ op: 'Empty', of: EXTRACT_A }));
   });
 
   it('rejects an entry whose relation is missing', () => {
@@ -204,48 +229,48 @@ describe('validateAlgebraDeclaration — the relation position is closed to seve
 describe('validateAlgebraDeclaration — relation argument shapes', () => {
   it('rejects Equal.of with the same name twice', () => {
     // Equal of a list with itself is always satisfied — an entry that can never break.
-    const error = expectRejection(withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_A] }));
+    const error = expectRejection(withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_A] }));
 
     expect(error.message).toContain(EXTRACT_A);
   });
 
   it('rejects Equal.of with three names', () => {
     // Length is exactly two, not "at least two".
-    expectRejection(withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_B, EXTRACT_A] }));
+    expectRejection(withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_B, EXTRACT_A] }));
   });
 
   it('rejects Equal.of given as a single string', () => {
     // The single-name shape belongs to the unary relations; Equal needs both sides.
-    expectRejection(withRelation({ op: 'Equal', of: EXTRACT_A }));
+    expectRejection(withRelation({ op: 'equal', of: EXTRACT_A }));
   });
 
   it('rejects Subset without `in`', () => {
     // Subset of nothing would have to default to something; there is no default.
-    const error = expectRejection(withRelation({ op: 'Subset', of: EXTRACT_A }));
+    const error = expectRejection(withRelation({ op: 'subset', of: EXTRACT_A }));
 
     expect(error.message).toContain('in');
   });
 
   it('rejects Implies without `requires`', () => {
-    const error = expectRejection(withRelation({ op: 'Implies', of: EXTRACT_A }));
+    const error = expectRejection(withRelation({ op: 'implies', of: EXTRACT_A }));
 
     expect(error.message).toContain('requires');
   });
 
   it('rejects Ordered with strict: "yes"', () => {
     // A truthy string under a truthiness check silently becomes strict ordering.
-    expectRejection(withRelation({ op: 'Ordered', of: EXTRACT_A, strict: 'yes' }));
+    expectRejection(withRelation({ op: 'ordered', of: EXTRACT_A, strict: 'yes' }));
   });
 
   it('rejects Empty.of given as an array', () => {
     // The array shape is Equal's; on a unary relation it is two names where one is meant.
-    expectRejection(withRelation({ op: 'Empty', of: [EXTRACT_A, EXTRACT_B] }));
+    expectRejection(withRelation({ op: 'empty', of: [EXTRACT_A, EXTRACT_B] }));
   });
 
   it('rejects an unknown key on a relation', () => {
     // `max` is exactly the argument Within carried; a relation level open to extra keys
     // would let a Within-shaped NonEmpty pass with its boundary silently ignored.
-    const error = expectRejection(withRelation({ op: 'NonEmpty', of: EXTRACT_A, max: 600000 }));
+    const error = expectRejection(withRelation({ op: 'nonEmpty', of: EXTRACT_A, max: 600000 }));
 
     expect(error.message).toContain('max');
   });
@@ -312,14 +337,14 @@ describe('validateAlgebraDeclaration — the combinator position is closed to th
 
 describe('validateAlgebraDeclaration — references resolve inside the declaration', () => {
   it('rejects an entry whose `of` names no extract', () => {
-    const error = expectRejection(withRelation({ op: 'Empty', of: 'missing' }));
+    const error = expectRejection(withRelation({ op: 'empty', of: 'missing' }));
 
     expect(error.message).toContain('missing');
   });
 
   it('rejects Subset whose `in` names no extract', () => {
     // Each reference slot is checked, not only `of`.
-    const error = expectRejection(withRelation({ op: 'Subset', of: EXTRACT_A, in: 'missing' }));
+    const error = expectRejection(withRelation({ op: 'subset', of: EXTRACT_A, in: 'missing' }));
 
     expect(error.message).toContain('missing');
   });
@@ -327,7 +352,7 @@ describe('validateAlgebraDeclaration — references resolve inside the declarati
   it('rejects Equal whose second name is dangling', () => {
     // Both positions of the pair are references; checking `of[0]` only leaves the second
     // unresolved.
-    const error = expectRejection(withRelation({ op: 'Equal', of: [EXTRACT_A, 'missing'] }));
+    const error = expectRejection(withRelation({ op: 'equal', of: [EXTRACT_A, 'missing'] }));
 
     expect(error.message).toContain('missing');
   });
@@ -377,7 +402,7 @@ describe('validateAlgebraDeclaration — references resolve inside the declarati
       witness: {
         extract: { [EXTRACT_A]: [{ op: 'union', of: [EXTRACT_A, EXTRACT_B] }] },
         relate: [
-          { id: 'witnessed-skip', relation: { op: 'NonEmpty', of: EXTRACT_A }, message: 'w' },
+          { id: 'witnessed-skip', relation: { op: 'nonEmpty', of: EXTRACT_A }, message: 'w' },
         ],
       },
     });
@@ -418,11 +443,11 @@ describe('validateAlgebraDeclaration — references resolve inside the declarati
     // witness's. Pooling both blocks into one name set would pass this.
     const declaration = {
       ...minimalDeclaration,
-      relate: [{ id: 'body-entry', relation: { op: 'Empty', of: 'witnessOnly' }, message: 'm' }],
+      relate: [{ id: 'body-entry', relation: { op: 'empty', of: 'witnessOnly' }, message: 'm' }],
       witness: {
         extract: { witnessOnly: [{ op: 'source', of: SOURCE_PRE }] },
         relate: [
-          { id: 'witnessed-skip', relation: { op: 'NonEmpty', of: 'witnessOnly' }, message: 'w' },
+          { id: 'witnessed-skip', relation: { op: 'nonEmpty', of: 'witnessOnly' }, message: 'w' },
         ],
       },
     };
@@ -442,7 +467,7 @@ describe('validateAlgebraDeclaration — entry messages', () => {
       relate: [
         {
           id: 'sided-subset',
-          relation: { op: 'Subset', of: EXTRACT_A, in: EXTRACT_B },
+          relation: { op: 'subset', of: EXTRACT_A, in: EXTRACT_B },
           messageBySide: { left: 'l', right: 'r' },
         },
       ],
@@ -460,7 +485,7 @@ describe('validateAlgebraDeclaration — entry messages', () => {
       relate: [
         {
           id: 'both-messages',
-          relation: { op: 'Equal', of: [EXTRACT_A, EXTRACT_B] },
+          relation: { op: 'equal', of: [EXTRACT_A, EXTRACT_B] },
           message: 'm',
           messageBySide: { left: 'l', right: 'r' },
         },
@@ -472,7 +497,7 @@ describe('validateAlgebraDeclaration — entry messages', () => {
     // An entry with no text breaks silently — the author gets an id and nothing to read.
     const error = expectRejection({
       ...minimalDeclaration,
-      relate: [{ id: 'no-message', relation: { op: 'Empty', of: EXTRACT_A } }],
+      relate: [{ id: 'no-message', relation: { op: 'empty', of: EXTRACT_A } }],
     });
 
     expect(error.message).toContain('no-message');
@@ -485,7 +510,7 @@ describe('validateAlgebraDeclaration — entry messages', () => {
       relate: [
         {
           id: 'half-sided',
-          relation: { op: 'Equal', of: [EXTRACT_A, EXTRACT_B] },
+          relation: { op: 'equal', of: [EXTRACT_A, EXTRACT_B] },
           messageBySide: { left: 'l' },
         },
       ],
@@ -495,7 +520,7 @@ describe('validateAlgebraDeclaration — entry messages', () => {
   it('rejects an empty-string message', () => {
     expectRejection({
       ...minimalDeclaration,
-      relate: [{ id: 'blank', relation: { op: 'Empty', of: EXTRACT_A }, message: '' }],
+      relate: [{ id: 'blank', relation: { op: 'empty', of: EXTRACT_A }, message: '' }],
     });
   });
 });
@@ -506,7 +531,7 @@ describe('validateAlgebraDeclaration — entry ids', () => {
     const declaration = {
       ...minimalDeclaration,
       witness: {
-        relate: [{ id: minimalRule.id, relation: { op: 'NonEmpty', of: EXTRACT_B }, message: 'w' }],
+        relate: [{ id: minimalRule.id, relation: { op: 'nonEmpty', of: EXTRACT_B }, message: 'w' }],
       },
     };
 
@@ -518,7 +543,7 @@ describe('validateAlgebraDeclaration — entry ids', () => {
   it('rejects an empty-string id', () => {
     expectRejection({
       ...minimalDeclaration,
-      relate: [{ id: '', relation: { op: 'Empty', of: EXTRACT_A }, message: 'm' }],
+      relate: [{ id: '', relation: { op: 'empty', of: EXTRACT_A }, message: 'm' }],
     });
   });
 });
@@ -632,6 +657,91 @@ describe('validateAlgebraDeclaration — scope and supply values', () => {
     for (const policy of SUPPLY_POLICIES) {
       expect(error.message).toContain(policy);
     }
+  });
+});
+
+describe('validateAlgebraDeclaration — mechanism is required and axis is gone', () => {
+  it('rejects a declaration without mechanism, naming the key', () => {
+    // Optional was the "decoration" state: the catalogue check runs only for authors who
+    // wrote a name, and the live declarations keep loading with none.
+    const { mechanism: _mechanism, ...withoutMechanism } = minimalDeclaration;
+
+    const error = expectRejection(withoutMechanism);
+
+    expect(error.message).toContain('mechanism');
+  });
+
+  it('rejects an empty-string mechanism', () => {
+    // `typeof === 'string'` admits ''; the required key is a non-empty name.
+    expectRejection({ ...minimalDeclaration, mechanism: '' });
+  });
+
+  it('rejects the axis key as an unknown key, naming it', () => {
+    // The axis is derived from the sources; a written value is either redundant or wrong.
+    // A key set that still lists `axis` keeps admitting the old free string.
+    const error = expectRejection({ ...minimalDeclaration, axis: 'change' });
+
+    expect(error.message).toContain('axis');
+  });
+});
+
+describe('validateAlgebraDeclaration — scope.source must be a string-valued source', () => {
+  // `changes` is a list and `state` a pair; a regex over either matches nothing, and today
+  // both surfaces answer zero rows for such a declaration instead of refusing it.
+  const CHANGES = 'changes';
+  const STATE = 'state';
+  const FILE_SOURCE = 'note';
+  const CHANNEL = 'spawns';
+
+  it.each([CHANGES, STATE])('rejects scope.source %s, naming the admitted kinds', (source) => {
+    const error = expectRejection({
+      ...minimalDeclaration,
+      scope: { source, include: ['.*'] },
+    });
+
+    expect(error.message).toContain(`'${source}'`);
+    expect(error.message).toContain("'target.path'");
+    expect(error.message).toContain("'pre'");
+    expect(error.message).toContain("'post'");
+    expect(error.message).toContain('file source');
+  });
+
+  it('rejects a sidecar source name as scope.source', () => {
+    // The kind is read off the declaration's own `sources` block: a check that admits any
+    // declared name admits the channel, whose value is a JSON list.
+    const error = expectRejection({
+      ...anyShapeDeclaration,
+      sources: { [CHANNEL]: { sidecar: true } },
+      scope: { source: CHANNEL, include: ['.*'] },
+    });
+
+    expect(error.message).toContain(`'${CHANNEL}'`);
+  });
+
+  it('rejects a scope.source that names no source at all', () => {
+    // A name outside the fixed five and the `sources` block is not a string-valued source
+    // either; a check keyed only on the three rejected kinds admits it.
+    expectRejection({ ...minimalDeclaration, scope: { source: 'nowhere', include: ['.*'] } });
+  });
+
+  it('accepts target.path, pre, and post as scope.source', () => {
+    // The other end of the kind axis: a check that admits only `target.path` refuses the
+    // two content sources the live declarations may scope on.
+    for (const source of ['target.path', SOURCE_PRE, SOURCE_POST]) {
+      const declaration = { ...minimalDeclaration, scope: { source, include: ['.*'] } };
+
+      expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
+    }
+  });
+
+  it('accepts a file source as scope.source', () => {
+    const declaration = {
+      ...anyShapeDeclaration,
+      sources: { [FILE_SOURCE]: { file: 'docs/note.txt' } },
+      scope: { source: FILE_SOURCE, include: ['^pair$'] },
+    };
+
+    expect(() => validateAlgebraDeclaration(declaration)).not.toThrow();
   });
 });
 

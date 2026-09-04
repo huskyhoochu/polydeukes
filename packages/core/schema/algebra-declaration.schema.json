@@ -5,17 +5,32 @@
   "description": "One algebra declaration: five blocks, a relation position closed to seven names, a binary combinator position closed to three, and an open unary extraction vocabulary. Reference resolution, relate-entry id uniqueness, and cycle detection are validator-only.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["discipline", "extract", "relate"],
+  "required": ["discipline", "mechanism", "extract", "relate"],
   "properties": {
     "discipline": {
       "type": "string",
       "minLength": 1
     },
     "mechanism": {
-      "type": "string"
-    },
-    "axis": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "pairing",
+        "companion",
+        "monotonic-order",
+        "fingerprint-sync",
+        "producer-owned",
+        "self-absolution-ban",
+        "actor-scope",
+        "precedent",
+        "phase-order",
+        "turn-locality",
+        "stated-ground",
+        "controlled-vocabulary",
+        "naming",
+        "added-only",
+        "one-way-marker",
+        "scoped-valve"
+      ]
     },
     "scope": {
       "$ref": "#/$defs/scope"
@@ -58,7 +73,8 @@
       "properties": {
         "source": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "not": { "enum": ["changes", "state"] }
         },
         "include": {
           "type": "array",
@@ -273,7 +289,7 @@
             "relation": {
               "properties": {
                 "op": {
-                  "const": "Equal"
+                  "const": "equal"
                 }
               }
             }
@@ -286,7 +302,7 @@
       "required": ["op"],
       "properties": {
         "op": {
-          "enum": ["Empty", "NonEmpty", "Equal", "Subset", "Implies", "Ordered", "Unchanged"]
+          "enum": ["empty", "nonEmpty", "equal", "subset", "implies", "ordered", "unchanged"]
         }
       },
       "oneOf": [
@@ -295,7 +311,7 @@
           "required": ["op", "of"],
           "properties": {
             "op": {
-              "enum": ["Empty", "NonEmpty", "Unchanged"]
+              "enum": ["empty", "nonEmpty", "unchanged"]
             },
             "of": {
               "$ref": "#/$defs/extractName"
@@ -307,7 +323,7 @@
           "required": ["op", "of"],
           "properties": {
             "op": {
-              "const": "Equal"
+              "const": "equal"
             },
             "of": {
               "type": "array",
@@ -325,7 +341,7 @@
           "required": ["op", "of", "in"],
           "properties": {
             "op": {
-              "const": "Subset"
+              "const": "subset"
             },
             "of": {
               "$ref": "#/$defs/extractName"
@@ -340,7 +356,7 @@
           "required": ["op", "of", "requires"],
           "properties": {
             "op": {
-              "const": "Implies"
+              "const": "implies"
             },
             "of": {
               "$ref": "#/$defs/extractName"
@@ -355,7 +371,7 @@
           "required": ["op", "of"],
           "properties": {
             "op": {
-              "const": "Ordered"
+              "const": "ordered"
             },
             "of": {
               "$ref": "#/$defs/extractName"

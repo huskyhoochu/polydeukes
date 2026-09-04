@@ -245,7 +245,7 @@ describe('defineConfig disciplines — algebra blocks are not entry keys', () =>
         {
           id: 'has-relate',
           forbid: 'x',
-          relate: [{ id: 'r', relation: { op: 'Empty', of: 'a' }, message: 'm' }],
+          relate: [{ id: 'r', relation: { op: 'empty', of: 'a' }, message: 'm' }],
         },
       ]),
     );

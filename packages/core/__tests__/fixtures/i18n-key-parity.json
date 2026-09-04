@@ -1,7 +1,14 @@
 {
   "discipline": "i18n-key-parity",
-  "mechanism": "pair parity",
-  "axis": "world axis: the host supplies two files outside the target",
+  "mechanism": "pairing",
+  "sources": {
+    "ko": {
+      "file": "locales/ko.json"
+    },
+    "en": {
+      "file": "locales/en.json"
+    }
+  },
   "supply": {
     "ko": "error",
     "en": "error"
@@ -44,7 +51,7 @@
     {
       "id": "key-parity",
       "relation": {
-        "op": "Equal",
+        "op": "equal",
         "of": ["koKeys", "enKeys"]
       },
       "messageBySide": {

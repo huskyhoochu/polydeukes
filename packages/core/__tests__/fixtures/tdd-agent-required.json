@@ -1,7 +1,6 @@
 {
   "discipline": "tdd-agent-required",
-  "mechanism": "required precedent",
-  "axis": "history axis: the host supplies the session timeline (transcript plus sidecar)",
+  "mechanism": "precedent",
   "scope": {
     "source": "target.path",
     "include": ["(apps|packages)/[^/]+/src/.*\\.(ts|tsx)$", "apps/pipeline/(ml/.*|api)\\.py$"],
@@ -50,7 +49,7 @@
     {
       "id": "writer-precedent",
       "relation": {
-        "op": "NonEmpty",
+        "op": "nonEmpty",
         "of": "writerEvidence"
       },
       "message": "production source edit without a tdd-test-writer subagent invocation in this session"
@@ -89,7 +88,7 @@
       {
         "id": "skip-recent",
         "relation": {
-          "op": "NonEmpty",
+          "op": "nonEmpty",
           "of": "skipAgeMs"
         },
         "message": "a /tdd skip utterance within the last ten minutes opens the body's relations"

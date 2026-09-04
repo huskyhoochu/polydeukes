@@ -17,6 +17,7 @@ function sidecarEntry(policy: 'error' | 'pass') {
     id: 'needs-writer-spawn',
     why: 'a production edit wants a writer spawn on record',
     declare: {
+      mechanism: 'precedent',
       sources: { spawns: { sidecar: true } },
       supply: { spawns: policy },
       scope: { source: 'target.path', include: ['^lib/'] },
@@ -29,7 +30,7 @@ function sidecarEntry(policy: 'error' | 'pass') {
       relate: [
         {
           id: 'writer',
-          relation: { op: 'NonEmpty', of: 'writers' },
+          relation: { op: 'nonEmpty', of: 'writers' },
           message: 'no writer spawn on record',
         },
       ],

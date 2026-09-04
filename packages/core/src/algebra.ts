@@ -6,7 +6,9 @@
  * kernel expansion laws quoted on each relation branch below are comments, never code.
  */
 
+import { validateMechanism } from './catalogue.js';
 import { isPlainObject } from './is-plain-object.js';
+import { FIXED_SOURCE_NAMES } from './source-names.js';
 import {
   ConfigValidationError,
   isNonEmptyString,
@@ -17,13 +19,13 @@ import {
 
 /** The relation position, closed. This tuple is the single source of the list. */
 export const RELATION_NAMES = [
-  'Empty',
-  'NonEmpty',
-  'Equal',
-  'Subset',
-  'Implies',
-  'Ordered',
-  'Unchanged',
+  'empty',
+  'nonEmpty',
+  'equal',
+  'subset',
+  'implies',
+  'ordered',
+  'unchanged',
 ] as const;
 
 /** One of the seven relation names — the closed vocabulary of the relation position. */
@@ -38,31 +40,28 @@ export const SUPPLY_POLICIES = ['error', 'pass'] as const;
 /** The kind position of a `sources` entry, closed. Each entry carries exactly one of them. */
 export const SOURCE_KINDS = ['file', 'sidecar'] as const;
 
-/** The source names the world supplies on its own; a `sources` entry may not shadow one. */
-export const FIXED_SOURCE_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
-
 /**
  * `RelationDecl` — the relation position of one relate entry, one branch per name.
  *
- * Every name references extract names declared in the same declaration; `Equal` is the
+ * Every name references extract names declared in the same declaration; `equal` is the
  * only two-sided branch. The kernel expansion quoted on each branch is a comment — the
  * engine owns the semantics, this module only the shape.
  */
 export type RelationDecl =
-  /** `Empty` — the extraction produced no element. The primitive. */
-  | { op: 'Empty'; of: string }
-  /** `NonEmpty` — expands to ¬Empty. */
-  | { op: 'NonEmpty'; of: string }
-  /** `Equal` — expands to Subset in both directions; the only two-sided relation. */
-  | { op: 'Equal'; of: [string, string] }
-  /** `Subset` — `of` ⊆ `in`. The primitive. */
-  | { op: 'Subset'; of: string; in: string }
-  /** `Implies` — expands to a Subset of the two key projections. */
-  | { op: 'Implies'; of: string; requires: string }
-  /** `Ordered` — adjacent pairs are monotone; `strict` forbids equal neighbours. */
-  | { op: 'Ordered'; of: string; strict?: boolean }
-  /** `Unchanged` — expands to Equal over the keys the two states share. */
-  | { op: 'Unchanged'; of: string };
+  /** `empty` — the extraction produced no element. The primitive. */
+  | { op: 'empty'; of: string }
+  /** `nonEmpty` — expands to ¬empty. */
+  | { op: 'nonEmpty'; of: string }
+  /** `equal` — expands to subset in both directions; the only two-sided relation. */
+  | { op: 'equal'; of: [string, string] }
+  /** `subset` — `of` ⊆ `in`. The primitive. */
+  | { op: 'subset'; of: string; in: string }
+  /** `implies` — expands to a subset of the two key projections. */
+  | { op: 'implies'; of: string; requires: string }
+  /** `ordered` — adjacent pairs are monotone; `strict` forbids equal neighbours. */
+  | { op: 'ordered'; of: string; strict?: boolean }
+  /** `unchanged` — expands to equal over the keys the two states share. */
+  | { op: 'unchanged'; of: string };
 
 /** A binary world combinator — the closed step kind that joins two extractions. */
 export type BinaryStep =
@@ -103,7 +102,7 @@ export type SourcesBlock = Record<string, { file: string } | { sidecar: true }>;
 /**
  * `RelateEntry` — one (extract name, relation) pairing with its break text.
  *
- * Exactly one of `message` and `messageBySide`; the latter only on `Equal`, the one relation
+ * Exactly one of `message` and `messageBySide`; the latter only on `equal`, the one relation
  * with two sides.
  */
 export type RelateEntry = { id: string; relation: RelationDecl } & (
@@ -120,13 +119,12 @@ export type WitnessBlock = { extract?: ExtractBlock; relate: RelateEntry[] };
 /**
  * `AlgebraDeclaration` — one judgment written as data, `judge = relate ∘ extract`.
  *
- * Pure JSON shape validated by {@link validateAlgebraDeclaration}; `mechanism` and `axis`
- * are labels the catalogue check will lock; here they are free strings.
+ * Pure JSON shape validated by {@link validateAlgebraDeclaration}; `mechanism` names the
+ * catalogue entry whose shape the declaration must match.
  */
 export type AlgebraDeclaration = {
   discipline: string;
-  mechanism?: string;
-  axis?: string;
+  mechanism: string;
   scope?: ScopeBlock;
   sources?: SourcesBlock;
   supply?: SupplyBlock;
@@ -147,7 +145,6 @@ export type Witnesses = readonly Witness[];
 const DECLARATION_KEYS: ReadonlySet<string> = new Set([
   'discipline',
   'mechanism',
-  'axis',
   'scope',
   'sources',
   'supply',
@@ -172,13 +169,13 @@ const WITNESS_KEYS: ReadonlySet<string> = new Set(['extract', 'relate']);
 
 /** The argument keys each relation branch admits, `op` included. */
 const RELATION_KEYS: Record<RelationName, ReadonlySet<string>> = {
-  Empty: new Set(['op', 'of']),
-  NonEmpty: new Set(['op', 'of']),
-  Equal: new Set(['op', 'of']),
-  Subset: new Set(['op', 'of', 'in']),
-  Implies: new Set(['op', 'of', 'requires']),
-  Ordered: new Set(['op', 'of', 'strict']),
-  Unchanged: new Set(['op', 'of']),
+  empty: new Set(['op', 'of']),
+  nonEmpty: new Set(['op', 'of']),
+  equal: new Set(['op', 'of']),
+  subset: new Set(['op', 'of', 'in']),
+  implies: new Set(['op', 'of', 'requires']),
+  ordered: new Set(['op', 'of', 'strict']),
+  unchanged: new Set(['op', 'of']),
 };
 
 const COMBINATOR_KEYS: Record<(typeof BINARY_COMBINATOR_NAMES)[number], ReadonlySet<string>> = {
@@ -196,13 +193,28 @@ function quotedList(names: readonly string[]): string {
   return names.map((name) => `'${name}'`).join(', ');
 }
 
-function validateScope(scope: unknown, location: string): void {
+/**
+ * The source names a scope regex can be read over: the fixed names whose value is a string,
+ * plus this declaration's own `file` bindings. `changes` is a list and `state` a pair, and a
+ * channel is the surface's JSON text — a regex over any of them matches nothing, so a
+ * declaration scoped on one is refused here rather than answering zero worlds at runtime.
+ */
+const STRING_VALUED_FIXED_SOURCES = ['target.path', 'pre', 'post'] as const;
+
+function validateScope(scope: unknown, sources: unknown, location: string): void {
   if (!isPlainObject(scope)) {
     throw new ConfigValidationError(`${location} scope must be an object`);
   }
   rejectUnknownKeys(scope, SCOPE_KEYS, `${location} scope`);
   if (!isNonEmptyString(scope.source)) {
     throw new ConfigValidationError(`${location} scope.source must be a non-empty string`);
+  }
+  const binding = isPlainObject(sources) ? sources[scope.source] : undefined;
+  const isFileSource = isPlainObject(binding) && typeof binding.file === 'string';
+  if (!(STRING_VALUED_FIXED_SOURCES as readonly string[]).includes(scope.source) && !isFileSource) {
+    throw new ConfigValidationError(
+      `${location} scope.source '${scope.source}' is not a string-valued source; scope admits ${quotedList(STRING_VALUED_FIXED_SOURCES)}, or a file source`,
+    );
   }
   for (const key of ['include', 'exclude'] as const) {
     const patterns = scope[key];
@@ -383,15 +395,15 @@ function validateRelation(
   const name = op as RelationName;
   rejectUnknownKeys(relation, RELATION_KEYS[name], `${location} relation (${name})`);
 
-  if (name === 'Equal') {
+  if (name === 'equal') {
     const pair = relation.of;
     if (!isStringArray(pair) || pair.length !== 2 || !pair.every(isNonEmptyString)) {
-      throw new ConfigValidationError(`${location} relation Equal takes 'of' as two extract names`);
+      throw new ConfigValidationError(`${location} relation equal takes 'of' as two extract names`);
     }
     const [left, right] = pair as [string, string];
     if (left === right) {
       throw new ConfigValidationError(
-        `${location} relation Equal names '${left}' on both sides — it can never break`,
+        `${location} relation equal names '${left}' on both sides — it can never break`,
       );
     }
     return { op: name, refs: [left, right] };
@@ -402,22 +414,22 @@ function validateRelation(
   }
   const refs = [relation.of];
 
-  if (name === 'Subset') {
+  if (name === 'subset') {
     if (!isNonEmptyString(relation.in)) {
-      throw new ConfigValidationError(`${location} relation Subset needs 'in' as an extract name`);
+      throw new ConfigValidationError(`${location} relation subset needs 'in' as an extract name`);
     }
     refs.push(relation.in);
   }
-  if (name === 'Implies') {
+  if (name === 'implies') {
     if (!isNonEmptyString(relation.requires)) {
       throw new ConfigValidationError(
-        `${location} relation Implies needs 'requires' as an extract name`,
+        `${location} relation implies needs 'requires' as an extract name`,
       );
     }
     refs.push(relation.requires);
   }
-  if (name === 'Ordered' && relation.strict !== undefined && typeof relation.strict !== 'boolean') {
-    throw new ConfigValidationError(`${location} relation Ordered strict must be a boolean`);
+  if (name === 'ordered' && relation.strict !== undefined && typeof relation.strict !== 'boolean') {
+    throw new ConfigValidationError(`${location} relation ordered strict must be a boolean`);
   }
   return { op: name, refs };
 }
@@ -462,9 +474,9 @@ function validateRelateEntry(
     throw new ConfigValidationError(`${location} '${id}' message must be a non-empty string`);
   }
   if (hasBySide) {
-    if (op !== 'Equal') {
+    if (op !== 'equal') {
       throw new ConfigValidationError(
-        `${location} '${id}' carries messageBySide on ${op} — only Equal has two sides`,
+        `${location} '${id}' carries messageBySide on ${op} — only equal has two sides`,
       );
     }
     const bySide = entry.messageBySide;
@@ -551,13 +563,11 @@ export function validateAlgebraDeclaration(
   if (!isNonEmptyString(input.discipline)) {
     throw new ConfigValidationError(`${location} discipline must be a non-empty string`);
   }
-  for (const key of ['mechanism', 'axis'] as const) {
-    if (input[key] !== undefined && typeof input[key] !== 'string') {
-      throw new ConfigValidationError(`${location} ${key} must be a string`);
-    }
+  if (!isNonEmptyString(input.mechanism)) {
+    throw new ConfigValidationError(`${location} mechanism must be a non-empty string`);
   }
-  if (input.scope !== undefined) validateScope(input.scope, location);
   if (input.sources !== undefined) validateSources(input.sources, location);
+  if (input.scope !== undefined) validateScope(input.scope, input.sources, location);
   if (input.supply !== undefined) validateSupply(input.supply, location);
 
   if (input.extract === undefined) {
@@ -597,5 +607,7 @@ export function validateAlgebraDeclaration(
     validateRelate(witness.relate, `${location} witness`, witnessNames, ids);
   }
 
-  return input as AlgebraDeclaration;
+  const declaration = input as AlgebraDeclaration;
+  validateMechanism(declaration, location);
+  return declaration;
 }

@@ -1,7 +1,10 @@
 // `pdks explain` renders a `declare` entry on BOTH surfaces as its own kind with a
-// description that names the scope source, the regex list sizes, the relate ids, and the
-// why mark; the tally gains a `declare` bucket that `judged` never absorbs. A declaration
-// the engine cannot compile renders as a `skip` row naming the offending step.
+// description that reads (mechanism, derived axes, relation with its relate ids), then the
+// scope source and regex list sizes, the `sources` count with its sidecar share, the valve
+// mark, and the why mark; the tally gains a `declare` bucket that `judged` never absorbs.
+// A declaration the engine cannot compile renders as a `skip` row naming the offending
+// step. The config is loaded through the real validator, so every declaration here
+// carries a mechanism its own shape satisfies.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,7 +20,10 @@ const DECLARE_ID = 'db-only-under-knowledge';
 const DECLARE_WHY = 'a *.db file may exist only under memory/knowledge/';
 const RELATE_ID = 'placed';
 const SCOPE_SOURCE = 'target.path';
+// A path convention: `naming` admits `empty` on the change axis, scoped on target.path.
+const MECHANISM = 'naming';
 const declareBody = {
+  mechanism: MECHANISM,
   scope: { source: SCOPE_SOURCE, include: ['\\.db$'] },
   extract: {
     outside: [
@@ -28,7 +34,7 @@ const declareBody = {
   relate: [
     {
       id: RELATE_ID,
-      relation: { op: 'Empty', of: 'outside' },
+      relation: { op: 'empty', of: 'outside' },
       message: '{value} is outside memory/knowledge/',
     },
   ],
@@ -104,17 +110,18 @@ function tallyOf(section: string): Record<string, number> {
 }
 
 describe('explain renders a declare entry as its own kind on both surfaces', () => {
-  it('renders `declare <id>` with the scope source, list sizes, relate id, and why ✓', async () => {
-    // A declare entry rendered as `judge` (the family fallback) or with the include count
-    // read from the wrong list would both leave a containment check green; the whole
-    // description is pinned so the counts and their labels cannot swap.
+  it('renders `declare <id>` as mechanism · axis · relation ids · scope · sizes · sources · valve · why', async () => {
+    // A declare entry rendered as `judge` (the family fallback), with the include count
+    // read from the wrong list, or with the axis copied from a written key instead of
+    // derived from the sources, would all leave a containment check green; the whole
+    // description is pinned so the fields and their labels cannot swap.
     writeFixtureConfig([declareEntry]);
 
     const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       expect(surfaceSection(text, header)).toMatch(
-        /^\s+declare\s+db-only-under-knowledge\s+scope target\.path · include 1 · exclude 0 · relate placed · why ✓$/m,
+        /^\s+declare\s+db-only-under-knowledge\s+naming · change · empty placed · scope target\.path · include 1 · exclude 0 · sources 0 · valve — · why ✓$/m,
       );
     }
   });
@@ -137,15 +144,19 @@ describe('explain renders a declare entry as its own kind on both surfaces', () 
     // Absent scope means every world routes; a renderer reading `scope.source` off an
     // undefined block would print `undefined` or throw, and the why mark must follow the
     // entry, not the family.
+    // `naming` asks for a target.path scope, so the scope-less form carries `added-only`,
+    // the other change-axis name that admits `empty`.
     const { why: _why, ...withoutWhy } = declareEntry;
     const { scope: _scope, ...bodyWithoutScope } = declareBody;
-    writeFixtureConfig([{ ...withoutWhy, declare: bodyWithoutScope }]);
+    writeFixtureConfig([
+      { ...withoutWhy, declare: { ...bodyWithoutScope, mechanism: 'added-only' } },
+    ]);
 
     const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
       expect(rowOf(text, header, 'declare', DECLARE_ID)).toContain(
-        'scope every world · include 0 · exclude 0 · relate placed · why —',
+        'added-only · change · empty placed · scope every world · include 0 · exclude 0 · sources 0 · valve — · why —',
       );
     }
   });
@@ -198,6 +209,7 @@ describe('a declaration reading the change set renders per surface capability', 
     id: BILINGUAL_ID,
     why: 'English is the default and Korean mirrors live in *.ko.md.',
     declare: {
+      mechanism: 'companion',
       scope: {
         source: SCOPE_SOURCE,
         include: ['\\.md$'],
@@ -226,12 +238,12 @@ describe('a declaration reading the change set renders per surface capability', 
       relate: [
         {
           id: KO_FOLLOWS,
-          relation: { op: 'Implies', of: 'en', requires: 'koChanged' },
+          relation: { op: 'implies', of: 'en', requires: 'koChanged' },
           message: '{value} changed without {key}.ko.md',
         },
         {
           id: EN_FOLLOWS,
-          relation: { op: 'Implies', of: 'ko', requires: 'enChanged' },
+          relation: { op: 'implies', of: 'ko', requires: 'enChanged' },
           message: '{value} changed without {key}.md',
         },
       ],
@@ -266,10 +278,69 @@ describe('a declaration reading the change set renders per surface capability', 
 
     const section = surfaceSection(text, COMMIT_HEADER);
     expect(rowOf(text, COMMIT_HEADER, 'declare', BILINGUAL_ID)).toMatch(
-      /scope target\.path · include 1 · exclude 2 · relate ko-follows, en-follows · why ✓$/,
+      /\s+companion · change · implies ko-follows, en-follows · scope target\.path · include 1 · exclude 2 · sources 0 · valve — · why ✓$/,
     );
     const skipLines = linesOf(section, 'skip', BILINGUAL_ID);
     expect(skipLines.some((line) => line.includes('change set'))).toBe(false);
     expect(tallyOf(section).declare).toBe(1);
+  });
+});
+
+describe('the sources count and the valve mark', () => {
+  it('a declaration reading a sidecar channel beside the target renders `change,world` and `sources 1 (sidecar 1)`', async () => {
+    // The world axis is derived from the `sources` block, not written; a renderer that
+    // counts sources without their kind hides which of them the session surface must
+    // supply as a channel, and one that reads only the body's first pipeline drops `world`.
+    const CHANNEL = 'spawns';
+    const VOCAB_ID = 'writer-is-known';
+    const vocabEntry = {
+      id: VOCAB_ID,
+      why: 'every writer is a known agent',
+      declare: {
+        mechanism: 'controlled-vocabulary',
+        scope: { source: SCOPE_SOURCE, include: ['\\.ts$'] },
+        sources: { [CHANNEL]: { sidecar: true } },
+        supply: { [CHANNEL]: 'pass' },
+        extract: {
+          own: [{ op: 'source', of: SCOPE_SOURCE }],
+          known: [{ op: 'source', of: CHANNEL }, { op: 'json' }, { op: 'flattenKeys' }],
+        },
+        relate: [
+          { id: 'listed', relation: { op: 'subset', of: 'own', in: 'known' }, message: '{value}' },
+        ],
+      },
+    };
+    writeFixtureConfig([vocabEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    for (const header of SURFACE_HEADERS) {
+      expect(rowOf(text, header, 'declare', VOCAB_ID)).toMatch(
+        /\s+controlled-vocabulary · change,world · subset listed · scope target\.path · include 1 · exclude 0 · sources 1 \(sidecar 1\) · valve — · why ✓$/,
+      );
+    }
+  });
+
+  it('a declaration with a witness block renders `valve ✓`', async () => {
+    // The valve mark is the block's presence; a renderer reading it off the surface's
+    // injected witness would print ✓ for every entry on the session surface.
+    const withValve = {
+      ...declareEntry,
+      declare: {
+        ...declareBody,
+        witness: {
+          relate: [{ id: 'override', relation: { op: 'nonEmpty', of: 'outside' }, message: 'w' }],
+        },
+      },
+    };
+    writeFixtureConfig([withValve]);
+
+    const { text } = await explain({ repoRoot });
+
+    for (const header of SURFACE_HEADERS) {
+      expect(rowOf(text, header, 'declare', DECLARE_ID)).toMatch(
+        /naming · change · empty placed · scope target\.path · include 1 · exclude 0 · sources 0 · valve ✓ · why ✓$/,
+      );
+    }
   });
 });

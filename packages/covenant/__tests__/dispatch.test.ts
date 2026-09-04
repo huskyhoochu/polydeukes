@@ -324,7 +324,7 @@ describe('dispatchCovenants — skip registrations', () => {
     label: 'unjudgeable-entry',
     protectedPaths: [],
     matches,
-    skip: { reason: 'no session transcript to read' },
+    skip: { reason: 'no session transcript to read', kind: 'no-observation' },
   });
 
   it('records skipped and upholds, with no body to spawn', async () => {

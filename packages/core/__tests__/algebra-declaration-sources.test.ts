@@ -25,13 +25,19 @@ const FIXED_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
 /** A declaration reading one file outside the target and comparing it to the target's post. */
 const sourcedDeclaration = {
   discipline: 'probe',
+  // `scoped-valve` is the one mechanism whose spec admits every axis and relation, so the
+  // `sources` variants below never turn on the catalogue check.
+  mechanism: 'scoped-valve',
   sources: { [SOURCE_KO]: { file: FILE_KO } },
   supply: { [SOURCE_KO]: 'error' },
   extract: {
     [EXTRACT_KO]: [{ op: 'source', of: SOURCE_KO }],
     [EXTRACT_EN]: [{ op: 'source', of: SOURCE_PRE }],
   },
-  relate: [{ id: 'parity', relation: { op: 'Equal', of: [EXTRACT_KO, EXTRACT_EN] }, message: 'm' }],
+  relate: [{ id: 'parity', relation: { op: 'equal', of: [EXTRACT_KO, EXTRACT_EN] }, message: 'm' }],
+  witness: {
+    relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: EXTRACT_KO }, message: 'w' }],
+  },
 };
 
 /** The sourced declaration with its `sources` block replaced wholesale. */
@@ -90,7 +96,13 @@ describe('validateAlgebraDeclaration — sources block, accepted declarations', 
     // against `sources` alone rejects every declaration that names `pre` today; a fixed list
     // that stayed at four rejects `changes`, the newest fixed name.
     const { sources: _sources, ...unsourced } = sourcedDeclaration;
-    const declaration = { ...unsourced, supply: { [name]: 'pass' } };
+    // With the block gone the extract reads fixed sources only: an unbound source name is
+    // its own fault, and this case is about the supply cross-check.
+    const declaration = {
+      ...unsourced,
+      supply: { [name]: 'pass' },
+      extract: { ...sourcedDeclaration.extract, [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }] },
+    };
 
     expect(() => validateAlgebraDeclaration(declaration, LOCATION)).not.toThrow();
   });
@@ -221,8 +233,19 @@ describe('validateAlgebraDeclaration — sources block, the kind position is clo
 
 describe('validateAlgebraDeclaration — the sources block at its two ends', () => {
   it('accepts an empty sources block — it binds nothing and plans nothing', () => {
+    // Binding nothing means the extract names nothing outside the fixed sources either.
     expect(() =>
-      validateAlgebraDeclaration({ ...sourcedDeclaration, sources: {} }, LOCATION),
+      validateAlgebraDeclaration(
+        {
+          ...sourcedDeclaration,
+          sources: {},
+          extract: {
+            ...sourcedDeclaration.extract,
+            [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }],
+          },
+        },
+        LOCATION,
+      ),
     ).not.toThrow();
   });
 

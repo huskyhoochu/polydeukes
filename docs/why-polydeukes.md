@@ -501,6 +501,15 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      visible. Publish with the v0.6.0 gate post, once the engine has judged live
      declarations on both surfaces.
 
+     Parked candidate (ALGEBRA-06, 2026-09-05): a name the machine does not check is a
+     comment. The `mechanism` field was a free string for a month — every declaration
+     could call itself anything, and the measurement reported "the field is decoration".
+     The fix was not to delete the field but to give each of the seventeen names a shape
+     (axes, relations, a structural marker) and refuse a declaration whose syntax does
+     not fit its name. The first probe found the empty shape satisfies every name: a
+     source nobody declared derives no axis, and the empty set is a subset of everything —
+     so the universe of source names had to close too. Publish with the v0.6.0 gate post.
+
      Parked candidate (ALGEBRA-02b, 2026-08-30): the host fabricates no defaults. When a
      declaration is judged live, each file change becomes one world, and a side the change
      does not carry — the `pre` of a creation, the `post` of a deletion — is an absent key,

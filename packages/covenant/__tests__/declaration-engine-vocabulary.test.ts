@@ -25,8 +25,9 @@ const ENTRY = 'probe-entry';
 function faultOf(steps: readonly ExtractStep[]): ConfigFault {
   const decl: AlgebraDeclaration = {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     extract: { [EXTRACT]: [...steps] },
-    relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
+    relate: [{ id: ENTRY, relation: { op: 'empty', of: EXTRACT }, message: 'm' }],
   };
   const result = compileDeclaration({ declaration: decl });
   if (!isConfigFault(result)) {
@@ -612,8 +613,9 @@ describe('keyByPattern — re-key each item by capture group 1 of its value', ()
       compileDeclaration({
         declaration: {
           discipline: 'probe',
+          mechanism: 'scoped-valve',
           extract: { [EXTRACT]: [{ op: 'source', of: SRC }, named] },
-          relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
+          relate: [{ id: ENTRY, relation: { op: 'empty', of: EXTRACT }, message: 'm' }],
         },
       }),
     ).not.toSatisfy(isConfigFault);
@@ -700,6 +702,7 @@ describe('keyByPattern — two pipelines folded onto one key, related by Implies
   const GENERATED = 'generated';
   const decl: AlgebraDeclaration = {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     extract: {
       [SOURCES]: [
         { op: 'source', of: RECORDS },
@@ -713,7 +716,7 @@ describe('keyByPattern — two pipelines folded onto one key, related by Implies
       ],
     },
     relate: [
-      { id: ENTRY, relation: { op: 'Implies', of: SOURCES, requires: GENERATED }, message: 'm' },
+      { id: ENTRY, relation: { op: 'implies', of: SOURCES, requires: GENERATED }, message: 'm' },
     ],
   };
 

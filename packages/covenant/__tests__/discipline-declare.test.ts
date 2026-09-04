@@ -36,7 +36,7 @@ const PATH_ONLY_DECLARE = {
   relate: [
     {
       id: ENTRY,
-      relation: { op: 'Empty', of: 'outside' },
+      relation: { op: 'empty', of: 'outside' },
       message: '{value} is outside memory/knowledge/',
     },
   ],
@@ -316,7 +316,7 @@ describe('compileDisciplineRegistrations — the declare body answers four ways'
     const readsPre = declareEntry({
       scope: PATH_ONLY_DECLARE.scope,
       extract: { baseline: [{ op: 'source', of: 'pre' }] },
-      relate: [{ id: ENTRY, relation: { op: 'Empty', of: 'baseline' }, message: 'm' }],
+      relate: [{ id: ENTRY, relation: { op: 'empty', of: 'baseline' }, message: 'm' }],
     });
     const reg = compileBody(readsPre);
     const stderr = spyStderr();
@@ -336,7 +336,7 @@ describe('compileDisciplineRegistrations — the declare body answers four ways'
       scope: PATH_ONLY_DECLARE.scope,
       supply: { pre: 'pass' },
       extract: { baseline: [{ op: 'source', of: 'pre' }] },
-      relate: [{ id: ENTRY, relation: { op: 'Empty', of: 'baseline' }, message: 'm' }],
+      relate: [{ id: ENTRY, relation: { op: 'empty', of: 'baseline' }, message: 'm' }],
     });
     const reg = compileBody(readsPreOrPasses);
 
@@ -373,8 +373,8 @@ describe('compileDisciplineRegistrations — the declare body answers four ways'
           ],
         },
         relate: [
-          { id: ENTRY, relation: { op: 'Empty', of: 'outside' }, message: 'm1' },
-          { id: 'quiet', relation: { op: 'Empty', of: 'noisy' }, message: 'm2' },
+          { id: ENTRY, relation: { op: 'empty', of: 'outside' }, message: 'm1' },
+          { id: 'quiet', relation: { op: 'empty', of: 'noisy' }, message: 'm2' },
         ],
       }),
     );
@@ -395,7 +395,7 @@ describe('compileDisciplineRegistrations — the declare body answers four ways'
       relate: [
         {
           id: 'kept',
-          relation: { op: 'Unchanged', of: 'text' },
+          relation: { op: 'unchanged', of: 'text' },
           message: 'line {key} changed (was {before}, now {value})',
         },
       ],
@@ -421,7 +421,7 @@ describe('compileDisciplineRegistrations — the declare body answers four ways'
     spyStderr();
     const keepsLines = {
       extract: { text: [{ op: 'source', of: 'state' }, { op: 'lines' }] },
-      relate: [{ id: 'kept', relation: { op: 'Unchanged', of: 'text' }, message: 'm' }],
+      relate: [{ id: 'kept', relation: { op: 'unchanged', of: 'text' }, message: 'm' }],
     };
     const refuses = compileBody(declareEntry(keepsLines));
     const passes = compileBody(declareEntry({ ...keepsLines, supply: { state: 'pass' } }));
@@ -494,7 +494,7 @@ describe('compileDisciplineRegistrations — the declaration witness block joins
           { op: 'matches', re: WITNESS_MARK },
         ],
       },
-      relate: [{ id: 'marked', relation: { op: 'NonEmpty', of: 'marker' }, message: 'm' }],
+      relate: [{ id: 'marked', relation: { op: 'nonEmpty', of: 'marker' }, message: 'm' }],
     },
   });
   const ctx = { label: ID, subject: 'lib/x.db' };
@@ -545,7 +545,7 @@ describe('compileDisciplineRegistrations — the declaration witness block joins
         },
         relate: [
           ...PATH_ONLY_DECLARE.relate,
-          { id: 'parses', relation: { op: 'Empty', of: 'parsed' }, message: 'p' },
+          { id: 'parses', relation: { op: 'empty', of: 'parsed' }, message: 'p' },
         ],
         witness: withWitnessBlock.declare?.witness,
       }),

@@ -15,6 +15,7 @@ import {
   EXIT_BREAK_BLOCKING,
   EXIT_BREAK_NON_BLOCKING,
   EXIT_UPHOLD,
+  type SkipReason,
   type TelemetryEvent,
 } from '@polydeukes/core';
 import type { Break } from './declaration-engine.js';
@@ -27,8 +28,17 @@ type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
  * the break for the agent that has to read it. `witnesses` carries the elements a
  * declaration's break was found on; the body answers with values and the wrapper turns
  * them into the row's fifth field.
+ *
+ * `skipped` is the body's own report that it evaluated no relation — exit 0 without a
+ * judgment. It is recorded as a `skipped` row carrying that token rather than as `passed`,
+ * which would read as a covenant upheld.
  */
-export type JudgeOutcome = { exitCode: number; reason?: string; witnesses?: readonly Break[] };
+export type JudgeOutcome = {
+  exitCode: number;
+  reason?: string;
+  witnesses?: readonly Break[];
+  skipped?: SkipReason;
+};
 
 /**
  * How many witness elements one break contributes to a telemetry row. A relation over a
@@ -179,6 +189,9 @@ export type RunCovenantVerdict = {
  * whatever the final event: gating it on the verdict would leave `advised` mute and the
  * valve silent about what it opened.
  *
+ * A body that answers `skipped` evaluated no relation, so it never reaches the translation
+ * table or the valve: the row says so and the call upholds.
+ *
  * Resolves with the wrapper's final `exitCode` (`0` or `2`) and the telemetry `event` that
  * was recorded. The event is surfaced rather than left to callers: the valve is impure, so
  * recomputing the event would consult it a second time. Logging is fail-open
@@ -192,6 +205,17 @@ export async function runCovenant(spec: RunCovenantSpec): Promise<RunCovenantVer
   const bodyExitCode = typeof outcome.exitCode === 'number' ? outcome.exitCode : null;
   if (typeof outcome.reason === 'string' && outcome.reason !== '') {
     process.stderr.write(`${outcome.reason}\n`);
+  }
+  // A skip token beside a non-zero code is a body contradicting itself; the break wins, so a
+  // verdict is never downgraded by a stray token.
+  if (outcome.skipped !== undefined && bodyExitCode === EXIT_UPHOLD) {
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'skipped',
+      label: spec.label,
+      subject: spec.subject ?? '-',
+      reason: outcome.skipped,
+    });
+    return { exitCode: EXIT_UPHOLD, event: 'skipped' };
   }
   const verdict = translateExitCode(bodyExitCode, spec.enforce);
   const { exitCode, event }: { exitCode: WrapperExitCode; event: TelemetryEvent } =

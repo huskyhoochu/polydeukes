@@ -18,6 +18,8 @@ const SOURCE_PATH = 'target.path';
 const EXTRACT_OUTSIDE = 'outside';
 
 const declareBlock = {
+  // A path convention: `naming` admits `empty` on the change axis, scoped on target.path.
+  mechanism: 'naming',
   scope: { source: SOURCE_PATH, include: ['\\.db$'] },
   extract: {
     [EXTRACT_OUTSIDE]: [
@@ -28,7 +30,7 @@ const declareBlock = {
   relate: [
     {
       id: 'placed',
-      relation: { op: 'Empty', of: EXTRACT_OUTSIDE },
+      relation: { op: 'empty', of: EXTRACT_OUTSIDE },
       message: '{value} is outside memory/knowledge/',
     },
   ],
@@ -71,7 +73,22 @@ const INVALID_CONFIGS: readonly unknown[] = [
   ]),
   // The context trigger on a declare entry.
   withDisciplines([{ id: 'declare-with-when', when: '\\.db$', declare: declareBlock }]),
+  // A block without mechanism: the catalogue name is required, and the IDE schema must
+  // say so before the runtime validator does.
+  withDisciplines([{ id: 'declare-no-mechanism', declare: withoutMechanism(declareBlock) }]),
+  // A mechanism outside the catalogue: the schema enum mirrors the closed tuple.
+  withDisciplines([
+    { id: 'declare-unknown-mechanism', declare: { ...declareBlock, mechanism: 'pair parity' } },
+  ]),
+  // The removed axis key: derived from the sources now, never written.
+  withDisciplines([{ id: 'declare-with-axis', declare: { ...declareBlock, axis: 'change' } }]),
 ];
+
+/** The block with its mechanism key absent, not undefined — ajv's `required` sees the difference. */
+function withoutMechanism(block: typeof declareBlock): Omit<typeof declareBlock, 'mechanism'> {
+  const { mechanism: _mechanism, ...rest } = block;
+  return rest;
+}
 
 /** True when defineConfig accepts the input (does not throw). */
 function defineConfigAccepts(config: unknown): boolean {

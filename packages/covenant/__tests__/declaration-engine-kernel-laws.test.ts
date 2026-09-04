@@ -116,6 +116,7 @@ function listValue(items: readonly Item[]): unknown {
 function compileSingle(relation: RelationDecl): CompiledDeclaration {
   const decl: AlgebraDeclaration = {
     discipline: 'law',
+    mechanism: 'scoped-valve',
     extract: { [LEFT]: listPipeline(SRC_LEFT), [RIGHT]: listPipeline(SRC_RIGHT) },
     relate: [{ id: ENTRY, relation, message: 'm' }],
   };
@@ -125,8 +126,9 @@ function compileSingle(relation: RelationDecl): CompiledDeclaration {
 function compilePaired(): CompiledDeclaration {
   const decl: AlgebraDeclaration = {
     discipline: 'law',
+    mechanism: 'scoped-valve',
     extract: { [PAIRED]: listPipeline(PAIRED_SOURCE) },
-    relate: [{ id: ENTRY, relation: { op: 'Unchanged', of: PAIRED }, message: 'm' }],
+    relate: [{ id: ENTRY, relation: { op: 'unchanged', of: PAIRED }, message: 'm' }],
   };
   return compileOrFail(decl);
 }
@@ -156,7 +158,7 @@ describe('kernel laws — engine relations agree with the set-definition referen
   const lists = universe();
 
   it('NonEmpty ≡ ¬Empty over every list', () => {
-    const compiled = compileSingle({ op: 'NonEmpty', of: LEFT });
+    const compiled = compileSingle({ op: 'nonEmpty', of: LEFT });
     const mismatches: Mismatch[] = [];
     for (const of of lists) {
       const engine = canon(
@@ -170,7 +172,7 @@ describe('kernel laws — engine relations agree with the set-definition referen
   });
 
   it('Equal ≡ Subset both ways over every pair of lists', () => {
-    const compiled = compileSingle({ op: 'Equal', of: [LEFT, RIGHT] });
+    const compiled = compileSingle({ op: 'equal', of: [LEFT, RIGHT] });
     const mismatches: Mismatch[] = [];
     let count = 0;
     for (const a of lists) {
@@ -190,7 +192,7 @@ describe('kernel laws — engine relations agree with the set-definition referen
   });
 
   it('Implies ≡ Subset of key projections over every pair of lists', () => {
-    const compiled = compileSingle({ op: 'Implies', of: LEFT, requires: RIGHT });
+    const compiled = compileSingle({ op: 'implies', of: LEFT, requires: RIGHT });
     const mismatches: Mismatch[] = [];
     let count = 0;
     for (const of of lists) {
@@ -233,8 +235,8 @@ describe('kernel laws — engine relations agree with the set-definition referen
     // The laws above compare expansions against the reference; a primitive that drifted
     // would drag every expansion with it and still agree with a reference built on the
     // same drift, so the primitives are pinned here on their own.
-    const empty = compileSingle({ op: 'Empty', of: LEFT });
-    const subset = compileSingle({ op: 'Subset', of: LEFT, in: RIGHT });
+    const empty = compileSingle({ op: 'empty', of: LEFT });
+    const subset = compileSingle({ op: 'subset', of: LEFT, in: RIGHT });
     const mismatches: Mismatch[] = [];
     for (const a of lists) {
       const e = canon(

@@ -148,14 +148,14 @@ surface: session (claude-code hook)
   registrations 29 · judged 13 · declare 1 · skip 12 · meta 3 · excluded 0 · draft 0
   meta     self-mod                      paths 13 (common; includes the config file itself)
   judge    covenant-vocabulary           forbid · in packages/*/src/** · except … · why ✓
-  declare  sqlite-only-under-knowledge   scope target.path · include 1 · exclude 0 · relate placed · why ✓
+  declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
   skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...
 surface: commit (git pre-commit) · enforce: advise
   registrations 13 · judged 5 · declare 1 · skip 6 · meta 1 · excluded 3 · draft 0
   skip     manifest-needs-npm-view       no session transcript to read
   excluded hooks-stay-armed              forbidCommand — no shell axis on this surface
-  declare  sqlite-only-under-knowledge   scope target.path · include 1 · exclude 0 · relate placed · why ✓
+  declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
 ```
 
 One line per registration, in the order the surface dispatches them. The kind column has

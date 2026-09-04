@@ -42,6 +42,19 @@ function loadDeclaration(name: string): AlgebraDeclaration {
   return validateAlgebraDeclaration(stripped);
 }
 
+/**
+ * Read one fixture's scope block without the validator: the precedent fixture reads
+ * `transcript` as a bare name, which the validator refuses until the transcript source
+ * kind is registered, and this file exercises the engine's scope arm alone.
+ */
+function loadScope(name: string): AlgebraDeclaration['scope'] {
+  const path = fileURLToPath(
+    new URL(`../../core/__tests__/fixtures/${name}.json`, import.meta.url),
+  );
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as { scope?: AlgebraDeclaration['scope'] };
+  return raw.scope;
+}
+
 // The source names the four fixtures read — values the fixtures fix, not the engine.
 const SCOPE_SOURCE = 'target.path';
 const SRC_KO = 'ko';
@@ -273,12 +286,13 @@ describe('tdd-agent-required · scope', () => {
   // is lifted onto a one-source body: in scope → the probe is present → pass.
   const PROBE_SRC = 'probe';
   const PROBE = 'probeItems';
-  const fixture = loadDeclaration('tdd-agent-required');
+  const scope = loadScope('tdd-agent-required');
   const decl: AlgebraDeclaration = {
-    discipline: fixture.discipline,
-    ...(fixture.scope !== undefined && { scope: fixture.scope }),
+    discipline: 'tdd-agent-required',
+    mechanism: 'scoped-valve',
+    ...(scope !== undefined && { scope }),
     extract: { [PROBE]: [{ op: 'source', of: PROBE_SRC }] },
-    relate: [{ id: 'probe-present', relation: { op: 'NonEmpty', of: PROBE }, message: 'm' }],
+    relate: [{ id: 'probe-present', relation: { op: 'nonEmpty', of: PROBE }, message: 'm' }],
   };
   const world = (path: string): World => ({ [SCOPE_SOURCE]: path, [PROBE_SRC]: 'x' });
 

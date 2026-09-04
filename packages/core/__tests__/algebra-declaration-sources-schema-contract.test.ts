@@ -26,17 +26,29 @@ const FIXED_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
 
 const sourcedDeclaration = {
   discipline: 'probe',
+  // `scoped-valve` is the one mechanism whose spec admits every axis and relation, so the
+  // `sources` variants below never turn on the catalogue check.
+  mechanism: 'scoped-valve',
   sources: { [SOURCE_KO]: { file: FILE_KO } },
   supply: { [SOURCE_KO]: 'error' },
   extract: {
     [EXTRACT_KO]: [{ op: 'source', of: SOURCE_KO }],
     [EXTRACT_EN]: [{ op: 'source', of: SOURCE_PRE }],
   },
-  relate: [{ id: 'parity', relation: { op: 'Equal', of: [EXTRACT_KO, EXTRACT_EN] }, message: 'm' }],
+  relate: [{ id: 'parity', relation: { op: 'equal', of: [EXTRACT_KO, EXTRACT_EN] }, message: 'm' }],
+  witness: {
+    relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: EXTRACT_KO }, message: 'w' }],
+  },
 };
 
-/** The same declaration with no `sources` block — `supply` then names fixed sources only. */
-const { sources: _sources, ...unsourcedDeclaration } = sourcedDeclaration;
+/**
+ * The same declaration with no `sources` block — `supply` then names fixed sources only,
+ * and the extract reads fixed sources only, since nothing binds `ko` any more.
+ */
+const { sources: _sources, ...unsourcedDeclaration } = {
+  ...sourcedDeclaration,
+  extract: { ...sourcedDeclaration.extract, [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }] },
+};
 
 /** The sourced declaration with its `sources` block replaced wholesale. */
 function withSources(sources: unknown): unknown {
@@ -62,7 +74,7 @@ const VALID_DECLARATIONS: readonly unknown[] = [
   // Two dots inside a segment are not a `..` segment (a pattern must anchor on `/`).
   withSourceValue({ file: 'a..b/..hidden/ko.json' }),
   // An empty block binds nothing and is a valid declaration.
-  withSources({}),
+  { ...unsourcedDeclaration, sources: {} },
   // Supply naming the fixed world source `changes` with no sources block — the newest fixed
   // name must be on the list the cross-check consults.
   { ...unsourcedDeclaration, supply: { changes: 'pass' } },

@@ -63,12 +63,12 @@ const BILINGUAL_DECLARE = {
   relate: [
     {
       id: KO_FOLLOWS,
-      relation: { op: 'Implies', of: 'en', requires: 'koChanged' },
+      relation: { op: 'implies', of: 'en', requires: 'koChanged' },
       message: '{value} changed without {key}.ko.md',
     },
     {
       id: EN_FOLLOWS,
-      relation: { op: 'Implies', of: 'ko', requires: 'enChanged' },
+      relation: { op: 'implies', of: 'ko', requires: 'enChanged' },
       message: '{value} changed without {key}.md',
     },
   ],
@@ -83,7 +83,7 @@ const WITNESS_READS_CHANGES_DECLARE = {
       { op: 'keyByPattern', re: EN_PATTERN },
     ],
   },
-  relate: [{ id: KO_FOLLOWS, relation: { op: 'Empty', of: 'en' }, message: '{value}' }],
+  relate: [{ id: KO_FOLLOWS, relation: { op: 'empty', of: 'en' }, message: '{value}' }],
   witness: {
     extract: {
       koChanged: [
@@ -92,7 +92,7 @@ const WITNESS_READS_CHANGES_DECLARE = {
         { op: 'keyByPattern', re: KO_PATTERN },
       ],
     },
-    relate: [{ id: 'paired', relation: { op: 'NonEmpty', of: 'koChanged' }, message: 'm' }],
+    relate: [{ id: 'paired', relation: { op: 'nonEmpty', of: 'koChanged' }, message: 'm' }],
   },
 };
 
@@ -109,7 +109,7 @@ const SQLITE_DECLARE = {
   relate: [
     {
       id: 'placed',
-      relation: { op: 'Empty', of: 'outside' },
+      relation: { op: 'empty', of: 'outside' },
       message: '{value} is outside store/knowledge/',
     },
   ],
@@ -217,7 +217,7 @@ describe('compileDisciplineRegistrations — a surface that does not observe the
     );
 
     expect(bodyRegOf(regs, ID)).toBeUndefined();
-    expect(fileRegOf(regs, ID)?.skip).toEqual({ reason: SKIP_REASON });
+    expect(fileRegOf(regs, ID)?.skip).toEqual({ reason: SKIP_REASON, kind: 'no-observation' });
   });
 
   it('the skip registration keeps the scope routing: in-scope docs route, an excluded path does not', () => {
@@ -267,7 +267,7 @@ describe('compileDisciplineRegistrations — a surface that does not observe the
     );
 
     expect(bodyRegOf(regs, ID)).toBeUndefined();
-    expect(fileRegOf(regs, ID)?.skip).toEqual({ reason: SKIP_REASON });
+    expect(fileRegOf(regs, ID)?.skip?.reason).toBe(SKIP_REASON);
   });
 
   it('a declaration reading only target.path keeps its body under the same flag', async () => {

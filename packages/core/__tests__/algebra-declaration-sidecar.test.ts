@@ -22,10 +22,11 @@ const FILE_KO = 'locales/ko.json';
 /** A declaration reading one sidecar channel and requiring at least one record. */
 const sidecarDeclaration = {
   discipline: 'probe',
+  mechanism: 'precedent',
   sources: { [SPAWNS]: { sidecar: true } },
   supply: { [SPAWNS]: 'error' },
   extract: { records: [{ op: 'source', of: SPAWNS }] },
-  relate: [{ id: 'present', relation: { op: 'NonEmpty', of: 'records' }, message: 'm' }],
+  relate: [{ id: 'present', relation: { op: 'nonEmpty', of: 'records' }, message: 'm' }],
 };
 
 /** The sidecar declaration with its `sources` block replaced wholesale. */

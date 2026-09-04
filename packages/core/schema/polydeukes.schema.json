@@ -240,10 +240,28 @@
       "description": "Declaration family — one judgment written as data, in the grammar of the algebra declaration schema published beside this one, minus its 'discipline' key: the entry id is the declaration's name. The blocks' interiors are validated against that schema by the runtime validator.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["extract", "relate"],
+      "required": ["mechanism", "extract", "relate"],
       "properties": {
-        "mechanism": { "type": "string" },
-        "axis": { "type": "string" },
+        "mechanism": {
+          "enum": [
+            "pairing",
+            "companion",
+            "monotonic-order",
+            "fingerprint-sync",
+            "producer-owned",
+            "self-absolution-ban",
+            "actor-scope",
+            "precedent",
+            "phase-order",
+            "turn-locality",
+            "stated-ground",
+            "controlled-vocabulary",
+            "naming",
+            "added-only",
+            "one-way-marker",
+            "scoped-valve"
+          ]
+        },
         "scope": { "type": "object" },
         "sources": { "type": "object" },
         "supply": { "type": "object" },

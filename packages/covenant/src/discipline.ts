@@ -20,6 +20,7 @@ import {
   type DisciplineEntry,
   type FileChange,
   noopTranscript,
+  type SkipReason,
 } from '@polydeukes/core';
 import picomatch from 'picomatch';
 import { tokenizeCommandLine } from './bash-line.js';
@@ -837,7 +838,10 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
     label: entry.id,
     protectedPaths: [],
     matches: scoped,
-    skip: { reason: 'a shell write in scope whose result this layer cannot compute' },
+    skip: {
+      reason: 'a shell write in scope whose result this layer cannot compute',
+      kind: 'no-observation',
+    },
   };
 }
 
@@ -860,7 +864,10 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
       deriveShellSignals(input, opts).unjudgeable.some((signal) => signal.path === undefined)
         ? '-'
         : null,
-    skip: { reason: 'a shell command whose write target this layer cannot determine' },
+    skip: {
+      reason: 'a shell command whose write target this layer cannot determine',
+      kind: 'no-observation',
+    },
   };
 }
 
@@ -935,8 +942,37 @@ function readsChangeSet(compiled: CompiledDeclaration): boolean {
 }
 
 /** The first non-pass world of one input, or pass — what the body reports and the valve reads. */
+/**
+ * Judge one declaration over the worlds an input admits, first non-pass world wins.
+ *
+ * A supply-passed world does not stop the loop — a later world may still break, and a break
+ * outranks a skip. `supply-pass` is the answer only when no world was judged at all: exit 0
+ * with a `passed` row would read as a covenant upheld.
+ */
+function judgeAdmitted(
+  compiled: CompiledDeclaration,
+  worlds: readonly SuppliedWorld[],
+): DeclareJudgment {
+  let suppliedPast = false;
+  let judgedAny = false;
+  for (const supplied of worlds) {
+    const verdict = judgeDeclaration({ compiled, world: supplied.world });
+    if (verdict.kind === 'broken') return { kind: 'broken', supplied, breaks: verdict.breaks };
+    if (verdict.kind === 'supply-error') {
+      return { kind: 'unjudgeable', supplied, source: verdict.source, reason: verdict.reason };
+    }
+    if (verdict.kind === 'not-applicable' && verdict.reason === 'supply-pass') {
+      suppliedPast = true;
+    } else if (verdict.kind === 'pass') {
+      judgedAny = true;
+    }
+  }
+  return suppliedPast && !judgedAny ? { kind: 'supply-pass' } : { kind: 'pass' };
+}
+
 type DeclareJudgment =
   | { readonly kind: 'pass' }
+  | { readonly kind: 'supply-pass' }
   | { readonly kind: 'broken'; readonly supplied: SuppliedWorld; readonly breaks: readonly Break[] }
   | {
       readonly kind: 'unjudgeable';
@@ -973,7 +1009,7 @@ function declareRegistration(
       protectedPaths: [],
       matches: () => null,
       ...witness,
-      skip: { reason },
+      skip: { reason, kind: 'config-fault' },
     };
   }
 
@@ -1009,7 +1045,10 @@ function declareRegistration(
       ...(entry.declare?.sources !== undefined && { sources: bindings }),
       matches: route,
       ...witness,
-      skip: { reason: 'a change set needs a surface that observes more than one change' },
+      skip: {
+        reason: 'a change set needs a surface that observes more than one change',
+        kind: 'no-observation',
+      },
     };
   }
 
@@ -1017,18 +1056,7 @@ function declareRegistration(
   const judged = (input: CovenantInput): DeclareJudgment => {
     const cached = judgedOf.get(input);
     if (cached !== undefined) return cached;
-    let result: DeclareJudgment = { kind: 'pass' };
-    for (const supplied of admitted(input)) {
-      const verdict = judgeDeclaration({ compiled, world: supplied.world });
-      if (verdict.kind === 'broken') {
-        result = { kind: 'broken', supplied, breaks: verdict.breaks };
-        break;
-      }
-      if (verdict.kind === 'supply-error') {
-        result = { kind: 'unjudgeable', supplied, source: verdict.source, reason: verdict.reason };
-        break;
-      }
-    }
+    const result = judgeAdmitted(compiled, admitted(input));
     judgedOf.set(input, result);
     return result;
   };
@@ -1065,6 +1093,9 @@ function declareRegistration(
           );
           return UNJUDGEABLE_OUTCOME;
         }
+        if (judgment.kind === 'supply-pass') {
+          return { exitCode: 0, skipped: 'supply-pass' };
+        }
         return { exitCode: 0 };
       } catch {
         // An input no supply layer could read is unjudgeable, like every other body here.
@@ -1096,7 +1127,7 @@ function declareRegistration(
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
-  const judged = spec.disciplines.map((entry) => {
+  const judged = spec.disciplines.map((entry): CovenantRegistration => {
     const witness = spec.witness !== undefined ? { witness: spec.witness } : {};
 
     // A silent skip is how a discipline goes inert while its verdict still reads passed.
@@ -1120,7 +1151,7 @@ export function compileDisciplineRegistrations(
         protectedPaths: [],
         matches: () => null,
         ...witness,
-        skip: { reason: fault },
+        skip: { reason: fault, kind: 'config-fault' },
       };
     }
 
@@ -1136,7 +1167,8 @@ export function compileDisciplineRegistrations(
 
     if (outcome?.kind === 'unjudgeable') {
       if (outcome.configFault) nameFault(outcome.reason);
-      return { ...routing, skip: { reason: outcome.reason } };
+      const kind: SkipReason = outcome.configFault === true ? 'config-fault' : 'no-observation';
+      return { ...routing, skip: { reason: outcome.reason, kind } };
     }
 
     const opts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {

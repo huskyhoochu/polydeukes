@@ -49,13 +49,19 @@ function pairedWorld(pre: readonly Pair[], post: readonly Pair[]): World {
 function singleDecl(relate: RelateEntry[]): AlgebraDeclaration {
   return {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     extract: { [LEFT]: listPipeline(SRC_LEFT), [RIGHT]: listPipeline(SRC_RIGHT) },
     relate,
   };
 }
 
 function pairedDecl(relate: RelateEntry[]): AlgebraDeclaration {
-  return { discipline: 'probe', extract: { [PAIRED]: listPipeline(PAIRED_SOURCE) }, relate };
+  return {
+    discipline: 'probe',
+    mechanism: 'scoped-valve',
+    extract: { [PAIRED]: listPipeline(PAIRED_SOURCE) },
+    relate,
+  };
 }
 
 function entry(relation: RelationDecl, message = 'm'): RelateEntry {
@@ -66,7 +72,7 @@ const w = (key: string, value: unknown, side?: 'left' | 'right'): Witness =>
   side === undefined ? { key, value } : { key, value, side };
 
 describe('Empty — holds on no items, witnesses every item', () => {
-  const decl = singleDecl([entry({ op: 'Empty', of: LEFT })]);
+  const decl = singleDecl([entry({ op: 'empty', of: LEFT })]);
 
   it('holds on an empty extract', () => {
     expect(judge(decl, twoSided([], [])).kind).toBe('pass');
@@ -91,7 +97,7 @@ describe('Empty — holds on no items, witnesses every item', () => {
 });
 
 describe('NonEmpty — holds on at least one item, one witness naming the extract', () => {
-  const decl = singleDecl([entry({ op: 'NonEmpty', of: LEFT })]);
+  const decl = singleDecl([entry({ op: 'nonEmpty', of: LEFT })]);
 
   it('holds on one item', () => {
     expect(judge(decl, twoSided([['k1', 'a']], [])).kind).toBe('pass');
@@ -105,7 +111,7 @@ describe('NonEmpty — holds on at least one item, one witness naming the extrac
 });
 
 describe('Subset — every value of `of` occurs in `in`', () => {
-  const decl = singleDecl([entry({ op: 'Subset', of: LEFT, in: RIGHT })]);
+  const decl = singleDecl([entry({ op: 'subset', of: LEFT, in: RIGHT })]);
 
   it('holds by value regardless of keys', () => {
     // A (key, value) comparison would break this; the relation compares values.
@@ -151,7 +157,7 @@ describe('Subset — every value of `of` occurs in `in`', () => {
 });
 
 describe('Equal — Subset both ways, witnesses left then right', () => {
-  const decl = singleDecl([entry({ op: 'Equal', of: [LEFT, RIGHT] })]);
+  const decl = singleDecl([entry({ op: 'equal', of: [LEFT, RIGHT] })]);
 
   it('holds when the two value sets coincide, whatever the keys and order', () => {
     const world = twoSided(
@@ -202,7 +208,7 @@ describe('Equal — Subset both ways, witnesses left then right', () => {
 });
 
 describe('Implies — keys(of) ⊆ keys(requires)', () => {
-  const decl = singleDecl([entry({ op: 'Implies', of: LEFT, requires: RIGHT })]);
+  const decl = singleDecl([entry({ op: 'implies', of: LEFT, requires: RIGHT })]);
 
   it('holds by key regardless of values', () => {
     const world = twoSided(
@@ -245,12 +251,13 @@ describe('Implies — keys(of) ⊆ keys(requires)', () => {
     ];
     const decl: AlgebraDeclaration = {
       discipline: 'probe',
+      mechanism: 'scoped-valve',
       extract: {
         [LEFT]: linePipeline(SRC_LEFT),
         [RIGHT]: linePipeline(SRC_RIGHT),
       },
       relate: [
-        { id: ENTRY, relation: { op: 'Implies', of: LEFT, requires: RIGHT }, message: '{value}' },
+        { id: ENTRY, relation: { op: 'implies', of: LEFT, requires: RIGHT }, message: '{value}' },
       ],
     };
     const right = 'x1\n\nbody\nx2';
@@ -264,8 +271,8 @@ describe('Implies — keys(of) ⊆ keys(requires)', () => {
 });
 
 describe('Ordered — adjacent pairs are monotone by value', () => {
-  const lax = singleDecl([entry({ op: 'Ordered', of: LEFT })]);
-  const strict = singleDecl([entry({ op: 'Ordered', of: LEFT, strict: true })]);
+  const lax = singleDecl([entry({ op: 'ordered', of: LEFT })]);
+  const strict = singleDecl([entry({ op: 'ordered', of: LEFT, strict: true })]);
 
   it('holds on a non-decreasing sequence, equal neighbours included', () => {
     expect(
@@ -348,7 +355,7 @@ describe('Ordered — adjacent pairs are monotone by value', () => {
 });
 
 describe('Unchanged — shared keys carry equal values across pre and post', () => {
-  const decl = pairedDecl([entry({ op: 'Unchanged', of: PAIRED })]);
+  const decl = pairedDecl([entry({ op: 'unchanged', of: PAIRED })]);
 
   it('holds when only unshared keys differ — removals and additions are not changes', () => {
     const world = pairedWorld(
@@ -400,8 +407,8 @@ describe('order determinism — reversed input yields reversed witnesses', () =>
   // list happens to be its own reverse — none of these is.
   const cases: ReversalCase[] = [
     {
-      relation: 'Empty',
-      decl: singleDecl([entry({ op: 'Empty', of: LEFT })]),
+      relation: 'empty',
+      decl: singleDecl([entry({ op: 'empty', of: LEFT })]),
       a: [
         ['k1', 'a'],
         ['k2', 'b'],
@@ -412,8 +419,8 @@ describe('order determinism — reversed input yields reversed witnesses', () =>
       witnesses: [w('k1', 'a'), w('k2', 'b'), w('k3', 'c')],
     },
     {
-      relation: 'Subset',
-      decl: singleDecl([entry({ op: 'Subset', of: LEFT, in: RIGHT })]),
+      relation: 'subset',
+      decl: singleDecl([entry({ op: 'subset', of: LEFT, in: RIGHT })]),
       a: [
         ['k1', 'x'],
         ['k2', 'a'],
@@ -424,8 +431,8 @@ describe('order determinism — reversed input yields reversed witnesses', () =>
       witnesses: [w('k1', 'x'), w('k3', 'y')],
     },
     {
-      relation: 'Implies',
-      decl: singleDecl([entry({ op: 'Implies', of: LEFT, requires: RIGHT })]),
+      relation: 'implies',
+      decl: singleDecl([entry({ op: 'implies', of: LEFT, requires: RIGHT })]),
       a: [
         ['k1', 'a'],
         ['k2', 'a'],
@@ -436,8 +443,8 @@ describe('order determinism — reversed input yields reversed witnesses', () =>
       witnesses: [w('k1', 'a'), w('k3', 'a')],
     },
     {
-      relation: 'Unchanged',
-      decl: pairedDecl([entry({ op: 'Unchanged', of: PAIRED })]),
+      relation: 'unchanged',
+      decl: pairedDecl([entry({ op: 'unchanged', of: PAIRED })]),
       a: [
         ['k1', 'a'],
         ['k2', 'b'],
@@ -460,7 +467,7 @@ describe('order determinism — reversed input yields reversed witnesses', () =>
 
   it('Equal: reversing the input reverses each side but keeps left before right', () => {
     // The side grouping is the contract, the order inside a side is the input's.
-    const decl = singleDecl([entry({ op: 'Equal', of: [LEFT, RIGHT] })]);
+    const decl = singleDecl([entry({ op: 'equal', of: [LEFT, RIGHT] })]);
     const world = twoSided(
       [
         ['k2', 'b'],
@@ -486,12 +493,13 @@ describe('combinators — union, onlyIn, intersect keep the declared order', () 
   function combined(first: ExtractStep): AlgebraDeclaration {
     return {
       discipline: 'probe',
+      mechanism: 'scoped-valve',
       extract: {
         [LEFT]: listPipeline(SRC_LEFT),
         [RIGHT]: listPipeline(SRC_RIGHT),
         [JOINED]: [first],
       },
-      relate: [entry({ op: 'Empty', of: JOINED })],
+      relate: [entry({ op: 'empty', of: JOINED })],
     };
   }
 
@@ -579,7 +587,7 @@ describe('combinators — union, onlyIn, intersect keep the declared order', () 
 
 describe('Break rendering — message templates over the first witness', () => {
   it('substitutes {key} and {value} from the first witness', () => {
-    const decl = singleDecl([entry({ op: 'Empty', of: LEFT }, "task '{key}' is {value}")]);
+    const decl = singleDecl([entry({ op: 'empty', of: LEFT }, "task '{key}' is {value}")]);
     const verdict = judge(decl, twoSided([['S1', 'done']], []));
     expect(verdict.kind).toBe('broken');
     if (verdict.kind !== 'broken') return;
@@ -590,7 +598,7 @@ describe('Break rendering — message templates over the first witness', () => {
 
   it('appends (+N) for the witnesses beyond the first', () => {
     // N counts the others, not the total: three witnesses read `(+2)`.
-    const decl = singleDecl([entry({ op: 'Empty', of: LEFT }, "task '{key}'")]);
+    const decl = singleDecl([entry({ op: 'empty', of: LEFT }, "task '{key}'")]);
     const verdict = judge(
       decl,
       twoSided(
@@ -608,7 +616,7 @@ describe('Break rendering — message templates over the first witness', () => {
   });
 
   it('does not append a suffix for a single witness', () => {
-    const decl = singleDecl([entry({ op: 'Empty', of: LEFT }, "task '{key}'")]);
+    const decl = singleDecl([entry({ op: 'empty', of: LEFT }, "task '{key}'")]);
     const verdict = judge(decl, twoSided([['S1', 1]], []));
     if (verdict.kind !== 'broken') throw new Error('expected broken');
     expect(verdict.breaks[0].message).toBe("task 'S1'");
@@ -617,7 +625,7 @@ describe('Break rendering — message templates over the first witness', () => {
   it("messageBySide picks the template of the first witness's side", () => {
     const bySide: RelateEntry = {
       id: ENTRY,
-      relation: { op: 'Equal', of: [LEFT, RIGHT] },
+      relation: { op: 'equal', of: [LEFT, RIGHT] },
       messageBySide: { left: "right lacks '{value}'", right: "left lacks '{value}'" },
     };
     const decl = singleDecl([bySide]);
@@ -651,9 +659,9 @@ describe('Break rendering — message templates over the first witness', () => {
 
   it('one Break per breaking entry, in declaration order, none for entries that hold', () => {
     const decl = singleDecl([
-      { id: 'first-breaks', relation: { op: 'Empty', of: LEFT }, message: 'a' },
-      { id: 'holds', relation: { op: 'NonEmpty', of: LEFT }, message: 'b' },
-      { id: 'last-breaks', relation: { op: 'Empty', of: RIGHT }, message: 'c' },
+      { id: 'first-breaks', relation: { op: 'empty', of: LEFT }, message: 'a' },
+      { id: 'holds', relation: { op: 'nonEmpty', of: LEFT }, message: 'b' },
+      { id: 'last-breaks', relation: { op: 'empty', of: RIGHT }, message: 'c' },
     ]);
     const verdict = judge(decl, twoSided([['k1', 'a']], [['k2', 'b']]));
     if (verdict.kind !== 'broken') throw new Error('expected broken');

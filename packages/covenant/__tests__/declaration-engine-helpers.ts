@@ -53,7 +53,7 @@ export function witnessesOf(verdict: DeclarationVerdict, id?: string): readonly 
 
 /**
  * A declaration that reads `sourceName`, pipes it through `steps`, and relates the result
- * with `Empty` — whose witnesses are every item in input order, so judging it dumps the
+ * with `empty` — whose witnesses are every item in input order, so judging it dumps the
  * pipeline's output through the public verdict.
  */
 export function dumpDeclaration(
@@ -63,10 +63,18 @@ export function dumpDeclaration(
 ): AlgebraDeclaration {
   return {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     extract: { [extractName]: [{ op: 'source', of: sourceName }, ...steps] },
     relate: [
-      { id: `${extractName}-dump`, relation: { op: 'Empty', of: extractName }, message: 'm' },
+      { id: `${extractName}-dump`, relation: { op: 'empty', of: extractName }, message: 'm' },
     ],
+    // `scoped-valve` is the one name admitting every relation, and it asks for a valve; the
+    // valve never opens (it relates the same empty check), so the dump is unchanged.
+    witness: {
+      relate: [
+        { id: `${extractName}-valve`, relation: { op: 'empty', of: extractName }, message: 'w' },
+      ],
+    },
   };
 }
 

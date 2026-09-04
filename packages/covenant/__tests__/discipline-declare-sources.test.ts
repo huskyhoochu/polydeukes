@@ -34,7 +34,7 @@ const READS_EN = {
   sources: { [EN]: { file: EN_FILE } },
   supply: { [EN]: 'error' },
   extract: { keys: [{ op: 'source', of: EN }, { op: 'json' }, { op: 'flattenKeys' }] },
-  relate: [{ id: ENTRY, relation: { op: 'NonEmpty', of: 'keys' }, message: '{value}' }],
+  relate: [{ id: ENTRY, relation: { op: 'nonEmpty', of: 'keys' }, message: '{value}' }],
 };
 
 /**
@@ -44,7 +44,7 @@ const READS_EN = {
 const DUMPS_CHANGES = {
   supply: { [CHANGES]: 'error' },
   extract: { all: [{ op: 'source', of: CHANGES }] },
-  relate: [{ id: 'dump', relation: { op: 'Empty', of: 'all' }, message: '{value}' }],
+  relate: [{ id: 'dump', relation: { op: 'empty', of: 'all' }, message: '{value}' }],
 };
 
 /** A declare entry; extra head keys ride along. */

@@ -40,6 +40,13 @@ one of them, and tests, docs, and CLI output must use the same word for the same
 Rows written before `COVENANT-17` say `bypassed`; the reader folds them into `witnessed`,
 one-way. Never write `bypassed` in new code.
 
+A row has four fields (timestamp · event · label · subject) and an optional fifth whose
+meaning the event decides: on a break it is the witness list as a JSON array; on `skipped` it
+is a **skip reason** from the closed tuple `no-observation` (the surface has no channel for
+what the entry reads) · `config-fault` (assembly could not compile the entry) · `supply-pass`
+(the declaration's own `supply: pass` let an absent source through). A `skipped` row without
+a fifth field is a family runtime skip and reads back with no reason.
+
 ## Discipline families
 
 A `disciplines:` entry belongs to exactly one family, decided by which predicate key it
@@ -90,7 +97,8 @@ module; a name outside a closed list is rejected by validation, never coerced.
   **`extract`** (named pipelines producing values), **`relate`** (entries pairing an extract
   name with a relation), **`witness`** (the valve that stands *after* the verdict — its own
   `extract` + `relate`, same grammar; it sees the body's extract names, the body never sees
-  its). `mechanism` and `axis` are labels until `ALGEBRA-06` locks them.
+  its). `mechanism` is required and names a catalogue entry (below); there is no `axis` key —
+  the axes are derived from the sources a declaration reads.
 - **World axis** — the values a judgment sees that no payload carries. Five fixed source names
   come with every world (`target.path` · `pre` · `post` · `state` · `changes` — the observation
   unit's change set); a declaration's `sources` bindings add its own. The **supply layer**
@@ -106,11 +114,27 @@ module; a name outside a closed list is rejected by validation, never coerced.
   on the session side, `observationSourceReader` on the commit side) and the composition
   root only injects them.
 - **Relation** — the closed position where the last comparison happens. Seven names:
-  `Empty` · `NonEmpty` · `Equal` · `Subset` · `Implies` · `Ordered` · `Unchanged`. `Empty` and
-  `Subset` are the primitives; the rest expand to them (`NonEmpty ≡ ¬Empty`,
-  `Equal ≡ Subset` both ways, `Implies ≡ Subset` of key projections, `Unchanged ≡ Equal` over
+  `empty` · `nonEmpty` · `equal` · `subset` · `implies` · `ordered` · `unchanged`. `empty` and
+  `subset` are the primitives; the rest expand to them (`nonEmpty ≡ ¬empty`,
+  `equal ≡ subset` both ways, `implies ≡ subset` of key projections, `unchanged ≡ equal` over
   shared keys) — the expansion is engine-internal and lives in comments here. A constant
-  bound is compared in extraction (`filter`), never in the relation position.
+  bound is compared in extraction (`filter`), never in the relation position. The names are
+  camelCase like every other position in the grammar; the capitalised spelling was the
+  redesign research's constructor notation and is refused as a name outside the list.
+- **Mechanism catalogue** — the seventeen judgment-mechanism names (`packages/core/src/catalogue.ts`),
+  closed: `pairing` · `companion` · `monotonic-order` · `fingerprint-sync` · `producer-owned` ·
+  `self-absolution-ban` · `actor-scope` · `precedent` · `phase-order` · `turn-locality` ·
+  `stated-ground` · `controlled-vocabulary` · `naming` · `added-only` · `one-way-marker` ·
+  `delegated-scope` · `scoped-valve`. Each name carries a **shape spec** — the axes it may
+  read, the relations it may relate, and a structural marker (`scoped-valve` needs a
+  `witness` block, `naming` scopes on `target.path`, `delegated-scope` is reserved for the
+  definition-time milestone). A declaration's **derived shape** is read from its syntax
+  alone — every `source` step's name gives an axis, every relate entry's `op` a relation — and
+  must fall inside the spec (subset, not equality). A `source` name that is neither fixed nor
+  bound in `sources` is refused, so the empty shape can never satisfy an axis-restricted name.
+- **Axis (of a declaration)** — the closed tuple `change` · `actor` · `world` · `history`.
+  Today the fixed five source names derive `change` and a `sources` binding derives `world`;
+  `actor` and `history` gain a deriving source when their sources are registered.
 - **Extract step** — unary (open vocabulary, registered per `ALGEBRA-02`'s procedure, arguments
   pass through) or **binary combinator** (closed: `union` · `onlyIn` · `intersect`, only as a
   pipeline's first step). A combinator name is read as a combinator whatever its shape; a
@@ -124,14 +148,14 @@ module; a name outside a closed list is rejected by validation, never coerced.
   the closed-vocabulary jargon rule above applies; `relate` is the primitive's own verb.
 - **Item / items** — the engine's value model (`ALGEBRA-02`, `packages/covenant/src/declaration-engine.ts`):
   every extract step maps `Items → Items`, where an item is `{ key, value }`. `key` is the unit
-  of combination and of keyed comparison (`onlyIn`, `intersect`, `Implies`, `Unchanged`);
+  of combination and of keyed comparison (`onlyIn`, `intersect`, `implies`, `unchanged`);
   `value` is what a relation compares, by structural equality. A scalar source is one item
   under key `'0'`; a list without an index keys its elements by position. A key comes from
   one of three places — an element's position, a field of an object value, or a capture over
   the value's own text — and the last is what lets two different values meet under one key.
 - **Paired source** — `source: state` reads `World.state = { pre, post }` and runs the same
-  pipeline over both, producing a pre/post pair. Only `Unchanged` accepts a pair; a pair in any
-  other relation, or a single extraction under `Unchanged`, is a config fault at compile time.
+  pipeline over both, producing a pre/post pair. Only `unchanged` accepts a pair; a pair in any
+  other relation, or a single extraction under `unchanged`, is a config fault at compile time.
 - **World source names** — the four names `worldsFromInput` supplies per file change:
   `target.path` (repo-relative path), `pre`, `post` (the side the change carries), `state`
   (`{ pre, post }`, modifications only). A side the change lacks is an absent key — the

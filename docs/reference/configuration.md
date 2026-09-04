@@ -345,6 +345,7 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
   - id: 'db-only-under-knowledge'
     why: 'a *.db file may exist only under _docs/knowledge/'
     declare:
+      mechanism: 'naming'
       scope: { source: 'target.path', include: ['\.db$'] }
       extract:
         outside:
@@ -352,7 +353,7 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
           - { op: 'matches', re: '^(?!_docs/knowledge/)' }
       relate:
         - id: 'placed'
-          relation: { op: 'Empty', of: 'outside' }
+          relation: { op: 'empty', of: 'outside' }
           message: '{value} is outside _docs/knowledge/'
 ```
 
@@ -366,7 +367,7 @@ session surface, the whole staged set on the commit surface). A declaration that
 `changes` is judged only where the whole change set is observed: the session surface
 records it `skipped`, the same disposition the commit surface gives the context family,
 because one call can never carry the other half of a pair. This repository's live config
-carries one — `docs-stay-bilingual`, an `Implies` over the `.md`/`.ko.md` pair, advised
+carries one — `docs-stay-bilingual`, an `implies` over the `.md`/`.ko.md` pair, advised
 on the commit surface when one side is staged without the other. A declaration that needs a
 file outside the target names it in a `sources` block, `sources: { en: { file:
 'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
@@ -386,7 +387,14 @@ creation through.
 
 A break is recorded like any other family's, with one addition: the telemetry row carries a
 fifth field naming the elements the relation failed on (at most eight per relate entry, with
-the true count beside them). A block the compiler cannot resolve — a step name outside the
+the true count beside them). A `skipped` row uses the same field for a reason token instead —
+`no-observation` (the surface has no channel for what the entry reads), `config-fault` (the
+block could not be assembled), or `supply-pass` (the declaration's own `supply: pass` let an
+absent source through). Every declaration also names its `mechanism` — one of seventeen
+catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
+name whose shape the declaration does not match: the axes its sources derive (`change` for
+the fixed names, `world` for its own `sources`) and the relations it relates must fall inside
+what that name admits. A block the compiler cannot resolve — a step name outside the
 registry, an argument outside a step's keys — becomes a skip registration that names its
 location on stderr and routes nothing. A shell write into the declaration's scope has no
 file text to judge and records `skipped`. The declaration's own `witness` block joins the

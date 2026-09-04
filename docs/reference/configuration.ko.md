@@ -326,6 +326,7 @@ disciplines:
   - id: 'db-only-under-knowledge'
     why: 'a *.db file may exist only under _docs/knowledge/'
     declare:
+      mechanism: 'naming'
       scope: { source: 'target.path', include: ['\.db$'] }
       extract:
         outside:
@@ -333,7 +334,7 @@ disciplines:
           - { op: 'matches', re: '^(?!_docs/knowledge/)' }
       relate:
         - id: 'placed'
-          relation: { op: 'Empty', of: 'outside' }
+          relation: { op: 'empty', of: 'outside' }
           message: '{value} is outside _docs/knowledge/'
 ```
 
@@ -346,7 +347,7 @@ disciplines:
 변경 집합 전체를 관측하는 표면에서만 판정됩니다. 세션 표면은 그 선언을 `skipped`로
 기록합니다 — 커밋 표면이 맥락 계열에 내리는 처분과 같으며, 호출 하나가 쌍의 나머지
 반쪽을 실을 수 없기 때문입니다. 이 저장소의 라이브 설정은 그런 선언 하나를 싣습니다 —
-`docs-stay-bilingual`, `.md`/`.ko.md` 쌍 위의 `Implies`로, 한쪽만 staged된 커밋 표면에서
+`docs-stay-bilingual`, `.md`/`.ko.md` 쌍 위의 `implies`로, 한쪽만 staged된 커밋 표면에서
 advised로 남습니다. 대상 밖 파일이 필요한 선언은
 `sources` 블록에 이름을 붙이고(`sources: { en: { file: 'locales/en.json' } }`) `{ op:
 'source', of: 'en' }`로 읽습니다. 경로는 저장소 상대(선두 `/` 없음, `..` 세그먼트 없음)이고
@@ -364,6 +365,12 @@ advised로 남습니다. 대상 밖 파일이 필요한 선언은
 
 위반은 다른 계열과 같이 기록되되 하나가 더해집니다. 텔레메트리 행이 다섯째 필드에 관계가
 성립하지 않은 요소들을 싣습니다(relate 항목마다 최대 여덟, 실제 개수를 곁에 적습니다).
+`skipped` 행은 같은 자리에 사유 토큰을 대신 싣습니다. `no-observation`(항목이 읽는 것을
+이 표면이 관측할 통로가 없음), `config-fault`(블록을 조립하지 못함), `supply-pass`(선언
+자신의 `supply: pass`가 부재 소스를 지나가게 함) 셋입니다. 모든 선언은 `mechanism`도
+적습니다. `naming` · `companion` · `pairing` 같은 카탈로그 이름 열일곱 중 하나이고,
+검증기는 선언의 형상이 그 이름에 맞지 않으면 거부합니다. 소스가 유도하는 축(고정 이름은
+`change`, 자기 `sources`는 `world`)과 관계가 그 이름이 허용하는 범위 안에 있어야 합니다.
 컴파일러가 해석하지 못하는 블록(등재 표 밖의 단계 이름, 단계의 키 밖의 인자)은 stderr에
 위치를 적고 아무것도 라우팅하지 않는 skip 등록이 됩니다. 선언의 범위 안으로 들어오는 셸
 쓰기는 판정할 파일 본문이 없어 `skipped`를 기록합니다. 선언 자신의 `witness` 블록은 사람의

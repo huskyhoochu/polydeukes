@@ -13,7 +13,7 @@
 import { join } from 'node:path';
 import { resolveGitAdapterSettings } from '@polydeukes/adapter-git';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
-import { noopTranscript } from '@polydeukes/core';
+import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { assembleSessionRegistrations } from './claude-code-hook.js';
 import { assembleCommitRegistrations } from './covenant-check.js';
@@ -58,16 +58,33 @@ function scopeOf(entry: DisciplineEntry): string {
 }
 
 /**
- * The description of a declaration entry: what it routes on, how large its two regex lists
- * are, and which relate entries decide it. An absent scope block admits every world.
+ * The description of a declaration entry: its catalogue coordinate (the mechanism, the axes
+ * its sources derive, and the relations its entries decide), then what it routes on, how
+ * large its two regex lists are, how many sources it names and how many of those are
+ * channels, whether it carries a valve, and whether the author left a `why`. An absent
+ * scope block admits every world.
+ *
+ * The axes are derived, never read off the declaration: `loadConfig` has already run the
+ * declaration through the validator, so the shape here is the one the catalogue admitted.
  */
-function declareDescription(entry: DisciplineEntry): string {
+function declareDescription(entry: DisciplineEntry, enforce: string): string {
   const declare = entry.declare as NonNullable<DisciplineEntry['declare']>;
+  const shape = deriveShape(declare);
+  const axes = AXIS_NAMES.filter((axis) => shape.axes.has(axis)).join(',');
+  const relations = RELATION_NAMES.filter((relation) => shape.relations.has(relation)).join(',');
+  const relate = declare.relate.map((relateEntry) => relateEntry.id).join(', ');
   const scope = declare.scope === undefined ? 'scope every world' : `scope ${declare.scope.source}`;
   const include = declare.scope?.include?.length ?? 0;
   const exclude = declare.scope?.exclude?.length ?? 0;
-  const relate = declare.relate.map((relateEntry) => relateEntry.id).join(', ');
-  return `${scope} · include ${include} · exclude ${exclude} · relate ${relate}`;
+  const bindings = Object.values(declare.sources ?? {});
+  const channels = bindings.filter((binding) => 'sidecar' in binding).length;
+  const sources = `sources ${bindings.length}${channels === 0 ? '' : ` (sidecar ${channels})`}`;
+  const valve = declare.witness === undefined ? '—' : '✓';
+  const why = entry.why === undefined ? '—' : '✓';
+  return (
+    `${declare.mechanism} · ${axes} · ${relations} ${relate} · ${scope} · ` +
+    `include ${include} · exclude ${exclude} · ${sources} · valve ${valve} · why ${why}${enforce}`
+  );
 }
 
 /** One rendered line: the kind column, the label column, then the description. */
@@ -122,15 +139,7 @@ function renderSurface(spec: {
     const level = entry?.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
     if (entry?.declare !== undefined) {
       declare += 1;
-      const why = entry.why === undefined ? '—' : '✓';
-      lines.push(
-        row(
-          'declare',
-          registration.label,
-          width,
-          `${declareDescription(entry)} · why ${why}${level}`,
-        ),
-      );
+      lines.push(row('declare', registration.label, width, declareDescription(entry, level)));
       continue;
     }
     judged += 1;

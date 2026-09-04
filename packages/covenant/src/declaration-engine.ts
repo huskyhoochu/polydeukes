@@ -179,9 +179,9 @@ function compileExtract(
 
 /** The extract names a relation reads, and whether it takes a paired extraction. */
 function relationReferences(relation: RelationDecl): readonly string[] {
-  if (relation.op === 'Equal') return relation.of;
-  if (relation.op === 'Subset') return [relation.of, relation.in];
-  if (relation.op === 'Implies') return [relation.of, relation.requires];
+  if (relation.op === 'equal') return relation.of;
+  if (relation.op === 'subset') return [relation.of, relation.in];
+  if (relation.op === 'implies') return [relation.of, relation.requires];
   return [relation.of];
 }
 
@@ -191,7 +191,7 @@ function checkRelateShapes(
   location: string,
 ): ConfigFault | undefined {
   for (const entry of relate) {
-    const wantsPair = entry.relation.op === 'Unchanged';
+    const wantsPair = entry.relation.op === 'unchanged';
     for (const name of relationReferences(entry.relation)) {
       const pipeline = pipelines.get(name);
       if (pipeline === undefined) {
@@ -205,7 +205,7 @@ function checkRelateShapes(
       return fault(
         `${location} '${entry.id}'`,
         wantsPair
-          ? `'Unchanged' compares a before/after pair, and '${name}' reads a single state`
+          ? `'unchanged' compares a before/after pair, and '${name}' reads a single state`
           : `'${entry.relation.op}' takes a single extraction, and '${name}' reads a before/after pair`,
       );
     }
@@ -424,29 +424,29 @@ function evaluate(
   const relation = entry.relation;
   const items = (name: string): Items | undefined => extractor.resolve(name)?.single;
 
-  if (relation.op === 'Unchanged') {
+  if (relation.op === 'unchanged') {
     const pair = extractor.resolve(relation.of)?.pair;
     return pair === undefined ? undefined : relateUnchanged(pair.pre, pair.post);
   }
-  if (relation.op === 'Equal') {
+  if (relation.op === 'equal') {
     const left = items(relation.of[0]);
     const right = items(relation.of[1]);
     return left === undefined || right === undefined ? undefined : relateEqual(left, right);
   }
-  if (relation.op === 'Subset') {
+  if (relation.op === 'subset') {
     const of = items(relation.of);
     const inItems = items(relation.in);
     return of === undefined || inItems === undefined ? undefined : relateSubset(of, inItems);
   }
-  if (relation.op === 'Implies') {
+  if (relation.op === 'implies') {
     const of = items(relation.of);
     const requires = items(relation.requires);
     return of === undefined || requires === undefined ? undefined : relateImplies(of, requires);
   }
   const of = items(relation.of);
   if (of === undefined) return undefined;
-  if (relation.op === 'Empty') return relateEmpty(of);
-  if (relation.op === 'NonEmpty') return relateNonEmpty(of, relation.of);
+  if (relation.op === 'empty') return relateEmpty(of);
+  if (relation.op === 'nonEmpty') return relateNonEmpty(of, relation.of);
   return relateOrdered(of, relation.strict === true);
 }
 

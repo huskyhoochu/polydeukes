@@ -42,6 +42,8 @@ const ENTRY_ID = 'db-only-under-knowledge';
 
 /** The declaration body under test — a path-only placement check. */
 const declareBlock = {
+  // A path convention: `naming` admits `empty` on the change axis, scoped on target.path.
+  mechanism: 'naming',
   scope: { source: SOURCE_PATH, include: ['\\.db$'] },
   extract: {
     [EXTRACT_OUTSIDE]: [
@@ -52,7 +54,7 @@ const declareBlock = {
   relate: [
     {
       id: RELATE_ID,
-      relation: { op: 'Empty', of: EXTRACT_OUTSIDE },
+      relation: { op: 'empty', of: EXTRACT_OUTSIDE },
       message: '{value} is outside memory/knowledge/',
     },
   ],
@@ -150,7 +152,7 @@ describe('defineConfig disciplines — the block is validated with the entry loc
           id: 'dangling-extract',
           declare: {
             ...declareBlock,
-            relate: [{ id: RELATE_ID, relation: { op: 'Empty', of: 'missing' }, message: 'm' }],
+            relate: [{ id: RELATE_ID, relation: { op: 'empty', of: 'missing' }, message: 'm' }],
           },
         },
       ]),

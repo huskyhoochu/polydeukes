@@ -172,6 +172,7 @@ disciplines:
   - id: 'sqlite-only-under-knowledge'
     why: 'a *.db file may exist only under _docs/knowledge/; one created anywhere else is a break. the knowledge store sits there so gitignore-by-location keeps it out of history.'
     declare:
+      mechanism: 'naming'
       scope: { source: 'target.path', include: ['\.db$'] }
       extract:
         outside:
@@ -179,7 +180,7 @@ disciplines:
           - { op: 'matches', re: '^(?!_docs/knowledge/)' }
       relate:
         - id: 'placed'
-          relation: { op: 'Empty', of: 'outside' }
+          relation: { op: 'empty', of: 'outside' }
           message: '{value} is outside _docs/knowledge/'
   # English is the default and Korean mirrors live in *.ko.md. A commit that changes one
   # side of a pair and not the other is a break. Only presence in the change set is judged —
@@ -191,6 +192,7 @@ disciplines:
   - id: 'docs-stay-bilingual'
     why: 'English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged, never content.'
     declare:
+      mechanism: 'companion'
       scope:
         source: 'target.path'
         include: ['\.md$']
@@ -212,8 +214,8 @@ disciplines:
           - { op: 'keyByPattern', re: '^(.+)\.ko\.md$' }
       relate:
         - id: 'ko-follows'
-          relation: { op: 'Implies', of: 'en', requires: 'koChanged' }
+          relation: { op: 'implies', of: 'en', requires: 'koChanged' }
           message: '{value} changed without {key}.ko.md'
         - id: 'en-follows'
-          relation: { op: 'Implies', of: 'ko', requires: 'enChanged' }
+          relation: { op: 'implies', of: 'ko', requires: 'enChanged' }
           message: '{value} changed without {key}.md'

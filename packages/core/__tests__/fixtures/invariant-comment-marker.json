@@ -1,7 +1,6 @@
 {
   "discipline": "invariant-comment-marker",
-  "mechanism": "irreversible marker",
-  "axis": "change axis: directed inclusion, the host supplies a before/after pair per edit",
+  "mechanism": "one-way-marker",
   "scope": {
     "source": "target.path",
     "include": [".*"],
@@ -44,7 +43,7 @@
     {
       "id": "invariant-preserved",
       "relation": {
-        "op": "Subset",
+        "op": "subset",
         "of": "preInvariants",
         "in": "postInvariants"
       },

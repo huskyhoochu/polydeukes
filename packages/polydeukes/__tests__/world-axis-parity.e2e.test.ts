@@ -37,6 +37,8 @@ const declareEntry = {
   id: DECLARE_ID,
   why: 'the ko and en locales must carry the same keys',
   declare: {
+    // World axis with `equal`: two supplied files must carry the same keys.
+    mechanism: 'pairing',
     sources: { ko: { file: KO_FILE }, en: { file: EN_FILE } },
     supply: { ko: 'error', en: 'error' },
     scope: { source: 'target.path', include: ['^locales/(ko|en)\\.json$'] },
@@ -47,7 +49,7 @@ const declareEntry = {
     relate: [
       {
         id: RELATE_ID,
-        relation: { op: 'Equal', of: ['koKeys', 'enKeys'] },
+        relation: { op: 'equal', of: ['koKeys', 'enKeys'] },
         messageBySide: { left: '{key} is in ko only', right: '{key} is in en only' },
       },
     ],

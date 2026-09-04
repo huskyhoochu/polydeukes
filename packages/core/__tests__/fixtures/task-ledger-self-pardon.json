@@ -1,7 +1,6 @@
 {
   "discipline": "task-ledger-self-pardon",
-  "mechanism": "no self-pardon",
-  "axis": "change axis: the host supplies a before/after state pair",
+  "mechanism": "self-absolution-ban",
   "scope": {
     "source": "target.path",
     "include": ["(?:^|/)docs/ledger/[^/]+\\.json$"]
@@ -159,7 +158,7 @@
     {
       "id": "schema-d4",
       "relation": {
-        "op": "Empty",
+        "op": "empty",
         "of": "unspecifiedTasks"
       },
       "message": "task '{key}': verification_actions is empty — add a judgement command or set status: needs_spec (D4)"
@@ -167,7 +166,7 @@
     {
       "id": "passes-runner-owned",
       "relation": {
-        "op": "Unchanged",
+        "op": "unchanged",
         "of": "ownedPasses"
       },
       "message": "task '{key}': passes is runner-owned (D3) — only ledger-verify.ts may change it (was {before}, now {value})"
@@ -175,7 +174,7 @@
     {
       "id": "retries-runner-owned",
       "relation": {
-        "op": "Unchanged",
+        "op": "unchanged",
         "of": "ownedRetries"
       },
       "message": "task '{key}': retries is runner-owned (D3) — only ledger-verify.ts may change it (was {before}, now {value})"
@@ -183,7 +182,7 @@
     {
       "id": "new-task-passes-start",
       "relation": {
-        "op": "Empty",
+        "op": "empty",
         "of": "newTasksClaimingPass"
       },
       "message": "new task '{key}': passes must start false — the runner sets it true after verification (D3)"
@@ -191,7 +190,7 @@
     {
       "id": "new-task-retries-start",
       "relation": {
-        "op": "Empty",
+        "op": "empty",
         "of": "newTasksClaimingRetries"
       },
       "message": "new task '{key}': retries must start 0 — the runner owns it (D3)"

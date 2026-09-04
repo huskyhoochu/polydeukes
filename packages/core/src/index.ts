@@ -27,6 +27,16 @@ export {
   type Witnesses,
 } from './algebra.js';
 export {
+  AXIS_NAMES,
+  type Axis,
+  type DerivableDeclaration,
+  deriveShape,
+  MECHANISM_NAMES,
+  MECHANISM_SHAPES,
+  type MechanismName,
+  type MechanismShape,
+} from './catalogue.js';
+export {
   type AlgebraDeclarationBody,
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,
@@ -73,6 +83,8 @@ export {
   parseRecordLine,
   readRecords,
   runGain,
+  SKIP_REASONS,
+  type SkipReason,
   type TelemetryEvent,
   type TelemetryRecord,
 } from './telemetry.js';

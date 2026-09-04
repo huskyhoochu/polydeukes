@@ -22,7 +22,7 @@ const JOINED = 'joinedItems';
 const ENTRY = 'probe-entry';
 
 function declaration(extract: ExtractBlock, relate: RelateEntry[]): AlgebraDeclaration {
-  return { discipline: 'probe', extract, relate };
+  return { discipline: 'probe', mechanism: 'scoped-valve', extract, relate };
 }
 
 /** Compile without throwing and return the fault, failing if none came back. */
@@ -39,7 +39,7 @@ function faultOf(decl: AlgebraDeclaration): ConfigFault {
 
 const emptyOf = (name: string): RelateEntry => ({
   id: ENTRY,
-  relation: { op: 'Empty', of: name },
+  relation: { op: 'empty', of: name },
   message: 'm',
 });
 
@@ -144,7 +144,7 @@ describe('compileDeclaration — paired and single shapes', () => {
     // holds vacuously — the fail-open reading.
     const fault = faultOf(
       declaration(singleExtract, [
-        { id: ENTRY, relation: { op: 'Unchanged', of: SINGLE }, message: 'm' },
+        { id: ENTRY, relation: { op: 'unchanged', of: SINGLE }, message: 'm' },
       ]),
     );
     expect(fault.kind).toBe('config-fault');
@@ -178,8 +178,8 @@ describe('compileDeclaration — paired and single shapes', () => {
     // The positive end: the shape check must not refuse the pairing it exists for.
     const result = compileDeclaration({
       declaration: declaration({ ...pairedExtract, ...singleExtract }, [
-        { id: ENTRY, relation: { op: 'Unchanged', of: PAIRED }, message: 'm' },
-        { id: `${ENTRY}-2`, relation: { op: 'Empty', of: SINGLE }, message: 'm' },
+        { id: ENTRY, relation: { op: 'unchanged', of: PAIRED }, message: 'm' },
+        { id: `${ENTRY}-2`, relation: { op: 'empty', of: SINGLE }, message: 'm' },
       ]),
     });
     expect(isConfigFault(result)).toBe(false);

@@ -31,6 +31,16 @@ export type TelemetryEvent =
   | 'unattributed';
 
 /**
+ * Why a `skipped` row records no judgment, closed: the surface has no observation channel
+ * for what the entry reads, assembly could not compile the entry, or the declaration's own
+ * `supply: pass` let an absent source through.
+ */
+export const SKIP_REASONS = ['no-observation', 'config-fault', 'supply-pass'] as const;
+
+/** One of the three skip reasons — the closed vocabulary of the fifth field on a skip row. */
+export type SkipReason = (typeof SKIP_REASONS)[number];
+
+/**
  * `TelemetryRecord` — one measured covenant outcome.
  *
  * `subject` is the judged target (a file path, etc.); `-` is the documented sentinel
@@ -39,6 +49,9 @@ export type TelemetryEvent =
  * `witnesses` is the optional fifth field: an already-serialized JSON string naming what
  * a judgment found broken. Only a judgment that produced witness elements carries it, so
  * every other producer's row keeps its four fields.
+ *
+ * `reason` is the other reading of that fifth field, and only a `skipped` row takes it: a
+ * skip has no witness to name, so the two never contend for the slot.
  */
 export type TelemetryRecord = {
   timestamp: string;
@@ -46,6 +59,7 @@ export type TelemetryRecord = {
   label: string;
   subject: string;
   witnesses?: string;
+  reason?: SkipReason;
 };
 
 /** Per-label event counts, keyed by label then event. */
@@ -100,12 +114,27 @@ function isJsonArray(text: string): boolean {
  *
  * The returned string already includes the trailing `\n`, so {@link appendRecord}
  * writes it verbatim in a single call. The fifth field appears only when the record
- * carries `witnesses`; a record without it writes the four-field line unchanged.
+ * carries `witnesses` or a skip `reason`; a record without either writes the four-field
+ * line unchanged.
+ *
+ * Throws when a record claims the fifth field twice, or claims it as a reason on an event
+ * that is not `skipped`: both are assembly errors, and writing either one would produce a
+ * row no reader can take apart.
  */
 export function formatRecordLine(record: TelemetryRecord): string {
+  if (record.reason !== undefined) {
+    if (record.event !== 'skipped') {
+      throw new Error(`a skip reason belongs to a skipped row, not to '${record.event}'`);
+    }
+    if (record.witnesses !== undefined) {
+      throw new Error('a record carries either witnesses or a skip reason, never both');
+    }
+  }
   const fields = [record.timestamp, record.event, sanitize(record.label), sanitize(record.subject)];
   if (record.witnesses !== undefined) {
     fields.push(sanitize(record.witnesses));
+  } else if (record.reason !== undefined) {
+    fields.push(record.reason);
   }
   return `${fields.join(TAB)}\n`;
 }
@@ -114,9 +143,12 @@ export function formatRecordLine(record: TelemetryRecord): string {
  * Parse one TSV line back into a {@link TelemetryRecord}, or `null` if malformed (pure).
  *
  * Tolerates a trailing newline (so it round-trips {@link formatRecordLine}). Returns
- * `null` for a field count outside four (no witnesses) and five (with them), a fifth field
- * that is not a JSON array, an event outside the six valid events, or an empty line — a malformed line is rejected, never coerced into a bogus record. The one
- * exception is {@link LEGACY_WITNESSED_EVENT}, which reads back as `witnessed`.
+ * `null` for a field count outside four (no fifth field) and five (with one), an event
+ * outside the six valid events, or an empty line — a malformed line is rejected, never
+ * coerced into a bogus record. The fifth field is read per event: on `skipped` it is a
+ * token of {@link SKIP_REASONS} and nothing else, on every other event a JSON array of
+ * witnesses. The one exception is {@link LEGACY_WITNESSED_EVENT}, which reads back as
+ * `witnessed`.
  */
 export function parseRecordLine(line: string): TelemetryRecord | null {
   const trimmed = line.replace(/\n$/, '');
@@ -129,24 +161,24 @@ export function parseRecordLine(line: string): TelemetryRecord | null {
     return null;
   }
 
-  const [timestamp, event, label, subject, witnesses] = fields;
+  const [timestamp, event, label, subject, fifth] = fields;
   const resolved = event === LEGACY_WITNESSED_EVENT ? 'witnessed' : event;
   if (!VALID_EVENTS.includes(resolved as TelemetryEvent)) {
     return null;
   }
+  const record = { timestamp, event: resolved as TelemetryEvent, label, subject };
+  if (fifth === undefined) {
+    return record;
+  }
+  if (resolved === 'skipped') {
+    // A skip carries no witness, so a JSON array here is as corrupt as a near-miss token.
+    return (SKIP_REASONS as readonly string[]).includes(fifth)
+      ? { ...record, reason: fifth as SkipReason }
+      : null;
+  }
   // The fifth field is a JSON array or the line is corrupt: a stray tab inside a subject
   // would otherwise read as a record with the wrong subject and no witnesses.
-  if (witnesses !== undefined && !isJsonArray(witnesses)) {
-    return null;
-  }
-
-  return {
-    timestamp,
-    event: resolved as TelemetryEvent,
-    label,
-    subject,
-    ...(witnesses !== undefined && { witnesses }),
-  };
+  return isJsonArray(fifth) ? { ...record, witnesses: fifth } : null;
 }
 
 /**

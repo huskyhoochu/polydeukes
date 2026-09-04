@@ -25,10 +25,11 @@ const ENTRY = 'probe-entry';
 function sourceDecl(supply?: SupplyBlock, scope?: ScopeBlock): AlgebraDeclaration {
   return {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     ...(scope !== undefined && { scope }),
     ...(supply !== undefined && { supply }),
     extract: { [ITEMS]: [{ op: 'source', of: SRC }] },
-    relate: [{ id: ENTRY, relation: { op: 'NonEmpty', of: ITEMS }, message: 'm' }],
+    relate: [{ id: ENTRY, relation: { op: 'nonEmpty', of: ITEMS }, message: 'm' }],
   };
 }
 
@@ -70,9 +71,10 @@ describe('supply policy — a source absent from the world', () => {
 describe('supply policy — json parse failure', () => {
   const decl: AlgebraDeclaration = {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     supply: { [SRC]: 'pass' },
     extract: { [ITEMS]: [{ op: 'source', of: SRC }, { op: 'json' }] },
-    relate: [{ id: ENTRY, relation: { op: 'NonEmpty', of: ITEMS }, message: 'm' }],
+    relate: [{ id: ENTRY, relation: { op: 'nonEmpty', of: ITEMS }, message: 'm' }],
   };
 
   it('answers supply-error naming the source even under a `pass` policy', () => {
@@ -89,8 +91,9 @@ describe('supply policy — the paired source `state`', () => {
   const PAIRED = 'pairedItems';
   const decl: AlgebraDeclaration = {
     discipline: 'probe',
+    mechanism: 'scoped-valve',
     extract: { [PAIRED]: [{ op: 'source', of: 'state' }] },
-    relate: [{ id: ENTRY, relation: { op: 'Unchanged', of: PAIRED }, message: 'm' }],
+    relate: [{ id: ENTRY, relation: { op: 'unchanged', of: PAIRED }, message: 'm' }],
   };
 
   it('a state that is not a { pre, post } pair is a supply-error naming state', () => {
@@ -126,12 +129,13 @@ describe('supply policy — a failure under a combinator names the pipeline', ()
     // can act on.
     const decl: AlgebraDeclaration = {
       discipline: 'probe',
+      mechanism: 'scoped-valve',
       extract: {
         [ITEMS]: [{ op: 'source', of: SRC }],
         [OTHER]: [{ op: 'source', of: SRC_OTHER }],
         [JOINED]: [{ op: 'union', of: [ITEMS, OTHER] }, { op: 'json' }],
       },
-      relate: [{ id: ENTRY, relation: { op: 'NonEmpty', of: JOINED }, message: 'm' }],
+      relate: [{ id: ENTRY, relation: { op: 'nonEmpty', of: JOINED }, message: 'm' }],
     };
     expect(judge(decl, { [SRC]: 'not json', [SRC_OTHER]: '[]' })).toMatchObject({
       kind: 'supply-error',
@@ -144,14 +148,15 @@ describe('supply policy — the first failure ends the judgment', () => {
   it('a later entry that would break does not turn a supply-error into broken', () => {
     const decl: AlgebraDeclaration = {
       discipline: 'probe',
+      mechanism: 'scoped-valve',
       supply: { [SRC_MISSING]: 'error' },
       extract: {
         [ITEMS]: [{ op: 'source', of: SRC_MISSING }],
         [OTHER]: [{ op: 'source', of: SRC }],
       },
       relate: [
-        { id: 'needs-missing', relation: { op: 'NonEmpty', of: ITEMS }, message: 'm' },
-        { id: 'breaks', relation: { op: 'Empty', of: OTHER }, message: 'm' },
+        { id: 'needs-missing', relation: { op: 'nonEmpty', of: ITEMS }, message: 'm' },
+        { id: 'breaks', relation: { op: 'empty', of: OTHER }, message: 'm' },
       ],
     };
     expect(judge(decl, { [SRC]: 'x' })).toMatchObject({
@@ -238,11 +243,12 @@ describe('witnessOpens — the valve after the verdict', () => {
   function withWitness(witness: AlgebraDeclaration['witness']): AlgebraDeclaration {
     return {
       discipline: 'probe',
+      mechanism: 'scoped-valve',
       extract: {
         [ITEMS]: [{ op: 'source', of: SRC }],
         [OTHER]: [{ op: 'source', of: SRC_OTHER }],
       },
-      relate: [{ id: ENTRY, relation: { op: 'Empty', of: ITEMS }, message: 'm' }],
+      relate: [{ id: ENTRY, relation: { op: 'empty', of: ITEMS }, message: 'm' }],
       witness,
     };
   }
@@ -251,7 +257,7 @@ describe('witnessOpens — the valve after the verdict', () => {
   it('opens when the witness extract over body names satisfies every witness entry', () => {
     const decl = withWitness({
       extract: { [JOINED]: [{ op: 'union', of: [ITEMS, OTHER] }] },
-      relate: [{ id: 'valve', relation: { op: 'NonEmpty', of: JOINED }, message: 'm' }],
+      relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: JOINED }, message: 'm' }],
     });
     // The body's own entry breaks on this world; the valve is independent of that.
     expect(judge(decl, bothPresent).kind).toBe('broken');
@@ -261,7 +267,7 @@ describe('witnessOpens — the valve after the verdict', () => {
   it('stays closed when a witness relation does not hold', () => {
     const decl = withWitness({
       extract: { [JOINED]: [{ op: 'union', of: [ITEMS, OTHER] }] },
-      relate: [{ id: 'valve', relation: { op: 'Empty', of: JOINED }, message: 'm' }],
+      relate: [{ id: 'valve', relation: { op: 'empty', of: JOINED }, message: 'm' }],
     });
     expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
   });
@@ -271,8 +277,8 @@ describe('witnessOpens — the valve after the verdict', () => {
     const decl = withWitness({
       extract: { [JOINED]: [{ op: 'union', of: [ITEMS, OTHER] }] },
       relate: [
-        { id: 'valve-holds', relation: { op: 'NonEmpty', of: JOINED }, message: 'm' },
-        { id: 'valve-breaks', relation: { op: 'Empty', of: JOINED }, message: 'm' },
+        { id: 'valve-holds', relation: { op: 'nonEmpty', of: JOINED }, message: 'm' },
+        { id: 'valve-breaks', relation: { op: 'empty', of: JOINED }, message: 'm' },
       ],
     });
     expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
@@ -281,7 +287,7 @@ describe('witnessOpens — the valve after the verdict', () => {
   it('stays closed when a witness source is absent from the world', () => {
     const decl = withWitness({
       extract: { [JOINED]: [{ op: 'source', of: SRC_MISSING }] },
-      relate: [{ id: 'valve', relation: { op: 'NonEmpty', of: JOINED }, message: 'm' }],
+      relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: JOINED }, message: 'm' }],
     });
     expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
   });

@@ -31,17 +31,29 @@ const minimalExtract = {
   [EXTRACT_B]: [{ op: 'source', of: SOURCE_POST }],
 };
 
-const minimalRule = { id: 'items-empty', relation: { op: 'Empty', of: EXTRACT_A }, message: 'm' };
+const minimalRule = { id: 'items-empty', relation: { op: 'empty', of: EXTRACT_A }, message: 'm' };
+
+// `scoped-valve` is the one mechanism whose spec admits every axis and relation; it asks
+// only for a witness block, so the relation and pipeline variants below all stay VALID.
+const MECHANISM = 'scoped-valve';
 
 const minimalDeclaration = {
   discipline: 'probe',
+  mechanism: MECHANISM,
   extract: minimalExtract,
   relate: [minimalRule],
+  witness: { relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: EXTRACT_B }, message: 'w' }] },
 };
 
 /** A declaration whose single entry carries the given relation. */
 function withRelation(relation: unknown): unknown {
   return { ...minimalDeclaration, relate: [{ id: 'probe-entry', relation, message: 'm' }] };
+}
+
+/** The minimal declaration with one top-level key absent (not `undefined`-valued). */
+function without(key: keyof typeof minimalDeclaration): unknown {
+  const { [key]: _dropped, ...rest } = minimalDeclaration;
+  return rest;
 }
 
 /** A declaration with one extra pipeline added to the minimal extract block. */
@@ -50,11 +62,10 @@ function withPipeline(name: string, steps: unknown): unknown {
 }
 
 const VALID_DECLARATIONS: readonly unknown[] = [
-  // The four real declarations: every block, both combinator shapes, both message forms.
+  // The three real declarations: every block, both combinator shapes, both message forms.
   loadFixture('i18n-key-parity'),
   loadFixture('invariant-comment-marker'),
   loadFixture('task-ledger-self-pardon'),
-  loadFixture('tdd-agent-required'),
   // The smallest legal document — no optional block.
   minimalDeclaration,
   // An unknown unary op: the open vocabulary must be open on both sides.
@@ -65,18 +76,18 @@ const VALID_DECLARATIONS: readonly unknown[] = [
     { op: 'select', of: 'tasks' },
   ]),
   // Equal with a plain message — messageBySide is permitted on Equal, never required.
-  withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_B] }),
+  withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_B] }),
   // Ordered with its optional flag present.
-  withRelation({ op: 'Ordered', of: EXTRACT_A, strict: false }),
+  withRelation({ op: 'ordered', of: EXTRACT_A, strict: false }),
   // Ordered without its optional flag.
-  withRelation({ op: 'Ordered', of: EXTRACT_A }),
+  withRelation({ op: 'ordered', of: EXTRACT_A }),
   // Implies with both references resolving.
-  withRelation({ op: 'Implies', of: EXTRACT_A, requires: EXTRACT_B }),
+  withRelation({ op: 'implies', of: EXTRACT_A, requires: EXTRACT_B }),
   // intersect as a first step, the third combinator outside the fixtures.
   {
     ...minimalDeclaration,
     extract: { ...minimalExtract, shared: [{ op: 'intersect', of: [EXTRACT_A, EXTRACT_B] }] },
-    relate: [{ id: 'shared-nonempty', relation: { op: 'NonEmpty', of: 'shared' }, message: 'm' }],
+    relate: [{ id: 'shared-nonempty', relation: { op: 'nonEmpty', of: 'shared' }, message: 'm' }],
   },
 ];
 
@@ -86,19 +97,19 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
   withRelation({ op: 'Within', of: EXTRACT_A, max: 600000 }),
   // relation argument shapes
   // Equal.of with one name (minItems boundary).
-  withRelation({ op: 'Equal', of: [EXTRACT_A] }),
+  withRelation({ op: 'equal', of: [EXTRACT_A] }),
   // Equal.of with three names (maxItems boundary).
-  withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_B, EXTRACT_A] }),
+  withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_B, EXTRACT_A] }),
   // Equal.of naming the same extract twice (uniqueItems).
-  withRelation({ op: 'Equal', of: [EXTRACT_A, EXTRACT_A] }),
+  withRelation({ op: 'equal', of: [EXTRACT_A, EXTRACT_A] }),
   // Subset without `in` (required key on that branch).
-  withRelation({ op: 'Subset', of: EXTRACT_A }),
+  withRelation({ op: 'subset', of: EXTRACT_A }),
   // Implies without `requires`.
-  withRelation({ op: 'Implies', of: EXTRACT_A }),
+  withRelation({ op: 'implies', of: EXTRACT_A }),
   // Ordered.strict as a truthy string.
-  withRelation({ op: 'Ordered', of: EXTRACT_A, strict: 'yes' }),
+  withRelation({ op: 'ordered', of: EXTRACT_A, strict: 'yes' }),
   // Unknown key on a relation — `max` is the argument Within carried.
-  withRelation({ op: 'NonEmpty', of: EXTRACT_A, max: 600000 }),
+  withRelation({ op: 'nonEmpty', of: EXTRACT_A, max: 600000 }),
   // combinator op: closed to three names, discriminated by shape
   // A fourth combinator name with the array-`of` shape.
   withPipeline('onlyPre', [{ op: 'difference', of: [EXTRACT_A, EXTRACT_B] }]),
@@ -119,6 +130,12 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
     { op: 'source', of: SOURCE_PRE },
     { op: 'union', of: [EXTRACT_A, EXTRACT_B] },
   ]),
+  // scope.source: the list-valued and pair-valued fixed names carry no text a regex can read.
+  // A sidecar name is validator-only — it depends on this declaration's own sources block.
+  { ...minimalDeclaration, scope: { source: 'changes' } },
+  { ...minimalDeclaration, scope: { source: 'state' } },
+  // The reserved mechanism: refused at runtime, so the enum does not list it.
+  { ...minimalDeclaration, mechanism: 'delegated-scope' },
   // pipeline steps
   // Empty pipeline (minItems).
   withPipeline('hollow', []),
@@ -135,7 +152,7 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
     relate: [
       {
         id: 'sided-subset',
-        relation: { op: 'Subset', of: EXTRACT_A, in: EXTRACT_B },
+        relation: { op: 'subset', of: EXTRACT_A, in: EXTRACT_B },
         messageBySide: { left: 'l', right: 'r' },
       },
     ],
@@ -146,7 +163,7 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
     relate: [
       {
         id: 'both-messages',
-        relation: { op: 'Equal', of: [EXTRACT_A, EXTRACT_B] },
+        relation: { op: 'equal', of: [EXTRACT_A, EXTRACT_B] },
         message: 'm',
         messageBySide: { left: 'l', right: 'r' },
       },
@@ -155,7 +172,7 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
   // Neither message form.
   {
     ...minimalDeclaration,
-    relate: [{ id: 'no-message', relation: { op: 'Empty', of: EXTRACT_A } }],
+    relate: [{ id: 'no-message', relation: { op: 'empty', of: EXTRACT_A } }],
   },
   // messageBySide missing its right side.
   {
@@ -163,7 +180,7 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
     relate: [
       {
         id: 'half-sided',
-        relation: { op: 'Equal', of: [EXTRACT_A, EXTRACT_B] },
+        relation: { op: 'equal', of: [EXTRACT_A, EXTRACT_B] },
         messageBySide: { left: 'l' },
       },
     ],
@@ -187,7 +204,13 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
   // Empty-string discipline.
   { ...minimalDeclaration, discipline: '' },
   // discipline absent.
-  { extract: minimalExtract, relate: [minimalRule] },
+  without('discipline'),
+  // mechanism absent (required key).
+  without('mechanism'),
+  // mechanism outside the closed enum — the free-string label the catalogue replaces.
+  { ...minimalDeclaration, mechanism: 'pair parity' },
+  // The removed axis key (additionalProperties false).
+  { ...minimalDeclaration, axis: 'change' },
   // An array where a document is expected.
   [minimalDeclaration],
   // scope and supply

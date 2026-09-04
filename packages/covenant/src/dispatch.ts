@@ -18,6 +18,7 @@ import {
   EXIT_UPHOLD,
   noopTranscript,
   parseInput,
+  type SkipReason,
 } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.js';
 import { pathCandidates, pathMatchesProtected } from './mention.js';
@@ -57,7 +58,8 @@ export type WitnessPredicate = (
  * vocabulary could not be resolved — so a match records one `skipped` and upholds instead
  * of judging. Judging it anyway would block every matched input with no legitimate pass
  * path; throwing at assembly would take down every sibling registration and the witness
- * valve with it.
+ * valve with it. `reason` is the sentence the author reads; `kind` is the token the row
+ * carries, so the measurement separates an environment fact from a config fault.
  *
  * `enforce` is the AUTHOR's level for this one registration, distinct from the observer's
  * dispatch-wide level; absence means the registration inherits whatever the dispatch
@@ -76,7 +78,7 @@ export type CovenantRegistration = {
   matches?: (input: CovenantInput) => string | null;
 } & (
   | { body: (input: CovenantInput) => Promise<JudgeOutcome>; skip?: never }
-  | { body?: never; skip: { reason: string } }
+  | { body?: never; skip: { reason: string; kind: SkipReason } }
 );
 
 /**
@@ -288,6 +290,7 @@ export async function dispatchCovenants(spec: DispatchCovenantsSpec): Promise<Di
         event: 'skipped',
         label: registration.label,
         subject: mentionedPath,
+        reason: registration.skip.kind,
       });
       results.push({ label: registration.label, exitCode: EXIT_UPHOLD, event: 'skipped' });
       continue;

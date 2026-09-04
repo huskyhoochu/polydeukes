@@ -40,6 +40,8 @@ const declareEntry = {
   id: DECLARE_ID,
   why: 'English is the default and Korean mirrors live in *.ko.md; only presence in the change set is judged, never content.',
   declare: {
+    // Change axis with `implies`: one file's presence obliges another's.
+    mechanism: 'companion',
     scope: {
       source: 'target.path',
       include: ['\\.md$'],
@@ -68,12 +70,12 @@ const declareEntry = {
     relate: [
       {
         id: KO_FOLLOWS,
-        relation: { op: 'Implies', of: 'en', requires: 'koChanged' },
+        relation: { op: 'implies', of: 'en', requires: 'koChanged' },
         message: '{value} changed without {key}.ko.md',
       },
       {
         id: EN_FOLLOWS,
-        relation: { op: 'Implies', of: 'ko', requires: 'enChanged' },
+        relation: { op: 'implies', of: 'ko', requires: 'enChanged' },
         message: '{value} changed without {key}.md',
       },
     ],

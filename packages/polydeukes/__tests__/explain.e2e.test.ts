@@ -18,6 +18,8 @@ const declareEntry = {
   id: DECLARE_ID,
   why: 'a *.db file may exist only under memory/knowledge/',
   declare: {
+    // A path convention: `naming` admits `empty` on the change axis, scoped on target.path.
+    mechanism: 'naming',
     scope: { source: 'target.path', include: ['\\.db$'] },
     extract: {
       outside: [
@@ -28,7 +30,7 @@ const declareEntry = {
     relate: [
       {
         id: 'placed',
-        relation: { op: 'Empty', of: 'outside' },
+        relation: { op: 'empty', of: 'outside' },
         message: '{value} is outside memory/knowledge/',
       },
     ],

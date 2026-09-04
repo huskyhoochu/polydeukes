@@ -53,7 +53,7 @@ const READS_SPAWNS = {
   relate: [
     {
       id: ENTRY,
-      relation: { op: 'NonEmpty', of: 'writers' },
+      relation: { op: 'nonEmpty', of: 'writers' },
       message: 'no writer spawn on record',
     },
   ],
@@ -216,10 +216,10 @@ describe('the declare body — a mixed declaration reads each binding from its o
       ],
     },
     relate: [
-      { id: 'has-keys', relation: { op: 'NonEmpty', of: 'enKeys' }, message: 'm' },
+      { id: 'has-keys', relation: { op: 'nonEmpty', of: 'enKeys' }, message: 'm' },
       {
         id: ENTRY,
-        relation: { op: 'NonEmpty', of: 'writers' },
+        relation: { op: 'nonEmpty', of: 'writers' },
         message: 'no writer spawn on record',
       },
     ],
