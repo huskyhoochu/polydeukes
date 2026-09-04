@@ -91,6 +91,31 @@ disciplines:
       - 'packages/*/__tests__/**'
     forbid:
       added: '\bP[01]\b|\b(RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d'
+  # A barrel is the consumer contract and nothing else. ESM re-exports are eager, so a
+  # definition or an import in one is instantiated by every consumer of any other export, and
+  # the umbrella's fail-closed proof (a dist missing one module throws on the barrel import)
+  # depends on every re-export staying static. The ratchet test is the other half.
+  - id: 'barrels-only-reexport'
+    why: 'a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static. advise: the fix is a text edit, and package-contract.test.ts check ② is the other half.'
+    in:
+      - 'packages/*/src/index.ts'
+      - 'packages/polydeukes/src/claude-code.ts'
+    forbid:
+      added: '(^|\n)(import |export \*|export (const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)'
+  # The barrel is the consumer contract, not the test surface: a test that imports it proves
+  # the barrel carries a name, not that the module behaves, and it widens the contract every
+  # time a test needs one more symbol. Every spelling of the barrel path counts.
+  - id: 'tests-import-modules'
+    why: 'a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time. advise, same reason as above; package-contract.test.ts check ⑥ is the other half.'
+    in:
+      - 'packages/*/__tests__/**'
+    forbid:
+      added: "from ['\"](\\.\\./)+src/index(\\.[tj]s)?['\"]"
+  # Whether a function is a contract verb is a fact about the barrel, not about the file the
+  # function lives in, so no path-scoped family can judge the verb shape at edit time.
+  - id: 'verbs-take-one-spec'
+    why: 'an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped family can judge it. package-contract.test.ts check ③ does.'
+    draft: true
   - id: 'core-stays-runner-agnostic'
     why: 'the core never names a test runner; verification is an exit code and the command is config. this is the edit-time half of the literal gate the core suite asserts over its own src/.'
     in:
