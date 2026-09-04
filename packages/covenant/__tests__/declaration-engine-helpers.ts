@@ -1,6 +1,9 @@
 /** Shared helpers for the declaration-engine suites. Not a test file itself. */
 
-import type { AlgebraDeclaration, ExtractStep } from '@polydeukes/core';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import type { AlgebraDeclaration, ExtractBlock, ExtractStep } from '@polydeukes/core';
+import { validateAlgebraDeclaration } from '@polydeukes/core';
 import {
   type CompiledDeclaration,
   type ConfigFault,
@@ -88,4 +91,37 @@ export function extracted(
   return witnessesOf(
     judge(dumpDeclaration(sourceName, extractName, steps), { [sourceName]: sourceValue }),
   );
+}
+
+/**
+ * Load one fixture declaration from core's fixture directory, dropping the W2 `as` argument
+ * the engine's `json` refuses, and validate it — a fixture the grammar rejects fails here,
+ * before any case runs.
+ */
+export function loadDeclaration(name: string): AlgebraDeclaration {
+  const path = fileURLToPath(
+    new URL(`../../core/__tests__/fixtures/${name}.json`, import.meta.url),
+  );
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+  const strip = (block: unknown): unknown => {
+    if (typeof block !== 'object' || block === null) return block;
+    const out: ExtractBlock = {};
+    for (const [extractName, steps] of Object.entries(block as ExtractBlock)) {
+      out[extractName] = steps.map((step) => {
+        if (step.op !== 'json') return step;
+        const { as: _as, ...rest } = step as { as?: unknown; op: string };
+        return rest;
+      });
+    }
+    return out;
+  };
+  const witness = raw.witness as { extract?: unknown } | undefined;
+  const stripped = {
+    ...raw,
+    extract: strip(raw.extract),
+    ...(witness?.extract !== undefined && {
+      witness: { ...witness, extract: strip(witness.extract) },
+    }),
+  };
+  return validateAlgebraDeclaration(stripped);
 }

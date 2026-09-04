@@ -173,3 +173,21 @@ describe('supplySources — readChannel fills the channel side under the read di
     });
   });
 });
+
+describe('planSources — a transcript binding is neither a file nor a channel', () => {
+  it('plans no file and no channel for { name, transcript: true }', () => {
+    // The session already hands the transcript to assembly as a spec value; there is no
+    // path to read and no channel kind to ask for. A planner that treats "not sidecar" as
+    // "a file" pushes `undefined` into `files`, and the reader is then asked for a path
+    // nobody named.
+    const SESSION = { name: 'session', transcript: true as const };
+    const plan = planSources({
+      registrations: [
+        declareReg('tests-before-implementation', [SESSION]),
+        declareReg('parity', [EN]),
+      ],
+    });
+
+    expect(plan).toEqual({ files: [EN.file], channels: [] });
+  });
+});

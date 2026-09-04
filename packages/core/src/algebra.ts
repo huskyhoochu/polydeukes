@@ -38,7 +38,7 @@ export const BINARY_COMBINATOR_NAMES = ['union', 'onlyIn', 'intersect'] as const
 export const SUPPLY_POLICIES = ['error', 'pass'] as const;
 
 /** The kind position of a `sources` entry, closed. Each entry carries exactly one of them. */
-export const SOURCE_KINDS = ['file', 'sidecar'] as const;
+export const SOURCE_KINDS = ['file', 'sidecar', 'transcript'] as const;
 
 /**
  * `RelationDecl` — the relation position of one relate entry, one branch per name.
@@ -94,10 +94,14 @@ export type SupplyBlock = Record<string, 'error' | 'pass'>;
  *
  * A `file` path is repo-relative and the supply layer joins it onto the root, which is why an
  * absolute path and a `..` segment are refused here rather than at read time. A `sidecar`
- * binding names a channel the surface supplies; its location is the host's fact, not the
- * declaration's, so the value is the marker `true` and never a path.
+ * binding names a channel the surface supplies and a `transcript` binding the session's
+ * conversation history; the location of either is the host's fact, not the declaration's, so
+ * the value is the marker `true` and never a path.
  */
-export type SourcesBlock = Record<string, { file: string } | { sidecar: true }>;
+export type SourcesBlock = Record<
+  string,
+  { file: string } | { sidecar: true } | { transcript: true }
+>;
 
 /**
  * `RelateEntry` — one (extract name, relation) pairing with its break text.
@@ -274,11 +278,12 @@ function validateSources(sources: unknown, location: string): void {
       );
     }
     rejectUnknownKeys(entry, new Set(SOURCE_KINDS), where);
-    if (kinds[0] === 'sidecar') {
+    const kind = kinds[0] as (typeof SOURCE_KINDS)[number];
+    if (kind === 'sidecar' || kind === 'transcript') {
       // The marker carries no information beyond the kind, so anything but the literal
       // `true` would be a value the supply layer has to interpret.
-      if (entry.sidecar !== true) {
-        throw new ConfigValidationError(`${where}.sidecar must be the literal true`);
+      if (entry[kind] !== true) {
+        throw new ConfigValidationError(`${where}.${kind} must be the literal true`);
       }
       continue;
     }
@@ -286,11 +291,26 @@ function validateSources(sources: unknown, location: string): void {
   }
 }
 
-function validateSupply(supply: unknown, location: string): void {
+/**
+ * Validate the `supply` block: every key names a source this declaration can be missing.
+ *
+ * The universe of source names is the fixed five plus whatever `sources` binds, and it is
+ * closed, so a key outside it is a name nothing supplies — a misspelling whose policy never
+ * applies while the real source falls to the default.
+ */
+function validateSupply(supply: unknown, sources: unknown, location: string): void {
   if (!isPlainObject(supply)) {
     throw new ConfigValidationError(`${location} supply must be an object`);
   }
+  const declared = isPlainObject(sources) ? Object.keys(sources) : [];
   for (const [source, policy] of Object.entries(supply)) {
+    if (!(FIXED_SOURCE_NAMES as readonly string[]).includes(source) && !declared.includes(source)) {
+      const bindings =
+        declared.length === 0 ? 'and this declaration binds none' : `or ${quotedList(declared)}`;
+      throw new ConfigValidationError(
+        `${location} supply names the source '${source}', which is neither one of ${quotedList(FIXED_SOURCE_NAMES)} ${bindings}`,
+      );
+    }
     if (!(SUPPLY_POLICIES as readonly unknown[]).includes(policy)) {
       throw new ConfigValidationError(
         `${location} supply.${source} is '${String(policy)}' — must be one of ${quotedList(SUPPLY_POLICIES)}`,
@@ -568,7 +588,7 @@ export function validateAlgebraDeclaration(
   }
   if (input.sources !== undefined) validateSources(input.sources, location);
   if (input.scope !== undefined) validateScope(input.scope, input.sources, location);
-  if (input.supply !== undefined) validateSupply(input.supply, location);
+  if (input.supply !== undefined) validateSupply(input.supply, input.sources, location);
 
   if (input.extract === undefined) {
     throw new ConfigValidationError(`${location} needs an extract block`);

@@ -47,6 +47,7 @@ const sourcedDeclaration = {
  */
 const { sources: _sources, ...unsourcedDeclaration } = {
   ...sourcedDeclaration,
+  supply: { [SOURCE_PRE]: 'error' },
   extract: { ...sourcedDeclaration.extract, [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }] },
 };
 

@@ -82,8 +82,8 @@ const ACTOR: ReadonlySet<Axis> = new Set<Axis>(['actor']);
 const HISTORY: ReadonlySet<Axis> = new Set<Axis>(['history']);
 const HISTORY_WORLD: ReadonlySet<Axis> = new Set<Axis>(['history', 'world']);
 const CHANGE_WORLD: ReadonlySet<Axis> = new Set<Axis>(['change', 'world']);
-/** The axes a source name derives today; the other two wait on a source that carries them. */
-const DERIVABLE_AXES: ReadonlySet<Axis> = new Set<Axis>(['change', 'world']);
+/** The axes a source name derives today; `actor` waits on a source that carries it. */
+const DERIVABLE_AXES: ReadonlySet<Axis> = new Set<Axis>(['change', 'world', 'history']);
 
 /** Every name's spec. The `Record` type pins the keys to {@link MECHANISM_NAMES}. */
 export const MECHANISM_SHAPES: Record<MechanismName, MechanismShape> = {
@@ -98,7 +98,7 @@ export const MECHANISM_SHAPES: Record<MechanismName, MechanismShape> = {
   },
   'actor-scope': { axes: ACTOR, relations: new Set<RelationName>(['empty', 'nonEmpty']) },
   // The spawn sidecar is a world-axis channel carrying session history, so a precedent
-  // read off it is still a precedent; the transcript source joins it once registered.
+  // read off it is still a precedent; the transcript source carries the history axis.
   precedent: { axes: HISTORY_WORLD, relations: new Set<RelationName>(['nonEmpty']) },
   'phase-order': { axes: HISTORY, relations: new Set<RelationName>(['ordered']) },
   'turn-locality': { axes: HISTORY, relations: new Set<RelationName>(['nonEmpty']) },
@@ -136,6 +136,11 @@ function quotedList(names: readonly string[]): string {
   return names.map((name) => `'${name}'`).join(', ');
 }
 
+/** Whether one `sources` binding names the session history rather than a world value. */
+function isTranscriptSource(binding: unknown): boolean {
+  return isPlainObject(binding) && binding.transcript === true;
+}
+
 /** The source names one extract block's `source` steps name, in declaration order. */
 function sourceNamesOf(extract: ExtractBlock | undefined): string[] {
   if (extract === undefined) return [];
@@ -159,20 +164,21 @@ function sourceNames(declaration: DerivableDeclaration): string[] {
  * Read one declaration's shape from its syntax (pure).
  *
  * The axis of a source name is where the name comes from: one of the fixed five is the
- * change axis, a name the declaration's own `sources` block binds is the world axis. A
+ * change axis, a name the declaration's own `sources` block binds is the world axis unless
+ * the binding is of the transcript kind, which is the history axis. A
  * name that is neither is refused by {@link validateMechanism} — skipping it would derive
  * the empty set, which is a subset of every spec, and an axis-restricted name would load
  * on a typo. The witness block's `extract` reads a world too, so its source steps count;
  * its `relate` does not, because the valve's relation is not the judgment's.
  */
 export function deriveShape(declaration: DerivableDeclaration): DerivedShape {
-  const declared = new Set(Object.keys(declaration.sources ?? {}));
+  const bindings = declaration.sources ?? {};
   const axes = new Set<Axis>();
   for (const name of sourceNames(declaration)) {
     if ((FIXED_SOURCE_NAMES as readonly string[]).includes(name)) {
       axes.add('change');
-    } else if (declared.has(name)) {
-      axes.add('world');
+    } else if (name in bindings) {
+      axes.add(isTranscriptSource(bindings[name]) ? 'history' : 'world');
     }
   }
   const relations = new Set<RelationName>(

@@ -531,6 +531,13 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      own absence policy. The surface that lacks the channel answers absence honestly instead
      of fabricating an empty observation. Publish when a live sidecar declaration lands.
 
+     Parked candidate (ALGEBRA-07, 2026-09-05): a session's own history is a source like any
+     file — named in the declaration, flattened once into plain data, and read by the same
+     extract steps. The first `ordered` judgment landed live on it: "a test-writer spawn
+     precedes an implementer spawn" is one relation over two observation ordinals, and the
+     session that built the feature passed it because that is the order it actually worked
+     in. Publish with the v0.6.0 gate post beside the first history rows.
+
      Parked candidate (ALGEBRA-02d, 2026-08-29): a line no valid input can reach still has
      an answer, and the answer is "cannot judge", never "upheld". The judge's closed list of
      predicate families is kept in step with the schema's by hand; between the schema

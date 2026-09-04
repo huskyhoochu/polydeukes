@@ -219,3 +219,36 @@ disciplines:
         - id: 'en-follows'
           relation: { op: 'implies', of: 'ko', requires: 'enChanged' }
           message: '{value} changed without {key}.md'
+  # The implementer subagent writes to pass tests that already exist, so the session's first
+  # implementer spawn must come after its first test-writer spawn — each side is reduced to
+  # its first spawn, so a session of several TDD cycles is not read as out of order. Only a
+  # spawn that ran and succeeded counts. The session history is the source; the commit
+  # surface has none, so `supply: pass` lands it skipped there. No scope block: every call
+  # that changes a file is judged, and a call that changes none makes no world and records
+  # nothing. A session with no implementer spawn has no order to violate; whether a writer
+  # was spawned at all is the precedent mechanism's question, not this one's.
+  - id: 'tests-before-implementation'
+    why: 'the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after.'
+    declare:
+      mechanism: 'phase-order'
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        writers:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Agent', 'Task'], subagentType: 'tdd-test-writer' }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'field', name: 'index' }
+          - { op: 'first' }
+        implementers:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Agent', 'Task'], subagentType: 'tdd-implementer' }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'field', name: 'index' }
+          - { op: 'first' }
+        sequence:
+          - { op: 'union', of: ['writers', 'implementers'] }
+      relate:
+        - id: 'writer-first'
+          relation: { op: 'ordered', of: 'sequence' }
+          message: 'the first implementer spawn #{value} precedes the first test-writer spawn'

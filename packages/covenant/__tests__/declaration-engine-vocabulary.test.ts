@@ -10,7 +10,7 @@ import {
 } from '../src/declaration-engine.ts';
 import { extracted, isConfigFault, judge, witnessesOf } from './declaration-engine-helpers.ts';
 
-// The extract registry: twelve unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: seventeen unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -51,14 +51,55 @@ function positioned(values: readonly unknown[]): Items {
   return values.map((value, index) => ({ key: String(index), value }));
 }
 
+// The history vocabulary reads a transcript SNAPSHOT — the plain object the supply arm
+// flattens a session into: `{ observedAtMs, userMessages: [{ index, text, timestampMs? }],
+// toolCalls: [{ index, name, args, succeeded? }] }`, `index` the observation ordinal within
+// its own list. Tool names, agent names, and the clock below are fixture values.
+const NOW = 1_700_000_000_000;
+const AGENT_TOOL = 'Agent';
+const TASK_TOOL = 'Task';
+const WRITER = 'tdd-test-writer';
+const IMPLEMENTER = 'tdd-implementer';
+
+type Turn = { index: number; text: string; timestampMs?: number };
+type Call = { index: number; name: string; args: Record<string, unknown>; succeeded?: boolean };
+
+/** One user turn of a snapshot; no `timestampMs` when the clock is left out. */
+function turn(index: number, text: string, timestampMs?: number): Turn {
+  return timestampMs === undefined ? { index, text } : { index, text, timestampMs };
+}
+
+/** One tool call of a snapshot; `subagentType` lands under the Claude Code arg name. */
+function call(
+  index: number,
+  name = AGENT_TOOL,
+  subagentType?: string,
+  extra: Record<string, unknown> = {},
+): Call {
+  const args = subagentType === undefined ? extra : { subagent_type: subagentType, ...extra };
+  return { index, name, args };
+}
+
+/** A snapshot over the given lists, observed at `NOW`. */
+function snapshot(parts: { userMessages?: Turn[]; toolCalls?: Call[]; observedAtMs?: number }) {
+  return {
+    observedAtMs: parts.observedAtMs ?? NOW,
+    userMessages: parts.userMessages ?? [],
+    toolCalls: parts.toolCalls ?? [],
+  };
+}
+
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the twelve unary steps and no combinator', () => {
+  it('lists exactly the seventeen unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
       [
+        'ageMs',
+        'agentType',
         'field',
         'filter',
+        'first',
         'flattenKeys',
         'items',
         'json',
@@ -69,6 +110,8 @@ describe('extract registry — the closed set of unary steps', () => {
         'select',
         'sort',
         'source',
+        'toolUses',
+        'userTexts',
       ].sort(),
     );
     expect(Object.keys(EXTRACT_STEPS).sort()).toEqual([...UNARY_STEP_NAMES].sort());
@@ -94,6 +137,17 @@ describe('extract registry — the closed set of unary steps', () => {
     matches: { step: { op: 'matches', re: 'b' }, items: positioned(['abc']) },
     items: { step: { op: 'items' }, items: positioned([['x', 'y']]) },
     keyByPattern: { step: { op: 'keyByPattern', re: '^(.+)$' }, items: positioned(['x']) },
+    toolUses: { step: { op: 'toolUses' }, items: positioned([snapshot({ toolCalls: [call(0)] })]) },
+    userTexts: {
+      step: { op: 'userTexts', re: 'x' },
+      items: positioned([snapshot({ userMessages: [turn(0, 'x')] })]),
+    },
+    agentType: {
+      step: { op: 'agentType', is: WRITER },
+      items: positioned([[{ agentType: WRITER }]]),
+    },
+    first: { step: { op: 'first' }, items: positioned(['a', 'b']) },
+    ageMs: { step: { op: 'ageMs' }, items: positioned([turn(0, 'x', NOW - 1)]) },
   };
 
   it.each(UNARY_STEP_NAMES)('%s: run returns an item list, never a boolean', (name) => {
@@ -727,5 +781,357 @@ describe('keyByPattern — two pipelines folded onto one key, related by Implies
     // validation, so an over-strict validator would pass every one of them.
     const verdict = judge(decl, { [RECORDS]: ['a.src', 'a.gen', 'b.src'] });
     expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: 'b', value: 'b.src' }]);
+  });
+});
+
+// ── the history vocabulary ──────────────────────────────────────────────────────────────
+
+describe('toolUses — one item per tool call of a snapshot', () => {
+  const calls = [
+    call(0, AGENT_TOOL, WRITER),
+    call(1, 'Bash', undefined, { command: 'ls' }),
+    call(2, TASK_TOOL, IMPLEMENTER),
+    call(3, AGENT_TOOL, 'general-purpose'),
+  ];
+  const world = snapshot({ toolCalls: calls });
+
+  it('with no argument emits every call keyed by its index, value the call object', () => {
+    // The degenerate form of the predicate: no `names`, no `subagentType` — every call is
+    // an item. A step that reads "no names" as "no calls" empties every command-line
+    // pipeline that filters by `field: args.command` afterwards.
+    expect(run({ op: 'toolUses' }, positioned([world]))).toEqual([
+      { key: '0', value: calls[0] },
+      { key: '1', value: calls[1] },
+      { key: '2', value: calls[2] },
+      { key: '3', value: calls[3] },
+    ]);
+  });
+
+  it('names keeps the calls whose name is in the list, in observation order', () => {
+    // Two names admitted, two calls kept, order the snapshot's — not the list's.
+    expect(
+      run({ op: 'toolUses', names: [TASK_TOOL, AGENT_TOOL] }, positioned([world])).map(
+        (item) => item.key,
+      ),
+    ).toEqual(['0', '2', '3']);
+  });
+
+  it('subagentType keeps the calls whose args.subagent_type equals it', () => {
+    // The Claude Code arg name is `subagent_type`; a step reading `args.subagentType` (the
+    // declaration's own spelling) matches nothing and every precedent declaration breaks.
+    expect(run({ op: 'toolUses', subagentType: WRITER }, positioned([world]))).toEqual([
+      { key: '0', value: calls[0] },
+    ]);
+  });
+
+  it('names and subagentType conjoin', () => {
+    // A call under the right name but the wrong agent is out; a step OR-ing the two keeps
+    // the general-purpose spawn as writer evidence.
+    expect(
+      run({ op: 'toolUses', names: [AGENT_TOOL], subagentType: IMPLEMENTER }, positioned([world])),
+    ).toEqual([]);
+    expect(
+      run({ op: 'toolUses', names: [TASK_TOOL], subagentType: IMPLEMENTER }, positioned([world])),
+    ).toEqual([{ key: '2', value: calls[2] }]);
+  });
+
+  it('keys each item by the snapshot index, not the array position, and field: index reads it', () => {
+    // The live phase-order declaration relates `ordered` over `field: index`, so the value
+    // must be the observation ordinal the snapshot carries — a step that re-numbers by
+    // array position turns every session into an ordered one.
+    const shuffled = snapshot({
+      toolCalls: [call(7, AGENT_TOOL, WRITER), call(3, AGENT_TOOL, IMPLEMENTER), call(12)],
+    });
+    const uses = run({ op: 'toolUses' }, positioned([shuffled]));
+    expect(uses.map((item) => item.key)).toEqual(['7', '3', '12']);
+    expect(run({ op: 'field', name: 'index' }, uses)).toEqual([
+      { key: '7', value: 7 },
+      { key: '3', value: 3 },
+      { key: '12', value: 12 },
+    ]);
+  });
+
+  it('a call without args, or with non-object args, is kept unfiltered and dropped under subagentType', () => {
+    // The IR-wrapped transcript may hand a call with no `args`; reading
+    // `args.subagent_type` off it must not throw, and a filter over a field the call does
+    // not carry admits nothing — while the unfiltered form still lists the call as it is.
+    const bare = { index: 0, name: AGENT_TOOL } as unknown as Call;
+    const odd = { index: 1, name: AGENT_TOOL, args: 'x' } as unknown as Call;
+    const world = snapshot({ toolCalls: [bare, odd] });
+    expect(run({ op: 'toolUses', names: [AGENT_TOOL] }, positioned([world]))).toEqual([
+      { key: '0', value: bare },
+      { key: '1', value: odd },
+    ]);
+    expect(run({ op: 'toolUses', subagentType: WRITER }, positioned([world]))).toEqual([]);
+  });
+
+  it('an empty names list admits no call', () => {
+    // `names: []` is a list that contains nothing, not an absent list; folding the two
+    // together turns the narrowest declaration into the widest.
+    expect(run({ op: 'toolUses', names: [] }, positioned([world]))).toEqual([]);
+  });
+
+  it('does not filter on succeeded — a call with no result block is still a call', () => {
+    // The W2 "writer Agent call present" case carries no `succeeded`; a step admitting only
+    // `succeeded === true` breaks it. That filter is the declaration's (`filter eq true`).
+    const pending = snapshot({ toolCalls: [{ ...call(0, AGENT_TOOL, WRITER), succeeded: false }] });
+    expect(run({ op: 'toolUses', subagentType: WRITER }, positioned([pending]))).toHaveLength(1);
+  });
+
+  it('drops a value that is not a snapshot, and answers [] on empty input', () => {
+    // A string (the raw sidecar text), an object without `toolCalls`, null: no throw, no
+    // item — the pipeline continues with what it can read.
+    expect(
+      run({ op: 'toolUses' }, positioned(['[]', { userMessages: [] }, null, 7, [call(0)]])),
+    ).toEqual([]);
+    expect(run({ op: 'toolUses' }, [])).toEqual([]);
+  });
+
+  it('rejects a non-array names, a non-string subagentType, and an unknown key, naming each', () => {
+    // The reason names the key so the fault is the argument's and not "unregistered step":
+    // an entry missing from the registry faults at the same location with another reason.
+    const names = stepFault({ op: 'toolUses', names: AGENT_TOOL });
+    expect(names.location).toContain(EXTRACT);
+    expect(names.reason).toContain("'names'");
+    const agent = stepFault({ op: 'toolUses', subagentType: [WRITER] });
+    expect(agent.location).toContain(EXTRACT);
+    expect(agent.reason).toContain("'subagentType'");
+    const unknown = stepFault({ op: 'toolUses', name: AGENT_TOOL });
+    expect(unknown.location).toContain(EXTRACT);
+    expect(unknown.reason).toContain("'name'");
+  });
+});
+
+describe('userTexts — one item per user turn matching a constant expression', () => {
+  const turns = [
+    turn(0, 'please /tdd skip this one', NOW - 60_000),
+    turn(1, 'we should skip TDD this time'),
+    turn(2, '/TDD SKIP again', NOW - 30_000),
+  ];
+  const world = snapshot({ userMessages: turns });
+
+  it('keeps the matching turns keyed by index, value the turn plus observedAtMs, in order', () => {
+    // `observedAtMs` rides on every item so `ageMs` downstream has a clock without reading
+    // the world; a step that copies the turn alone leaves `ageMs` nothing to subtract from.
+    expect(run({ op: 'userTexts', re: '/tdd\\s+skip\\b' }, positioned([world]))).toEqual([
+      {
+        key: '0',
+        value: { index: 0, text: turns[0].text, timestampMs: NOW - 60_000, observedAtMs: NOW },
+      },
+    ]);
+  });
+
+  it('i: true matches case-insensitively and preserves observation order', () => {
+    expect(
+      run({ op: 'userTexts', re: '/tdd\\s+skip\\b', i: true }, positioned([world])).map(
+        (item) => item.key,
+      ),
+    ).toEqual(['0', '2']);
+  });
+
+  it('keys each item by the snapshot index, not the array position', () => {
+    // Same contract as `toolUses`: the key is the observation ordinal the snapshot
+    // carries, so a later `field: index` and `ordered` compare positions in the session.
+    const shuffled = snapshot({ userMessages: [turn(9, 'skip', NOW), turn(4, 'skip', NOW)] });
+    expect(
+      run({ op: 'userTexts', re: 'skip' }, positioned([shuffled])).map((item) => [
+        item.key,
+        (item.value as Turn).index,
+      ]),
+    ).toEqual([
+      ['9', 9],
+      ['4', 4],
+    ]);
+  });
+
+  it('a turn without a timestamp is still a turn — its item carries no timestampMs', () => {
+    // Dropping the untimed turn here would be the wrong place: `stated-ground` asks only
+    // whether the words were said; freshness is `ageMs`'s question.
+    expect(run({ op: 'userTexts', re: 'skip TDD' }, positioned([world]))).toEqual([
+      { key: '1', value: { index: 1, text: turns[1].text, observedAtMs: NOW } },
+    ]);
+  });
+
+  it('the prose mention without the slash does not match the slash expression', () => {
+    // The W2 "prose mention" valve case: the expression is anchored on `/tdd`, and a step
+    // that tests the expression against the wrong text (the key, the index) matches it.
+    const prose = snapshot({ userMessages: [turn(0, 'we should skip TDD this time', NOW)] });
+    expect(run({ op: 'userTexts', re: '/tdd\\s+skip\\b', i: true }, positioned([prose]))).toEqual(
+      [],
+    );
+  });
+
+  it('drops a value that is not a snapshot, and answers [] on empty input', () => {
+    expect(
+      run({ op: 'userTexts', re: '.' }, positioned(['/tdd skip', { toolCalls: [] }, null])),
+    ).toEqual([]);
+    expect(run({ op: 'userTexts', re: '.' }, [])).toEqual([]);
+  });
+
+  it('rejects a non-string re, a non-compilable re, a missing re, a non-boolean i, and an unknown key, naming each', () => {
+    for (const step of [
+      { op: 'userTexts', re: 1 },
+      { op: 'userTexts', re: '[' },
+      { op: 'userTexts' },
+    ] as UnaryStep[]) {
+      const bad = stepFault(step);
+      expect(bad.location).toContain(EXTRACT);
+      expect(bad.reason).toMatch(/'re'|expression/);
+    }
+    const flag = stepFault({ op: 'userTexts', re: 'x', i: 'yes' });
+    expect(flag.location).toContain(EXTRACT);
+    expect(flag.reason).toContain("'i'");
+    const unknown = stepFault({ op: 'userTexts', re: 'x', names: [] });
+    expect(unknown.location).toContain(EXTRACT);
+    expect(unknown.reason).toContain("'names'");
+  });
+});
+
+describe('agentType — one item per parsed sidecar record of the given agent', () => {
+  const records = [
+    { agentType: WRITER, toolUseId: 't1' },
+    { agentType: 'general-purpose', toolUseId: 't2' },
+    { toolUseId: 't3' },
+    'not a record',
+    { agentType: WRITER, toolUseId: 't4' },
+  ];
+
+  it('keeps the matching records keyed by array position, in array order', () => {
+    // Position keys, not a re-numbering: the second writer is `'4'`, and a step that
+    // re-keys the kept records `0, 1` loses which spawn it was.
+    expect(run({ op: 'agentType', is: WRITER }, positioned([records]))).toEqual([
+      { key: '0', value: records[0] },
+      { key: '4', value: records[4] },
+    ]);
+  });
+
+  it('accepts a single record object as one record', () => {
+    // A sidecar that holds one record as an object, not a one-element list.
+    const out = run({ op: 'agentType', is: WRITER }, positioned([records[0]]));
+    expect(out).toHaveLength(1);
+    expect(out[0].value).toEqual(records[0]);
+  });
+
+  it('answers [] when no record carries the agent', () => {
+    // The W2 "sidecar with another agent only" case: a step comparing by substring or
+    // prefix (`tdd-test-writer` in `tdd-test-writer-v2`) admits a near-name.
+    const others = [{ agentType: 'general-purpose' }, { agentType: `${WRITER}-v2` }];
+    expect(run({ op: 'agentType', is: WRITER }, positioned([others]))).toEqual([]);
+  });
+
+  it('drops the raw channel text and other non-record values, and answers [] on empty input', () => {
+    // The pipeline is `source → json → agentType`: handed the unparsed text (a `json`
+    // step forgotten), the step must not match the substring inside it.
+    const text = JSON.stringify([{ agentType: WRITER }]);
+    expect(run({ op: 'agentType', is: WRITER }, positioned([text, 3, null, []]))).toEqual([]);
+    expect(run({ op: 'agentType', is: WRITER }, [])).toEqual([]);
+  });
+
+  it('rejects a non-string is, a missing is, and an unknown key, naming each', () => {
+    for (const step of [{ op: 'agentType', is: [WRITER] }, { op: 'agentType' }] as UnaryStep[]) {
+      const bad = stepFault(step);
+      expect(bad.location).toContain(EXTRACT);
+      expect(bad.reason).toContain("'is'");
+    }
+    const unknown = stepFault({ op: 'agentType', is: WRITER, re: 'x' });
+    expect(unknown.location).toContain(EXTRACT);
+    expect(unknown.reason).toContain("'re'");
+  });
+});
+
+describe('first — the first item only', () => {
+  const step: UnaryStep = { op: 'first' };
+
+  it('keeps the first item with its own key, and nothing after it', () => {
+    // The key is kept, not reset to `'0'`: a later `intersect` on the valve's items
+    // compares keys, and a renumbered first item meets nothing.
+    expect(
+      run(step, [
+        { key: '3', value: 'c' },
+        { key: '1', value: 'a' },
+      ]),
+    ).toEqual([{ key: '3', value: 'c' }]);
+  });
+
+  it("does not sort — the first is the input's first, not the smallest", () => {
+    // `sort` is the step for ordering; a `first` that picks the minimum turns "the earliest
+    // /tdd skip" into "the alphabetically smallest text".
+    expect(run(step, positioned(['b', 'a']))).toEqual([{ key: '0', value: 'b' }]);
+  });
+
+  it('answers [] on empty input', () => {
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('rejects any argument key — the step takes none', () => {
+    const bad = stepFault({ op: 'first', n: 1 });
+    expect(bad.location).toContain(EXTRACT);
+    expect(bad.reason).toContain("'n'");
+  });
+});
+
+describe('ageMs — the age of a timestamped item against the snapshot clock', () => {
+  const step: UnaryStep = { op: 'ageMs' };
+
+  it('adds ageMs = observedAtMs − timestampMs to the value, keeping the key and the rest', () => {
+    // Subtracting the other way round yields a negative age that passes every `lte`
+    // bound, so an expired permission reads as fresh.
+    const item = {
+      key: '2',
+      value: { index: 2, text: 'x', timestampMs: NOW - 60_000, observedAtMs: NOW },
+    };
+    expect(run(step, [item])).toEqual([
+      {
+        key: '2',
+        value: { index: 2, text: 'x', timestampMs: NOW - 60_000, observedAtMs: NOW, ageMs: 60_000 },
+      },
+    ]);
+  });
+
+  it('drops an item lacking a numeric timestampMs — no timestamp is not fresh', () => {
+    // The W2 "turn without a timestamp" case is fail-closed at this step: an `ageMs` of
+    // `NaN` or `0` for the untimed turn would pass or fail the `lte` bound by accident.
+    const items: Items = [
+      { key: '0', value: { text: 'a', observedAtMs: NOW } },
+      { key: '1', value: { text: 'b', timestampMs: '1', observedAtMs: NOW } },
+      { key: '2', value: { text: 'c', timestampMs: NOW - 5, observedAtMs: NOW } },
+    ];
+    expect(run(step, items).map((item) => item.key)).toEqual(['2']);
+  });
+
+  it('drops a turn stamped after the clock — a future timestamp has no age', () => {
+    // `observedAtMs − timestampMs` would be negative and pass every `lte` bound, so a
+    // skewed stamp would read as the freshest permission of all (review #90 finding 7).
+    const items: Items = [
+      { key: '0', value: { timestampMs: NOW + 1, observedAtMs: NOW } },
+      { key: '1', value: { timestampMs: NOW, observedAtMs: NOW } },
+    ];
+    expect(run(step, items).map((item) => item.key)).toEqual(['1']);
+  });
+
+  it('preserves input order and drops non-object values', () => {
+    const items: Items = [
+      { key: '5', value: { timestampMs: NOW - 1, observedAtMs: NOW } },
+      { key: '1', value: 'text' },
+      { key: '2', value: { timestampMs: NOW - 2, observedAtMs: NOW } },
+    ];
+    expect(
+      run(step, items).map((item) => [item.key, (item.value as { ageMs: number }).ageMs]),
+    ).toEqual([
+      ['5', 1],
+      ['2', 2],
+    ]);
+  });
+
+  it('answers [] on empty input', () => {
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('rejects any argument key — the step takes none', () => {
+    // `max` is the bound the W2 `Within` relation carried; here it is the `filter` step's,
+    // and a step that quietly accepts it applies no bound at all.
+    const bad = stepFault({ op: 'ageMs', max: 600000 });
+    expect(bad.location).toContain(EXTRACT);
+    expect(bad.reason).toContain("'max'");
   });
 });

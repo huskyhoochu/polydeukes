@@ -1,0 +1,50 @@
+{
+  "discipline": "turn-locality-fresh-permission",
+  "mechanism": "turn-locality",
+  "sources": {
+    "session": {
+      "transcript": true
+    }
+  },
+  "supply": {
+    "session": "pass"
+  },
+  "extract": {
+    "freshPermission": [
+      {
+        "op": "source",
+        "of": "session"
+      },
+      {
+        "op": "userTexts",
+        "re": "/allow\\s+force\\b",
+        "i": true
+      },
+      {
+        "op": "first"
+      },
+      {
+        "op": "ageMs"
+      },
+      {
+        "op": "filter",
+        "when": [
+          {
+            "field": "ageMs",
+            "lte": 600000
+          }
+        ]
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "permission-recent",
+      "relation": {
+        "op": "nonEmpty",
+        "of": "freshPermission"
+      },
+      "message": "no /allow force utterance within the last ten minutes"
+    }
+  ]
+}

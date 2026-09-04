@@ -1,59 +1,20 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import type { AlgebraDeclaration, ExtractBlock } from '@polydeukes/core';
-import { validateAlgebraDeclaration } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import type { DeclarationVerdict, World } from '../src/declaration-engine.ts';
-import { judge, witnessesOf } from './declaration-engine-helpers.ts';
+import { type DeclarationVerdict, type World, witnessOpens } from '../src/declaration-engine.ts';
+import {
+  compileOrFail,
+  judge,
+  loadDeclaration,
+  witnessesOf,
+} from './declaration-engine-helpers.ts';
 
 // The sixty-two cases a prior spike ran over its four declarations, re-run on this engine
-// for the forty-one in its domain (the rest need history vocabulary or a host). The world
-// is supplied inline as that spike's host would have: file text as strings,
-// `state: { pre, post }` for the ledger, an absent override target as an absent world key,
-// broken JSON as an invalid string. The spike's `blocked` is the engine's `broken`. Each
-// title carries declaration · layer · original case name.
-
-/** Load one fixture declaration, dropping the W2 `as` argument the engine's `json` refuses. */
-function loadDeclaration(name: string): AlgebraDeclaration {
-  const path = fileURLToPath(
-    new URL(`../../core/__tests__/fixtures/${name}.json`, import.meta.url),
-  );
-  const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
-  const strip = (block: unknown): unknown => {
-    if (typeof block !== 'object' || block === null) return block;
-    const out: ExtractBlock = {};
-    for (const [extractName, steps] of Object.entries(block as ExtractBlock)) {
-      out[extractName] = steps.map((step) => {
-        if (step.op !== 'json') return step;
-        const { as: _as, ...rest } = step as { as?: unknown; op: string };
-        return rest;
-      });
-    }
-    return out;
-  };
-  const witness = raw.witness as { extract?: unknown } | undefined;
-  const stripped = {
-    ...raw,
-    extract: strip(raw.extract),
-    ...(witness?.extract !== undefined && {
-      witness: { ...witness, extract: strip(witness.extract) },
-    }),
-  };
-  return validateAlgebraDeclaration(stripped);
-}
-
-/**
- * Read one fixture's scope block without the validator: the precedent fixture reads
- * `transcript` as a bare name, which the validator refuses until the transcript source
- * kind is registered, and this file exercises the engine's scope arm alone.
- */
-function loadScope(name: string): AlgebraDeclaration['scope'] {
-  const path = fileURLToPath(
-    new URL(`../../core/__tests__/fixtures/${name}.json`, import.meta.url),
-  );
-  const raw = JSON.parse(readFileSync(path, 'utf8')) as { scope?: AlgebraDeclaration['scope'] };
-  return raw.scope;
-}
+// for the fifty-six in its domain (the six left need a host). The world is supplied inline
+// as that spike's host would have: file text as strings, `state: { pre, post }` for the
+// ledger, an absent override target as an absent world key, broken JSON as an invalid
+// string, the session as a transcript snapshot and the spawn sidecar as JSON text. The
+// spike's `blocked` is the engine's `broken`, its `witnessed` the witness valve open on a
+// broken verdict, its `not-applicable` a scope miss or a `supply-pass` skip. Each title
+// carries declaration · layer · original case name.
 
 // The source names the four fixtures read — values the fixtures fix, not the engine.
 const SCOPE_SOURCE = 'target.path';
@@ -62,6 +23,8 @@ const SRC_EN = 'en';
 const SRC_PRE = 'pre';
 const SRC_POST = 'post';
 const PAIRED_SOURCE = 'state';
+const SRC_TRANSCRIPT = 'transcript';
+const SRC_SIDECAR = 'sidecar';
 
 function breaksOf(verdict: DeclarationVerdict) {
   if (verdict.kind !== 'broken') throw new Error(`expected broken, got ${JSON.stringify(verdict)}`);
@@ -278,23 +241,58 @@ describe('task-ledger-self-pardon · judge', () => {
   });
 });
 
-// tdd-agent-required — required precedent (scope 7)
+// tdd-agent-required — required precedent (scope 7 · valve 6 · judge 9)
+
+// The spike's clock and its session vocabulary — tool names, the agent name, the arg the
+// spawn type rides under — are that host's values.
+const NOW = 1_700_000_000_000;
+const PRODUCTION_FILE = 'apps/app/src/foo.tsx';
+const AGENT_TOOL = 'Agent';
+const SUBAGENT_ARG = 'subagent_type';
+const WRITER = 'tdd-test-writer';
+const GENERAL = 'general-purpose';
+const ENTRY_PRECEDENT = 'writer-precedent';
+
+type Turn = { index: number; text: string; timestampMs?: number };
+type Call = { index: number; name: string; args: Record<string, unknown>; succeeded?: boolean };
+
+/** The spike's `user(text, iso(offset))`: a turn `offsetMs` before NOW, or untimed. */
+function user(index: number, text: string, offsetMs?: number): Turn {
+  return offsetMs === undefined ? { index, text } : { index, text, timestampMs: NOW + offsetMs };
+}
+
+/** The spike's `assistant_tool_use('Agent', subagent_type=…)`: a spawn call, no result block. */
+function spawn(index: number, subagentType: string): Call {
+  return { index, name: AGENT_TOOL, args: { [SUBAGENT_ARG]: subagentType, prompt: 'x' } };
+}
+
+/** The transcript snapshot the supply arm hands the world, observed at NOW. */
+function session(userMessages: Turn[] = [], toolCalls: Call[] = []) {
+  return { observedAtMs: NOW, userMessages, toolCalls };
+}
+
+/**
+ * The spike's `host.world_tdd(path, messages, sidecar)`: a target, the session snapshot
+ * (absent when the spike passed `None`), and the sidecar as the JSON text the channel
+ * carries (`[]` when the spike passed none — a session that observed no spawn).
+ */
+function tddWorld(
+  path: string,
+  snapshot: ReturnType<typeof session> | undefined,
+  sidecar: unknown[] = [],
+): World {
+  return {
+    [SCOPE_SOURCE]: path,
+    ...(snapshot !== undefined && { [SRC_TRANSCRIPT]: snapshot }),
+    [SRC_SIDECAR]: JSON.stringify(sidecar),
+  };
+}
 
 describe('tdd-agent-required · scope', () => {
-  // The fixture's extract block reads the history vocabulary (`toolUses`, `agentType`,
-  // `userTexts`, `first`, `ageMs`), which the registry does not carry, so the scope block
-  // is lifted onto a one-source body: in scope → the probe is present → pass.
-  const PROBE_SRC = 'probe';
-  const PROBE = 'probeItems';
-  const scope = loadScope('tdd-agent-required');
-  const decl: AlgebraDeclaration = {
-    discipline: 'tdd-agent-required',
-    mechanism: 'scoped-valve',
-    ...(scope !== undefined && { scope }),
-    extract: { [PROBE]: [{ op: 'source', of: PROBE_SRC }] },
-    relate: [{ id: 'probe-present', relation: { op: 'nonEmpty', of: PROBE }, message: 'm' }],
-  };
-  const world = (path: string): World => ({ [SCOPE_SOURCE]: path, [PROBE_SRC]: 'x' });
+  const decl = loadDeclaration('tdd-agent-required');
+  // In scope, a writer spawn on record: the body is judged and holds.
+  const writerSession = session([], [spawn(0, WRITER)]);
+  const world = (path: string): World => tddWorld(path, writerSession);
 
   const inScope = (paths: string[]): void => {
     for (const path of paths) expect(judge(decl, world(path)).kind, path).toBe('pass');
@@ -364,6 +362,134 @@ describe('tdd-agent-required · scope', () => {
       'apps/pipeline/scripts/run_local.py',
       'apps/pipeline/seeds/companion-templates/_system.md',
     ]);
+  });
+});
+
+describe('tdd-agent-required · valve', () => {
+  // The spike's `waiver` layer: whether the witness block holds on a world, asked alone.
+  const compiled = compileOrFail(loadDeclaration('tdd-agent-required'));
+  const opens = (turns: Turn[]): boolean =>
+    witnessOpens({ compiled, world: tddWorld(PRODUCTION_FILE, session(turns)) });
+
+  it('a fresh /tdd skip → open', () => {
+    // The whole chain — userTexts → first → ageMs → filter lte — on the happy path: a
+    // valve reading the age the wrong way round, or a `first` that drops the item, shuts it.
+    expect(opens([user(0, 'just /tdd skip — legacy bug fix', -60_000)])).toBe(true);
+  });
+
+  it('/tdd skip inside array content → open', () => {
+    // The spike's turn carried the text as a content block list; the snapshot already
+    // flattens a turn to one string, so the case is a text that contains the token
+    // mid-sentence — an expression anchored at the start of the turn shuts the valve.
+    expect(opens([user(0, 'cleanup time, /tdd skip', -30_000)])).toBe(true);
+  });
+
+  it('a prose mention without the slash → closed', () => {
+    expect(opens([user(0, 'we should skip TDD this time', 0)])).toBe(false);
+  });
+
+  it('a later user turn still inside the window → open', () => {
+    // `first` must take the FIRST matching turn, not the last turn of the session: the
+    // permission is five minutes old and the latest turn says nothing about it.
+    expect(
+      opens([
+        user(0, '/tdd skip — quick cleanup', -5 * 60_000),
+        user(1, 'now keep going on the same task', -60_000),
+      ]),
+    ).toBe(true);
+  });
+
+  it('TTL exceeded (15 min) → closed', () => {
+    // The other end of the `lte 600000` bound; a valve without the filter opens on any
+    // permission ever uttered.
+    expect(
+      opens([
+        user(0, '/tdd skip — earlier permission', -15 * 60_000),
+        user(1, 'continue please', -60_000),
+      ]),
+    ).toBe(false);
+  });
+
+  it('a turn without a timestamp → closed (fail-closed)', () => {
+    // `ageMs` drops the untimed turn; a valve that reads a missing timestamp as age 0
+    // opens on a permission nobody can date.
+    expect(opens([user(0, '/tdd skip — no timestamp')])).toBe(false);
+  });
+});
+
+describe('tdd-agent-required · judge', () => {
+  const decl = loadDeclaration('tdd-agent-required');
+  const compiled = compileOrFail(decl);
+
+  it('a writer Agent call present → pass', () => {
+    // The call carries no `succeeded` (the spike's tool_use has no result block); a
+    // `toolUses` that admits only succeeded calls breaks the session that did spawn.
+    expect(judge(decl, tddWorld(PRODUCTION_FILE, session([], [spawn(0, WRITER)]))).kind).toBe(
+      'pass',
+    );
+  });
+
+  it('only a general-purpose Agent call → broken, one witness, the message names the writer', () => {
+    const verdict = judge(decl, tddWorld(PRODUCTION_FILE, session([], [spawn(0, GENERAL)])));
+    const breaks = breaksOf(verdict);
+    expect(breaks).toHaveLength(1);
+    expect(breaks[0].id).toBe(ENTRY_PRECEDENT);
+    expect(breaks[0].witnesses).toHaveLength(1);
+    expect(`${breaks[0].message} ${JSON.stringify(breaks[0].witnesses)}`).toMatch(
+      /tdd-test-writer/,
+    );
+  });
+
+  it('a spawn recorded only in the sidecar → pass', () => {
+    // The union's right side: `source sidecar → json → agentType` on its own is enough,
+    // and a pipeline that skips `json` matches nothing in the raw text.
+    const world = tddWorld(PRODUCTION_FILE, session(), [{ agentType: WRITER, toolUseId: 't1' }]);
+    expect(judge(decl, world).kind).toBe('pass');
+  });
+
+  it('the sidecar holds another agent only → broken, one witness', () => {
+    const world = tddWorld(PRODUCTION_FILE, session(), [{ agentType: GENERAL }]);
+    expect(breaksOf(judge(decl, world))).toHaveLength(1);
+  });
+
+  it('no writer but a fresh /tdd skip → broken, and the witness valve opens', () => {
+    // The spike's `witnessed`: the body breaks (no writer evidence) and the valve, asked on
+    // the same world, holds. A body that reads the valve's turn as writer evidence would
+    // answer `pass` here, which is not what happened.
+    const world = tddWorld(PRODUCTION_FILE, session([user(0, '/tdd skip — cleanup', -60_000)]));
+    expect(judge(decl, world).kind).toBe('broken');
+    expect(witnessOpens({ compiled, world })).toBe(true);
+  });
+
+  it('a non-production path (docs/dev-log/foo.md) → not-applicable by scope', () => {
+    // The spike passed no session for these: the scope must answer before any source is
+    // read, or the absent transcript would turn the scope miss into a supply skip.
+    expect(judge(decl, tddWorld('docs/dev-log/foo.md', undefined))).toEqual({
+      kind: 'not-applicable',
+      reason: 'scope',
+    });
+  });
+
+  it('the transcript absent → not-applicable by supply-pass, naming the source', () => {
+    // `supply.transcript: pass` — the commit surface has no session. The verdict must say
+    // WHY it did not judge; a `pass` here would record the edit as upheld.
+    expect(judge(decl, tddWorld(PRODUCTION_FILE, undefined))).toEqual({
+      kind: 'not-applicable',
+      reason: 'supply-pass',
+      source: SRC_TRANSCRIPT,
+    });
+  });
+
+  it('only an expired /tdd skip → broken, and the valve stays shut', () => {
+    const world = tddWorld(
+      PRODUCTION_FILE,
+      session([
+        user(0, '/tdd skip — earlier permission', -15 * 60_000),
+        user(1, 'now please add a real feature', -60_000),
+      ]),
+    );
+    expect(breaksOf(judge(decl, world))).toHaveLength(1);
+    expect(witnessOpens({ compiled, world })).toBe(false);
   });
 });
 

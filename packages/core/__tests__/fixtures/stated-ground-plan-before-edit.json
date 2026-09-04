@@ -1,0 +1,34 @@
+{
+  "discipline": "stated-ground-plan-before-edit",
+  "mechanism": "stated-ground",
+  "sources": {
+    "session": {
+      "transcript": true
+    }
+  },
+  "supply": {
+    "session": "error"
+  },
+  "extract": {
+    "statedPlan": [
+      {
+        "op": "source",
+        "of": "session"
+      },
+      {
+        "op": "userTexts",
+        "re": "^/plan\\b"
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "plan-stated",
+      "relation": {
+        "op": "nonEmpty",
+        "of": "statedPlan"
+      },
+      "message": "no /plan turn precedes this edit in the session"
+    }
+  ]
+}

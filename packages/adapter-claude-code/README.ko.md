@@ -27,6 +27,8 @@
   `<dir>/<세션ID>/subagents/agent-*.meta.json`에 남기는 서브에이전트 기록을 파일명 정렬 순서의 JSON 배열 하나로 답합니다.
   `'[]'`는 스폰을 관측하지 못한 채널이고 `undefined`는 채널 자체가 없는 것 — 서로 다른 두 사실이며, 선언의 `supply` 정책이
   처분하는 것은 둘째뿐입니다.
+  이 표면이 파싱하는 대화 기록(transcript)은 선언의 소스이기도 합니다(`{ transcript: true }`). 약속(covenant) 패키지가
+  공급 시점에 스냅샷으로 펴므로 이 어댑터는 그것을 위한 리더를 더하지 않습니다.
 - **선행 증거 평가기.** `evaluatePrecedent`는 맥락족 규율(discipline)을 위해 이 어댑터가 소유한 증거 어휘입니다. git 어댑터의
   `resolveGitAdapterSettings`와 같은 네임스페이스 태도입니다. `subagent`(스폰 종류의 정확한 일치, 종류는 패턴이 아니라 값입니다)와
   `tool`(관측된 도구 이름을 정규식으로 대조)을 판정하고, 자기 어휘 밖의 키에는 `undefined`를 돌려줍니다. 이 증거는 판정할 수 없다고 컴파일러에 알리는

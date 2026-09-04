@@ -66,8 +66,12 @@ telemetry.
   `target.path`, `pre`, `post`, `state`, and `changes` (the observation's change set — the
   input's own, or the host's `world.changes` when it observes more than it dispatches). A
   declaration's `sources` bindings join each world from the change's own `post` when the input
-  changes that file, from `world.files` otherwise — and a channel binding from
-  `world.channels`, which no change can overlap (a channel has no path).
+  changes that file, from `world.files` otherwise — a channel binding from
+  `world.channels`, which no change can overlap (a channel has no path), and a transcript
+  binding from the `CanonicalTranscript` the root injects, flattened once into a plain session
+  snapshot (`observedAtMs`, user turns, tool calls, each with its observation ordinal) that the
+  five history steps read; no session means the key is absent and the declaration's `supply`
+  policy answers.
 - **Supply layer** — `planSources` folds the registrations' `sources` bindings into one
   deduplicated path list plus the channel kinds they name, and `supplySources` fills both
   through the readers a composition root injects (`read(path)` and the optional

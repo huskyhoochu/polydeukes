@@ -1,0 +1,66 @@
+{
+  "discipline": "phase-order-writer-before-implementer",
+  "mechanism": "phase-order",
+  "sources": {
+    "session": {
+      "transcript": true
+    }
+  },
+  "supply": {
+    "session": "pass"
+  },
+  "extract": {
+    "writers": [
+      {
+        "op": "source",
+        "of": "session"
+      },
+      {
+        "op": "toolUses",
+        "names": ["Agent", "Task"],
+        "subagentType": "tdd-test-writer"
+      },
+      {
+        "op": "field",
+        "name": "index"
+      },
+      {
+        "op": "first"
+      }
+    ],
+    "implementers": [
+      {
+        "op": "source",
+        "of": "session"
+      },
+      {
+        "op": "toolUses",
+        "names": ["Agent", "Task"],
+        "subagentType": "tdd-implementer"
+      },
+      {
+        "op": "field",
+        "name": "index"
+      },
+      {
+        "op": "first"
+      }
+    ],
+    "sequence": [
+      {
+        "op": "union",
+        "of": ["writers", "implementers"]
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "writer-first",
+      "relation": {
+        "op": "ordered",
+        "of": "sequence"
+      },
+      "message": "the first implementer spawn #{value} precedes the first test-writer spawn"
+    }
+  ]
+}

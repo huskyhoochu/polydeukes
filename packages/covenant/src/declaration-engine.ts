@@ -43,7 +43,7 @@ import {
   type WitnessWithBefore,
 } from './relations.js';
 
-export type { ConfigFault, Item, Items, PairedItems, World } from './extract-steps.js';
+export type { ConfigFault, Items, SessionSnapshot, World } from './extract-steps.js';
 export { EXTRACT_STEPS, UNARY_STEP_NAMES } from './extract-steps.js';
 export type { Witness } from './relations.js';
 

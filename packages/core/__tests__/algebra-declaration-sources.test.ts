@@ -4,7 +4,7 @@ import { ConfigValidationError } from '../src/validation.ts';
 
 // The `sources` block names files outside the target that the supply layer reads before
 // judgment: `sources: { <name>: { file: '<repo-relative path>' } }`.
-// The kind position is closed (`SOURCE_KINDS`, today `file` alone), a name may not shadow
+// The kind position is closed (`SOURCE_KINDS`), a name may not shadow
 // one of the fixed world sources (`FIXED_SOURCE_NAMES`), the path is a non-empty relative
 // path with no `..` segment. Every fault names its path under the caller's location. The validator still reads no file: it checks the shape of the naming.
 
@@ -179,10 +179,10 @@ describe('validateAlgebraDeclaration — sources block, the file path', () => {
 });
 
 describe('validateAlgebraDeclaration — sources block, the kind position is closed', () => {
-  it('rejects an unknown kind (transcript) naming the closed list', () => {
+  it('rejects an unknown kind (channel) naming the closed list', () => {
     // A kind outside the closed list binds a source the supply layer cannot read; admitting
     // it by name defers the fault to judgment time. The message shows the author what IS allowed.
-    const error = expectRejection(withSourceValue({ transcript: true }));
+    const error = expectRejection(withSourceValue({ channel: true }));
 
     expect(error.message).toContain(`${LOCATION}.sources.${SOURCE_KO}`);
     for (const kind of SOURCE_KINDS) {
@@ -239,6 +239,7 @@ describe('validateAlgebraDeclaration — the sources block at its two ends', () 
         {
           ...sourcedDeclaration,
           sources: {},
+          supply: { [SOURCE_PRE]: 'error' },
           extract: {
             ...sourcedDeclaration.extract,
             [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }],
@@ -256,5 +257,65 @@ describe('validateAlgebraDeclaration — the sources block at its two ends', () 
     const error = expectRejection({ ...sourcedDeclaration, sources: { '': { file: FILE_KO } } });
 
     expect(error.message).toContain(`${LOCATION}.sources`);
+  });
+});
+
+describe('validateAlgebraDeclaration — supply keys stay inside the source-name universe', () => {
+  // The universe closed with the transcript kind: a `supply` key is either one of the fixed
+  // five or a name this declaration's `sources` block binds. This check reads a sibling
+  // block, which JSON Schema cannot express, so it is validator-only — the schema-contract
+  // suite's header lists it as such, and no schema fixture mirrors it.
+  const TYPO = 'transcrpt';
+
+  it('rejects a supply key that is neither fixed nor bound, naming both sets', () => {
+    // Today a misspelled key passes because only the VALUE is checked, and the policy the
+    // author wrote for the real source never applies: an `error` meant for `ko` sits under
+    // `k0` while `ko` falls to the default. The message must show both admitted sets.
+    const error = expectRejection({
+      ...sourcedDeclaration,
+      supply: { [SOURCE_KO]: 'error', [TYPO]: 'pass' },
+    });
+
+    expect(error.message).toContain(LOCATION);
+    expect(error.message).toContain(`'${TYPO}'`);
+    for (const name of FIXED_NAMES) {
+      expect(error.message).toContain(`'${name}'`);
+    }
+    expect(error.message).toContain(`'${SOURCE_KO}'`);
+  });
+
+  it('rejects a supply key with no sources block, naming the fixed five alone', () => {
+    // With nothing bound, the admitted set is the fixed list; a check that only runs when a
+    // `sources` block exists lets every unsourced declaration keep a dead supply key.
+    const { sources: _sources, ...unsourced } = sourcedDeclaration;
+    const error = expectRejection({
+      ...unsourced,
+      supply: { [TYPO]: 'pass' },
+      extract: { ...sourcedDeclaration.extract, [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }] },
+    });
+
+    expect(error.message).toContain(`'${TYPO}'`);
+    expect(error.message).toContain("'target.path'");
+  });
+
+  it('accepts a supply keyed by a bound name and a fixed name together', () => {
+    // Both halves of the universe in one block: a check against `sources` alone refuses
+    // `pre`, one against the fixed list alone refuses `ko`.
+    const declaration = { ...sourcedDeclaration, supply: { [SOURCE_KO]: 'error', pre: 'pass' } };
+
+    expect(() => validateAlgebraDeclaration(declaration, LOCATION)).not.toThrow();
+  });
+
+  it('accepts a supply keyed by a transcript-bound name', () => {
+    // The newest kind must be in the bound set like the other two; a cross-check reading
+    // `.file` or `.sidecar` to collect names misses the transcript binding.
+    const SESSION = 'session';
+    const declaration = {
+      ...sourcedDeclaration,
+      sources: { [SOURCE_KO]: { file: FILE_KO }, [SESSION]: { transcript: true } },
+      supply: { [SOURCE_KO]: 'error', [SESSION]: 'pass' },
+    };
+
+    expect(() => validateAlgebraDeclaration(declaration, LOCATION)).not.toThrow();
   });
 });

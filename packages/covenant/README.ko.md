@@ -62,8 +62,11 @@
   돌려주는 설정 결함(config fault)입니다. `worldsFromInput`이 라이브 공급입니다.
   파일 변경마다 세계 하나를 `target.path` · `pre` · `post` · `state`의 소스 이름으로 만들고,
   선언의 `sources` 바인딩은 그 입력이 바꾸는 파일이면 변경 자신의 `post`에서, 아니면
-  `world.files`에서, 채널 바인딩이면 `world.channels`에서 세계에 합쳐집니다(채널은 경로가
-  없어 변경 집합과 겹치지 않습니다).
+  `world.files`에서, 채널 바인딩이면 `world.channels`에서, 대화 기록(transcript) 바인딩이면
+  루트가 주입한 `CanonicalTranscript`를 한 번 펴낸 플레인 세션 스냅샷(`observedAtMs` · 사용자
+  턴 · 도구 호출, 각각 관측 순번을 실음)에서 세계에 합쳐집니다(채널은 경로가 없어 변경
+  집합과 겹치지 않고, 세션이 없으면 키가 비어 선언의 `supply` 정책이 답합니다). 이력
+  단계 다섯이 그 스냅샷을 읽습니다.
 - **공급 층** — `planSources`가 등록들의 `sources` 바인딩을 중복 없는 경로 목록 하나와
   그것들이 이름 붙인 채널 종류 목록으로 접고, `supplySources`가 컴포지션 루트가 주입한
   리더 둘로 그것을 채웁니다(`read(path)`와 선택 `readChannel(kind)`은 부재에 `undefined`로

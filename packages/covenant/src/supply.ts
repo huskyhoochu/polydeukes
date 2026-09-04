@@ -55,6 +55,9 @@ export function planSources(spec: PlanSourcesSpec): SourcePlan {
   const channels: string[] = [];
   for (const registration of spec.registrations) {
     for (const binding of registration.sources ?? []) {
+      // A transcript is neither a path nor a channel kind: the surface hands the session
+      // to assembly directly, so there is nothing here for a reader to fetch.
+      if ('transcript' in binding) continue;
       if ('sidecar' in binding) {
         if (!channels.includes('sidecar')) channels.push('sidecar');
       } else if (!files.includes(binding.file)) {

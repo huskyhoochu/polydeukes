@@ -66,4 +66,8 @@ root supplies what its **supply body** read and nothing more — the readers liv
 adapters (`sessionSourceReader` · `sessionChannelReader` · `observationSourceReader`), the
 root only injects them; which text a judged change sees is the judge's rule (the change's own
 `post` wins over the disk, since the session surface judges before the edit lands — a rule
-that never reaches a channel, which has no path to overlap).
+that never reaches a channel, which has no path to overlap). A `transcript` binding is
+neither a file nor a channel: it is the session the root already injects for the context
+family, flattened into a plain snapshot at supply time, and its absence is the absence of
+that session — the commit surface has none, so `supply: pass` is how a history declaration
+lands there.

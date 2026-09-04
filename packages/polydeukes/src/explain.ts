@@ -60,9 +60,9 @@ function scopeOf(entry: DisciplineEntry): string {
 /**
  * The description of a declaration entry: its catalogue coordinate (the mechanism, the axes
  * its sources derive, and the relations its entries decide), then what it routes on, how
- * large its two regex lists are, how many sources it names and how many of those are
- * channels, whether it carries a valve, and whether the author left a `why`. An absent
- * scope block admits every world.
+ * large its two regex lists are, how many sources it names and how many of those carry
+ * each non-file kind, whether it carries a valve, and whether the author left a `why`. An
+ * absent scope block admits every world.
  *
  * The axes are derived, never read off the declaration: `loadConfig` has already run the
  * declaration through the validator, so the shape here is the one the catalogue admitted.
@@ -77,8 +77,14 @@ function declareDescription(entry: DisciplineEntry, enforce: string): string {
   const include = declare.scope?.include?.length ?? 0;
   const exclude = declare.scope?.exclude?.length ?? 0;
   const bindings = Object.values(declare.sources ?? {});
-  const channels = bindings.filter((binding) => 'sidecar' in binding).length;
-  const sources = `sources ${bindings.length}${channels === 0 ? '' : ` (sidecar ${channels})`}`;
+  // A file binding is the unmarked kind, so only the two the surface has to supply are
+  // counted out; a kind nothing binds is left off rather than printed as a zero.
+  const kinds = (['sidecar', 'transcript'] as const)
+    .map((kind) => ({ kind, count: bindings.filter((binding) => kind in binding).length }))
+    .filter(({ count }) => count > 0)
+    .map(({ kind, count }) => `${kind} ${count}`);
+  const counted = kinds.length === 0 ? '' : ` (${kinds.join(', ')})`;
+  const sources = `sources ${bindings.length}${counted}`;
   const valve = declare.witness === undefined ? '—' : '✓';
   const why = entry.why === undefined ? '—' : '✓';
   return (

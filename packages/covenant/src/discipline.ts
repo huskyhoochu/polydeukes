@@ -30,6 +30,7 @@ import {
   type ConfigFault,
   compileDeclaration,
   judgeDeclaration,
+  type SessionSnapshot,
   scopeAdmits,
   type World,
   witnessOpens,
@@ -313,7 +314,7 @@ function commandLineMatches(command: string, pattern: RegExp): boolean {
 }
 
 /** What the input's shell commands prove, and what they only signal. */
-export type ShellSignals = {
+type ShellSignals = {
   evidence: { toolName: string; change: ShellChange }[];
   unjudgeable: ShellUnjudgeable[];
 };
@@ -872,43 +873,88 @@ function shellUnjudgeableRegistration(spec: CompileDisciplinesSpec): CovenantReg
 }
 
 /**
+ * Flatten a session into the plain snapshot a declaration reads.
+ *
+ * `index` is the observation ordinal within its own list, and `observedAtMs` is the clock at
+ * supply time — the only moment the age of a turn can be measured against, since the engine
+ * itself reads no clock.
+ */
+function snapshotOf(transcript: CanonicalTranscript): SessionSnapshot {
+  return {
+    observedAtMs: Date.now(),
+    userMessages: transcript
+      .findUserMessages()
+      .map((message, index) => ({ index, text: message.text, timestampMs: message.timestampMs })),
+    toolCalls: transcript.findToolCalls().map((call, index) => ({
+      index,
+      name: call.name,
+      args: call.args,
+      succeeded: call.succeeded,
+    })),
+  };
+}
+
+/**
  * The `sources` bindings of a declare entry, in declaration order; none is an empty list.
  *
  * Each file path is normalized once, here, so the plan, the supplied keys, and the match
  * against the change set all see one spelling: a `./locales/en.json` an author wrote is
  * otherwise read under one name and looked up under another, and the change's own text never
- * wins. A channel binding carries its kind instead — a channel is not a path.
+ * wins. A channel or transcript binding carries its kind instead — neither is a path.
  */
 function sourceBindings(entry: DisciplineEntry): SourceBinding[] {
-  return Object.entries(entry.declare?.sources ?? {}).map(([name, source]) =>
-    'sidecar' in source
-      ? { name, sidecar: true as const }
-      : { name, file: posix.normalize(source.file) },
-  );
+  return Object.entries(entry.declare?.sources ?? {}).map(([name, source]) => {
+    if ('sidecar' in source) return { name, sidecar: true as const };
+    if ('transcript' in source) return { name, transcript: true as const };
+    return { name, file: posix.normalize(source.file) };
+  });
 }
 
-/** One compiled `sources` binding: a repo-relative file, or a channel of the world axis. */
-type SourceBinding = { name: string; file: string } | { name: string; sidecar: true };
+/**
+ * One compiled `sources` binding: a repo-relative file, a channel of the world axis, or the
+ * session's conversation history.
+ */
+type SourceBinding =
+  | { name: string; file: string }
+  | { name: string; sidecar: true }
+  | { name: string; transcript: true };
 
 /**
  * What each named source is worth on this input: for a file, the change's own `post` when it
  * is one this input changes and the host-supplied text otherwise; for a channel, the text the
- * surface supplied. Absent when neither exists.
+ * surface supplied; for a transcript, the injected session flattened into a plain snapshot.
+ * Absent when none exists.
  *
  * The change set wins over the supplied text because the two surfaces read the tree at
  * different moments — a session call is judged while the disk still holds the pre-edit
  * state — and the change carries the state the call will produce. A deletion leaves the
  * key absent, since after it there is no file for the declaration's `supply` policy to
  * dispose of by any other reading. That rule never reaches a channel: a channel has no path,
- * so it can never overlap the change set.
+ * so it can never overlap the change set. A transcript has no path either, and its absence
+ * is the absence of the injected session — never anything the world axis carries.
  */
 function sourceValues(
   bindings: readonly SourceBinding[],
   worlds: readonly SuppliedWorld[],
   world: CovenantInput['world'],
+  transcript: CanonicalTranscript | undefined,
 ): Record<string, unknown> {
   const values: Record<string, unknown> = {};
   for (const binding of bindings) {
+    if ('transcript' in binding) {
+      // An injected transcript that throws is an unusable channel, not an answer — the
+      // same reading the precedent path gives it. Leaving the key absent hands the case
+      // to the declaration's `supply` policy instead of the dispatcher's routing failure,
+      // which would block an advised entry.
+      if (transcript !== undefined) {
+        try {
+          values[binding.name] = snapshotOf(transcript);
+        } catch {
+          // absent
+        }
+      }
+      continue;
+    }
     if ('sidecar' in binding) {
       const text = world?.channels?.sidecar;
       if (text !== undefined) values[binding.name] = text;
@@ -1026,7 +1072,7 @@ function declareRegistration(
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
     const fixed = worldsFromInput({ input, rootDir: spec.rootDir });
-    const values = sourceValues(bindings, fixed, input.world);
+    const values = sourceValues(bindings, fixed, input.world, spec.transcript);
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
       .filter((supplied) => scopeAdmits(compiled, supplied.world));

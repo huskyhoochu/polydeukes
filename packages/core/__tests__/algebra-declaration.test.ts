@@ -26,6 +26,10 @@ const FIXTURE_NAMES = [
   'i18n-key-parity',
   'invariant-comment-marker',
   'task-ledger-self-pardon',
+  'tdd-agent-required',
+  'phase-order-writer-before-implementer',
+  'turn-locality-fresh-permission',
+  'stated-ground-plan-before-edit',
 ] as const;
 
 // Extract names and source names below are fixture values: the validator only checks
@@ -91,21 +95,12 @@ function expectRejection(input: unknown, location?: string): ConfigValidationErr
 
 describe('validateAlgebraDeclaration — accepted declarations', () => {
   it.each(FIXTURE_NAMES)('accepts the %s declaration and returns it verbatim', (name) => {
-    // The three real declarations exercise every block and every combinator; returning the
+    // The real declarations exercise every block and every combinator; returning the
     // input unchanged is the contract, so a validator that normalizes (drops `mechanism`,
     // reorders relate, fills `strict: false`) shows up here.
     const declaration = loadFixture(name);
 
     expect(validateAlgebraDeclaration(declaration)).toEqual(declaration);
-  });
-
-  it('refuses the tdd-agent-required declaration until the transcript source is registered', () => {
-    // The W2 precedent case reads `transcript` and `sidecar` as bare names. The engine's
-    // world supplies them, but the universe of source names is the fixed five plus the
-    // `sources` block, and the transcript kind is not registered yet.
-    expect(() => validateAlgebraDeclaration(loadFixture('tdd-agent-required'))).toThrow(
-      /'transcript'/,
-    );
   });
 
   it('accepts the minimal declaration: discipline, mechanism, extract, relate, nothing else', () => {

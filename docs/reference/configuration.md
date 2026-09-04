@@ -379,6 +379,14 @@ kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record
 instead of a path — the subagent records the host keeps beside the transcript, supplied as
 one JSON array; where the channel lives is the surface's fact, so the value is the marker
 `true`, and on the commit surface (which has no session) the channel is always absent. A
+third kind, `sources: { session: { transcript: true } }`, names the session's own
+conversation history — the user turns and tool calls the surface already reads for the
+context family, handed to the declaration as one snapshot whose entries carry their
+observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
+`agentType` reads the parsed sidecar. This repository's live config carries one —
+`tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, which
+the commit surface (no session) records `skipped`. A `supply` key must name one of the five
+fixed sources or one of the declaration's own `sources`; any other key is refused. A
 source the change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
 recorded `blocked` at either enforce level — and `pass` leaves it unjudged. A declaration
@@ -393,7 +401,8 @@ block could not be assembled), or `supply-pass` (the declaration's own `supply: 
 absent source through). Every declaration also names its `mechanism` — one of seventeen
 catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
 name whose shape the declaration does not match: the axes its sources derive (`change` for
-the fixed names, `world` for its own `sources`) and the relations it relates must fall inside
+the fixed names, `world` for a `file` or `sidecar` source, `history` for a `transcript`
+source) and the relations it relates must fall inside
 what that name admits. A block the compiler cannot resolve — a step name outside the
 registry, an argument outside a step's keys — becomes a skip registration that names its
 location on stderr and routes nothing. A shell write into the declaration's scope has no

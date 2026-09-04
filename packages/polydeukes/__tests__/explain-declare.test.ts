@@ -321,6 +321,78 @@ describe('the sources count and the valve mark', () => {
     }
   });
 
+  it('a declaration reading a transcript beside a sidecar renders `world,history` and `sources 2 (sidecar 1, transcript 1)`', async () => {
+    // The history axis is derived from the transcript binding; a renderer that counts
+    // channel kinds by `'sidecar' in binding` alone prints `sources 2 (sidecar 1)` and
+    // hides the one source the commit surface can never supply.
+    const CHANNEL = 'spawns';
+    const SESSION = 'session';
+    const PRECEDENT_ID = 'writer-came-first';
+    const precedentEntry = {
+      id: PRECEDENT_ID,
+      why: 'a writer spawn precedes every production edit',
+      declare: {
+        mechanism: 'precedent',
+        scope: { source: SCOPE_SOURCE, include: ['\\.ts$'] },
+        sources: { [CHANNEL]: { sidecar: true }, [SESSION]: { transcript: true } },
+        supply: { [CHANNEL]: 'error', [SESSION]: 'pass' },
+        extract: {
+          spawned: [{ op: 'source', of: CHANNEL }, { op: 'json' }, { op: 'agentType', is: 'w' }],
+          called: [
+            { op: 'source', of: SESSION },
+            { op: 'toolUses', names: ['Agent'], subagentType: 'w' },
+          ],
+          evidence: [{ op: 'union', of: ['spawned', 'called'] }],
+        },
+        relate: [
+          { id: 'seen', relation: { op: 'nonEmpty', of: 'evidence' }, message: 'no writer' },
+        ],
+      },
+    };
+    writeFixtureConfig([precedentEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    for (const header of SURFACE_HEADERS) {
+      expect(rowOf(text, header, 'declare', PRECEDENT_ID)).toMatch(
+        /\s+precedent · world,history · nonEmpty seen · scope target\.path · include 1 · exclude 0 · sources 2 \(sidecar 1, transcript 1\) · valve — · why ✓$/,
+      );
+    }
+  });
+
+  it('a declaration reading a transcript alone renders `history` and `sources 1 (transcript 1)`', async () => {
+    // The singular form, with no sidecar to lean on: a renderer that prints the transcript
+    // count only after a sidecar count prints `sources 1` here, indistinguishable from a
+    // file source.
+    const SESSION = 'session';
+    const GROUND_ID = 'plan-before-edit';
+    const groundEntry = {
+      id: GROUND_ID,
+      why: 'a /plan turn precedes the edit',
+      declare: {
+        mechanism: 'stated-ground',
+        sources: { [SESSION]: { transcript: true } },
+        supply: { [SESSION]: 'pass' },
+        extract: {
+          plans: [
+            { op: 'source', of: SESSION },
+            { op: 'userTexts', re: '^/plan\\b' },
+          ],
+        },
+        relate: [{ id: 'stated', relation: { op: 'nonEmpty', of: 'plans' }, message: 'no plan' }],
+      },
+    };
+    writeFixtureConfig([groundEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    for (const header of SURFACE_HEADERS) {
+      expect(rowOf(text, header, 'declare', GROUND_ID)).toMatch(
+        /\s+stated-ground · history · nonEmpty stated · scope every world · include 0 · exclude 0 · sources 1 \(transcript 1\) · valve — · why ✓$/,
+      );
+    }
+  });
+
   it('a declaration with a witness block renders `valve ✓`', async () => {
     // The valve mark is the block's presence; a renderer reading it off the surface's
     // injected witness would print ✓ for every entry on the session surface.

@@ -132,6 +132,7 @@ describe('context family across the session boundary', () => {
   const manifest = 'packages/scratch/package.json';
   const dependencyLine = '{\n  "left-pad": "^1.3.0"\n}\n';
   const CONTEXT_ENTRIES = ['manifest-needs-context7', 'manifest-needs-npm-view'];
+  const HISTORY_ENTRY = 'tests-before-implementation';
 
   it('skips rather than blocks when no transcript accompanies the payload', () => {
     // No evidence channel is not "no evidence". Demanding session proof from a call that
@@ -146,7 +147,9 @@ describe('context family across the session boundary', () => {
         .filter((r) => r.event === 'skipped')
         .map((r) => r.label)
         .sort(),
-    ).toEqual(CONTEXT_ENTRIES);
+      // The unscoped history declaration observes every file-changing call and, with no
+      // session injected here, lands beside the context entries under its own `supply: pass`.
+    ).toEqual([...CONTEXT_ENTRIES, HISTORY_ENTRY].sort());
   });
 
   it('judges the same write when a session exists but carries no npm view (advised, not skipped)', () => {
@@ -247,7 +250,10 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     const byLabel = (label: string) => records.filter((r) => r.label === label);
     expect(byLabel('shell-mod').map((r) => r.event)).toEqual(['blocked']);
     expect(byLabel('self-mod').map((r) => r.event)).toEqual(['passed']);
-    expect(records.length).toBe(2);
+    // The unscoped history declaration observes this shell write too; with no session it
+    // skips, on the lane that blocks nothing.
+    expect(byLabel('tests-before-implementation').map((r) => r.event)).toEqual(['skipped']);
+    expect(records.length).toBe(3);
   });
 
   it('a read-only allowlisted command mentioning a protected path passes (exit 0)', () => {
@@ -376,15 +382,18 @@ describe('dogfooding assembly E2E — wired disciplines', () => {
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), and so is the `skipped` row the bilingual-pair declaration records
-    // for every `.md` write on this surface, so the judged-row count is taken over the
-    // verdict lane.
-    const records = readRecords(telemetryPath).records.filter(
-      (record) => record.event !== 'unattributed' && record.event !== 'skipped',
-    );
-    expect(records.length).toBe(1);
-    expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    // block nothing), and so is the `skipped` lane, so the judged-row count is taken over
+    // the verdict lane: nothing judged this write. The adapter's own `passed` row stands
+    // only for a call no registration observed, and the unscoped history declaration
+    // observes every file-changing call — it skips here (no session), so that row is
+    // the call's record.
+    const { records } = readRecords(telemetryPath);
+    expect(
+      records.filter((record) => record.event !== 'unattributed' && record.event !== 'skipped'),
+    ).toEqual([]);
+    expect(records.filter((r) => r.event === 'skipped').map((r) => r.label)).toEqual([
+      'tests-before-implementation',
+    ]);
   });
 });
 
@@ -674,6 +683,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
       ['comments-need-no-wiki', 'packages/adapter-git/src/collect.ts'],
       ['comments-carry-no-process', 'packages/adapter-git/src/collect.ts'],
       ['adapter-needs-knowledge-read', 'packages/adapter-git/src/collect.ts'],
+      ['tests-before-implementation', 'packages/adapter-git/src/collect.ts'],
     ]);
   });
 
@@ -832,7 +842,10 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
     // derivation forbids the common shell-unjudgeable row. The one row left belongs to a
     // context-family entry, which judged nothing: this run injects no transcript, so its
     // question was unaskable rather than answered a second time.
-    expect(skippedRows().map((r) => r.label)).toEqual(['core-needs-knowledge-read']);
+    expect(skippedRows().map((r) => r.label)).toEqual([
+      'core-needs-knowledge-read',
+      'tests-before-implementation',
+    ]);
   });
 
   it('an append composing a real on-disk pre still judges the banned addition (exit 0, advised)', () => {

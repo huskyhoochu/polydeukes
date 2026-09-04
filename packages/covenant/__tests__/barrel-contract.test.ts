@@ -119,9 +119,7 @@ const MODULE_EXPORTS: Record<string, readonly string[]> = {
   'src/declaration-engine.ts': [
     'Break',
     'EXTRACT_STEPS',
-    'Item',
     'Items',
-    'PairedItems',
     'scopeAdmits',
     'UNARY_STEP_NAMES',
     'Witness',
@@ -250,6 +248,31 @@ describe('un-barreled symbols', () => {
       }
     }
     expect(missing, `module exports gone:\n${missing.join('\n')}`).toEqual([]);
+  });
+});
+
+/**
+ * Type exports retired for want of a consumer (the fallow audit's "unused type export 0"
+ * condition): each is exported from its module for nothing but a re-export nobody reads.
+ * `Item` and `PairedItems` keep their home in `extract-steps.ts`, where the engine reads them.
+ */
+const RETIRED_EXPORTS: Record<string, readonly string[]> = {
+  'src/declaration-engine.ts': ['Item', 'PairedItems'],
+  'src/discipline.ts': ['ShellSignals'],
+};
+
+describe('retired type exports', () => {
+  // The allow-list above only says what must STAY exported, so a retired name that
+  // lingers (or comes back with the next re-export sweep) never goes red there.
+  it('no module still exports a symbol retired from it', () => {
+    const lingering: string[] = [];
+    for (const [module, names] of Object.entries(RETIRED_EXPORTS)) {
+      const exported = exportedNames(readFileSync(join(pkgDir, module), 'utf-8'));
+      for (const name of names) {
+        if (exported.has(name)) lingering.push(`${module}#${name}`);
+      }
+    }
+    expect(lingering, `retired exports still present:\n${lingering.join('\n')}`).toEqual([]);
   });
 });
 

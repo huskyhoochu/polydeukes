@@ -38,7 +38,9 @@ the core, which is how the core's agent-neutrality stays a testable claim rather
   `<dir>/<sessionId>/subagents/agent-*.meta.json` beside the transcript, answered as one JSON
   array in filename order. `'[]'` is a channel that observed no spawn; `undefined` is no
   channel at all — two different facts, and the declaration's `supply` policy disposes only of
-  the second.
+  the second. The transcript this surface parses is also a declaration source (`{ transcript:
+  true }`): the covenant flattens it into a snapshot at supply time, so this adapter adds no
+  reader for it.
 - **Precedent evidence evaluator** — `evaluatePrecedent` is this adapter's own evidence vocabulary
   for the context-family discipline, the same namespace stance as `resolveGitAdapterSettings` in the
   git adapter. It judges `subagent` (exact spawn-kind equality — a kind is a value, not a pattern)

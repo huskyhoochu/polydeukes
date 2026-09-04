@@ -44,25 +44,6 @@ const emptyOf = (name: string): RelateEntry => ({
 });
 
 describe('compileDeclaration — an op outside the registry', () => {
-  it('refuses the history vocabulary `toolUses` with a fault naming the pipeline', () => {
-    // The first outside name the roadmap expects: a registry lookup that falls through to
-    // an identity step would run the declaration as if the step were absent.
-    const fault = faultOf(
-      declaration(
-        {
-          [SINGLE]: [
-            { op: 'source', of: SRC },
-            { op: 'toolUses', names: ['Agent'], subagentType: 'writer' },
-          ],
-        },
-        [emptyOf(SINGLE)],
-      ),
-    );
-    expect(fault.kind).toBe('config-fault');
-    expect(fault.location).toContain(SINGLE);
-    expect(fault.reason).toContain('toolUses');
-  });
-
   it('refuses `sha256` — an outside name with no arguments is still outside', () => {
     const fault = faultOf(
       declaration({ [SINGLE]: [{ op: 'source', of: SRC }, { op: 'sha256' }] }, [emptyOf(SINGLE)]),

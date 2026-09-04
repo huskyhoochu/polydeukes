@@ -90,15 +90,20 @@ module; a name outside a closed list is rejected by validation, never coerced.
 - **Declaration** — one judgment written as data: `judge = relate ∘ extract`. Six blocks:
   **`scope`** (does this declaration apply — a source name plus constant regex lists),
   **`sources`** (what a name outside the fixed five stands for — `{ name: { file: '<repo-relative
-  path>' } }` or `{ name: { sidecar: true } }`, the kind position closed to `file` · `sidecar`;
-  a sidecar binding names a channel the surface supplies, so its value is the marker `true`,
-  never a path), **`supply`** (what a missing source does:
+  path>' } }`, `{ name: { sidecar: true } }` or `{ name: { transcript: true } }`, the kind
+  position closed to `file` · `sidecar` · `transcript`; a sidecar binding names a channel the
+  surface supplies and a transcript binding the session's conversation history, so the value
+  of either is the marker `true`, never a path), **`supply`** keys must name one of the fixed
+  five or one of the declaration's own `sources` — the universe is closed, so a misspelled key
+  is refused rather than left as a policy nothing applies to; **`supply`** (what a missing source does:
   `error` refuses, `pass` leaves the call unjudged),
   **`extract`** (named pipelines producing values), **`relate`** (entries pairing an extract
   name with a relation), **`witness`** (the valve that stands *after* the verdict — its own
   `extract` + `relate`, same grammar; it sees the body's extract names, the body never sees
   its). `mechanism` is required and names a catalogue entry (below); there is no `axis` key —
-  the axes are derived from the sources a declaration reads.
+  the axes are derived from the sources a declaration reads: a fixed name is `change`, a
+  `file` or `sidecar` binding is `world`, a `transcript` binding is `history`; `actor` has no
+  source yet.
 - **World axis** — the values a judgment sees that no payload carries. Five fixed source names
   come with every world (`target.path` · `pre` · `post` · `state` · `changes` — the observation
   unit's change set); a declaration's `sources` bindings add its own. The **supply layer**
@@ -109,7 +114,12 @@ module; a name outside a closed list is rejected by validation, never coerced.
   than it dispatches at once — and the judge merges them: a named file this input changes is
   read from the change's `post` (absent on a deletion), any other from `world.files`, a
   channel binding from `world.channels` (a channel has no path, so the change set never
-  overlaps it). core and covenant open no file; the readers are the **supply bodies'** — each
+  overlaps it), a transcript binding from the `CanonicalTranscript` the composition root
+  injects, flattened once into a plain **session snapshot** (`observedAtMs` · `userMessages` ·
+  `toolCalls`, each observation carrying its ordinal `index` within its own list) — the
+  engine judges data, never a query interface, and the history steps (`toolUses` ·
+  `userTexts` · `agentType` · `first` · `ageMs`) read that snapshot. core and covenant open
+  no file; the readers are the **supply bodies'** — each
   adapter implements its surface's reading (`sessionSourceReader` · `sessionChannelReader`
   on the session side, `observationSourceReader` on the commit side) and the composition
   root only injects them.

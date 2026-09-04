@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { validateAlgebraDeclaration } from '../src/algebra.ts';
 import { deriveShape, MECHANISM_NAMES, MECHANISM_SHAPES } from '../src/catalogue.ts';
@@ -25,7 +27,14 @@ const FILE_KO = 'ko';
 const FILE_EN_PATH = 'locales/en.json';
 const FILE_KO_PATH = 'locales/ko.json';
 const CHANNEL = 'spawns';
+const SESSION = 'session';
 const UNDECLARED_SOURCE = 'transcript';
+
+/** Parse one declaration fixture from the algebra fixture directory. */
+function loadFixture(name: string): unknown {
+  const path = fileURLToPath(new URL(`./fixtures/${name}.json`, import.meta.url));
+  return JSON.parse(readFileSync(path, 'utf8'));
+}
 
 /** A change-axis declaration: `implies` between two `target.path` projections. */
 const companionDeclaration = {
@@ -421,5 +430,123 @@ describe('validateMechanism — the derived shape must fall inside the name’s 
 
     expect(error.message).toContain('nowhere');
     expect(error.message).not.toContain("'pairing'");
+  });
+});
+
+describe('deriveShape — the history axis from a transcript binding', () => {
+  /** A history-axis declaration: `nonEmpty` over the user turns of a transcript source. */
+  const groundDeclaration = {
+    discipline: 'probe',
+    mechanism: 'stated-ground',
+    sources: { [SESSION]: { transcript: true } },
+    extract: {
+      plans: [
+        { op: 'source', of: SESSION },
+        { op: 'userTexts', re: '^/plan\\b' },
+      ],
+    },
+    relate: [{ id: 'stated', relation: { op: 'nonEmpty', of: 'plans' }, message: 'm' }],
+  };
+
+  it('a `sources` entry of the transcript kind derives the history axis, not world', () => {
+    // A derivation that maps every binding to `world` (the rule the two older kinds share)
+    // admits a history declaration under `pairing` and refuses it under the four history
+    // names; the kind of the binding decides the axis.
+    expect([...deriveShape(validateAlgebraDeclaration(groundDeclaration)).axes]).toEqual([
+      'history',
+    ]);
+  });
+
+  it('tdd-agent-required validates under precedent and derives exactly {history, world}', () => {
+    // The W2 precedent fixture reads a transcript AND a sidecar: the two kinds derive two
+    // axes, and `precedent` admits exactly that pair. A derivation folding the sidecar
+    // into history, or the transcript into world, yields one axis and still passes the
+    // subset check — so the set is asserted whole, not by membership.
+    const declaration = validateAlgebraDeclaration(loadFixture('tdd-agent-required'));
+
+    expect(declaration.mechanism).toBe('precedent');
+    expect(deriveShape(declaration).axes).toEqual(new Set(['history', 'world']));
+  });
+
+  it.each([
+    ['phase-order-writer-before-implementer', 'phase-order', 'ordered'],
+    ['turn-locality-fresh-permission', 'turn-locality', 'nonEmpty'],
+    ['stated-ground-plan-before-edit', 'stated-ground', 'nonEmpty'],
+  ])('the %s fixture validates under %s and derives history with %s', (name, mechanism, relation) => {
+    // The three history mechanisms each get a real declaration; a catalogue that still
+    // reads history as underivable refuses all three, and a fixture whose relation drifted
+    // (say `nonEmpty` under `phase-order`) is caught here rather than in the engine.
+    const declaration = validateAlgebraDeclaration(loadFixture(name));
+
+    expect(declaration.mechanism).toBe(mechanism);
+    expect(deriveShape(declaration)).toEqual({
+      axes: new Set(['history']),
+      relations: new Set([relation]),
+      witness: false,
+    });
+  });
+
+  it('phase-order carrying nonEmpty is rejected, naming the mismatch without the underivable note', () => {
+    // The negative probe: history now derives, so the axis matches and the relation alone
+    // fails. The "no registered source derives … yet" note must be gone from this message —
+    // a catalogue that still lists history as underivable keeps telling the author the
+    // name admits no declaration today, which is now false.
+    const error = expectRejection({ ...groundDeclaration, mechanism: 'phase-order' });
+
+    expect(error.message).toContain("'phase-order'");
+    expect(error.message).toContain("'ordered'");
+    expect(error.message).toContain("'nonEmpty'");
+    expect(error.message).not.toContain('no registered source derives');
+  });
+
+  it('precedent on a change-only declaration is a plain mismatch, no longer an underivable note', () => {
+    // The other end of the note: before this ticket the precedent rejection carried it.
+    const declaration = {
+      ...markerDeclaration,
+      mechanism: 'precedent',
+      relate: [{ id: 'seen', relation: { op: 'nonEmpty', of: 'postMarks' }, message: 'm' }],
+    };
+
+    const error = expectRejection(declaration);
+
+    expect(error.message).toContain("'history'");
+    expect(error.message).not.toContain('no registered source derives');
+  });
+
+  it('the underivable note survives for the actor axis alone', () => {
+    // `actor` still has no deriving source, so `producer-owned` on any declaration must say
+    // so; a widening that lists every axis as derivable drops the one note still true.
+    const declaration = {
+      ...groundDeclaration,
+      mechanism: 'producer-owned',
+    };
+
+    const error = expectRejection(declaration);
+
+    expect(error.message).toContain("'producer-owned'");
+    expect(error.message).toContain("no registered source derives 'actor' yet");
+  });
+
+  it('a transcript source read only inside witness.extract still derives history', () => {
+    // The valve reads a history too: a derivation walking the body alone leaves the
+    // history-only valve declaration axis-less, and the empty set passes every spec.
+    const declaration = {
+      ...markerDeclaration,
+      mechanism: 'scoped-valve',
+      sources: { [SESSION]: { transcript: true } },
+      witness: {
+        extract: {
+          skip: [
+            { op: 'source', of: SESSION },
+            { op: 'userTexts', re: 'skip' },
+          ],
+        },
+        relate: [{ id: 'valve', relation: { op: 'nonEmpty', of: 'skip' }, message: 'w' }],
+      },
+    };
+
+    expect(deriveShape(validateAlgebraDeclaration(declaration)).axes).toEqual(
+      new Set(['change', 'history']),
+    );
   });
 });
