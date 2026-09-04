@@ -368,15 +368,19 @@ describe('dogfooding assembly E2E — wired disciplines', () => {
   });
 
   it('the same banned-vocabulary Write outside the discipline scope passes (exit 0)', () => {
+    // A `.txt` probe: a `.md` write is in the bilingual-pair declaration's scope and lands
+    // its `skipped` row on this surface, which would stand in for the adapter's own row.
     const result = runHook(
-      writePayload(join(repoRoot, 'docs/e2e-probe.md'), 'prose mentioning the guard word\n'),
+      writePayload(join(repoRoot, 'docs/e2e-probe.txt'), 'prose mentioning the guard word\n'),
     );
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), so the judged-row count is taken over the verdict lane.
+    // block nothing), and so is the `skipped` row the bilingual-pair declaration records
+    // for every `.md` write on this surface, so the judged-row count is taken over the
+    // verdict lane.
     const records = readRecords(telemetryPath).records.filter(
-      (record) => record.event !== 'unattributed',
+      (record) => record.event !== 'unattributed' && record.event !== 'skipped',
     );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');

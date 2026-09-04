@@ -362,7 +362,12 @@ Each file change is judged as one **world** with five source names: `target.path
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
 a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
 on a modification), and `changes` (every path the observation changes — the one call on the
-session surface, the whole staged set on the commit surface). A declaration that needs a
+session surface, the whole staged set on the commit surface). A declaration that reads
+`changes` is judged only where the whole change set is observed: the session surface
+records it `skipped`, the same disposition the commit surface gives the context family,
+because one call can never carry the other half of a pair. This repository's live config
+carries one — `docs-stay-bilingual`, an `Implies` over the `.md`/`.ko.md` pair, advised
+on the commit surface when one side is staged without the other. A declaration that needs a
 file outside the target names it in a `sources` block, `sources: { en: { file:
 'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
 repo-relative (no leading `/`, no `..` segment) and the name may not be one of the five. The

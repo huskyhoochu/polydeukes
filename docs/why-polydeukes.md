@@ -527,6 +527,13 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      so the interim state shows up red in the suite instead of as universal passes. Publish
      with the fail-closed section, as the smallest example of its rule.
 
+     Parked candidate (COVENANT-20, 2026-09-04): "commit surface only" is a capability, not a
+     policy. The first change-set declaration (`.md` implies `.ko.md`) cannot be judged by a
+     hook that sees one call — the pair is never in view — and the fix was not a key that lets
+     an author pick surfaces but a flag the surface passes about what it observes; the judge
+     turns that into `skipped`, the same word the commit surface already uses for evidence it
+     cannot read. Publish with the two-surfaces section.
+
      Parked candidate (DIST-06b, 2026-08-30): a host's duplicate key is measured, not
      read. Grok merges two hook registrations into one spawn only when command AND
      matcher are byte-identical; unifying the command alone still spawned the judge twice

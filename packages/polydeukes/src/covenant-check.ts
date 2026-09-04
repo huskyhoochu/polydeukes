@@ -153,6 +153,7 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
       shellTools: [],
       commandArgs: [],
       readPreState: unobservedPreStateReader,
+      observesChangeSet: true,
       witness,
     }),
   ];

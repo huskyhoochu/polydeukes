@@ -43,7 +43,9 @@ stale-but-present body carries no such signal.
   declaration families). A break lands `advised` on both surfaces — exit 0, the `why` on
   stderr — unless the entry says `enforce: block` (POSTURE-01); the three meta-covenants
   above are what blocks unasked. The context family needs a transcript, so the commit
-  surface always lands it `skipped` — a permanent condition of that surface.
+  surface always lands it `skipped` — a permanent condition of that surface. A declaration
+  reading the `changes` world needs the whole change set, so the session surface lands it
+  `skipped` the same way — one call is its whole observation (`docs-stay-bilingual`).
 
 ## The sixth word nobody's judgment writes
 

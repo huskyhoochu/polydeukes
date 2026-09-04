@@ -249,6 +249,10 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
       shellTools: SHELL_TOOLS,
       commandArgs: COMMAND_ARGS,
       readPreState: sessionPreStateReader,
+      // One PreToolUse call is the whole observation, so the derived change set is a
+      // singleton and a change-set declaration cannot be judged here — it records `skipped`,
+      // the shape the commit surface gives the context family.
+      observesChangeSet: false,
       witness,
       // Context-family evidence is evaluated here, at assembly: a spawned body cannot hold
       // a transcript, and passing a path would leak JSONL knowledge into covenant. The

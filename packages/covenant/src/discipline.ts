@@ -81,6 +81,10 @@ export type JudgeDisciplineSpec = ShellSurface & {
  * `evaluatePrecedent` is the seam an adapter fills for its own evidence vocabulary.
  * `undefined` from it means the key belongs to no adapter, so the entry skips rather than
  * being judged on a guess. Assembly does not halt.
+ *
+ * `observesChangeSet` says whether this surface's input carries the observation unit's whole
+ * change set. Absent means true — the declaration judges the change set derived from the
+ * input, which is what every surface did before the flag existed.
  */
 export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
@@ -88,6 +92,7 @@ export type CompileDisciplinesSpec = {
   shellTools: string[];
   commandArgs: string[];
   readPreState: (location: string) => string | null | undefined;
+  observesChangeSet?: boolean;
   witness?: CovenantRegistration['witness'];
   transcript?: CanonicalTranscript;
   evaluatePrecedent?: (
@@ -908,6 +913,21 @@ function sourceValues(
   return values;
 }
 
+/**
+ * Whether any pipeline of a compiled declaration — body or witness — reads `changes`.
+ *
+ * A combinator-headed pipeline names the extractions it combines, and those are pipelines of
+ * the same map, so reading each pipeline's own head answers for all of them.
+ */
+function readsChangeSet(compiled: CompiledDeclaration): boolean {
+  const heads = [...compiled.pipelines.values(), ...(compiled.witness?.pipelines.values() ?? [])];
+  return heads.some(
+    (pipeline) =>
+      pipeline.steps[0]?.op === 'source' &&
+      (pipeline.steps[0] as { of?: unknown }).of === 'changes',
+  );
+}
+
 /** The first non-pass world of one input, or pass — what the body reports and the valve reads. */
 type DeclareJudgment =
   | { readonly kind: 'pass' }
@@ -971,6 +991,22 @@ function declareRegistration(
     admittedOf.set(input, worlds);
     return worlds;
   };
+  const route = (input: CovenantInput): string | null => admitted(input)[0]?.path ?? null;
+
+  // A surface that dispatches its whole observation at once derives a one-element change
+  // set, and a judgment over it reports every scoped change as unpaired. Routing is kept so
+  // the limit is recorded per change; it is an environment fact, so no fault is named.
+  if (spec.observesChangeSet === false && readsChangeSet(compiled)) {
+    return {
+      label: entry.id,
+      protectedPaths: [],
+      ...(entry.declare?.sources !== undefined && { sources: bindings }),
+      matches: route,
+      ...witness,
+      skip: { reason: 'a change set needs a surface that observes more than one change' },
+    };
+  }
+
   const judgedOf = new WeakMap<CovenantInput, DeclareJudgment>();
   const judged = (input: CovenantInput): DeclareJudgment => {
     const cached = judgedOf.get(input);
@@ -995,7 +1031,7 @@ function declareRegistration(
     label: entry.id,
     protectedPaths: [],
     ...(entry.declare?.sources !== undefined && { sources: bindings }),
-    matches: (input) => admitted(input)[0]?.path ?? null,
+    matches: route,
     enforce: entry.enforce ?? 'advise',
     witness: (input, transcript, ctx) => {
       if (spec.witness?.(input, transcript, ctx) === true) return true;

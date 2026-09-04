@@ -185,3 +185,91 @@ describe('the tally counts declare in its own bucket', () => {
     }
   });
 });
+
+describe('a declaration reading the change set renders per surface capability', () => {
+  // The bilingual declaration reads `changes`, which only the commit surface observes.
+  // Ids, patterns, and the reason fragment are fixture values the live config carries.
+  const BILINGUAL_ID = 'docs-stay-bilingual';
+  const KO_FOLLOWS = 'ko-follows';
+  const EN_FOLLOWS = 'en-follows';
+  const EN_PATTERN = '^(.+?)(?<!\\.ko)\\.md$';
+  const KO_PATTERN = '^(.+)\\.ko\\.md$';
+  const bilingualEntry = {
+    id: BILINGUAL_ID,
+    why: 'English is the default and Korean mirrors live in *.ko.md.',
+    declare: {
+      scope: {
+        source: SCOPE_SOURCE,
+        include: ['\\.md$'],
+        exclude: ['^\\.claude/', '^CLAUDE\\.md$'],
+      },
+      extract: {
+        en: [
+          { op: 'source', of: SCOPE_SOURCE },
+          { op: 'keyByPattern', re: EN_PATTERN },
+        ],
+        ko: [
+          { op: 'source', of: SCOPE_SOURCE },
+          { op: 'keyByPattern', re: KO_PATTERN },
+        ],
+        enChanged: [
+          { op: 'source', of: 'changes' },
+          { op: 'items' },
+          { op: 'keyByPattern', re: EN_PATTERN },
+        ],
+        koChanged: [
+          { op: 'source', of: 'changes' },
+          { op: 'items' },
+          { op: 'keyByPattern', re: KO_PATTERN },
+        ],
+      },
+      relate: [
+        {
+          id: KO_FOLLOWS,
+          relation: { op: 'Implies', of: 'en', requires: 'koChanged' },
+          message: '{value} changed without {key}.ko.md',
+        },
+        {
+          id: EN_FOLLOWS,
+          relation: { op: 'Implies', of: 'ko', requires: 'enChanged' },
+          message: '{value} changed without {key}.md',
+        },
+      ],
+    },
+  };
+
+  it('the session surface renders a `skip` row naming the change set and no `declare` row for the id', async () => {
+    // The session surface observes one call, so the assembly it renders must be the one
+    // the hook runs: a `declare` row here promises a judgment the surface records as
+    // `skipped`, and a skip reason that does not name the change set reads as a config
+    // fault the author is expected to fix.
+    writeFixtureConfig([bilingualEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    // The id already owns a shell-arm skip row on every surface, so the change-set skip is
+    // found among the id's skip lines rather than asserted as the only one.
+    const section = surfaceSection(text, SESSION_HEADER);
+    const skipLines = linesOf(section, 'skip', BILINGUAL_ID);
+    expect(skipLines.some((line) => line.includes('change set'))).toBe(true);
+    expect(linesOf(section, 'declare', BILINGUAL_ID)).toHaveLength(0);
+    expect(tallyOf(section).declare).toBe(0);
+  });
+
+  it('the commit surface renders a `declare` row with exclude 2 and both relate ids, and tallies declare 1', async () => {
+    // The commit surface observes the staged set and judges; the same entry must not be
+    // rendered as a skip there, or the batch display shows a declaration no surface runs.
+    // The description is pinned whole so `exclude 2` and the two-id spelling cannot drift.
+    writeFixtureConfig([bilingualEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    const section = surfaceSection(text, COMMIT_HEADER);
+    expect(rowOf(text, COMMIT_HEADER, 'declare', BILINGUAL_ID)).toMatch(
+      /scope target\.path · include 1 · exclude 2 · relate ko-follows, en-follows · why ✓$/,
+    );
+    const skipLines = linesOf(section, 'skip', BILINGUAL_ID);
+    expect(skipLines.some((line) => line.includes('change set'))).toBe(false);
+    expect(tallyOf(section).declare).toBe(1);
+  });
+});

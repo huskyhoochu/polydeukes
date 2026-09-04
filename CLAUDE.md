@@ -30,8 +30,9 @@ it is a discoverability index; the `description` field is NOT exempt.
 ## Conventions
 
 - **Docs are bilingual:** English is the default; Korean mirrors live in `*.ko.md`. Keep them in
-  sync when editing either. In Korean docs, use translation + English gloss for the vocabulary
-  (`약속(covenant)`), never transliteration.
+  sync when editing either — the commit surface judges the pair (`docs-stay-bilingual`, advised
+  when one side is staged without the other). In Korean docs, use translation + English gloss
+  for the vocabulary (`약속(covenant)`), never transliteration.
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
 
 **Path-scoped rules carry the rest.** Each file in `.claude/rules/` states the constraints a
