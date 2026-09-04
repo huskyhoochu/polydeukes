@@ -134,7 +134,7 @@ function lineOf(text: string, header: string, kind: Kind, label: string): string
 describe("explain renders the roots' own assembly", () => {
   it('renders the commit surface in the exact label order assembleCommitRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
-    const { config } = loadConfig(repoRoot);
+    const { config } = loadConfig({ rootDir: repoRoot });
 
     const expected = assembleCommitRegistrations({
       config,
@@ -151,7 +151,7 @@ describe("explain renders the roots' own assembly", () => {
 
   it('renders the session surface in the exact label order assembleSessionRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
-    const { config } = loadConfig(repoRoot);
+    const { config } = loadConfig({ rootDir: repoRoot });
 
     const expected = assembleSessionRegistrations({
       config,

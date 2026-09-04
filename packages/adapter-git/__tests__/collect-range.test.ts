@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The ref-range collector: pre = `<base>:<path>`, post = `<head>:<path>`. `A..B` takes
 // base = A; `A...B` takes base = merge-base(A, B). An unresolvable ref throws, so the
 // runner fails closed.
-import { collectRangeChanges, type StagedChange } from '../src/index.ts';
+import { collectRangeChanges } from '../src/collect.ts';
+import type { StagedChange } from '../src/staged.ts';
 
 let repoRoot: string;
 
@@ -52,7 +53,10 @@ describe('collectRangeChanges — two-dot range', () => {
     git('add', 'a.txt');
     write('a.txt', 'disk four\n');
 
-    const change = changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'a.txt');
+    const change = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }),
+      'a.txt',
+    );
 
     expect(change).toEqual({
       path: 'a.txt',
@@ -66,7 +70,12 @@ describe('collectRangeChanges — two-dot range', () => {
     const base = commitFile('base.txt', 'base\n');
     const head = commitFile('fresh.txt', 'new\n');
 
-    expect(changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'fresh.txt')).toEqual({
+    expect(
+      changeFor(
+        collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }),
+        'fresh.txt',
+      ),
+    ).toEqual({
       path: 'fresh.txt',
       status: 'added',
       pre: null,
@@ -80,7 +89,12 @@ describe('collectRangeChanges — two-dot range', () => {
     git('commit', '--quiet', '-m', 'remove');
     const head = git('rev-parse', 'HEAD');
 
-    expect(changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'doomed.txt')).toEqual({
+    expect(
+      changeFor(
+        collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }),
+        'doomed.txt',
+      ),
+    ).toEqual({
       path: 'doomed.txt',
       status: 'deleted',
       pre: 'gone soon\n',
@@ -100,8 +114,14 @@ describe('collectRangeChanges — three-dot range uses the merge-base', () => {
     git('checkout', '--quiet', 'main');
     commitFile('a.txt', 'main\n');
 
-    const threeDot = changeFor(collectRangeChanges(repoRoot, 'main...feature'), 'a.txt');
-    const twoDot = changeFor(collectRangeChanges(repoRoot, 'main..feature'), 'a.txt');
+    const threeDot = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: 'main...feature' }),
+      'a.txt',
+    );
+    const twoDot = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: 'main..feature' }),
+      'a.txt',
+    );
 
     expect(threeDot).toEqual({
       path: 'a.txt',
@@ -125,7 +145,9 @@ describe('collectRangeChanges — unresolvable ref', () => {
     // throw for some other reason (a spawn failure, an absent export) does not satisfy it.
     const head = commitFile('a.txt', 'one\n');
 
-    expect(() => collectRangeChanges(repoRoot, `no-such-ref..${head}`)).toThrow(/no-such-ref/);
+    expect(() =>
+      collectRangeChanges({ repoRoot: repoRoot, range: `no-such-ref..${head}` }),
+    ).toThrow(/no-such-ref/);
   });
 });
 
@@ -133,7 +155,7 @@ describe('collectRangeChanges — identical refs', () => {
   it('returns an empty array for HEAD..HEAD', () => {
     commitFile('a.txt', 'one\n');
 
-    expect(collectRangeChanges(repoRoot, 'HEAD..HEAD')).toEqual([]);
+    expect(collectRangeChanges({ repoRoot: repoRoot, range: 'HEAD..HEAD' })).toEqual([]);
   });
 });
 
@@ -144,7 +166,9 @@ describe('collectRangeChanges — unresolvable head ref', () => {
     // fall back to HEAD and be judged as clean.
     commitFile('a.txt', 'one\n');
 
-    expect(() => collectRangeChanges(repoRoot, 'HEAD..no-such-ref')).toThrow(/no-such-ref/);
+    expect(() => collectRangeChanges({ repoRoot: repoRoot, range: 'HEAD..no-such-ref' })).toThrow(
+      /no-such-ref/,
+    );
   });
 });
 
@@ -162,7 +186,9 @@ describe('collectRangeChanges — three-dot range with no common ancestor', () =
 
     // git's own failing command must be what the message names, so a throw for another
     // reason (an absent export) does not satisfy this.
-    expect(() => collectRangeChanges(repoRoot, `${mainBranch}...other`)).toThrow(/merge-base/);
+    expect(() =>
+      collectRangeChanges({ repoRoot: repoRoot, range: `${mainBranch}...other` }),
+    ).toThrow(/merge-base/);
   });
 });
 
@@ -182,7 +208,9 @@ describe('collectRangeChanges — binary on either side', () => {
     const base = commitBytes('blob', BINARY);
     const head = commitBytes('blob', 'now text\n');
 
-    expect(changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'blob')).toEqual({
+    expect(
+      changeFor(collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }), 'blob'),
+    ).toEqual({
       path: 'blob',
       status: 'modified',
       pre: null,
@@ -196,7 +224,9 @@ describe('collectRangeChanges — binary on either side', () => {
     const base = commitBytes('blob', 'was text\n');
     const head = commitBytes('blob', BINARY);
 
-    expect(changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'blob')).toEqual({
+    expect(
+      changeFor(collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }), 'blob'),
+    ).toEqual({
       path: 'blob',
       status: 'modified',
       pre: 'was text\n',
@@ -214,7 +244,7 @@ describe('collectRangeChanges — rename between refs surfaces as delete + add',
     git('commit', '--quiet', '-m', 'move');
     const head = git('rev-parse', 'HEAD');
 
-    const changes = collectRangeChanges(repoRoot, `${base}..${head}`);
+    const changes = collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` });
 
     expect(changeFor(changes, 'protected-here.txt')).toEqual({
       path: 'protected-here.txt',
@@ -240,7 +270,10 @@ describe('collectRangeChanges — blob over 1MB between refs', () => {
     const base = commitFile('big.txt', 'small\n');
     const head = commitFile('big.txt', twoMegabytes);
 
-    const change = changeFor(collectRangeChanges(repoRoot, `${base}..${head}`), 'big.txt');
+    const change = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${head}` }),
+      'big.txt',
+    );
 
     expect(change?.post?.length).toBe(twoMegabytes.length);
   });
@@ -254,7 +287,10 @@ describe('a ref that also names a file', () => {
     commitFile('base.txt', 'changed\n');
     write('amb', 'a file, not a ref\n');
 
-    const change = changeFor(collectRangeChanges(repoRoot, 'amb..HEAD'), 'base.txt');
+    const change = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: 'amb..HEAD' }),
+      'base.txt',
+    );
     expect(change).toEqual({
       path: 'base.txt',
       status: 'modified',
@@ -275,7 +311,10 @@ describe('a type change (T) keeps its pre side', () => {
     git('add', 'link');
     git('commit', '--quiet', '-m', 'file');
 
-    const change = changeFor(collectRangeChanges(repoRoot, 'HEAD~1..HEAD'), 'link');
+    const change = changeFor(
+      collectRangeChanges({ repoRoot: repoRoot, range: 'HEAD~1..HEAD' }),
+      'link',
+    );
     expect(change).toEqual({
       path: 'link',
       status: 'modified',

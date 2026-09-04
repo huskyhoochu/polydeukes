@@ -11,7 +11,7 @@
 
 ## 여기 담긴 것
 
-- **`loadConfig(rootDir)`.** config 디스커버리입니다. 주어진 루트 바로 아래에서 정확히 하나의
+- **`loadConfig({ rootDir })`.** config 디스커버리입니다. 주어진 루트 바로 아래에서 정확히 하나의
   데이터 config(`polydeukes.config` 파일의 yaml·yml·json 형태)를 찾아, 안전 스키마로 해석하고
   (설정 데이터는 결코 실행되지 않습니다) 코어의 `defineConfig()`에 검증을 맡깁니다. 모든 실패
   분기는 예외를 던집니다(throw). 조용한 기본값은 금지이고, 발견된 파일은 자기 자신을 보호

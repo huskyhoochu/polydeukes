@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // A `disciplines:` entry may be a draft — `{ id, why, draft: true }` and nothing else: a
 // practice registered as prose ahead of promotion, carrying no predicate, scope, or trigger.

@@ -12,8 +12,8 @@
  * inspects its shape.
  */
 
-import type { CanonicalTranscript, CovenantInput } from '@polydeukes/core';
 import { resolveFailMode } from '@polydeukes/core';
+import type { WitnessPredicate } from './dispatch.js';
 
 /** Configuration for {@link ttlWitness}. */
 export type TtlWitnessSpec = {
@@ -48,9 +48,7 @@ export type TtlWitnessSpec = {
  * The input is unused: the valve keys on session evidence, not on the payload being
  * judged. Pure: no I/O, no state, no mutation.
  */
-export function ttlWitness(
-  spec: TtlWitnessSpec,
-): (input: CovenantInput, transcript: CanonicalTranscript) => boolean {
+export function ttlWitness(spec: TtlWitnessSpec): WitnessPredicate {
   const { token: rawToken, ttlMs, now = Date.now } = spec;
   // Normalise once, at assembly: the first line is compared trimmed, so a token
   // carrying stray surrounding whitespace could never equal it — the valve would

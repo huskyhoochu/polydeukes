@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadConfig } from '../src/index.ts';
+import { loadConfig } from '../src/load-config.ts';
 
 // loadConfig parse diagnostics. A file with n parse problems must surface ALL n in one
 // thrown message, per-problem parser location preserved, so the author fixes the file in
@@ -30,7 +30,7 @@ function loadAndCatch(contents: string): Error {
   writeFileSync(join(rootDir, 'polydeukes.config.yaml'), contents);
   let error: unknown;
   try {
-    loadConfig(rootDir);
+    loadConfig({ rootDir: rootDir });
   } catch (caught) {
     error = caught;
   }

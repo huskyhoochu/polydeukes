@@ -165,6 +165,9 @@ function firstScopedPath(entry: DisciplineEntry, paths: string[], rootDir: strin
 /** One change as one world, under the repo-relative path the declaration's scope reads. */
 export type SuppliedWorld = { readonly path: string; readonly world: World };
 
+/** `worldsFromInput` input — one observation and the root its paths are relativized against. */
+export type WorldsFromInputSpec = { input: CovenantInput; rootDir: string };
+
 /**
  * Turn each file change into one world, in input order.
  *
@@ -180,7 +183,8 @@ export type SuppliedWorld = { readonly path: string; readonly world: World };
  * unless the host supplied its own — a host whose observation is wider than the changes it
  * dispatches at once has a set no derivation here could reach.
  */
-export function worldsFromInput(input: CovenantInput, rootDir: string): SuppliedWorld[] {
+export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
+  const { input, rootDir } = spec;
   const scoped: { path: string; change: FileChange }[] = [];
   for (const change of allFileChanges(input)) {
     const path = relativizeForScope(change.path, rootDir);
@@ -728,8 +732,10 @@ function isFault(value: CompiledDeclaration | ConfigFault): value is ConfigFault
 /** Compile a declare entry's block, the entry's id supplying the declaration's name. */
 function compileEntryDeclaration(entry: DisciplineEntry): CompiledDeclaration | ConfigFault {
   return compileDeclaration({
-    discipline: entry.id,
-    ...(entry.declare as NonNullable<DisciplineEntry['declare']>),
+    declaration: {
+      discipline: entry.id,
+      ...(entry.declare as NonNullable<DisciplineEntry['declare']>),
+    },
   });
 }
 
@@ -983,7 +989,7 @@ function declareRegistration(
   const admitted = (input: CovenantInput): SuppliedWorld[] => {
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
-    const fixed = worldsFromInput(input, spec.rootDir);
+    const fixed = worldsFromInput({ input, rootDir: spec.rootDir });
     const values = sourceValues(bindings, fixed, input.world);
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
@@ -1013,7 +1019,7 @@ function declareRegistration(
     if (cached !== undefined) return cached;
     let result: DeclareJudgment = { kind: 'pass' };
     for (const supplied of admitted(input)) {
-      const verdict = judgeDeclaration(compiled, supplied.world);
+      const verdict = judgeDeclaration({ compiled, world: supplied.world });
       if (verdict.kind === 'broken') {
         result = { kind: 'broken', supplied, breaks: verdict.breaks };
         break;
@@ -1036,7 +1042,9 @@ function declareRegistration(
     witness: (input, transcript, ctx) => {
       if (spec.witness?.(input, transcript, ctx) === true) return true;
       const judgment = judged(input);
-      return judgment.kind === 'broken' && witnessOpens(compiled, judgment.supplied.world);
+      return (
+        judgment.kind === 'broken' && witnessOpens({ compiled, world: judgment.supplied.world })
+      );
     },
     body: async (input: CovenantInput) => {
       try {

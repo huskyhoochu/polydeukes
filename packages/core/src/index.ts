@@ -55,6 +55,7 @@ export { isPlainObject } from './is-plain-object.js';
 export { normalizeProtectedPaths } from './protected-paths.js';
 export {
   allFileChanges,
+  type ChannelReader,
   type CovenantInput,
   type CovenantVerdict,
   type DispatchOutcome,

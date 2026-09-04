@@ -193,7 +193,7 @@ pdks init claude-code | pdks init grok | pdks docs [topic]` — to stderr and ex
 ## Exit codes
 
 Three codes exist, and they live at two layers. **What a consumer's hook observes is only
-`0` or `2`** — both composition roots return `Promise<{ exitCode: 0 | 2 }>`.
+`0` or `2`** — both composition roots resolve to a named outcome carrying `exitCode: 0 | 2`.
 
 | Code | Constant | Emitted by | Means |
 |---|---|---|---|
@@ -223,7 +223,9 @@ This is the whole public API; the scoped packages are not part of it.
 **Type signature:**
 
 ```ts
-function loadConfig(rootDir: string): LoadedConfig;
+function loadConfig(spec: LoadConfigSpec): LoadedConfig;
+
+type LoadConfigSpec = { rootDir: string };
 
 type LoadedConfig = {
   config: ResolvedConfig;  // protectedPaths already includes the config file itself
@@ -241,7 +243,9 @@ a silently unprotected project.
 **Type signature:**
 
 ```ts
-function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }>;
+function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome>;
+
+type CovenantCheckOutcome = { exitCode: 0 | 2 };
 
 type CovenantCheckSpec = {
   repoRoot: string;                                  // config discovery and collection anchor here
@@ -270,7 +274,9 @@ or nothing.
 **Type signature:**
 
 ```ts
-function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }>;
+function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome>;
+
+type ClaudeCodeHookOutcome = { exitCode: 0 | 2 };
 
 type ClaudeCodeHookSpec = {
   repoRoot: string;         // config discovery and discipline glob scoping anchor here
@@ -296,8 +302,8 @@ needs no second dependency.
 
 | Specifier | Carries |
 |---|---|
-| `polydeukes` | The barrel — `loadConfig`, `runCovenantCheck`, `runClaudeCodeHook`, their spec types, `ResolvedConfig` |
-| `polydeukes/claude-code` | `runClaudeCodeHook` and `ClaudeCodeHookSpec` alone |
+| `polydeukes` | The barrel — `loadConfig`, `runCovenantCheck`, their spec and outcome types, `ResolvedConfig`. The session hook lives on its own subpath below and nowhere else |
+| `polydeukes/claude-code` | `runClaudeCodeHook`, `ClaudeCodeHookSpec`, and `ClaudeCodeHookOutcome` alone |
 | `polydeukes/schema.json` | The config JSON Schema, copied from the core at build time |
 
 The generated hook delegator imports the subpath, not the barrel. ESM imports are eager, so

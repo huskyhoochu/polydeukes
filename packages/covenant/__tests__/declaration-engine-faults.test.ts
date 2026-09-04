@@ -29,7 +29,7 @@ function declaration(extract: ExtractBlock, relate: RelateEntry[]): AlgebraDecla
 function faultOf(decl: AlgebraDeclaration): ConfigFault {
   let result: ReturnType<typeof compileDeclaration> | undefined;
   expect(() => {
-    result = compileDeclaration(decl);
+    result = compileDeclaration({ declaration: decl });
   }).not.toThrow();
   if (result === undefined || !isConfigFault(result)) {
     throw new Error(`expected a config fault, got ${JSON.stringify(result)}`);
@@ -176,18 +176,18 @@ describe('compileDeclaration — paired and single shapes', () => {
 
   it('admits `Unchanged` over a paired extract and `Empty` over a single one', () => {
     // The positive end: the shape check must not refuse the pairing it exists for.
-    const result = compileDeclaration(
-      declaration({ ...pairedExtract, ...singleExtract }, [
+    const result = compileDeclaration({
+      declaration: declaration({ ...pairedExtract, ...singleExtract }, [
         { id: ENTRY, relation: { op: 'Unchanged', of: PAIRED }, message: 'm' },
         { id: `${ENTRY}-2`, relation: { op: 'Empty', of: SINGLE }, message: 'm' },
       ]),
-    );
+    });
     expect(isConfigFault(result)).toBe(false);
   });
 
   it('admits a combinator over two single extracts', () => {
-    const result = compileDeclaration(
-      declaration(
+    const result = compileDeclaration({
+      declaration: declaration(
         {
           ...singleExtract,
           [OTHER]: [{ op: 'source', of: SRC_OTHER }],
@@ -195,7 +195,7 @@ describe('compileDeclaration — paired and single shapes', () => {
         },
         [emptyOf(JOINED)],
       ),
-    );
+    });
     expect(isConfigFault(result)).toBe(false);
   });
 });

@@ -24,6 +24,16 @@ import { pathCandidates, pathMatchesProtected } from './mention.js';
 import { type JudgeOutcome, runCovenant } from './run-covenant.js';
 
 /**
+ * `WitnessPredicate` — the valve a registration offers, asked after a blocking judgment:
+ * the observation, the transcript, and the registration's own label with the matched subject.
+ */
+export type WitnessPredicate = (
+  input: CovenantInput,
+  transcript: CanonicalTranscript,
+  context: { label: string; subject: string },
+) => boolean;
+
+/**
  * `CovenantRegistration` — one registered covenant.
  *
  * `protectedPaths` are literal path strings (the output shape of normalization, not
@@ -62,11 +72,7 @@ export type CovenantRegistration = {
   protectedPaths: string[];
   enforce?: EnforceLevel;
   sources?: readonly ({ name: string; file: string } | { name: string; sidecar: true })[];
-  witness?: (
-    input: CovenantInput,
-    transcript: CanonicalTranscript,
-    context: { label: string; subject: string },
-  ) => boolean;
+  witness?: WitnessPredicate;
   matches?: (input: CovenantInput) => string | null;
 } & (
   | { body: (input: CovenantInput) => Promise<JudgeOutcome>; skip?: never }
@@ -172,6 +178,22 @@ export function matchRegistrations(
   return matches;
 }
 
+/** A registration assembled by a meta-covenant: one that always carries a judgeable body. */
+export type MetaCovenantRegistration = CovenantRegistration & {
+  body: NonNullable<CovenantRegistration['body']>;
+};
+
+/** `dispatchCovenants` input — the payload, the registration table, and the dispatch posture. */
+export type DispatchCovenantsSpec = {
+  stdinPayload: string;
+  registrations: CovenantRegistration[];
+  telemetryPath: string;
+  dispatcherLabel?: string;
+  transcript?: CanonicalTranscript;
+  enforce?: EnforceLevel;
+  world?: CovenantInput['world'];
+};
+
 /**
  * Dispatch covenants for a stdin payload.
  *
@@ -207,15 +229,7 @@ export function matchRegistrations(
  * surfaces the telemetry `event` the wrapper recorded, never a recomputed one — the valve
  * is impure, and a recompute would consult it twice for one verdict.
  */
-export async function dispatchCovenants(spec: {
-  stdinPayload: string;
-  registrations: CovenantRegistration[];
-  telemetryPath: string;
-  dispatcherLabel?: string;
-  transcript?: CanonicalTranscript;
-  enforce?: EnforceLevel;
-  world?: CovenantInput['world'];
-}): Promise<DispatchOutcome> {
+export async function dispatchCovenants(spec: DispatchCovenantsSpec): Promise<DispatchOutcome> {
   const blockedByDispatcher = (): DispatchOutcome => {
     appendRecordFailOpen(spec.telemetryPath, {
       event: 'blocked',

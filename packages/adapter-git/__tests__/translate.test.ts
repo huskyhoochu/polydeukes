@@ -5,7 +5,7 @@ import {
   STAGED_DELETE,
   STAGED_WRITE,
   type StagedChange,
-} from '../src/index.ts';
+} from '../src/staged.ts';
 
 const addedChange: StagedChange = {
   path: 'lib/added.ts',
@@ -30,7 +30,7 @@ const deletedChange: StagedChange = {
 
 describe('covenantInputFromStagedChanges — toolCalls', () => {
   it('emits STAGED_WRITE for an added file, carrying the path as file_path', () => {
-    const result = covenantInputFromStagedChanges([addedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [addedChange] });
 
     expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_WRITE, args: { file_path: 'lib/added.ts' } },
@@ -39,7 +39,7 @@ describe('covenantInputFromStagedChanges — toolCalls', () => {
 
   it('emits STAGED_WRITE for a modified file', () => {
     // A modification is a write, not a delete.
-    const result = covenantInputFromStagedChanges([modifiedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [modifiedChange] });
 
     expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_WRITE, args: { file_path: 'lib/modified.ts' } },
@@ -47,7 +47,7 @@ describe('covenantInputFromStagedChanges — toolCalls', () => {
   });
 
   it('emits STAGED_DELETE for a deleted file', () => {
-    const result = covenantInputFromStagedChanges([deletedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [deletedChange] });
 
     expect(result.toolCalls.map((call) => ({ name: call.name, args: call.args }))).toEqual([
       { name: STAGED_DELETE, args: { file_path: 'lib/removed.ts' } },
@@ -57,7 +57,9 @@ describe('covenantInputFromStagedChanges — toolCalls', () => {
   it('emits exactly one toolCall per change, in input order, each with its own evidence', () => {
     // Full-element equality, not per-field checks: it is what pins each change's evidence
     // to its own call, so one change's evidence cannot be laundered onto a sibling.
-    const result = covenantInputFromStagedChanges([addedChange, deletedChange, modifiedChange]);
+    const result = covenantInputFromStagedChanges({
+      changes: [addedChange, deletedChange, modifiedChange],
+    });
 
     expect(result.toolCalls).toEqual([
       {
@@ -88,7 +90,7 @@ describe('covenantInputFromStagedChanges — nested evidence', () => {
   it('tags an added file as create evidence on its own call', () => {
     // A creation tagged modify would make an immutable discipline break on first
     // authoring.
-    const result = covenantInputFromStagedChanges([addedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [addedChange] });
 
     expect(result.toolCalls[0].fileChange).toEqual({
       kind: 'create',
@@ -100,7 +102,7 @@ describe('covenantInputFromStagedChanges — nested evidence', () => {
   it('tags a modified file as modify evidence with the HEAD blob as pre', () => {
     // The delta family reads pre as the forgiven baseline, so swapping pre and post would
     // forgive the new violation and judge the old content instead.
-    const result = covenantInputFromStagedChanges([modifiedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [modifiedChange] });
 
     expect(result.toolCalls[0].fileChange).toEqual({
       kind: 'modify',
@@ -115,14 +117,14 @@ describe('covenantInputFromStagedChanges — session-less collections', () => {
   it('fixes subagentSpawns and userMessages to empty arrays', () => {
     // The commit surface has no session, so the two collections must be honestly empty —
     // never filled with a placeholder, and never omitted (parseInput rejects that).
-    const result = covenantInputFromStagedChanges([addedChange, modifiedChange]);
+    const result = covenantInputFromStagedChanges({ changes: [addedChange, modifiedChange] });
 
     expect(result.subagentSpawns).toEqual([]);
     expect(result.userMessages).toEqual([]);
   });
 
   it('returns empty collections for an empty change list', () => {
-    const result = covenantInputFromStagedChanges([]);
+    const result = covenantInputFromStagedChanges({ changes: [] });
 
     expect(result).toEqual({
       toolCalls: [],
@@ -137,7 +139,9 @@ describe('covenantInputFromStagedChanges — core protocol compatibility', () =>
     // IR neutrality: this adapter must feed the core the same shape the claude-code
     // adapter does. Parsing alone is not enough — the parsed value must deep-equal what
     // was built, or a lossy round-trip would pass.
-    const built = covenantInputFromStagedChanges([addedChange, deletedChange, modifiedChange]);
+    const built = covenantInputFromStagedChanges({
+      changes: [addedChange, deletedChange, modifiedChange],
+    });
 
     const roundTripped = parseInput(JSON.stringify(built));
 

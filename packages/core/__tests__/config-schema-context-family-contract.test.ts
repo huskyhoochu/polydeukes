@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defineConfig } from '../src/index.ts';
+import { defineConfig } from '../src/config.ts';
 import { validate, validLanguages } from './helpers.ts';
 
 // Schema ⟺ defineConfig equivalence for the context-family discipline entry

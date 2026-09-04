@@ -11,7 +11,7 @@ import {
   readRecords,
   runGain,
   type TelemetryRecord,
-} from '../src/index.ts';
+} from '../src/telemetry.ts';
 
 const baseRecord: TelemetryRecord = {
   timestamp: '2026-07-03T12:00:00Z',

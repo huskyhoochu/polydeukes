@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
 import { compileDisciplineRegistrations } from '@polydeukes/covenant';
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from '../src/index.ts';
+import { loadConfig } from '../src/load-config.ts';
 import { sessionPreStateReader } from '../src/pre-state-reader.ts';
 
 // The live root-config contract: this repository's own config, loaded for real through
@@ -18,7 +18,7 @@ import { sessionPreStateReader } from '../src/pre-state-reader.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 
-const { config } = loadConfig(REPO_ROOT);
+const { config } = loadConfig({ rootDir: REPO_ROOT });
 
 /** The live entry under test — throws loud if the config no longer carries it. */
 function recoveryEntry(): DisciplineEntry {

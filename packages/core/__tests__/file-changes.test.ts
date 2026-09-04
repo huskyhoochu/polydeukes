@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 // CovenantInput transports agent-neutral pre/post evidence, carried per tool call as the
 // discriminated `fileChange?` element. The absence of a top-level `fileChanges` field is part
 // of the contract and is pinned by file-change-union.test.ts.
-import { type CovenantInput, type FileChange, parseInput } from '../src/index.ts';
+import { type CovenantInput, type FileChange, parseInput } from '../src/protocol.ts';
 
 // Evidence covering both kinds: create (no prior file) and modify (existing baseline).
 

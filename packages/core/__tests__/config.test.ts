@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // testCmd bodies are deliberately fake shell commands (`fake-runner`, never a real test
 // runner's name) because the core never runs the command a `testCmd` carries.

@@ -13,7 +13,7 @@ import {
   parseRecordLine,
   runGain,
   type TelemetryRecord,
-} from '../src/index.ts';
+} from '../src/telemetry.ts';
 
 // subject is the changed protected ENTRY — the config element, never a file underneath it,
 // so the attribution join stays on the same granularity the dispatcher records.

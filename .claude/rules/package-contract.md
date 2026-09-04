@@ -30,15 +30,22 @@ to need a third skeleton is split wrong.
 
 ## Executor verbs
 
-- One spec object in, one result out. Two or more positional parameters break the shape.
+- One spec object in, one named result out. The parameter list is exactly one parameter typed
+  `<Verb>Spec`; there are no positional parameters, not even one — a verb that takes a bare
+  `rootDir: string` is indistinguishable from a core function, and the spec's field name is
+  what says what the value means at the call site.
 - The result is a core-named type, or the package's own `<Verb>Verdict` (when it carries the
-  judgment vocabulary — passed/blocked/…) or `<Verb>Outcome` (otherwise). An anonymous object
-  literal as a return type breaks the shape.
+  judgment vocabulary — passed/blocked/…) or `<Verb>Outcome` (otherwise), bare, inside
+  `Promise<…>`, or as a `|` union of named types. An anonymous object literal, a function type,
+  or an `&` intersection as a return type breaks the shape — name it.
 - The input type is `<Verb>Spec`. `Options` and `Params` are not spec names.
+- Check ③ in `package-contract.test.ts` reads every executor barrel verb's signature as text
+  and holds this shape; core is the vocabulary skeleton and is outside its domain.
 - **Types are contract.** Internal concept types (`Item`, `World`, `PairedItems`) stay inside.
 - **Spec ingredients** are the only constants a contract carries: values used to fill a field of
   an exported spec type (`SHELL_TOOLS` fills `CompileDisciplinesSpec.shellTools`). A constant no
-  spec consumes is implementation.
+  spec consumes is implementation — check ④ holds the text approximation: every constant an
+  executor barrel carries is named in a sibling package's `src/`.
 
 ## Entry points
 
@@ -61,7 +68,14 @@ keeps `createRequire` resolution alive.
   fail-closed proof is that a dist missing one module throws on the barrel import, before any
   assembly. Keep re-exports static.
 - The barrel is the **consumer contract, not the test surface**. A package's own tests import
-  `../src/<module>.ts` directly. There is no second barrel (`internal.ts`).
+  `../src/<module>.ts` directly, never `../src/index.ts` in any spelling — check ⑥ in
+  `package-contract.test.ts` holds that for every `__tests__` tree, and the
+  `tests-import-modules` discipline advises on the edit. There is no second barrel
+  (`internal.ts`).
+- A symbol has one entry point. The umbrella's `./claude-code` carries the session hook verb
+  and its spec type, and `.` does not repeat them; two entry points may re-export the same
+  module only when they carry different names from it. A barrel never re-exports another
+  barrel.
 - The umbrella is not a facade: it re-exports no sibling verbs. From `@polydeukes/*` only
   `export type` (the `loadConfig` result type `ResolvedConfig` is the one case).
 - Adding a name to a barrel widens the contract. The reason must be a sibling package, the

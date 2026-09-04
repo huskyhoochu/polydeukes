@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The judges' existence proof is the covenant package import itself. A dist missing ONE
 // barrel-referenced module fails each surface closed at assembly: exit 2, ONE blocked row
 // under the surface's own label, and the recovery command on stderr.
-import { runClaudeCodeHook, runCovenantCheck } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
   type CheckRepo,

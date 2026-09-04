@@ -203,7 +203,7 @@ describe('robustness — malformed input reduces evidence, never throws', () => 
     const missingPath = join(dir, 'does-not-exist.jsonl');
     try {
       // Calling it directly IS the no-throw assertion — a raise fails the test outright.
-      expect(transcriptFromJsonlFile(missingPath)).toBeUndefined();
+      expect(transcriptFromJsonlFile({ path: missingPath })).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -216,7 +216,7 @@ describe('robustness — malformed input reduces evidence, never throws', () => 
     const emptyPath = join(dir, 'empty.jsonl');
     try {
       writeFileSync(emptyPath, '');
-      const transcript = transcriptFromJsonlFile(emptyPath);
+      const transcript = transcriptFromJsonlFile({ path: emptyPath });
 
       expect(transcript).toBeDefined();
       expect(transcript?.findUserMessages()).toEqual([]);

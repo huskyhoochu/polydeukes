@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // with no transcript there is no transcript-mod registration and no witness valve,
 // leaving self-mod, shell-mod and the discipline compiler's output — the smallest
 // assembly that still answers.
-import { runClaudeCodeHook } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
   distWithout as sharedDistWithout,

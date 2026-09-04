@@ -11,16 +11,16 @@ of virtual applies — and the core consumed both without a single changed line.
 
 ## What lives here
 
-- **Change collection, three observations** — `collectStagedChanges(repoRoot)` reads the staging
-  area; `collectWorktreeChanges(repoRoot)` reads the working tree (`post` from disk, untracked
-  non-ignored files as `added`); `collectRangeChanges(repoRoot, '<base>..<head>')` reads two refs
-  (`...` resolves the base to the merge-base). All three return the same shape, with `--no-renames`
-  forced on, so a rename is judged as a deletion plus an addition (a `git mv` of a protected file
-  must not slip through as one opaque rename entry). `pre` comes from the HEAD blob and `post` from
-  the STAGED blob — never the worktree, which may have diverged after `git add`. A binary blob (NUL
-  heuristic) yields null content instead of lossily decoded bytes, and the unborn first commit
-  narrows to all-added instead of throwing.
-- **Pure translation** — `covenantInputFromStagedChanges(changes)` folds the collected changes into
+- **Change collection, three observations** — `collectStagedChanges({ repoRoot })` reads the staging
+  area; `collectWorktreeChanges({ repoRoot })` reads the working tree (`post` from disk, untracked
+  non-ignored files as `added`); `collectRangeChanges({ repoRoot, range: '<base>..<head>' })` reads
+  two refs (`...` resolves the base to the merge-base). All three return the same shape, with
+  `--no-renames` forced on, so a rename is judged as a deletion plus an addition (a `git mv` of a
+  protected file must not slip through as one opaque rename entry). `pre` comes from the HEAD blob
+  and `post` from the STAGED blob — never the worktree, which may have diverged after `git add`. A
+  binary blob (NUL heuristic) yields null content instead of lossily decoded bytes, and the unborn
+  first commit narrows to all-added instead of throwing.
+- **Pure translation** — `covenantInputFromStagedChanges({ changes })` folds the collected changes into
   one `CovenantInput`: one tool call per change under the adapter-owned names
   `staged-write`/`staged-delete`, each carrying its own discriminated-union evidence (`fileChange`:
   `create`/`modify`/`delete` — deletion is first-class, its optional `pre` baseline dropping only
@@ -33,7 +33,7 @@ of virtual applies — and the core consumed both without a single changed line.
   machine-readable listings, and only a regular-file mode is a file's text: a symlink's blob is
   the link target and a gitlink names a commit, so both answer absence. Absence is `undefined`
   for the declaration's `supply` policy to dispose of; every git failure throws, fail-closed.
-- **The adapter's own vocabulary** — `resolveGitAdapterSettings(namespace)` validates this adapter's
+- **The adapter's own vocabulary** — `resolveGitAdapterSettings({ namespace })` validates this adapter's
   config namespace (`adapters.git`): `enforce: block | advise`, the commit surface's enforcement
   level, and `protectedPaths`, the commit surface's additive protection scope — entries judged at
   commit time on top of the common list, which the session surface never reads (as the level is the

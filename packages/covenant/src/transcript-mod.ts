@@ -12,7 +12,7 @@
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import type { CovenantRegistration } from './dispatch.js';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
 import {
   pathCandidates,
   pathSegments,
@@ -295,7 +295,7 @@ export type TranscriptModRegistrationSpec = {
  */
 export function transcriptModRegistration(
   spec: TranscriptModRegistrationSpec,
-): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
+): MetaCovenantRegistration {
   const judgeSpec: TranscriptModificationSpec = {
     transcriptPath: spec.transcriptPath,
     home: spec.home,

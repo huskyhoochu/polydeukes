@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Each test builds a real throwaway git repo and writes its own tmp config, so no
 // protected path of THIS repository is ever referenced. The fixture dists are symlink
 // mirrors of the real build living INSIDE the throwaway repo, so they die with it.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import {
   type CheckRepo,
   createCheckRepo,

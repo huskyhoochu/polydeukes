@@ -87,6 +87,15 @@ const KEPT_EXPORTS: readonly string[] = [
   'ConfigFault',
   'DeclarationVerdict',
   'SuppliedWorld',
+  // every verb's spec type and named result
+  'CompileDeclarationSpec',
+  'JudgeDeclarationSpec',
+  'WitnessOpensSpec',
+  'WorldsFromInputSpec',
+  'DispatchCovenantsSpec',
+  'RunCovenantVerdict',
+  'WitnessPredicate',
+  'MetaCovenantRegistration',
 ];
 
 /**

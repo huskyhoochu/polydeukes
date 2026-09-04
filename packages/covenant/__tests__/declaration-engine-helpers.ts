@@ -23,7 +23,7 @@ export function isConfigFault(result: CompiledDeclaration | ConfigFault): result
 
 /** Compile a declaration the contract admits; a fault here is a test-setup error. */
 export function compileOrFail(decl: AlgebraDeclaration): CompiledDeclaration {
-  const compiled = compileDeclaration(decl);
+  const compiled = compileDeclaration({ declaration: decl });
   if (isConfigFault(compiled)) {
     throw new Error(`unexpected config fault at ${compiled.location}: ${compiled.reason}`);
   }
@@ -32,7 +32,7 @@ export function compileOrFail(decl: AlgebraDeclaration): CompiledDeclaration {
 
 /** Compile and judge in one step. */
 export function judge(decl: AlgebraDeclaration, world: World): DeclarationVerdict {
-  return judgeDeclaration(compileOrFail(decl), world);
+  return judgeDeclaration({ compiled: compileOrFail(decl), world });
 }
 
 /**

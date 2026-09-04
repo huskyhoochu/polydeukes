@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import type { DispatchOutcome, TelemetryEvent } from '../src/index.ts';
+import type { DispatchOutcome } from '../src/protocol.ts';
+import type { TelemetryEvent } from '../src/telemetry.ts';
 
 // `DispatchOutcome` is the protocol-level shape of one dispatch: a blocking exit code, and one
 // entry per judged covenant carrying the telemetry word recorded for it. Type-only — no dist,

@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from '../src/exit-codes.ts';
 // Imports from the package entry point — the same surface `@polydeukes/core` publishes.
 import {
   type CovenantInput,
   type CovenantVerdict,
-  EXIT_BREAK_BLOCKING,
-  EXIT_BREAK_NON_BLOCKING,
-  EXIT_UPHOLD,
   parseInput,
   verdictToExitCode,
-} from '../src/index.ts';
+} from '../src/protocol.ts';
 
 // A minimal agent-neutral IR. The tool names here are deliberately generic: concrete
 // agent and tool literals are *values* an adapter fills in, never the core's *vocabulary*.

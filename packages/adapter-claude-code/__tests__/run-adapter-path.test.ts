@@ -6,7 +6,7 @@ import { appendRecord, parseInput, readRecords, runGain } from '@polydeukes/core
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // Imported from the package entry point rather than the module itself, so this exercises
 // the same surface `@polydeukes/adapter-claude-code` publishes.
-import { runAdapterPath } from '../src/index.ts';
+import { runAdapterPath } from '../src/run-adapter-path.ts';
 import type { ClaudePreToolUsePayload } from '../src/up-translate.ts';
 
 let tmpRoot: string;

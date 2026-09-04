@@ -11,7 +11,7 @@ import {
   parseRecordLine,
   runGain,
   type TelemetryRecord,
-} from '../src/index.ts';
+} from '../src/telemetry.ts';
 
 const advisedRecord: TelemetryRecord = {
   timestamp: '2026-07-23T12:00:00Z',

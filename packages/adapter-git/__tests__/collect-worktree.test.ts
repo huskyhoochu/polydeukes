@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The worktree collector: pre = `HEAD:<path>`, post = the bytes on disk, untracked
 // non-ignored files included. It reuses the staged collector's `StagedChange[]` shape so
 // the translation core needs no branch of its own.
-import { collectWorktreeChanges, type StagedChange } from '../src/index.ts';
+import { collectWorktreeChanges } from '../src/collect.ts';
+import type { StagedChange } from '../src/staged.ts';
 
 // Real throwaway git repositories: the contract is defined against actual `git diff HEAD`
 // and `git ls-files --others` output plus disk reads.
@@ -55,7 +56,7 @@ describe('collectWorktreeChanges — modified file', () => {
     git('add', 'a.txt');
     write('a.txt', 'on disk\n');
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'a.txt');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'a.txt');
 
     expect(change).toEqual({
       path: 'a.txt',
@@ -73,7 +74,7 @@ describe('collectWorktreeChanges — untracked file', () => {
     commitFile('base.txt', 'base\n');
     write('fresh.txt', 'brand new\n');
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'fresh.txt');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'fresh.txt');
 
     expect(change).toEqual({
       path: 'fresh.txt',
@@ -88,7 +89,9 @@ describe('collectWorktreeChanges — untracked file', () => {
     commitFile('.gitignore', 'ignored.txt\n');
     write('ignored.txt', 'noise\n');
 
-    expect(changeFor(collectWorktreeChanges(repoRoot), 'ignored.txt')).toBeUndefined();
+    expect(
+      changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'ignored.txt'),
+    ).toBeUndefined();
   });
 });
 
@@ -98,7 +101,7 @@ describe('collectWorktreeChanges — file deleted on disk', () => {
     commitFile('doomed.txt', 'to be removed\n');
     unlinkSync(join(repoRoot, 'doomed.txt'));
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'doomed.txt');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'doomed.txt');
 
     expect(change).toEqual({
       path: 'doomed.txt',
@@ -116,7 +119,7 @@ describe('collectWorktreeChanges — binary content', () => {
     commitFile('base.txt', 'base\n');
     writeFileSync(join(repoRoot, 'blob.bin'), Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]));
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'blob.bin');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'blob.bin');
 
     expect(change?.status).toBe('added');
     expect(change?.post).toBeNull();
@@ -131,7 +134,7 @@ describe('collectWorktreeChanges — rename on disk surfaces as delete + add', (
     commitFile('protected-here.txt', 'locked content\n');
     renameSync(join(repoRoot, 'protected-here.txt'), join(repoRoot, 'elsewhere.txt'));
 
-    const changes = collectWorktreeChanges(repoRoot);
+    const changes = collectWorktreeChanges({ repoRoot: repoRoot });
 
     expect(changeFor(changes, 'protected-here.txt')).toEqual({
       path: 'protected-here.txt',
@@ -157,7 +160,7 @@ describe('collectWorktreeChanges — unborn HEAD', () => {
     git('add', 'one.txt');
     write('two.txt', 'two\n');
 
-    const changes = collectWorktreeChanges(repoRoot);
+    const changes = collectWorktreeChanges({ repoRoot: repoRoot });
 
     expect(changeFor(changes, 'one.txt')).toEqual({
       path: 'one.txt',
@@ -178,7 +181,7 @@ describe('collectWorktreeChanges — clean worktree', () => {
   it('returns an empty array when disk matches HEAD', () => {
     commitFile('committed.txt', 'content\n');
 
-    expect(collectWorktreeChanges(repoRoot)).toEqual([]);
+    expect(collectWorktreeChanges({ repoRoot: repoRoot })).toEqual([]);
   });
 });
 
@@ -191,7 +194,7 @@ describe('collectWorktreeChanges — file over 1MB on disk', () => {
     commitFile('big.txt', 'small\n');
     write('big.txt', twoMegabytes);
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'big.txt');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'big.txt');
 
     expect(change?.status).toBe('modified');
     expect(change?.post).toBe(twoMegabytes);
@@ -206,7 +209,7 @@ describe('index-only file removed from disk (status AD)', () => {
     git('add', 'n.txt');
     unlinkSync(join(repoRoot, 'n.txt'));
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'n.txt');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'n.txt');
     expect(change).toEqual({ path: 'n.txt', status: 'deleted', pre: null, post: null });
   });
 
@@ -215,7 +218,7 @@ describe('index-only file removed from disk (status AD)', () => {
     git('add', 'f.txt');
     unlinkSync(join(repoRoot, 'f.txt'));
 
-    expect(collectWorktreeChanges(repoRoot)).toEqual([
+    expect(collectWorktreeChanges({ repoRoot: repoRoot })).toEqual([
       { path: 'f.txt', status: 'deleted', pre: null, post: null },
     ]);
   });
@@ -226,7 +229,7 @@ describe('an unreadable path on disk', () => {
     commitFile('base.txt', 'base\n');
     symlinkSync('/nonexistent/target', join(repoRoot, 'link'));
 
-    const change = changeFor(collectWorktreeChanges(repoRoot), 'link');
+    const change = changeFor(collectWorktreeChanges({ repoRoot: repoRoot }), 'link');
     expect(change).toEqual({ path: 'link', status: 'added', pre: null, post: null });
   });
 });
@@ -237,7 +240,7 @@ describe('a ref that also names a file', () => {
     write('HEAD', 'not a ref\n');
     write('base.txt', 'changed\n');
 
-    const changes = collectWorktreeChanges(repoRoot);
+    const changes = collectWorktreeChanges({ repoRoot: repoRoot });
     expect(changeFor(changes, 'base.txt')?.post).toBe('changed\n');
     expect(changeFor(changes, 'HEAD')?.status).toBe('added');
   });

@@ -77,8 +77,8 @@ describe('evaluatePrecedent — tool evidence requires a successful call', () =>
       ]),
     ]);
 
-    expect(evaluatePrecedent({ tool: MCP_PATTERN }, transcript)).toBe(false);
-    expect(evaluatePrecedent({ tool: SHELL_PATTERN }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { tool: MCP_PATTERN }, transcript })).toBe(false);
+    expect(evaluatePrecedent({ evidence: { tool: SHELL_PATTERN }, transcript })).toBe(true);
   });
 });
 
@@ -100,8 +100,8 @@ describe('evaluatePrecedent — subagent evidence requires a successful spawn', 
       ]),
     ]);
 
-    expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(false);
-    expect(evaluatePrecedent({ subagent: OTHER_SPAWN_KIND }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { subagent: SPAWN_KIND }, transcript })).toBe(false);
+    expect(evaluatePrecedent({ evidence: { subagent: OTHER_SPAWN_KIND }, transcript })).toBe(true);
   });
 
   it('opens when a rejected spawn is followed by a successful spawn of the same kind', () => {
@@ -118,6 +118,6 @@ describe('evaluatePrecedent — subagent evidence requires a successful spawn', 
       resultEntry('u-2', [okResult('toolu_02', 'the subagent report')]),
     ]);
 
-    expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { subagent: SPAWN_KIND }, transcript })).toBe(true);
   });
 });

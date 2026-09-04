@@ -5,7 +5,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The third telemetry event was renamed 'bypassed' → 'witnessed'. The migration seam is
 // one-way and read-only: writes always carry the new name, reads still accept the legacy
 // 'bypassed' field so existing log rows stay countable.
-import { formatRecordLine, parseRecordLine, runGain, type TelemetryRecord } from '../src/index.ts';
+import {
+  formatRecordLine,
+  parseRecordLine,
+  runGain,
+  type TelemetryRecord,
+} from '../src/telemetry.ts';
 
 // The legacy lines are handwritten raw TSV — formatRecordLine can never emit the old name.
 

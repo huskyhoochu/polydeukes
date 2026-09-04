@@ -14,7 +14,7 @@ import {
   readRecords,
   runGain,
   type TelemetryRecord,
-} from '../src/index.ts';
+} from '../src/telemetry.ts';
 
 // Labels, subjects, and the witness payload are fixture values the row transports verbatim.
 const LABEL = 'db-only-under-knowledge';

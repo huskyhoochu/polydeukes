@@ -5,6 +5,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join } from 'node:path';
+import type { ChannelReader } from '@polydeukes/core';
 
 /** {@link sessionChannelReader} input — the session's transcript, when the host named one. */
 export type SessionChannelReaderSpec = { transcriptPath?: string };
@@ -31,9 +32,7 @@ const META_SUFFIX = '.meta.json';
  * channel at all. A record that will not parse shrinks the evidence rather than poisoning
  * it — failing the whole channel would let one corrupt file erase a spawn that happened.
  */
-export function sessionChannelReader(
-  spec: SessionChannelReaderSpec,
-): (kind: string) => string | undefined {
+export function sessionChannelReader(spec: SessionChannelReaderSpec): ChannelReader {
   return (kind) => {
     if (kind !== SIDECAR) return undefined;
     const { transcriptPath } = spec;

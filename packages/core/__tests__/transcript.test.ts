@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 // Imported through the package entry point — the same surface `@polydeukes/core` publishes.
-import type { CovenantInput } from '../src/index.ts';
-import { noopTranscript, transcriptFromInput } from '../src/index.ts';
+import type { CovenantInput } from '../src/protocol.ts';
+import { noopTranscript, transcriptFromInput } from '../src/transcript.ts';
 
 /** Build a CovenantInput with the given spawns and user-message texts. */
 function inputWith(subagentSpawns: { kind: string }[], userMessageTexts: string[]): CovenantInput {

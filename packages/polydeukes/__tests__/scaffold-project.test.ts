@@ -102,7 +102,7 @@ describe('generated config — valid by construction', () => {
     // passes with no telemetry row.
     scaffoldProject(projectRoot);
 
-    const { config } = loadConfig(projectRoot);
+    const { config } = loadConfig({ rootDir: projectRoot });
     expect(config.protectedPaths).toEqual(expect.arrayContaining(MINIMUM_PROTECTED_PATHS));
   });
 
@@ -112,7 +112,7 @@ describe('generated config — valid by construction', () => {
     // the protection list, so the first block would freeze the project for good.
     scaffoldProject(projectRoot);
 
-    const { config } = loadConfig(projectRoot);
+    const { config } = loadConfig({ rootDir: projectRoot });
     expect(config.witness).toBeDefined();
   });
 });
@@ -129,7 +129,7 @@ describe('config existence looks at all three discovery candidates', () => {
     scaffoldProject(projectRoot);
 
     expect(existsSync(join(projectRoot, CONFIG_CANONICAL))).toBe(false);
-    expect(loadConfig(projectRoot).configPath).toBe(CONFIG_YML);
+    expect(loadConfig({ rootDir: projectRoot }).configPath).toBe(CONFIG_YML);
     expect(read('.gitignore').split('\n')).toContain(GITIGNORE_LINE);
   });
 
@@ -142,7 +142,7 @@ describe('config existence looks at all three discovery candidates', () => {
     scaffoldProject(projectRoot);
 
     expect(existsSync(join(projectRoot, CONFIG_CANONICAL))).toBe(false);
-    expect(loadConfig(projectRoot).configPath).toBe(CONFIG_JSON);
+    expect(loadConfig({ rootDir: projectRoot }).configPath).toBe(CONFIG_JSON);
   });
 });
 
@@ -258,7 +258,7 @@ describe('the generated config points an editor at the shipped schema', () => {
     // promises has to survive it, with no dropped header block and no leading blank line.
     scaffoldProject(projectRoot);
 
-    expect(() => loadConfig(projectRoot)).not.toThrow();
+    expect(() => loadConfig({ rootDir: projectRoot })).not.toThrow();
     expect(read(CONFIG_CANONICAL).split('\n')[0]).toMatch(/^# Polydeukes protection policy/);
   });
 
@@ -272,8 +272,8 @@ describe('the generated config points an editor at the shipped schema', () => {
     installSchemaBeside(projectRoot);
     scaffoldProject(projectRoot);
 
-    expect(() => loadConfig(projectRoot)).not.toThrow();
-    expect(loadConfig(projectRoot).config.protectedPaths).toEqual(
+    expect(() => loadConfig({ rootDir: projectRoot })).not.toThrow();
+    expect(loadConfig({ rootDir: projectRoot }).config.protectedPaths).toEqual(
       expect.arrayContaining(MINIMUM_PROTECTED_PATHS),
     );
   });
@@ -298,7 +298,7 @@ describe('the generated config shows the promotion ladder as comments', () => {
     for (const rung of LADDER_RUNGS) {
       expect(text, rung).toContain(rung);
     }
-    const { config } = loadConfig(projectRoot);
+    const { config } = loadConfig({ rootDir: projectRoot });
     expect(config.disciplines).toBeUndefined();
   });
 
@@ -319,7 +319,7 @@ describe('the generated config shows the promotion ladder as comments', () => {
       .join('\n');
     writeFileSync(join(projectRoot, CONFIG_CANONICAL), `${text.slice(0, start)}${ladder}\n`);
 
-    const { config } = loadConfig(projectRoot);
+    const { config } = loadConfig({ rootDir: projectRoot });
 
     // Resolution splits drafts from judged entries, so the three rungs land as one draft
     // plus two judged entries.

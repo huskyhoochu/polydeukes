@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { type FailMode, failModeToExitCode, resolveFailMode } from '../src/fail-policy.ts';
 // The EXIT constants are reused from the package entry point rather than restated as
 // literals, binding the mapper to the exit-code semantics core publishes.
-import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '../src/index.ts';
+import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '../src/exit-codes.ts';
+import { type FailMode, failModeToExitCode, resolveFailMode } from '../src/fail-policy.ts';
 
 // Each row is one registered FailureKind and the FailMode it must resolve to.
 const policyTable: { kind: string; expectedMode: FailMode }[] = [

@@ -161,6 +161,12 @@ function witnessOpens(witness: () => boolean): boolean {
   }
 }
 
+/** What one wrapped judgment answers — the final exit code and the telemetry event recorded. */
+export type RunCovenantVerdict = {
+  exitCode: typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;
+  event: TelemetryEvent;
+};
+
 /**
  * Run a covenant body through the wrapper.
  *
@@ -179,9 +185,7 @@ function witnessOpens(witness: () => boolean): boolean {
  * via {@link appendRecordFailOpen}: a telemetry failure never alters the verdict and never
  * throws. The gate closes; the measurement stays open.
  */
-export async function runCovenant(
-  spec: RunCovenantSpec,
-): Promise<{ exitCode: typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING; event: TelemetryEvent }> {
+export async function runCovenant(spec: RunCovenantSpec): Promise<RunCovenantVerdict> {
   const outcome = await runBody(spec.body);
   // A code the outcome does not carry as a number is uninterpretable, and `null` is the
   // table's existing cell for exactly that — no new row in translateExitCode.

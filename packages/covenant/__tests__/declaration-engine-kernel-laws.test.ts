@@ -132,7 +132,7 @@ function compilePaired(): CompiledDeclaration {
 }
 
 function engineAnswer(compiled: CompiledDeclaration, world: World): Answer {
-  const verdict = judgeDeclaration(compiled, world);
+  const verdict = judgeDeclaration({ compiled: compiled, world: world });
   if (verdict.kind === 'pass') return { holds: true, witnesses: [] };
   if (verdict.kind !== 'broken') throw new Error(`unexpected verdict ${JSON.stringify(verdict)}`);
   return { holds: false, witnesses: verdict.breaks.flatMap((b) => b.witnesses) };

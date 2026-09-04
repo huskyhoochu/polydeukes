@@ -11,7 +11,7 @@ one-way, through the core alone.
 
 ## What lives here
 
-- **`loadConfig(rootDir)`** — config discovery. Exactly one root data config (a
+- **`loadConfig({ rootDir })`** — config discovery. Exactly one root data config (a
   `polydeukes.config` file in yaml, yml, or json form) directly under the given root, parsed with
   a safe schema (config data is never executable) and validated by the core's `defineConfig()`.
   Every failure branch throws — silent defaults are forbidden — and the discovered file attaches

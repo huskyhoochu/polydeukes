@@ -33,6 +33,9 @@ export type StagedChange = {
   post: string | null;
 };
 
+/** {@link covenantInputFromStagedChanges} input — the changes to fold. */
+export type CovenantInputFromStagedChangesSpec = { changes: StagedChange[] };
+
 /**
  * Fold staged changes into one {@link CovenantInput} (pure).
  *
@@ -44,7 +47,10 @@ export type StagedChange = {
  * The commit surface has no session, so `subagentSpawns`/`userMessages` are honestly
  * empty.
  */
-export function covenantInputFromStagedChanges(changes: StagedChange[]): CovenantInput {
+export function covenantInputFromStagedChanges(
+  spec: CovenantInputFromStagedChangesSpec,
+): CovenantInput {
+  const { changes } = spec;
   const input: CovenantInput = {
     toolCalls: [],
     subagentSpawns: [],

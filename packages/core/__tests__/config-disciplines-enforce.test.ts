@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 // A judged `disciplines:` entry may carry `enforce: 'block' | 'advise'` — the middle rung
 // of the promotion ladder draft → advise → block. The enumeration is closed and applies to
 // judged entries only: a draft never judges, so a level on one is dead data.
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // Entries stay plain objects routed through the `unknown` seam so that every assertion
 // below is a runtime validation failure rather than a compile failure.

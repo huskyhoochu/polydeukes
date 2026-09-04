@@ -10,11 +10,14 @@
  */
 
 export {
+  type CompileDeclarationSpec,
   type CompiledDeclaration,
   type ConfigFault,
   compileDeclaration,
   type DeclarationVerdict,
+  type JudgeDeclarationSpec,
   judgeDeclaration,
+  type WitnessOpensSpec,
   type World,
   witnessOpens,
 } from './declaration-engine.js';
@@ -22,10 +25,17 @@ export {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
   type SuppliedWorld,
+  type WorldsFromInputSpec,
   worldsFromInput,
 } from './discipline.js';
-export { type CovenantRegistration, dispatchCovenants } from './dispatch.js';
-export { type RunCovenantSpec, runCovenant } from './run-covenant.js';
+export {
+  type CovenantRegistration,
+  type DispatchCovenantsSpec,
+  dispatchCovenants,
+  type MetaCovenantRegistration,
+  type WitnessPredicate,
+} from './dispatch.js';
+export { type RunCovenantSpec, type RunCovenantVerdict, runCovenant } from './run-covenant.js';
 export { type SelfModRegistrationSpec, selfModRegistration } from './self-mod.js';
 export { type ShellModRegistrationSpec, shellModRegistration } from './shell-mod.js';
 export {

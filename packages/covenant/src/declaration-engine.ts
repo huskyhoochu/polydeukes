@@ -229,12 +229,18 @@ function compileRegexList(
   return compiled;
 }
 
+/** `compileDeclaration` input — the shape-validated declaration to resolve. */
+export type CompileDeclarationSpec = { declaration: AlgebraDeclaration };
+
 /**
  * Resolve a shape-validated declaration into something judgeable, or answer the first thing
  * wrong with it: a step outside the registry, an argument outside a step's closed keys, an
  * uncompilable expression, or a paired extraction where a single one belongs.
  */
-export function compileDeclaration(decl: AlgebraDeclaration): CompiledDeclaration | ConfigFault {
+export function compileDeclaration(
+  spec: CompileDeclarationSpec,
+): CompiledDeclaration | ConfigFault {
+  const decl = spec.declaration;
   const pipelines = new Map<string, CompiledPipeline>();
   const extractFault = compileExtract(decl.extract, pipelines, `${decl.discipline} extract`);
   if (extractFault !== undefined) return extractFault;
@@ -500,6 +506,9 @@ export function scopeAdmits(compiled: CompiledDeclaration, world: World): boolea
   return inScope(compiled.scope, world);
 }
 
+/** `judgeDeclaration` input — one compiled declaration and the world it is judged against. */
+export type JudgeDeclarationSpec = { compiled: CompiledDeclaration; world: World };
+
 /**
  * Judge one compiled declaration against one world.
  *
@@ -508,7 +517,8 @@ export function scopeAdmits(compiled: CompiledDeclaration, world: World): boolea
  * break per entry that does not hold. The first supply failure ends the judgment: a
  * partially read world produces no partial verdict.
  */
-export function judgeDeclaration(compiled: CompiledDeclaration, world: World): DeclarationVerdict {
+export function judgeDeclaration(spec: JudgeDeclarationSpec): DeclarationVerdict {
+  const { compiled, world } = spec;
   if (!inScope(compiled.scope, world)) return { kind: 'not-applicable', reason: 'scope' };
 
   const extractor = new Extractor(compiled.pipelines, compiled.supply, world);
@@ -526,13 +536,17 @@ export function judgeDeclaration(compiled: CompiledDeclaration, world: World): D
   return breaks.length === 0 ? { kind: 'pass' } : { kind: 'broken', breaks };
 }
 
+/** `witnessOpens` input — one compiled declaration and the world its witness is asked about. */
+export type WitnessOpensSpec = { compiled: CompiledDeclaration; world: World };
+
 /**
  * Whether the declaration's witness condition holds for this world — the valve that stands
  * after the verdict. It is closed unless every witness entry holds: a declaration with no
  * witness block, a world outside the scope, and a source the witness cannot read all leave
  * it shut, so the valve opens only on a condition that was actually met.
  */
-export function witnessOpens(compiled: CompiledDeclaration, world: World): boolean {
+export function witnessOpens(spec: WitnessOpensSpec): boolean {
+  const { compiled, world } = spec;
   const witness = compiled.witness;
   if (witness === undefined) return false;
   if (!inScope(compiled.scope, world)) return false;

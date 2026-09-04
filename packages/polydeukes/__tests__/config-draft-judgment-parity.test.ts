@@ -3,7 +3,8 @@
 // row ever carries the draft id.
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runClaudeCodeHook, runCovenantCheck } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import {
   type CheckRepo,
   createCheckRepo,

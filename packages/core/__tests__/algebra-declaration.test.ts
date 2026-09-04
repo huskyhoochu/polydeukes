@@ -3,11 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   BINARY_COMBINATOR_NAMES,
-  ConfigValidationError,
   RELATION_NAMES,
   SUPPLY_POLICIES,
   validateAlgebraDeclaration,
-} from '../src/index.ts';
+} from '../src/algebra.ts';
+import { ConfigValidationError } from '../src/config.ts';
 
 // `validateAlgebraDeclaration(unknown, location?)` is the shape check for one algebra
 // declaration: five blocks (scope, supply, extract, relate, witness), a relation position

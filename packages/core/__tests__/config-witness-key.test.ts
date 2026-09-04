@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 // whether the migration happened), and the published schema speaks the new vocabulary
 // alone. Acceptance and sub-key validation live in config.test.ts and
 // config-schema-contract.test.ts. The old word appears here only as the subject under test.
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // `testCmd` is deliberately `fake-runner`: the value is opaque to the core, which never
 // runs it, so naming a real runner would suggest a coupling that does not exist.

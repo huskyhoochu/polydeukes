@@ -2,14 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { isPlainObject } from '../src/is-plain-object.ts';
 // Imported through the package entry point, not a deep module path: being public core
 // exports is itself part of the contract under test.
-import {
-  appendRecordFailOpen,
-  isPlainObject,
-  readRecords,
-  type TelemetryRecord,
-} from '../src/index.ts';
+import { appendRecordFailOpen, readRecords, type TelemetryRecord } from '../src/telemetry.ts';
 
 describe('isPlainObject', () => {
   it('returns true for an empty object literal', () => {

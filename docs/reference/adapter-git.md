@@ -29,7 +29,7 @@ the judge, not installed a second time here.
 ## Collection and the `adapters.git` namespace
 
 **Three collectors, one shape.** `collectStagedChanges`, `collectWorktreeChanges`, and
-`collectRangeChanges(repoRoot, '<base>..<head>' | '<base>...<head>')` each return the same
+`collectRangeChanges({ repoRoot, range: '<base>..<head>' | '<base>...<head>' })` each return the same
 `StagedChange[]`, so the translator and everything after it is one path.
 
 | Collector | `pre` | `post` | Also |

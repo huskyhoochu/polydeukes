@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // modify) and attaches it to the one mutating tool-call element of the dispatched IR,
 // not to a top-level array.
 import { collectFileChanges } from '../src/file-changes.ts';
-import { runAdapterPath } from '../src/index.ts';
+import { runAdapterPath } from '../src/run-adapter-path.ts';
 
 const writePayload = {
   hook_event_name: 'PreToolUse',

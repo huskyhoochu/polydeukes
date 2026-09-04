@@ -166,7 +166,7 @@ function renderSurface(spec: {
  * not the session's.
  */
 export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
-  const { config, configPath } = loadConfig(spec.repoRoot);
+  const { config, configPath } = loadConfig({ rootDir: spec.repoRoot });
   // Resolved and imported exactly as the two runners do, so what this renders is the table
   // that would judge: a dist those runners would refuse cannot be rendered as if it worked.
   // The load names the missing module and the recovery command.
@@ -186,7 +186,7 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     rootDir: spec.repoRoot,
     covenant,
   });
-  const gitSettings = resolveGitAdapterSettings(config.adapters?.git);
+  const gitSettings = resolveGitAdapterSettings({ namespace: config.adapters?.git });
 
   const text = [
     `pdks explain — ${configPath}`,

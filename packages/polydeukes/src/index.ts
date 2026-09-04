@@ -19,6 +19,10 @@
  */
 
 export type { ResolvedConfig } from '@polydeukes/core';
-export { type ClaudeCodeHookSpec, runClaudeCodeHook } from './claude-code-hook.js';
-export { type CheckDomain, type CovenantCheckSpec, runCovenantCheck } from './covenant-check.js';
-export { type LoadedConfig, loadConfig } from './load-config.js';
+export {
+  type CheckDomain,
+  type CovenantCheckOutcome,
+  type CovenantCheckSpec,
+  runCovenantCheck,
+} from './covenant-check.js';
+export { type LoadConfigSpec, type LoadedConfig, loadConfig } from './load-config.js';

@@ -5,7 +5,7 @@ import type { DispatchOutcome } from '@polydeukes/core';
 import { parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { collectFileChanges } from '../src/file-changes.ts';
-import { runAdapterPath } from '../src/index.ts';
+import { runAdapterPath } from '../src/run-adapter-path.ts';
 
 // Realistic Claude Code PreToolUse payloads (snake_case). Claude vocabulary
 // (old_string / new_string) lives here and in the adapter, never in core.

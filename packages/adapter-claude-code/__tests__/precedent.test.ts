@@ -64,7 +64,7 @@ describe('evaluatePrecedent — subagent evidence (exact spawn-kind match)', () 
   it('returns true when a spawn of exactly the required kind exists in the transcript', () => {
     const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
-    expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { subagent: SPAWN_KIND }, transcript })).toBe(true);
   });
 
   it('requires exact kind equality — substring and regex-shaped values stay false', () => {
@@ -73,8 +73,8 @@ describe('evaluatePrecedent — subagent evidence (exact spawn-kind match)', () 
     // 'tdd-implementer' spawn as evidence, widening the gate.
     const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
-    expect(evaluatePrecedent({ subagent: 'tdd' }, transcript)).toBe(false);
-    expect(evaluatePrecedent({ subagent: 'tdd-.*' }, transcript)).toBe(false);
+    expect(evaluatePrecedent({ evidence: { subagent: 'tdd' }, transcript })).toBe(false);
+    expect(evaluatePrecedent({ evidence: { subagent: 'tdd-.*' }, transcript })).toBe(false);
   });
 
   it('returns false — not undefined — when the required kind was never spawned', () => {
@@ -83,7 +83,7 @@ describe('evaluatePrecedent — subagent evidence (exact spawn-kind match)', () 
     // every unsatisfied discipline into a crash instead of a verdict.
     const transcript = transcriptWith([spawnBlock('toolu_spawn', 'code-reviewer')]);
 
-    expect(evaluatePrecedent({ subagent: SPAWN_KIND }, transcript)).toBe(false);
+    expect(evaluatePrecedent({ evidence: { subagent: SPAWN_KIND }, transcript })).toBe(false);
   });
 
   it('answers undefined for a malformed value of the KNOWN subagent key — evaluation impossibility, not key recognition, drives the handshake', () => {
@@ -94,7 +94,7 @@ describe('evaluatePrecedent — subagent evidence (exact spawn-kind match)', () 
     // diagnosing why.
     const transcript = transcriptWith([spawnBlock('toolu_spawn', SPAWN_KIND)]);
 
-    expect(evaluatePrecedent({ subagent: 123 }, transcript)).toBeUndefined();
+    expect(evaluatePrecedent({ evidence: { subagent: 123 }, transcript })).toBeUndefined();
   });
 });
 
@@ -108,8 +108,10 @@ describe('evaluatePrecedent — tool evidence (tool-name regex)', () => {
       toolBlock('toolu_mcp', MCP_TOOL),
     ]);
 
-    expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(true);
-    expect(evaluatePrecedent({ tool: 'mcp__.*__get-library-docs' }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { tool: '^mcp__' }, transcript })).toBe(true);
+    expect(evaluatePrecedent({ evidence: { tool: 'mcp__.*__get-library-docs' }, transcript })).toBe(
+      true,
+    );
   });
 
   it('returns false — not undefined — when no observed tool name matches the pattern', () => {
@@ -117,7 +119,7 @@ describe('evaluatePrecedent — tool evidence (tool-name regex)', () => {
     // assembly instead of blocking the edit.
     const transcript = transcriptWith([toolBlock('toolu_bash', 'Bash')]);
 
-    expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(false);
+    expect(evaluatePrecedent({ evidence: { tool: '^mcp__' }, transcript })).toBe(false);
   });
 
   it('answers undefined for a non-compiling tool regex — an unevaluatable KNOWN key declines here and fails closed at assembly, never throws mid-judgment', () => {
@@ -129,7 +131,7 @@ describe('evaluatePrecedent — tool evidence (tool-name regex)', () => {
 
     let verdict: boolean | undefined;
     expect(() => {
-      verdict = evaluatePrecedent({ tool: '(' }, transcript);
+      verdict = evaluatePrecedent({ evidence: { tool: '(' }, transcript });
     }).not.toThrow();
     expect(verdict).toBeUndefined();
   });
@@ -145,7 +147,7 @@ describe('evaluatePrecedent — vocabulary boundary', () => {
       toolBlock('toolu_mcp', MCP_TOOL),
     ]);
 
-    expect(evaluatePrecedent({ bogus: 'x' }, transcript)).toBeUndefined();
+    expect(evaluatePrecedent({ evidence: { bogus: 'x' }, transcript })).toBeUndefined();
   });
 });
 
@@ -208,8 +210,8 @@ describe("evaluatePrecedent — this file's fixture helpers under mixed outcomes
     );
 
     // The failed call is not evidence, even though its name matches the pattern.
-    expect(evaluatePrecedent({ tool: '^mcp__' }, transcript)).toBe(false);
+    expect(evaluatePrecedent({ evidence: { tool: '^mcp__' }, transcript })).toBe(false);
     // Its successful sibling is evidence, and the failure beside it does not taint it.
-    expect(evaluatePrecedent({ tool: SHELL_PATTERN }, transcript)).toBe(true);
+    expect(evaluatePrecedent({ evidence: { tool: SHELL_PATTERN }, transcript })).toBe(true);
   });
 });

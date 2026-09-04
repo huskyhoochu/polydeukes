@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MUTATING_TOOLS, transcriptPathFromPayload } from '../src/index.ts';
+import { MUTATING_TOOLS, transcriptPathFromPayload } from '../src/session-vocabulary.ts';
 
 // The transcript path is an injected fixture value, never a real session file: the
 // function under test extracts a string and touches no filesystem.
@@ -34,9 +34,9 @@ describe('transcriptPathFromPayload — evidence loss narrows to undefined', () 
     // Reading the wrong envelope key, or extracting from the up-translated IR where
     // the field no longer exists, silently loses the valve's and the context family's
     // evidence channel on every payload — no exit code ever surfaces that.
-    expect(transcriptPathFromPayload(rawPayload({ transcript_path: TRANSCRIPT_PATH }))).toBe(
-      TRANSCRIPT_PATH,
-    );
+    expect(
+      transcriptPathFromPayload({ rawPayload: rawPayload({ transcript_path: TRANSCRIPT_PATH }) }),
+    ).toBe(TRANSCRIPT_PATH);
   });
 
   it('returns undefined for a payload that is not JSON', () => {
@@ -45,6 +45,6 @@ describe('transcriptPathFromPayload — evidence loss narrows to undefined', () 
     // closed before dispatch, killing the witness valve and the dispatch that owns the
     // unparseable-payload verdict in one stroke: lost evidence must close the valve,
     // never the hook.
-    expect(transcriptPathFromPayload('PreToolUse{ not json')).toBeUndefined();
+    expect(transcriptPathFromPayload({ rawPayload: 'PreToolUse{ not json' })).toBeUndefined();
   });
 });

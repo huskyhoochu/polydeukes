@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The commit self-mod execution proof. `passed/self-mod` is unreachable — a matched call
 // always breaks — so the observation is the judge's reason text, which the wrapper writes
 // through process.stderr.write and only a judge that actually ran can produce.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers';
 
 /** Injected fixture values. */

@@ -27,7 +27,7 @@ git의 어휘가 번역돼 사라지는 경계입니다. 스테이징된 diff가
 ## 수집과 `adapters.git` 네임스페이스
 
 **수집기는 셋, 형태는 하나입니다.** `collectStagedChanges` · `collectWorktreeChanges` ·
-`collectRangeChanges(repoRoot, '<base>..<head>' | '<base>...<head>')`는 모두 같은
+`collectRangeChanges({ repoRoot, range: '<base>..<head>' | '<base>...<head>' })`는 모두 같은
 `StagedChange[]`를 돌려주므로, 번역기와 그 뒤는 경로 하나입니다.
 
 | 수집기 | `pre` | `post` | 그 밖에 |

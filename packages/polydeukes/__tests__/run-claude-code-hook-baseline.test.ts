@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // 'baseline', subject = the changed ENTRY, the config element). The comparison records
 // and never blocks: no exit code and no judgment row changes because of it, and any
 // comparison failure stays inside the hook.
-import { runClaudeCodeHook } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { telemetryRows, writeConfigAt } from './helpers';
 
 /** Injected fixture values — the config entries and the files judged under them. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { CovenantInput, TranscriptToolCall } from '../src/index.ts';
-import { noopTranscript, transcriptFromInput } from '../src/index.ts';
+import type { CovenantInput } from '../src/protocol.ts';
+import type { TranscriptToolCall } from '../src/transcript.ts';
+import { noopTranscript, transcriptFromInput } from '../src/transcript.ts';
 
 // Tool names are neutral injected values ('shell-tool'/'edit-tool'), never an agent's real
 // vocabulary — those are values an adapter fills in, not the core's words.

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // `when` (its scope lives inside the block), and the block's own validation runs with the
 // entry location prefixed so the author can find the failing entry. The stored value is
 // carried verbatim; compiling it is the covenant package's job.
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // testCmd bodies are deliberately fake (`fake-runner`): the core never runs the command.
 // Source names, regexes, and relate ids are discipline data injected through fixtures.

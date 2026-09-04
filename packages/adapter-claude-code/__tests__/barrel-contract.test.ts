@@ -50,15 +50,20 @@ const exportedNames = (text: string): Set<string> => {
  * root and generators call, and the spec ingredients they hand those verbs.
  */
 const KEPT_EXPORTS: readonly string[] = [
-  // umbrella session composition root
+  // umbrella session composition root, each with the spec type its signature names
   'evaluatePrecedent',
+  'EvaluatePrecedentSpec',
   'runAdapterPath',
+  'RunAdapterPathSpec',
+  'AdapterPathOutcome',
   // The dispatch seam's parameter type. A consumer binding its own dispatcher names this to
   // type the callback, and `@polydeukes/core` is a dependency of this package rather than of
   // theirs — so a type the seam names has to come from here.
   'DispatchAdapterView',
   'transcriptFromJsonlFile',
+  'TranscriptFromJsonlFileSpec',
   'transcriptPathFromPayload',
+  'TranscriptPathFromPayloadSpec',
   // this surface's supply bodies — the readers the session root injects into the supply
   // layer — each with the spec type its signature names
   'sessionSourceReader',

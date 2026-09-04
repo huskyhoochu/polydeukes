@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { collectStagedChanges, type StagedChange } from '../src/index.ts';
+import { collectStagedChanges } from '../src/collect.ts';
+import type { StagedChange } from '../src/staged.ts';
 
 // Real throwaway git repositories under os.tmpdir(). The collector's contract is defined
 // against actual `git diff --cached` output and blob reads, so a real repo is the only
@@ -45,7 +46,7 @@ describe('collectStagedChanges — modified file', () => {
     write('a.txt', 'second\n');
     git('add', 'a.txt');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'a.txt');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'a.txt');
 
     expect(change).toEqual({
       path: 'a.txt',
@@ -66,7 +67,7 @@ describe('collectStagedChanges — added file', () => {
     write('fresh.txt', 'brand new\n');
     git('add', 'fresh.txt');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'fresh.txt');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'fresh.txt');
 
     expect(change).toEqual({
       path: 'fresh.txt',
@@ -84,7 +85,7 @@ describe('collectStagedChanges — deleted file', () => {
     git('commit', '--quiet', '-m', 'initial');
     git('rm', '--quiet', 'doomed.txt');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'doomed.txt');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'doomed.txt');
 
     expect(change).toEqual({
       path: 'doomed.txt',
@@ -104,7 +105,7 @@ describe('collectStagedChanges — staged then re-edited in the worktree', () =>
     // Diverge the worktree from the index AFTER staging.
     write('staged.txt', 'later worktree edit that must not be judged\n');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'staged.txt');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'staged.txt');
 
     expect(change?.status).toBe('added');
     expect(change?.post).toBe('committed version\n');
@@ -119,7 +120,7 @@ describe('collectStagedChanges — first commit with no HEAD', () => {
     write('two.txt', 'two\n');
     git('add', 'one.txt', 'two.txt');
 
-    const changes = collectStagedChanges(repoRoot);
+    const changes = collectStagedChanges({ repoRoot: repoRoot });
 
     expect(changeFor(changes, 'one.txt')).toEqual({
       path: 'one.txt',
@@ -147,7 +148,7 @@ describe('collectStagedChanges — staged rename surfaces as delete + add (revie
     git('commit', '--quiet', '-m', 'initial');
     git('mv', 'protected-here.txt', 'elsewhere.txt');
 
-    const changes = collectStagedChanges(repoRoot);
+    const changes = collectStagedChanges({ repoRoot: repoRoot });
 
     expect(changeFor(changes, 'protected-here.txt')).toEqual({
       path: 'protected-here.txt',
@@ -173,7 +174,7 @@ describe('collectStagedChanges — staged blob over 1MB (review F2)', () => {
     write('big.txt', twoMegabytes);
     git('add', 'big.txt');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'big.txt');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'big.txt');
 
     expect(change?.post?.length).toBe(twoMegabytes.length);
   });
@@ -188,7 +189,7 @@ describe('collectStagedChanges — binary staged blob (review F4)', () => {
     writeFileSync(join(repoRoot, 'blob.bin'), Buffer.from([0x50, 0x00, 0xff, 0xfe, 0x01]));
     git('add', 'blob.bin');
 
-    const change = changeFor(collectStagedChanges(repoRoot), 'blob.bin');
+    const change = changeFor(collectStagedChanges({ repoRoot: repoRoot }), 'blob.bin');
 
     expect(change?.status).toBe('added');
     expect(change?.post).toBeNull();
@@ -203,6 +204,6 @@ describe('collectStagedChanges — empty staging area', () => {
     // Worktree change left UNSTAGED — must not appear.
     write('committed.txt', 'dirty but not staged\n');
 
-    expect(collectStagedChanges(repoRoot)).toEqual([]);
+    expect(collectStagedChanges({ repoRoot: repoRoot })).toEqual([]);
   });
 });

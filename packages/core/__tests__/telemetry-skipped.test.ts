@@ -11,7 +11,7 @@ import {
   parseRecordLine,
   runGain,
   type TelemetryRecord,
-} from '../src/index.ts';
+} from '../src/telemetry.ts';
 
 // label = the discipline entry id, subject = '-' (an assembly-level fact, not a per-change one).
 const skippedRecord: TelemetryRecord = {

@@ -7,7 +7,7 @@
  * surface observes the tree; this module opens no file and spawns no process.
  */
 
-import type { SourceReader } from '@polydeukes/core';
+import type { ChannelReader, SourceReader } from '@polydeukes/core';
 import type { CovenantRegistration } from './dispatch.js';
 
 /** `planSources` input — the registration table the judgment will run. */
@@ -31,7 +31,7 @@ export type SourcePlan = { files: readonly string[]; channels: readonly string[]
 export type SupplySourcesSpec = {
   plan: SourcePlan;
   read: SourceReader;
-  readChannel?: (kind: string) => string | undefined;
+  readChannel?: ChannelReader;
 };
 
 /**

@@ -8,8 +8,13 @@
  * reaches the core.
  */
 
-export { evaluatePrecedent } from './precedent.js';
-export { type DispatchAdapterView, runAdapterPath } from './run-adapter-path.js';
+export { type EvaluatePrecedentSpec, evaluatePrecedent } from './precedent.js';
+export {
+  type AdapterPathOutcome,
+  type DispatchAdapterView,
+  type RunAdapterPathSpec,
+  runAdapterPath,
+} from './run-adapter-path.js';
 export {
   type SessionChannelReaderSpec,
   sessionChannelReader,
@@ -19,6 +24,7 @@ export {
   COMMAND_ARGS,
   MUTATING_TOOLS,
   SHELL_TOOLS,
+  type TranscriptPathFromPayloadSpec,
   transcriptPathFromPayload,
 } from './session-vocabulary.js';
-export { transcriptFromJsonlFile } from './transcript.js';
+export { type TranscriptFromJsonlFileSpec, transcriptFromJsonlFile } from './transcript.js';

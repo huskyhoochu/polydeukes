@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // object, exactly one evidence key) with its value passed through verbatim. The optional
 // `when` trigger regex combines with `requirePrecedent` only, and `in`/`except` are open to
 // the delta and context families while the path and command families still reject them.
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // testCmd bodies are deliberately fake (`fake-runner`): the core never runs the command,
 // so a real runner name would imply a coupling it does not have. Evidence values

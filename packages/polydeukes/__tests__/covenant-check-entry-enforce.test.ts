@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // (no `adapters.git` namespace), so the only advise in play is the entry's: a staged
 // delta breaking it passes (exit 0), records `advised` under the entry's id, and emits
 // one advisory line. Without that line an item-level advise would pass silently.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 const SOFT_ID = 'no-todo-softly';

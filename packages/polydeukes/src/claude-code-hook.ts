@@ -52,6 +52,9 @@ import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './
 import { loadConfig } from './load-config.js';
 import { sessionPreStateReader } from './pre-state-reader.js';
 
+/** {@link runClaudeCodeHook} result — the exit code the hook process leaves with. */
+export type ClaudeCodeHookOutcome = { exitCode: 0 | 2 };
+
 /** `runClaudeCodeHook` input — the `CovenantCheckSpec` shape, session side. */
 export type ClaudeCodeHookSpec = {
   /** Repository root — config discovery and discipline glob scoping both anchor here. */
@@ -158,7 +161,7 @@ function comparisonSpec(
 ): { repoRoot: string; telemetryPath: string; entries: string[] } | undefined {
   let config: ReturnType<typeof loadConfig>['config'];
   try {
-    config = loadConfig(spec.repoRoot).config;
+    config = loadConfig({ rootDir: spec.repoRoot }).config;
   } catch {
     return undefined;
   }
@@ -259,7 +262,8 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
       // adapter brings the evaluator for its own `subagent`/`tool` vocabulary; core owns
       // `command`, which the compiler judges directly.
       transcript,
-      evaluatePrecedent,
+      evaluatePrecedent: (evidence, callTranscript) =>
+        evaluatePrecedent({ evidence, transcript: callTranscript }),
     }),
   ];
 
@@ -306,7 +310,7 @@ function rewriteGrokToolNames(rawPayload: string): string {
  * bodies — a synchronous runner would mean reimplementing the judge, which the
  * single-dispatcher principle forbids.
  */
-async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
+async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome> {
   // Env-first telemetry precedence, settled BEFORE any failure branch: a config that never
   // loads still has somewhere to write its one blocked row. The config value applies after
   // the load succeeds.
@@ -324,7 +328,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
 
     // Discovery + parse + validation are the loader's job; a throw here (absent, ambiguous,
     // unparseable, or invalid config) falls into the fail-closed catch.
-    const { config } = loadConfig(spec.repoRoot);
+    const { config } = loadConfig({ rootDir: spec.repoRoot });
     telemetryPath =
       spec.telemetryPath ?? envTelemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
     // Settled for the rest of the happy path. The `let` above exists so the catch can still
@@ -338,9 +342,9 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
     // adapter reads it from the string. Every failure narrows to `undefined`, which leaves
     // the dispatcher on its `noopTranscript` default: lost evidence closes the valve rather
     // than opening it.
-    const transcriptPath = transcriptPathFromPayload(rawPayload);
+    const transcriptPath = transcriptPathFromPayload({ rawPayload });
     const transcript =
-      transcriptPath === undefined ? undefined : transcriptFromJsonlFile(transcriptPath);
+      transcriptPath === undefined ? undefined : transcriptFromJsonlFile({ path: transcriptPath });
 
     // One witness predicate shared by every registration: a witness is a session-wide
     // permission the human granted, not a per-covenant one. Absent `witness` config leaves
@@ -431,7 +435,7 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 
  * left and its rows land ahead of this call's judgment; the re-establishment runs last, so
  * this call's own judged writes are folded in rather than alarmed on next time.
  */
-export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }> {
+export async function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome> {
   let comparison: ReturnType<typeof comparisonSpec>;
   try {
     comparison = comparisonSpec(spec);

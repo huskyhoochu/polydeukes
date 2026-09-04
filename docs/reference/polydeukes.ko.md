@@ -184,7 +184,7 @@ pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic]`을 st
 ## 종료 코드
 
 코드는 셋이고 층은 둘입니다. **소비자의 훅이 관측하는 것은 `0` 아니면 `2`뿐입니다.**
-조립 루트 둘 다 `Promise<{ exitCode: 0 | 2 }>`를 반환합니다.
+조립 루트 둘 다 `exitCode: 0 | 2`를 담은 이름 있는 결과 타입을 돌려줍니다.
 
 | 코드 | 상수 | 내는 곳 | 뜻 |
 |---|---|---|---|
@@ -212,7 +212,9 @@ pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic]`을 st
 **타입 시그니처.**
 
 ```ts
-function loadConfig(rootDir: string): LoadedConfig;
+function loadConfig(spec: LoadConfigSpec): LoadedConfig;
+
+type LoadConfigSpec = { rootDir: string };
 
 type LoadedConfig = {
   config: ResolvedConfig;  // protectedPaths에 설정 파일 자신이 이미 들어 있습니다
@@ -230,7 +232,9 @@ type LoadedConfig = {
 **타입 시그니처.**
 
 ```ts
-function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }>;
+function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome>;
+
+type CovenantCheckOutcome = { exitCode: 0 | 2 };
 
 type CovenantCheckSpec = {
   repoRoot: string;                                  // 설정 탐색과 수집이 여기 닻을 내립니다
@@ -259,7 +263,9 @@ type CheckDomain =
 **타입 시그니처.**
 
 ```ts
-function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<{ exitCode: 0 | 2 }>;
+function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome>;
+
+type ClaudeCodeHookOutcome = { exitCode: 0 | 2 };
 
 type ClaudeCodeHookSpec = {
   repoRoot: string;         // 설정 탐색과 규율 glob 범위가 여기 닻을 내립니다
@@ -285,8 +291,8 @@ type ClaudeCodeHookSpec = {
 
 | 지정자 | 담는 것 |
 |---|---|
-| `polydeukes` | 배럴입니다. `loadConfig`와 `runCovenantCheck`, `runClaudeCodeHook`, 각 스펙 타입, `ResolvedConfig` |
-| `polydeukes/claude-code` | `runClaudeCodeHook`과 `ClaudeCodeHookSpec` 둘뿐입니다 |
+| `polydeukes` | 배럴입니다. `loadConfig`와 `runCovenantCheck`, 각 스펙·결과 타입, `ResolvedConfig`. 세션 훅은 아래 서브패스에만 있습니다 |
+| `polydeukes/claude-code` | `runClaudeCodeHook`과 `ClaudeCodeHookSpec`, `ClaudeCodeHookOutcome` 셋뿐입니다 |
 | `polydeukes/schema.json` | 설정 JSON Schema입니다. 빌드 시점에 코어에서 복사됩니다 |
 
 생성된 훅 위임자는 배럴이 아니라 서브패스를 불러옵니다. ESM 임포트는 즉시 적재라서, 배럴을

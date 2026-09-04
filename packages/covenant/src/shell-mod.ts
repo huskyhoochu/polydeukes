@@ -12,7 +12,7 @@
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import type { CovenantRegistration } from './dispatch.js';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
 import { mentionsPath, untokenizableLineCandidates } from './mention.js';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
@@ -237,9 +237,7 @@ export type ShellModRegistrationSpec = {
  * the unjudgeable outcome instead, which no enforce level softens. The allowlist is exempt
  * — empty just means stricter.
  */
-export function shellModRegistration(
-  spec: ShellModRegistrationSpec,
-): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
+export function shellModRegistration(spec: ShellModRegistrationSpec): MetaCovenantRegistration {
   const judgeSpec: ShellModificationSpec = {
     protectedPaths: spec.protectedPaths,
     shellToolNames: spec.shellTools,

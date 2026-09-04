@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defineConfig } from '../src/index.ts';
+import { defineConfig } from '../src/config.ts';
 import { schema, validate, validLanguages } from './helpers.ts';
 
 // The hand-written JSON Schema and the runtime `defineConfig()` validator must agree on

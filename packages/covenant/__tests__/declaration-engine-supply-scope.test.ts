@@ -255,7 +255,7 @@ describe('witnessOpens — the valve after the verdict', () => {
     });
     // The body's own entry breaks on this world; the valve is independent of that.
     expect(judge(decl, bothPresent).kind).toBe('broken');
-    expect(witnessOpens(compileOrFail(decl), bothPresent)).toBe(true);
+    expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(true);
   });
 
   it('stays closed when a witness relation does not hold', () => {
@@ -263,7 +263,7 @@ describe('witnessOpens — the valve after the verdict', () => {
       extract: { [JOINED]: [{ op: 'union', of: [ITEMS, OTHER] }] },
       relate: [{ id: 'valve', relation: { op: 'Empty', of: JOINED }, message: 'm' }],
     });
-    expect(witnessOpens(compileOrFail(decl), bothPresent)).toBe(false);
+    expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
   });
 
   it('stays closed when one of several witness entries does not hold', () => {
@@ -275,7 +275,7 @@ describe('witnessOpens — the valve after the verdict', () => {
         { id: 'valve-breaks', relation: { op: 'Empty', of: JOINED }, message: 'm' },
       ],
     });
-    expect(witnessOpens(compileOrFail(decl), bothPresent)).toBe(false);
+    expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
   });
 
   it('stays closed when a witness source is absent from the world', () => {
@@ -283,10 +283,12 @@ describe('witnessOpens — the valve after the verdict', () => {
       extract: { [JOINED]: [{ op: 'source', of: SRC_MISSING }] },
       relate: [{ id: 'valve', relation: { op: 'NonEmpty', of: JOINED }, message: 'm' }],
     });
-    expect(witnessOpens(compileOrFail(decl), bothPresent)).toBe(false);
+    expect(witnessOpens({ compiled: compileOrFail(decl), world: bothPresent })).toBe(false);
   });
 
   it('stays closed when the declaration has no witness block', () => {
-    expect(witnessOpens(compileOrFail(withWitness(undefined)), bothPresent)).toBe(false);
+    expect(
+      witnessOpens({ compiled: compileOrFail(withWitness(undefined)), world: bothPresent }),
+    ).toBe(false);
   });
 });

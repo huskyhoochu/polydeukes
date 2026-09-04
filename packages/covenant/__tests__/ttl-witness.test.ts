@@ -11,6 +11,8 @@ import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
 
 const TOKEN = 'PDKS-WITNESS-42';
 const NOW = 1_000_000;
+/** The registration context the dispatcher binds; the TTL valve keys on the transcript alone. */
+const CONTEXT = { label: 'ttl', subject: '-' };
 /** A deterministic injected clock. */
 const fakeNow = (): number => NOW;
 
@@ -45,7 +47,7 @@ describe('ttlWitness — verdict', () => {
     const transcript = fakeTranscript([
       { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 1000 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('witnesses AT the TTL boundary (now - ts === ttlMs) and blocks one ms past it', () => {
@@ -53,8 +55,8 @@ describe('ttlWitness — verdict', () => {
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const atBoundary = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 5000 }]);
     const pastBoundary = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 5001 }]);
-    expect(predicate(inputWithArgs({}), atBoundary)).toBe(true);
-    expect(predicate(inputWithArgs({}), pastBoundary)).toBe(false);
+    expect(predicate(inputWithArgs({}), atBoundary, CONTEXT)).toBe(true);
+    expect(predicate(inputWithArgs({}), pastBoundary, CONTEXT)).toBe(false);
   });
 
   it('does not witness when the only token-bearing message lacks a timestamp', () => {
@@ -62,7 +64,7 @@ describe('ttlWitness — verdict', () => {
     // to 0 or to now would open the valve on evidence that does not exist.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('rejects a future timestamp (ts > now, negative elapsed)', () => {
@@ -70,7 +72,7 @@ describe('ttlWitness — verdict', () => {
     // timestamp witnesses, and a clock that cannot prove a PAST agreement proves nothing.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW + 1 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('witnesses when exactly one of several messages qualifies (order-independent)', () => {
@@ -82,7 +84,7 @@ describe('ttlWitness — verdict', () => {
       { text: TOKEN, timestampMs: NOW - 100 },
       { text: 'also no token', timestampMs: NOW - 100 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('never witnesses against noopTranscript or a bare transcriptFromInput (no timestamps)', () => {
@@ -95,8 +97,8 @@ describe('ttlWitness — verdict', () => {
       subagentSpawns: [],
       userMessages: [{ text: TOKEN }],
     };
-    expect(predicate(input, noopTranscript)).toBe(false);
-    expect(predicate(input, transcriptFromInput(input))).toBe(false);
+    expect(predicate(input, noopTranscript, CONTEXT)).toBe(false);
+    expect(predicate(input, transcriptFromInput(input), CONTEXT)).toBe(false);
   });
 });
 
@@ -110,7 +112,7 @@ describe('ttlWitness — mention exclusion', () => {
     const transcript = fakeTranscript([
       { text: `so when does ${TOKEN} expire?`, timestampMs: NOW - 100 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('does not witness when the first line starts with the token but carries trailing text', () => {
@@ -120,7 +122,7 @@ describe('ttlWitness — mention exclusion', () => {
     const transcript = fakeTranscript([
       { text: `${TOKEN} — what is that?`, timestampMs: NOW - 100 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('does not witness when the token is wrapped in backticks', () => {
@@ -128,7 +130,7 @@ describe('ttlWitness — mention exclusion', () => {
     // stripping code at all, so any normalisation that peels backticks reopens it.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `\`${TOKEN}\``, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('does not witness when the token appears only on a line below the first', () => {
@@ -138,7 +140,7 @@ describe('ttlWitness — mention exclusion', () => {
     const transcript = fakeTranscript([
       { text: `here is the token:\n${TOKEN}`, timestampMs: NOW - 100 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 
   it('does not witness when a leading blank line precedes the token', () => {
@@ -146,7 +148,7 @@ describe('ttlWitness — mention exclusion', () => {
     // the "how many lines do we search" boundary the exact rule removes.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `\n${TOKEN}`, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(false);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(false);
   });
 });
 
@@ -158,7 +160,7 @@ describe('ttlWitness — invocation preserved', () => {
     // dead valve.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('witnesses when the first line is the token and later lines carry the work instruction', () => {
@@ -168,7 +170,7 @@ describe('ttlWitness — invocation preserved', () => {
     const transcript = fakeTranscript([
       { text: `${TOKEN}\n\nfix the hook file`, timestampMs: NOW - 100 },
     ]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('witnesses when the first line has surrounding whitespace around the token', () => {
@@ -176,7 +178,7 @@ describe('ttlWitness — invocation preserved', () => {
     // accidentally indented invocation still opens the valve.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `  ${TOKEN}  \nfix it`, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('witnesses when the message was transported with CRLF line endings', () => {
@@ -184,7 +186,7 @@ describe('ttlWitness — invocation preserved', () => {
     // trim, or the valve is silently dead for every CRLF-carried transcript.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: `${TOKEN}\r\nfix it`, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 });
 
@@ -198,7 +200,7 @@ describe('ttlWitness — layer boundary', () => {
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: 'ordinary message', timestampMs: NOW - 100 }]);
     const input = inputWithArgs({ note: TOKEN });
-    expect(predicate(input, transcript)).toBe(false);
+    expect(predicate(input, transcript, CONTEXT)).toBe(false);
   });
 });
 
@@ -224,7 +226,7 @@ describe('ttlWitness — factory validation', () => {
     // utterance with no error to explain it.
     const predicate = ttlWitness({ token: `  ${TOKEN}  `, ttlMs: 5000, now: fakeNow });
     const transcript = fakeTranscript([{ text: TOKEN, timestampMs: NOW - 100 }]);
-    expect(predicate(inputWithArgs({}), transcript)).toBe(true);
+    expect(predicate(inputWithArgs({}), transcript, CONTEXT)).toBe(true);
   });
 
   it('throws when ttlMs is not a finite positive number', () => {
@@ -244,10 +246,10 @@ describe('ttlWitness — factory validation', () => {
     // absorbs as no opening.
     const predicate = ttlWitness({ token: TOKEN, ttlMs: 5000, now: fakeNow });
     const weird = fakeTranscript([{ text: TOKEN }]);
-    expect(() => predicate(inputWithArgs({}), noopTranscript)).not.toThrow();
-    expect(predicate(inputWithArgs({}), noopTranscript)).toBe(false);
-    expect(() => predicate(inputWithArgs({}), weird)).not.toThrow();
-    expect(predicate(inputWithArgs({}), weird)).toBe(false);
+    expect(() => predicate(inputWithArgs({}), noopTranscript, CONTEXT)).not.toThrow();
+    expect(predicate(inputWithArgs({}), noopTranscript, CONTEXT)).toBe(false);
+    expect(() => predicate(inputWithArgs({}), weird, CONTEXT)).not.toThrow();
+    expect(predicate(inputWithArgs({}), weird, CONTEXT)).toBe(false);
   });
 });
 

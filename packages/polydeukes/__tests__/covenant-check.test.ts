@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //
 // Each test builds a real throwaway git repo and writes its own tmp config, so no
 // protected path of THIS repository is ever referenced.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
 const WITNESS_TOKEN = 'i-accept-this-commit-covenant';

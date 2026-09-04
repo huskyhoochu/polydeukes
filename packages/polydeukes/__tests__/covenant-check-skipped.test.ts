@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //
 // Each test builds a real throwaway git repo and writes its own tmp config, so no
 // protected path of THIS repository is ever referenced.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 // The regexes below are data the config carries, not source literals.

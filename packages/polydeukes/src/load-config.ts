@@ -27,6 +27,9 @@ export const CONFIG_FILENAMES = [
   'polydeukes.config.json',
 ] as const;
 
+/** {@link loadConfig} input — the directory the config is discovered in. */
+export type LoadConfigSpec = { rootDir: string };
+
 /** `LoadedConfig` — the loader's return value. */
 export type LoadedConfig = {
   /** defineConfig() resolution — protectedPaths already includes configPath */
@@ -50,7 +53,8 @@ export type LoadedConfig = {
  * `config.protectedPaths` unless already present — the config file itself joins the
  * protection surface, guaranteed here so no assembler has to remember.
  */
-export function loadConfig(rootDir: string): LoadedConfig {
+export function loadConfig(spec: LoadConfigSpec): LoadedConfig {
+  const { rootDir } = spec;
   const found = CONFIG_FILENAMES.filter((name) => existsSync(join(rootDir, name)));
   if (found.length === 0) {
     throw new Error(

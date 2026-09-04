@@ -43,6 +43,9 @@ import { unobservedPreStateReader } from './pre-state-reader.js';
  */
 export type CheckDomain = Observation;
 
+/** {@link runCovenantCheck} result — the exit code the check process leaves with. */
+export type CovenantCheckOutcome = { exitCode: 0 | 2 };
+
 /** `runCovenantCheck` input. */
 export type CovenantCheckSpec = {
   /** Repository root — config discovery and staged collection both anchor here. */
@@ -128,7 +131,9 @@ export type CommitAssemblySpec = {
  */
 export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantRegistration[] {
   const { config, rootDir, covenant, witness } = spec;
-  const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings(config.adapters?.git);
+  const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings({
+    namespace: config.adapters?.git,
+  });
 
   // Union of the common list and the git-additive one, common first so first-occurrence
   // dedupe is deterministic. The session hook reads the common list alone.
@@ -185,7 +190,7 @@ function settleConfig(
   let telemetryPath: string | undefined;
   try {
     telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
-    const { config } = loadConfig(spec.repoRoot);
+    const { config } = loadConfig({ rootDir: spec.repoRoot });
     telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
     return { settled: true, telemetryPath, config };
   } catch (error) {
@@ -198,12 +203,15 @@ function settleConfig(
  * everything downstream of this dispatch is one path.
  */
 function collectDomain(repoRoot: string, domain: CheckDomain): StagedChange[] {
-  if (domain.kind === 'worktree') return collectWorktreeChanges(repoRoot);
+  if (domain.kind === 'worktree') return collectWorktreeChanges({ repoRoot });
   if (domain.kind === 'range') {
     const separator = domain.ancestry === 'merge-base' ? '...' : '..';
-    return collectRangeChanges(repoRoot, `${domain.base}${separator}${domain.head}`);
+    return collectRangeChanges({
+      repoRoot,
+      range: `${domain.base}${separator}${domain.head}`,
+    });
   }
-  return collectStagedChanges(repoRoot);
+  return collectStagedChanges({ repoRoot });
 }
 
 /**
@@ -217,7 +225,7 @@ function collectDomain(repoRoot: string, domain: CheckDomain): StagedChange[] {
  */
 function changedPaths(changes: StagedChange[]): string[] {
   const paths: string[] = [];
-  for (const call of covenantInputFromStagedChanges(changes).toolCalls) {
+  for (const call of covenantInputFromStagedChanges({ changes }).toolCalls) {
     if (call.fileChange !== undefined) paths.push(call.fileChange.path);
   }
   return paths;
@@ -233,10 +241,10 @@ async function judgeChanges(
   telemetryPath: string,
   config: ReturnType<typeof loadConfig>['config'],
   changes: StagedChange[],
-): Promise<{ exitCode: 0 | 2 }> {
+): Promise<CovenantCheckOutcome> {
   try {
     // Inside the try so an invalid adapter namespace fails closed.
-    const { enforce } = resolveGitAdapterSettings(config.adapters?.git);
+    const { enforce } = resolveGitAdapterSettings({ namespace: config.adapters?.git });
 
     // Real Node resolution of the covenant package, so the commit surface runs the same
     // judges the session hook does; tests inject a directory instead. Awaited before any
@@ -274,7 +282,7 @@ async function judgeChanges(
     const world = { files, changes: changedPaths(changes) };
 
     for (const change of changes) {
-      const input = covenantInputFromStagedChanges([change]);
+      const input = covenantInputFromStagedChanges({ changes: [change] });
       const { exitCode, results } = await covenant.dispatchCovenants({
         stdinPayload: JSON.stringify(input),
         registrations,
@@ -305,7 +313,7 @@ async function judgeChanges(
  * diff by default, the working tree or a ref range on request. Async because the dispatcher
  * spawns covenant bodies. An empty domain is an explicit pass: nothing to judge, no records.
  */
-export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<{ exitCode: 0 | 2 }> {
+export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome> {
   const settlement = settleConfig(spec);
   if (!settlement.settled) return { exitCode: settlement.exitCode };
   const { telemetryPath, config } = settlement;

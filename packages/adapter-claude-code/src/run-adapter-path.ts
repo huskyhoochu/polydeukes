@@ -49,17 +49,8 @@ function readPreStateFromDisk(filePath: string): string | null {
   }
 }
 
-/**
- * Run one PreToolUse payload through the adapter path.
- *
- * Fail-closed on the verdict axis: an unparseable payload, a classification failure,
- * or a rejecting dispatch all resolve to `{ exitCode: 2 }` with one adapter `blocked`
- * record — never a thrown error (an unhandled rejection would exit the hook
- * non-blocking, a bypass vector). The funnel supplement is the exact rule
- * `exitCode 0 && results.length 0 → one adapter passed record`; every other outcome
- * appends nothing because downstream already recorded, so nothing double-counts.
- */
-export async function runAdapterPath(spec: {
+/** {@link runAdapterPath} input — one payload, where to record, and the dispatch seam. */
+export type RunAdapterPathSpec = {
   /** Raw hook stdin — one PreToolUse payload as a JSON string. */
   rawPayload: string;
   /** Where adapter-level records append. */
@@ -75,9 +66,24 @@ export async function runAdapterPath(spec: {
   dispatch: (stdinPayload: string) => Promise<DispatchAdapterView>;
   /** Label for adapter-level records. Default: 'adapter-claude-code'. */
   adapterLabel?: string;
-}): Promise<{ exitCode: 0 | 2 }> {
+};
+
+/** {@link runAdapterPath} result — the exit code the hook process leaves with. */
+export type AdapterPathOutcome = { exitCode: 0 | 2 };
+
+/**
+ * Run one PreToolUse payload through the adapter path.
+ *
+ * Fail-closed on the verdict axis: an unparseable payload, a classification failure,
+ * or a rejecting dispatch all resolve to `{ exitCode: 2 }` with one adapter `blocked`
+ * record — never a thrown error (an unhandled rejection would exit the hook
+ * non-blocking, a bypass vector). The funnel supplement is the exact rule
+ * `exitCode 0 && results.length 0 → one adapter passed record`; every other outcome
+ * appends nothing because downstream already recorded, so nothing double-counts.
+ */
+export async function runAdapterPath(spec: RunAdapterPathSpec): Promise<AdapterPathOutcome> {
   const label = spec.adapterLabel ?? DEFAULT_ADAPTER_LABEL;
-  const blockAndRecord = (): { exitCode: 0 | 2 } => {
+  const blockAndRecord = (): AdapterPathOutcome => {
     appendRecordFailOpen(spec.telemetryPath, { event: 'blocked', label, subject: '-' });
     return { exitCode: EXIT_BREAK_BLOCKING };
   };

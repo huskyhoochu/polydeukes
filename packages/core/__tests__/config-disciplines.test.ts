@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // unknown keys rejected. Every failure throws ConfigValidationError with a field path
 // naming the offending entry or key, and validated data passes through to
 // ResolvedConfig.disciplines verbatim.
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
 // The banned-vocabulary literal appears only inside a discipline's forbid pattern string,
 // where it is the discipline data under test. testCmd bodies are deliberately fake

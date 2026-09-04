@@ -116,6 +116,9 @@ function changeFromEntry(
   };
 }
 
+/** {@link collectStagedChanges} input — the repository to read. */
+export type CollectStagedChangesSpec = { repoRoot: string };
+
 /**
  * Collect the staged changes of `repoRoot`.
  *
@@ -124,7 +127,8 @@ function changeFromEntry(
  * — HEAD absence is detected explicitly, never inferred from a swallowed blob-read
  * failure. An empty staging area yields `[]`.
  */
-export function collectStagedChanges(repoRoot: string): StagedChange[] {
+export function collectStagedChanges(spec: CollectStagedChangesSpec): StagedChange[] {
+  const { repoRoot } = spec;
   const hasHead = headExists(repoRoot);
   const listing = git(repoRoot, ['diff', '--cached', ...NO_RENAMES, END_OF_REVISIONS]);
   return nameStatusEntries(listing).map(([rawStatus, path]) =>
@@ -138,6 +142,9 @@ export function collectStagedChanges(repoRoot: string): StagedChange[] {
   );
 }
 
+/** {@link collectWorktreeChanges} input — the repository to read. */
+export type CollectWorktreeChangesSpec = { repoRoot: string };
+
 /**
  * Collect the working-tree changes of `repoRoot`.
  *
@@ -148,7 +155,8 @@ export function collectStagedChanges(repoRoot: string): StagedChange[] {
  * first commit every tracked and untracked file present on disk is `added` with
  * `pre: null`. A clean worktree yields `[]`.
  */
-export function collectWorktreeChanges(repoRoot: string): StagedChange[] {
+export function collectWorktreeChanges(spec: CollectWorktreeChangesSpec): StagedChange[] {
+  const { repoRoot } = spec;
   const untracked = pathList(git(repoRoot, ['ls-files', '--others', '--exclude-standard', '-z']));
   const missing = pathList(git(repoRoot, ['ls-files', '--deleted', '-z']));
 
@@ -211,6 +219,9 @@ function resolveRange(repoRoot: string, range: string): [string, string] {
   return [range.slice(0, twoDot), range.slice(twoDot + 2)];
 }
 
+/** {@link collectRangeChanges} input — the repository and the `base..head` range to read. */
+export type CollectRangeChangesSpec = { repoRoot: string; range: string };
+
 /**
  * Collect the changes between two refs of `repoRoot`.
  *
@@ -218,7 +229,8 @@ function resolveRange(repoRoot: string, range: string): [string, string] {
  * is read. An unresolvable ref lets git's own failure throw rather than yielding an empty
  * domain. Identical refs yield `[]`.
  */
-export function collectRangeChanges(repoRoot: string, range: string): StagedChange[] {
+export function collectRangeChanges(spec: CollectRangeChangesSpec): StagedChange[] {
+  const { repoRoot, range } = spec;
   const [base, head] = resolveRange(repoRoot, range);
   const listing = git(repoRoot, ['diff', ...NO_RENAMES, base, head, END_OF_REVISIONS]);
   return nameStatusEntries(listing).map(([rawStatus, path]) =>

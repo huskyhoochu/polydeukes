@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigValidationError } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadConfig } from '../src/index.ts';
+import { loadConfig } from '../src/load-config.ts';
 
-// The umbrella `loadConfig(rootDir)` loader: discovery + parse + delegation +
+// The umbrella `loadConfig({ rootDir: rootDir })` loader: discovery + parse + delegation +
 // self-protection attach.
 //
 // testCmd bodies here are deliberately FAKE runner strings ('fake-runner {scope}', never
@@ -49,7 +49,7 @@ describe('discovery — the three candidate filenames', () => {
     // the raw parsed object would leave it a string.
     writeInRoot('polydeukes.config.yaml', VALID_YAML);
 
-    const { config, configPath } = loadConfig(rootDir);
+    const { config, configPath } = loadConfig({ rootDir: rootDir });
 
     expect(configPath).toBe('polydeukes.config.yaml');
     expect(config.languages.typescript.testCmd('pkg-a')).toBe('fake-runner pkg-a');
@@ -58,7 +58,7 @@ describe('discovery — the three candidate filenames', () => {
   it('discovers the .yml variant', () => {
     writeInRoot('polydeukes.config.yml', VALID_YAML);
 
-    const { configPath } = loadConfig(rootDir);
+    const { configPath } = loadConfig({ rootDir: rootDir });
 
     expect(configPath).toBe('polydeukes.config.yml');
   });
@@ -68,7 +68,7 @@ describe('discovery — the three candidate filenames', () => {
     // branch — only the discovery list has to carry the .json candidate.
     writeInRoot('polydeukes.config.json', VALID_JSON);
 
-    const { config, configPath } = loadConfig(rootDir);
+    const { config, configPath } = loadConfig({ rootDir: rootDir });
 
     expect(configPath).toBe('polydeukes.config.json');
     expect(config.languages.typescript.testCmd('pkg-b')).toBe('fake-runner pkg-b');
@@ -81,7 +81,7 @@ describe('fail-closed — no config, ambiguous config', () => {
     // must name all three candidates or a user cannot tell which filenames are searched.
     let error: unknown;
     try {
-      loadConfig(rootDir);
+      loadConfig({ rootDir: rootDir });
     } catch (caught) {
       error = caught;
     }
@@ -101,7 +101,7 @@ describe('fail-closed — no config, ambiguous config', () => {
 
     let error: unknown;
     try {
-      loadConfig(rootDir);
+      loadConfig({ rootDir: rootDir });
     } catch (caught) {
       error = caught;
     }
@@ -121,7 +121,7 @@ describe('parse failure — surfaced with file path', () => {
 
     let error: unknown;
     try {
-      loadConfig(rootDir);
+      loadConfig({ rootDir: rootDir });
     } catch (caught) {
       error = caught;
     }
@@ -139,7 +139,7 @@ describe('parse failure — surfaced with file path', () => {
 
     let error: unknown;
     try {
-      loadConfig(rootDir);
+      loadConfig({ rootDir: rootDir });
     } catch (caught) {
       error = caught;
     }
@@ -171,7 +171,7 @@ describe('validation delegation — ConfigValidationError with file context', ()
 
     let error: unknown;
     try {
-      loadConfig(rootDir);
+      loadConfig({ rootDir: rootDir });
     } catch (caught) {
       error = caught;
     }
@@ -199,7 +199,7 @@ describe('self-protection — configPath auto-attached to protectedPaths', () =>
       ].join('\n'),
     );
 
-    const { config } = loadConfig(rootDir);
+    const { config } = loadConfig({ rootDir: rootDir });
 
     expect(config.protectedPaths).toContain('polydeukes.config.yaml');
     expect(config.protectedPaths).toContain('packages/core/src');
@@ -221,7 +221,7 @@ describe('self-protection — configPath auto-attached to protectedPaths', () =>
       ].join('\n'),
     );
 
-    const { config } = loadConfig(rootDir);
+    const { config } = loadConfig({ rootDir: rootDir });
 
     const occurrences = (config.protectedPaths ?? []).filter((p) => p === 'polydeukes.config.yaml');
     expect(occurrences.length).toBe(1);

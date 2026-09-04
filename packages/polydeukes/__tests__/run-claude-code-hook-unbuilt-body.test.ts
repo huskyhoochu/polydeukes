@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // path of THIS repository is ever referenced. The fixture dists are symlink mirrors of
 // the real build living INSIDE the throwaway repo — a symlinked body resolves its imports
 // out of the real build and actually runs, which is what keeps these cases honest.
-import { runClaudeCodeHook } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
   distWithout as sharedDistWithout,

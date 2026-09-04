@@ -11,6 +11,12 @@
 
 import type { CanonicalTranscript } from '@polydeukes/core';
 
+/** {@link evaluatePrecedent} input — one evidence object and the session it is judged against. */
+export type EvaluatePrecedentSpec = {
+  evidence: Record<string, unknown>;
+  transcript: CanonicalTranscript;
+};
+
 /**
  * Judge one `requirePrecedent` evidence object against the session.
  *
@@ -30,10 +36,8 @@ import type { CanonicalTranscript } from '@polydeukes/core';
  * `false` instead would make the gate permanently unsatisfiable — no amount of actually
  * doing the required action could ever open it, with nothing diagnosing why.
  */
-export function evaluatePrecedent(
-  evidence: Record<string, unknown>,
-  transcript: CanonicalTranscript,
-): boolean | undefined {
+export function evaluatePrecedent(spec: EvaluatePrecedentSpec): boolean | undefined {
+  const { evidence, transcript } = spec;
   if ('subagent' in evidence) {
     const kind = evidence.subagent;
     if (typeof kind !== 'string') {

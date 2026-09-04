@@ -11,7 +11,7 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import type { CovenantRegistration } from './dispatch.js';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
 import { mentionsPath, pathMatchesProtected, provenChangePath } from './mention.js';
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
 
@@ -90,9 +90,7 @@ export type SelfModRegistrationSpec = {
  * make {@link judgeSelfModification} uphold every call, so it answers the unjudgeable
  * outcome instead, which no enforce level softens.
  */
-export function selfModRegistration(
-  spec: SelfModRegistrationSpec,
-): CovenantRegistration & { body: NonNullable<CovenantRegistration['body']> } {
+export function selfModRegistration(spec: SelfModRegistrationSpec): MetaCovenantRegistration {
   const judgeSpec: SelfModificationSpec = {
     protectedPaths: spec.protectedPaths,
     mutatingToolNames: spec.mutatingToolNames,

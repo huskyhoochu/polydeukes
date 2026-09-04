@@ -150,9 +150,9 @@ describe('judgment invariance: assembly never sees the draft', () => {
     // registrations stay label-for-label identical. A resolution split leaking the draft
     // into `disciplines` would surface here as an extra label.
     writeFixtureConfig(JUDGED_ONLY);
-    const judgedOnlyConfig = loadConfig(repoRoot).config;
+    const judgedOnlyConfig = loadConfig({ rootDir: repoRoot }).config;
     writeFixtureConfig(WITH_DRAFT);
-    const withDraftConfig = loadConfig(repoRoot).config;
+    const withDraftConfig = loadConfig({ rootDir: repoRoot }).config;
 
     const labels = (registrations: CovenantRegistration[]): string[] =>
       registrations.map((registration) => registration.label);

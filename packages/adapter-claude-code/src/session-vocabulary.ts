@@ -24,6 +24,9 @@ export const SHELL_TOOLS = ['Bash'];
 /** `tool_input` keys a shell tool's command line travels in. */
 export const COMMAND_ARGS = ['command'];
 
+/** {@link transcriptPathFromPayload} input — one raw PreToolUse payload as a JSON string. */
+export type TranscriptPathFromPayloadSpec = { rawPayload: string };
+
 /**
  * Read the live transcript path out of a raw PreToolUse payload.
  *
@@ -34,10 +37,10 @@ export const COMMAND_ARGS = ['command'];
  * witness valve rather than opening it. A payload this function
  * cannot parse is still dispatched — `runAdapterPath` owns that verdict.
  */
-export function transcriptPathFromPayload(rawPayload: string): string | undefined {
+export function transcriptPathFromPayload(spec: TranscriptPathFromPayloadSpec): string | undefined {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawPayload);
+    parsed = JSON.parse(spec.rawPayload);
   } catch {
     return undefined;
   }

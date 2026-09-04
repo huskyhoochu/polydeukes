@@ -32,14 +32,14 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
     // A per-world `changes: [own path]` makes every `Implies` over the change set hold
     // vacuously; a raw (absolute) entry never matches a repo-relative regex; a sorted list
     // moves the first witness between surfaces.
-    const worlds = worldsFromInput(
-      inputWithChanges([
+    const worlds = worldsFromInput({
+      input: inputWithChanges([
         { kind: 'create', path: 'docs/z.md', post: '1' },
         { kind: 'modify', path: `${ROOT}/docs/a.md`, pre: 'x', post: 'y' },
         { kind: 'delete', path: 'docs/m.ko.md' },
       ]),
-      ROOT,
-    );
+      rootDir: ROOT,
+    });
 
     expect(worlds).toHaveLength(3);
     for (const supplied of worlds) {
@@ -50,13 +50,13 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
   it('omits a change outside rootDir from changes while the in-root sibling stays', () => {
     // The world for the outside path is dropped already; leaking its path into `changes`
     // would feed a `../` path to a declaration written repo-relative.
-    const worlds = worldsFromInput(
-      inputWithChanges([
+    const worlds = worldsFromInput({
+      input: inputWithChanges([
         { kind: 'create', path: '/elsewhere/docs/out.md', post: 'x' },
         { kind: 'create', path: 'docs/in.md', post: 'y' },
       ]),
-      ROOT,
-    );
+      rootDir: ROOT,
+    });
 
     expect(worlds.map((w) => w.world.changes)).toEqual([['docs/in.md']]);
   });
@@ -64,12 +64,12 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
   it('derives changes when input.world is present without a changes list', () => {
     // A root that ships `world.files` alone (the session surface) must still see the
     // derived set; `if (input.world) use input.world.changes` leaves it undefined.
-    const worlds = worldsFromInput(
-      inputWithChanges([{ kind: 'create', path: 'docs/a.md', post: 'x' }], {
+    const worlds = worldsFromInput({
+      input: inputWithChanges([{ kind: 'create', path: 'docs/a.md', post: 'x' }], {
         files: { 'locales/en.json': '{}' },
       }),
-      ROOT,
-    );
+      rootDir: ROOT,
+    });
 
     expect(worlds[0]?.world.changes).toEqual(['docs/a.md']);
   });
@@ -81,12 +81,15 @@ describe('worldsFromInput — the changes key, supplied by the root', () => {
     // set here; a derivation that ignores the list sees a one-element set, a union adds
     // the dispatched change to a list the root already assembled.
     const supplied = ['docs/a.md', 'docs/a.ko.md', 'docs/b.md'];
-    const worlds = worldsFromInput(
-      inputWithChanges([{ kind: 'modify', path: 'locales/en.json', pre: '{}', post: '{}' }], {
-        changes: supplied,
-      }),
-      ROOT,
-    );
+    const worlds = worldsFromInput({
+      input: inputWithChanges(
+        [{ kind: 'modify', path: 'locales/en.json', pre: '{}', post: '{}' }],
+        {
+          changes: supplied,
+        },
+      ),
+      rootDir: ROOT,
+    });
 
     expect(worlds).toHaveLength(1);
     expect(worlds[0]?.world.changes).toEqual(supplied);
@@ -96,10 +99,10 @@ describe('worldsFromInput — the changes key, supplied by the root', () => {
     // The degenerate list: a truthiness test (`world.changes?.length ? … : derive`) turns
     // "the root observed no changes" into "this one change", and an `Implies` that should
     // have found nothing to pair now finds a witness.
-    const worlds = worldsFromInput(
-      inputWithChanges([{ kind: 'create', path: 'docs/a.md', post: 'x' }], { changes: [] }),
-      ROOT,
-    );
+    const worlds = worldsFromInput({
+      input: inputWithChanges([{ kind: 'create', path: 'docs/a.md', post: 'x' }], { changes: [] }),
+      rootDir: ROOT,
+    });
 
     expect(worlds[0]?.world.changes).toEqual([]);
   });
@@ -109,14 +112,14 @@ describe('worldsFromInput — the four existing keys are unchanged by the additi
   // The exact shape per change kind, pinned. `toStrictEqual` so a key holding
   // `undefined` (which passes the engine's presence test) fails here.
   it('create, modify, and delete keep their exact key sets plus changes', () => {
-    const worlds = worldsFromInput(
-      inputWithChanges([
+    const worlds = worldsFromInput({
+      input: inputWithChanges([
         { kind: 'create', path: 'lib/new.db', post: 'body' },
         { kind: 'modify', path: 'lib/a.db', pre: 'before', post: 'after' },
         { kind: 'delete', path: 'lib/old.db', pre: 'gone' },
       ]),
-      ROOT,
-    );
+      rootDir: ROOT,
+    });
     const changes = ['lib/new.db', 'lib/a.db', 'lib/old.db'];
 
     expect(worlds.map((w) => w.world)).toStrictEqual([

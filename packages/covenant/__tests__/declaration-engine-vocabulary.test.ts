@@ -28,7 +28,7 @@ function faultOf(steps: readonly ExtractStep[]): ConfigFault {
     extract: { [EXTRACT]: [...steps] },
     relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
   };
-  const result = compileDeclaration(decl);
+  const result = compileDeclaration({ declaration: decl });
   if (!isConfigFault(result)) {
     throw new Error(`expected a config fault for ${JSON.stringify(steps)}`);
   }
@@ -610,9 +610,11 @@ describe('keyByPattern — re-key each item by capture group 1 of its value', ()
     const named: UnaryStep = { op: 'keyByPattern', re: '^(?<stem>.+)\\.src$' };
     expect(
       compileDeclaration({
-        discipline: 'probe',
-        extract: { [EXTRACT]: [{ op: 'source', of: SRC }, named] },
-        relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
+        declaration: {
+          discipline: 'probe',
+          extract: { [EXTRACT]: [{ op: 'source', of: SRC }, named] },
+          relate: [{ id: ENTRY, relation: { op: 'Empty', of: EXTRACT }, message: 'm' }],
+        },
       }),
     ).not.toSatisfy(isConfigFault);
     // The name is never read; the key comes from position 1 as it does for any group.

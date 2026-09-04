@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // `runCovenantCheck`'s `domain` (staged | worktree | range): one judge, three
 // observation points. The same violation must collect identically, exit identically,
 // and leave the same telemetry rows. The witness valve stands on staged alone.
-import { runCovenantCheck } from '../src/index.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
 const WITNESS_TOKEN = 'i-accept-this-commit-covenant';
@@ -91,7 +91,7 @@ describe('covenant check — the three domains judge one violation identically',
     writeViolations();
 
     // worktree: disk dirty, index clean.
-    const worktreeChanges = byPath(collectWorktreeChanges(repoRoot));
+    const worktreeChanges = byPath(collectWorktreeChanges({ repoRoot: repoRoot }));
     const worktree = await runCovenantCheck({
       repoRoot,
       telemetryPath: logPath('worktree'),
@@ -100,7 +100,7 @@ describe('covenant check — the three domains judge one violation identically',
 
     // staged: same bytes, now in the index.
     git('add', SCOPED_SOURCE, PROTECTED_ENTRY);
-    const stagedChanges = byPath(collectStagedChanges(repoRoot));
+    const stagedChanges = byPath(collectStagedChanges({ repoRoot: repoRoot }));
     const staged = await runCovenantCheck({
       repoRoot,
       telemetryPath: logPath('staged'),
@@ -110,7 +110,9 @@ describe('covenant check — the three domains judge one violation identically',
     // range: same bytes, committed on a branch and observed from the baseline commit.
     git('checkout', '--quiet', '-b', VIOLATION_BRANCH);
     git('commit', '--quiet', '-m', 'violation');
-    const rangeChanges = byPath(collectRangeChanges(repoRoot, `${base}..${VIOLATION_BRANCH}`));
+    const rangeChanges = byPath(
+      collectRangeChanges({ repoRoot: repoRoot, range: `${base}..${VIOLATION_BRANCH}` }),
+    );
     const range = await runCovenantCheck({
       repoRoot,
       telemetryPath: logPath('range'),

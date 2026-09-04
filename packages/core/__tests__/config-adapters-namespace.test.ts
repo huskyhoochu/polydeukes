@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError, defineConfig, normalizeProtectedPaths } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
+import { normalizeProtectedPaths } from '../src/protected-paths.ts';
 
 // `adapters` is a namespace map: keys are unvalidated ecosystem names and values must be
 // plain objects whose CONTENTS core never inspects — the vocabulary belongs to each adapter,

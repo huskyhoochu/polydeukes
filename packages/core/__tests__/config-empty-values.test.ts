@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigValidationError, defineConfig } from '../src/index.ts';
+import { ConfigValidationError, defineConfig } from '../src/config.ts';
 import { validLanguages } from './helpers.ts';
 
 // Empty-string rejection in the five spots that carry a pattern or a path. An empty pattern

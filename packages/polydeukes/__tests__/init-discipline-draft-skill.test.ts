@@ -49,7 +49,7 @@ function loadFenceAsConfig(fence: string): ReturnType<typeof loadConfig> {
   const root = mkdtempSync(join(tmpdir(), 'pdks-skill-fence-'));
   try {
     writeFileSync(join(root, 'polydeukes.config.yaml'), fence);
-    return loadConfig(root);
+    return loadConfig({ rootDir: root });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

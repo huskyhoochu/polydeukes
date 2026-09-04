@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { validateAlgebraDeclaration } from '../src/index.ts';
+import { validateAlgebraDeclaration } from '../src/algebra.ts';
 import { validateAlgebra } from './helpers.ts';
 
 // Schema ⟺ validateAlgebraDeclaration equivalence for the algebra declaration. For each

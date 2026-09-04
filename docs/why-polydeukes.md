@@ -485,7 +485,10 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      refusing to spend the inherited figure: count from the supply side with a parser, count
      again from the demand side, and let the ticket proceed on the set while the summary is
      corrected. Publish it with the CONTRACT-03 candidate — they are one argument about
-     measurement seen from two sides.
+     measurement seen from two sides. A third instance (CONTRACT-05, 2026-09-05) points the
+     other way: the inherited "nine" was a true count of one ticket's diff, repeated by three
+     documents as if it were the count of the rule's domain — the rule reached two packages
+     no ticket had ever diffed, and the real number was twenty-three.
 
      Parked candidate (ALGEBRA-01, 2026-08-29): the relation vocabulary is closed at seven
      and deliberately not reduced to its two-primitive kernel. `Within` was dropped because a

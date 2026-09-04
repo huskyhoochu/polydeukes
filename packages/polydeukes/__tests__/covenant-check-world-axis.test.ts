@@ -187,7 +187,7 @@ describe('covenant check — the change set is the whole observation, on every d
     write('notes/a.txt', 'a\n');
     write('notes/b.txt', 'b\n');
     git('add', EN_FILE, 'notes/a.txt', 'notes/b.txt');
-    const collected = collectStagedChanges(repoRoot).map((change) => change.path);
+    const collected = collectStagedChanges({ repoRoot: repoRoot }).map((change) => change.path);
     expect(collected).toHaveLength(3);
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
@@ -407,7 +407,7 @@ describe('covenant check — the change set lists the changes that produce a wor
     write(EN_FILE, INDEX_CONTENT);
     writeBinary(BINARY_FILE);
     git('add', EN_FILE, BINARY_FILE);
-    const collected = collectStagedChanges(repoRoot).map((change) => change.path);
+    const collected = collectStagedChanges({ repoRoot: repoRoot }).map((change) => change.path);
     expect(collected).toHaveLength(2);
 
     const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });

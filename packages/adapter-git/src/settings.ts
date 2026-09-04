@@ -20,6 +20,9 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+/** {@link resolveGitAdapterSettings} input — the raw `adapters.git` namespace value. */
+export type ResolveGitAdapterSettingsSpec = { namespace: unknown };
+
 /**
  * Resolve the `adapters.git` namespace value into {@link GitAdapterSettings} (pure).
  *
@@ -31,7 +34,8 @@ function isStringArray(value: unknown): value is string[] {
  * the reserved `measure`), or a protectedPaths that is not an array of strings — throws
  * with the field path named.
  */
-export function resolveGitAdapterSettings(namespace: unknown): GitAdapterSettings {
+export function resolveGitAdapterSettings(spec: ResolveGitAdapterSettingsSpec): GitAdapterSettings {
+  const { namespace } = spec;
   if (namespace === undefined) {
     return { enforce: 'block', protectedPaths: [] };
   }

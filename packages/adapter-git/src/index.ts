@@ -6,6 +6,9 @@
  */
 
 export {
+  type CollectRangeChangesSpec,
+  type CollectStagedChangesSpec,
+  type CollectWorktreeChangesSpec,
   collectRangeChanges,
   collectStagedChanges,
   collectWorktreeChanges,
@@ -15,8 +18,13 @@ export {
   type ObservationSourceReaderSpec,
   observationSourceReader,
 } from './observation-source-reader.js';
-export { type GitAdapterSettings, resolveGitAdapterSettings } from './settings.js';
 export {
+  type GitAdapterSettings,
+  type ResolveGitAdapterSettingsSpec,
+  resolveGitAdapterSettings,
+} from './settings.js';
+export {
+  type CovenantInputFromStagedChangesSpec,
   covenantInputFromStagedChanges,
   STAGED_DELETE,
   STAGED_WRITE,

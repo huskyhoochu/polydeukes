@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // must not gain Grok names — these cases drive `runClaudeCodeHook` with live dual-key
 // envelopes and assert WHO answered, because an exit code alone cannot tell a mapped
 // judgment from a fail-closed crash.
-import { runClaudeCodeHook } from '../src/index.ts';
+import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows, writeConfigAt } from './helpers';
 
 /** Injected fixture values — this runtime's Grok roster, one Claude name, one table-outside name. */

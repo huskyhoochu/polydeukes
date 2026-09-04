@@ -4,4 +4,8 @@
  * The delegator a consumer project's PreToolUse hook imports: one verb and its spec type.
  */
 
-export { type ClaudeCodeHookSpec, runClaudeCodeHook } from './claude-code-hook.js';
+export {
+  type ClaudeCodeHookOutcome,
+  type ClaudeCodeHookSpec,
+  runClaudeCodeHook,
+} from './claude-code-hook.js';

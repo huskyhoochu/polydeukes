@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { allFileChanges, type CovenantInput, type FileChange, parseInput } from '../src/index.ts';
+import {
+  allFileChanges,
+  type CovenantInput,
+  type FileChange,
+  parseInput,
+} from '../src/protocol.ts';
 
 // One evidence per union kind. Contents are distinctive on purpose: exact-equality
 // assertions catch a field swap or a dropped baseline, which an inert 'x' fixture

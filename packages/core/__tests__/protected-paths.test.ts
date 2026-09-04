@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 // Imported through the package entry point — the same surface `@polydeukes/core` publishes.
-import { normalizeProtectedPaths } from '../src/index.ts';
+import { normalizeProtectedPaths } from '../src/protected-paths.ts';
 
 // All path strings below are injected fixture values; the core source must never carry
 // such literals.

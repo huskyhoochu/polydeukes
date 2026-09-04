@@ -32,6 +32,12 @@ export type FileChange =
 export type SourceReader = (path: string) => string | undefined;
 
 /**
+ * `ChannelReader` — a channel kind in, the text the surface observes on that channel or
+ * absence out. Absence is `undefined`, same contract as {@link SourceReader}.
+ */
+export type ChannelReader = (kind: string) => string | undefined;
+
+/**
  * `CovenantInput` — the agent-neutral input IR a covenant judges.
  *
  * Adapters up-translate their own agent payloads into this shape and pipe it as

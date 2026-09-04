@@ -166,6 +166,9 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
   };
 }
 
+/** {@link transcriptFromJsonlFile} input — the transcript file to read. */
+export type TranscriptFromJsonlFileSpec = { path: string };
+
 /**
  * Read a transcript file and parse it.
  *
@@ -180,10 +183,12 @@ export function transcriptFromJsonl(text: string): CanonicalTranscript {
  * Either way the valve turns off, never open: `undefined` leaves the dispatcher on its
  * `noopTranscript` default.
  */
-export function transcriptFromJsonlFile(path: string): CanonicalTranscript | undefined {
+export function transcriptFromJsonlFile(
+  spec: TranscriptFromJsonlFileSpec,
+): CanonicalTranscript | undefined {
   let text: string;
   try {
-    text = readFileSync(path, 'utf-8');
+    text = readFileSync(spec.path, 'utf-8');
   } catch {
     return undefined;
   }
