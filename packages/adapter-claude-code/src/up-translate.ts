@@ -11,7 +11,7 @@
  * module, so every consumer outside the package still reaches it at the same path.
  */
 
-import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
+import { type CovenantInput, EXIT_BREAK_BLOCKING, isPlainObject } from '@polydeukes/core';
 
 import { parsePayloadEnvelope } from './payload-envelope.ts';
 
@@ -27,6 +27,7 @@ export type ClaudePreToolUsePayload = {
   session_id?: string;
   transcript_path?: string;
   cwd?: string;
+  agent_type?: string;
   tool_name: string;
   tool_input: Record<string, unknown>;
 };
@@ -70,17 +71,41 @@ export function translateEvent(payload: unknown): TranslatedEvent {
 }
 
 /**
+ * The actor one payload proves (pure).
+ *
+ * The host writes `agent_type` at the envelope's top level when the hook fires inside a
+ * subagent call, so a non-empty string there is the subagent kind and anything else — an
+ * absent field, a non-string, the empty string — is the main session, the positive `{}`.
+ * `tool_input` is the agent's own arguments and is never read here: a call could then name
+ * any actor it liked.
+ */
+function actorOf(payload: unknown): CovenantInput['actor'] {
+  if (!isPlainObject(payload)) return {};
+  const agentType = payload.agent_type;
+  if (typeof agentType !== 'string' || agentType === '') return {};
+  return { agentType };
+}
+
+/**
  * Fold a sequence of payloads into one {@link CovenantInput} (pure).
  *
  * Preserves observation order into `toolCalls` / `subagentSpawns`; `userMessages` is
  * always `[]` — witness evidence arrives through the transcript, not this path. If any
  * payload fails classification the whole build fails closed with the blocking exit
  * code — a silent drop would be a bypass vector.
+ *
+ * `actor` comes from {@link actorOf} over the first payload: one observation has one actor.
  */
 export function buildCovenantInput(
   payloads: unknown[],
 ): { ok: true; value: CovenantInput } | { ok: false; exitCode: 2; reason: string } {
-  const input: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
+  const input: CovenantInput = {
+    toolCalls: [],
+    subagentSpawns: [],
+    userMessages: [],
+    // No payload is no observation, so there is no actor to prove — not the main session.
+    ...(payloads.length > 0 && { actor: actorOf(payloads[0]) }),
+  };
 
   for (let index = 0; index < payloads.length; index++) {
     const translated = translateEvent(payloads[index]);

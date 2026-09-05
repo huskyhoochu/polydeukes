@@ -161,7 +161,8 @@ What a declaration's syntax alone says it reads and relates. It must fall inside
 mechanism's shape.
 
 **Axis (of a declaration)**:
-Which kind of evidence a declaration reads: change, actor, world, or history. Derived from
+Which kind of evidence a declaration reads: change, actor, world, or history. The fixed
+source `actor` is the one source of the actor axis. Derived from
 its sources, never written by hand.
 
 **Config fault**:

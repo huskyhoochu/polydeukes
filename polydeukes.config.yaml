@@ -494,6 +494,37 @@ disciplines:
           relation: { op: 'nonEmpty', of: 'ticket' }
           message: 'no /ticket turn precedes this branch creation'
 
+  - id: 'tests-are-the-writers'
+    why: 'a test file is the test-writer subagent output; an implementer that edits one is fitting the test to the code.'
+    declare:
+      mechanism: 'producer-owned'
+      scope: { source: 'target.path', include: ['^packages/[^/]+/__tests__/.*\.test\.ts$'] }
+      supply: { actor: 'pass' }
+      extract:
+        implementer:
+          - { op: 'source', of: 'actor' }
+          - { op: 'select', path: 'agentType' }
+          - { op: 'matches', re: '^tdd-implementer$' }
+      relate:
+        - id: 'not-the-implementer'
+          relation: { op: 'empty', of: 'implementer' }
+          message: 'the implementer subagent wrote a test file'
+
+  - id: 'commits-come-from-the-main-session'
+    why: 'a merge or a commit is the user call relayed by the main session; a subagent that commits has decided it alone.'
+    declare:
+      mechanism: 'actor-scope'
+      scope: { source: 'command', include: ['(^|[;&|(]\s*)(git\s+(commit|push)|tea\s+pr\s+merge)\b'] }
+      supply: { actor: 'pass' }
+      extract:
+        subagent:
+          - { op: 'source', of: 'actor' }
+          - { op: 'select', path: 'agentType' }
+      relate:
+        - id: 'main-session-only'
+          relation: { op: 'empty', of: 'subagent' }
+          message: 'subagent {value} ran a commit command'
+
   # ---- drafts: registered, read, not yet judged
   - id: 'verbs-take-one-spec'
     why: 'an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does.'

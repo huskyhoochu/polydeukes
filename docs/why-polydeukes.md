@@ -541,6 +541,14 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      own absence policy. The surface that lacks the channel answers absence honestly instead
      of fabricating an empty observation. Publish when a live sidecar declaration lands.
 
+     Parked candidate (ALGEBRA-05, 2026-09-05): the actor is what the host proves, never
+     what the call says. The judge reads who made a call from the hook envelope alone —
+     `agent_type` inside a subagent, `{}` in the main session — and never from the agent's
+     own arguments or text; a surface that cannot prove one supplies nothing and the
+     declaration's `supply` policy says what that means. The first two authority
+     declarations (`producer-owned`, `actor-scope`) landed live on it. Publish with the
+     v0.6.0 gate post beside the first actor rows.
+
      Parked candidate (ALGEBRA-07, 2026-09-05): a session's own history is a source like any
      file — named in the declaration, flattened once into plain data, and read by the same
      extract steps. The first `ordered` judgment landed live on it: "a test-writer spawn

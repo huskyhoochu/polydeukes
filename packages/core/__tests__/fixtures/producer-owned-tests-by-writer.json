@@ -1,0 +1,37 @@
+{
+  "discipline": "producer-owned-tests-by-writer",
+  "mechanism": "producer-owned",
+  "scope": {
+    "source": "target.path",
+    "include": ["^packages/[^/]+/__tests__/.*\\.test\\.ts$"]
+  },
+  "supply": {
+    "actor": "pass"
+  },
+  "extract": {
+    "implementer": [
+      {
+        "op": "source",
+        "of": "actor"
+      },
+      {
+        "op": "select",
+        "path": "agentType"
+      },
+      {
+        "op": "matches",
+        "re": "^tdd-implementer$"
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "not-the-implementer",
+      "relation": {
+        "op": "empty",
+        "of": "implementer"
+      },
+      "message": "the implementer subagent wrote a test file"
+    }
+  ]
+}

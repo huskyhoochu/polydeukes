@@ -309,7 +309,7 @@ function validateSources(sources: unknown, location: string): void {
 /**
  * Validate the `supply` block: every key names a source this declaration can be missing.
  *
- * The universe of source names is the fixed six plus whatever `sources` binds, and it is
+ * The universe of source names is the fixed seven plus whatever `sources` binds, and it is
  * closed, so a key outside it is a name nothing supplies — a misspelling whose policy never
  * applies while the real source falls to the default.
  */

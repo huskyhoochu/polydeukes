@@ -48,8 +48,10 @@ a fifth field is a family runtime skip and reads back with no reason.
 A `disciplines:` entry is one `declare` block (or a `draft`). What its sources bind decides
 the evidence the judgment needs: the fixed names read the change, the fixed name `command`
 reads the shell call's command line (a shell call that changes no file is one world of its
-own, subject `-`), and a `{ transcript: true }` binding reads the session history; without a
-transcript channel such an entry records `skipped` by its own `supply: pass`.
+own, subject `-`), the fixed name `actor` reads the observation's actor (`{ agentType? }` —
+`{}` is the main session, absence is a host that proved none), and a `{ transcript: true }`
+binding reads the session history; without a transcript channel such an entry records
+`skipped` by its own `supply: pass`.
 
 ## Surfaces, axes, meta-covenants
 
@@ -73,19 +75,20 @@ is a closed enumeration whose single source is the `as const` tuple in that modu
 outside a closed list is rejected by validation, never coerced.
 
 - **Declaration blocks** — six keys: **`scope`** (a source name plus constant regex lists),
-  **`sources`** (bindings outside the fixed six — `{ name: { file: '<repo-relative path>' } }`,
+  **`sources`** (bindings outside the fixed seven — `{ name: { file: '<repo-relative path>' } }`,
   `{ name: { sidecar: true } }` or `{ name: { transcript: true } }`; the kind position is closed
   to `file` · `sidecar` · `transcript`, and a sidecar or transcript binding's value is the marker
-  `true`, never a path), **`supply`** (keys must name one of the fixed six or one of the
+  `true`, never a path), **`supply`** (keys must name one of the fixed seven or one of the
   declaration's own `sources`; values `error` | `pass` | `empty` — `empty` reads an absent single
   source as an empty item list and never applies to `state`), **`extract`**, **`relate`**,
   **`witness`** (its own `extract` + `relate`, same grammar; it sees the body's extract names,
   the body never sees its). `mechanism` is required; there is no `axis` key.
-- **Fixed source names** — six per world: `target.path` · `pre` · `post` · `state`
+- **Fixed source names** — seven per world: `target.path` · `pre` · `post` · `state`
   (`{ pre, post }`, modifications only) · `changes` (the observation unit's change set) ·
   `command` (the shell call's command line; a shell call that changes no file is one world of
-  its own at subject `-`, admitted only by a scope that does not name `target.path`). A side
-  the change lacks is an absent key — the declaration's `supply` policy, never the host, says
+  its own at subject `-`, admitted only by a scope that does not name `target.path`) ·
+  `actor` (the observation's actor, `{ agentType? }`, present where the host proved one). A
+  side the change lacks is an absent key — the declaration's `supply` policy, never the host, says
   what that means.
 - **Supply layer** — `planSources` · `supplySources` in the covenant package fill the IR's
   `world` field: `files` through the surface's injected reader, `channels` through its channel
@@ -116,8 +119,8 @@ outside a closed list is rejected by validation, never coerced.
   entry's `op` a relation) and must be a subset of the spec; a `source` name neither fixed nor
   bound is refused, so the empty shape never satisfies an axis-restricted name.
 - **Axes of a declaration** — `change` · `actor` · `world` · `history`. A fixed source name
-  derives `change`, a `file` or `sidecar` binding `world`, a `transcript` binding `history`;
-  `actor` has no source yet.
+  derives `change` except `actor`, which derives `actor`; a `file` or `sidecar` binding
+  derives `world`, a `transcript` binding `history`.
 - **Extract steps** — unary steps are registered per `ALGEBRA-02`'s procedure
   (`.claude/rules/extract-vocabulary.md`) with pass-through arguments; combinators are `union` ·
   `onlyIn` · `intersect`, only as a pipeline's first step, and a name outside the three that

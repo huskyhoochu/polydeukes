@@ -46,6 +46,7 @@ type CovenantInput = {
   toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
+  actor?: { agentType?: string };
 };
 
 type FileChange =
@@ -61,7 +62,9 @@ type CovenantVerdict = { upheld: true } | { upheld: false; reason: string };
 삭제를 표현할 수 없는 예외가 아니라 일급 증거로 두기 위해서입니다. 불가능한 상태는 아예
 적을 수 없습니다. 결과 내용을 든 삭제나 기준선을 든 생성이 그렇습니다. `delete.pre`는
 기준선이 바이너리 blob이었을 때 없습니다. 삭제를 판정하는 데는 내용이 필요 없기
-때문입니다.
+때문입니다. `actor`는 호스트 봉투가 증명하는 관측의 주체(actor)입니다. 서브에이전트 안에서는
+`agentType`, 주 세션에서는 `{}`이고, 표면이 주체를 증명하지 못하면 없습니다. 판정기는 기본값을
+채우지 않습니다.
 
 **증거의 거처는 정확히 하나, 그 증거가 속한 호출입니다.** `fileChange`가 없다는 것은 이
 호출이 증명되지 않았다는 뜻이고, 형제 호출의 증거가 그 자리를 대신하지 않습니다.

@@ -72,6 +72,7 @@ describe('up-translate builds the IR from payload fixtures', () => {
         ],
         subagentSpawns: [{ kind: 'tdd-writer' }],
         userMessages: [],
+        actor: {},
       });
     }
   });

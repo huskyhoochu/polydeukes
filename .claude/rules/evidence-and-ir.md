@@ -71,3 +71,12 @@ neither a file nor a channel: it is the session the root already injects for the
 family, flattened into a plain snapshot at supply time, and its absence is the absence of
 that session — the commit surface has none, so `supply: pass` is how a history declaration
 lands there.
+
+## The actor comes from the host envelope only
+
+`CovenantInput.actor` is `{ agentType?: string }`: the adapter reads the envelope's
+top-level `agent_type` (present when the hook fires inside a subagent) and supplies `{}` for
+the main session. `tool_input`, user text, the transcript body, and the sidecar are never
+read for it — those are surfaces the agent writes, and an actor read from them is an actor
+the call chose for itself. A surface that cannot prove an actor (the commit surface) omits
+the key; a declaration's `supply` policy says what the absence means.

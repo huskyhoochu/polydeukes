@@ -53,7 +53,8 @@ and `staged-delete`. A deletion always carries its evidence. A write carries it 
 staged blob was binary — there is no text to compare, so the call arrives with no
 `fileChange` at all and is judged on its path alone, the same as any unproven call.
 **The session collections are honestly empty** — the commit surface has no session, and a
-key is never fabricated to look like one.
+key is never fabricated to look like one. There is no `actor` either: the hook cannot tell a
+human's `git commit` from an agent's, so it proves none.
 
 **The namespace is this adapter's own vocabulary.** The core validates only the container
 shape — one settings object per adapter — and passes the contents through verbatim, so the

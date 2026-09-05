@@ -513,20 +513,6 @@ describe('deriveShape — the history axis from a transcript binding', () => {
     expect(error.message).not.toContain('no registered source derives');
   });
 
-  it('the underivable note survives for the actor axis alone', () => {
-    // `actor` still has no deriving source, so `producer-owned` on any declaration must say
-    // so; a widening that lists every axis as derivable drops the one note still true.
-    const declaration = {
-      ...groundDeclaration,
-      mechanism: 'producer-owned',
-    };
-
-    const error = expectRejection(declaration);
-
-    expect(error.message).toContain("'producer-owned'");
-    expect(error.message).toContain("no registered source derives 'actor' yet");
-  });
-
   it('a transcript source read only inside witness.extract still derives history', () => {
     // The valve reads a history too: a derivation walking the body alone leaves the
     // history-only valve declaration axis-less, and the empty set passes every spec.
@@ -548,5 +534,136 @@ describe('deriveShape — the history axis from a transcript binding', () => {
     expect(deriveShape(validateAlgebraDeclaration(declaration)).axes).toEqual(
       new Set(['change', 'history']),
     );
+  });
+});
+
+describe('deriveShape — the actor axis from the fixed source `actor`', () => {
+  // The seventh fixed name. Its value is the input's actor object, so it is the one fixed
+  // name that derives `actor` rather than `change`; the two authority-family names that
+  // ask for that axis (`producer-owned` · `actor-scope`) admit a declaration for the
+  // first time. Agent names and the location are fixture values.
+  const ACTOR_SOURCE = 'actor';
+  const COMMAND_SOURCE = 'command';
+  const IMPLEMENTER = 'tdd-implementer';
+
+  /** The live shape: a test file is not the implementer's output. */
+  const producerOwnedDeclaration = {
+    discipline: 'probe',
+    mechanism: 'producer-owned',
+    scope: { source: PATH_SOURCE, include: ['\\.test\\.ts$'] },
+    supply: { [ACTOR_SOURCE]: 'pass' },
+    extract: {
+      implementer: [
+        { op: 'source', of: ACTOR_SOURCE },
+        { op: 'select', path: 'agentType' },
+        { op: 'matches', re: `^${IMPLEMENTER}$` },
+      ],
+    },
+    relate: [
+      { id: 'not-the-implementer', relation: { op: 'empty', of: 'implementer' }, message: 'm' },
+    ],
+  };
+
+  /** The live shape: a commit command is the main session's. */
+  const actorScopeDeclaration = {
+    discipline: 'probe',
+    mechanism: 'actor-scope',
+    scope: { source: COMMAND_SOURCE, include: ['^git commit\\b'] },
+    supply: { [ACTOR_SOURCE]: 'pass' },
+    extract: {
+      subagent: [
+        { op: 'source', of: ACTOR_SOURCE },
+        { op: 'select', path: 'agentType' },
+      ],
+    },
+    relate: [
+      { id: 'main-session-only', relation: { op: 'empty', of: 'subagent' }, message: '{value}' },
+    ],
+  };
+
+  it('a producer-owned declaration reading actor derives { axes: actor, relations: empty }', () => {
+    // The rule "fixed name → change" applied to `actor` derives `change`, and the
+    // producer-owned spec (axes: actor) refuses the declaration written exactly as the
+    // catalogue asks for it.
+    expect(deriveShape(validateAlgebraDeclaration(producerOwnedDeclaration, LOCATION))).toEqual({
+      axes: new Set(['actor']),
+      relations: new Set(['empty']),
+      witness: false,
+    });
+  });
+
+  it('an actor-scope declaration scoped on command and reading actor validates with the actor axis', () => {
+    // The scope names `command` (change-valued, a string) while the pipeline reads
+    // `actor`; a derivation that folds the scope source into the axes reads `change` too
+    // and the actor-only spec refuses it.
+    expect(deriveShape(validateAlgebraDeclaration(actorScopeDeclaration, LOCATION)).axes).toEqual(
+      new Set(['actor']),
+    );
+  });
+
+  it('a body reading actor beside target.path derives both actor and change', () => {
+    // The actor rule is an exception for one name, not a replacement of the fixed rule:
+    // a derivation that sends every fixed name to `actor` once the list carries it leaves
+    // the path pipeline axis-less.
+    const declaration = {
+      ...producerOwnedDeclaration,
+      mechanism: 'scoped-valve',
+      extract: {
+        ...producerOwnedDeclaration.extract,
+        own: [{ op: 'source', of: PATH_SOURCE }],
+      },
+      relate: [
+        ...producerOwnedDeclaration.relate,
+        { id: 'has-path', relation: { op: 'nonEmpty', of: 'own' }, message: 'm' },
+      ],
+      witness: valveOver('own'),
+    };
+
+    expect(deriveShape(validateAlgebraDeclaration(declaration, LOCATION)).axes).toEqual(
+      new Set(['actor', 'change']),
+    );
+  });
+
+  it('an added-only declaration reading actor is refused for the axis mismatch, naming both', () => {
+    // The negative probe of the derivation: `added-only` admits `change` alone. A
+    // derivation still sending `actor` to `change` accepts this declaration and the
+    // catalogue's axis restriction stops meaning anything for the seventh name.
+    const error = expectRejection({ ...producerOwnedDeclaration, mechanism: 'added-only' });
+
+    expect(error.message).toContain("'added-only'");
+    expect(error.message).toContain("'actor'");
+  });
+
+  it('producer-owned refused for another reason no longer says the actor axis has no source', () => {
+    // The note "no registered source derives 'actor' yet" was true while the axis had no
+    // source; once `actor` derives it, a message still carrying the note sends the author
+    // away from a name that now admits declarations.
+    const error = expectRejection({ ...namingDeclaration, mechanism: 'producer-owned' });
+
+    expect(error.message).toContain("'producer-owned'");
+    expect(error.message).toContain("'change'");
+    expect(error.message).not.toContain('no registered source derives');
+  });
+
+  it('scope.source: actor is refused — the actor is an object, and a scope needs a string', () => {
+    // A regex over an object matches nothing, so a scope on `actor` admits no world and
+    // the declaration lands zero rows while looking like a judgment.
+    const error = expectRejection({
+      ...producerOwnedDeclaration,
+      scope: { source: ACTOR_SOURCE, include: ['.*'] },
+    });
+
+    expect(error.message).toContain(`'${ACTOR_SOURCE}'`);
+  });
+
+  it('a `sources` binding named actor is refused — it shadows the fixed source', () => {
+    // A user binding under the fixed name would replace the host's actor with a file's
+    // text, and the subagent check would judge the file.
+    const error = expectRejection({
+      ...producerOwnedDeclaration,
+      sources: { [ACTOR_SOURCE]: { file: FILE_EN_PATH } },
+    });
+
+    expect(error.message).toContain(`${LOCATION}.sources.${ACTOR_SOURCE}`);
   });
 });

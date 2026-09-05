@@ -389,23 +389,23 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
 
 This repository's live config carries the same declaration as `sqlite-only-under-knowledge`.
 
-Each observation is judged as one **world** with six source names: `target.path` (the
+Each observation is judged as one **world** with seven source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
 a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
 on a modification), and `changes` (every path the observation changes — the one call on the
 session surface, the whole staged set on the commit surface), and `command` (the shell
 call's command line — present on a shell call only, and a shell call that changes no file
 is one world of its own, so a declaration scoped on `command` sees it while one scoped on
-`target.path` does not). A declaration that reads
-`changes` is judged only where the whole change set is observed: the session surface
-records it `skipped`, the same disposition the commit surface gives a declaration that reads
-the session,
-because one call can never carry the other half of a pair. This repository's live config
+`target.path` does not), and `actor` (the observation's actor — described below). A
+declaration that reads `changes` is judged only where the whole change set is observed: the
+session surface records it `skipped`, the same disposition the commit surface gives a
+declaration that reads the session, because one call can never carry the other half of a
+pair. This repository's live config
 carries one — `docs-stay-bilingual`, an `implies` over the `.md`/`.ko.md` pair, advised
 on the commit surface when one side is staged without the other. A declaration that needs a
 file outside the target names it in a `sources` block, `sources: { en: { file:
 'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
-repo-relative (no leading `/`, no `..` segment) and the name may not be one of the six. The
+repo-relative (no leading `/`, no `..` segment) and the name may not be one of the seven. The
 surface reads the file the way it observes the tree — the disk in a session, the index for a
 staged commit, the `<to>` commit for a range — except that a named file the change itself
 touches is read from the change's `post`, so both surfaces judge the same text. A second
@@ -419,9 +419,14 @@ declaration as one snapshot whose entries carry their
 observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
 `agentType` reads the parsed sidecar. This repository's live config carries one —
 `tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, which
-the commit surface (no session) records `skipped`. A `supply` key must name one of the six
-fixed sources or one of the declaration's own `sources`; any other key is refused. A
-source the change does not carry is absent, and the declaration's
+the commit surface (no session) records `skipped`. The seventh fixed name, `actor`, is the
+observation's actor — `{ agentType }` inside a subagent, `{}` in the main session, absent
+where the surface proves none (the commit surface) — read as `{ op: 'source', of: 'actor' }`
+followed by `select` on `agentType`; it derives the `actor` axis the `producer-owned` and
+`actor-scope` mechanisms require, and this repository's live config carries one of each
+(`tests-are-the-writers`, `commits-come-from-the-main-session`). A `supply` key must name
+one of the seven fixed sources or one of the declaration's own `sources`; any other key is
+refused. A source the change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
 recorded `blocked` at either enforce level — `pass` leaves it unjudged, and `empty` reads
 the absent side as an empty item list and judges on. `empty` is what lets an added-only
@@ -437,8 +442,8 @@ block could not be assembled), or `supply-pass` (the declaration's own `supply: 
 absent source through). Every declaration also names its `mechanism` — one of eighteen
 catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
 name whose shape the declaration does not match: the axes its sources derive (`change` for
-the fixed names, `world` for a `file` or `sidecar` source, `history` for a `transcript`
-source) and the relations it relates must fall inside
+the fixed names other than `actor`, `actor` for `actor`, `world` for a `file` or `sidecar`
+source, `history` for a `transcript` source) and the relations it relates must fall inside
 what that name admits. A block the compiler cannot resolve — a step name outside the
 registry, an argument outside a step's keys — becomes a skip registration that names its
 location on stderr and routes nothing. A shell write into the declaration's scope whose

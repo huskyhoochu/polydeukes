@@ -280,6 +280,91 @@ describe('a declaration reading the change set renders per surface capability', 
   });
 });
 
+describe('a declaration reading the actor renders the actor axis', () => {
+  // The two live authority declarations. The axis is derived from the fixed source
+  // `actor`; agent names and ids are fixture values the live config carries.
+  const ACTOR_SOURCE = 'actor';
+  const TESTS_ID = 'tests-are-the-writers';
+  const testsAreTheWriters = {
+    id: TESTS_ID,
+    why: 'a test file is the test-writer subagent output; an implementer that edits one is fitting the test to the code.',
+    declare: {
+      mechanism: 'producer-owned',
+      scope: { source: SCOPE_SOURCE, include: ['^packages/[^/]+/__tests__/.*\\.test\\.ts$'] },
+      supply: { [ACTOR_SOURCE]: 'pass' },
+      extract: {
+        implementer: [
+          { op: 'source', of: ACTOR_SOURCE },
+          { op: 'select', path: 'agentType' },
+          { op: 'matches', re: '^tdd-implementer$' },
+        ],
+      },
+      relate: [
+        {
+          id: 'not-the-implementer',
+          relation: { op: 'empty', of: 'implementer' },
+          message: 'the implementer subagent wrote a test file',
+        },
+      ],
+    },
+  };
+  const COMMITS_ID = 'commits-come-from-the-main-session';
+  const commitsFromMain = {
+    id: COMMITS_ID,
+    why: 'a merge or a commit is the user call relayed by the main session; a subagent that commits has decided it alone.',
+    declare: {
+      mechanism: 'actor-scope',
+      scope: {
+        source: 'command',
+        include: ['(^|[;&|(]\\s*)(git\\s+(commit|push)|tea\\s+pr\\s+merge)\\b'],
+      },
+      supply: { [ACTOR_SOURCE]: 'pass' },
+      extract: {
+        subagent: [
+          { op: 'source', of: ACTOR_SOURCE },
+          { op: 'select', path: 'agentType' },
+        ],
+      },
+      relate: [
+        {
+          id: 'main-session-only',
+          relation: { op: 'empty', of: 'subagent' },
+          message: 'subagent {value} ran a commit command',
+        },
+      ],
+    },
+  };
+
+  it('the producer-owned entry renders `producer-owned · actor · empty not-the-implementer` on both surfaces', async () => {
+    // The config loads through the real validator, so the row's presence is the load-time
+    // acceptance of the live entry; the axis word pins that `actor` derived `actor` and
+    // not `change`, and the row is `declare` on the commit surface too — the entry is
+    // judged there and lands `skipped supply-pass`, which is not a skip registration.
+    writeFixtureConfig([testsAreTheWriters]);
+
+    const { text } = await explain({ repoRoot });
+
+    for (const header of SURFACE_HEADERS) {
+      expect(rowOf(text, header, 'declare', TESTS_ID)).toMatch(
+        /\s+producer-owned · actor · empty not-the-implementer · scope target\.path · include 1 · exclude 0 · sources 0 · valve — · why ✓$/,
+      );
+    }
+  });
+
+  it('the actor-scope entry renders `actor-scope · actor · empty main-session-only · scope command` on the session surface', async () => {
+    // The scope source and the axis are different columns: a renderer deriving the axis
+    // from the scope prints `change` here, and one reading the pipeline's first source
+    // for the scope prints `scope actor`.
+    writeFixtureConfig([commitsFromMain]);
+
+    const { text } = await explain({ repoRoot });
+
+    expect(rowOf(text, SESSION_HEADER, 'declare', COMMITS_ID)).toMatch(
+      /\s+actor-scope · actor · empty main-session-only · scope command · include 1 · exclude 0 · sources 0 · valve — · why ✓$/,
+    );
+  });
+});
+
 describe('the sources count and the valve mark', () => {
   it('a declaration reading a sidecar channel beside the target renders `change,world` and `sources 1 (sidecar 1)`', async () => {
     // The world axis is derived from the `sources` block, not written; a renderer that

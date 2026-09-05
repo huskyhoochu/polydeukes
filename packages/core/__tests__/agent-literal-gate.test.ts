@@ -37,6 +37,7 @@ const BANNED_LITERALS: readonly { label: string; pattern: RegExp }[] = [
   { label: 'tool_result', pattern: /tool_result/ },
   { label: 'is_error', pattern: /is_error/ },
   { label: 'subagent_type', pattern: /subagent_type/ },
+  { label: 'agent_type', pattern: /agent_type/ },
   { label: 'tool_name', pattern: /tool_name/ },
   { label: 'tool_input', pattern: /tool_input/ },
   { label: 'transcript_path', pattern: /transcript_path/ },

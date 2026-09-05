@@ -107,8 +107,8 @@ export type WorldsFromInputSpec = {
 /**
  * Turn each observation of the input into one world, in input order.
  *
- * The six source names are fixed: `target.path`, `pre`, `post`, the paired `state`,
- * `changes`, and `command`. A side the change does not carry is an ABSENT key, never a
+ * The seven source names are fixed: `target.path`, `pre`, `post`, the paired `state`,
+ * `changes`, `command`, and `actor`. A side the change does not carry is an ABSENT key, never a
  * fabricated default — what a missing source means is the declaration's own `supply` policy
  * to state. `state` exists only where both sides do, so a declaration comparing before with
  * after refuses a change that has no before. A path outside the root is dropped, as
@@ -118,6 +118,10 @@ export type WorldsFromInputSpec = {
  * a large commit costs one list rather than one per change. It is derived from this input
  * unless the host supplied its own — a host whose observation is wider than the changes it
  * dispatches at once has a set no derivation here could reach.
+ *
+ * `actor` is the input's actor object, carried by every world of the input — the file
+ * worlds and the call world alike. An input without one leaves the key absent, since `{}`
+ * is the positive value saying the host observed an actor that is not a subagent.
  *
  * `command` is the first shell call's command string, carried by every world of the input.
  * A shell call changing no in-scope file is still one observation, so it yields the single
@@ -135,10 +139,18 @@ export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
   }
   const changes = input.world?.changes ?? scoped.map((entry) => entry.path);
 
+  // The facts every world of this input shares. A key is set only when its value exists: a
+  // key holding `undefined` would satisfy the engine's presence check and skip the supply
+  // policy, so the step would run over nothing and could answer pass.
+  const shared: Record<string, unknown> = {
+    changes,
+    ...(command !== undefined && { command }),
+    ...(input.actor !== undefined && { actor: input.actor }),
+  };
+
   const worlds: SuppliedWorld[] = [];
   for (const { path, change } of scoped) {
-    const world: Record<string, unknown> = { 'target.path': path, changes };
-    if (command !== undefined) world.command = command;
+    const world: Record<string, unknown> = { 'target.path': path, ...shared };
     // A kind this host does not know (a stale adapter dist) yields no world at all: a key
     // holding `undefined` would satisfy the engine's presence check and skip the supply
     // policy, so the step would run over nothing and could answer pass.
@@ -159,8 +171,7 @@ export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
     }
     worlds.push({ path, world });
   }
-  if (worlds.length === 0 && command !== undefined)
-    return [{ path: '-', world: { changes, command } }];
+  if (worlds.length === 0 && command !== undefined) return [{ path: '-', world: shared }];
   return worlds;
 }
 

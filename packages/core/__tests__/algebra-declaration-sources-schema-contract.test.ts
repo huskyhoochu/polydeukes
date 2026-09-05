@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateAlgebraDeclaration } from '../src/algebra.ts';
+import { FIXED_SOURCE_NAMES } from '../src/source-names.ts';
 import { validateAlgebra } from './helpers.ts';
 
 // Schema ⟺ validateAlgebraDeclaration equivalence for the `sources` block.
@@ -22,7 +23,7 @@ const EXTRACT_KO = 'koKeys';
 const EXTRACT_EN = 'enKeys';
 
 /** The world-supplied names a source may not shadow. */
-const FIXED_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
+const FIXED_NAMES = FIXED_SOURCE_NAMES;
 
 const sourcedDeclaration = {
   discipline: 'probe',

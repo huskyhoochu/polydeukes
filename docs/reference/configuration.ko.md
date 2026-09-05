@@ -372,7 +372,7 @@ disciplines:
 
 이 저장소의 라이브 설정은 같은 선언을 `sqlite-only-under-knowledge`로 싣습니다.
 
-관측 하나가 **세계(world)** 하나로 판정되며 소스 이름은 여섯입니다. `target.path`(저장소
+관측 하나가 **세계(world)** 하나로 판정되며 소스 이름은 일곱입니다. `target.path`(저장소
 상대 경로), `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가
 없습니다), `state`(`{ pre, post }`, 수정에만 있습니다), `changes`(이 관측이 바꾸는 경로 전부.
 세션 표면에서는 호출 하나, 커밋 표면에서는 staged 집합 전체), 그리고 `command`(셸 호출의
@@ -385,7 +385,7 @@ disciplines:
 advised로 남습니다. 대상 밖 파일이 필요한 선언은
 `sources` 블록에 이름을 붙이고(`sources: { en: { file: 'locales/en.json' } }`) `{ op:
 'source', of: 'en' }`로 읽습니다. 경로는 저장소 상대(선두 `/` 없음, `..` 세그먼트 없음)이고
-이름은 여섯 고정 이름과 겹칠 수 없습니다. 파일은 표면이 트리를 관측하는 방식대로
+이름은 일곱 고정 이름과 겹칠 수 없습니다. 파일은 표면이 트리를 관측하는 방식대로
 읽습니다 — 세션은 디스크, staged 커밋은 index, range는 `<to>` 커밋. 단 변경 자신이 만지는
 파일은 변경의 `post`에서 읽으므로 두 표면이 같은 본문을 판정합니다. 둘째 종류
 `sources: { spawns: { sidecar: true } }`는 경로가 아니라 세션의 스폰 기록 채널을 이름
@@ -397,8 +397,13 @@ advised로 남습니다. 대상 밖 파일이 필요한 선언은
 순번을 실은 스냅샷 하나로 선언에 건넵니다. 이력 단계(`toolUses` · `userTexts` · `first` ·
 `ageMs`)가 그것을 읽고, `agentType`은 파싱된 사이드카를 읽습니다. 이 저장소의 라이브
 설정은 그런 선언 하나를 싣습니다 — `tests-before-implementation`, 서브에이전트 스폰 둘의
-순번 위의 `ordered`로, 세션이 없는 커밋 표면은 `skipped`로 기록합니다. `supply`의 키는
-고정 소스 여섯이나 선언 자신의 `sources` 이름이어야 하고, 그 밖의 키는 거부됩니다. 변경이
+순번 위의 `ordered`로, 세션이 없는 커밋 표면은 `skipped`로 기록합니다. 일곱째 고정 이름
+`actor`는 관측의 주체(actor)입니다. 서브에이전트 안에서는 `{ agentType }`, 주 세션에서는
+`{}`, 표면이 주체를 증명하지 못하면(커밋 표면) 없습니다. `{ op: 'source', of: 'actor' }` 뒤에
+`agentType`을 `select`해 읽고, `producer-owned` · `actor-scope` 기전이 요구하는 `actor`
+축을 유도합니다. 이 저장소의 라이브 설정은 각 하나씩 싣습니다(`tests-are-the-writers`,
+`commits-come-from-the-main-session`). `supply`의 키는
+고정 소스 일곱이나 선언 자신의 `sources` 이름이어야 하고, 그 밖의 키는 거부됩니다. 변경이
 지니지 않은 소스는 없는 것이고, 그것이 무슨 뜻인지는 선언의 `supply` 블록이 적습니다. `error`(기본값)는 호출을 판정
 불가로 만들어 강제 수준과 무관하게 `blocked`로 기록하고, `pass`는 판정하지 않고 지나가게
 하며, `empty`는 없는 쪽을 빈 항목 열로 읽고 판정을 계속합니다. `empty`가 `added-only` 선언이
@@ -412,8 +417,9 @@ advised로 남습니다. 대상 밖 파일이 필요한 선언은
 이 표면이 관측할 통로가 없음), `config-fault`(블록을 조립하지 못함), `supply-pass`(선언
 자신의 `supply: pass`가 부재 소스를 지나가게 함) 셋입니다. 모든 선언은 `mechanism`도
 적습니다. `naming` · `companion` · `pairing` 같은 카탈로그 이름 열여덟 중 하나이고,
-검증기는 선언의 형상이 그 이름에 맞지 않으면 거부합니다. 소스가 유도하는 축(고정 이름은
-`change`, `file`·`sidecar` 소스는 `world`, `transcript` 소스는 `history`)과 관계가 그 이름이 허용하는 범위 안에 있어야 합니다.
+검증기는 선언의 형상이 그 이름에 맞지 않으면 거부합니다. 소스가 유도하는 축(`actor`를 뺀
+고정 이름은 `change`, `actor`는 `actor`, `file`·`sidecar` 소스는 `world`, `transcript` 소스는
+`history`)과 관계가 그 이름이 허용하는 범위 안에 있어야 합니다.
 컴파일러가 해석하지 못하는 블록(등재 표 밖의 단계 이름, 단계의 키 밖의 인자)은 stderr에
 위치를 적고 아무것도 라우팅하지 않는 skip 등록이 됩니다. 선언의 범위 안으로 들어오는 셸
 쓰기 가운데 판정기가 결과를 계산할 수 있는 것(리다이렉트 · heredoc · append)은 그것이

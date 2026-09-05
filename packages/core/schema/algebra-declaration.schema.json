@@ -75,7 +75,7 @@
         "source": {
           "type": "string",
           "minLength": 1,
-          "not": { "enum": ["changes", "state"] }
+          "not": { "enum": ["changes", "state", "actor"] }
         },
         "include": {
           "type": "array",
@@ -103,7 +103,7 @@
         "type": "string",
         "minLength": 1,
         "not": {
-          "enum": ["target.path", "pre", "post", "state", "changes", "command"]
+          "enum": ["target.path", "pre", "post", "state", "changes", "command", "actor"]
         }
       },
       "additionalProperties": {

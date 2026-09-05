@@ -40,7 +40,9 @@ installed a second time here.
 
 Translation is fail-closed at every step. A `Task` call carrying a subagent type maps to a
 spawn; a payload that cannot be classified is a translation *failure* that logs one
-`blocked` record and exits `2`, rather than degrading into a guess.
+`blocked` record and exits `2`, rather than degrading into a guess. The envelope's top-level
+`agent_type` becomes the IR's `actor` — `{ agentType }` inside a subagent, `{}` otherwise;
+`tool_input` is never read for it, since that is the agent's own text.
 
 **Evidence is computed, never read back.** The virtual post-state applies `Edit`, `Write`,
 and `MultiEdit` in memory — sequential multi-edit application included — so a content-aware

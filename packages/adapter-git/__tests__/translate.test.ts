@@ -123,6 +123,15 @@ describe('covenantInputFromStagedChanges — session-less collections', () => {
     expect(result.userMessages).toEqual([]);
   });
 
+  it('carries no actor key — the pre-commit hook cannot prove who staged the change', () => {
+    // Absence is the only honest value here: `{}` would claim a main-session actor the
+    // hook never observed, and every actor declaration would then pass a commit an agent
+    // made instead of recording `skipped supply-pass`.
+    const result = covenantInputFromStagedChanges({ changes: [addedChange, modifiedChange] });
+
+    expect(result).not.toHaveProperty('actor');
+  });
+
   it('returns empty collections for an empty change list', () => {
     const result = covenantInputFromStagedChanges({ changes: [] });
 

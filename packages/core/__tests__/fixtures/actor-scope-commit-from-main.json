@@ -1,0 +1,33 @@
+{
+  "discipline": "actor-scope-commit-from-main",
+  "mechanism": "actor-scope",
+  "scope": {
+    "source": "command",
+    "include": ["(^|[;&|(]\\s*)(git\\s+(commit|push)|tea\\s+pr\\s+merge)\\b"]
+  },
+  "supply": {
+    "actor": "pass"
+  },
+  "extract": {
+    "subagent": [
+      {
+        "op": "source",
+        "of": "actor"
+      },
+      {
+        "op": "select",
+        "path": "agentType"
+      }
+    ]
+  },
+  "relate": [
+    {
+      "id": "main-session-only",
+      "relation": {
+        "op": "empty",
+        "of": "subagent"
+      },
+      "message": "subagent {value} ran a commit command"
+    }
+  ]
+}

@@ -47,6 +47,7 @@ type CovenantInput = {
   toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
+  actor?: { agentType?: string };
 };
 
 type FileChange =
@@ -62,7 +63,9 @@ fills into `name`; `kind` on a spawn is likewise a value. `FileChange` is a disc
 union so that a deletion is first-class evidence rather than an unrepresentable case, and
 impossible states — a deletion carrying resulting content, a creation carrying a baseline —
 cannot be written down. `delete.pre` is absent when the baseline was a binary blob, because
-a deletion needs no content to be judged.
+a deletion needs no content to be judged. `actor` is the observation's actor as the host
+envelope proves it — `agentType` inside a subagent, `{}` in the main session — and is absent
+when the surface proves none; the judge never defaults it.
 
 **Evidence has exactly one home: the call it belongs to.** `fileChange` absent means *this
 call is unproven*, and no sibling call's evidence stands in for it.

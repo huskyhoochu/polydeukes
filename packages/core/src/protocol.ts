@@ -38,6 +38,14 @@ export type SourceReader = (path: string) => string | undefined;
 export type ChannelReader = (kind: string) => string | undefined;
 
 /**
+ * `Actor` — who made the observation the judgment is about.
+ *
+ * `agentType` is the subagent kind the host names when the call comes from one. The empty
+ * object is a positive value: the host observed the actor and it is not a subagent.
+ */
+export type Actor = { agentType?: string };
+
+/**
  * `CovenantInput` — the agent-neutral input IR a covenant judges.
  *
  * Adapters up-translate their own agent payloads into this shape and pipe it as
@@ -59,6 +67,12 @@ export type CovenantInput = {
    * says there is no channel at all.
    */
   world?: { files?: Record<string, string>; changes?: string[]; channels?: { sidecar?: string } };
+  /**
+   * The observation's actor, when the host proves one. Absence means the host could not
+   * prove one and is never turned into `{}` — what an absent actor means is a
+   * declaration's own supply policy.
+   */
+  actor?: Actor;
 };
 
 /**
@@ -118,12 +132,28 @@ function isWorld(value: unknown): boolean {
 }
 
 /**
+ * Whether a value is the actor: a plain object carrying nothing but a string `agentType`.
+ *
+ * Closed at one key, same reason as {@link isWorld}: a host writing its own payload
+ * spelling of the actor key under `actor` would supply nothing while looking like a supply,
+ * and a non-string `agentType` reaches a pattern step as a value no regex matches.
+ */
+function isActor(value: unknown): boolean {
+  if (!isPlainObject(value)) return false;
+  for (const key of Object.keys(value)) {
+    if (key !== 'agentType') return false;
+  }
+  return value.agentType === undefined || typeof value.agentType === 'string';
+}
+
+/**
  * Deserialize stdin-JSON into a {@link CovenantInput} (the protocol's reverse direction).
  *
  * fail-closed: this never throws. Any failure — unparseable JSON, an empty
- * payload, a parsed value that is not an object, a missing required collection, or a
- * malformed world axis — resolves to a blocking `{ ok: false, exitCode: 2 }`. "Cannot
- * judge" means block, so an unjudgeable input can never be mistaken for a valid one.
+ * payload, a parsed value that is not an object, a missing required collection, a
+ * malformed world axis, or a malformed actor — resolves to a blocking
+ * `{ ok: false, exitCode: 2 }`. "Cannot judge" means block, so an unjudgeable input can
+ * never be mistaken for a valid one.
  */
 export function parseInput(
   stdinJson: string,
@@ -149,6 +179,10 @@ export function parseInput(
   }
 
   if (candidate.world !== undefined && !isWorld(candidate.world)) {
+    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+  }
+
+  if (candidate.actor !== undefined && !isActor(candidate.actor)) {
     return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
   }
 

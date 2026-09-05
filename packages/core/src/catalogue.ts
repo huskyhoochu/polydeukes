@@ -83,8 +83,9 @@ const ACTOR: ReadonlySet<Axis> = new Set<Axis>(['actor']);
 const HISTORY: ReadonlySet<Axis> = new Set<Axis>(['history']);
 const HISTORY_WORLD: ReadonlySet<Axis> = new Set<Axis>(['history', 'world']);
 const CHANGE_WORLD: ReadonlySet<Axis> = new Set<Axis>(['change', 'world']);
-/** The axes a source name derives today; `actor` waits on a source that carries it. */
-const DERIVABLE_AXES: ReadonlySet<Axis> = new Set<Axis>(['change', 'world', 'history']);
+
+/** The one fixed source name whose value is the actor rather than the change. */
+const ACTOR_SOURCE = 'actor';
 
 /** Every name's spec. The `Record` type pins the keys to {@link MECHANISM_NAMES}. */
 export const MECHANISM_SHAPES: Record<MechanismName, MechanismShape> = {
@@ -171,20 +172,21 @@ function sourceNames(declaration: DerivableDeclaration): string[] {
 /**
  * Read one declaration's shape from its syntax (pure).
  *
- * The axis of a source name is where the name comes from: one of the fixed six is the
- * change axis, a name the declaration's own `sources` block binds is the world axis unless
- * the binding is of the transcript kind, which is the history axis. A
- * name that is neither is refused by {@link validateMechanism} — skipping it would derive
- * the empty set, which is a subset of every spec, and an axis-restricted name would load
- * on a typo. The witness block's `extract` reads a world too, so its source steps count;
- * its `relate` does not, because the valve's relation is not the judgment's.
+ * The axis of a source name is where the name comes from: the fixed name `actor` is the
+ * actor axis and the other six fixed names the change axis, a name the declaration's own
+ * `sources` block binds is the world axis unless the binding is of the transcript kind,
+ * which is the history axis. A name that is neither is refused by
+ * {@link validateMechanism} — skipping it would derive the empty set, which is a subset of
+ * every spec, and an axis-restricted name would load on a typo. The witness block's
+ * `extract` reads a world too, so its source steps count; its `relate` does not, because the
+ * valve's relation is not the judgment's.
  */
 export function deriveShape(declaration: DerivableDeclaration): DerivedShape {
   const bindings = declaration.sources ?? {};
   const axes = new Set<Axis>();
   for (const name of sourceNames(declaration)) {
     if ((FIXED_SOURCE_NAMES as readonly string[]).includes(name)) {
-      axes.add('change');
+      axes.add(name === ACTOR_SOURCE ? 'actor' : 'change');
     } else if (name in bindings) {
       axes.add(isTranscriptSource(bindings[name]) ? 'history' : 'world');
     }
@@ -251,13 +253,8 @@ export function validateMechanism(declaration: AlgebraDeclaration, location: str
   const outsideAxes = [...shape.axes].filter((axis) => !spec.axes.has(axis));
   const outsideRelations = [...shape.relations].filter((relation) => !spec.relations.has(relation));
   if (outsideAxes.length > 0 || outsideRelations.length > 0) {
-    const underivable = [...spec.axes].filter((axis) => !DERIVABLE_AXES.has(axis));
-    const note =
-      underivable.length === spec.axes.size
-        ? ` — no registered source derives ${quotedList(underivable)} yet, so this name admits no declaration today`
-        : '';
     throw new ConfigValidationError(
-      `${location} mechanism '${mechanism}' expects relations ${quotedList([...spec.relations])} on axes ${quotedList([...spec.axes])}; this declaration relates ${quotedList([...shape.relations])} on ${quotedList([...shape.axes])}${note}`,
+      `${location} mechanism '${mechanism}' expects relations ${quotedList([...spec.relations])} on axes ${quotedList([...spec.axes])}; this declaration relates ${quotedList([...shape.relations])} on ${quotedList([...shape.axes])}`,
     );
   }
 }
