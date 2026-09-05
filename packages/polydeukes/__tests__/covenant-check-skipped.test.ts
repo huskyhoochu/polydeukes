@@ -129,7 +129,35 @@ describe('other families unchanged beside the exclusion', () => {
     // family too would let the forbidden marker through unjudged.
     writeConfig({
       disciplines: [
-        { id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'block' },
+        {
+          id: 'no-todo',
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+          enforce: 'block',
+        },
         npmViewEntry,
       ],
     });
@@ -172,7 +200,36 @@ describe('other families unchanged beside the exclusion', () => {
     // No excluded entry, no noise: an unconditional record per run would pollute
     // unrelated runs' data.
     writeConfig({
-      disciplines: [{ id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts' }],
+      disciplines: [
+        {
+          id: 'no-todo',
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+        },
+      ],
     });
     commitConfig();
     write('lib/clean.ts', 'export const y = 2;\n');

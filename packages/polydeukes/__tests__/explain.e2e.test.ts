@@ -61,7 +61,36 @@ function spawnExplain(...extra: string[]) {
 describe('pdks explain on the built bin', () => {
   it('prints both surfaces to stdout and exits 0 with a valid config in cwd', () => {
     writeConfigAt(projectRoot, join(projectRoot, 'roi.log'), {
-      disciplines: [{ id: ENTRY_ID, forbid: 'FIXME' }],
+      disciplines: [
+        {
+          id: ENTRY_ID,
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(FIXME)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(FIXME)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+        },
+      ],
     });
 
     const result = spawnExplain();

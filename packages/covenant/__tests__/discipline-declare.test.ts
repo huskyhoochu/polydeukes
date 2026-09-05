@@ -6,14 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // siblings and the valve must survive); otherwise `matches` routes on the first world the
 // declaration's scope admits, the body judges every admitted world in input order
 // (broken → 1 with witnesses, supply failure → unjudgeable 2, pass/not-applicable → 0),
-// the shell axis lands on a skip arm, and the declaration's own witness block joins the
-// TTL witness with OR on the registration's valve.
+// a computable shell write is a world the body judges while an uncomputable one lands on a
+// skip arm, and the declaration's own witness block joins the TTL witness with OR on the
+// registration's valve.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
-// No fixture here drives a shell-derived write, so the injected pre-state reader is never
-// consulted; `null` — the file is not there — is the answer that would make a create if one
-// ever were.
+// The shell-write fixtures below route only; the injected pre-state reader answers `null` —
+// the file is not there — so every derived write is a create.
 const readPreState = () => null;
 
 const ROOT = '/repo';
@@ -439,46 +439,34 @@ describe('compileDisciplineRegistrations — declare enforce level', () => {
   });
 });
 
-describe('compileDisciplineRegistrations — declare shell writes land on a skip arm', () => {
-  it('a shell write into scope routes to a skip registration labelled with the entry id', () => {
-    // A Bash call carries no fileChange, so no world exists to judge; leaving the write
-    // unrouted is a call that passes with no row at all.
-    const regs = compileDisciplineRegistrations(specWith([declareEntry()]));
-    const skips = skipArmsOf(regs, ID);
-
-    expect(skips).toHaveLength(1);
-    expect(skips[0]?.body).toBeUndefined();
-    expect(skips[0]?.matches?.(bashInput('echo x > lib/z.db'))).toBe('lib/z.db');
-  });
-
-  it('the body registration does not route the same shell write', () => {
-    // Channel separation: if body and skip both match, one call leaves two rows and the
-    // body judges an empty world.
-    const reg = compileBody(declareEntry());
-
-    expect(reg.matches?.(bashInput('echo x > lib/z.db'))).toBeNull();
-  });
-
-  it('a declaration scoped on a content source routes every shell write to its skip arm', () => {
-    // A shell line carries a path and no content, so a scope over `post` cannot be tested
-    // here; leaving the write unrouted is a call that passes with no row at all.
+describe('compileDisciplineRegistrations — declare shell writes: computable to the body, the rest to a skip arm', () => {
+  it('a declaration scoped on a content source tests a computable write by its derived content and skips an uncomputable one', () => {
+    // The derived world carries `post`, so a scope over it is testable for a computable
+    // write: the body routes when the content is in scope and stays silent when it is
+    // not. An uncomputable write still carries a path and no content, so the skip arm
+    // admits it — this layer cannot tell whether it is in scope.
     const regs = compileDisciplineRegistrations(
       specWith([
         declareEntry({ ...PATH_ONLY_DECLARE, scope: { source: 'post', include: ['secret'] } }),
       ]),
     );
-    const input = bashInput('echo x > lib/z.txt');
 
-    expect(skipArmsOf(regs, ID).some((reg) => reg.matches?.(input) === 'lib/z.txt')).toBe(true);
+    expect(bodyRegOf(regs, ID)?.matches?.(bashInput('echo secret > lib/z.txt'))).toBe('lib/z.txt');
+    expect(bodyRegOf(regs, ID)?.matches?.(bashInput('echo x > lib/z.txt'))).toBeNull();
+    expect(skipArmsOf(regs, ID)[0]?.matches?.(bashInput("sed -i 's/a/b/' lib/z.txt"))).toBe(
+      'lib/z.txt',
+    );
   });
 
   it('a shell write outside scope routes to no registration carrying the entry id', () => {
-    // A scope-blind skip arm floods the entry's label with skips for files it never covered.
+    // A scope-blind arm — either one — floods the entry's label with rows for files it
+    // never covered.
     const regs = compileDisciplineRegistrations(specWith([declareEntry()]));
-    const input = bashInput('echo x > lib/z.txt');
 
-    for (const reg of regs.filter((r) => r.label === ID)) {
-      expect(reg.matches?.(input)).toBeNull();
+    for (const command of ['echo x > lib/z.txt', "sed -i 's/a/b/' lib/z.txt"]) {
+      for (const reg of regs.filter((r) => r.label === ID)) {
+        expect(reg.matches?.(bashInput(command)), command).toBeNull();
+      }
     }
   });
 });

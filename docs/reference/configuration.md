@@ -178,9 +178,9 @@ recorded as `witnessed`, never silent.
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
 data. An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
 telemetry label), and optionally a `why` (the reason, which travels with the block message
-the agent reads) plus, on a `forbid` or `requirePrecedent` entry, `in` (the file globs it
-judges) and `except` (globs carved out of that scope). The fifth predicate, `declare`, carries
-its own scope inside the block and takes none of those three keys.
+the agent reads) plus, on a `requirePrecedent` entry, `in` (the file globs it judges) and
+`except` (globs carved out of that scope). The third predicate, `declare`, carries its own
+scope inside the block and takes none of those three keys.
 
 **`draft` — an unpromoted entry.** The one shape that carries no predicate:
 `{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of
@@ -216,33 +216,69 @@ other value is rejected at load time. `pdks explain` prints the level an entry d
 the session header states the default.
 
 ```yaml
-  - id: 'no-console-log'
-    why: 'console output belongs to the logger; measure the habit before blocking it.'
-    forbid: 'console\.log\('
+  - id: 'hooks-stay-armed'
+    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
+    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
     enforce: advise
 ```
 
-**`forbid` — content delta.** Blocks an edit that *adds* a new match of the pattern.
-Existing occurrences are forgiven: adopting a discipline never blocks a legacy codebase,
-because the judgment direction is "what did this edit add", not "what does the file
-contain".
+**Added-direction content is a declaration.** A promise about what an edit *adds* — a
+banned word, a stray `.only`, a citation that resolves nowhere — is written as an
+`added-only` declaration: `pre` and `post` are each cut into lines and keyed by the match,
+`onlyIn` keeps what `post` has and `pre` lacks, and `empty` over that difference is the
+verdict. Existing occurrences are forgiven, so adopting the discipline never blocks a legacy
+codebase. `supply: empty` is what lets a file creation (no `pre`) count as all-added and a
+deletion (no `post`) as adding nothing; the `scope` block replaces `in`/`except` with
+regular expressions over the path.
 
 ```yaml
 disciplines:
   - id: 'covenant-vocabulary'
     why: 'control-framing vocabulary is banned in package sources.'
-    in:
-      - 'packages/*/src/**'
-    forbid: '\b(guard|harness|kb)\b'
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['^packages/[^/]+/src/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
 ```
 
-**`immutable` — path family.** Blocks modification of existing files that match; creating
-new files is allowed.
+The key is the match text, so a line carrying a word the file already has anywhere is
+forgiven, and a line carrying two new words surfaces the first one now and the second on the
+next judgment.
+
+**A frozen path is a declaration too.** A file that may be created once and never modified
+or deleted: `pre` present means a modification, `post` absent means a deletion, and either
+breaks.
 
 ```yaml
   - id: 'archived-records-stay-frozen'
     why: 'an archive that can be edited is not an archive.'
-    immutable: 'records/archive/**'
+    declare:
+      mechanism: 'self-absolution-ban'
+      scope: { source: 'target.path', include: ['^records/archive/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        prior: [{ op: 'source', of: 'pre' }]
+        here: [{ op: 'source', of: 'target.path' }]
+        after: [{ op: 'source', of: 'post' }]
+        deleted: [{ op: 'onlyIn', of: 'here', notIn: 'after' }]
+        touched: [{ op: 'union', of: ['prior', 'deleted'] }]
+      relate:
+        - { id: 'frozen', relation: { op: 'empty', of: 'touched' }, message: '{value} is frozen' }
 ```
 
 **`forbidCommand` — command family.** Blocks shell commands matching the pattern, even
@@ -250,8 +286,8 @@ when the command mentions no protected path. This is how gate-disarming commands
 caught. A multi-line command is judged twice over — the pattern is tested against each
 line and against the whole string, so `^` means the start of a line while a pattern
 spanning a line boundary still matches (the whole-content caution further down applies
-to the delta and context families). An empty pattern is rejected at load time, here and
-on `forbid` alike — it would match every command.
+to the context family's `when`). An empty pattern is rejected at load time — it would
+match every command.
 
 ```yaml
   - id: 'hooks-stay-armed'
@@ -389,9 +425,11 @@ the commit surface (no session) records `skipped`. A `supply` key must name one 
 fixed sources or one of the declaration's own `sources`; any other key is refused. A
 source the change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
-recorded `blocked` at either enforce level — and `pass` leaves it unjudged. A declaration
-comparing before with after therefore needs `supply: { state: pass }` to let a file
-creation through.
+recorded `blocked` at either enforce level — `pass` leaves it unjudged, and `empty` reads
+the absent side as an empty item list and judges on. `empty` is what lets an added-only
+declaration see a creation as all-added and a deletion as adding nothing; it does not apply
+to `state`, the paired source. A declaration comparing before with after therefore needs
+`supply: { state: pass }` to let a file creation through.
 
 A break is recorded like any other family's, with one addition: the telemetry row carries a
 fifth field naming the elements the relation failed on (at most eight per relate entry, with

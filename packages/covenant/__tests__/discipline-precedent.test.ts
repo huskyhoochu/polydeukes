@@ -53,6 +53,15 @@ const anyMutationEntry: DisciplineEntry = {
   requirePrecedent: { command: 'npm view ' },
 } as DisciplineEntry;
 
+/** A CovenantInput whose single call is a shell invocation of `command`, no evidence. */
+function commandInput(command: string): CovenantInput {
+  return {
+    toolCalls: [{ name: 'Bash', args: { command } }],
+    subagentSpawns: [],
+    userMessages: [],
+  };
+}
+
 /** Build a CovenantInput whose evidence rides its own tool-call element. */
 function inputWithEvidence(changes: FileChange[]): CovenantInput {
   return {
@@ -264,20 +273,16 @@ describe('judgeDiscipline — precedentFound does not leak into other families',
     // The option can neither open nor close the other families' gates: consulted in the
     // shared judged body, true would wave a forbid break through and false would break a
     // debt-only uphold.
-    const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
-    const breaking = inputWithEvidence([
-      { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-    const debtOnly = inputWithEvidence([
-      { kind: 'modify', path: 'src/a.css', pre: 'a: #123456;', post: 'a: #123456;\nm: 0;' },
-    ]);
+    const postingCurl: DisciplineEntry = { id: 'no-post', forbidCommand: 'curl -X POST' };
+    const breaking = commandInput('curl -X POST https://example.test');
+    const clean = commandInput('curl https://example.test');
 
     expect(
-      judgeDiscipline({ ...withPrecedent(true), entry: forbidHex, input: breaking }).upheld,
+      judgeDiscipline({ ...withPrecedent(true), entry: postingCurl, input: breaking }).upheld,
     ).toBe(false);
-    expect(judgeDiscipline({ ...withPrecedent(false), entry: forbidHex, input: debtOnly })).toEqual(
-      { upheld: true },
-    );
+    expect(judgeDiscipline({ ...withPrecedent(false), entry: postingCurl, input: clean })).toEqual({
+      upheld: true,
+    });
 
     const forbidCmd: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=0\\b' };
     const cmdInput: CovenantInput = {
@@ -493,12 +498,10 @@ describe('compiled discipline thunk — precedent gate', () => {
   it('a forbid entry is untouched by the precedent gate (still breaks on its own axis)', async () => {
     // The precedent gate is context-family-only: applied to every family, every discipline
     // thunk would answer the unjudgeable outcome on arrival.
-    const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
-    const input = inputWithEvidence([
-      { kind: 'modify', path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
+    const postingCurl: DisciplineEntry = { id: 'no-post', forbidCommand: 'curl -X POST' };
+    const input = commandInput('curl -X POST https://example.test');
 
-    const result = await judgeEntry(forbidHex, input);
+    const result = await judgeEntry(postingCurl, input);
 
     expect(result.exitCode).toBe(1);
   });

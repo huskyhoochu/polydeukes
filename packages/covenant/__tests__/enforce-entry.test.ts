@@ -211,14 +211,33 @@ describe('compileDisciplineRegistrations — entry enforce reaches the body-bear
     };
   }
 
-  /** A delta entry — the family that compiles a body arm AND per-entry skip arms. */
+  /** A declare entry — the family that compiles a body arm AND per-entry skip arms. */
   function deltaEntry(enforce?: EnforceLevel): EntryWithEnforce {
     return {
       id: 'no-banned',
-      in: ['packages/**/*.ts'],
-      forbid: 'zzz_banned',
+      declare: {
+        mechanism: 'added-only',
+        scope: { source: 'target.path', include: ['^packages/.*\\.ts$'] },
+        supply: { pre: 'empty', post: 'empty' },
+        extract: {
+          before: [
+            { op: 'source', of: 'pre' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(zzz_banned)' },
+          ],
+          after: [
+            { op: 'source', of: 'post' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(zzz_banned)' },
+          ],
+          added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+        },
+        relate: [
+          { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+        ],
+      },
       ...(enforce !== undefined && { enforce }),
-    };
+    } as unknown as EntryWithEnforce;
   }
 
   function levelsOf(
@@ -276,7 +295,7 @@ describe('compileDisciplineRegistrations — entry enforce reaches the body-bear
     // These two arms return before the body composes, on code paths distinct from the
     // appended shell skip arms above. A level on an unjudgeable arm would let the dispatcher
     // relax a routing that could not answer.
-    const faulty: EntryWithEnforce = { id: 'bad-pattern', in: ['src/**'], forbid: '(' };
+    const faulty: EntryWithEnforce = { id: 'bad-pattern', forbidCommand: '(' };
     const precedent: EntryWithEnforce = {
       id: 'needs-read',
       in: ['src/**'],

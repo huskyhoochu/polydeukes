@@ -23,6 +23,9 @@ const DISCIPLINE_ID = 'no-todo';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
 const SCOPED_SOURCE = 'lib/a.ts';
 const FORBIDDEN_TOKEN = 'TODO';
+/** The same scope as a declaration's regex over the repo-relative path. */
+const DISCIPLINE_SCOPE_RE = '^lib/.*\\.ts$';
+
 /** A discipline whose evidence this surface cannot speak — it compiles to a body-less skip. */
 const PRECEDENT_ID = 'needs-precedent';
 const PRECEDENT_TOOL = 'WebFetch';
@@ -60,7 +63,32 @@ function stageProtectedChange(enforce: string): void {
  */
 function stageCleanScopedChange(enforce: string): void {
   writeConfig({
-    disciplines: [{ id: DISCIPLINE_ID, forbid: { added: FORBIDDEN_TOKEN }, in: DISCIPLINE_SCOPE }],
+    disciplines: [
+      {
+        id: DISCIPLINE_ID,
+        declare: {
+          mechanism: 'added-only',
+          scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+          supply: { pre: 'empty', post: 'empty' },
+          extract: {
+            before: [
+              { op: 'source', of: 'pre' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+            ],
+            after: [
+              { op: 'source', of: 'post' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+            ],
+            added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+          },
+          relate: [
+            { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+          ],
+        },
+      },
+    ],
     adapters: { git: { enforce } },
   });
   write(SCOPED_SOURCE, 'export const y = 1;\n');

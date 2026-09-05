@@ -42,7 +42,6 @@ export {
   DEFAULT_TELEMETRY_LOG_PATH,
   type DisciplineDraft,
   type DisciplineEntry,
-  type DisciplineForbid,
   defineConfig,
   type EnforceLevel,
   type LanguageProfile,

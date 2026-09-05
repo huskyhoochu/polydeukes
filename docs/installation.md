@@ -176,10 +176,10 @@ Three things to know about this surface:
 - **The valve is a TTY prompt.** At the default `block` level, a commit that stages a
   protected change stops at a prompt only a human at a terminal can answer. Configure your
   hook runner so it does not swallow that prompt (lefthook needs `interactive: true`).
-- **Two discipline families judge here.** A staged diff carries file changes and nothing
-  else, so protection lists and the delta and path families (`forbid`, `immutable`) judge
-  in full. A command-family entry (`forbidCommand`) has no command line to read in a
-  staged diff and is not assembled on this surface, and a context-family entry
+- **Declarations judge here.** A staged diff carries file changes and nothing else, so
+  protection lists and every `declare` entry over the change judge in full. A
+  command-family entry (`forbidCommand`) has no command line to read in a staged diff and
+  is not assembled on this surface, and a context-family entry
   (`requirePrecedent`) is recorded as `skipped` — declare those two where an AI partner's
   session exists to be judged.
 - **The commit surface has its own additive scope.** Paths that are fine to edit freely

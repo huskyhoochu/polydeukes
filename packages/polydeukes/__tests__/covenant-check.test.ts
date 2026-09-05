@@ -73,7 +73,31 @@ describe('discipline delta family — new violation vs pre-existing debt', () =>
   // `enforce: block` is explicit because an absent level is advise, and this block
   // exercises the judgment itself rather than the default.
   const disciplines = [
-    { id: 'no-todo', forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'block' },
+    {
+      id: 'no-todo',
+      declare: {
+        mechanism: 'added-only',
+        scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+        supply: { pre: 'empty', post: 'empty' },
+        extract: {
+          before: [
+            { op: 'source', of: 'pre' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(TODO)' },
+          ],
+          after: [
+            { op: 'source', of: 'post' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(TODO)' },
+          ],
+          added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+        },
+        relate: [
+          { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+        ],
+      },
+      enforce: 'block',
+    },
   ];
 
   it('blocks when the staged delta ADDS a forbidden match', async () => {

@@ -147,7 +147,7 @@ pdks explain — polydeukes.config.yaml
 surface: session (claude-code hook)
   registrations 29 · judged 13 · declare 1 · skip 12 · meta 3 · excluded 0 · draft 0
   meta     self-mod                      paths 13 (common; includes the config file itself)
-  judge    covenant-vocabulary           forbid · in packages/*/src/** · except … · why ✓
+  declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
   declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
   skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...

@@ -22,17 +22,19 @@ const VOCAB_ID = 'covenant-vocabulary';
 const vocabEntry = {
   id: VOCAB_ID,
   why: 'vocabulary is binding',
-  in: ['lib/**', 'src/**'],
-  except: 'lib/legacy/**',
-  forbid: 'TODO',
-};
-const ANY_FILE_ID = 'no-fixme-anywhere';
-const anyFileEntry = { id: ANY_FILE_ID, forbid: 'FIXME' };
-const CHANGELOG_ID = 'changelog-immutable';
-const changelogEntry = {
-  id: CHANGELOG_ID,
-  why: 'history is append-only',
-  immutable: 'CHANGELOG.md',
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^lib/', '^src/'], exclude: ['^lib/legacy/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [{ op: 'source', of: 'pre' }, { op: 'lines' }, { op: 'keyByPattern', re: '(TODO)' }],
+      after: [{ op: 'source', of: 'post' }, { op: 'lines' }, { op: 'keyByPattern', re: '(TODO)' }],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
 };
 const HOOKS_ID = 'hooks-stay-armed';
 const hooksEntry = {
@@ -54,18 +56,11 @@ const context7Entry = {
   requirePrecedent: { tool: 'context7' },
 };
 
-const LIVE_LIKE_DISCIPLINES = [
-  vocabEntry,
-  anyFileEntry,
-  changelogEntry,
-  hooksEntry,
-  npmViewEntry,
-  context7Entry,
-];
+const LIVE_LIKE_DISCIPLINES = [vocabEntry, hooksEntry, npmViewEntry, context7Entry];
 
 const SESSION_HEADER = 'surface: session (claude-code hook)';
 const COMMIT_HEADER = 'surface: commit (git pre-commit)';
-const KINDS = ['meta', 'judge', 'skip', 'excluded'] as const;
+const KINDS = ['meta', 'judge', 'declare', 'skip', 'excluded'] as const;
 type Kind = (typeof KINDS)[number];
 
 let repoRoot: string;
@@ -99,7 +94,7 @@ function surfaceSection(text: string, header: string): string {
 function kindLabelRows(section: string): [Kind, string][] {
   const rows: [Kind, string][] = [];
   for (const line of section.split('\n')) {
-    const match = /^\s+(meta|judge|skip|excluded)\s+(\S+)/.exec(line);
+    const match = /^\s+(meta|judge|declare|skip|excluded)\s+(\S+)/.exec(line);
     if (match !== null) rows.push([match[1] as Kind, match[2]]);
   }
   return rows;
@@ -111,10 +106,11 @@ function summary(section: string): Record<string, number> {
       section,
     );
   expect(match, 'summary line missing').not.toBeNull();
-  const [, registrations, judged, , skip, meta, excluded] = match as RegExpExecArray;
+  const [, registrations, judged, declare, skip, meta, excluded] = match as RegExpExecArray;
   return {
     registrations: Number(registrations),
     judged: Number(judged),
+    declare: Number(declare),
     skip: Number(skip),
     meta: Number(meta),
     excluded: Number(excluded),
@@ -187,12 +183,12 @@ describe('the four skip reasons surface with their entry', () => {
     );
   });
 
-  it("renders a delta entry's shell-skip arm under the entry id with its reason", async () => {
+  it("renders a declare entry's shell-skip arm under the entry id with its reason", async () => {
     writeFixtureConfig([vocabEntry]);
 
     const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
-    expect(linesOf(session, 'judge', VOCAB_ID)).toHaveLength(1);
+    expect(linesOf(session, 'declare', VOCAB_ID)).toHaveLength(1);
     expect(linesOf(session, 'skip', VOCAB_ID).join('\n')).toContain('shell write in scope');
   });
 
@@ -258,36 +254,6 @@ describe('surface placement', () => {
 });
 
 describe('routing scope per family and the why mark', () => {
-  it('renders the delta scope as `in` globs and the `except` globs, with why ✓', async () => {
-    writeFixtureConfig([vocabEntry]);
-
-    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', VOCAB_ID);
-
-    expect(line).toContain('forbid');
-    expect(line).toContain('in lib/**, src/**');
-    expect(line).toContain('except lib/legacy/**');
-    expect(line).toContain('why ✓');
-  });
-
-  it('renders a delta entry with no `in` as `every file`, with why —', async () => {
-    writeFixtureConfig([anyFileEntry]);
-
-    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', ANY_FILE_ID);
-
-    expect(line).toContain('every file');
-    expect(line).not.toContain('except');
-    expect(line).toContain('why —');
-  });
-
-  it('renders the path family as `immutable <glob>`', async () => {
-    writeFixtureConfig([changelogEntry]);
-
-    const line = lineOf((await explain({ repoRoot })).text, COMMIT_HEADER, 'judge', CHANGELOG_ID);
-
-    expect(line).toContain('immutable CHANGELOG.md');
-    expect(line).not.toContain('every file');
-  });
-
   it('renders the command family as `(no path scope)`', async () => {
     writeFixtureConfig([hooksEntry]);
 
@@ -321,8 +287,9 @@ describe('the tallies are the rendered lines', () => {
       const rows = kindLabelRows(section);
       const count = (kind: Kind) => rows.filter(([k]) => k === kind).length;
       expect(summary(section)).toEqual({
-        registrations: count('meta') + count('judge') + count('skip'),
+        registrations: count('meta') + count('judge') + count('declare') + count('skip'),
         judged: count('judge'),
+        declare: count('declare'),
         skip: count('skip'),
         meta: count('meta'),
         excluded: count('excluded'),
@@ -338,6 +305,7 @@ describe('the tallies are the rendered lines', () => {
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
       registrations: 4,
       judged: 0,
+      declare: 0,
       skip: 1,
       meta: 3,
       excluded: 0,
@@ -345,6 +313,7 @@ describe('the tallies are the rendered lines', () => {
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
       registrations: 2,
       judged: 0,
+      declare: 0,
       skip: 1,
       meta: 1,
       excluded: 0,
@@ -357,15 +326,17 @@ describe('the tallies are the rendered lines', () => {
     const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
-      registrations: 14,
-      judged: 6,
-      skip: 5,
+      registrations: 11,
+      judged: 3,
+      declare: 1,
+      skip: 4,
       meta: 3,
       excluded: 0,
     });
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
-      registrations: 7,
-      judged: 3,
+      registrations: 5,
+      judged: 0,
+      declare: 1,
       skip: 3,
       meta: 1,
       excluded: 1,
@@ -412,7 +383,18 @@ describe('the live config format', () => {
         "    testCmd: 'echo {scope}'",
         'disciplines:',
         `  - id: '${VOCAB_ID}'`,
-        "    forbid: 'FIXME'",
+        '    declare:',
+        "      mechanism: 'added-only'",
+        "      supply: { pre: 'empty', post: 'empty' }",
+        '      extract:',
+        '        after:',
+        "          - { op: 'source', of: 'post' }",
+        "          - { op: 'lines' }",
+        "          - { op: 'keyByPattern', re: '(FIXME)' }",
+        '      relate:',
+        "        - id: 'nothing-added'",
+        "          relation: { op: 'empty', of: 'after' }",
+        "          message: 'adds {key}'",
         '',
       ].join('\n'),
     );
@@ -420,7 +402,7 @@ describe('the live config format', () => {
     const { text } = await explain({ repoRoot });
 
     expect(text.split('\n')[0]).toContain('polydeukes.config.yaml');
-    expect(lineOf(text, COMMIT_HEADER, 'judge', VOCAB_ID)).toContain('forbid');
+    expect(lineOf(text, COMMIT_HEADER, 'declare', VOCAB_ID)).toContain('added-only');
   });
 });
 

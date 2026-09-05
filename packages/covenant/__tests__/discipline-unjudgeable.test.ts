@@ -131,10 +131,10 @@ describe('compileDisciplineRegistrations — unjudgeable evidence compiles to a 
 });
 
 describe('compileDisciplineRegistrations — a non-compilable pattern skips in every family', () => {
-  // Every family reaches assembly through the same door, so confining the skip disposition
-  // to the context family leaves the other three able to take the whole assembly down.
+  // Both pattern-bearing families reach assembly through the same door, so confining the
+  // skip disposition to the context family leaves the command family able to take the whole
+  // assembly down.
   const brokenByFamily: [string, DisciplineEntry][] = [
-    ['forbid', { id: 'bad-forbid', in: ['pkg/**'], forbid: '(' } as DisciplineEntry],
     ['forbidCommand', { id: 'bad-command', forbidCommand: '(' } as unknown as DisciplineEntry],
     [
       'when',
@@ -180,7 +180,7 @@ describe('compileDisciplineRegistrations — a skip registration stays a first-c
 
   it('leaves every sibling entry judged as usual', () => {
     // Isolation in the direction that matters: one bad entry must cost only itself.
-    const sibling = { id: 'no-todo', in: ['pkg/**'], forbid: 'TODO' } as DisciplineEntry;
+    const sibling = { id: 'no-todo', forbidCommand: 'rm -rf /' } as DisciplineEntry;
 
     const registrations = compileDisciplineRegistrations(
       contextSpec([typoEntry, sibling], { transcript: transcriptWithToolCalls([]) }),

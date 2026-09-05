@@ -2,9 +2,8 @@
  * Discipline judgment layer + registration compiler.
  *
  * `judgeDiscipline` decides one validated `DisciplineEntry` against a `CovenantInput`
- * across the predicate families: delta (`forbid` — consumes the delta layer verbatim,
- * zero reimplementation), path (`immutable`), command (`forbidCommand`), and context
- * (`requirePrecedent`). `compileDisciplineRegistrations` turns entries into dispatcher
+ * across the predicate families: command (`forbidCommand`) and context (`requirePrecedent`);
+ * the declaration family is judged by its own compiled registration. `compileDisciplineRegistrations` turns entries into dispatcher
  * registrations — one per entry, content-predicate routed (`matches`), judged by an
  * in-process thunk. Glob matching is bought (picomatch); absolute paths are relativized
  * against the repo root before matching, so a path outside the root never matches — scope
@@ -128,7 +127,7 @@ function relativizeForScope(filePath: string, rootDir: string): string | null {
   return relativized;
 }
 
-/** The forbid family's scope predicate over relativized paths: `in` absent = all, `except` subtracts. */
+/** The context family's scope predicate over relativized paths: `in` absent = all, `except` subtracts. */
 function forbidScopeMatcher(entry: DisciplineEntry): (path: string) => boolean {
   const inGlobs = toGlobs(entry.in);
   const isIn = inGlobs.length === 0 ? () => true : picomatch(inGlobs, { dot: true });
@@ -137,7 +136,7 @@ function forbidScopeMatcher(entry: DisciplineEntry): (path: string) => boolean {
   return (path) => isIn(path) && !isExcept(path);
 }
 
-/** In-scope file changes for the forbid family: `in` absent = all, `except` subtracts. */
+/** In-scope file changes for the context family: `in` absent = all, `except` subtracts. */
 function forbidScope(
   entry: DisciplineEntry,
   fileChanges: FileChange[],
@@ -218,27 +217,6 @@ export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
     worlds.push({ path, world });
   }
   return worlds;
-}
-
-/** File changes matching the immutable glob(s), with their relativized paths. */
-function immutableScope(
-  entry: DisciplineEntry,
-  fileChanges: FileChange[],
-  rootDir: string,
-): { path: string; change: FileChange }[] {
-  const matcher = picomatch(toGlobs(entry.immutable), { dot: true });
-  const targets: { path: string; change: FileChange }[] = [];
-  for (const change of fileChanges) {
-    const scoped = relativizeForScope(change.path, rootDir);
-    if (scoped === null || !matcher(scoped)) continue;
-    targets.push({ path: scoped, change });
-  }
-  return targets;
-}
-
-/** The forbid pattern source — string shorthand is equivalent to `{ added }`. */
-function forbidPatternSource(forbid: NonNullable<DisciplineEntry['forbid']>): string {
-  return typeof forbid === 'string' ? forbid : forbid.added;
 }
 
 /**
@@ -382,6 +360,32 @@ function derivedTargets(input: CovenantInput, opts: ShellSurface): string[] {
 }
 
 /**
+ * The first computable shell write a declaration's scope admits, judged on what the command
+ * text alone decides: the target path and, for a truncating write, the content it puts there.
+ *
+ * An append composes onto a pre-state only the body may read, so its content is left absent
+ * and a scope over `post` cannot admit it here — the write still reaches the body, which
+ * builds the real world.
+ */
+function firstAdmittedShellWrite(
+  compiled: CompiledDeclaration,
+  input: CovenantInput,
+  opts: ShellSurface,
+  rootDir: string,
+): string | null {
+  for (const derived of deriveShellSignals(input, opts).evidence) {
+    const path = relativizeForScope(derived.change.path, rootDir);
+    if (path === null) continue;
+    const world: Record<string, unknown> =
+      derived.change.mode === 'truncate'
+        ? { 'target.path': path, post: derived.change.content }
+        : { 'target.path': path };
+    if (scopeAdmits(compiled, world)) return path;
+  }
+  return null;
+}
+
+/**
  * The relativized path of the first change triggering a context entry, or null. One trigger
  * definition, shared by the judge and by routing.
  *
@@ -479,11 +483,8 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
 /**
  * Judge one discipline entry against a covenant input (pure).
  *
- * Delta family: in-scope file changes judged via {@link judgeAddedViolations} — the reason
- * names the discipline id and the added match text, and a deletion short-circuits to uphold
- * (deletion adds no content). Path family: a matching change of any kind but `create` breaks
- * (an immutable file can be neither modified nor deleted; first authoring upholds). Command
- * family: a shell-tool command matching the pattern breaks. No file changes / no targets
+ * Command family: a shell-tool command matching the pattern breaks. Context family: an
+ * in-scope mutation with no prior session evidence breaks. No file changes / no targets
  * uphold — a defensive re-check of what routing would not have matched.
  *
  * Every break reason carries the entry's `why` when it has one, appended by {@link withWhy}
@@ -498,39 +499,6 @@ function describePrecedent(requirePrecedent: Record<string, unknown>): string {
  */
 export function judgeDiscipline(spec: JudgeDisciplineSpec): CovenantVerdict {
   const { entry, input } = spec;
-  const fileChanges = allFileChanges(input);
-
-  if (entry.forbid !== undefined) {
-    const pattern = new RegExp(forbidPatternSource(entry.forbid));
-    for (const target of forbidScope(entry, fileChanges, spec.rootDir)) {
-      const verdict = judgeAddedForChange(target.change, pattern);
-      if (verdict.upheld === false) {
-        return {
-          upheld: false,
-          reason: withWhy(
-            `discipline '${entry.id}' broken on ${target.path}: ${verdict.reason}`,
-            entry.why,
-          ),
-        };
-      }
-    }
-    return { upheld: true };
-  }
-
-  if (entry.immutable !== undefined) {
-    for (const target of immutableScope(entry, fileChanges, spec.rootDir)) {
-      if (target.change.kind !== 'create') {
-        return {
-          upheld: false,
-          reason: withWhy(
-            `discipline '${entry.id}' broken: immutable file ${target.path} mutated`,
-            entry.why,
-          ),
-        };
-      }
-    }
-    return { upheld: true };
-  }
 
   if (entry.forbidCommand !== undefined) {
     const pattern = new RegExp(entry.forbidCommand);
@@ -589,26 +557,18 @@ function buildMatches(
     return (input) =>
       shellCommands(input, opts).some((c) => commandLineMatches(c, pattern)) ? '-' : null;
   }
-  if (entry.immutable !== undefined) {
-    return (input) => immutableScope(entry, allFileChanges(input), spec.rootDir)[0]?.path ?? null;
-  }
-  if (entry.requirePrecedent !== undefined) {
-    // Routing is evidence-blind: a trigger with evidence still spawns the body and
-    // records `passed` — "the gate checked, and the evidence was there" is the context
-    // family's measurement value, not wasted judgment.
-    //
-    // A shell-derived target routes `when`-blind: no pre exists at routing time, so the
-    // added direction cannot be asked here. Precision is the body's.
-    return (input) =>
-      precedentTrigger(entry, input, spec.rootDir) ??
-      firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
-  }
-  // Deletions can never break the added direction, so they must not route a body spawn;
-  // the judge still short-circuits them defensively when a mixed input arrives.
+  // The context family is what remains: the command family answered above, and a
+  // declaration entry never reaches here — it compiles to its own registration.
+  //
+  // Routing is evidence-blind: a trigger with evidence still spawns the body and records
+  // `passed` — "the gate checked, and the evidence was there" is the context family's
+  // measurement value, not wasted judgment.
+  //
+  // A shell-derived target routes `when`-blind: no pre exists at routing time, so the
+  // added direction cannot be asked here. Precision is the body's.
   return (input) =>
-    forbidScope(entry, allFileChanges(input), spec.rootDir).find(
-      (target) => target.change.kind !== 'delete',
-    )?.path ?? firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
+    precedentTrigger(entry, input, spec.rootDir) ??
+    firstScopedPath(entry, derivedTargets(input, opts), spec.rootDir);
 }
 
 /**
@@ -741,15 +701,6 @@ function compileEntryDeclaration(entry: DisciplineEntry): CompiledDeclaration | 
   });
 }
 
-/** Every write target a shell line delivers, computable or not, in line order. */
-function shellTargets(input: CovenantInput, opts: ShellSurface): string[] {
-  const signals = deriveShellSignals(input, opts);
-  return [
-    ...signals.evidence.map((derived) => derived.change.path),
-    ...signals.unjudgeable.flatMap((signal) => signal.path ?? []),
-  ];
-}
-
 /**
  * The first of `paths` the declaration's scope admits, judged as a world of that path alone.
  *
@@ -773,12 +724,11 @@ function firstAdmittedPath(
 
 /**
  * Describe the first pattern on an entry that does not compile, or `undefined` when all of
- * them do. Every family is covered: containing only the context family would leave the
- * other three able to take down the whole assembly through the same door.
+ * them do. Both pattern-bearing families are covered: containing only the context family
+ * would leave the command family able to take down the whole assembly through the same door.
  */
 function patternFault(entry: DisciplineEntry): string | undefined {
   const sources: [string, string | undefined][] = [
-    ['forbid', entry.forbid === undefined ? undefined : forbidPatternSource(entry.forbid)],
     ['forbidCommand', entry.forbidCommand],
     ['when', entry.when],
   ];
@@ -794,10 +744,9 @@ function patternFault(entry: DisciplineEntry): string | undefined {
 }
 
 /**
- * True for the families whose shell-delivered writes are attributable to one entry: delta
- * and context. A command entry's axis is the string itself and an immutable entry's shell
- * deletion is out of scope, so neither gains a skip arm. An entry whose pattern is broken
- * gains none either — a broken pattern defines no match.
+ * True for the families whose shell-delivered writes are attributable to one entry: context
+ * and declaration. A command entry's axis is the string itself, so it gains no skip arm. An
+ * entry whose pattern is broken gains none either — a broken pattern defines no match.
  */
 function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): boolean {
   // No shell surface, no shell writes to detect: the arm's own matches predicate could
@@ -805,7 +754,7 @@ function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): 
   if (spec.shellTools.length === 0 || spec.commandArgs.length === 0) return false;
   if (patternFault(entry) !== undefined) return false;
   if (entry.declare !== undefined) return !isFault(compileEntryDeclaration(entry));
-  return entry.forbid !== undefined || entry.requirePrecedent !== undefined;
+  return entry.requirePrecedent !== undefined;
 }
 
 /**
@@ -820,20 +769,16 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
     commandArgs: spec.commandArgs,
     readPreState: spec.readPreState,
   };
-  // A declaration's scope is its own; every other family reads the entry-level globs. A
-  // shell line delivers no file change, so even a computable write leaves the declaration
-  // no world to judge — its whole shell axis is this arm.
+  // A declaration's scope is its own; every other family reads the entry-level globs. This
+  // arm carries the UNCOMPUTABLE writes only — a computable one becomes a file change the
+  // judging arm sees, so admitting it here would leave one call two rows.
   const compiled = entry.declare === undefined ? undefined : compileEntryDeclaration(entry);
+  const uncomputable = (input: CovenantInput): string[] =>
+    deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []);
   const scoped =
     compiled === undefined || isFault(compiled)
-      ? (input: CovenantInput) =>
-          firstScopedPath(
-            entry,
-            deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []),
-            spec.rootDir,
-          )
-      : (input: CovenantInput) =>
-          firstAdmittedPath(compiled, shellTargets(input, opts), spec.rootDir);
+      ? (input: CovenantInput) => firstScopedPath(entry, uncomputable(input), spec.rootDir)
+      : (input: CovenantInput) => firstAdmittedPath(compiled, uncomputable(input), spec.rootDir);
 
   return {
     label: entry.id,
@@ -1060,10 +1005,21 @@ function declareRegistration(
   }
 
   const bindings = sourceBindings(entry);
+  const opts: ShellSurface = {
+    rootDir: spec.rootDir,
+    shellTools: spec.shellTools,
+    commandArgs: spec.commandArgs,
+    readPreState: spec.readPreState,
+  };
 
   // One derivation per input, shared by routing, the body, and the valve: the valve must
   // see the same first non-pass world the body reported — a valve that re-judged on its
   // own could open on a later break while the body had stopped at an unjudgeable world.
+  //
+  // The input is enriched first, so a computable shell write reaches the declaration as an
+  // ordinary file change: without it a Bash call carries no world and the write passes with
+  // no row. An unreadable pre-state throws out of here and the body turns it into the
+  // cannot-judge exit, never a quiet pass.
   //
   // The named sources join the world here rather than in `worldsFromInput`: what a source
   // name means is this declaration's own binding, and the fixed world knows none of them.
@@ -1071,7 +1027,10 @@ function declareRegistration(
   const admitted = (input: CovenantInput): SuppliedWorld[] => {
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
-    const fixed = worldsFromInput({ input, rootDir: spec.rootDir });
+    const fixed = worldsFromInput({
+      input: enrichWithShellEvidence(input, opts),
+      rootDir: spec.rootDir,
+    });
     const values = sourceValues(bindings, fixed, input.world, spec.transcript);
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
@@ -1079,7 +1038,18 @@ function declareRegistration(
     admittedOf.set(input, worlds);
     return worlds;
   };
-  const route = (input: CovenantInput): string | null => admitted(input)[0]?.path ?? null;
+  // Routing never consults the pre-state reader: it answers a subject, and the reader is
+  // the body's channel — asking here would read the disk once per routing pass as well.
+  // File-change evidence already carries its own worlds, and a shell write contributes the
+  // path it names; whether that write is in scope is settled from `target.path` alone.
+  const route = (input: CovenantInput): string | null => {
+    const fixed = worldsFromInput({ input, rootDir: spec.rootDir });
+    const values = sourceValues(bindings, fixed, input.world, spec.transcript);
+    return (
+      fixed.find((supplied) => scopeAdmits(compiled, { ...supplied.world, ...values }))?.path ??
+      firstAdmittedShellWrite(compiled, input, opts, spec.rootDir)
+    );
+  };
 
   // A surface that dispatches its whole observation at once derives a one-element change
   // set, and a judgment over it reports every scoped change as unpaired. Routing is kept so
@@ -1156,7 +1126,7 @@ function declareRegistration(
  *
  * One registration per entry: `label` = id (per-discipline telemetry), `protectedPaths`
  * = [] (routing is the matches closure, not path mention), `body` = the judge thunk with
- * the entry and the assembly values bound in. Delta and context entries gain a second,
+ * the entry and the assembly values bound in. Context and declaration entries gain a second,
  * body-less registration for their shell axis, and one common `shell-unjudgeable`
  * registration is appended last whatever the entry count.
  *

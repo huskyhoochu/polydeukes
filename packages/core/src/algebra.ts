@@ -34,8 +34,17 @@ export type RelationName = (typeof RELATION_NAMES)[number];
 /** The binary world-combining position, closed. Anything else is a unary step. */
 export const BINARY_COMBINATOR_NAMES = ['union', 'onlyIn', 'intersect'] as const;
 
-/** What a missing source does: refuse the declaration, or let it pass unjudged. */
-export const SUPPLY_POLICIES = ['error', 'pass'] as const;
+/**
+ * What a missing source does: refuse the declaration, let it pass unjudged, or read the
+ * absence as an empty item list and judge on.
+ */
+export const SUPPLY_POLICIES = ['error', 'pass', 'empty'] as const;
+
+/**
+ * The paired source name. `empty` is a property of a single source: `state` holds a
+ * before/after pair that only `unchanged` reads, and an absent pair is not a pair of empties.
+ */
+const PAIRED_SOURCE_NAME = 'state';
 
 /** The kind position of a `sources` entry, closed. Each entry carries exactly one of them. */
 export const SOURCE_KINDS = ['file', 'sidecar', 'transcript'] as const;
@@ -86,8 +95,14 @@ export type ScopeBlock = {
   excludeIgnoreCase?: boolean;
 };
 
-/** The `supply` block — per source name, what its absence does (`error` refuses, `pass` skips). */
-export type SupplyBlock = Record<string, 'error' | 'pass'>;
+/** One supply policy — the closed value position of a `supply` entry. */
+export type SupplyPolicy = (typeof SUPPLY_POLICIES)[number];
+
+/**
+ * The `supply` block — per source name, what its absence does: `error` refuses, `pass` skips,
+ * `empty` reads the absence as an empty item list and judges on.
+ */
+export type SupplyBlock = Record<string, SupplyPolicy>;
 
 /**
  * The `sources` block — per source name, what outside the target it stands for.
@@ -314,6 +329,11 @@ function validateSupply(supply: unknown, sources: unknown, location: string): vo
     if (!(SUPPLY_POLICIES as readonly unknown[]).includes(policy)) {
       throw new ConfigValidationError(
         `${location} supply.${source} is '${String(policy)}' — must be one of ${quotedList(SUPPLY_POLICIES)}`,
+      );
+    }
+    if (policy === 'empty' && source === PAIRED_SOURCE_NAME) {
+      throw new ConfigValidationError(
+        `${location} supply.${source}: 'empty' does not apply to the paired source — it holds a before/after pair, and an absent pair is not two empty states`,
       );
     }
   }

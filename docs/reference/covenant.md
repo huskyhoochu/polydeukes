@@ -35,14 +35,12 @@ determines whether it can be judged on a given surface.
 
 | Family | Key | Judges | Evidence needed |
 |---|---|---|---|
-| delta | `forbid` | Added-direction content of a file change. Existing debt is forgiven; only new occurrences break | File change |
-| path | `immutable` | Any change to a file that already exists — modification or deletion alike. Creation passes | File change |
 | command | `forbidCommand` | The command line itself | None |
 | context | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one | A transcript |
 | declaration | `declare` | One judgment written as data — `relate ∘ extract` over the change as a world of `target.path`, `pre`, `post`, `state` | File change |
 
 `when` is a trigger, not a family: it narrows a `requirePrecedent` entry and combines with
-nothing else. The writing guide for these entries — the five predicate forms, the two
+nothing else. The writing guide for these entries — the three predicate forms, the two
 pitfalls — is [the configuration reference's `disciplines` section](./configuration.md#disciplines);
 the declaration grammar is the core's `algebra-declaration.schema.json`.
 

@@ -27,8 +27,8 @@ const draftEntry = {
   why: 'keep the en and ko doc mirrors in sync',
   draft: true,
 };
-const judgedForbid = { id: 'no-todo', forbid: 'TODO' };
-const judgedImmutable = { id: 'changelog-immutable', immutable: 'CHANGELOG.md' };
+const judgedForbid = { id: 'no-todo', forbidCommand: 'TODO' };
+const judgedImmutable = { id: 'changelog-frozen', requirePrecedent: { command: 'npm view ' } };
 
 /** Asserts the concrete error instance and returns it so callers can assert on the message. */
 function expectConfigValidationError(invalidConfig: unknown): ConfigValidationError {
@@ -115,24 +115,26 @@ describe('defineConfig disciplines — draft rejections', () => {
     expect(error.message).toContain('draft-empty-why');
   });
 
-  it('rejects draft: true combined with a predicate key (forbid)', () => {
+  it('rejects draft: true combined with a predicate key (declare)', () => {
     // An entry that both drafts and judges is ambiguous about whether it judges; the
     // registered-but-not-enforced case belongs to the `enforce` axis instead. This fixture
     // and the three below are one per predicate key: an implementation rejecting only
     // `forbid` would pass a single fixture while leaving three fail-open holes.
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-forbid', why: 'w', draft: true, forbid: 'x' }]),
+      withDisciplines([{ id: 'draft-with-declare', why: 'w', draft: true, declare: {} }]),
     );
 
-    expect(error.message).toContain('draft-with-forbid');
+    expect(error.message).toContain('draft-with-declare');
   });
 
-  it('rejects draft: true combined with `immutable`', () => {
+  it('rejects draft: true combined with `requirePrecedent`', () => {
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-immutable', why: 'w', draft: true, immutable: 'x' }]),
+      withDisciplines([
+        { id: 'draft-with-precedent', why: 'w', draft: true, requirePrecedent: { command: 'x' } },
+      ]),
     );
 
-    expect(error.message).toContain('draft-with-immutable');
+    expect(error.message).toContain('draft-with-precedent');
   });
 
   it('rejects draft: true combined with `forbidCommand`', () => {
@@ -221,7 +223,7 @@ describe('defineConfig disciplines — draft rejections', () => {
     // id would leave explain and the promotion path unsure which entry the id names.
     const error = expectConfigValidationError(
       withDisciplines([
-        { id: 'shared-id', forbid: 'x' },
+        { id: 'shared-id', forbidCommand: 'x' },
         { id: 'shared-id', why: 'w', draft: true },
       ]),
     );

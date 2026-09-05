@@ -49,7 +49,7 @@ const VALID_CONFIGS: readonly unknown[] = [
     },
     telemetry: {},
   },
-  // One entry per predicate family, covering both the string-shorthand and object-form forbid.
+  // One entry per predicate family.
   {
     ...validLanguages,
     disciplines: [
@@ -58,10 +58,32 @@ const VALID_CONFIGS: readonly unknown[] = [
         why: 'ban new control-framing vocabulary',
         in: ['packages/core/src/**'],
         except: 'packages/core/src/legacy/**',
-        forbid: '\\b(guard|harness|kb)\\b',
+        requirePrecedent: { command: 'npm view ' },
       },
-      { id: 'object-forbid', forbid: { added: '#[0-9a-f]{6}' } },
-      { id: 'config-immutable', immutable: ['config/*.lock'] },
+      {
+        id: 'no-banned',
+        declare: {
+          mechanism: 'added-only',
+          scope: { source: 'target.path', include: ['^src/'] },
+          supply: { pre: 'empty', post: 'empty' },
+          extract: {
+            before: [
+              { op: 'source', of: 'pre' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(zzz_banned)' },
+            ],
+            after: [
+              { op: 'source', of: 'post' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(zzz_banned)' },
+            ],
+            added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+          },
+          relate: [
+            { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+          ],
+        },
+      },
       { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
     ],
   },

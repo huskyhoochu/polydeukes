@@ -16,13 +16,13 @@ function withDisciplines(disciplines: unknown): unknown {
 }
 
 const VALID_CONFIGS: readonly unknown[] = [
-  withDisciplines([{ id: 'softly-held', forbid: 'zzz_banned', enforce: 'advise' }]),
-  withDisciplines([{ id: 'hard-held', forbid: 'zzz_banned', enforce: 'block' }]),
+  withDisciplines([{ id: 'softly-held', forbidCommand: 'zzz_banned', enforce: 'advise' }]),
+  withDisciplines([{ id: 'hard-held', forbidCommand: 'zzz_banned', enforce: 'block' }]),
   // The key on every judged family, beside an enforce-less sibling and a draft: the
   // level must be admitted by each judged oneOf branch, not only the delta one.
   withDisciplines([
-    { id: 'plain-held', forbid: 'zzz_banned' },
-    { id: 'soft-path', immutable: 'CHANGELOG.md', enforce: 'advise' },
+    { id: 'plain-held', forbidCommand: 'zzz_banned' },
+    { id: 'soft-precedent', requirePrecedent: { command: 'npm view ' }, enforce: 'advise' },
     { id: 'soft-command', forbidCommand: 'zzz_cmd', enforce: 'advise' },
     { id: 'soft-context', requirePrecedent: { command: 'zzz view ' }, enforce: 'advise' },
     { id: 'bilingual-docs-sync', why: 'keep the en and ko doc mirrors in sync', draft: true },
@@ -31,10 +31,10 @@ const VALID_CONFIGS: readonly unknown[] = [
 
 const INVALID_CONFIGS: readonly unknown[] = [
   // An unknown level — the enumeration is closed.
-  withDisciplines([{ id: 'measured-probe', forbid: 'x', enforce: 'measure' }]),
+  withDisciplines([{ id: 'measured-probe', forbidCommand: 'x', enforce: 'measure' }]),
   // A boolean kills a schema that types the key loosely and a validator that tests
   // presence or truthiness rather than the value.
-  withDisciplines([{ id: 'boolean-probe', forbid: 'x', enforce: true }]),
+  withDisciplines([{ id: 'boolean-probe', forbidCommand: 'x', enforce: true }]),
   // A draft carrying the level — pins the draft branch's `additionalProperties: false`,
   // whose key set stays id·why·draft.
   withDisciplines([{ id: 'draft-with-enforce', why: 'w', draft: true, enforce: 'advise' }]),

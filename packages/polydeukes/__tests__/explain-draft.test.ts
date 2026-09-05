@@ -24,8 +24,11 @@ const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 const DRAFT_ID = 'bilingual-docs-sync';
 const draftEntry = { id: DRAFT_ID, why: 'keep the en and ko doc mirrors in sync', draft: true };
 const JUDGED_FORBID_ID = 'no-todo';
-const judgedForbid = { id: JUDGED_FORBID_ID, forbid: 'TODO' };
-const judgedImmutable = { id: 'changelog-immutable', immutable: 'CHANGELOG.md' };
+const judgedForbid = { id: JUDGED_FORBID_ID, forbidCommand: 'TODO' };
+const judgedImmutable = {
+  id: 'changelog-precedent',
+  requirePrecedent: { command: 'npm view ' },
+};
 
 const JUDGED_ONLY = [judgedForbid, judgedImmutable];
 const WITH_DRAFT = [judgedForbid, draftEntry, judgedImmutable];

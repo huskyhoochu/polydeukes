@@ -24,19 +24,19 @@ Ask these questions in order; the first yes decides.
 
 | # | Question | Family | Entry key |
 | --- | --- | --- | --- |
-| 1 | Is the promise about content newly ADDED to a file (a pattern that must not appear in new lines)? | delta | `forbid` |
-| 2 | Is it about a whole path that must not be modified or deleted (creating it once stays allowed)? | path | `immutable` |
+| 1 | Is the promise about content newly ADDED to a file (a pattern that must not appear in new lines)? | declaration | `declare` — mechanism `added-only` (step 4a) |
+| 2 | Is it about a whole path that must not be modified or deleted (creating it once stays allowed)? | declaration | `declare` — the frozen-path shape (step 4a) |
 | 3 | Is it about the shell command line itself, regardless of files? | command | `forbidCommand` |
 | 4 | Does it require that something else was already done earlier in the session (a tool call that must precede this one)? | context | `requirePrecedent` |
 | 5 | None of the above | — | `draft: true` (step 4b) |
 
-Existing occurrences are forgiven by the delta family — only new additions break the promise.
+Existing occurrences are forgiven by an added-only declaration — only new additions break the promise.
 That is usually what you want: a discipline adopted today should not indict yesterday's code.
 
 Two path-shaped promises take no `disciplines:` entry at all. A path nobody may touch
 belongs in the top-level `protectedPaths:` list — its own config block, never an entry
-key. And a path that must never be CREATED is not expressible today: `immutable` allows
-creation by design, so register that promise as a draft (step 4b).
+key. And a path that must never be CREATED is not expressible today: the frozen-path shape
+allows creation by design, so register that promise as a draft (step 4b).
 
 ### 3. Check the observation boundary
 
@@ -67,9 +67,24 @@ languages:
 disciplines:
   - id: 'no-focused-tests'
     why: 'a committed .only silently shrinks the suite to one test'
-    forbid: '\.only\('
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['\.test\.[tj]s$'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before: [{ op: 'source', of: 'pre' }, { op: 'lines' }, { op: 'keyByPattern', re: '(\.only\()' }]
+        after: [{ op: 'source', of: 'post' }, { op: 'lines' }, { op: 'keyByPattern', re: '(\.only\()' }]
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }]
+      relate:
+        - { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}: {value}' }
     enforce: advise
 ```
+
+The frozen-path shape (question 2) is the same block with `mechanism: 'self-absolution-ban'`
+and `extract` = `prior` (source `pre`) · `here` (source `target.path`) · `after` (source
+`post`) · `deleted` (`onlyIn` of `here` notIn `after`) · `touched` (`union` of `prior`,
+`deleted`), related by `empty` over `touched`. The `keyByPattern` regex must carry one
+capture group — group 1 is the key — so wrap the whole pattern in parentheses.
 
 **Write the regex yourself — the user states the promise, you author the pattern.** The
 pattern is the part users find hardest, so never hand the prose back and ask for one. Three
@@ -78,11 +93,13 @@ authoring traps, each measured on a live config:
 - **A pattern answers a syntactic question only.** "Is this string a forbidden word" is
   syntax; "is this a new dependency version" is meaning, and a regex leaks both ways on a
   semantic question. When the question is semantic, narrow `in:` to the files where any
-  match IS a break (`in:`/`except:` scope `forbid` and `requirePrecedent` only), or
+  match IS a break (`in:`/`except:` scope `requirePrecedent`; a declaration's `scope`
+  block does the same with regular expressions), or
   accept "editing this file at all" as the trigger.
-- **`^` silently disarms on the delta axis.** `forbid` scans whole file content as one
-  string, so a line-start anchor matches the first line only — write `(^|\n)` there.
-  `forbidCommand` judges per line and the whole string, so `^` is safe on that axis.
+- **`^` means a line start only after `lines`.** A declaration's `lines` step splits the
+  content first, so `^` inside `keyByPattern` is a line start; the context family's `when`
+  scans whole file content as one string, so write `(^|\n)` there. `forbidCommand` judges
+  per line and the whole string, so `^` is safe on that axis.
 - **Author both directions.** Before registering, write down one string the pattern must
   match and one nearby string it must not (`forbid` vs `forbidden`, a flag vs its
   substring). A pattern checked in only the breaking direction over-fires in review-proof
@@ -136,7 +153,7 @@ actually reach:
 
 | Family | Break it once | The entry's id shows up in |
 | --- | --- | --- |
-| `forbid` / `immutable` | one scratch edit matching the must-match direction | `pdks covenant check --worktree` output — the exit stays 0 at advise, the id is the proof |
+| `declare` (added-only / frozen path) | one scratch edit matching the must-match direction | `pdks covenant check --worktree` output — the exit stays 0 at advise, the id is the proof |
 | `forbidCommand` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
 | `requirePrecedent` | one in-scope edit made without the required precedent | the telemetry log tail — this family judges on the session surface only (the commit surface records it `skipped`) |
 

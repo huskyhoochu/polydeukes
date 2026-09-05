@@ -41,13 +41,29 @@ witness:
 
 disciplines:
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. the one except is the old-key rejection contract test, whose literals ARE the contract — delta judgment reads every line of a re-created file as added, so without it any commit restoring that file trips its own discipline.'
-    in:
-      - 'packages/*/src/**'
-      - 'packages/*/__tests__/**'
-    except:
-      - 'packages/core/__tests__/config-witness-key.test.ts'
-    forbid: '\b(guard|harness|kb|waiver?)\b'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. the one exclude is the old-key rejection contract test, whose literals ARE the contract — a re-created file reads every line as added, so without it any commit restoring that file trips its own discipline.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+        exclude: ['^packages/core/__tests__/config-witness-key\.test\.ts$']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb|waiver?)\b' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb|waiver?)\b' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   - id: 'hooks-stay-armed'
     why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself. the rung is block because the gate definitions such a command neutralizes are already on the protected list — leaving the command at advise let one defence hold its files while its bypass passed.'
     enforce: block
@@ -61,15 +77,32 @@ disciplines:
     forbidCommand: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b'
   - id: 'english-only-sources'
     why: 'code comments and test titles are English-only; Korean belongs in docs and conversation.'
-    in:
-      - 'packages/*/src/**'
-      - 'packages/*/__tests__/**'
-    forbid: '[가-힣]'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '([가-힣]+)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '([가-힣]+)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # Everything under packages/ is published — it ships inside the tarball and is read on
   # GitHub — so a comment or a test title may only point at something the reader can open.
   # Measured 2026-08-27, before the sweep that set this baseline: 1,180 coordinate citations
-  # across 165 files pointed into the gitignored wiki clone. Delta judgment forgives what is
-  # left behind and answers only the next one.
+  # across 165 files pointed into the gitignored wiki clone. Added-only judgment forgives
+  # what is left behind and answers only the next one.
   #
   # The bare defect labels (`A1`-`A10`, `B1`-`B7`) are in the pattern because they are the
   # ones a sweep misses: they name the same archived PRD's findings but read as ordinary
@@ -77,40 +110,105 @@ disciplines:
   # zero false positives across packages, docs, and the root config.
   - id: 'comments-need-no-wiki'
     why: 'a ticket id or a PRD coordinate in a published comment resolves on one machine and nowhere else, so it reads as a citation while carrying nothing — state the fact instead. the rung is advise because the fix is a text edit and the baseline was drawn the day this landed: a break here is a note, not a stop.'
-    in:
-      - 'packages/*/src/**'
-      - 'packages/*/__tests__/**'
-    forbid:
-      added: '\b(COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](1[0-9]|[1-9])\b|\.(dev-log|research|prd)\.|_docs/'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # Audit grades and cycle-phase names describe the session that produced a test, not the
   # behaviour it defends. They meant something during the cycle and nothing after it.
   - id: 'comments-carry-no-process'
     why: 'a P0 tag or a RED-phase note records how we worked rather than what the code does. the grade goes and the sentence naming what breaks without the test stays. advise, for the same reason as the entry above: the fix is a text edit.'
-    in:
-      - 'packages/*/src/**'
-      - 'packages/*/__tests__/**'
-    forbid:
-      added: '\bP[01]\b|\b(RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # A barrel is the consumer contract and nothing else. ESM re-exports are eager, so a
   # definition or an import in one is instantiated by every consumer of any other export, and
   # the umbrella's fail-closed proof (a dist missing one module throws on the barrel import)
   # depends on every re-export staying static. The ratchet test is the other half.
   - id: 'barrels-only-reexport'
     why: 'a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static. advise: the fix is a text edit, and package-contract.test.ts check ② is the other half.'
-    in:
-      - 'packages/*/src/index.ts'
-      - 'packages/polydeukes/src/claude-code.ts'
-    forbid:
-      added: '(^|\n)(import |export \*|export (const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # The barrel is the consumer contract, not the test surface: a test that imports it proves
   # the barrel carries a name, not that the module behaves, and it widens the contract every
   # time a test needs one more symbol. Every spelling of the barrel path counts.
   - id: 'tests-import-modules'
     why: 'a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time. advise, same reason as above; package-contract.test.ts check ⑥ is the other half.'
-    in:
-      - 'packages/*/__tests__/**'
-    forbid:
-      added: "from ['\"](\\.\\./)+src/index(\\.[tj]s)?['\"]"
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/__tests__/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # Whether a function is a contract verb is a fact about the barrel, not about the file the
   # function lives in, so no path-scoped family can judge the verb shape at edit time.
   - id: 'verbs-take-one-spec'
@@ -118,10 +216,27 @@ disciplines:
     draft: true
   - id: 'core-stays-runner-agnostic'
     why: 'the core never names a test runner; verification is an exit code and the command is config. this is the edit-time half of the literal gate the core suite asserts over its own src/.'
-    in:
-      - 'packages/core/src/**'
-      - 'packages/core/schema/**'
-    forbid: '\b(vitest|pytest|go test)\b'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/core/(src|schema)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
   # A manifest edit needs BOTH a measured version and read docs, and `requirePrecedent`
   # takes exactly one key — hence two entries. No `when`: "is this a new version" is a
   # semantic question a regex leaked both ways on, so scope alone is the trigger.

@@ -81,10 +81,11 @@ semantics.
 
 **A discipline is one data entry.** Users declare a predicate as configuration data and
 get enforcement, per-discipline telemetry, and the escape valve — without writing any
-process plumbing. Four families cover four kinds of evidence: `forbid` judges what an edit
-adds, `immutable` judges whether a path was touched, `forbidCommand` judges the command
-line itself, and `requirePrecedent` judges the session's own history — the only one whose
-subject is not the change but the procedure that should have come before it. The command
+process plumbing. Three forms cover three kinds of evidence: a `declare` block judges the
+change as a world — what an edit adds, whether a path was touched, whether two files moved
+together — `forbidCommand` judges the command line itself, and `requirePrecedent` judges
+the session's own history — the only one whose subject is not the change but the procedure
+that should have come before it. The command
 family routes on content, so even a command that mentions no protected path is still
 judged.
 

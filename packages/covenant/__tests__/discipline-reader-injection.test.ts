@@ -16,6 +16,8 @@ const ROOT = '/repo';
 const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';
 const BANNED = 'zzz_banned';
+// A second banned word, so a case can add a match the pre-state does not already carry.
+const OTHER_BANNED = 'zzz_other';
 const SCOPED_PATH = 'scoped/target.ts';
 
 /** A CovenantInput whose single call is a shell invocation of `command`. */
@@ -73,7 +75,35 @@ async function judgeWithReader(
   return outcome ?? { exitCode: 2 };
 }
 
-const forbidEntry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
+/**
+ * The added-only declaration over `scoped/`: each side's matched strings are keyed by the
+ * match, and what `post` adds over `pre` must be empty. The pre-state the reader answers is
+ * what fills `pre`, which is why this entry is the probe for that channel.
+ */
+const forbidEntry = {
+  id: 'no-banned',
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^scoped/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: `(${BANNED}|${OTHER_BANNED})` },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: `(${BANNED}|${OTHER_BANNED})` },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+} as unknown as DisciplineEntry;
 
 describe('compiled discipline thunk — the injected reader is the only pre-state channel', () => {
   it('judges a string pre-state as a MODIFY carrying exactly that content', async () => {
@@ -93,15 +123,15 @@ describe('compiled discipline thunk — the injected reader is the only pre-stat
     expect(result.exitCode).toBe(0);
   });
 
-  it('still breaks when the write ADDS an occurrence over that same string pre-state', async () => {
+  it('still breaks when the write adds a match the pre-state does not carry', async () => {
     // The pass direction above must not be reachable by ignoring the write. Same injected
-    // pre, a post carrying two occurrences: 1 -> 2 is an added instance and blocks. A
-    // presence-based composition, or a `pre` fed straight through as the post, upholds here.
+    // pre, a post whose line carries a match that pre never had: a `pre` fed straight
+    // through as the post, or a write whose content is discarded, upholds here.
     const reader = spyReader({ [resolve(ROOT, SCOPED_PATH)]: `${BANNED} already lives here\n` });
 
     const result = await judgeWithReader(
       forbidEntry,
-      `echo '${BANNED} and ${BANNED}' > ${SCOPED_PATH}`,
+      `echo '${OTHER_BANNED} arrives' > ${SCOPED_PATH}`,
       reader.read,
     );
 
@@ -109,7 +139,7 @@ describe('compiled discipline thunk — the injected reader is the only pre-stat
     expect(result.reason).toContain('no-banned');
   });
 
-  it('a null pre-state still counts the whole post as added for the delta family', async () => {
+  it('a null pre-state still counts the whole post as added', async () => {
     // The other end of null: nothing is forgiven on a create, so a brand-new file carrying
     // the pattern breaks. A create whose evidence is degraded to unjudgeable, or whose post
     // is compared against itself, lets a new violation through as a pass.

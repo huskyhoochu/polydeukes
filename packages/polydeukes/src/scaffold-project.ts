@@ -90,15 +90,54 @@ witness:
 #
 #   # Promoted to a judgment. Advise is the default — recorded as \`advised\`, never stops
 #   # the call — so this line is optional; it is written here to show the rung.
+#   #
+#   # The declaration keys each side's matched lines by the matched text and breaks on what
+#   # the edit ADDED, so occurrences already in the tree are forgiven.
 #   - id: 'no-todo-in-shipped-code'
 #     why: 'a TODO nobody owns is a decision deferred out of sight'
-#     forbid: 'TODO'
+#     declare:
+#       mechanism: 'added-only'
+#       scope: { source: 'target.path', include: ['^src/'] }
+#       supply: { pre: 'empty', post: 'empty' }
+#       extract:
+#         before:
+#           - { op: 'source', of: 'pre' }
+#           - { op: 'lines' }
+#           - { op: 'keyByPattern', re: '(TODO)' }
+#         after:
+#           - { op: 'source', of: 'post' }
+#           - { op: 'lines' }
+#           - { op: 'keyByPattern', re: '(TODO)' }
+#         added:
+#           - { op: 'onlyIn', of: 'after', notIn: 'before' }
+#       relate:
+#         - id: 'nothing-added'
+#           relation: { op: 'empty', of: 'added' }
+#           message: 'adds {key}: {value}'
 #     enforce: advise
 #
 #   # The promotion — block is your choice, never the default.
 #   - id: 'no-todo-in-shipped-code-blocking'
 #     why: 'a TODO nobody owns is a decision deferred out of sight'
-#     forbid: 'TODO'
+#     declare:
+#       mechanism: 'added-only'
+#       scope: { source: 'target.path', include: ['^src/'] }
+#       supply: { pre: 'empty', post: 'empty' }
+#       extract:
+#         before:
+#           - { op: 'source', of: 'pre' }
+#           - { op: 'lines' }
+#           - { op: 'keyByPattern', re: '(TODO)' }
+#         after:
+#           - { op: 'source', of: 'post' }
+#           - { op: 'lines' }
+#           - { op: 'keyByPattern', re: '(TODO)' }
+#         added:
+#           - { op: 'onlyIn', of: 'after', notIn: 'before' }
+#       relate:
+#         - id: 'nothing-added'
+#           relation: { op: 'empty', of: 'added' }
+#           message: 'adds {key}: {value}'
 #     enforce: block
 `;
 

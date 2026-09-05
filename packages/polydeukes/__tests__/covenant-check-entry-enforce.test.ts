@@ -31,7 +31,33 @@ afterEach(() => {
 /** Stage a delta that adds a forbidden match under an advise entry, surface at block. */
 function stageSoftBreak(): void {
   writeConfig({
-    disciplines: [{ id: SOFT_ID, forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'advise' }],
+    disciplines: [
+      {
+        id: SOFT_ID,
+        declare: {
+          mechanism: 'added-only',
+          scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+          supply: { pre: 'empty', post: 'empty' },
+          extract: {
+            before: [
+              { op: 'source', of: 'pre' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(TODO)' },
+            ],
+            after: [
+              { op: 'source', of: 'post' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(TODO)' },
+            ],
+            added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+          },
+          relate: [
+            { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+          ],
+        },
+        enforce: 'advise',
+      },
+    ],
   });
   write('lib/a.ts', 'export const x = 1;\n');
   git('add', 'lib/a.ts', 'polydeukes.config.json');
@@ -73,8 +99,64 @@ describe('covenant check — an advise entry under a block surface', () => {
     // must not claim "commit allowed" from the advised count while the run exits 2.
     writeConfig({
       disciplines: [
-        { id: SOFT_ID, forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'advise' },
-        { id: 'no-fixme', forbid: { added: 'FIXME' }, in: 'lib/**/*.ts', enforce: 'block' },
+        {
+          id: SOFT_ID,
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+          enforce: 'advise',
+        },
+        {
+          id: 'no-fixme',
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(FIXME)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(FIXME)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+          enforce: 'block',
+        },
       ],
     });
     write('lib/a.ts', 'export const x = 1;\n');
@@ -100,7 +182,38 @@ describe('covenant check — an advise entry under a block surface', () => {
 // mirrors stageSoftBreak with the entry as the only variable.
 describe('covenant check — the entry default is advise, explicit block is the promotion', () => {
   function stageBreakUnder(entry: Record<string, unknown>): void {
-    writeConfig({ disciplines: [{ forbid: { added: 'TODO' }, in: 'lib/**/*.ts', ...entry }] });
+    writeConfig({
+      disciplines: [
+        {
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+          ...entry,
+        },
+      ],
+    });
     write('lib/a.ts', 'export const x = 1;\n');
     git('add', 'lib/a.ts', 'polydeukes.config.json');
     git('commit', '--quiet', '-m', 'initial');
@@ -133,7 +246,35 @@ describe('covenant check — the entry default is advise, explicit block is the 
     writeConfig({
       adapters: { git: { enforce: 'advise' } },
       disciplines: [
-        { id: HARD_ID, forbid: { added: 'TODO' }, in: 'lib/**/*.ts', enforce: 'block' },
+        {
+          id: HARD_ID,
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: '(TODO)' },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+          enforce: 'block',
+        },
       ],
     });
     write('lib/a.ts', 'export const x = 1;\n');

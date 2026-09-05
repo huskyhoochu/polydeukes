@@ -142,7 +142,7 @@ describe('discipline classification skill — the embedded config examples are l
 
     expect(judged.length).toBeGreaterThan(0);
     expect(
-      judged.some((fence) => /\b(forbid|immutable|forbidCommand|requirePrecedent)\s*:/.test(fence)),
+      judged.some((fence) => /\b(declare|forbidCommand|requirePrecedent)\s*:/.test(fence)),
     ).toBe(true);
   });
 
@@ -167,11 +167,11 @@ describe('discipline classification skill — the embedded config examples are l
 });
 
 describe('discipline classification skill — vocabulary matches the shipped surface', () => {
-  it('names all four family predicate keys with the shipped spelling', () => {
+  it('names all three family predicate keys with the shipped spelling', () => {
     // A misspelled key in the lookup table sends every classification to a key defineConfig
-    // rejects as unknown. The word boundary keeps `forbid` from being satisfied by the
-    // inside of `forbidCommand`.
-    for (const key of ['forbid', 'immutable', 'forbidCommand', 'requirePrecedent']) {
+    // rejects as unknown. The word boundary keeps `declare` from being satisfied by the
+    // inside of a longer word.
+    for (const key of ['declare', 'forbidCommand', 'requirePrecedent']) {
       expect(GENERATED_SKILL, key).toMatch(new RegExp(`\\b${key}\\b`));
     }
   });
