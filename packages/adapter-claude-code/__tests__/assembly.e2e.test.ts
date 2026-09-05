@@ -708,8 +708,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     expect(shellSkippedRows().map((r) => r.label)).toEqual([
       'covenant-vocabulary',
       'english-only-sources',
-      'comments-need-no-wiki',
-      'comments-carry-no-process',
+      'comments-state-facts',
       'adapter-needs-knowledge-read',
       'tests-before-implementation',
     ]);

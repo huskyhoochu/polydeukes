@@ -1,27 +1,21 @@
 # yaml-language-server: $schema=packages/core/schema/polydeukes.schema.json
-# Repo-relative because the core is a workspace package here, so this points at the one
-# source. A consumer installs the umbrella and names its bundled copy instead — that
-# spelling is in docs/configuration.md.
 
 languages:
   typescript:
     productionGlob: 'packages/*/src/**/*.ts'
     testCmd: 'pnpm --filter {scope} test'
 
-# The COMMON list, read by both surfaces. Two kinds only: gate definitions (a file whose
-# edit disarms a check rather than passing it) and what a commit can never show (the
-# gitignored dist). Judge SOURCES live in the commit list below instead.
+# Read by both surfaces. Two kinds: a gate definition (an edit disarms a check rather than
+# passing it) and what a commit can never show (the gitignored dist).
 protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
   - '.grok/hooks'
   - 'lefthook.yml'
-  - 'biome.json'
-  - '.git/hooks'
-  # A lefthook-local file skips the covenant command and is never staged.
   - 'lefthook-local.yml'
   - '.lefthook-local'
-  # The judge executables, unseeable by the commit surface because they are gitignored.
+  - 'biome.json'
+  - '.git/hooks'
   - 'packages/core/dist'
   - 'packages/covenant/dist'
   - 'packages/polydeukes/dist'
@@ -33,15 +27,15 @@ adapters:
     enforce: advise
 
 # The valve: this token alone on a message's first line opens a blocked judgment for
-# ttlMinutes. Not a secret — the defence is provenance, and no agent can forge the
-# transcript marking a human utterance carries.
+# ttlMinutes. Provenance is the defence — no agent can forge a human turn.
 witness:
   token: 'pdks witness'
   ttlMinutes: 10
 
 disciplines:
+  # ---- the change axis: what an edit adds, keeps, or moves
   - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; added-direction judgment forgives existing debt and blocks only new occurrences. the one exclude is the old-key rejection contract test, whose literals ARE the contract — a re-created file reads every line as added, so without it any commit restoring that file trips its own discipline.'
+    why: 'domain-terms bans control-framing vocabulary in package sources and tests; only new occurrences break, so existing debt is forgiven. the one exclude is the old-key contract test whose literals are the contract.'
     declare:
       mechanism: 'added-only'
       scope:
@@ -64,8 +58,185 @@ disciplines:
         - id: 'nothing-added'
           relation: { op: 'empty', of: 'added' }
           message: 'adds {key}: {value}'
+  - id: 'english-only-sources'
+    why: 'code comments and test titles are English-only; Korean belongs in docs and conversation.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '([가-힣]+)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '([가-힣]+)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
+  - id: 'comments-state-facts'
+    why: 'a published comment may only say what the reader can open: a ticket id or a wiki coordinate resolves on one machine, and an audit grade or a cycle-phase name records how we worked rather than what the code does. state the fact instead.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/(src|__tests__)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        coordinatesBefore:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+        coordinatesAfter:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+        coordinatesAdded:
+          - { op: 'onlyIn', of: 'coordinatesAfter', notIn: 'coordinatesBefore' }
+        gradesBefore:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+        gradesAfter:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+        gradesAdded:
+          - { op: 'onlyIn', of: 'gradesAfter', notIn: 'gradesBefore' }
+      relate:
+        - id: 'no-wiki-coordinate'
+          relation: { op: 'empty', of: 'coordinatesAdded' }
+          message: 'adds a coordinate the reader cannot open — {key}: {value}'
+        - id: 'no-process-grade'
+          relation: { op: 'empty', of: 'gradesAdded' }
+          message: 'adds a process grade — {key}: {value}'
+  - id: 'barrels-only-reexport'
+    why: 'a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
+  - id: 'tests-import-modules'
+    why: 'a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/[^/]+/__tests__/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
+  - id: 'core-stays-runner-agnostic'
+    why: 'the core never names a test runner; verification is an exit code and the command is config.'
+    declare:
+      mechanism: 'added-only'
+      scope:
+        source: 'target.path'
+        include: ['^packages/core/(src|schema)/']
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
+  - id: 'sqlite-only-under-knowledge'
+    why: 'a *.db file may exist only under _docs/knowledge/, where gitignore-by-location keeps it out of history.'
+    declare:
+      mechanism: 'naming'
+      scope: { source: 'target.path', include: ['\.db$'] }
+      extract:
+        outside:
+          - { op: 'source', of: 'target.path' }
+          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+      relate:
+        - id: 'placed'
+          relation: { op: 'empty', of: 'outside' }
+          message: '{value} is outside _docs/knowledge/'
+  - id: 'changelog-keeps-every-release'
+    why: 'a release heading is a record: once CHANGELOG carries a version it never loses it. release-please prepends, a hand edit may fix a line, and neither removes a heading.'
+    declare:
+      mechanism: 'one-way-marker'
+      scope: { source: 'target.path', include: ['^CHANGELOG(\.ko)?\.md$'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(## \[?\d+\.\d+\.\d+)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(## \[?\d+\.\d+\.\d+)' }
+      relate:
+        - id: 'release-kept'
+          relation: { op: 'subset', of: 'before', in: 'after' }
+          message: 'release heading removed: {value}'
+  - id: 'valve-is-not-the-agents'
+    why: 'the witness token and its window belong to the human: a config edit, even one the valve let through, leaves the witness block as it was.'
+    declare:
+      mechanism: 'self-absolution-ban'
+      scope: { source: 'target.path', include: ['^polydeukes\.config\.yaml$'] }
+      supply: { state: 'pass' }
+      extract:
+        valve:
+          - { op: 'source', of: 'state' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '^(token:|ttlMinutes:)' }
+      relate:
+        - id: 'valve-unchanged'
+          relation: { op: 'unchanged', of: 'valve' }
+          message: 'the witness block changed at {key}'
+
+  # ---- the command line: what a shell call runs
   - id: 'hooks-stay-armed'
-    why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself. the rung is block because the gate definitions such a command neutralizes are already on the protected list — leaving the command at advise let one defence hold its files while its bypass passed.'
+    why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself; the gate definitions it neutralizes are on the protected list, so this entry blocks too.'
     enforce: block
     declare:
       mechanism: 'forbidden-command'
@@ -80,7 +251,7 @@ disciplines:
           relation: { op: 'empty', of: 'hits' }
           message: 'command line disarms a commit gate: {value}'
   - id: 'work-stays-recoverable'
-    why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, never an agent default. the rung is block because an advisory arrives after the work is gone: for this entry the way through is the witness valve, a human answering in person.'
+    why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, so the way through is the witness valve.'
     enforce: block
     declare:
       mechanism: 'forbidden-command'
@@ -108,281 +279,52 @@ disciplines:
         - id: 'no-npm-mutation'
           relation: { op: 'empty', of: 'hits' }
           message: 'command line mutates dependencies outside pnpm: {value}'
-  - id: 'english-only-sources'
-    why: 'code comments and test titles are English-only; Korean belongs in docs and conversation.'
+
+  # ---- the world axis: what other files say
+  - id: 'schema-enums-agree'
+    why: 'the mechanism catalogue is mirrored into two JSON schemas; a name added to one and not the other validates in the editor and fails at load.'
     declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
-      supply: { pre: 'empty', post: 'empty' }
+      mechanism: 'pairing'
+      scope: { source: 'target.path', include: ['^packages/core/schema/'] }
+      sources:
+        entry: { file: 'packages/core/schema/polydeukes.schema.json' }
+        grammar: { file: 'packages/core/schema/algebra-declaration.schema.json' }
       extract:
-        before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '([가-힣]+)' }
-        after:
+        entryNames:
+          - { op: 'source', of: 'entry' }
+          - { op: 'json' }
+          - { op: 'select', path: '$defs.declarationBody.properties.mechanism.enum' }
+        grammarNames:
+          - { op: 'source', of: 'grammar' }
+          - { op: 'json' }
+          - { op: 'select', path: 'properties.mechanism.enum' }
+      relate:
+        - id: 'same-names'
+          relation: { op: 'equal', of: ['entryNames', 'grammarNames'] }
+          message: 'mechanism enum differs: {value}'
+  - id: 'agent-models-in-tiers'
+    why: 'an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees.'
+    declare:
+      mechanism: 'companion'
+      scope: { source: 'target.path', include: ['^\.claude/agents/[^/]+\.md$'] }
+      sources:
+        tiers: { file: '.claude/rules/model-tiers.md' }
+      supply: { post: 'empty' }
+      extract:
+        named:
           - { op: 'source', of: 'post' }
           - { op: 'lines' }
-          - { op: 'keyByPattern', re: '([가-힣]+)' }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
-      relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # Everything under packages/ is published — it ships inside the tarball and is read on
-  # GitHub — so a comment or a test title may only point at something the reader can open.
-  # Measured 2026-08-27, before the sweep that set this baseline: 1,180 coordinate citations
-  # across 165 files pointed into the gitignored wiki clone. Added-only judgment forgives
-  # what is left behind and answers only the next one.
-  #
-  # The bare defect labels (`A1`-`A10`, `B1`-`B7`) are in the pattern because they are the
-  # ones a sweep misses: they name the same archived PRD's findings but read as ordinary
-  # text, and 20 of them survived the pass that removed every `COVENANT-18 §2-a`. Measured
-  # zero false positives across packages, docs, and the root config.
-  - id: 'comments-need-no-wiki'
-    why: 'a ticket id or a PRD coordinate in a published comment resolves on one machine and nowhere else, so it reads as a citation while carrying nothing — state the fact instead. the rung is advise because the fix is a text edit and the baseline was drawn the day this landed: a break here is a note, not a stop.'
-    declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        before:
-          - { op: 'source', of: 'pre' }
+          - { op: 'keyByPattern', re: '^model: (\w+)$' }
+        allowed:
+          - { op: 'source', of: 'tiers' }
           - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
-        after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: 'keyByPattern', re: '^\| `(\w+)` \|' }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # Audit grades and cycle-phase names describe the session that produced a test, not the
-  # behaviour it defends. They meant something during the cycle and nothing after it.
-  - id: 'comments-carry-no-process'
-    why: 'a P0 tag or a RED-phase note records how we worked rather than what the code does. the grade goes and the sentence naming what breaks without the test stays. advise, for the same reason as the entry above: the fix is a text edit.'
-    declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
-        after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
-      relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # A barrel is the consumer contract and nothing else. ESM re-exports are eager, so a
-  # definition or an import in one is instantiated by every consumer of any other export, and
-  # the umbrella's fail-closed proof (a dist missing one module throws on the barrel import)
-  # depends on every re-export staying static. The ratchet test is the other half.
-  - id: 'barrels-only-reexport'
-    why: 'a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static. advise: the fix is a text edit, and package-contract.test.ts check ② is the other half.'
-    declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
-        after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
-      relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # The barrel is the consumer contract, not the test surface: a test that imports it proves
-  # the barrel carries a name, not that the module behaves, and it widens the contract every
-  # time a test needs one more symbol. Every spelling of the barrel path counts.
-  - id: 'tests-import-modules'
-    why: 'a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time. advise, same reason as above; package-contract.test.ts check ⑥ is the other half.'
-    declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/__tests__/']
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
-        after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
-      relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # Whether a function is a contract verb is a fact about the barrel, not about the file the
-  # function lives in, so no path-scoped family can judge the verb shape at edit time.
-  - id: 'verbs-take-one-spec'
-    why: 'an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped family can judge it. package-contract.test.ts check ③ does.'
-    draft: true
-  - id: 'core-stays-runner-agnostic'
-    why: 'the core never names a test runner; verification is an exit code and the command is config. this is the edit-time half of the literal gate the core suite asserts over its own src/.'
-    declare:
-      mechanism: 'added-only'
-      scope:
-        source: 'target.path'
-        include: ['^packages/core/(src|schema)/']
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
-        after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
-        added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
-      relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  # A manifest edit needs BOTH a measured version and read docs: two relate entries on one
-  # declaration. No trigger beyond the scope — "is this a new version" is a semantic question
-  # a regex leaked both ways on, so editing the manifest at all is the trigger.
-  - id: 'manifest-needs-evidence'
-    why: 'a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled.'
-    declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
-      sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
-      extract:
-        npmView:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\bnpm view ' }
-        context7:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses' }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'field', name: 'name' }
-          - { op: 'matches', re: 'context7' }
-      relate:
-        - id: 'npm-view'
-          relation: { op: 'nonEmpty', of: 'npmView' }
-          message: 'no successful npm view precedes this manifest edit'
-        - id: 'context7'
-          relation: { op: 'nonEmpty', of: 'context7' }
-          message: 'no successful context7 call precedes this manifest edit'
-  # Editing a package's sources requires having READ its recorded experience. The evidence is
-  # a successful shell read whose command line names an entry of that package's scope;
-  # `foundation.` is excluded on purpose — one read would open all four packages. The commit
-  # surface has no session, so these land skipped there.
-  - id: 'covenant-needs-knowledge-read'
-    why: 'the covenant package carries the most measured history in the store (37 dev-log and research entries); editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
-    declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/covenant/(src|__tests__)/'] }
-      sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
-      extract:
-        reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.' }
-      relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of a covenant.dev-log or covenant.research entry precedes this edit — only a call that ran and succeeded counts'
-  - id: 'core-needs-knowledge-read'
-    why: 'the core is the one package every other depends on, so a change made without its recorded boundaries (parse validation, schema equivalence, adapter neutrality) propagates outward before it is noticed.'
-    declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/core/(src|__tests__)/'] }
-      sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
-      extract:
-        reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.' }
-      relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of a core.dev-log or core.research entry precedes this edit — only a call that ran and succeeded counts'
-  - id: 'adapter-needs-knowledge-read'
-    why: 'both adapters translate an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong. one entry covers both because they share the `adapter.` scope.'
-    declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/adapter-(claude-code|git)/(src|__tests__)/'] }
-      sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
-      extract:
-        reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.' }
-      relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of a adapter.dev-log or adapter.research entry precedes this edit — only a call that ran and succeeded counts'
-  # A *.db file may exist only under _docs/knowledge/ — the knowledge store sits there so
-  # gitignore-by-location keeps it out of history. Kind-to-location is a declaration:
-  # scope the path, extract those outside the directory, Empty must hold.
-  - id: 'sqlite-only-under-knowledge'
-    why: 'a *.db file may exist only under _docs/knowledge/; one created anywhere else is a break. the knowledge store sits there so gitignore-by-location keeps it out of history.'
-    declare:
-      mechanism: 'naming'
-      scope: { source: 'target.path', include: ['\.db$'] }
-      extract:
-        outside:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
-      relate:
-        - id: 'placed'
-          relation: { op: 'empty', of: 'outside' }
-          message: '{value} is outside _docs/knowledge/'
-  # English is the default and Korean mirrors live in *.ko.md. A commit that changes one
-  # side of a pair and not the other is a break. Only presence in the change set is judged —
-  # prose has no symmetry criterion (COVENANT-21). Internal guidance under .claude/ and
-  # CLAUDE.md is not translated, and CHANGELOG.ko.md is a pointer that release-please's
-  # rewrite of CHANGELOG.md never touches — both stay out of scope. The session surface
-  # records this entry as skipped: one call is its whole observation, so the pair can
-  # never be present.
+        - id: 'tier-listed'
+          relation: { op: 'implies', of: 'named', requires: 'allowed' }
+          message: 'model {key} is not a tier model-tiers.md lists'
   - id: 'docs-stay-bilingual'
-    why: 'English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged, never content.'
+    why: 'English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged.'
     declare:
       mechanism: 'companion'
       scope:
@@ -411,14 +353,89 @@ disciplines:
         - id: 'en-follows'
           relation: { op: 'implies', of: 'ko', requires: 'enChanged' }
           message: '{value} changed without {key}.md'
-  # The implementer subagent writes to pass tests that already exist, so the session's first
-  # implementer spawn must come after its first test-writer spawn — each side is reduced to
-  # its first spawn, so a session of several TDD cycles is not read as out of order. Only a
-  # spawn that ran and succeeded counts. The session history is the source; the commit
-  # surface has none, so `supply: pass` lands it skipped there. No scope block: every call
-  # is judged — a shell call that changes no file is its own world. A session with no
-  # implementer spawn has no order to violate; whether a writer
-  # was spawned at all is the precedent mechanism's question, not this one's.
+
+  # ---- the history axis: what the session did before this call
+  - id: 'manifest-needs-evidence'
+    why: 'a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        npmView:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\bnpm view ' }
+        context7:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses' }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'field', name: 'name' }
+          - { op: 'matches', re: 'context7' }
+      relate:
+        - id: 'npm-view'
+          relation: { op: 'nonEmpty', of: 'npmView' }
+          message: 'no successful npm view precedes this manifest edit'
+        - id: 'context7'
+          relation: { op: 'nonEmpty', of: 'context7' }
+          message: 'no successful context7 call precedes this manifest edit'
+  - id: 'covenant-needs-knowledge-read'
+    why: 'the covenant package carries the most measured history in the store; editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/covenant/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of a covenant.dev-log or covenant.research entry precedes this edit'
+  - id: 'core-needs-knowledge-read'
+    why: 'the core is the one package every other depends on, so a change made without its recorded boundaries propagates outward before it is noticed.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/core/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of a core.dev-log or core.research entry precedes this edit'
+  - id: 'adapter-needs-knowledge-read'
+    why: 'both adapters translate an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/adapter-(claude-code|git)/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of an adapter.dev-log or adapter.research entry precedes this edit'
   - id: 'tests-before-implementation'
     why: 'the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after.'
     declare:
@@ -444,8 +461,6 @@ disciplines:
         - id: 'writer-first'
           relation: { op: 'ordered', of: 'sequence' }
           message: 'the first implementer spawn #{value} precedes the first test-writer spawn'
-  # Merging is the user's decision (ticket loop §6). The agent runs `tea pr merge` only after
-  # a user turn asked for it inside the same window the witness valve uses (ttlMinutes).
   - id: 'merge-is-the-users-call'
     why: 'merging is the user''s decision: tea pr merge follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen.'
     declare:
@@ -463,8 +478,6 @@ disciplines:
         - id: 'fresh-instruction'
           relation: { op: 'nonEmpty', of: 'instruction' }
           message: 'no user turn asking for a merge within the last ten minutes'
-  # The ticket loop is the only sanctioned branch creation. A slash-command turn reaches the
-  # transcript as `<command-name>/ticket</command-name>` (measured 2026-09-05).
   - id: 'branches-come-from-a-ticket'
     why: 'the ticket loop is the only sanctioned branch creation; a branch nobody asked for is the thing the loop forbids.'
     declare:
@@ -480,3 +493,8 @@ disciplines:
         - id: 'ticket-named'
           relation: { op: 'nonEmpty', of: 'ticket' }
           message: 'no /ticket turn precedes this branch creation'
+
+  # ---- drafts: registered, read, not yet judged
+  - id: 'verbs-take-one-spec'
+    why: 'an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does.'
+    draft: true

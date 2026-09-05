@@ -146,7 +146,7 @@ read.
 pdks explain — polydeukes.config.yaml
 
 surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block
-  registrations 42 · declare 18 · skip 21 · meta 3 · draft 1
+  registrations 43 · declare 21 · skip 19 · meta 3 · draft 1
   meta     self-mod                      paths 14 (common; includes the config file itself)
   declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
   declare  pnpm-only                     forbidden-command · change · empty no-npm-mutation · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
@@ -154,7 +154,7 @@ surface: session (claude-code hook) · disciplines: advise unless enforce: block
   skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...
 surface: commit (git pre-commit) · enforce: advise · disciplines: advise unless enforce: block
-  registrations 21 · declare 19 · skip 1 · meta 1 · draft 1
+  registrations 24 · declare 22 · skip 1 · meta 1 · draft 1
   declare  manifest-needs-evidence       precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
   declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
 ```
