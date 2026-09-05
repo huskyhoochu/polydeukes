@@ -35,6 +35,11 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `grep -ln '이월\|carry-over' _docs/knowledge/*.prd.*.md` plus a `grep '<ID>'` over the memory
   progress notes. Every hit must be dispositioned in the PRD's scope section — included or
   explicitly excluded; silence is a miss.
+- **The three lookups above do not depend on each other — issue them in one response.** The
+  knowledge scan, the carry-over greps, and the recall query (next bullet) each read a different
+  store; start the recall `ssh` in the background first, read the grep output while it runs, and
+  collect the recall answer after. Running them one per turn spends a round trip on each and
+  leaves the 7~11s recall wait idle.
 - **Ask recall one question here too.** This sweep is the clearest case of what a filename scan
   cannot reach, so put the question in prose — "what was carried over toward `<ID>`", "what did
   earlier tickets defer in this area". The command and its two weak axes are in the `/tdd`

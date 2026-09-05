@@ -17,6 +17,15 @@ Read the test file to understand the expected behavior, then implement.
 - Do NOT modify test files.
 - Do NOT add functionality beyond what the tests require — no speculative branches, no
   configurability the tests do not demand. (Global CLAUDE.md §2 Simplicity First, §3 Surgical Changes.)
+- "Minimum" means no speculative features, not special-casing the test's inputs. Implement the
+  actual logic so it holds for every valid input; a branch that exists only to return the value a
+  fixture expects is a hard-coded answer, not an implementation.
+- If, while working, you find a pre-existing bug, a performance concern, or behavior the tests do
+  not mention, do not fix, optimize, or extend it in this change unless the surviving tests cannot
+  pass without it; report it as a follow-up in your summary.
+- Make targeted edits with `Edit`; rewrite a whole file only when most of it is changing.
+- Remove any temporary file, scratch script, or helper you created for iteration before
+  reporting GREEN.
 - Reuse existing utilities and types already in the package before writing new ones.
 - Follow project conventions exactly — match the surrounding code's style, naming, and idioms.
 - Run the test runner after implementing to confirm GREEN.

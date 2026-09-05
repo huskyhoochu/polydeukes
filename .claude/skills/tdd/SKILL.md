@@ -30,6 +30,14 @@ the argument only selects where to enter.
 
 ## Phases
 
+**Every delegation prompt (RED, AUDIT, GREEN) ends with this line, verbatim.** In a coding loop
+the model tends to issue the next independent tool calls one per turn; the line at the end of the
+request is what keeps a single agent from spending a round trip per file:
+
+```text
+First privately list what you need next; then request every item that doesn't depend on another's result in this one response.
+```
+
 ### 0. PRE-FLIGHT — main session (mandatory, blocks RED)
 
 Before delegating to `tdd-test-writer`, the main session emits a `### TDD Pre-flight` block. There
