@@ -216,6 +216,69 @@ describe('declare body — shell evidence enrichment', () => {
   });
 });
 
+describe('declare shell axis — a scope the command text cannot decide still routes', () => {
+  let dir: string;
+  let target: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'pdks-declare-scope-'));
+    mkdirSync(join(dir, SCOPE_DIR));
+    target = join(dir, SCOPE_DIR, 'a.txt');
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('an append under a scope over `post` routes to the body and the body breaks on the added match', async () => {
+    // The append's content is unknown until the body composes it onto the disk pre, so a
+    // route that tested the scope on a world without `post` answered null and the write
+    // landed with no row — the defect class the telemetry contract rules out.
+    writeFileSync(target, 'plain\n');
+    const declare = { ...ADDED_ONLY, scope: { source: 'post', include: [BANNED] } };
+    const regs = compileDisciplineRegistrations(
+      specWith(dir, { disciplines: [{ id: ID, declare } as unknown as DisciplineEntry] }),
+    );
+    const input = bashInput(`echo '${BANNED}' >> ${target}`);
+
+    expect(bodyRegOf(regs).matches?.(input)).toBe(`${SCOPE_DIR}/a.txt`);
+    const outcome = (await bodyRegOf(regs).body?.(input)) as BodyOutcome;
+    expect(outcome.exitCode).toBe(1);
+  });
+
+  it('a truncating write under a scope over `pre` routes to the body', () => {
+    // `pre` is the reader's to supply; routing admits and the body decides.
+    const declare = { ...ADDED_ONLY, scope: { source: 'pre', include: ['plain'] } };
+    const regs = compileDisciplineRegistrations(
+      specWith(dir, { disciplines: [{ id: ID, declare } as unknown as DisciplineEntry] }),
+    );
+
+    expect(bodyRegOf(regs).matches?.(bashInput(`echo x > ${target}`))).toBe(`${SCOPE_DIR}/a.txt`);
+  });
+
+  it('a file binding over a path two writes touch reads the state the last write leaves', async () => {
+    // Same-path writes chain into two worlds at one path; a binding that took the first
+    // would relate against content the command overwrote.
+    writeFileSync(target, 'plain\n');
+    const declare = {
+      mechanism: 'naming',
+      sources: { cfg: { file: `${SCOPE_DIR}/a.txt` } },
+      scope: { source: PATH_SOURCE, include: [`^${SCOPE_DIR}/`] },
+      extract: {
+        found: [{ op: 'source', of: 'cfg' }, { op: 'lines' }, { op: 'matches', re: BANNED }],
+      },
+      relate: [{ id: 'clean', relation: { op: 'empty', of: 'found' }, message: '{value}' }],
+    };
+    const regs = compileDisciplineRegistrations(
+      specWith(dir, { disciplines: [{ id: ID, declare } as unknown as DisciplineEntry] }),
+    );
+    const input = bashInput(`echo first > ${target}; echo '${BANNED}' >> ${target}`);
+
+    const outcome = (await bodyRegOf(regs).body?.(input)) as BodyOutcome;
+    expect(outcome.exitCode).toBe(1);
+  });
+});
+
 describe('declare shell axis — the two arms are disjoint', () => {
   let dir: string;
 
@@ -246,6 +309,18 @@ describe('declare shell axis — the two arms are disjoint', () => {
 
     expect(skipArmsOf(regs)[0]?.matches?.(input)).toBe(`${SCOPE_DIR}/a.txt`);
     expect(bodyRegOf(regs).matches?.(input)).toBeNull();
+  });
+
+  it("a path written computably and uncomputably in one command is the skip arm's alone", () => {
+    // The truncate composes a world the `sed -i` then changes, so no world the body could
+    // build is the one the call leaves on disk: the skip arm owns the path and the body
+    // stays silent — one call, one row.
+    const regs = compileDisciplineRegistrations(specWith(dir));
+    const target = join(dir, SCOPE_DIR, 'a.txt');
+    const input = bashInput(`echo '${BANNED}' > ${target}; sed -i 's/y/z/' ${target}`);
+
+    expect(bodyRegOf(regs).matches?.(input)).toBeNull();
+    expect(skipArmsOf(regs)[0]?.matches?.(input)).toBe(`${SCOPE_DIR}/a.txt`);
   });
 
   it('a tokenize-failing line over an in-scope path lands on the common backstop, never on the body', () => {

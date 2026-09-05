@@ -70,6 +70,7 @@ describe('validateAlgebraDeclaration — the supply policy `empty`', () => {
     const error = expectRejection({ ...addedOnly, supply: { state: 'empty' } });
 
     expect(error.message).toContain('supply.state');
+    expect(validateAlgebra({ ...addedOnly, supply: { state: 'empty' } })).toBe(false);
     expect(error.message).toContain("'empty'");
     expect(error.message).toContain('paired source');
   });

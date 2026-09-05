@@ -440,11 +440,12 @@ describe('compileDisciplineRegistrations — declare enforce level', () => {
 });
 
 describe('compileDisciplineRegistrations — declare shell writes: computable to the body, the rest to a skip arm', () => {
-  it('a declaration scoped on a content source tests a computable write by its derived content and skips an uncomputable one', () => {
-    // The derived world carries `post`, so a scope over it is testable for a computable
-    // write: the body routes when the content is in scope and stays silent when it is
-    // not. An uncomputable write still carries a path and no content, so the skip arm
-    // admits it — this layer cannot tell whether it is in scope.
+  it('a declaration scoped on a content source admits every computable write at routing and lets the body settle the scope', () => {
+    // Routing reads the command text alone and an append's content composes onto a
+    // pre-state only the body may read, so a scope over `post` cannot be decided here:
+    // the write is admitted and the body, holding the real world, applies the scope. A
+    // route that answered null for content it could not see would leave a write the body
+    // breaks on with no row. An uncomputable write is the skip arm's.
     const regs = compileDisciplineRegistrations(
       specWith([
         declareEntry({ ...PATH_ONLY_DECLARE, scope: { source: 'post', include: ['secret'] } }),
@@ -452,7 +453,8 @@ describe('compileDisciplineRegistrations — declare shell writes: computable to
     );
 
     expect(bodyRegOf(regs, ID)?.matches?.(bashInput('echo secret > lib/z.txt'))).toBe('lib/z.txt');
-    expect(bodyRegOf(regs, ID)?.matches?.(bashInput('echo x > lib/z.txt'))).toBeNull();
+    expect(bodyRegOf(regs, ID)?.matches?.(bashInput('echo x >> lib/z.txt'))).toBe('lib/z.txt');
+    expect(bodyRegOf(regs, ID)?.matches?.(bashInput("sed -i 's/a/b/' lib/z.txt"))).toBeNull();
     expect(skipArmsOf(regs, ID)[0]?.matches?.(bashInput("sed -i 's/a/b/' lib/z.txt"))).toBe(
       'lib/z.txt',
     );

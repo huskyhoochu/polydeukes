@@ -443,8 +443,10 @@ the fixed names, `world` for a `file` or `sidecar` source, `history` for a `tran
 source) and the relations it relates must fall inside
 what that name admits. A block the compiler cannot resolve — a step name outside the
 registry, an argument outside a step's keys — becomes a skip registration that names its
-location on stderr and routes nothing. A shell write into the declaration's scope has no
-file text to judge and records `skipped`. The declaration's own `witness` block joins the
+location on stderr and routes nothing. A shell write into the declaration's scope whose
+result the judge can compute (a redirect, a heredoc, an append) is judged as the file change
+it makes; one it cannot compute (`sed -i`, an opaque command) records `skipped`. The
+declaration's own `witness` block joins the
 human's witness as a second way to open a blocked verdict.
 
 Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the

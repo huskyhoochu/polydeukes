@@ -360,12 +360,26 @@ function derivedTargets(input: CovenantInput, opts: ShellSurface): string[] {
 }
 
 /**
+ * The paths a command writes in a way this layer cannot compute. The skip arm owns them: a
+ * computable write to the same path in the same command composes onto a state the
+ * uncomputable one then changes, so no world the body could build is the one the call leaves
+ * on disk.
+ */
+function uncomputablePaths(signals: ShellSignals, rootDir: string): Set<string> {
+  const owned = new Set<string>();
+  for (const signal of signals.unjudgeable) {
+    const path = signal.path === undefined ? null : relativizeForScope(signal.path, rootDir);
+    if (path !== null) owned.add(path);
+  }
+  return owned;
+}
+
+/**
  * The first computable shell write a declaration's scope admits, judged on what the command
- * text alone decides: the target path and, for a truncating write, the content it puts there.
- *
- * An append composes onto a pre-state only the body may read, so its content is left absent
- * and a scope over `post` cannot admit it here — the write still reaches the body, which
- * builds the real world.
+ * text alone decides: the target path. A scope over any other source needs the world only
+ * the body can build (an append's content composes onto a pre-state the reader holds), so
+ * such a write is admitted here and the body settles it — routing to nothing would leave a
+ * write the body could break on with no row at all.
  */
 function firstAdmittedShellWrite(
   compiled: CompiledDeclaration,
@@ -373,14 +387,13 @@ function firstAdmittedShellWrite(
   opts: ShellSurface,
   rootDir: string,
 ): string | null {
-  for (const derived of deriveShellSignals(input, opts).evidence) {
+  const signals = deriveShellSignals(input, opts);
+  const owned = uncomputablePaths(signals, rootDir);
+  const testable = compiled.scope === undefined || compiled.scope.source === 'target.path';
+  for (const derived of signals.evidence) {
     const path = relativizeForScope(derived.change.path, rootDir);
-    if (path === null) continue;
-    const world: Record<string, unknown> =
-      derived.change.mode === 'truncate'
-        ? { 'target.path': path, post: derived.change.content }
-        : { 'target.path': path };
-    if (scopeAdmits(compiled, world)) return path;
+    if (path === null || owned.has(path)) continue;
+    if (!testable || scopeAdmits(compiled, { 'target.path': path })) return path;
   }
   return null;
 }
@@ -906,7 +919,10 @@ function sourceValues(
       continue;
     }
     const { name, file } = binding;
-    const changed = worlds.find((supplied) => supplied.path === file);
+    // Same-path shell writes chain in command order and each carries its own world, so the
+    // last one at the path is the state the call leaves.
+    let changed: SuppliedWorld | undefined;
+    for (const supplied of worlds) if (supplied.path === file) changed = supplied;
     if (changed !== undefined) {
       if ('post' in changed.world) values[name] = changed.world.post;
       continue;
@@ -990,6 +1006,7 @@ function declareRegistration(
   spec: CompileDisciplinesSpec,
   witness: { witness?: CovenantRegistration['witness'] },
   nameFault: (reason: string) => void,
+  enrich: (input: CovenantInput) => CovenantInput,
 ): CovenantRegistration {
   const compiled = compileEntryDeclaration(entry);
   if (isFault(compiled)) {
@@ -1018,8 +1035,9 @@ function declareRegistration(
   //
   // The input is enriched first, so a computable shell write reaches the declaration as an
   // ordinary file change: without it a Bash call carries no world and the write passes with
-  // no row. An unreadable pre-state throws out of here and the body turns it into the
-  // cannot-judge exit, never a quiet pass.
+  // no row. A path the same command also writes uncomputably is the skip arm's, so its
+  // derived world is dropped here. An unreadable pre-state throws out of here and the body
+  // turns it into the cannot-judge exit, never a quiet pass.
   //
   // The named sources join the world here rather than in `worldsFromInput`: what a source
   // name means is this declaration's own binding, and the fixed world knows none of them.
@@ -1027,10 +1045,10 @@ function declareRegistration(
   const admitted = (input: CovenantInput): SuppliedWorld[] => {
     const cached = admittedOf.get(input);
     if (cached !== undefined) return cached;
-    const fixed = worldsFromInput({
-      input: enrichWithShellEvidence(input, opts),
-      rootDir: spec.rootDir,
-    });
+    const owned = uncomputablePaths(deriveShellSignals(input, opts), spec.rootDir);
+    const fixed = worldsFromInput({ input: enrich(input), rootDir: spec.rootDir }).filter(
+      (supplied) => !owned.has(supplied.path),
+    );
     const values = sourceValues(bindings, fixed, input.world, spec.transcript);
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
@@ -1143,6 +1161,23 @@ function declareRegistration(
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
 ): CovenantRegistration[] {
+  // One enrichment per input, shared by every declaration: the pre-state reader is opened
+  // once for a call however many entries judge it, and they all judge the same world.
+  const shell: ShellSurface = {
+    rootDir: spec.rootDir,
+    shellTools: spec.shellTools,
+    commandArgs: spec.commandArgs,
+    readPreState: spec.readPreState,
+  };
+  const enrichedOf = new WeakMap<CovenantInput, CovenantInput>();
+  const enrich = (input: CovenantInput): CovenantInput => {
+    const cached = enrichedOf.get(input);
+    if (cached !== undefined) return cached;
+    const enriched = enrichWithShellEvidence(input, shell);
+    enrichedOf.set(input, enriched);
+    return enriched;
+  };
+
   const judged = spec.disciplines.map((entry): CovenantRegistration => {
     const witness = spec.witness !== undefined ? { witness: spec.witness } : {};
 
@@ -1156,7 +1191,7 @@ export function compileDisciplineRegistrations(
     // which inputs the entry is about, so a broken one leaves no match to record. That
     // separates it from unevaluable evidence below, whose trigger is intact.
     if (entry.declare !== undefined) {
-      return declareRegistration(entry, spec, witness, nameFault);
+      return declareRegistration(entry, spec, witness, nameFault, enrich);
     }
 
     const fault = patternFault(entry);

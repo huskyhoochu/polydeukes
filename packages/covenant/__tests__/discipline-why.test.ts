@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 // `<phrase> — why: <why verbatim>`. An absent or empty `why` leaves the phrase
 // byte-for-byte unchanged, separator and all; the context family keeps its recovery hint
 // BEFORE the why (violation, then recovery, then rationale); the reason stays one line.
-import { type JudgeDisciplineSpec, judgeDiscipline } from '../src/discipline.ts';
+import {
+  compileDisciplineRegistrations,
+  type JudgeDisciplineSpec,
+  judgeDiscipline,
+} from '../src/discipline.ts';
 
 // No fixture here drives a shell-derived write, so the injected pre-state reader is never
 // consulted; `null` — the file is not there — is the answer that would make a create if one
@@ -87,6 +91,53 @@ function contextBreakInput(): CovenantInput {
   ]);
 }
 
+const DECLARE_WHY = 'a lantern in a source file is a leftover debugging marker.';
+const DECLARE_CURRENT = "discipline 'no-lantern' broken on lib/a.txt: adds lantern: lantern here";
+
+/** Added-only declaration over `lib/`; `why` is attached per test. */
+function declareEntry(why?: string): DisciplineEntry {
+  return {
+    id: 'no-lantern',
+    declare: {
+      mechanism: 'added-only',
+      scope: { source: 'target.path', include: ['^lib/'] },
+      supply: { pre: 'empty', post: 'empty' },
+      extract: {
+        before: [
+          { op: 'source', of: 'pre' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(lantern)' },
+        ],
+        after: [
+          { op: 'source', of: 'post' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(lantern)' },
+        ],
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+      },
+      relate: [
+        {
+          id: 'nothing-added',
+          relation: { op: 'empty', of: 'added' },
+          message: 'adds {key}: {value}',
+        },
+      ],
+    },
+    ...(why !== undefined && { why }),
+  } as unknown as DisciplineEntry;
+}
+
+/** The declaration family judges through its compiled body, never through judgeDiscipline. */
+async function declareBreakReason(why?: string): Promise<string> {
+  const regs = compileDisciplineRegistrations({ ...judgeOpts, disciplines: [declareEntry(why)] });
+  const reg = regs.find((r) => r.label === 'no-lantern' && r.skip === undefined);
+  const outcome = (await reg?.body?.(
+    inputWithFileChanges([{ path: 'lib/a.txt', pre: null, post: 'lantern here' }]),
+  )) as { exitCode: number; reason?: string } | undefined;
+  expect(outcome?.exitCode).toBe(1);
+  return outcome?.reason ?? '';
+}
+
 const noPrecedent: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   ...judgeOpts,
   precedentFound: false,
@@ -104,10 +155,8 @@ function breakReason(
 }
 
 describe('judgeDiscipline — why appended to the break reason', () => {
-  it('path family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
-    expect(breakReason(commandEntry(COMMAND_WHY), commandBreakInput())).toBe(
-      `${COMMAND_CURRENT} — why: ${COMMAND_WHY}`,
-    );
+  it('declaration family: the reason is the current phrase plus " — why: " plus the why verbatim', async () => {
+    expect(await declareBreakReason(DECLARE_WHY)).toBe(`${DECLARE_CURRENT} — why: ${DECLARE_WHY}`);
   });
 
   it('command family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
@@ -129,8 +178,12 @@ describe('judgeDiscipline — why appended to the break reason', () => {
 // ` — why: `) still CONTAINS the phrase, so only strict equality proves the no-why end is
 // untouched. Every other reason assertion in this suite is a substring check.
 describe('judgeDiscipline — no why leaves the current phrase untouched', () => {
-  it('delta family: reason equals the current phrase exactly', () => {
+  it('command family: reason equals the current phrase exactly', () => {
     expect(breakReason(commandEntry(), commandBreakInput())).toBe(COMMAND_CURRENT);
+  });
+
+  it('declaration family: reason equals the current phrase exactly', async () => {
+    expect(await declareBreakReason()).toBe(DECLARE_CURRENT);
   });
 
   it('context family: reason equals the current phrase (recovery hint intact) exactly', () => {
