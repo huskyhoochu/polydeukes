@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/adapter-git",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Polydeukes adapter for git — up-translates a staged diff into the agent-neutral covenant input IR at commit time. Alpha.",
   "license": "MIT",
   "repository": {

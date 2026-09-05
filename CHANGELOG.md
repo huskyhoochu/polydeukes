@@ -11,6 +11,47 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.6.0](https://github.com/huskyhoochu/polydeukes/compare/v0.5.0...v0.6.0) (2026-09-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** the actor is a fixed source and an IR field, authority mechanisms go live (ALGEBRA-05) ([#93](https://github.com/huskyhoochu/polydeukes/issues/93))
+* **covenant:** the command-line and history families are declarations (ALGEBRA-04b) ([#92](https://github.com/huskyhoochu/polydeukes/issues/92))
+* **covenant:** the change-axis families are declarations (ALGEBRA-04a) ([#91](https://github.com/huskyhoochu/polydeukes/issues/91))
+* **covenant:** the session history is a declaration source (ALGEBRA-07) ([#90](https://github.com/huskyhoochu/polydeukes/issues/90))
+* **core:** mechanism catalogue locks the name to the shape (ALGEBRA-06) ([#89](https://github.com/huskyhoochu/polydeukes/issues/89))
+* **polydeukes:** every executor verb takes one spec and returns a named result (CONTRACT-05) ([#88](https://github.com/huskyhoochu/polydeukes/issues/88))
+* **polydeukes:** judgment dependency turns peer, covenant stops opening files (ALGEBRA-03c) ([#84](https://github.com/huskyhoochu/polydeukes/issues/84))
+* **polydeukes:** narrow the adapter and umbrella to their consumers (CONTRACT-04)
+* **covenant:** narrow the barrel to its consumers and name the verbs' shapes (CONTRACT-03) ([#79](https://github.com/huskyhoochu/polydeukes/issues/79))
+
+### Features
+
+* **config:** live-register sqlite-only-under-knowledge as declare (ALGEBRA-02c) ([#74](https://github.com/huskyhoochu/polydeukes/issues/74)) ([09cbba1](https://github.com/huskyhoochu/polydeukes/commit/09cbba1fd7b9297bd00ee2eb5254b03291c6e89e))
+* **core:** algebra declaration schema — 7 relations, 3 combinators, 5 blocks (ALGEBRA-01) ([#70](https://github.com/huskyhoochu/polydeukes/issues/70)) ([241b8de](https://github.com/huskyhoochu/polydeukes/commit/241b8de90f2487bc164adb33b4881265936568cc))
+* **core:** mechanism catalogue locks the name to the shape (ALGEBRA-06) ([#89](https://github.com/huskyhoochu/polydeukes/issues/89)) ([7130de3](https://github.com/huskyhoochu/polydeukes/commit/7130de33aa35b7bff6f23b3871c4e8e3fa3b1c02))
+* **core:** move protocol out of the barrel and land DispatchOutcome (CONTRACT-02) ([#78](https://github.com/huskyhoochu/polydeukes/issues/78)) ([d936602](https://github.com/huskyhoochu/polydeukes/commit/d936602c0baadacca47cf07afa14734a6699ea95))
+* **core:** the actor is a fixed source and an IR field, authority mechanisms go live (ALGEBRA-05) ([#93](https://github.com/huskyhoochu/polydeukes/issues/93)) ([07d9069](https://github.com/huskyhoochu/polydeukes/commit/07d906980ab4633c23a6b42eba37b2a5b16817a3))
+* **covenant:** change-set declaration lands live, skipped on the one-call surface (COVENANT-20) ([#87](https://github.com/huskyhoochu/polydeukes/issues/87)) ([140002c](https://github.com/huskyhoochu/polydeukes/commit/140002c31714b93d5a770663acf80cbf94e3ad02))
+* **covenant:** declaration engine — extract registry, seven relations, witness lists (ALGEBRA-02) ([#71](https://github.com/huskyhoochu/polydeukes/issues/71)) ([e41a8db](https://github.com/huskyhoochu/polydeukes/commit/e41a8db16fe1fbc9a46d45f8f4b34de8f1de4d33))
+* **covenant:** declaration surface — declare: key, worlds, witness column, explain (ALGEBRA-02b) ([#72](https://github.com/huskyhoochu/polydeukes/issues/72)) ([6dff0f2](https://github.com/huskyhoochu/polydeukes/commit/6dff0f201add9329fe754aa16fc660b1c00ccf19))
+* **covenant:** keyByPattern step re-keys an item by a capture over its value (ALGEBRA-09) ([#86](https://github.com/huskyhoochu/polydeukes/issues/86)) ([8603428](https://github.com/huskyhoochu/polydeukes/commit/8603428d682fda6d3f565f324754545287c99c0f))
+* **covenant:** list itemization step unfolds an array into one item per element (ALGEBRA-08) ([#85](https://github.com/huskyhoochu/polydeukes/issues/85)) ([5f0f617](https://github.com/huskyhoochu/polydeukes/commit/5f0f6174dddb38f9f649a5a19ae6cda745820637))
+* **covenant:** narrow the barrel to its consumers and name the verbs' shapes (CONTRACT-03) ([#79](https://github.com/huskyhoochu/polydeukes/issues/79)) ([908c473](https://github.com/huskyhoochu/polydeukes/commit/908c473bc9de35fbb47a48f6c1a175f8b24ba2ec))
+* **covenant:** supply layer I — sources block, world axis, plan → supply → dispatch (ALGEBRA-03a) ([#81](https://github.com/huskyhoochu/polydeukes/issues/81)) ([1e1ae70](https://github.com/huskyhoochu/polydeukes/commit/1e1ae70aa79e2955e9639674d272e0d833aed30d))
+* **covenant:** supply layer II — bodies, sidecar source, reader relocation (ALGEBRA-03b) ([#82](https://github.com/huskyhoochu/polydeukes/issues/82)) ([4ec6512](https://github.com/huskyhoochu/polydeukes/commit/4ec6512a83d3ca3cb87042bc28f344015fdf5f37))
+* **covenant:** the change-axis families are declarations (ALGEBRA-04a) ([#91](https://github.com/huskyhoochu/polydeukes/issues/91)) ([8974717](https://github.com/huskyhoochu/polydeukes/commit/8974717abe8ec11aeb43efee031762db2d91cdf0))
+* **covenant:** the command-line and history families are declarations (ALGEBRA-04b) ([#92](https://github.com/huskyhoochu/polydeukes/issues/92)) ([d3b5b90](https://github.com/huskyhoochu/polydeukes/commit/d3b5b908d0d297bbc2de3fa502a8044cd0270b86))
+* **covenant:** the session history is a declaration source (ALGEBRA-07) ([#90](https://github.com/huskyhoochu/polydeukes/issues/90)) ([1965d39](https://github.com/huskyhoochu/polydeukes/commit/1965d3909ceb906e98f8db66e7af76eef1ff54ea))
+* **covenant:** unknown-predicate fallback answers unjudgeable, never upheld (ALGEBRA-02d) ([#75](https://github.com/huskyhoochu/polydeukes/issues/75)) ([18c49e9](https://github.com/huskyhoochu/polydeukes/commit/18c49e913344f269f6ed8b4fc0f5bf722244ea95))
+* **polydeukes:** every executor verb takes one spec and returns a named result (CONTRACT-05) ([#88](https://github.com/huskyhoochu/polydeukes/issues/88)) ([5426c8d](https://github.com/huskyhoochu/polydeukes/commit/5426c8dbe85c85a471e7f955365c37b00dfef078))
+* **polydeukes:** grok JSON matcher follows the Claude settings entry (DIST-06b) ([#77](https://github.com/huskyhoochu/polydeukes/issues/77)) ([4e4b2ff](https://github.com/huskyhoochu/polydeukes/commit/4e4b2ff779e2a9638fe6c40d78df1fc8f3a08099))
+* **polydeukes:** judgment dependency turns peer, covenant stops opening files (ALGEBRA-03c) ([#84](https://github.com/huskyhoochu/polydeukes/issues/84)) ([332082f](https://github.com/huskyhoochu/polydeukes/commit/332082f61329748297ad03f73b139789adf819bb))
+* **polydeukes:** narrow the adapter and umbrella to their consumers (CONTRACT-04) ([0f1d3ca](https://github.com/huskyhoochu/polydeukes/commit/0f1d3ca1b697f552a68e752e288f768cc7ade8c0))
+* **polydeukes:** package contract skeleton — entry points, barrels, ratchet test (CONTRACT-01) ([#73](https://github.com/huskyhoochu/polydeukes/issues/73)) ([794dce2](https://github.com/huskyhoochu/polydeukes/commit/794dce23d365190e963f7039a4d2b9acf089b5d2))
+* **polydeukes:** wire Grok PreToolUse through the existing session hook (DIST-06) ([#76](https://github.com/huskyhoochu/polydeukes/issues/76)) ([40ac15f](https://github.com/huskyhoochu/polydeukes/commit/40ac15f18929e66d4cf2ccafdcee8c201e42ad5b))
+
 ## [0.5.0](https://github.com/huskyhoochu/polydeukes/compare/v0.4.0...v0.5.0) (2026-08-27)
 
 
