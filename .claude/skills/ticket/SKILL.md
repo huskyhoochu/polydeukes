@@ -46,6 +46,12 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   skill's PRE-FLIGHT section; the same rule applies — **every attempt gets a row in
   `_docs/knowledge/memory.dev-log.cognee-recall-gaps.md`**, a wrong answer included. Recall
   supplements the greps above and never replaces them: a hit it misses is still a miss.
+- **The PRD preserves no legacy.** The roadmap row and every carry-over hit above are
+  *candidate* requirements, not requirements. For each one the PRD records (1) who asked for
+  it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
+  does not need. No field, value, or option kept "for later": a later ticket reviving part of
+  what was deleted is the normal case, and a ticket that revives nothing deleted too little.
+  A requirement nobody can be named for is a doc's residue, not a contract.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): same 4-key frontmatter (`scope`/`type`/`tags`/`created_at`), status line
   `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
