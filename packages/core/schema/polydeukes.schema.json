@@ -129,7 +129,7 @@
       }
     },
     "discipline": {
-      "description": "One discipline entry — exactly one predicate family (forbid | immutable | forbidCommand | requirePrecedent | declare), or a draft (id + why + draft: true, no predicate); in/except scope the forbid and requirePrecedent families, and when scopes requirePrecedent only.",
+      "description": "One discipline entry — exactly one predicate family (forbidCommand | requirePrecedent | declare), or a draft (id + why + draft: true, no predicate); in/except scope the requirePrecedent family, and when scopes requirePrecedent only.",
       "oneOf": [
         {
           "type": "object",
@@ -145,46 +145,6 @@
             "draft": {
               "description": "Marks an unpromoted entry — declared as prose, never judged, never recorded. Only the literal true exists; false would be dead data synonymous with absence.",
               "const": true
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["id", "forbid"],
-          "properties": {
-            "id": { "$ref": "#/$defs/disciplineId" },
-            "why": { "$ref": "#/$defs/disciplineWhy" },
-            "enforce": { "$ref": "#/$defs/enforceLevel" },
-            "in": { "$ref": "#/$defs/globOrGlobs" },
-            "except": { "$ref": "#/$defs/globOrGlobs" },
-            "forbid": {
-              "description": "Delta family — string shorthand is equivalent to { added }.",
-              "anyOf": [
-                { "type": "string", "minLength": 1, "format": "regex" },
-                {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["added"],
-                  "properties": {
-                    "added": { "type": "string", "minLength": 1, "format": "regex" }
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["id", "immutable"],
-          "properties": {
-            "id": { "$ref": "#/$defs/disciplineId" },
-            "why": { "$ref": "#/$defs/disciplineWhy" },
-            "enforce": { "$ref": "#/$defs/enforceLevel" },
-            "immutable": {
-              "description": "Path family — its own glob is the scope.",
-              "$ref": "#/$defs/globOrGlobs"
             }
           }
         },

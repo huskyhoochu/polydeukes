@@ -35,21 +35,15 @@ function toGlobs(value: string | string[] | undefined): string[] {
 }
 
 /**
- * The routing scope of a config entry, in its own family's shape: the delta and context
- * families scope by `in`/`except` globs, the path family by its own glob, and the command
- * family by nothing at all — it judges the command line, which no path scopes.
+ * The routing scope of a config entry, in its own family's shape: the context family scopes
+ * by `in`/`except` globs, and the command family by nothing at all — it judges the command
+ * line, which no path scopes. A declaration renders through its own description.
  */
 function scopeOf(entry: DisciplineEntry): string {
-  if (entry.immutable !== undefined) {
-    return `immutable ${toGlobs(entry.immutable).join(', ')}`;
-  }
   if (entry.forbidCommand !== undefined) {
     return 'forbidCommand · (no path scope)';
   }
-  const family =
-    entry.requirePrecedent === undefined
-      ? 'forbid'
-      : `requirePrecedent ${Object.keys(entry.requirePrecedent).join(', ')}`;
+  const family = `requirePrecedent ${Object.keys(entry.requirePrecedent ?? {}).join(', ')}`;
   const inGlobs = toGlobs(entry.in);
   const scope = inGlobs.length === 0 ? 'every file' : `in ${inGlobs.join(', ')}`;
   const exceptGlobs = toGlobs(entry.except);

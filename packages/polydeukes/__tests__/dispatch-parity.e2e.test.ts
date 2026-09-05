@@ -29,7 +29,31 @@ const DELTA_WHY = 'todos rot in place';
 const BLOCK_REASON = `Write would modify protected path ${PROTECTED_ENTRY}/pre-commit\n`;
 
 const DISCIPLINES = [
-  { id: DELTA_ID, forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE, why: DELTA_WHY },
+  {
+    id: DELTA_ID,
+    declare: {
+      mechanism: 'added-only',
+      scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+      supply: { pre: 'empty', post: 'empty' },
+      extract: {
+        before: [
+          { op: 'source', of: 'pre' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(TODO)' },
+        ],
+        after: [
+          { op: 'source', of: 'post' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(TODO)' },
+        ],
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+      },
+      relate: [
+        { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+      ],
+    },
+    why: DELTA_WHY,
+  },
   { id: COMMAND_ID, forbidCommand: 'zzz_probe_cmd', why: 'the probe reshapes unseen state' },
   { id: CONTEXT_ID, requirePrecedent: { tool: CONTEXT_TOOL }, in: DISCIPLINE_SCOPE },
 ];
@@ -265,7 +289,35 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
     const result = runCommitCheck(
       {
         disciplines: [
-          { id: DELTA_ID, forbid: { added: 'TODO' }, in: DISCIPLINE_SCOPE, why: DELTA_WHY },
+          {
+            id: DELTA_ID,
+            declare: {
+              mechanism: 'added-only',
+              scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
+              supply: { pre: 'empty', post: 'empty' },
+              extract: {
+                before: [
+                  { op: 'source', of: 'pre' },
+                  { op: 'lines' },
+                  { op: 'keyByPattern', re: '(TODO)' },
+                ],
+                after: [
+                  { op: 'source', of: 'post' },
+                  { op: 'lines' },
+                  { op: 'keyByPattern', re: '(TODO)' },
+                ],
+                added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+              },
+              relate: [
+                {
+                  id: 'nothing-added',
+                  relation: { op: 'empty', of: 'added' },
+                  message: 'adds {key}',
+                },
+              ],
+            },
+            why: DELTA_WHY,
+          },
         ],
         adapters: { git: { enforce: 'advise' } },
       },
@@ -274,7 +326,7 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe(
-      `discipline '${DELTA_ID}' broken on ${SCOPED_TARGET}: edit adds new forbidden match(es): TODO — why: ${DELTA_WHY}\n` +
+      `discipline '${DELTA_ID}' broken on ${SCOPED_TARGET}: adds TODO — why: ${DELTA_WHY}\n` +
         'covenant advisory: 1 verdict(s) recorded as advised, commit allowed\n',
     );
     expect(rows()).toEqual([['advised', DELTA_ID, SCOPED_TARGET]]);

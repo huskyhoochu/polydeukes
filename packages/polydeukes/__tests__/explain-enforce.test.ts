@@ -28,9 +28,80 @@ const SOFT_ID = 'softly-held';
 const HARD_ID = 'hard-held';
 const PLAIN_ID = 'plain-held';
 
-const softEntry = { id: SOFT_ID, forbid: 'zzz_banned', enforce: 'advise' };
-const hardEntry = { id: HARD_ID, forbid: 'zzz_banned', enforce: 'block' };
-const plainEntry = { id: PLAIN_ID, forbid: 'zzz_banned' };
+const softEntry = {
+  id: SOFT_ID,
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^src/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+  enforce: 'advise',
+};
+const hardEntry = {
+  id: HARD_ID,
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^src/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+  enforce: 'block',
+};
+const plainEntry = {
+  id: PLAIN_ID,
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^src/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(zzz_banned)' },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+};
 
 let repoRoot: string;
 let telemetryPath: string;
@@ -79,7 +150,7 @@ describe('explain marks the advise level on both surfaces', () => {
     const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'judge', SOFT_ID)).toContain(ADVISE_TOKEN);
+      expect(rowOf(text, header, 'declare', SOFT_ID)).toContain(ADVISE_TOKEN);
     }
   });
 
@@ -92,7 +163,7 @@ describe('explain marks the advise level on both surfaces', () => {
     const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
-      const row = rowOf(text, header, 'judge', PLAIN_ID);
+      const row = rowOf(text, header, 'declare', PLAIN_ID);
       expect(row).not.toContain(ADVISE_TOKEN);
       expect(row).not.toContain(BLOCK_TOKEN);
     }
@@ -107,7 +178,7 @@ describe('explain marks the advise level on both surfaces', () => {
     const { text } = await explain({ repoRoot });
 
     for (const header of SURFACE_HEADERS) {
-      const row = rowOf(text, header, 'judge', HARD_ID);
+      const row = rowOf(text, header, 'declare', HARD_ID);
       expect(row).toContain(BLOCK_TOKEN);
       expect(row).not.toContain(ADVISE_TOKEN);
     }

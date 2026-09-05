@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 // `<phrase> — why: <why verbatim>`. An absent or empty `why` leaves the phrase
 // byte-for-byte unchanged, separator and all; the context family keeps its recovery hint
 // BEFORE the why (violation, then recovery, then rationale); the reason stays one line.
-import { type JudgeDisciplineSpec, judgeDiscipline } from '../src/discipline.ts';
+import {
+  compileDisciplineRegistrations,
+  type JudgeDisciplineSpec,
+  judgeDiscipline,
+} from '../src/discipline.ts';
 
 // No fixture here drives a shell-derived write, so the injected pre-state reader is never
 // consulted; `null` — the file is not there — is the answer that would make a create if one
@@ -23,38 +27,16 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   readPreState,
 };
 
-const DELTA_WHY =
-  'raw hex colors bypass the design token layer; every color must resolve through a token';
-const PATH_WHY =
-  'the lockfile is generated output; a hand edit desyncs it from the manifest silently';
 const COMMAND_WHY =
   'disabling lefthook drops the commit surface, so the staged diff lands unjudged';
 const CONTEXT_WHY =
   'a dependency bumped without checking the registry has shipped a broken major before';
 
-// The four phrases the without-why end must produce byte-for-byte.
-const DELTA_CURRENT =
-  "discipline 'no-hex' broken on src/a.css: edit adds new forbidden match(es): #123456";
-const PATH_CURRENT = "discipline 'lockfile' broken: immutable file config/a.lock mutated";
+// The phrases the without-why end must produce byte-for-byte.
 const COMMAND_CURRENT = "discipline 'hooks-armed' broken: command matches forbidden pattern";
 const CONTEXT_HINT =
   'only a call that ran and succeeded counts, matched at the start of a simple command — if it was part of a chain or a compound that failed, run it on its own';
 const CONTEXT_CURRENT = `discipline 'dep-needs-view' broken on pkg/dep.json: requires prior session evidence (command "npm view "). ${CONTEXT_HINT}`;
-
-/** Delta-family entry; `why` is attached per test. */
-function deltaEntry(why?: string): DisciplineEntry {
-  return {
-    id: 'no-hex',
-    in: ['src/**'],
-    forbid: '#[0-9a-f]{6}',
-    ...(why !== undefined && { why }),
-  };
-}
-
-/** Path-family entry; `why` is attached per test. */
-function pathEntry(why?: string): DisciplineEntry {
-  return { id: 'lockfile', immutable: ['config/*.lock'], ...(why !== undefined && { why }) };
-}
 
 /** Command-family entry; `why` is attached per test. */
 function commandEntry(why?: string): DisciplineEntry {
@@ -97,16 +79,6 @@ function inputWithToolCall(name: string, args: Record<string, unknown>): Covenan
   return { toolCalls: [{ name, args }], subagentSpawns: [], userMessages: [] };
 }
 
-/** The payload that breaks the delta entry: an in-scope edit ADDING a hex literal. */
-function deltaBreakInput(): CovenantInput {
-  return inputWithFileChanges([{ path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' }]);
-}
-
-/** The payload that breaks the path entry: a modify of the glob-matched lockfile. */
-function pathBreakInput(): CovenantInput {
-  return inputWithFileChanges([{ path: 'config/a.lock', pre: 'old', post: 'new' }]);
-}
-
 /** The payload that breaks the command entry: a shell call disarming the hooks. */
 function commandBreakInput(): CovenantInput {
   return inputWithToolCall('Bash', { command: 'LEFTHOOK=0 git push' });
@@ -117,6 +89,53 @@ function contextBreakInput(): CovenantInput {
   return inputWithFileChanges([
     { path: 'pkg/dep.json', pre: 'left: 1;', post: 'left: 1;\nneeds-precedent;' },
   ]);
+}
+
+const DECLARE_WHY = 'a lantern in a source file is a leftover debugging marker.';
+const DECLARE_CURRENT = "discipline 'no-lantern' broken on lib/a.txt: adds lantern: lantern here";
+
+/** Added-only declaration over `lib/`; `why` is attached per test. */
+function declareEntry(why?: string): DisciplineEntry {
+  return {
+    id: 'no-lantern',
+    declare: {
+      mechanism: 'added-only',
+      scope: { source: 'target.path', include: ['^lib/'] },
+      supply: { pre: 'empty', post: 'empty' },
+      extract: {
+        before: [
+          { op: 'source', of: 'pre' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(lantern)' },
+        ],
+        after: [
+          { op: 'source', of: 'post' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(lantern)' },
+        ],
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+      },
+      relate: [
+        {
+          id: 'nothing-added',
+          relation: { op: 'empty', of: 'added' },
+          message: 'adds {key}: {value}',
+        },
+      ],
+    },
+    ...(why !== undefined && { why }),
+  } as unknown as DisciplineEntry;
+}
+
+/** The declaration family judges through its compiled body, never through judgeDiscipline. */
+async function declareBreakReason(why?: string): Promise<string> {
+  const regs = compileDisciplineRegistrations({ ...judgeOpts, disciplines: [declareEntry(why)] });
+  const reg = regs.find((r) => r.label === 'no-lantern' && r.skip === undefined);
+  const outcome = (await reg?.body?.(
+    inputWithFileChanges([{ path: 'lib/a.txt', pre: null, post: 'lantern here' }]),
+  )) as { exitCode: number; reason?: string } | undefined;
+  expect(outcome?.exitCode).toBe(1);
+  return outcome?.reason ?? '';
 }
 
 const noPrecedent: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
@@ -136,16 +155,8 @@ function breakReason(
 }
 
 describe('judgeDiscipline — why appended to the break reason', () => {
-  it('delta family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
-    expect(breakReason(deltaEntry(DELTA_WHY), deltaBreakInput())).toBe(
-      `${DELTA_CURRENT} — why: ${DELTA_WHY}`,
-    );
-  });
-
-  it('path family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
-    expect(breakReason(pathEntry(PATH_WHY), pathBreakInput())).toBe(
-      `${PATH_CURRENT} — why: ${PATH_WHY}`,
-    );
+  it('declaration family: the reason is the current phrase plus " — why: " plus the why verbatim', async () => {
+    expect(await declareBreakReason(DECLARE_WHY)).toBe(`${DECLARE_CURRENT} — why: ${DECLARE_WHY}`);
   });
 
   it('command family: the reason is the current phrase plus " — why: " plus the why verbatim', () => {
@@ -167,8 +178,12 @@ describe('judgeDiscipline — why appended to the break reason', () => {
 // ` — why: `) still CONTAINS the phrase, so only strict equality proves the no-why end is
 // untouched. Every other reason assertion in this suite is a substring check.
 describe('judgeDiscipline — no why leaves the current phrase untouched', () => {
-  it('delta family: reason equals the current phrase exactly', () => {
-    expect(breakReason(deltaEntry(), deltaBreakInput())).toBe(DELTA_CURRENT);
+  it('command family: reason equals the current phrase exactly', () => {
+    expect(breakReason(commandEntry(), commandBreakInput())).toBe(COMMAND_CURRENT);
+  });
+
+  it('declaration family: reason equals the current phrase exactly', async () => {
+    expect(await declareBreakReason()).toBe(DECLARE_CURRENT);
   });
 
   it('context family: reason equals the current phrase (recovery hint intact) exactly', () => {
@@ -204,12 +219,12 @@ describe('judgeDiscipline — the appended reason stays one line', () => {
   // an agent reads off stderr, so the why is normalized on the way in — verbatim yields to
   // the one-line contract wherever verbatim would break the line.
   it('a why carrying newlines is folded to spaces, keeping the reason one line', () => {
-    const multiline = 'archives are immutable\nediting one destroys the record';
-    const reason = breakReason(pathEntry(multiline), pathBreakInput());
+    const multiline = 'archives are frozen\nediting one destroys the record';
+    const reason = breakReason(commandEntry(multiline), commandBreakInput());
 
     expect(reason).not.toContain('\n');
     expect(reason).toBe(
-      `${PATH_CURRENT} — why: archives are immutable editing one destroys the record`,
+      `${COMMAND_CURRENT} — why: archives are frozen editing one destroys the record`,
     );
   });
 
@@ -218,12 +233,12 @@ describe('judgeDiscipline — the appended reason stays one line', () => {
     // return to column zero — an unfolded CR does not merely survive, it repaints the
     // rationale over the discipline id and the path the reason already named. A `\r?\n`
     // fold requires the LF and passes a bare CR straight through.
-    const withCr = 'archives are immutable\rediting one destroys the record';
-    const reason = breakReason(pathEntry(withCr), pathBreakInput());
+    const withCr = 'archives are frozen\rediting one destroys the record';
+    const reason = breakReason(commandEntry(withCr), commandBreakInput());
 
     expect(reason).not.toContain('\r');
     expect(reason).toBe(
-      `${PATH_CURRENT} — why: archives are immutable editing one destroys the record`,
+      `${COMMAND_CURRENT} — why: archives are frozen editing one destroys the record`,
     );
   });
 
@@ -232,14 +247,14 @@ describe('judgeDiscipline — the appended reason stays one line', () => {
     // blank line, so runs are what a real config produces. Folding each break separately
     // leaves the double space visible in the message.
     const paragraphs = 'first paragraph\n\nsecond paragraph\n';
-    const reason = breakReason(pathEntry(paragraphs), pathBreakInput());
+    const reason = breakReason(commandEntry(paragraphs), commandBreakInput());
 
-    expect(reason).toBe(`${PATH_CURRENT} — why: first paragraph second paragraph`);
+    expect(reason).toBe(`${COMMAND_CURRENT} — why: first paragraph second paragraph`);
   });
 
   it('a why of only whitespace is treated as absent, leaving no dangling separator', () => {
     // A whitespace-only why survives a `why !== undefined` gate and a naive fold alike,
     // emitting the separator with nothing after it. Emptiness is decided after folding.
-    expect(breakReason(pathEntry('   '), pathBreakInput())).toBe(PATH_CURRENT);
+    expect(breakReason(commandEntry('   '), commandBreakInput())).toBe(COMMAND_CURRENT);
   });
 });

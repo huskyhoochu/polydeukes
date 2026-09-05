@@ -16,6 +16,9 @@ const DISCIPLINE_ID = 'no-todo';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
 const SCOPED_SOURCE = 'lib/a.ts';
 const FORBIDDEN_TOKEN = 'TODO';
+/** The same scope as a declaration's regex over the repo-relative path. */
+const DISCIPLINE_SCOPE_RE = '^lib/.*\\.ts$';
+
 /** The umbrella's protected-paths registration label — an observable contract, not a fixture choice. */
 const SELF_MOD_LABEL = 'self-mod';
 let repo: CheckRepo;
@@ -49,7 +52,34 @@ describe('covenant check — the prompt fires only on a blocked verdict', () => 
     // rather than a routing-time bypass recorded as 'witnessed'.
     writeConfig({
       disciplines: [
-        { id: DISCIPLINE_ID, forbid: { added: FORBIDDEN_TOKEN }, in: DISCIPLINE_SCOPE },
+        {
+          id: DISCIPLINE_ID,
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
+        },
       ],
       witness: { token: WITNESS_TOKEN, ttlMinutes: 5 },
     });
@@ -118,8 +148,31 @@ describe('covenant check — the prompt fires only on a blocked verdict', () => 
       disciplines: [
         {
           id: DISCIPLINE_ID,
-          forbid: { added: FORBIDDEN_TOKEN },
-          in: DISCIPLINE_SCOPE,
+          declare: {
+            mechanism: 'added-only',
+            scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+            supply: { pre: 'empty', post: 'empty' },
+            extract: {
+              before: [
+                { op: 'source', of: 'pre' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+              ],
+              after: [
+                { op: 'source', of: 'post' },
+                { op: 'lines' },
+                { op: 'keyByPattern', re: `(${FORBIDDEN_TOKEN})` },
+              ],
+              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+            },
+            relate: [
+              {
+                id: 'nothing-added',
+                relation: { op: 'empty', of: 'added' },
+                message: 'adds {key}',
+              },
+            ],
+          },
           enforce: 'block',
         },
       ],

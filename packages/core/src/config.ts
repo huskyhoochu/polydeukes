@@ -39,14 +39,6 @@ export type LanguageProfile = {
 };
 
 /**
- * `DisciplineForbid` — the delta-family predicate value.
- *
- * The string shorthand is equivalent to `{ added }`. It is the only direction that exists;
- * anything else is rejected by validation.
- */
-export type DisciplineForbid = string | { added: string };
-
-/**
  * `AlgebraDeclarationBody` — an algebra declaration minus its name.
  *
  * The declaration family names itself with the entry's `id`, so the block under `declare`
@@ -64,9 +56,8 @@ export type EnforceLevel = 'block' | 'advise';
 /**
  * `DisciplineEntry` — one user-declared discipline. Pure JSON data.
  *
- * Exactly one predicate key (`forbid` | `immutable` | `forbidCommand` |
- * `requirePrecedent` | `declare`) per entry; `in`/`except` scope the delta and context
- * families.
+ * Exactly one predicate key (`forbidCommand` | `requirePrecedent` | `declare`) per entry;
+ * `in`/`except` scope the context family.
  * Compilation is the covenant package's job — the core validates compilability of regex
  * strings but never executes them.
  */
@@ -77,14 +68,10 @@ export type DisciplineEntry = {
   why?: string;
   /** the author's level; composes with the observer's surface level, lenient side winning */
   enforce?: EnforceLevel;
-  /** delta/context-family scope: glob(s) the file path must match (absent = every file change) */
+  /** context-family scope: glob(s) the file path must match (absent = every file change) */
   in?: string | string[];
-  /** delta/context-family scope: glob(s) excluded after `in` */
+  /** context-family scope: glob(s) excluded after `in` */
   except?: string | string[];
-  /** delta family — string shorthand = { added } */
-  forbid?: DisciplineForbid;
-  /** path family — its own glob is the scope */
-  immutable?: string | string[];
   /** command family — regex over shell command strings */
   forbidCommand?: string;
   /** context-family trigger: added-direction delta regex (absent = every in-scope change) */
@@ -222,8 +209,6 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
   'enforce',
   'in',
   'except',
-  'forbid',
-  'immutable',
   'forbidCommand',
   'when',
   'requirePrecedent',
@@ -231,15 +216,21 @@ const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
 ]);
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
-const PREDICATE_KEYS = [
-  'forbid',
-  'immutable',
-  'forbidCommand',
-  'requirePrecedent',
-  'declare',
-] as const;
-/** Predicate families that `in`/`except` may scope — delta and context. */
-const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['forbid', 'requirePrecedent']);
+const PREDICATE_KEYS = ['forbidCommand', 'requirePrecedent', 'declare'] as const;
+/**
+ * The change-axis keys the declaration family replaced, each with the rewrite it points at.
+ * An entry carrying one is refused by its own name rather than as an unknown key, so an
+ * author reads what to write instead on the first run.
+ */
+const REMOVED_PREDICATE_KEYS: readonly (readonly [string, string])[] = [
+  [
+    'forbid',
+    "'forbid' is no longer an entry key — write the promise as declare: (mechanism 'added-only')",
+  ],
+  ['immutable', "'immutable' is no longer an entry key — write the promise as declare:"],
+];
+/** The one predicate family `in`/`except` may scope — context. */
+const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['requirePrecedent']);
 
 /** True when the glob value is a present, non-empty string or a non-empty array of non-empty strings. */
 function isValidGlob(glob: unknown): glob is string | string[] {
@@ -298,7 +289,7 @@ type RawEntry = Record<string, unknown>;
 function validateDraft(entry: RawEntry, id: string, location: string): DisciplineDraft {
   for (const key of Object.keys(entry)) {
     if (!DRAFT_KEYS.has(key)) {
-      // Named as the draft rule, not as an unknown key: `forbid` et al. are legal
+      // Named as the draft rule, not as an unknown key: `declare` et al. are legal
       // discipline keys, just not on a draft.
       throw new ConfigValidationError(
         `${location} allows only id, why, draft on a draft entry (found '${key}')`,
@@ -330,13 +321,27 @@ function validateEntryHead(entry: RawEntry, location: string): void {
   }
 }
 
+/**
+ * Refuse an entry carrying a key the declaration family replaced, naming the rewrite.
+ *
+ * It runs ahead of the closed-key check, which would otherwise report the key as unknown and
+ * leave the author without the migration target.
+ */
+function rejectRemovedPredicates(entry: RawEntry, location: string): void {
+  for (const [key, message] of REMOVED_PREDICATE_KEYS) {
+    if (entry[key] !== undefined) {
+      throw new ConfigValidationError(`${location} ${message}`);
+    }
+  }
+}
+
 /** Select the entry's family — exactly one predicate key, plus the keys that family admits. */
 function selectFamily(entry: RawEntry, location: string): (typeof PREDICATE_KEYS)[number] {
   const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
   if (predicates.length !== 1) {
     throw new ConfigValidationError(
       `${location} must have exactly one predicate key ` +
-        `(forbid | immutable | forbidCommand | requirePrecedent | declare)`,
+        `(forbidCommand | requirePrecedent | declare)`,
     );
   }
   const predicate = predicates[0];
@@ -345,7 +350,7 @@ function selectFamily(entry: RawEntry, location: string): (typeof PREDICATE_KEYS
     (entry.in !== undefined || entry.except !== undefined)
   ) {
     throw new ConfigValidationError(
-      `${location} allows in/except only on a forbid or requirePrecedent entry`,
+      `${location} allows in/except only on a requirePrecedent entry`,
     );
   }
   // `when` is the context family's trigger; on any other family it would be dead data
@@ -360,41 +365,6 @@ function selectFamily(entry: RawEntry, location: string): (typeof PREDICATE_KEYS
     throw new ConfigValidationError(`${location} except must be a non-empty glob or glob array`);
   }
   return predicate;
-}
-
-function validateForbid(entry: RawEntry, location: string): void {
-  const forbid = entry.forbid;
-  if (typeof forbid === 'string') {
-    // An empty pattern matches at every position, so the entry would break every
-    // in-scope change — rejected like every sibling pattern field.
-    if (forbid.length === 0) {
-      throw new ConfigValidationError(`${location} forbid must be a non-empty string pattern`);
-    }
-    rejectUncompilableRegex(forbid, `${location} forbid`);
-  } else if (isPlainObject(forbid)) {
-    const keys = Object.keys(forbid);
-    if (keys.length !== 1 || keys[0] !== 'added' || typeof forbid.added !== 'string') {
-      throw new ConfigValidationError(
-        `${location} forbid object must have exactly one key 'added' with a string pattern`,
-      );
-    }
-    if (forbid.added.length === 0) {
-      throw new ConfigValidationError(
-        `${location} forbid.added must be a non-empty string pattern`,
-      );
-    }
-    rejectUncompilableRegex(forbid.added, `${location} forbid.added`);
-  } else {
-    throw new ConfigValidationError(
-      `${location} forbid must be a string pattern or an { added } object`,
-    );
-  }
-}
-
-function validateImmutable(entry: RawEntry, location: string): void {
-  if (!isValidGlob(entry.immutable)) {
-    throw new ConfigValidationError(`${location} immutable must be a non-empty glob or glob array`);
-  }
 }
 
 function validateForbidCommand(entry: RawEntry, location: string): void {
@@ -450,8 +420,6 @@ const PREDICATE_VALIDATORS: Record<
   (typeof PREDICATE_KEYS)[number],
   (entry: RawEntry, location: string) => void
 > = {
-  forbid: validateForbid,
-  immutable: validateImmutable,
   forbidCommand: validateForbidCommand,
   requirePrecedent: validateContextEntry,
   declare: validateDeclareEntry,
@@ -499,6 +467,7 @@ function validateDisciplines(disciplines: unknown): {
       return;
     }
 
+    rejectRemovedPredicates(entry, location);
     validateEntryHead(entry, location);
     const predicate = selectFamily(entry, location);
     PREDICATE_VALIDATORS[predicate](entry, location);

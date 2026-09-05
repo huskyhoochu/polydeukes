@@ -32,11 +32,30 @@ function readPreStateFromDisk(location: string): string | null | undefined {
   }
 }
 
-const deltaEntry: DisciplineEntry = {
+const deltaEntry = {
   id: 'no-banned',
-  in: ['packages/**/*.ts'],
-  forbid: BANNED,
-};
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^packages/.*\\.ts$'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: `(${BANNED})` },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: `(${BANNED})` },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+} as unknown as DisciplineEntry;
 
 function specWith(
   disciplines: DisciplineEntry[],
@@ -214,16 +233,13 @@ describe('compileDisciplineRegistrations — per-entry skip registration', () =>
     );
   });
 
-  it('command and immutable entries gain NO per-entry skip registration', () => {
-    // Only the delta and context families need one: a command entry's axis is the string
-    // itself, always judgeable, and immutable's shell deletion is out of scope. Adding skips
-    // for every family mints phantom rows under labels whose judgment needs no shell evidence.
+  it('a command entry gains NO per-entry skip registration', () => {
+    // A command entry's axis is the string itself, always judgeable. Adding a skip for
+    // every family mints phantom rows under labels whose judgment needs no shell evidence.
     const commandEntry: DisciplineEntry = { id: 'pnpm-only', forbidCommand: 'npm install' };
-    const immutableEntry: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
-    const regs = compileDisciplineRegistrations(specWith([commandEntry, immutableEntry]));
+    const regs = compileDisciplineRegistrations(specWith([commandEntry]));
 
     expect(skipArmsOf(regs, 'pnpm-only')).toHaveLength(0);
-    expect(skipArmsOf(regs, 'lockfile')).toHaveLength(0);
   });
 });
 
@@ -246,7 +262,30 @@ describe('compileDisciplineRegistrations — common shell-unjudgeable registrati
   it('is appended exactly once regardless of entry count, in last position', () => {
     // `echo x > $F` leaves ONE skipped row, not one per entry, and it comes last because it
     // backstops the entries.
-    const second: DisciplineEntry = { id: 'no-junk', in: ['packages/**'], forbid: 'zzz_junk' };
+    const second = {
+      id: 'no-junk',
+      declare: {
+        mechanism: 'added-only',
+        scope: { source: 'target.path', include: ['^packages/'] },
+        supply: { pre: 'empty', post: 'empty' },
+        extract: {
+          before: [
+            { op: 'source', of: 'pre' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(zzz_junk)' },
+          ],
+          after: [
+            { op: 'source', of: 'post' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: '(zzz_junk)' },
+          ],
+          added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+        },
+        relate: [
+          { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+        ],
+      },
+    } as unknown as DisciplineEntry;
     const regs = compileDisciplineRegistrations(specWith([deltaEntry, second]));
 
     expect(regs.filter((reg) => reg.label === 'shell-unjudgeable')).toHaveLength(1);
@@ -406,7 +445,30 @@ describe('compiled discipline thunk — shell evidence enrichment', () => {
   });
 
   function judgeBody(command: string) {
-    const entry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
+    const entry = {
+      id: 'no-banned',
+      declare: {
+        mechanism: 'added-only',
+        scope: { source: 'target.path', include: ['^scoped/'] },
+        supply: { pre: 'empty', post: 'empty' },
+        extract: {
+          before: [
+            { op: 'source', of: 'pre' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: `(${BANNED})` },
+          ],
+          after: [
+            { op: 'source', of: 'post' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: `(${BANNED})` },
+          ],
+          added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+        },
+        relate: [
+          { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+        ],
+      },
+    } as unknown as DisciplineEntry;
     return judgeShellPayload(entry, command, dir);
   }
 
@@ -420,17 +482,6 @@ describe('compiled discipline thunk — shell evidence enrichment', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.reason).toContain('no-banned');
-  });
-
-  it('still breaks when the disk pre already carries the pattern (occurrence added)', async () => {
-    // Delta semantics are a per-string multiset: 1 -> 2 occurrences is an added instance, and
-    // existing debt does not absolve it. Presence-based composition would forgive every
-    // further insertion forever.
-    writeFileSync(target, `${BANNED} already lives here\n`);
-
-    const result = await judgeBody(`echo '${BANNED}' >> ${target}`);
-
-    expect(result.exitCode).toBe(1);
   });
 
   it('upholds a clean append onto a clean file (passed direction)', async () => {
@@ -494,7 +545,30 @@ describe('compiled discipline thunk — absent-file append, same-path chaining, 
     rmSync(dir, { recursive: true, force: true });
   });
 
-  const forbidEntry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
+  const forbidEntry = {
+    id: 'no-banned',
+    declare: {
+      mechanism: 'added-only',
+      scope: { source: 'target.path', include: ['^scoped/'] },
+      supply: { pre: 'empty', post: 'empty' },
+      extract: {
+        before: [
+          { op: 'source', of: 'pre' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: `(${BANNED})` },
+        ],
+        after: [
+          { op: 'source', of: 'post' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: `(${BANNED})` },
+        ],
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+      },
+      relate: [
+        { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+      ],
+    },
+  } as unknown as DisciplineEntry;
 
   function judgeEntryBody(
     entry: DisciplineEntry,
@@ -597,7 +671,30 @@ describe('review-round regressions — thunk pre-read failure', () => {
     // Dropped evidence must never read as a clean pass. This raises ENOTDIR: an intermediate
     // path component is a plain file.
     writeFileSync(join(dir, 'scoped', 'blocker.txt'), 'a file, not a directory\n');
-    const entry: DisciplineEntry = { id: 'no-banned', in: ['scoped/**'], forbid: BANNED };
+    const entry = {
+      id: 'no-banned',
+      declare: {
+        mechanism: 'added-only',
+        scope: { source: 'target.path', include: ['^scoped/'] },
+        supply: { pre: 'empty', post: 'empty' },
+        extract: {
+          before: [
+            { op: 'source', of: 'pre' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: `(${BANNED})` },
+          ],
+          after: [
+            { op: 'source', of: 'post' },
+            { op: 'lines' },
+            { op: 'keyByPattern', re: `(${BANNED})` },
+          ],
+          added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+        },
+        relate: [
+          { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+        ],
+      },
+    } as unknown as DisciplineEntry;
     const target = join(dir, 'scoped', 'blocker.txt', 'x.ts');
 
     const result = await judgeShellPayload(entry, `echo '${BANNED}' >> ${target}`, dir);

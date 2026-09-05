@@ -19,28 +19,6 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
 }
 
 describe('empty-pattern rejection — discipline predicate fields', () => {
-  it('rejects a string-form forbid of "", naming the forbid field', () => {
-    // '' compiles as a regex and matches everywhere, so the delta entry would break every
-    // in-scope edit; a type-only check accepts it.
-    const error = expectConfigValidationError({
-      ...validLanguages,
-      disciplines: [{ id: 'empty-forbid', forbid: '' }],
-    });
-
-    expect(error.message).toContain('forbid');
-  });
-
-  it('rejects forbid: { added: "" }, naming the forbid field', () => {
-    // The object form takes its own validation branch, so a fix that only rejects the
-    // string shorthand leaves this spelling open.
-    const error = expectConfigValidationError({
-      ...validLanguages,
-      disciplines: [{ id: 'empty-added', forbid: { added: '' } }],
-    });
-
-    expect(error.message).toContain('forbid');
-  });
-
   it('rejects a forbidCommand of "", naming the forbidCommand field', () => {
     // An empty command pattern matches every shell call — the command family would block
     // all of Bash. Its own branch needs the same non-empty check as the delta fields.
@@ -91,22 +69,17 @@ describe('telemetry.logPath — trim-then-non-empty (the witness.token idiom)', 
 });
 
 describe('invariant — non-empty values in the same five spots stay accepted', () => {
-  it('accepts non-empty forbid (both forms) and forbidCommand entries', () => {
+  it('accepts non-empty forbidCommand and requirePrecedent entries', () => {
     // The mirror direction: the rejections must not over-reach. Catches a non-empty check
     // inverted or applied to the wrong field.
     const resolved = defineConfig({
       ...validLanguages,
       disciplines: [
-        { id: 'string-form', forbid: '\\bTODO\\b' },
-        { id: 'added-form', forbid: { added: '#[0-9a-f]{6}' } },
         { id: 'command-form', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
+        { id: 'precedent-form', requirePrecedent: { command: 'npm view ' } },
       ],
     });
 
-    expect(resolved.disciplines?.map((d) => d.id)).toEqual([
-      'string-form',
-      'added-form',
-      'command-form',
-    ]);
+    expect(resolved.disciplines?.map((d) => d.id)).toEqual(['command-form', 'precedent-form']);
   });
 });

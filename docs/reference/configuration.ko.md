@@ -170,9 +170,9 @@ AI도 증언을 위조할 수 없습니다. 증언으로 통과한 판정은 조
 
 선택입니다. 각 항목이 규율 하나입니다. 팀이 스스로에게 지우는 실천을 데이터로 선언합니다.
 항목은 정확히 **하나의** 술어를 가지며(0개도 2개도 거부), `id`(텔레메트리 라벨)와 함께
-선택적으로 `why`(에이전트가 읽는 차단 메시지에 함께 실리는 이유)를 가집니다. `forbid`와
+선택적으로 `why`(에이전트가 읽는 차단 메시지에 함께 실리는 이유)를 가집니다.
 `requirePrecedent` 항목에서는 `in`(판정할 파일 glob)과 `except`(그 범위에서 덜어낼 glob)도
-쓸 수 있습니다. 다섯째 술어 `declare`는 범위를 블록 안에 지니므로 이 세 키를 받지 않습니다.
+쓸 수 있습니다. 셋째 술어 `declare`는 범위를 블록 안에 지니므로 이 세 키를 받지 않습니다.
 
 **`draft` — 미승격 항목.** 술어를 갖지 않는 유일한 형태입니다. `{ id, why, draft: true }`
 세 키뿐입니다. 초안(draft)은 승격 전의 실천을 산문으로 등재합니다 — 두 표면 어디에서도
@@ -205,40 +205,74 @@ stderr에 쓰입니다. `block`이 승격입니다. 항목을 block에 고정합
 머리줄이 기본값을 말합니다.
 
 ```yaml
-  - id: 'no-console-log'
-    why: 'console output belongs to the logger; measure the habit before blocking it.'
-    forbid: 'console\.log\('
+  - id: 'hooks-stay-armed'
+    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
+    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
     enforce: advise
 ```
 
-**`forbid`는 내용 델타를 봅니다.** 패턴의 새 매치를 *더하는* 편집을 차단합니다. 기존
-매치는 사면됩니다. 판정의 방향이 "파일에 무엇이 있는가"가 아니라 "이 편집이 무엇을
-더했는가"이므로, 규율 도입이 레거시 코드베이스를 막는 일이 없습니다.
+**추가 방향의 내용은 선언으로 씁니다.** 편집이 *더하는* 것에 대한 약속 — 금지 낱말,
+남겨진 `.only`, 아무 데도 닿지 않는 인용 — 은 `added-only` 선언입니다. `pre`와 `post`를
+각각 줄로 자르고 매치로 키를 붙인 뒤, `onlyIn`이 `post`에는 있고 `pre`에는 없는 것을
+남기고, 그 차이 위의 `empty`가 판정 결과입니다. 기존 매치는 사면되므로 규율 도입이
+레거시 코드베이스를 막는 일이 없습니다. `supply: empty`가 파일 생성(`pre` 없음)을 전부
+추가로, 삭제(`post` 없음)를 아무것도 더하지 않은 것으로 읽게 하고, `scope` 블록이
+`in`/`except`를 경로 위의 정규식으로 대신합니다.
 
 ```yaml
 disciplines:
   - id: 'covenant-vocabulary'
     why: 'control-framing vocabulary is banned in package sources.'
-    in:
-      - 'packages/*/src/**'
-    forbid: '\b(guard|harness|kb)\b'
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['^packages/[^/]+/src/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'adds {key}: {value}'
 ```
 
-**`immutable`은 경로 계열입니다.** 매치하는 기존 파일의 수정을 차단합니다. 새 파일 생성은
-허용됩니다.
+키가 매치 문자열이므로, 파일 어딘가에 이미 있는 낱말을 담은 줄은 사면되고, 새 낱말 둘을
+담은 한 줄은 지금 첫째를, 다음 판정에서 둘째를 드러냅니다.
+
+**얼어붙은 경로도 선언입니다.** 한 번 만들 수는 있어도 수정도 삭제도 안 되는 파일입니다.
+`pre`가 있으면 수정이고 `post`가 없으면 삭제이며, 어느 쪽이든 위반입니다.
 
 ```yaml
   - id: 'archived-records-stay-frozen'
     why: 'an archive that can be edited is not an archive.'
-    immutable: 'records/archive/**'
+    declare:
+      mechanism: 'self-absolution-ban'
+      scope: { source: 'target.path', include: ['^records/archive/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        prior: [{ op: 'source', of: 'pre' }]
+        here: [{ op: 'source', of: 'target.path' }]
+        after: [{ op: 'source', of: 'post' }]
+        deleted: [{ op: 'onlyIn', of: 'here', notIn: 'after' }]
+        touched: [{ op: 'union', of: ['prior', 'deleted'] }]
+      relate:
+        - { id: 'frozen', relation: { op: 'empty', of: 'touched' }, message: '{value} is frozen' }
 ```
 
 **`forbidCommand`는 명령 계열입니다.** 패턴에 매치하는 셸 명령을 차단합니다. 보호 경로를
 전혀 언급하지 않는 명령도 잡습니다. 관문을 무장 해제하는 명령을 잡는 방법이 이것입니다.
 여러 줄 명령은 두 겹으로 판정합니다. 패턴을 각 줄과 전체 문자열 양쪽에 대조하므로,
 `^`는 줄의 시작을 뜻하고 줄 경계를 걸치는 패턴도 그대로 매치합니다(아래의 파일 전체
-스캔 주의는 델타 계열(delta family)과 맥락 계열(context family)에 해당합니다). 빈 패턴은 모든
-명령에 매치하므로 `forbid`와 마찬가지로 로드 시점에 거부됩니다.
+스캔 주의는 맥락 계열(context family)의 `when`에 해당합니다). 빈 패턴은 모든 명령에
+매치하므로 로드 시점에 거부됩니다.
 
 ```yaml
   - id: 'hooks-stay-armed'
@@ -367,8 +401,10 @@ advised로 남습니다. 대상 밖 파일이 필요한 선언은
 고정 소스 다섯이나 선언 자신의 `sources` 이름이어야 하고, 그 밖의 키는 거부됩니다. 변경이
 지니지 않은 소스는 없는 것이고, 그것이 무슨 뜻인지는 선언의 `supply` 블록이 적습니다. `error`(기본값)는 호출을 판정
 불가로 만들어 강제 수준과 무관하게 `blocked`로 기록하고, `pass`는 판정하지 않고 지나가게
-합니다. 그래서 전후를 비교하는 선언이 파일 생성을 지나가게 하려면 `supply: { state: pass }`가
-필요합니다.
+하며, `empty`는 없는 쪽을 빈 항목 열로 읽고 판정을 계속합니다. `empty`가 `added-only` 선언이
+생성을 전부 추가로, 삭제를 아무것도 더하지 않은 것으로 보게 하는 값이고, 짝 소스 `state`에는
+적용되지 않습니다. 그래서 전후를 비교하는 선언이 파일 생성을 지나가게 하려면
+`supply: { state: pass }`가 필요합니다.
 
 위반은 다른 계열과 같이 기록되되 하나가 더해집니다. 텔레메트리 행이 다섯째 필드에 관계가
 성립하지 않은 요소들을 싣습니다(relate 항목마다 최대 여덟, 실제 개수를 곁에 적습니다).
@@ -380,7 +416,9 @@ advised로 남습니다. 대상 밖 파일이 필요한 선언은
 `change`, `file`·`sidecar` 소스는 `world`, `transcript` 소스는 `history`)과 관계가 그 이름이 허용하는 범위 안에 있어야 합니다.
 컴파일러가 해석하지 못하는 블록(등재 표 밖의 단계 이름, 단계의 키 밖의 인자)은 stderr에
 위치를 적고 아무것도 라우팅하지 않는 skip 등록이 됩니다. 선언의 범위 안으로 들어오는 셸
-쓰기는 판정할 파일 본문이 없어 `skipped`를 기록합니다. 선언 자신의 `witness` 블록은 사람의
+쓰기 가운데 판정기가 결과를 계산할 수 있는 것(리다이렉트 · heredoc · append)은 그것이
+만드는 파일 변경으로 판정되고, 계산할 수 없는 것(`sed -i` · 불투명한 명령)은 `skipped`를
+기록합니다. 선언 자신의 `witness` 블록은 사람의
 증인과 함께 차단된 판정 결과를 여는 둘째 길이 됩니다.
 
 규율 추가는 데이터 편집입니다. 코드도 배관도 필요 없습니다. 데이터로 표현할 수 없는

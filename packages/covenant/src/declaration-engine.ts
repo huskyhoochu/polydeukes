@@ -89,7 +89,7 @@ type CompiledScope = {
 export type CompiledDeclaration = {
   readonly pipelines: ReadonlyMap<string, CompiledPipeline>;
   readonly relate: readonly RelateEntry[];
-  readonly supply: Readonly<Record<string, 'error' | 'pass'>>;
+  readonly supply: Readonly<Record<string, 'error' | 'pass' | 'empty'>>;
   readonly scope?: CompiledScope;
   readonly witness?: {
     readonly pipelines: ReadonlyMap<string, CompiledPipeline>;
@@ -297,7 +297,7 @@ class Extractor {
 
   constructor(
     private readonly pipelines: ReadonlyMap<string, CompiledPipeline>,
-    private readonly supply: Readonly<Record<string, 'error' | 'pass'>>,
+    private readonly supply: Readonly<Record<string, 'error' | 'pass' | 'empty'>>,
     private readonly world: World,
   ) {}
 
@@ -365,6 +365,9 @@ class Extractor {
 
     const source = sourceName(pipeline);
     if (!(source in this.world)) {
+      // `empty` is the one policy that continues the judgment: the absence becomes an empty
+      // item list, and what that means for the verdict is the pipeline's own arithmetic.
+      if (this.supply[source] === 'empty') return { single: [] };
       this.problem = this.absent(source);
       return undefined;
     }
@@ -372,7 +375,11 @@ class Extractor {
     return items === undefined ? undefined : { single: items };
   }
 
-  /** What an absent source means under the declaration's supply policy: skip, or fail. */
+  /**
+   * What an absent source means under the declaration's supply policy: skip, or fail. The
+   * paired source reaches only this, never the empty reading — config validation refuses
+   * `empty` there, and an absent pair is not a pair of empty states either way.
+   */
   private absent(source: string): SupplyProblem {
     return this.supply[source] === 'pass'
       ? { kind: 'pass', source }

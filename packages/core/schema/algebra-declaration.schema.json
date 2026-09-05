@@ -142,8 +142,13 @@
     },
     "supply": {
       "type": "object",
+      "properties": {
+        "state": {
+          "enum": ["error", "pass"]
+        }
+      },
       "additionalProperties": {
-        "enum": ["error", "pass"]
+        "enum": ["error", "pass", "empty"]
       }
     },
     "extract": {

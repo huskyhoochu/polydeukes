@@ -5,17 +5,26 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
-import {
-  type CheckRepo,
-  createCheckRepo,
-  DEFAULT_PRODUCTION_GLOB,
-  telemetryRows,
-  writeConfigAt,
-} from './helpers.ts';
+import { type CheckRepo, createCheckRepo, telemetryRows, writeConfigAt } from './helpers.ts';
 
 const DRAFT_ID = 'bilingual-docs-sync';
 const draftEntry = { id: DRAFT_ID, why: 'keep the en and ko doc mirrors in sync', draft: true };
-const judgedForbid = { id: 'no-todo', forbid: 'TODO', in: DEFAULT_PRODUCTION_GLOB };
+const judgedForbid = {
+  id: 'no-todo',
+  declare: {
+    mechanism: 'added-only',
+    scope: { source: 'target.path', include: ['^src/'] },
+    supply: { pre: 'empty', post: 'empty' },
+    extract: {
+      before: [{ op: 'source', of: 'pre' }, { op: 'lines' }, { op: 'keyByPattern', re: '(TODO)' }],
+      after: [{ op: 'source', of: 'post' }, { op: 'lines' }, { op: 'keyByPattern', re: '(TODO)' }],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+    relate: [
+      { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+    ],
+  },
+};
 
 const JUDGED_ONLY = [judgedForbid];
 const WITH_DRAFT = [judgedForbid, draftEntry];

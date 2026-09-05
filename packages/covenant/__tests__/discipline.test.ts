@@ -25,191 +25,10 @@ const judgeOpts: Omit<JudgeDisciplineSpec, 'entry' | 'input'> = {
   readPreState,
 };
 
-/**
- * Build a CovenantInput whose evidence rides its own tool-call element. Flat pre/post pairs
- * are tagged for the caller: `pre === null` is a create, else a modify.
- */
-function inputWithFileChanges(
-  fileChanges: { path: string; pre: string | null; post: string }[],
-): CovenantInput {
-  return {
-    toolCalls: fileChanges.map(({ path, pre, post }, index) => ({
-      name: `call-${index}`,
-      args: { file_path: path },
-      fileChange:
-        pre === null ? { kind: 'create', path, post } : { kind: 'modify', path, pre, post },
-    })),
-    subagentSpawns: [],
-    userMessages: [],
-  };
-}
-
 /** Build a CovenantInput carrying a single tool call. */
 function inputWithToolCall(name: string, args: Record<string, unknown>): CovenantInput {
   return { toolCalls: [{ name, args }], subagentSpawns: [], userMessages: [] };
 }
-
-describe('judgeDiscipline — forbid delta family', () => {
-  const forbidHex: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
-
-  it('breaks when an in-scope edit ADDS a new match, naming the id and the added text', () => {
-    // The reason must cite both the discipline id and the newly matched string.
-    const input = inputWithFileChanges([
-      { path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    const verdict = judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input });
-
-    expect(verdict.upheld).toBe(false);
-    if (verdict.upheld === false) {
-      expect(verdict.reason).toContain('no-hex');
-      expect(verdict.reason).toContain('#123456');
-    }
-  });
-
-  it('upholds a debt-only edit that adds no new match (added semantics)', () => {
-    // Judgment is on the added delta, not on presence in post: otherwise every edit to a
-    // debt-bearing file blocks.
-    const input = inputWithFileChanges([
-      { path: 'src/a.css', pre: 'a: #123456;', post: 'a: #123456;\nmargin: 0;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-
-  it('upholds a violation added to an out-of-scope file (in scope excludes it)', () => {
-    // Ignoring the `in` glob turns a scoped discipline into a global one.
-    const input = inputWithFileChanges([
-      { path: 'docs/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-
-  it('upholds a violation added to an except-matched file (except wins over in)', () => {
-    // `except` subtracts from `in`, rather than being OR-combined with it.
-    const scoped: DisciplineEntry = {
-      id: 'no-hex',
-      in: ['src/**'],
-      except: ['src/vendor/**'],
-      forbid: '#[0-9a-f]{6}',
-    };
-    const input = inputWithFileChanges([
-      { path: 'src/vendor/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: scoped, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-
-  it('judges every file change when `in` is absent (absent = all)', () => {
-    // An absent `in` means every file change, never "match nothing".
-    const noScope: DisciplineEntry = { id: 'no-hex', forbid: '#[0-9a-f]{6}' };
-    const input = inputWithFileChanges([
-      { path: 'anywhere/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: noScope, input: input }).upheld).toBe(false);
-  });
-
-  it('relativizes an absolute in-scope path against rootDir before matching', () => {
-    // An absolute path under rootDir must be relativized before the glob sees it: matched
-    // raw it never matches, and the discipline goes silently inert.
-    const input = inputWithFileChanges([
-      { path: '/repo/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input }).upheld).toBe(false);
-  });
-
-  it('upholds when an absolute path is outside rootDir (never matches)', () => {
-    // A path outside the repo root is out of scope by declaration: a relativization
-    // producing `../…` must not be fed to the glob, or files outside the repo get judged.
-    const input = inputWithFileChanges([
-      { path: '/elsewhere/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-
-  it('breaks a new file (pre=null) whose post contains a match (all post is added)', () => {
-    // A newly created in-scope file has no debt to forgive: coercing a null pre to a
-    // post-equal baseline forgives brand-new violations.
-    const input = inputWithFileChanges([{ path: 'src/new.css', pre: null, post: 'b: #123456;' }]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: input }).upheld).toBe(false);
-  });
-
-  it('produces the same verdict for the string shorthand and the { added } object form', () => {
-    // The two forms must not route to different judgment paths, leaving only one of them
-    // enforcing the pattern.
-    const stringForm: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
-    const objectForm: DisciplineEntry = {
-      id: 'no-hex',
-      in: ['src/**'],
-      forbid: { added: '#[0-9a-f]{6}' },
-    };
-    const input = inputWithFileChanges([
-      { path: 'src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: stringForm, input: input })).toEqual(
-      judgeDiscipline({ ...judgeOpts, entry: objectForm, input: input }),
-    );
-  });
-
-  it('upholds when there are no file changes at all (defensive re-check)', () => {
-    // Routing would not have matched, but the judge must uphold rather than throw when
-    // there is no file-change evidence at all.
-    const noFc: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: forbidHex, input: noFc })).toEqual({
-      upheld: true,
-    });
-  });
-});
-
-describe('judgeDiscipline — immutable path family', () => {
-  const immutable: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
-
-  it('breaks a modification (pre !== null) of a glob-matching file, naming id and path', () => {
-    // The reason must name both the id and the path.
-    const input = inputWithFileChanges([{ path: 'config/a.lock', pre: 'old', post: 'new' }]);
-
-    const verdict = judgeDiscipline({ ...judgeOpts, entry: immutable, input: input });
-
-    expect(verdict.upheld).toBe(false);
-    if (verdict.upheld === false) {
-      expect(verdict.reason).toContain('lockfile');
-      expect(verdict.reason).toContain('config/a.lock');
-    }
-  });
-
-  it('upholds creation (pre === null) of a glob-matching file', () => {
-    // Creating the file is allowed; only mutation is forbidden, or the file could never be
-    // authored in the first place.
-    const input = inputWithFileChanges([{ path: 'config/a.lock', pre: null, post: 'seed' }]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-
-  it('upholds a modification of a non-matching path', () => {
-    const input = inputWithFileChanges([{ path: 'src/a.ts', pre: 'old', post: 'new' }]);
-
-    expect(judgeDiscipline({ ...judgeOpts, entry: immutable, input: input })).toEqual({
-      upheld: true,
-    });
-  });
-});
 
 describe('judgeDiscipline — forbidCommand command family', () => {
   const forbidCmd: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
@@ -249,7 +68,30 @@ describe('judgeDiscipline — forbidCommand command family', () => {
 });
 
 describe('compileDisciplineRegistrations — registration shape', () => {
-  const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
+  const declareEntry = {
+    id: 'no-hex',
+    declare: {
+      mechanism: 'added-only',
+      scope: { source: 'target.path', include: ['^src/'] },
+      supply: { pre: 'empty', post: 'empty' },
+      extract: {
+        before: [
+          { op: 'source', of: 'pre' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(#[0-9a-f]{6})' },
+        ],
+        after: [
+          { op: 'source', of: 'post' },
+          { op: 'lines' },
+          { op: 'keyByPattern', re: '(#[0-9a-f]{6})' },
+        ],
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+      },
+      relate: [
+        { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}' },
+      ],
+    },
+  } as unknown as DisciplineEntry;
   const cmdEntry: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
   function specWith(disciplines: DisciplineEntry[], input?: CovenantInput): CompileDisciplinesSpec {
@@ -275,9 +117,9 @@ describe('compileDisciplineRegistrations — registration shape', () => {
       subagentSpawns: [],
       userMessages: [],
     };
-    const regs = compileDisciplineRegistrations(specWith([forbidEntry, cmdEntry]));
+    const regs = compileDisciplineRegistrations(specWith([declareEntry, cmdEntry]));
 
-    // Two judged registrations, then the delta entry's shell skip arm and the common
+    // Two judged registrations, then the declaration's shell skip arm and the common
     // shell-unjudgeable backstop.
     expect(regs).toHaveLength(4);
     expect(regs[0].label).toBe('no-hex');
@@ -298,7 +140,7 @@ describe('compileDisciplineRegistrations — registration shape', () => {
     // The per-entry registration is the seat of a per-discipline witness: dropping the field
     // during compilation silently hardens every discipline past its configuration.
     const witness: NonNullable<CovenantRegistration['witness']> = () => false;
-    const regs = compileDisciplineRegistrations({ ...specWith([forbidEntry]), witness: witness });
+    const regs = compileDisciplineRegistrations({ ...specWith([cmdEntry]), witness: witness });
 
     expect(regs[0].witness).toBe(witness);
   });
@@ -308,7 +150,7 @@ describe('compileDisciplineRegistrations — registration shape', () => {
     // valve with it, leaving no way to edit the config that caused it. It skips alone
     // instead, and routes to nothing, since the pattern that would define its matches is
     // the broken one.
-    const [reg] = compileDisciplineRegistrations(specWith([{ id: 'bad', forbid: '(' }]));
+    const [reg] = compileDisciplineRegistrations(specWith([{ id: 'bad', forbidCommand: '(' }]));
 
     expect(reg.skip).toBeDefined();
     expect(reg.body).toBeUndefined();
@@ -317,8 +159,6 @@ describe('compileDisciplineRegistrations — registration shape', () => {
 });
 
 describe('compileDisciplineRegistrations — matches closure', () => {
-  const forbidEntry: DisciplineEntry = { id: 'no-hex', in: ['src/**'], forbid: '#[0-9a-f]{6}' };
-  const immutableEntry: DisciplineEntry = { id: 'lockfile', immutable: ['config/*.lock'] };
   const cmdEntry: DisciplineEntry = { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' };
 
   function compileOne(entry: DisciplineEntry): CovenantRegistration {
@@ -331,31 +171,6 @@ describe('compileDisciplineRegistrations — matches closure', () => {
     });
     return reg;
   }
-
-  it('forbid matches returns the relativized in-scope path for a matching file change', () => {
-    // A matched forbid entry routes with its RELATIVIZED path as the telemetry subject;
-    // the raw absolute path is subject noise.
-    const reg = compileOne(forbidEntry);
-    const input = inputWithFileChanges([
-      { path: '/repo/src/a.css', pre: 'a: 0;', post: 'a: 0;\nb: #123456;' },
-    ]);
-
-    expect(reg.matches?.(input)).toBe('src/a.css');
-  });
-
-  it('forbid matches returns null for an out-of-scope file change', () => {
-    const reg = compileOne(forbidEntry);
-    const input = inputWithFileChanges([{ path: 'docs/a.css', pre: 'a: 0;', post: 'b: #123456;' }]);
-
-    expect(reg.matches?.(input)).toBeNull();
-  });
-
-  it('immutable matches returns the relativized in-scope path for a matching change', () => {
-    const reg = compileOne(immutableEntry);
-    const input = inputWithFileChanges([{ path: '/repo/config/a.lock', pre: 'x', post: 'y' }]);
-
-    expect(reg.matches?.(input)).toBe('config/a.lock');
-  });
 
   it('forbidCommand matches returns "-" when a shell command matches the pattern', () => {
     // A command match has no path, so it surfaces the non-path subject '-' rather than
@@ -379,7 +194,7 @@ describe('discipline extensibility — a fresh entry works with no other setup',
     // Adding a discipline is data, not code: an entry the source never saw must compile
     // into a working registration and judge correctly, so any per-id special-casing in the
     // compiler or judge would leave an unregistered id inert.
-    const fresh: DisciplineEntry = { id: 'no-todo', in: ['app/**'], forbid: '\\bTODO\\b' };
+    const fresh: DisciplineEntry = { id: 'no-todo', forbidCommand: '\\bTODO\\b' };
 
     const [reg] = compileDisciplineRegistrations({
       disciplines: [fresh],
@@ -388,17 +203,15 @@ describe('discipline extensibility — a fresh entry works with no other setup',
       commandArgs: ['command'],
       readPreState,
     });
-    const input = inputWithFileChanges([
-      { path: 'app/x.ts', pre: 'const a = 1;', post: 'const a = 1; // TODO fix' },
-    ]);
+    const input = inputWithToolCall('Bash', { command: 'echo TODO fix' });
 
     expect(reg.label).toBe('no-todo');
-    expect(reg.matches?.(input)).toBe('app/x.ts');
+    expect(reg.matches?.(input)).toBe('-');
     const verdict = judgeDiscipline({ ...judgeOpts, entry: fresh, input: input });
     expect(verdict.upheld).toBe(false);
     if (verdict.upheld === false) {
       expect(verdict.reason).toContain('no-todo');
-      expect(verdict.reason).toContain('TODO');
+      expect(verdict.reason).toContain('command matches forbidden pattern');
     }
   });
 });

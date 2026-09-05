@@ -34,14 +34,12 @@
 
 | 계열 | 키 | 판정 대상 | 필요한 증거 |
 |---|---|---|---|
-| 델타 | `forbid` | 파일 변경의 추가 방향 내용입니다. 기존 부채는 사면하고 새 출현만 위반입니다 | 파일 변경 |
-| 경로 | `immutable` | 이미 있는 파일에 가해지는 변경 전부입니다. 수정이든 삭제든 같습니다. 생성은 통과합니다 | 파일 변경 |
 | 명령 | `forbidCommand` | 명령줄 자체 | 없음 |
 | 맥락 | `requirePrecedent` | 세션 이력입니다. 이 호출 **앞에** 자격을 갖춘 호출이 실제로 실행됐는가 | 대화 기록(transcript) |
 | 선언 | `declare` | 데이터로 적은 판정 하나입니다. 변경을 `target.path` · `pre` · `post` · `state`의 세계로 놓고 `relate ∘ extract`를 돌립니다 | 파일 변경 |
 
 `when`은 계열이 아니라 방아쇠입니다. `requirePrecedent` 항목의 범위를 좁힐 뿐 다른
-무엇과도 결합하지 않습니다. 이 항목들을 쓰는 가이드는 술어 다섯 형태와 함정 둘까지
+무엇과도 결합하지 않습니다. 이 항목들을 쓰는 가이드는 술어 세 형태와 함정 둘까지
 [설정 레퍼런스의 `disciplines` 절](./configuration.ko.md#disciplines)에
 있습니다. 선언 문법은 코어의 `algebra-declaration.schema.json`입니다.
 

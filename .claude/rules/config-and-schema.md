@@ -24,9 +24,11 @@ trigger is "editing this file at all".
 
 ## A line anchor silently disarms a multi-line pattern
 
-`^` without the `m` flag anchors to the whole string. The delta and context families scan a
+`^` without the `m` flag anchors to the whole string. The context family's `when` scans a
 file's whole content as one string, so a line-shaped pattern written with `^` matches only
-the first line and the discipline silently stops firing — write `(^|\n)` there. The command
+the first line and the discipline silently stops firing — write `(^|\n)` there. A
+declaration's `lines` step splits first, so `^` inside `keyByPattern` or `matches` after it
+is a line start. The command
 family judges the union of each line and the whole string, so `^` means start of a line on
 that axis and a pattern spanning a line boundary still matches. Any anchored pattern needs
 a fixture with the violation on a later line.
@@ -46,9 +48,10 @@ Zero valid entries must never become universal-uphold. Both judge bodies fail cl
 empty list for exactly this reason, and the pair-grid argv parser treats a `--`-prefixed value
 as a shifted grid rather than a value.
 
-## Added-direction filtering is what makes delta entries usable
+## Added-direction filtering is what makes added-only declarations usable
 
-A delta entry judges only added lines, which is what lets a discipline land on a repository
-that already violates it. When a fixture is a file the branch *creates*, every line reads as
-added — so a contract test whose literals are the contract needs an `except`, or it trips its
-own discipline on any commit that re-creates it.
+An added-only declaration (`onlyIn` of `post` over `pre`, `supply: empty` on both sides)
+judges only what the edit adds, which is what lets a discipline land on a repository that
+already violates it. When a fixture is a file the branch *creates*, every line reads as
+added — so a contract test whose literals are the contract needs a `scope.exclude`, or it
+trips its own discipline on any commit that re-creates it.

@@ -31,10 +31,9 @@ telemetry.
   pass is measured as `witnessed`.
 - **Delta layer** — pure new-violation-only judgment over a file's before/after pair:
   pre-existing debt is forgiven, and only the matches an edit adds break the covenant. This is
-  the execution base the standard discipline library's `forbid` predicate builds on.
+  the execution base the context family's `when` trigger builds on.
 - **Standard discipline library** — config `disciplines:` entries become enforcement without a
-  line of code: `forbid` (delta family — new occurrences only), `immutable` (path family —
-  modification blocks, creation passes), `forbidCommand` (command family — a content predicate
+  line of code: `forbidCommand` (command family — a content predicate
   that routes commands mentioning *no* protected path, closing the path-mention routing gap), and
   `requirePrecedent` (context family — see below), and `declare` (declaration family — an
   algebra declaration the engine below judges, each file change supplied as one world). One

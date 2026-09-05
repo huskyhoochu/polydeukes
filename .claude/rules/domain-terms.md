@@ -50,10 +50,8 @@ carries.
 
 | Family | Key | Evidence |
 |--------|-----|---------|
-| **delta** | `forbid` | Added-direction content of a file change; existing debt is forgiven. |
 | **command** | `forbidCommand` | The command line itself; no file evidence. |
 | **context** | `requirePrecedent` | Session history; without a transcript channel the entry records `skipped`. |
-| **path** | `immutable` | Whole-path mention or mutation target; the key's own glob is the scope. Not the meta-covenants' protected-path matching. |
 | **declaration** | `declare` | One algebra declaration over each file change as a world; its `scope` block is its scope, no `in`/`except`/`when`. |
 
 `when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
@@ -85,7 +83,8 @@ outside a closed list is rejected by validation, never coerced.
   `{ name: { sidecar: true } }` or `{ name: { transcript: true } }`; the kind position is closed
   to `file` · `sidecar` · `transcript`, and a sidecar or transcript binding's value is the marker
   `true`, never a path), **`supply`** (keys must name one of the fixed five or one of the
-  declaration's own `sources`; values `error` | `pass`), **`extract`**, **`relate`**,
+  declaration's own `sources`; values `error` | `pass` | `empty` — `empty` reads an absent single
+  source as an empty item list and never applies to `state`), **`extract`**, **`relate`**,
   **`witness`** (its own `extract` + `relate`, same grammar; it sees the body's extract names,
   the body never sees its). `mechanism` is required; there is no `axis` key.
 - **Fixed source names** — five per world: `target.path` · `pre` · `post` · `state`
