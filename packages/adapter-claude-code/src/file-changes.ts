@@ -10,8 +10,8 @@
 
 import type { FileChange } from '@polydeukes/core';
 import { isPlainObject } from '@polydeukes/core';
-import { parsePayloadEnvelope } from './payload-envelope.js';
-import { virtualPostState } from './virtual-post-state.js';
+import { parsePayloadEnvelope } from './payload-envelope.ts';
+import { virtualPostState } from './virtual-post-state.ts';
 
 /** The tools whose post-state is computable — the only fileChanges contributors. */
 const MUTATING_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);

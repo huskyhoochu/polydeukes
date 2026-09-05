@@ -1,18 +1,18 @@
 import type { CovenantInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { type TokenizeResult, tokenizeCommandLine } from '../src/bash-line.js';
-import { type CovenantRegistration, matchRegistrations } from '../src/dispatch.js';
-import { deriveShellChanges } from '../src/shell-evidence.js';
+import { type TokenizeResult, tokenizeCommandLine } from '../src/bash-line.ts';
+import { type CovenantRegistration, matchRegistrations } from '../src/dispatch.ts';
+import { deriveShellChanges } from '../src/shell-evidence.ts';
 import {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
-} from '../src/shell-mod.js';
+} from '../src/shell-mod.ts';
 import {
   judgeTranscriptModification,
   type TranscriptModificationSpec,
-} from '../src/transcript-mod.js';
-import { exitThunk } from './helpers.js';
+} from '../src/transcript-mod.ts';
+import { exitThunk } from './helpers.ts';
 
 // The tokenizer never discards a line it could not finish reading: `TokenizeResult` is
 // `{ commands, unread }`, and the two judges narrow their mention fallback from the whole raw

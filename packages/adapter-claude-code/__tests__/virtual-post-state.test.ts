@@ -1,6 +1,6 @@
 import { normalizeProtectedPaths } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { type VirtualPostState, virtualPostState } from '../src/virtual-post-state.js';
+import { type VirtualPostState, virtualPostState } from '../src/virtual-post-state.ts';
 
 // Realistic Claude Code PreToolUse hook payloads (snake_case). Claude vocabulary
 // (old_string / new_string / replace_all) lives here and in the adapter, never in core.

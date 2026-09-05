@@ -239,7 +239,7 @@ function defineConfigAccepts(config: unknown): boolean {
 describe('JSON Schema artifact', () => {
   it('declares the draft 2020-12 $schema', () => {
     // A schema authored against an older draft would be silently misinterpreted by
-    // ajv/dist/2020 rather than failing outright.
+    // ajv/dist/2020.js rather than failing outright.
     expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
   });
 });

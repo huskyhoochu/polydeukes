@@ -12,7 +12,7 @@ import { runCovenant } from '../src/run-covenant.ts';
 import { selfModRegistration } from '../src/self-mod.ts';
 import { shellModRegistration } from '../src/shell-mod.ts';
 import { transcriptModRegistration } from '../src/transcript-mod.ts';
-import { inputWithArgs, readTelemetryLines } from './helpers.js';
+import { inputWithArgs, readTelemetryLines } from './helpers.ts';
 
 const PROTECTED_ENTRY = 'sub/protected';
 const MUTATING_TOOL = 'Edit';

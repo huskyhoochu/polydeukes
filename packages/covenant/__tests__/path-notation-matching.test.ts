@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { mentionsPath, pathMatchesProtected, pathSegments } from '../src/mention.js';
-import { inputWithArgs } from './helpers.js';
+import { mentionsPath, pathMatchesProtected, pathSegments } from '../src/mention.ts';
+import { inputWithArgs } from './helpers.ts';
 
 // Interior `.` and `..` are resolved as a UNION with the raw comparison, and every notation
 // that cannot be resolved without running the shell or reading the disk is left undecidable on

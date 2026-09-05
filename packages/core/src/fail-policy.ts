@@ -6,7 +6,7 @@
  * block and which pass through" lives here, not scattered across call sites.
  */
 
-import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from './exit-codes.js';
+import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from './exit-codes.ts';
 
 /** How a failure resolves: 'open' passes the call through, 'closed' blocks it. */
 export type FailMode = 'open' | 'closed';

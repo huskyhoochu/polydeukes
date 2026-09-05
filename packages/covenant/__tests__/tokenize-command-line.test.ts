@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tokenizeCommandLine } from '../src/bash-line.js';
+import { tokenizeCommandLine } from '../src/bash-line.ts';
 
 describe('quote preservation', () => {
   it('keeps a single-quoted string containing a command separator as one word', () => {

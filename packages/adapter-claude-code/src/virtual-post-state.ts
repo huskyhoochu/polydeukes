@@ -8,7 +8,7 @@
  */
 
 import { isPlainObject } from '@polydeukes/core';
-import { parsePayloadEnvelope } from './payload-envelope.js';
+import { parsePayloadEnvelope } from './payload-envelope.ts';
 
 /**
  * `VirtualPostState` — the result of computing one payload's post-state.

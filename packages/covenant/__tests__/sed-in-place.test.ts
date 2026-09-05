@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractMutations } from '../src/bash-line.js';
-import { sedInPlaceRule } from '../src/mutation-rules.js';
+import { extractMutations } from '../src/bash-line.ts';
+import { sedInPlaceRule } from '../src/mutation-rules.ts';
 
 // Driven through extractMutations with real shell lines rather than by calling the rule
 // directly, so each case exercises the assembled surface.

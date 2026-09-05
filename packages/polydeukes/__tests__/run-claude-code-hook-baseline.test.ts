@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // and never blocks: no exit code and no judgment row changes because of it, and any
 // comparison failure stays inside the hook.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
-import { telemetryRows, writeConfigAt } from './helpers';
+import { telemetryRows, writeConfigAt } from './helpers.ts';
 
 /** Injected fixture values — the config entries and the files judged under them. */
 const PROTECTED_ENTRY = 'gate';

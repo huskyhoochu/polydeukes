@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { MutationRule, SimpleCommand } from '../src/bash-line.js';
-import { extractMutations } from '../src/bash-line.js';
+import type { MutationRule, SimpleCommand } from '../src/bash-line.ts';
+import { extractMutations } from '../src/bash-line.ts';
 
 // A test-only rule, so that these cases verify the rule seam rather than any shipped rule's
 // behaviour: a command whose first word is "mutate" is treated as writing its second word.

@@ -15,10 +15,10 @@ import { resolveGitAdapterSettings } from '@polydeukes/adapter-git';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
-import { assembleSessionRegistrations } from './claude-code-hook.js';
-import { assembleCommitRegistrations } from './covenant-check.js';
-import { loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
-import { loadConfig } from './load-config.js';
+import { assembleSessionRegistrations } from './claude-code-hook.ts';
+import { assembleCommitRegistrations } from './covenant-check.ts';
+import { loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import { loadConfig } from './load-config.ts';
 
 /** `explain` input — the repository whose config is read. */
 export type ExplainSpec = {

@@ -6,6 +6,7 @@ paths:
   - "turbo.json"
   - "packages/*/turbo.json"
   - "vitest.config.ts"
+  - "packages/*/tsconfig*.json"
   - "release-please-config.json"
 ---
 
@@ -100,6 +101,20 @@ with the standard `tsc` binary (not `@typescript/native-preview`/`tsgo`), so the
 tsconfig sets `types: ["node"]`.
 **Caveat:** TS 7.0 ships **no programmatic compiler API** (planned for 7.1) — avoid depending on
 it in `core` until then.
+
+## Module resolution is NodeNext and imports spell `.ts`
+
+Every package `tsconfig.json` sets `module` and `moduleResolution` to `NodeNext` with
+`rewriteRelativeImportExtensions: true`. A relative import is written with the source's own
+extension (`from './discipline.ts'`) in `src/` and `__tests__/` alike; tsc rewrites it to `.js`
+in the emitted JavaScript, so dist carries the file names Node resolves. An extensionless
+relative import is a Node error and now a type error — `Bundler` resolution used to admit it.
+Declaration files keep the `.ts` spelling and TypeScript resolves it to the `.d.ts` beside
+it, so a consumer typechecks against the published tarball unchanged. A test that asserts a
+source file's import text asserts `.ts`; one that names a dist file names `.js`. CommonJS
+dependencies read differently under NodeNext: a subpath outside an `exports` map needs its
+file extension (`ajv/dist/2020.js`), and a plugin exported as `module.exports = fn` with
+`exports.default = fn` is called as `ns.default.default(...)` from a namespace import.
 
 ## Build-graph blind spots
 

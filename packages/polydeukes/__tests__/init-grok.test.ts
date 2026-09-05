@@ -446,7 +446,7 @@ describe('bin wiring — pdks init grok', () => {
     const source = readFileSync(resolve(import.meta.dirname, '../src/bin.ts'), 'utf-8');
 
     expect(source).toMatch(/args\[1\] === ['"]grok['"]/);
-    expect(source).toMatch(/import\(\s*['"]\.\/init-grok\.js['"]\s*\)/);
+    expect(source).toMatch(/import\(\s*['"]\.\/init-grok\.ts['"]\s*\)/);
     expect(source).toMatch(/usage:.*init grok/);
   });
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+import * as ajvFormats from 'ajv-formats';
 
 /**
  * The published JSON Schema, compiled once for the schema ⟺ `defineConfig` contract suites.
@@ -16,7 +16,9 @@ export const schema = JSON.parse(readFileSync(schemaPath, 'utf8')) as Record<str
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 // Arms format validation ('regex' etc.). Without it a malformed pattern passes ajv while
 // defineConfig throws, and the suites would read that drift as an equivalence.
-addFormats(ajv);
+// A CommonJS plugin under NodeNext: `default` is `module.exports`, and the plugin sets its own
+// `default` to itself, so both spellings are the function — this one is the typed one.
+ajvFormats.default.default(ajv);
 
 /** Validate a config object against the published schema. */
 export const validate = ajv.compile(schema);

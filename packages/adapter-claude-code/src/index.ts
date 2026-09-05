@@ -13,17 +13,17 @@ export {
   type DispatchAdapterView,
   type RunAdapterPathSpec,
   runAdapterPath,
-} from './run-adapter-path.js';
+} from './run-adapter-path.ts';
 export {
   type SessionChannelReaderSpec,
   sessionChannelReader,
-} from './session-channel-reader.js';
-export { type SessionSourceReaderSpec, sessionSourceReader } from './session-source-reader.js';
+} from './session-channel-reader.ts';
+export { type SessionSourceReaderSpec, sessionSourceReader } from './session-source-reader.ts';
 export {
   COMMAND_ARGS,
   MUTATING_TOOLS,
   SHELL_TOOLS,
   type TranscriptPathFromPayloadSpec,
   transcriptPathFromPayload,
-} from './session-vocabulary.js';
-export { type TranscriptFromJsonlFileSpec, transcriptFromJsonlFile } from './transcript.js';
+} from './session-vocabulary.ts';
+export { type TranscriptFromJsonlFileSpec, transcriptFromJsonlFile } from './transcript.ts';

@@ -8,10 +8,10 @@
  * spec of the name it carries. Nothing here runs an extraction or opens a world.
  */
 
-import type { AlgebraDeclaration, ExtractBlock, RelationName } from './algebra.js';
-import { isPlainObject } from './is-plain-object.js';
-import { FIXED_SOURCE_NAMES } from './source-names.js';
-import { ConfigValidationError } from './validation.js';
+import type { AlgebraDeclaration, ExtractBlock, RelationName } from './algebra.ts';
+import { isPlainObject } from './is-plain-object.ts';
+import { FIXED_SOURCE_NAMES } from './source-names.ts';
+import { ConfigValidationError } from './validation.ts';
 
 /** The four axes a declaration can read, closed. This tuple is the single source of the list. */
 export const AXIS_NAMES = ['change', 'actor', 'world', 'history'] as const;

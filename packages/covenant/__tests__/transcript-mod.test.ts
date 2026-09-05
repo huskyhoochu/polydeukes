@@ -1,12 +1,12 @@
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_READ_ONLY_COMMANDS } from '../src/shell-mod.js';
+import { DEFAULT_READ_ONLY_COMMANDS } from '../src/shell-mod.ts';
 import {
   judgeTranscriptModification,
   type TranscriptModificationSpec,
   type TranscriptModRegistrationSpec,
   transcriptModRegistration,
-} from '../src/transcript-mod.js';
+} from '../src/transcript-mod.ts';
 
 // The transcript-mod predicate protects EXACTLY ONE FILE, by whole-path equality across every
 // spelling, never as an ancestor. The judge receives HOME as data and reads no environment

@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { writeConfigAt } from './helpers';
+import { writeConfigAt } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');

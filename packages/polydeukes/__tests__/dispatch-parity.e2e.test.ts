@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import type { TelemetryRecord } from '@polydeukes/core';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mentionsPath, pathMatchesProtected } from '../src/mention.js';
-import { inputWithArgs } from './helpers.js';
+import { mentionsPath, pathMatchesProtected } from '../src/mention.ts';
+import { inputWithArgs } from './helpers.ts';
 
 // The protected path and candidate strings are chosen to exercise the ancestor, descendant,
 // equal, and segment-boundary-prefix cases of the matching primitive.

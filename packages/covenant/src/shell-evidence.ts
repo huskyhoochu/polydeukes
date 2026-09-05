@@ -19,15 +19,15 @@ import {
   type RedirectToken,
   type SimpleCommand,
   tokenizeCommandLine,
-} from './bash-line.js';
+} from './bash-line.ts';
 import {
   commandBasename,
   isFdReference,
   redirectWriteRule,
   sedInPlaceRule,
   teeRule,
-} from './mutation-rules.js';
-import { DEFAULT_READ_ONLY_COMMANDS } from './shell-mod.js';
+} from './mutation-rules.ts';
+import { DEFAULT_READ_ONLY_COMMANDS } from './shell-mod.ts';
 
 /** A computed write: the target, the exact bytes written, and the redirect direction. */
 export type ShellChange = {

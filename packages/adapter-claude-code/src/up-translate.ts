@@ -13,7 +13,7 @@
 
 import { type CovenantInput, EXIT_BREAK_BLOCKING } from '@polydeukes/core';
 
-import { parsePayloadEnvelope } from './payload-envelope.js';
+import { parsePayloadEnvelope } from './payload-envelope.ts';
 
 /**
  * `ClaudePreToolUsePayload` — a Claude Code PreToolUse hook payload.

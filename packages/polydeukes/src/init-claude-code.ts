@@ -24,10 +24,10 @@ import { findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
 import { MUTATING_TOOLS, SHELL_TOOLS } from '@polydeukes/adapter-claude-code';
 import { isPlainObject } from '@polydeukes/core';
-import { TOPICS } from './docs-query.js';
-import { retargetGrokHookCommandToClaude } from './init-grok.js';
-import { CONFIG_FILENAMES } from './load-config.js';
-import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
+import { TOPICS } from './docs-query.ts';
+import { retargetGrokHookCommandToClaude } from './init-grok.ts';
+import { CONFIG_FILENAMES } from './load-config.ts';
+import { type ScaffoldReport, scaffoldProject } from './scaffold-project.ts';
 
 /** The published entry point the generated hook loads the judge through. */
 const HOOK_SPECIFIER = 'polydeukes/claude-code';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractMutations } from '../src/bash-line.js';
-import { redirectWriteRule, teeRule } from '../src/mutation-rules.js';
+import { extractMutations } from '../src/bash-line.ts';
+import { redirectWriteRule, teeRule } from '../src/mutation-rules.ts';
 
 // Both rules are driven through extractMutations with real shell lines rather than called
 // directly, so each case exercises the assembled surface.

@@ -14,7 +14,7 @@ import {
   distWithout as sharedDistWithout,
   telemetryRows,
   writeConfigAt,
-} from './helpers';
+} from './helpers.ts';
 
 /** A library module the covenant barrel (index.js) references eagerly — not a body CLI. */
 const BARREL_MODULE = 'self-mod.js';

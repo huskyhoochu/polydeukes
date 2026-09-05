@@ -11,9 +11,9 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
-import { mentionsPath, pathMatchesProtected, provenChangePath } from './mention.js';
-import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.ts';
+import { mentionsPath, pathMatchesProtected, provenChangePath } from './mention.ts';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
 
 /**
  * `SelfModificationSpec` — the injected axes of the judge.

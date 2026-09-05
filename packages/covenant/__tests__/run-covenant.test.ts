@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCovenant } from '../src/run-covenant.ts';
-import { exitThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, readTelemetryLines } from './helpers.ts';
 
 let dir: string;
 let telemetryPath: string;

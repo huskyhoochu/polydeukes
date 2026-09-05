@@ -7,7 +7,7 @@
  * the query vocabulary. Pure types and functions, zero I/O.
  */
 
-import type { CovenantInput } from './protocol.js';
+import type { CovenantInput } from './protocol.ts';
 
 /**
  * One user message observed in the session.

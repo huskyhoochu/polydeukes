@@ -6,16 +6,16 @@
  * kernel expansion laws quoted on each relation branch below are comments, never code.
  */
 
-import { validateMechanism } from './catalogue.js';
-import { isPlainObject } from './is-plain-object.js';
-import { FIXED_SOURCE_NAMES } from './source-names.js';
+import { validateMechanism } from './catalogue.ts';
+import { isPlainObject } from './is-plain-object.ts';
+import { FIXED_SOURCE_NAMES } from './source-names.ts';
 import {
   ConfigValidationError,
   isNonEmptyString,
   isStringArray,
   rejectUncompilableRegex,
   rejectUnknownKeys,
-} from './validation.js';
+} from './validation.ts';
 
 /** The relation position, closed. This tuple is the single source of the list. */
 export const RELATION_NAMES = [

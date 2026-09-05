@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { virtualPostState } from '../src/virtual-post-state.js';
+import { virtualPostState } from '../src/virtual-post-state.ts';
 
 // Two dispositions this parser deliberately refuses to soften. A softer implementation
 // could answer the untouched original when old_string never occurs, or an empty file when

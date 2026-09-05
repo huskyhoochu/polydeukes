@@ -11,11 +11,11 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
-import { mentionsPath, untokenizableLineCandidates } from './mention.js';
-import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
-import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
+import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.ts';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.ts';
+import { mentionsPath, untokenizableLineCandidates } from './mention.ts';
+import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.ts';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
 
 /**
  * `ShellModificationSpec` — the injected axes of the judge.

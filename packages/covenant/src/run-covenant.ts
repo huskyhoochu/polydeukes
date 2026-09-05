@@ -18,7 +18,7 @@ import {
   type SkipReason,
   type TelemetryEvent,
 } from '@polydeukes/core';
-import type { Break } from './declaration-engine.js';
+import type { Break } from './declaration-engine.ts';
 
 /** The wrapper's final verdict — `1` never escapes: a break becomes the blocking `2`. */
 type WrapperExitCode = typeof EXIT_UPHOLD | typeof EXIT_BREAK_BLOCKING;

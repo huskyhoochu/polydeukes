@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // Type-only, so the runner itself stays off this file's load path (the lazy import below
 // is what actually pulls it in).
-import type { CheckDomain } from './covenant-check.js';
+import type { CheckDomain } from './covenant-check.ts';
 
 /**
  * Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. The runner
@@ -75,7 +75,7 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
     // off `covenant check`'s load path, which a pre-commit hook spawns on every commit. A
     // rejected import outside the try would reach node's unhandled-rejection exit 1, the
     // exact crash this bin refuses to make.
-    const { initClaudeCode } = await import('./init-claude-code.js');
+    const { initClaudeCode } = await import('./init-claude-code.ts');
     const { created, skipped } = initClaudeCode({ projectRoot: process.cwd() });
     for (const path of created) {
       process.stdout.write(`created ${path}\n`);
@@ -96,7 +96,7 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
 
 if (args.length === 2 && args[0] === 'init' && args[1] === 'grok') {
   try {
-    const { initGrok } = await import('./init-grok.js');
+    const { initGrok } = await import('./init-grok.ts');
     const { created, skipped } = initGrok({ projectRoot: process.cwd() });
     for (const path of created) {
       process.stdout.write(`created ${path}\n`);
@@ -117,7 +117,7 @@ if (args[0] === 'docs' && args.length <= 2) {
   try {
     // Imported inside the try for the same reason `init` is: the query core and the
     // markdown behind it have no business on `covenant check`'s load path.
-    const { queryDocs } = await import('./docs-query.js');
+    const { queryDocs } = await import('./docs-query.ts');
     // The bundle ships beside this file, so the docs root comes from the module's own
     // location — never from the working directory, which is whatever shell invoked us.
     const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
@@ -135,7 +135,7 @@ if (args.length === 1 && args[0] === 'explain') {
   try {
     // Imported inside the try for the same reason `docs` is: the renderer pulls in both
     // composition roots, and neither belongs on `covenant check`'s load path.
-    const { explain } = await import('./explain.js');
+    const { explain } = await import('./explain.ts');
     const { text } = await explain({ repoRoot: process.cwd() });
     await emitAndExit(text);
   } catch (error) {
@@ -187,7 +187,7 @@ try {
   // where they do not, since a package installed but never built is exactly the state
   // `pdks docs install` is asked about. The catch below already answers for whatever
   // this import cannot do, at the same exit 2 it answers everything else with.
-  const { runCovenantCheck } = await import('./covenant-check.js');
+  const { runCovenantCheck } = await import('./covenant-check.ts');
   const { exitCode } = await runCovenantCheck({
     repoRoot: process.cwd(),
     ttyPrompt: openTtyPrompt(),

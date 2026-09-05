@@ -30,9 +30,9 @@ import {
   normalizeProtectedPaths,
 } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
-import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
-import { loadConfig } from './load-config.js';
-import { unobservedPreStateReader } from './pre-state-reader.js';
+import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import { loadConfig } from './load-config.ts';
+import { unobservedPreStateReader } from './pre-state-reader.ts';
 
 /**
  * Which observation of the commit surface a run judges. Only the collector differs between

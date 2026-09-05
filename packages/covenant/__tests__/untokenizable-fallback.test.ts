@@ -4,11 +4,11 @@ import {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
-} from '../src/shell-mod.js';
+} from '../src/shell-mod.ts';
 import {
   judgeTranscriptModification,
   type TranscriptModificationSpec,
-} from '../src/transcript-mod.js';
+} from '../src/transcript-mod.ts';
 
 // A line the scanner cannot finish reading, whose protected path is GLUED to a shell
 // metacharacter, must still fail closed. The command lines below are the measured bypasses

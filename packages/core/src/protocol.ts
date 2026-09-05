@@ -3,9 +3,9 @@
  * (parse stdin-JSON in, map a verdict to an exit code out).
  */
 
-import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from './exit-codes.js';
-import { isPlainObject } from './is-plain-object.js';
-import type { TelemetryEvent } from './telemetry.js';
+import { EXIT_BREAK_BLOCKING, EXIT_BREAK_NON_BLOCKING, EXIT_UPHOLD } from './exit-codes.ts';
+import { isPlainObject } from './is-plain-object.ts';
+import type { TelemetryEvent } from './telemetry.ts';
 
 /**
  * `FileChange` — one file's mutation evidence around the judged call.

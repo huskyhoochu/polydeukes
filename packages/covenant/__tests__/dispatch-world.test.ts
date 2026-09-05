@@ -5,7 +5,7 @@ import type { CovenantInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-import { inputWithArgs } from './helpers.js';
+import { inputWithArgs } from './helpers.ts';
 
 // `dispatchCovenants` takes the world axis as a spec field and attaches it to the parsed
 // input the bodies judge: the composition roots hand over a string payload built by the

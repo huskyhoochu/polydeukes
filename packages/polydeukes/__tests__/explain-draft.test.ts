@@ -11,7 +11,7 @@ import { assembleCommitRegistrations } from '../src/covenant-check.ts';
 import { loadCovenantModule } from '../src/covenant-module.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
-import { REAL_COVENANT_DIST, writeConfigAt } from './helpers';
+import { REAL_COVENANT_DIST, writeConfigAt } from './helpers.ts';
 
 /** The covenant module both `explain` and the direct assemblies below judge with — loaded
  * from the real dist so the render and the assembly cannot diverge on which judges exist. */

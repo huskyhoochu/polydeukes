@@ -26,10 +26,10 @@ import {
   scopeAdmits,
   type World,
   witnessOpens,
-} from './declaration-engine.js';
-import type { CovenantRegistration } from './dispatch.js';
-import { UNJUDGEABLE_OUTCOME } from './run-covenant.js';
-import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './shell-evidence.js';
+} from './declaration-engine.ts';
+import type { CovenantRegistration } from './dispatch.ts';
+import { UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
+import { deriveShellChanges, type ShellChange, type ShellUnjudgeable } from './shell-evidence.ts';
 
 /**
  * The shell surface as injected values, never source literals, plus the root the globs

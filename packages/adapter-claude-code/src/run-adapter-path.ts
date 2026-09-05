@@ -13,8 +13,8 @@ import {
   EXIT_BREAK_BLOCKING,
   EXIT_UPHOLD,
 } from '@polydeukes/core';
-import { collectFileChanges } from './file-changes.js';
-import { buildCovenantInput } from './up-translate.js';
+import { collectFileChanges } from './file-changes.ts';
+import { buildCovenantInput } from './up-translate.ts';
 
 /**
  * The part of a dispatch result this path reads — a structural view, not a second protocol.

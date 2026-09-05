@@ -11,8 +11,8 @@
  */
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
-import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.js';
-import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.js';
+import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.ts';
+import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.ts';
 import {
   pathCandidates,
   pathSegments,
@@ -20,10 +20,10 @@ import {
   resolveDotSegments,
   someStringValue,
   untokenizableLineCandidates,
-} from './mention.js';
-import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.js';
-import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.js';
-import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.js';
+} from './mention.ts';
+import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.ts';
+import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
+import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.ts';
 
 /**
  * `TranscriptModificationSpec` — the injected axes of the judge. Empty-string entries in

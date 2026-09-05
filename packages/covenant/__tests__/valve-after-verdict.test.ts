@@ -10,7 +10,7 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import type { RunCovenantSpec } from '../src/run-covenant.ts';
 import { runCovenant } from '../src/run-covenant.ts';
-import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 // The protected entry is a DIRECTORY and the mention a nested file, so the telemetry
 // subject — the matched entry, per the dispatcher's contract — differs from the judged path

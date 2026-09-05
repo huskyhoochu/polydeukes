@@ -30,7 +30,7 @@ import {
   SupplyFailure,
   UNARY_STEP_NAMES,
   type World,
-} from './extract-steps.js';
+} from './extract-steps.ts';
 import {
   relateEmpty,
   relateEqual,
@@ -41,11 +41,11 @@ import {
   relateUnchanged,
   type Witness,
   type WitnessWithBefore,
-} from './relations.js';
+} from './relations.ts';
 
-export type { ConfigFault, Items, SessionSnapshot, World } from './extract-steps.js';
-export { EXTRACT_STEPS, UNARY_STEP_NAMES } from './extract-steps.js';
-export type { Witness } from './relations.js';
+export type { ConfigFault, Items, SessionSnapshot, World } from './extract-steps.ts';
+export { EXTRACT_STEPS, UNARY_STEP_NAMES } from './extract-steps.ts';
+export type { Witness } from './relations.ts';
 
 /** The world name a paired source reads: its value is `{ pre, post }`, one state each. */
 const PAIRED_SOURCE = 'state';

@@ -8,7 +8,7 @@ import type { CovenantRegistration } from '../src/dispatch.ts';
 // key), a throw is the caller's fail-closed path — and an ABSENT `readChannel` (the commit
 // surface, which has no session) leaves every channel absent.
 import { planSources, supplySources } from '../src/supply.ts';
-import { exitThunk } from './helpers.js';
+import { exitThunk } from './helpers.ts';
 
 // Source names, file paths, and channel texts are fixture values.
 const SPAWNS = { name: 'spawns', sidecar: true } as const;

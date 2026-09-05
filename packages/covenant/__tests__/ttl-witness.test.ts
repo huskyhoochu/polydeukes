@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
 import { ttlWitness } from '../src/ttl-witness.ts';
-import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 const TOKEN = 'PDKS-WITNESS-42';
 const NOW = 1_000_000;

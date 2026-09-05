@@ -9,7 +9,7 @@ import { dispatchCovenants } from '../src/dispatch.ts';
 // verdict cell — body exit 1 becomes exit 0 · 'advised'; every unjudgeable outcome (2, 3+,
 // null) stays exit 2 · 'blocked'.
 import { runCovenant, translateExitCode } from '../src/run-covenant.ts';
-import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 let dir: string;
 let telemetryPath: string;

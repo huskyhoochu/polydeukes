@@ -1,13 +1,13 @@
 import type { CovenantInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { extractMutations, tokenizeCommandLine } from '../src/bash-line.js';
-import { redirectWriteRule } from '../src/mutation-rules.js';
-import { deriveShellChanges } from '../src/shell-evidence.js';
+import { extractMutations, tokenizeCommandLine } from '../src/bash-line.ts';
+import { redirectWriteRule } from '../src/mutation-rules.ts';
+import { deriveShellChanges } from '../src/shell-evidence.ts';
 import {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
-} from '../src/shell-mod.js';
+} from '../src/shell-mod.ts';
 
 // Scanner fidelity against real bash. Every input below was measured against bash 5.3.9, which
 // accepts and executes each one, so the expectations are that shell's answers rather than this

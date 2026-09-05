@@ -20,24 +20,24 @@ export {
   type WitnessOpensSpec,
   type World,
   witnessOpens,
-} from './declaration-engine.js';
+} from './declaration-engine.ts';
 export {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
   type SuppliedWorld,
   type WorldsFromInputSpec,
   worldsFromInput,
-} from './discipline.js';
+} from './discipline.ts';
 export {
   type CovenantRegistration,
   type DispatchCovenantsSpec,
   dispatchCovenants,
   type MetaCovenantRegistration,
   type WitnessPredicate,
-} from './dispatch.js';
-export { type RunCovenantSpec, type RunCovenantVerdict, runCovenant } from './run-covenant.js';
-export { type SelfModRegistrationSpec, selfModRegistration } from './self-mod.js';
-export { type ShellModRegistrationSpec, shellModRegistration } from './shell-mod.js';
+} from './dispatch.ts';
+export { type RunCovenantSpec, type RunCovenantVerdict, runCovenant } from './run-covenant.ts';
+export { type SelfModRegistrationSpec, selfModRegistration } from './self-mod.ts';
+export { type ShellModRegistrationSpec, shellModRegistration } from './shell-mod.ts';
 export {
   type PlanSourcesSpec,
   planSources,
@@ -45,9 +45,9 @@ export {
   type SuppliedSources,
   type SupplySourcesSpec,
   supplySources,
-} from './supply.js';
+} from './supply.ts';
 export {
   type TranscriptModRegistrationSpec,
   transcriptModRegistration,
-} from './transcript-mod.js';
-export { type TtlWitnessSpec, ttlWitness } from './ttl-witness.js';
+} from './transcript-mod.ts';
+export { type TtlWitnessSpec, ttlWitness } from './ttl-witness.ts';

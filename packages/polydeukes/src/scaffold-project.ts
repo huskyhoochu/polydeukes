@@ -19,7 +19,7 @@
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG_FILENAMES } from './load-config.js';
+import { CONFIG_FILENAMES } from './load-config.ts';
 
 /** `.gitignore` name and the telemetry directory entry it must carry. */
 const GITIGNORE = '.gitignore';

@@ -46,10 +46,10 @@ import {
   readRecords,
 } from '@polydeukes/core';
 import { type CovenantRegistration, ttlWitness } from '@polydeukes/covenant';
-import { findUnattributed, readBaseline, snapshotBaseline, writeBaseline } from './baseline.js';
-import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.js';
-import { loadConfig } from './load-config.js';
-import { sessionPreStateReader } from './pre-state-reader.js';
+import { findUnattributed, readBaseline, snapshotBaseline, writeBaseline } from './baseline.ts';
+import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import { loadConfig } from './load-config.ts';
+import { sessionPreStateReader } from './pre-state-reader.ts';
 
 /** {@link runClaudeCodeHook} result — the exit code the hook process leaves with. */
 export type ClaudeCodeHookOutcome = { exitCode: 0 | 2 };

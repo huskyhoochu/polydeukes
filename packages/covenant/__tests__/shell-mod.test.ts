@@ -13,7 +13,7 @@ import {
   type ShellModificationSpec,
   shellModRegistration,
 } from '../src/shell-mod.ts';
-import { readTelemetryLines } from './helpers.js';
+import { readTelemetryLines } from './helpers.ts';
 
 const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';

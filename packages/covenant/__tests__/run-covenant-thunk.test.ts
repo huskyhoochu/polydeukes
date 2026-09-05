@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // advised break is delivered at all.
 import type { RunCovenantSpec } from '../src/run-covenant.ts';
 import { runCovenant } from '../src/run-covenant.ts';
-import { readTelemetryLines } from './helpers.js';
+import { readTelemetryLines } from './helpers.ts';
 
 const LABEL = 'thunk-covenant';
 const SUBJECT = 'observed/entry';

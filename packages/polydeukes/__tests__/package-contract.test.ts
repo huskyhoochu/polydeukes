@@ -536,7 +536,7 @@ const barrelPkg = (name: string, index: string): Pkg =>
 const verbPkg = (module: string, names = 'run', name = '@polydeukes/sib'): Pkg =>
   synthetic(
     name,
-    { 'src/index.ts': `export { ${names} } from './m.js';`, 'src/m.ts': module, 'README.md': '' },
+    { 'src/index.ts': `export { ${names} } from './m.ts';`, 'src/m.ts': module, 'README.md': '' },
     BARREL_ENTRY,
   );
 
@@ -607,13 +607,13 @@ const ROWS: Row[] = [
   {
     label: '② `export *` in a barrel',
     check: '②',
-    pkg: barrelPkg('@polydeukes/sib', `export * from './x.js';`),
+    pkg: barrelPkg('@polydeukes/sib', `export * from './x.ts';`),
     violates: true,
   },
   {
     label: '② `export * as ns` in a barrel — a namespace is the whole module, not a name',
     check: '②',
-    pkg: barrelPkg('@polydeukes/sib', `export * as ns from './x.js';`),
+    pkg: barrelPkg('@polydeukes/sib', `export * as ns from './x.ts';`),
     violates: true,
   },
   {
@@ -621,7 +621,7 @@ const ROWS: Row[] = [
     check: '②',
     pkg: barrelPkg(
       '@polydeukes/sib',
-      `import type { A } from './a.js';\nexport type { A } from './a.js';`,
+      `import type { A } from './a.ts';\nexport type { A } from './a.ts';`,
     ),
     violates: true,
   },
@@ -634,7 +634,7 @@ const ROWS: Row[] = [
   {
     label: '② an `import` in a barrel, even beside a valid re-export',
     check: '②',
-    pkg: barrelPkg('@polydeukes/sib', `import { a } from './a.js';\nexport { a } from './a.js';`),
+    pkg: barrelPkg('@polydeukes/sib', `import { a } from './a.ts';\nexport { a } from './a.ts';`),
     violates: true,
   },
   {
@@ -642,7 +642,7 @@ const ROWS: Row[] = [
     check: '②',
     pkg: barrelPkg(
       '@polydeukes/sib',
-      `// line comment\n/* block */\nexport type { A } from './a.js';`,
+      `// line comment\n/* block */\nexport type { A } from './a.ts';`,
     ),
     violates: false,
   },
@@ -664,7 +664,7 @@ const ROWS: Row[] = [
     pkg: synthetic(
       '@polydeukes/sib',
       {
-        'src/index.ts': `export { shown } from './m.js';`,
+        'src/index.ts': `export { shown } from './m.ts';`,
         'src/m.ts': `export const shown = 1;\nexport const hidden = 2;`,
         'README.md': 'Call `hidden` to do the thing.',
       },
@@ -678,7 +678,7 @@ const ROWS: Row[] = [
     pkg: synthetic(
       '@polydeukes/sib',
       {
-        'src/index.ts': `export { shown } from './m.js';`,
+        'src/index.ts': `export { shown } from './m.ts';`,
         'src/m.ts': `export const shown = 1;\nexport default function hidden() {}`,
         'README.md': 'Call `hidden` to do the thing.',
       },
@@ -692,8 +692,8 @@ const ROWS: Row[] = [
     pkg: synthetic(
       UMBRELLA_NAME,
       {
-        'src/index.ts': `export { a } from './a.js';`,
-        'src/claude-code.ts': `export { runHook } from './hook.js';`,
+        'src/index.ts': `export { a } from './a.ts';`,
+        'src/claude-code.ts': `export { runHook } from './hook.ts';`,
         'src/a.ts': `export const a = 1;`,
         'src/hook.ts': `export const runHook = () => 0;`,
         'README.md': 'Call `runHook` from the session surface.',
@@ -708,7 +708,7 @@ const ROWS: Row[] = [
     pkg: synthetic(
       '@polydeukes/sib',
       {
-        'src/index.ts': `export { shown } from './m.js';`,
+        'src/index.ts': `export { shown } from './m.ts';`,
         'src/m.ts': `export const shown = 1;`,
         'README.md': 'The `forbid` key takes a pattern.',
       },
@@ -722,7 +722,7 @@ const ROWS: Row[] = [
     pkg: synthetic(
       '@polydeukes/sib',
       {
-        'src/index.ts': `export { a as b } from './m.js';`,
+        'src/index.ts': `export { a as b } from './m.ts';`,
         'src/m.ts': `export const a = 1;`,
         'README.md': 'Call `b` to do the thing.',
       },
@@ -862,8 +862,8 @@ const ROWS: Row[] = [
       '@polydeukes/sib',
       {
         'src/index.ts': [
-          `export type { two } from './m.js';`,
-          `export { type three, run } from './m.js';`,
+          `export type { two } from './m.ts';`,
+          `export { type three, run } from './m.ts';`,
         ].join('\n'),
         'src/m.ts': [
           `export function two(a: string, b: string) { return a + b; }`,

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // always breaks — so the observation is the judge's reason text, which the wrapper writes
 // through process.stderr.write and only a judge that actually ran can produce.
 import { runCovenantCheck } from '../src/covenant-check.ts';
-import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers';
+import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
 /** Injected fixture values. */
 const PROTECTED_ENTRY = 'secret.txt';

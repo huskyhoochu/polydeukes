@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { untokenizableLineCandidates } from '../src/mention.js';
+import { untokenizableLineCandidates } from '../src/mention.ts';
 
 // The decomposition is a union: the dequoted raw line verbatim, plus one fragment per maximal
 // run of shell metacharacters (; & | < >). Candidate ORDER is incidental, so every assertion

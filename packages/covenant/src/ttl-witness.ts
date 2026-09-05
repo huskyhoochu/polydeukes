@@ -13,7 +13,7 @@
  */
 
 import { resolveFailMode } from '@polydeukes/core';
-import type { WitnessPredicate } from './dispatch.js';
+import type { WitnessPredicate } from './dispatch.ts';
 
 /** Configuration for {@link ttlWitness}. */
 export type TtlWitnessSpec = {

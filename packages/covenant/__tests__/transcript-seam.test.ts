@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // argument, and defaults to a real empty transcript rather than undefined.
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants } from '../src/dispatch.ts';
-import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 // The judge body touches a marker file, so its presence proves the judge ran.
 

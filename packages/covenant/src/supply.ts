@@ -8,7 +8,7 @@
  */
 
 import type { ChannelReader, SourceReader } from '@polydeukes/core';
-import type { CovenantRegistration } from './dispatch.js';
+import type { CovenantRegistration } from './dispatch.ts';
 
 /** `planSources` input — the registration table the judgment will run. */
 export type PlanSourcesSpec = { registrations: readonly CovenantRegistration[] };

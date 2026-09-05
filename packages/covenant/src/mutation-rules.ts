@@ -8,7 +8,7 @@
  * and telemetry belong to the judges that consume these rules.
  */
 
-import type { MutationRule, MutationTarget, WordToken } from './bash-line.js';
+import type { MutationRule, MutationTarget, WordToken } from './bash-line.ts';
 
 const REDIRECT_WRITE_RULE_NAME = 'redirect-write';
 const TEE_RULE_NAME = 'tee';

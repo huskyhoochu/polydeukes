@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TOPICS } from '../src/docs-query.ts';
-import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
 // The clean-install e2e. The consumer tree's only inputs are the tarballs this suite packs
 // and the public registry (yaml), so the install graph is real — which is

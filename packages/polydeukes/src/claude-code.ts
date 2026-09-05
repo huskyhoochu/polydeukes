@@ -8,4 +8,4 @@ export {
   type ClaudeCodeHookOutcome,
   type ClaudeCodeHookSpec,
   runClaudeCodeHook,
-} from './claude-code-hook.js';
+} from './claude-code-hook.ts';

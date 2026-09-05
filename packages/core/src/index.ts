@@ -25,7 +25,7 @@ export {
   type Witness,
   type WitnessBlock,
   type Witnesses,
-} from './algebra.js';
+} from './algebra.ts';
 export {
   AXIS_NAMES,
   type Axis,
@@ -35,7 +35,7 @@ export {
   MECHANISM_SHAPES,
   type MechanismName,
   type MechanismShape,
-} from './catalogue.js';
+} from './catalogue.ts';
 export {
   type AlgebraDeclarationBody,
   ConfigValidationError,
@@ -48,20 +48,20 @@ export {
   type PolydeukesConfig,
   type ResolvedConfig,
   type ResolvedLanguageProfile,
-} from './config.js';
+} from './config.ts';
 export {
   EXIT_BREAK_BLOCKING,
   EXIT_BREAK_NON_BLOCKING,
   EXIT_UPHOLD,
-} from './exit-codes.js';
+} from './exit-codes.ts';
 export {
   type FailMode,
   type FailureKind,
   failModeToExitCode,
   resolveFailMode,
-} from './fail-policy.js';
-export { isPlainObject } from './is-plain-object.js';
-export { normalizeProtectedPaths } from './protected-paths.js';
+} from './fail-policy.ts';
+export { isPlainObject } from './is-plain-object.ts';
+export { normalizeProtectedPaths } from './protected-paths.ts';
 export {
   allFileChanges,
   type ChannelReader,
@@ -72,7 +72,7 @@ export {
   parseInput,
   type SourceReader,
   verdictToExitCode,
-} from './protocol.js';
+} from './protocol.ts';
 export {
   aggregateGain,
   appendRecord,
@@ -86,11 +86,11 @@ export {
   type SkipReason,
   type TelemetryEvent,
   type TelemetryRecord,
-} from './telemetry.js';
+} from './telemetry.ts';
 export {
   type CanonicalTranscript,
   noopTranscript,
   type TranscriptToolCall,
   type TranscriptUserMessage,
   transcriptFromInput,
-} from './transcript.js';
+} from './transcript.ts';

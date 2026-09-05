@@ -4,10 +4,10 @@ import { join } from 'node:path';
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CovenantRegistration } from '../src/dispatch.js';
-import { dispatchCovenants } from '../src/dispatch.js';
-import { judgeSelfModification, selfModRegistration } from '../src/self-mod.js';
-import { readTelemetryLines } from './helpers.js';
+import type { CovenantRegistration } from '../src/dispatch.ts';
+import { dispatchCovenants } from '../src/dispatch.ts';
+import { judgeSelfModification, selfModRegistration } from '../src/self-mod.ts';
+import { readTelemetryLines } from './helpers.ts';
 
 const MUTATING_TOOLS = ['Edit', 'Write', 'MultiEdit'];
 const PROTECTED = 'sub/protected/file.txt';

@@ -30,7 +30,7 @@ import {
   distWithout as sharedDistWithout,
   telemetryRows,
   writeConfigAt,
-} from './helpers';
+} from './helpers.ts';
 
 /** Injected fixture values — the config entry and the file judged under it. */
 const PROTECTED_ENTRY = 'gate';

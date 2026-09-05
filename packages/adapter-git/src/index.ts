@@ -12,21 +12,21 @@ export {
   collectRangeChanges,
   collectStagedChanges,
   collectWorktreeChanges,
-} from './collect.js';
+} from './collect.ts';
 export {
   type Observation,
   type ObservationSourceReaderSpec,
   observationSourceReader,
-} from './observation-source-reader.js';
+} from './observation-source-reader.ts';
 export {
   type GitAdapterSettings,
   type ResolveGitAdapterSettingsSpec,
   resolveGitAdapterSettings,
-} from './settings.js';
+} from './settings.ts';
 export {
   type CovenantInputFromStagedChangesSpec,
   covenantInputFromStagedChanges,
   STAGED_DELETE,
   STAGED_WRITE,
   type StagedChange,
-} from './staged.js';
+} from './staged.ts';

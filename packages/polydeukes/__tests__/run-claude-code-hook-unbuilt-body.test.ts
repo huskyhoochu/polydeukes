@@ -18,7 +18,7 @@ import {
   distWithout as sharedDistWithout,
   telemetryRows,
   writeConfigAt,
-} from './helpers';
+} from './helpers.ts';
 
 /** Injected fixture values — the config entries and payload targets under test. */
 const PROTECTED_ENTRY = 'gate';

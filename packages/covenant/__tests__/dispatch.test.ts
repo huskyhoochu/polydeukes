@@ -6,7 +6,7 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
-import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 function registration(label: string, protectedPaths: string[]): CovenantRegistration {
   return {

@@ -1,16 +1,16 @@
 import type { CovenantInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
-import { tokenizeCommandLine } from '../src/bash-line.js';
-import { deriveShellChanges } from '../src/shell-evidence.js';
+import { tokenizeCommandLine } from '../src/bash-line.ts';
+import { deriveShellChanges } from '../src/shell-evidence.ts';
 import {
   DEFAULT_READ_ONLY_COMMANDS,
   judgeShellModification,
   type ShellModificationSpec,
-} from '../src/shell-mod.js';
+} from '../src/shell-mod.ts';
 import {
   judgeTranscriptModification,
   type TranscriptModificationSpec,
-} from '../src/transcript-mod.js';
+} from '../src/transcript-mod.ts';
 
 // A standing regression ledger for twelve bash constructs that occur in the
 // `tree-sitter-bash` test corpus (https://github.com/tree-sitter/tree-sitter-bash, MIT) and in

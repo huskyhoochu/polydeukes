@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractMutations, tokenizeCommandLine } from '../src/bash-line.js';
-import { redirectWriteRule } from '../src/mutation-rules.js';
+import { extractMutations, tokenizeCommandLine } from '../src/bash-line.ts';
+import { redirectWriteRule } from '../src/mutation-rules.ts';
 
 describe('newline as command separator', () => {
   it('splits "echo a\\necho b > f" into two commands with only {path: f}', () => {

@@ -24,5 +24,5 @@ export {
   type CovenantCheckOutcome,
   type CovenantCheckSpec,
   runCovenantCheck,
-} from './covenant-check.js';
-export { type LoadConfigSpec, type LoadedConfig, loadConfig } from './load-config.js';
+} from './covenant-check.ts';
+export { type LoadConfigSpec, type LoadedConfig, loadConfig } from './load-config.ts';

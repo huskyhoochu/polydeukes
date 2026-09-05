@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
 import { isPlainObject } from '@polydeukes/core';
-import { type ScaffoldReport, scaffoldProject } from './scaffold-project.js';
+import { type ScaffoldReport, scaffoldProject } from './scaffold-project.ts';
 
 /** The published entry point the generated hook loads the judge through. */
 const HOOK_SPECIFIER = 'polydeukes/claude-code';

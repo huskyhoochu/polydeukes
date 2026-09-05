@@ -6,7 +6,7 @@ import { parseRecordLine } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 import { dispatchCovenants, matchRegistrations } from '../src/dispatch.ts';
-import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.js';
+import { exitThunk, inputWithArgs, markerThunk, readTelemetryLines } from './helpers.ts';
 
 // A registration's optional `matches?: (input) => string | null` routes instead of
 // path-mention: a non-null return routes and becomes the telemetry subject, null does not

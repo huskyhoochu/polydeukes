@@ -13,7 +13,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // fixture, not this repository's own hook. This file's covenant-dist mirror interposes one
 // level up, on the umbrella's node_modules, which the shared helpers do not touch.
 import { initClaudeCode } from '../src/init-claude-code.ts';
-import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaRoot = resolve(import.meta.dirname, '..');

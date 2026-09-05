@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { StagedChange } from './staged.js';
+import type { StagedChange } from './staged.ts';
 
 /**
  * Run one `git` command in `repoRoot` and return its stdout. `maxBuffer` is unbounded so

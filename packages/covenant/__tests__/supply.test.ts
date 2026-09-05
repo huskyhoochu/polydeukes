@@ -15,7 +15,7 @@ import type {
   SupplySourcesSpec,
 } from '../src/supply.ts';
 import { planSources, supplySources } from '../src/supply.ts';
-import { exitThunk } from './helpers.js';
+import { exitThunk } from './helpers.ts';
 
 const pkgDir = resolve(import.meta.dirname, '..');
 
@@ -174,12 +174,12 @@ describe('the barrel carries the two verbs and their four types, and nothing els
     'SuppliedSources',
   ];
 
-  it('re-exports exactly the six names from ./supply.js', () => {
+  it('re-exports exactly the six names from ./supply.ts', () => {
     const barrel = readFileSync(join(pkgDir, 'src/index.ts'), 'utf-8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/[^\n]*/g, '');
-    const statement = barrel.match(/export\s+\{([^}]*)\}\s+from\s+'\.\/supply\.js'/);
-    expect(statement, 'no re-export statement from ./supply.js').not.toBeNull();
+    const statement = barrel.match(/export\s+\{([^}]*)\}\s+from\s+'\.\/supply\.ts'/);
+    expect(statement, 'no re-export statement from ./supply.ts').not.toBeNull();
 
     const names = (statement?.[1] ?? '')
       .split(',')

@@ -7,16 +7,16 @@
  * hand-rolled, and the published JSON Schema is a sibling artifact this source never reads.
  */
 
-import { type AlgebraDeclaration, validateAlgebraDeclaration } from './algebra.js';
-import { isPlainObject } from './is-plain-object.js';
+import { type AlgebraDeclaration, validateAlgebraDeclaration } from './algebra.ts';
+import { isPlainObject } from './is-plain-object.ts';
 import {
   ConfigValidationError,
   isNonEmptyString,
   isStringArray,
   rejectUnknownKeys,
-} from './validation.js';
+} from './validation.ts';
 
-export { ConfigValidationError } from './validation.js';
+export { ConfigValidationError } from './validation.ts';
 
 /** Conventional default telemetry log path — local-only observation data. */
 export const DEFAULT_TELEMETRY_LOG_PATH = '.polydeukes/roi.log';

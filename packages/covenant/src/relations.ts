@@ -10,7 +10,7 @@
  * the two states share.
  */
 
-import { canonical, comparatorFor, type Items, sameValue } from './extract-steps.js';
+import { canonical, comparatorFor, type Items, sameValue } from './extract-steps.ts';
 
 /** One element for which a relation does not hold; `side` is `equal`'s two directions. */
 export type Witness = {

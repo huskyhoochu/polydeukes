@@ -20,9 +20,9 @@ import {
   parseInput,
   type SkipReason,
 } from '@polydeukes/core';
-import { tokenizeCommandLine } from './bash-line.js';
-import { pathCandidates, pathMatchesProtected } from './mention.js';
-import { type JudgeOutcome, runCovenant } from './run-covenant.js';
+import { tokenizeCommandLine } from './bash-line.ts';
+import { pathCandidates, pathMatchesProtected } from './mention.ts';
+import { type JudgeOutcome, runCovenant } from './run-covenant.ts';
 
 /**
  * `WitnessPredicate` — the valve a registration offers, asked after a blocking judgment:
