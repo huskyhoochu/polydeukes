@@ -11,6 +11,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.6.1](https://github.com/huskyhoochu/polydeukes/compare/v0.6.0...v0.6.1) (2026-09-05)
+
+
+### Documentation
+
+* v0.6.1 documentation catalog and offline search ([#100](https://github.com/huskyhoochu/polydeukes/issues/100)) ([e24f07c](https://github.com/huskyhoochu/polydeukes/commit/e24f07c342ce15a6e5596831e5b6d57c7f51ca7b))
+
 ## [0.6.0](https://github.com/huskyhoochu/polydeukes/compare/v0.5.0...v0.6.0) (2026-09-05)
 
 
