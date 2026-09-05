@@ -55,16 +55,20 @@ jobs:
       # owner is this instance's (b95labs) while the copy of this repository a reader can
       # open is github.com/huskyhoochu/polydeukes — this instance answers on the tailnet
       # only. No input moves the owner, so the release branch is rewritten after the port
-      # has pushed it. The port rebuilds that branch from main on its next run, and this
-      # step rewrites it again; the rewrite is idempotent.
+      # has pushed it. The port rebuilds that branch only when the release notes change
+      # (`prs_created` is false on a run that leaves the PR as it was), so the rewrite runs
+      # on every push that did not cut a release and tolerates a missing branch; it is
+      # idempotent.
       - name: Check out the release branch
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        id: release_branch
+        if: ${{ steps.release.outputs.release_created != 'true' }}
+        continue-on-error: true
         uses: actions/checkout@v4
         with:
           ref: release-please--branches--main--components--polydeukes-monorepo
 
       - name: Point CHANGELOG links at the readable mirror
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        if: ${{ steps.release.outputs.release_created != 'true' && steps.release_branch.outcome == 'success' }}
         run: |
           set -euo pipefail
           sed -i 's#https://github.com/b95labs/polydeukes#https://github.com/huskyhoochu/polydeukes#g' CHANGELOG.md
