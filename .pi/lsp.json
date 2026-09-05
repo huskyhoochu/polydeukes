@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "servers": [
+    {
+      "id": "typescript-native",
+      "enabled": true,
+      "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+      "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**"],
+      "rootMarkers": ["pnpm-workspace.yaml"],
+      "bin": "./packages/polydeukes/node_modules/.bin/tsc",
+      "args": ["--lsp", "--stdio"],
+      "cwd": "{root}",
+      "languageIdByExtension": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript"
+      },
+      "startupTimeoutMs": 45000,
+      "diagnosticsWaitMs": 1500
+    }
+  ]
+}

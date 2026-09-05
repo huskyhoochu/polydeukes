@@ -15,6 +15,13 @@ MD013:
 # dash lists; a single style cannot cover generated + authored content.
 MD004: false
 
+# Stable explicit anchors intentionally sit directly above headings, so requiring an
+# additional blank line there adds noise without improving rendering.
+MD022: false
+
+# Inline HTML is allowed for stable anchors and documentation markup.
+MD033: false
+
 # Emphasis is spelled with asterisks throughout (underscore forms render identically and
 # are converted on sight).
 MD049:

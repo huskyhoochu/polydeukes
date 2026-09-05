@@ -1,0 +1,457 @@
+{
+  "schemaVersion": 1,
+  "documents": [
+    {
+      "id": "home",
+      "category": "navigation",
+      "order": 0,
+      "bundled": true,
+      "en": {
+        "path": "README.md",
+        "title": "Polydeukes documentation",
+        "summary": "Choose a task, guide, or reference."
+      },
+      "ko": {
+        "path": "README.ko.md",
+        "title": "폴리데우케스 문서",
+        "summary": "작업에 맞는 안내와 참조 문서를 고릅니다."
+      }
+    },
+    {
+      "id": "first-judgment",
+      "category": "tutorial",
+      "order": 1,
+      "bundled": true,
+      "en": {
+        "path": "tutorials/first-judgment.md",
+        "title": "Install and get your first judgment",
+        "summary": "Install Claude Code integration and observe a first judgment.",
+        "terms": ["install", "claude-code"]
+      },
+      "ko": {
+        "path": "tutorials/first-judgment.ko.md",
+        "title": "설치하고 첫 판정 확인하기",
+        "summary": "클로드 코드 연동을 설치하고 첫 판정 결과를 확인합니다.",
+        "terms": ["클로드", "코드", "설치"]
+      }
+    },
+    {
+      "id": "connect-surfaces",
+      "category": "how-to",
+      "order": 2,
+      "bundled": true,
+      "en": {
+        "path": "how-to/connect-surfaces.md",
+        "title": "Connect the surfaces",
+        "summary": "Connect Claude Code, Grok, and git; distinguish their witness paths."
+      },
+      "ko": {
+        "path": "how-to/connect-surfaces.ko.md",
+        "title": "표면 연결하기",
+        "summary": "Claude Code, Grok, git을 연결하고 표면별 증인 사용법을 구별합니다."
+      }
+    },
+    {
+      "id": "configure-project",
+      "category": "how-to",
+      "order": 3,
+      "bundled": true,
+      "en": {
+        "path": "how-to/configure-project.md",
+        "title": "Configure the project",
+        "summary": "Find configuration, enable IDE support, and choose enforcement."
+      },
+      "ko": {
+        "path": "how-to/configure-project.ko.md",
+        "title": "프로젝트 설정하기",
+        "summary": "설정 파일을 찾고 IDE 지원과 강제 수준을 설정합니다."
+      }
+    },
+    {
+      "id": "write-disciplines",
+      "category": "how-to",
+      "order": 4,
+      "bundled": true,
+      "en": {
+        "path": "how-to/write-disciplines.md",
+        "title": "Write disciplines",
+        "summary": "Write and exercise a locale key pairing declaration."
+      },
+      "ko": {
+        "path": "how-to/write-disciplines.ko.md",
+        "title": "규율 작성하기",
+        "summary": "번역 키 짝 맞춤 선언을 작성하고 위반과 정상 사례를 검사합니다."
+      }
+    },
+    {
+      "id": "troubleshooting",
+      "category": "how-to",
+      "order": 5,
+      "bundled": true,
+      "en": {
+        "path": "troubleshooting.md",
+        "title": "Troubleshooting Polydeukes",
+        "summary": "Diagnose invalid config, Grok witness limits, and config-fault skips."
+      },
+      "ko": {
+        "path": "troubleshooting.ko.md",
+        "title": "폴리데우케스 문제 해결",
+        "summary": "설정 오류, Grok 증인 제한, 미판정 config-fault의 원인을 확인합니다."
+      }
+    },
+    {
+      "id": "concepts",
+      "category": "concepts",
+      "order": 6,
+      "bundled": true,
+      "en": {
+        "path": "concepts/judgment.md",
+        "title": "How a judgment works",
+        "summary": "Understand observations, verdicts, relations, and mechanism limits."
+      },
+      "ko": {
+        "path": "concepts/judgment.ko.md",
+        "title": "판정은 어떻게 이루어지는가",
+        "summary": "관측, 판정 결과, 관계와 메커니즘의 한계를 이해합니다."
+      }
+    },
+    {
+      "id": "cli-covenant-check",
+      "category": "reference",
+      "order": 7,
+      "bundled": true,
+      "en": {
+        "path": "reference/cli/covenant-check.md",
+        "title": "`pdks covenant check`",
+        "summary": "Inspect staged changes, --worktree, or a revision range."
+      },
+      "ko": {
+        "path": "reference/cli/covenant-check.ko.md",
+        "title": "`pdks covenant check`",
+        "summary": "스테이징한 변경, 작업 트리 검사, 리비전 범위 검사를 설명합니다."
+      }
+    },
+    {
+      "id": "cli-init",
+      "category": "reference",
+      "order": 8,
+      "bundled": true,
+      "en": {
+        "path": "reference/cli/init.md",
+        "title": "`pdks init`",
+        "summary": "Install the Claude Code or Grok integration."
+      },
+      "ko": {
+        "path": "reference/cli/init.ko.md",
+        "title": "`pdks init`",
+        "summary": "Claude Code 또는 Grok 연동을 설치합니다."
+      }
+    },
+    {
+      "id": "cli-explain",
+      "category": "reference",
+      "order": 9,
+      "bundled": true,
+      "en": {
+        "path": "reference/cli/explain.md",
+        "title": "`pdks explain`",
+        "summary": "Inspect assembled registrations and their enforcement levels."
+      },
+      "ko": {
+        "path": "reference/cli/explain.ko.md",
+        "title": "`pdks explain`",
+        "summary": "조립된 등록과 강제 수준을 확인합니다."
+      }
+    },
+    {
+      "id": "cli-docs",
+      "category": "reference",
+      "order": 10,
+      "bundled": true,
+      "en": {
+        "path": "reference/cli/docs.md",
+        "title": "`pdks docs`",
+        "summary": "Search and retrieve installed documentation without network access."
+      },
+      "ko": {
+        "path": "reference/cli/docs.ko.md",
+        "title": "`pdks docs`",
+        "summary": "네트워크 없이 설치된 문서를 검색하고 조회합니다."
+      }
+    },
+    {
+      "id": "configuration",
+      "category": "reference",
+      "order": 11,
+      "bundled": true,
+      "en": {
+        "path": "reference/configuration/index.md",
+        "title": "Configuration reference",
+        "summary": "Look up configuration keys and declaration grammar."
+      },
+      "ko": {
+        "path": "reference/configuration/index.ko.md",
+        "title": "설정 레퍼런스",
+        "summary": "설정 키와 선언 문법을 조회합니다."
+      }
+    },
+    {
+      "id": "package-polydeukes",
+      "category": "reference",
+      "order": 12,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/polydeukes.md",
+        "title": "`polydeukes`",
+        "summary": "Consult the polydeukes package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/polydeukes.ko.md",
+        "title": "`polydeukes`",
+        "summary": "polydeukes 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
+      "id": "package-core",
+      "category": "reference",
+      "order": 13,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/core.md",
+        "title": "`@polydeukes/core`",
+        "summary": "Consult the core package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/core.ko.md",
+        "title": "`@polydeukes/core`",
+        "summary": "core 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
+      "id": "package-covenant",
+      "category": "reference",
+      "order": 14,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/covenant.md",
+        "title": "`@polydeukes/covenant`",
+        "summary": "Consult the covenant package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/covenant.ko.md",
+        "title": "`@polydeukes/covenant`",
+        "summary": "covenant 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
+      "id": "package-adapter-claude-code",
+      "category": "reference",
+      "order": 15,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/adapter-claude-code.md",
+        "title": "`@polydeukes/adapter-claude-code`",
+        "summary": "Consult the adapter-claude-code package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/adapter-claude-code.ko.md",
+        "title": "`@polydeukes/adapter-claude-code`",
+        "summary": "adapter-claude-code 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
+      "id": "package-adapter-git",
+      "category": "reference",
+      "order": 16,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/adapter-git.md",
+        "title": "`@polydeukes/adapter-git`",
+        "summary": "Consult the adapter-git package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/adapter-git.ko.md",
+        "title": "`@polydeukes/adapter-git`",
+        "summary": "adapter-git 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
+      "id": "why-polydeukes",
+      "category": "explanation",
+      "order": 17,
+      "bundled": false,
+      "en": {
+        "path": "why-polydeukes.md",
+        "title": "Why Polydeukes?",
+        "summary": "Read the motivation and design of the discipline framework."
+      },
+      "ko": {
+        "path": "why-polydeukes.ko.md",
+        "title": "왜 폴리데우케스인가?",
+        "summary": "개발 규율 프레임워크의 동기와 설계를 읽습니다."
+      }
+    },
+    {
+      "id": "contributing-docs",
+      "category": "how-to",
+      "order": 24,
+      "bundled": false,
+      "en": {
+        "path": "contributing.md",
+        "title": "Contributing to the documentation",
+        "summary": "Bilingual pairs, stable IDs, catalog rules, and what to run before a docs change."
+      },
+      "ko": {
+        "path": "contributing.ko.md",
+        "title": "문서에 기여하기",
+        "summary": "영한 쌍, 안정 ID, 카탈로그 규칙, 문서 변경 전에 실행할 명령을 적습니다."
+      }
+    },
+    {
+      "id": "post-1",
+      "category": "history",
+      "order": 18,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-07-v0.1-covenant-core.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-07-v0.1-covenant-core.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    },
+    {
+      "id": "post-2",
+      "category": "history",
+      "order": 19,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-08-v0.2-user-disciplines.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-08-v0.2-user-disciplines.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    },
+    {
+      "id": "post-3",
+      "category": "history",
+      "order": 20,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-08-v0.3-installable-release.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-08-v0.3-installable-release.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    },
+    {
+      "id": "post-4",
+      "category": "history",
+      "order": 21,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-08-v0.4-gate-closing.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-08-v0.4-gate-closing.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    },
+    {
+      "id": "post-5",
+      "category": "history",
+      "order": 22,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-08-v0.5-diagnostic-pivot.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-08-v0.5-diagnostic-pivot.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    },
+    {
+      "id": "post-6",
+      "category": "history",
+      "order": 23,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-09-v0.6-algebra-refoundation.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-09-v0.6-algebra-refoundation.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
+    }
+  ],
+  "topics": {
+    "install": {
+      "references": [
+        {
+          "documentId": "first-judgment"
+        }
+      ],
+      "seeAlso": "connect-surfaces"
+    },
+    "config": {
+      "references": [
+        {
+          "documentId": "configuration"
+        }
+      ],
+      "seeAlso": "configure-project"
+    },
+    "discipline": {
+      "references": [
+        {
+          "documentId": "configuration",
+          "sectionId": "disciplines"
+        }
+      ],
+      "seeAlso": "write-disciplines"
+    },
+    "covenant": {
+      "references": [
+        {
+          "documentId": "concepts",
+          "sectionId": "enforcement-and-witness"
+        }
+      ],
+      "seeAlso": "connect-surfaces"
+    },
+    "witness": {
+      "references": [
+        {
+          "documentId": "configuration",
+          "sectionId": "witness"
+        },
+        {
+          "documentId": "troubleshooting",
+          "sectionId": "opening-a-blocked-call"
+        }
+      ],
+      "seeAlso": "troubleshooting"
+    }
+  },
+  "redirects": []
+}

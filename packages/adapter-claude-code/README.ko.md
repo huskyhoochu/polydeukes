@@ -1,40 +1,41 @@
-# @polydeukes/adapter-claude-code
+# `@polydeukes/adapter-claude-code`
 
-**한국어** · [English](./README.md)
+[English](./README.md) · **한국어**
 
-> Claude Code의 어휘가 번역되어 사라지는 경계입니다. PreToolUse 훅 페이로드는 코어에 닿기 전에 에이전트 중립적인 약속(covenant) 입력 IR로 바뀝니다.
+이 어댑터는 Claude Code PreToolUse 페이로드를 약속(covenant) 입력 IR로 변환합니다.
+우산 패키지가 세션 표면에 주입할 읽기 함수를 만드는 팩터리도 제공합니다.
 
-**알파(alpha) 단계입니다.** 에이전트와 도구의 리터럴은 의도적으로 이 패키지 안에만 삽니다. 이 패키지가 존재하는 이유가 그 리터럴이 코어에 닿지 않게 하는 것이고,
-그래서 코어의 에이전트 중립성은 구호가 아니라 시험 가능한 주장으로 남습니다.
+<a id="overview"></a>
+## 개요
 
-## 여기 담긴 것
+공개 계약 심볼은 다음과 같습니다.
 
-- **페이로드 번역.** 날것의 PreToolUse 페이로드가 `CovenantInput`(도구 호출과 서브에이전트 스폰)으로 바뀝니다. 서브에이전트 유형을 실은 `Task`
-  호출은 스폰으로 대응되고, 분류할 수 없는 페이로드는 번역 실패입니다. 실패는 추측으로 대체되는 대신 차단됩니다(fail-closed).
-- **가상 사후 상태(virtual post-state).** `Edit`·`Write`·`MultiEdit`가 적용되면 파일이 어떤 내용이 될지를 디스크를 건드리지 않고
-  계산합니다. 내용을 보는 약속은 지금의 파일이 아니라 제안된 결과를 판정합니다. 여러 편집의 순차 적용과 파일 생성 관례까지 계산에 들어갑니다.
-- **파일 변경 증거.** 디스크의 편집 전 상태와 가상 사후 상태를 짝지어 판별 유니온(discriminated union) 증거(편집 전 상태가 없으면 `create`,
-  있으면 `modify`)로 만들고, 변이 도구 호출 자신의 `fileChange` 필드에 싣습니다. 규율(discipline) 판정이 소비하는 증거가 이것입니다. 사후 상태가
-  성립하지 않으면 아무것도 내지 않고(같은 편집은 실제 도구도 거부합니다), 비변이 호출에 증거를 날조하지 않습니다.
-- **대화 기록 공급자.** `transcriptFromJsonlFile`이 세션 JSONL 파일을 `CanonicalTranscript`로 바꿉니다. 시간제 증인(TTL
-  witness)의 실제 데이터 원천이며, 사람이 직접 친 것으로 확인된 메시지만 받아들이므로 AI가 자기 증언을 합성할 길이 없습니다. `findToolCalls`에도 답해
-  `tool_use` 블록에서 도구 호출을 뽑아냅니다. 호출의 `input`이 평면 객체가 아니면 블록은 남기고 `args`만 비우는데, 호출이 있었다는 사실 자체가 증거이기
-  때문입니다. 읽기에 실패하면 빈 대화 기록이 아니라 `undefined`로 답합니다. 빈 세션은 아직 아무 말도 하지 않은 세션이라 판정 대상이고, 읽히지 않는 세션은 증거
-  통로 자체가 없어서 건너뜁니다. 어느 쪽이든 밸브는 닫히지, 열리지 않습니다.
-- **세션 공급 리더.** `sessionSourceReader({ repoRoot })`는 이 표면의 파일 리더입니다(작업 트리 위의 `SourceReader` —
-  항목 없음 · 디렉터리 · NUL 바이트 같은 부재는 `undefined`로 답하고, 권한 거부는 던집니다).
-  `sessionChannelReader({ transcriptPath })`는 이 표면의 스폰 사이드카 채널입니다. 이 호스트가 대화 기록 옆
-  `<dir>/<세션ID>/subagents/agent-*.meta.json`에 남기는 서브에이전트 기록을 파일명 정렬 순서의 JSON 배열 하나로 답합니다.
-  `'[]'`는 스폰을 관측하지 못한 채널이고 `undefined`는 채널 자체가 없는 것 — 서로 다른 두 사실이며, 선언의 `supply` 정책이
-  처분하는 것은 둘째뿐입니다.
-  이 표면이 파싱하는 대화 기록(transcript)은 선언의 소스이기도 합니다(`{ transcript: true }`). 약속(covenant) 패키지가
-  공급 시점에 스냅샷으로 펴므로 이 어댑터는 그것을 위한 리더를 더하지 않습니다.
-- **텔레메트리 배선.** `runAdapterPath`가 깔때기 전체를 끝까지 실행합니다. 날 페이로드에서 번역(실패는 차단 1행을 기록하고 `2`로 종료), 주입된 이음새를
-  통한 판정, 깔때기 완결까지 이어져 호출마다 정확히 1행이 남습니다. 증언(witnessed)도 예외가 아닙니다. 판정 이음새를 주입으로 받는 이유는 이 패키지가
-  covenant 패키지를 직접 가져오지(import) 않기 때문입니다. 의존은 코어를 통해서만, 단방향으로 흐릅니다.
+- `runAdapterPath`
+- `sessionSourceReader`
+- `sessionChannelReader`
+- `transcriptPathFromPayload`
+- `transcriptFromJsonlFile`
+- `COMMAND_ARGS`
+- `MUTATING_TOOLS`
+- `SHELL_TOOLS`
 
-아키텍처 청사진과 설계 근거는 [프로젝트 저장소](https://github.com/huskyhoochu/polydeukes)에 있습니다.
+<a id="examples"></a>
+## 예제
 
-## 라이선스
+```ts
+import { runAdapterPath } from '@polydeukes/adapter-claude-code';
 
-MIT
+const outcome = await runAdapterPath({
+  rawPayload: '{}',
+  telemetryPath: '.polydeukes/roi.log',
+  dispatch: async () => ({ exitCode: 0, results: [] }),
+});
+```
+
+<a id="see-also"></a>
+## 같이 보기
+
+- [`@polydeukes/adapter-claude-code` 패키지
+레퍼런스](../../docs/reference/packages/adapter-claude-code.ko.md)
+- [`polydeukes/claude-code`](../../docs/reference/packages/polydeukes.ko.md#polydeukes-entry-points)
+- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.ko.md)

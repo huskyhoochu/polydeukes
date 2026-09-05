@@ -1,81 +1,47 @@
-# @polydeukes/covenant
+# `@polydeukes/covenant`
 
-**한국어** · [English](./README.md)
+[English](./README.md) · **한국어**
 
-> 편집과 명령 시점의 결정론적 차단입니다. 약속(covenant)은 AI를 가두는 울타리가 아니라
-> 사람과 AI가 함께 지는 약속이며, 예절이 아니라 exit code로 지켜집니다.
+`covenant` 패키지는 판정기를 구현합니다. 우산 패키지에서 사용하는 컴파일, 판정 분배,
+실행기, 메타 약속(covenant), 증인 API를 제공합니다.
 
-**알파(alpha) 단계입니다.** 이 패키지는 이미 자기 자신을 지키고 있습니다. 이 저장소는
-2026년 7월 14일부터 자기 약속 아래에서 개발되고 있고(self-dogfooding), 약속이 판정한 모든
-호출이 ROI 텔레메트리에 남습니다.
+<a id="overview"></a>
+## 개요
 
-## 여기 담긴 것
+공개 계약 심볼은 다음과 같습니다.
 
-- **`runCovenant` 래퍼.** 약속 본체를 실행하고, 비차단 위반(`1`)을 차단(`2`)으로 바꾸며,
-  지켜짐·차단·증언(witnessed)의 모든 호출을 공용 텔레메트리에 기록합니다. 측정되지 않고
-  도는 약속은 없습니다.
-- **경로 라우팅 디스패처.** 보호 경로에 약속을 등록하고, 매치되는 약속을 전부 실행합니다.
-  중간에 끊지 않아서(no short-circuit) 텔레메트리가 적게 세는 일이 없습니다. 파싱할 수 없는
-  입력은 차단하고, 매치가 없는 입력은 통과시킵니다.
-- **self-mod 메타-약속, 도구 축.** 첫 실전 약속입니다. 약속의 기반 코드 자체를 편집 도구의
-  변경으로부터 보호합니다. 실제로 차단된 판정은 증인(witness) 이음새로 사람이 열 수 있되,
-  언제나 `witnessed`로 기록되고 조용히 지나가는 일은 없습니다.
-- **shell-mod 메타-약속, Bash 축.** heredoc을 인지하는 멀티라인 셸 분석기입니다. 쓰기 탐지
-  규칙(redirect, `tee`, `sed -i`)과 경로 분절 매칭으로 상위 디렉터리 조작이나 인용부호로
-  쪼갠 경로까지 잡습니다. 보호 경로를 언급한 명령은 첫 단어가 읽기 전용임을 증명할 때만
-  통과하고, 증명할 수 없으면 차단됩니다.
-- **시간제 증인(TTL witness).** sudo 방식의 시간제 밸브이며 정규 대화 기록 이음새 위에서
-  판정됩니다. 판정 뒤에만 조회됩니다. 판정 본체는 언제나 돌고, 실제로 차단된 판정만
-  증언으로 열립니다. AI가 합성한 메시지는 인정되지 않고, 만료되면 다시 차단되며, 증언으로
-  통과한 판정은 모두 `witnessed`로 측정됩니다.
-- **표준 규율(discipline) 라이브러리.** config의 `disciplines:` 항목이 코드 한 줄 없이
-  강제가 됩니다. 판정 항목은 모두 `declare` 블록, 곧 아래 엔진이 판정하는 대수 선언입니다.
-  관측 하나가 세계 하나로 공급됩니다. 파일 변경은 그 경로 아래, 파일을 바꾸지 않는 셸
-  호출은 subject `-` 아래 자기 명령줄을 고정 소스 `command`로 지니고 옵니다. 항목 하나가
-  등록(registration) 하나로 컴파일되어 규율별 텔레메트리 라벨, 공용 판정 본체, 같은
-  증인(witness) 이음새를 얻습니다. 세션의 대화 기록을 묶는 선언(`precedent` · `phase-order` ·
-  `turn-locality` · `stated-ground`)은 표면이 주입한 이력을 공급 시점에 평면 스냅샷으로 펴서
-  읽습니다. 라우팅은 범위만으로 하므로, 범위가 받아들인 호출은 증거가 있었더라도 판정을 실행하고
-  `passed`를 기록합니다. 게이트가 확인했다는 사실 자체가 측정할 값어치입니다.
-- **판정 불가는 실패가 아니라 세 번째 결과입니다.** 컴파일러가 해석하지 못하는 선언(등재
-  표 밖의 단계, 단계의 키 밖의 인자, 구문이 형상에 맞지 않는 기전)은 **스킵 등록**으로
-  컴파일됩니다. 라우팅은 그대로이고 본체만 없어서, 매치하면 판정 대신 `skipped` 1건을
-  남깁니다. 세계에 없는 소스는 선언 자신의 `supply` 정책이 처분합니다. 그래서 조립은 어디서도
-  예외를 던지지 않습니다. 항목 하나 때문에 형제
-  등록과 두 메타 약속(covenant), 증인(witness) 밸브까지 함께 죽으면 그 원인이 된 config를
-  고칠 방법이 사라지기 때문입니다. 설정 잘못은 stderr에 자기 이름을 적고, 세션 부재는
-  조용합니다.
-- **선언 엔진** — `compileDeclaration` · `judgeDeclaration` · `witnessOpens`가 대수
-  선언(`@polydeukes/core`의 `AlgebraDeclaration`)을 `World` 값 위에서 실행합니다. 이름 붙은
-  추출 파이프라인이 단항 단계 등재 표와 이진 결합자 셋을 거치고, 그 위에서 관계 일곱이
-  불리언이 아니라 증인(witness) 목록으로 답합니다. 엔진은 건네받은 `World` 밖의 것을 읽지
-  않으며(파일도 프로세스도 세션도), 등재 표 밖의 단계 이름은 예외가 아니라 컴파일 시점에
-  돌려주는 설정 결함(config fault)입니다. `worldsFromInput`이 라이브 공급입니다.
-  파일 변경마다 세계 하나를 `target.path` · `pre` · `post` · `state`의 소스 이름으로 만들고,
-  선언의 `sources` 바인딩은 그 입력이 바꾸는 파일이면 변경 자신의 `post`에서, 아니면
-  `world.files`에서, 채널 바인딩이면 `world.channels`에서, 대화 기록(transcript) 바인딩이면
-  루트가 주입한 `CanonicalTranscript`를 한 번 펴낸 플레인 세션 스냅샷(`observedAtMs` · 사용자
-  턴 · 도구 호출, 각각 관측 순번을 실음)에서 세계에 합쳐집니다(채널은 경로가 없어 변경
-  집합과 겹치지 않고, 세션이 없으면 키가 비어 선언의 `supply` 정책이 답합니다). 이력
-  단계 다섯이 그 스냅샷을 읽습니다.
-- **공급 층** — `planSources`가 등록들의 `sources` 바인딩을 중복 없는 경로 목록 하나와
-  그것들이 이름 붙인 채널 종류 목록으로 접고, `supplySources`가 컴포지션 루트가 주입한
-  리더 둘로 그것을 채웁니다(`read(path)`와 선택 `readChannel(kind)`은 부재에 `undefined`로
-  답하고 그 밖의 실패는 던집니다. 세션이 없는 루트는 채널 리더를 주입하지 않고, 거기서는
-  모든 채널이 부재입니다). 둘 다 파일을 열지 않습니다. 표면이 트리를 어떻게 관측하는가 —
-  디스크 · 인덱스 · 커밋 — 는 루트가 배선하는 공급 본체의 몫이고, 결과는 `world`로
-  `dispatchCovenants`에 닿습니다.
+- `compileDeclaration`
+- `compileDisciplineRegistrations`
+- `dispatchCovenants`
+- `runCovenant`
+- `selfModRegistration`
+- `shellModRegistration`
+- `transcriptModRegistration`
+- `ttlWitness`
+- `planSources`
+- `supplySources`
+- `CovenantRegistration`
+- `RunCovenantSpec`
+- `RunCovenantVerdict`
 
-## 설계 태도
+<a id="examples"></a>
+## 예제
 
-차단 목록(blocklist)을 만들지 않습니다. 우회 패턴의 열거는 언제나 한 발 늦기 때문에 논리를
-뒤집었습니다. 보호 경로가 언급되면, 안전이 증명되지 않는 한 차단합니다. 완전 봉쇄는 목표가
-아닙니다. 간접 경로 계산 같은 잔여 벡터는 차단 대상이 아니라 측정 대상입니다. 마찰의 밸브는
-읽기 전용 allowlist와 시간제 증인(witness) 둘뿐이고, 둘 다 측정 가능한 흔적을 남깁니다.
+```ts
+import { runCovenant, ttlWitness } from '@polydeukes/covenant';
 
-아키텍처 청사진과 설계 근거는
-[프로젝트 저장소](https://github.com/huskyhoochu/polydeukes)에 있습니다.
+const witness = ttlWitness({ token: 'covenant witness', ttlMs: 60_000 });
+const verdict = await runCovenant({
+  body: async () => ({ exitCode: 0 }),
+  label: 'demo',
+  telemetryPath: '.polydeukes/roi.log',
+  witness,
+});
+```
 
-## 라이선스
+<a id="see-also"></a>
+## 같이 보기
 
-MIT
+- [`@polydeukes/covenant` 패키지 레퍼런스](../../docs/reference/packages/covenant.ko.md)
+- [`설정 레퍼런스`](../../docs/reference/configuration/index.ko.md#disciplines)
+- [`pdks covenant check`](../../docs/reference/cli/covenant-check.ko.md)

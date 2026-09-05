@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { MECHANISM_NAMES, MECHANISM_SHAPES } from '@polydeukes/core';
+import { compileDeclaration, judgeDeclaration, type World } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The discipline classification skill is the sixth generated artifact: a procedure the
 // agent follows to translate a prose problem statement into a config entry — a judged
@@ -161,6 +163,118 @@ describe('discipline classification skill — the embedded config examples are l
     for (const fence of yamlFences(GENERATED_SKILL)) {
       expect(fence, fence).not.toContain('enforce: block');
     }
+  });
+});
+
+describe('discipline classification skill — current declaration capabilities', () => {
+  function judgeExample(id: string, world: World) {
+    const entry = yamlFences(GENERATED_SKILL)
+      .flatMap((fence) => loadFenceAsConfig(fence).config.disciplines ?? [])
+      .find((candidate) => candidate.id === id);
+    if (!entry) throw new Error(`missing judged example: ${id}`);
+    const compiled = compileDeclaration({
+      declaration: { discipline: entry.id, ...entry.declare },
+    });
+    if ('kind' in compiled)
+      throw new Error(`example failed compilation: ${JSON.stringify(compiled)}`);
+    return judgeDeclaration({ compiled, world });
+  }
+
+  it('documents every mechanism with its admitted axes, relations, and structural conditions', () => {
+    const section = GENERATED_SKILL.split('### 2.')[1]?.split('### 3.')[0] ?? '';
+    const rows = new Map(
+      [...section.matchAll(/^\| `([a-z-]+)` \| (.+)$/gm)].map((match) => [match[1], match[2]]),
+    );
+    expect([...rows.keys()].sort()).toEqual([...MECHANISM_NAMES].sort());
+    for (const name of MECHANISM_NAMES) {
+      const row = rows.get(name) ?? '';
+      const shape = MECHANISM_SHAPES[name];
+      if (shape.reserved) expect(row).toMatch(/reserved.*not accepted/i);
+      for (const token of [...shape.axes, ...shape.relations])
+        expect(row, name).toContain(`\`${token}\``);
+      if (shape.requiresWitness) expect(row).toContain('`witness`');
+      if (shape.scopeSource) expect(row).toContain(`\`${shape.scopeSource}\``);
+    }
+  });
+
+  it('preserves the added-only example regex through TypeScript and YAML string decoding', () => {
+    const world = {
+      'target.path': 'src/example.test.ts',
+      pre: 'it("case", () => {});',
+      post: 'it.only("case", () => {});',
+    };
+    expect(judgeExample('no-focused-tests', world).kind).toBe('broken');
+    expect(judgeExample('no-focused-tests', { ...world, pre: world.post }).kind).toBe('pass');
+  });
+
+  it('matches the forbidden command flag but not a longer flag name', () => {
+    expect(judgeExample('no-force-push', { command: 'git push --force' }).kind).toBe('broken');
+    expect(judgeExample('no-force-push', { command: 'git push --force-with-lease' }).kind).toBe(
+      'pass',
+    );
+  });
+
+  it('judges the locale pairing example on equal keys and names an unmatched key', () => {
+    const world = { 'target.path': 'locales/en.json', en: '{"home":"Home"}', ko: '{"home":"홈"}' };
+    expect(judgeExample('locale-key-parity', world).kind).toBe('pass');
+    const verdict = judgeExample('locale-key-parity', {
+      ...world,
+      en: '{"home":"Home","settings":"Settings"}',
+    });
+    expect(verdict).toMatchObject({
+      kind: 'broken',
+      breaks: [{ witnesses: [{ key: 'settings' }] }],
+    });
+  });
+
+  it('judges the vocabulary example against the supplied allowed values', () => {
+    const world = {
+      'target.path': 'statuses.json',
+      post: '["ready"]',
+      allowed: '["ready","done"]',
+    };
+    expect(judgeExample('status-vocabulary', world).kind).toBe('pass');
+    expect(judgeExample('status-vocabulary', { ...world, post: '["queued"]' })).toMatchObject({
+      kind: 'broken',
+      breaks: [{ witnesses: [{ value: 'queued' }] }],
+    });
+  });
+
+  it('distinguishes successful precedent, failed or absent calls, and unavailable history', () => {
+    const world = { 'target.path': 'package.json' };
+    const session = { observedAtMs: 1000, userMessages: [], toolCalls: [] as unknown[] };
+    const call = {
+      index: 0,
+      name: 'Bash',
+      args: { command: 'npm view example version' },
+      succeeded: true,
+    };
+    expect(
+      judgeExample('manifest-needs-npm-view', {
+        ...world,
+        session: { ...session, toolCalls: [call] },
+      }).kind,
+    ).toBe('pass');
+    expect(judgeExample('manifest-needs-npm-view', { ...world, session }).kind).toBe('broken');
+    expect(
+      judgeExample('manifest-needs-npm-view', {
+        ...world,
+        session: { ...session, toolCalls: [{ ...call, succeeded: false }] },
+      }).kind,
+    ).toBe('broken');
+    expect(judgeExample('manifest-needs-npm-view', world)).toMatchObject({
+      kind: 'not-applicable',
+      reason: 'supply-pass',
+    });
+  });
+
+  it('uses fresh benchmark execution as a draft rather than an already expressible pairing', () => {
+    const drafts = yamlFences(GENERATED_SKILL).flatMap(
+      (fence) => loadFenceAsConfig(fence).config.drafts ?? [],
+    );
+    expect(drafts.map((entry) => entry.id)).toContain('benchmark-supports-performance-claim');
+    expect(drafts.some((entry) => /locale|pairing/.test(entry.id))).toBe(false);
+    expect(GENERATED_SKILL).toContain('pdks docs show write-disciplines');
   });
 });
 

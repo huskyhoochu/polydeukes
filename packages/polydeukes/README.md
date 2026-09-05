@@ -1,94 +1,55 @@
-# polydeukes
+# `polydeukes`
 
-**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/polydeukes/README.ko.md)
+**English** · [한국어](./README.ko.md)
 
-> The unscoped umbrella: the `pdks` CLI entry point and the config discovery loader — the one
-> place where the framework's pieces are assembled for the surfaces a repository actually runs.
+Polydeukes is the umbrella package. Install this package; it ships the `pdks` bin, the config
+loader, the commit-surface runner, the session-surface runner subpath, and the bundled schema
+artifact.
 
-**Alpha.** This package reserves the unscoped `polydeukes` name and sits above the scoped
-`@polydeukes/*` modules as the only one allowed to assemble them — every other dependency stays
-one-way, through the core alone.
+<a id="overview"></a>
+## Overview
 
-## What lives here
+Public contract symbols and entry points:
 
-- **`loadConfig({ rootDir })`** — config discovery. Exactly one root data config (a
-  `polydeukes.config` file in yaml, yml, or json form) directly under the given root, parsed with
-  a safe schema (config data is never executable) and validated by the core's `defineConfig()`.
-  Every failure branch throws — silent defaults are forbidden — and the discovered file attaches
-  itself to its own protection surface.
-- **`pdks covenant check`** — the first real subcommand of the `pdks` bin (`polydeukes` is an
-  alias). A pre-commit judgment runner: staged changes are collected by `@polydeukes/adapter-git`,
-  translated into the covenant input IR, and dispatched through the very in-process judges the
-  session hook calls — one judge, every surface. `--worktree` and `--range <base>..<head>` run the same
-  judgment over the working tree or a ref range as a diagnostic call, with no witness prompt.
-  Declarations that read the session (`precedent` and the other history mechanisms) assemble
-  here like any other, but with no session to read their `supply: pass` takes over: when one
-  matches a staged change it records a `skipped` event carrying its id and that change, and the
-  commit proceeds. Judging them would block every matching commit with no legitimate pass path;
-  filtering them out would hide that a gate stood down. It is the same disposition the session
-  surface uses when it has no transcript. An empty staging area is an explicit pass; a missing or
-  invalid config fails closed.
-- **`pdks explain`** — the assembly reader. It assembles both surfaces' registration sets through
-  the same functions the two runners call and prints them without judging: every registration
-  with its kind (`meta` / `judge` / `skip` / `excluded`), the routing scope of each entry, whether
-  it carries a `why`, and for each skip the compiler's reason — the one that otherwise reaches
-  stderr only when the cause is a config fault. No judge thunk is called and no telemetry row is
-  written. A config that cannot be loaded fails at exit `2` with stdout at zero bytes.
-- **`pdks init claude-code`** — the Claude Code session-surface installer. It proves `polydeukes` resolves
-  from the target project before writing anything, then creates what every distribution path
-  shares (the data config and its `.polydeukes/` ignore line) and what this path owns (a delegator
-  hook, its `.claude/settings.json` registration merged into whatever that file already carries,
-  and a scoped discipline file pointing an AI partner at `pdks docs`). Nothing existing is
-  overwritten: an artifact already there is reported and left alone, so a re-run is a no-op and a
-  consumer's edits survive. The generated config carries the resolution paths on its protection
-  list and a witness block — without the valve the first block would freeze the project, since the
-  hook it just registered is itself protected. Two coexisting config spellings, an unparseable
-  settings file, and a package that cannot be resolved are all precondition failures: each leaves
-  zero files rather than a half-wired tree.
-- **`pdks init grok`** — the Grok session-surface installer. Same preflight and shared scaffold;
-  this path owns `.grok/hooks/` (JSON registration with timeout 60, and a delegator file only when
-  no Claude delegator is on disk). If the Claude hook file already exists, the JSON command points
-  at it so two judges are not spawned. A later run of either installer retargets an
-  installer-generated grok-mjs command the same way, and the JSON matcher follows the
-  `.claude/settings.json` entry for that command — Grok collapses two registrations only when
-  command and matcher both match. An already-open Grok session keeps the hook snapshot from
-  start. The witness valve does not open on Grok.
-- **`pdks docs [topic]`** — the offline documentation reader. The English guides and the reference
-  layer are copied into `dist/docs` at build time, so a consumer's AI partner reads the
-  documentation that shipped with the code doing the judging instead of whichever release a search
-  engine indexed. With no argument it lists the five topics — that listing is how an agent
-  discovers what it may ask at all; with one it returns that topic's section verbatim plus the
-  reference to read next. The query domain is those five names and nothing else: an unknown topic,
-  a bundled document that is missing, and a heading a document no longer carries each name what
-  was missing on stderr and exit 2, leaving stdout at zero bytes. A partially written answer would
-  be read as the document and quoted onward, so no path produces one.
-- **The commit-surface witness valve** — at the `block` level (the default), when a staged change
-  actually breaks a covenant, the runner prompts once on `/dev/tty` for the full witness token (a
-  substring is refused), naming the broken registration, the matched entry, and the commit-wide
-  reach of the one answer. A clean commit never prompts. No TTY — CI, an agent-spawned
-  `git commit` — means no prompt and no way through: the valve is reachable only by a human at a
-  terminal, and nothing is ever persisted. Every witnessed pass is measured as `witnessed`, never
-  silent.
-- **The enforcement level** — the git adapter's namespace setting
-  `adapters.git.enforce: block | advise` selects what a commit-surface verdict does. Under
-  `advise` the valve is structurally absent: a verdict is recorded as an `advised` event, one
-  advisory line lands on stderr, and the commit proceeds — a backstop that measures instead of
-  blocking. Only the verdict is relaxed: a run that cannot judge (missing or invalid config, an
-  unresolvable judge body) fails closed at exit 2 at either level.
+- `loadConfig`
+- `runCovenantCheck`
+- `ResolvedConfig`
+- `polydeukes/claude-code` → `runClaudeCodeHook`
+- `polydeukes/schema.json`
+- `pdks covenant check`
+- `pdks init claude-code`
+- `pdks init grok`
+- `pdks explain`
+- `pdks docs [topic]`
 
-## The wider map
+<a id="public-symbols"></a>
+## Public symbols
 
-| Module | Role |
-|---|---|
-| `@polydeukes/core` | Covenant protocol, config schema, ROI telemetry, transcript seam |
-| `@polydeukes/covenant` | Dispatcher, judge bodies, Bash analysis, discipline library |
-| `@polydeukes/adapter-claude-code` | Session surface — PreToolUse payloads → covenant input IR |
-| `@polydeukes/adapter-git` | Commit surface — staged diffs → covenant input IR |
-| `@polydeukes/ledger` · `@polydeukes/memory` · `@polydeukes/verify` | Blueprint stage |
+```ts
+import { loadConfig, runCovenantCheck } from 'polydeukes';
+import { runClaudeCodeHook } from 'polydeukes/claude-code';
+```
 
-See the [project repository](https://github.com/huskyhoochu/polydeukes) for the architecture
-blueprint and design rationale.
+```ts
+function loadConfig(spec: { rootDir: string }): {
+  config: import('@polydeukes/core').ResolvedConfig;
+  configPath: string;
+};
 
-## License
+function runCovenantCheck(spec: {
+  repoRoot: string;
+  telemetryPath?: string;
+  covenantDist?: string;
+  ttyPrompt?: (prompt: string) => string | null;
+  domain?: unknown;
+}): Promise<{ exitCode: 0 | 2 }>;
+```
 
-MIT
+<a id="see-also"></a>
+## See also
+
+- [`polydeukes` package reference](../../docs/reference/packages/polydeukes.md)
+- [`Configuration reference`](../../docs/reference/configuration/index.md)
+- [`pdks covenant check`](../../docs/reference/cli/covenant-check.md)
+- [`pdks init`](../../docs/reference/cli/init.md)
+- [`pdks explain`](../../docs/reference/cli/explain.md)

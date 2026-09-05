@@ -1,6 +1,6 @@
 # `@polydeukes/covenant`
 
-**English** · [한국어](./covenant.ko.md)
+**English** · [한국어](covenant.ko.md)
 
 > **The judge** — the dispatcher, the discipline library, the meta-covenants, and the TTL
 > witness valve.
@@ -9,6 +9,7 @@
 > import it. What you reach is its behaviour, through the `disciplines:` block in your config
 > and the rows it writes to `.polydeukes/roi.log`.
 
+<a id="ownership"></a>
 ## What this package owns
 
 The judge. Everything that turns a declared promise into a verdict lives here.
@@ -27,6 +28,7 @@ is what satisfies that peer for an ordinary consumer.
 | Delta layer | New-violation-only judgment over a file's before/after pair |
 | Discipline library | Config `disciplines:` entries become enforcement without a line of code |
 
+<a id="disciplines-and-meta-covenants"></a>
 ## Discipline families and meta-covenants
 
 **A `disciplines:` entry is one declaration** — `judge = relate ∘ extract` over the
@@ -41,7 +43,7 @@ judgment needs, which is also what decides whether it can be judged on a given s
 | `{ file: … }` · `{ sidecar: true }` | Another file, or the spawn-record channel | The surface's reader for it |
 
 The writing guide for these entries is [the configuration reference's `disciplines`
-section](./configuration.md#disciplines); the declaration grammar is the core's
+section](../configuration/index.md#disciplines); the declaration grammar is the core's
 `algebra-declaration.schema.json`.
 
 **Three meta-covenants** protect the judging chain. They are covenants like any other; the
@@ -56,7 +58,7 @@ vocabulary below applies to them unchanged.
 **Six words** are the telemetry contract — five verdicts and one observation. A row in
 `.polydeukes/roi.log` carries exactly one of them, and the CLI, the docs, and the tests use
 the same word for the same event. How to read a row is in
-[troubleshooting](../troubleshooting.md#reading-a-verdict).
+[troubleshooting](../../troubleshooting.md#reading-a-verdict).
 
 | Verdict | Means |
 |---|---|
@@ -74,6 +76,7 @@ arguments — leaves no row at all. The comparison observes the result rather th
 spelling, so it records that write after the fact. It never blocks: the write already
 happened, and the comparison fails open on both sides of the verdict.
 
+<a id="consumer-contract"></a>
 ## Where the consumer touches it
 
 - **The `disciplines:` block** in your config. One entry compiles into one registration,
@@ -84,6 +87,7 @@ happened, and the comparison fails open on both sides of the verdict.
 
 No import. The umbrella assembles this package for both surfaces.
 
+<a id="limits"></a>
 ## Declared limits
 
 - **The shell axis leaves `skipped` rows, and that row is the contract.** Predicting a
@@ -92,20 +96,23 @@ No import. The umbrella assembles this package for both surfaces.
   landing in `skipped` is the declared limit showing itself. A pass with no row at all, or
   one recorded `passed` without a judgment, is the defect class.
 - **A declaration that reads the session cannot be judged without one.** On the commit
-  surface there is none, so a matching `precedent` (or any other transcript-reading)
-  declaration records `skipped` with the reason `supply-pass`. That is a permanent
-  condition of that surface.
+  surface there is none. A matching `precedent` (or any other transcript-reading)
+  declaration records `skipped` with the reason `supply-pass` only when that declaration's
+  own `supply` is `pass`. With no policy the missing session is unjudgeable (exit 2), not
+  an automatic skip. That skip-with-pass is a permanent condition of that surface.
 - **A declaration scoped on `command` is absent from the commit surface, and absent without
   a row.** A staged diff carries no command line, so no world such a declaration observes is
   admitted there. This leaves nothing in `.polydeukes/roi.log`, so the log cannot separate a
   command discipline that never triggered from one whose surface never observed a command.
 - **A declaration the compiler cannot resolve compiles to a skip registration** — routing
   intact, no body: a step outside the registry, an argument outside a step's keys, a pattern
-  that does not compile, a mechanism whose shape the syntax does not fit. Assembly therefore
-  never throws: one unresolvable entry cannot take down its siblings, the meta-covenants, and
-  the valve, which would leave no way to fix the config that caused it. A source the world
-  lacks at judgment time is a different case — the declaration's own `supply` policy
-  disposes of it, and with no policy the body answers unjudgeable (exit 2), never upheld.
+  that does not compile, a paired/single mismatch. Assembly therefore never throws: one
+  unresolvable entry cannot take down its siblings, the meta-covenants, and the valve, which
+  would leave no way to fix the config that caused it. A reserved mechanism, or one whose
+  axes and relations the catalogue refuses, is a different stage: `loadConfig` rejects the
+  file (exit 2), and no skip row is written. A source the world lacks at judgment time is a
+  third case — the declaration's own `supply` policy disposes of it, and with no policy the
+  body answers unjudgeable (exit 2), never upheld.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected
   path blocks unless proven safe. Residual vectors such as indirect path computation are

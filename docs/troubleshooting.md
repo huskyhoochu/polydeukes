@@ -2,188 +2,136 @@
 
 **English** · [한국어](./troubleshooting.ko.md)
 
-> Alpha. Nine states cover what ships today — five ways a fail-closed system refuses to
-> proceed, and four things worth knowing when a judgment surprises you. Each entry is
-> symptom → cause → recovery.
+Diagnose the failed stage before changing policy. If a session blocks the repair command itself,
+run the repair from your own terminal. `pdks docs` remains usable without project configuration
+or the judging packages, provided its own installed documentation bundle is intact.
 
-This is the guide layer for recovery: the fail-closed states, reading verdicts, and the
-witness valve.
+<a id="no-config"></a>
+## No config found
 
-The one principle behind half of this page: **a gate that cannot judge blocks rather than
-guesses.** A missing config, an ambiguous config, an invalid config, an installer that
-cannot prove resolution, and a judge that cannot be loaded all fail closed, because a dead
-gate that waves things through is the cheapest bypass of all. The recovery is never to
-disable the gate — it is to give it back what it needs to judge. And run that recovery
-**from your own terminal**: inside a session the repair commands are judged by the very
-gate they repair, and while no config is loaded there is no witness valve to open.
+Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
+`polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root.
+Restore the intended file from Git, or use `pdks init claude-code` / `pdks init grok` for a new
+project. Then run `pdks explain`. No configuration means no silent default policy.
 
-## Every call is blocked and there is no config
-
-**Symptom.** On the session surface, every editing tool call and shell command exits 2;
-on the commit surface, every `pdks covenant check` run does. The error says no Polydeukes
-config was found and names the three candidate filenames.
-
-**Cause.** The surface is wired but config discovery found nothing at the project root.
-Discovery looks for exactly these, in this order: `polydeukes.config.yaml`,
-`polydeukes.config.yml`, `polydeukes.config.json`. A missing config never silently loads
-defaults — silent defaults would mean silently unprotected.
-
-**Recovery.** Restore the file from git. On the session path,
-`pnpm exec pdks init claude-code` or `pdks init grok` recreates files that
-are absent. An existing grok JSON is not rewritten except when its `command`
-still names the grok delegator and a Claude delegator is on disk — then that
-command is retargeted and the matcher follows the settings entry. On the commit path the
-config is hand-written — the [install guide](./installation.md)'s commit-surface section
-has a starting point.
-
+<a id="multiple-config"></a>
 ## More than one config file
 
-**Symptom.** Every call exits 2 with an error naming two (or three) config files at once.
+An ambiguity error names the competing files. Merge their intended contents and retain exactly
+one accepted filename. The loader will not choose one on your behalf. Retry `pdks explain`.
 
-**Cause.** Two spellings coexist — say a `polydeukes.config.yaml` created next to a
-project's existing `.yml`. Ambiguity never picks a winner.
+<a id="invalid-config"></a>
+## Invalid config
 
-**Recovery.** Keep exactly one file and delete the others. If both have content, merge by
-hand first — the loader will not choose for you.
+Parsing or schema failures exit 2 and name the file; schema errors also identify the offending
+field. Repair invalid YAML, custom tags, unknown fields, or an empty `languages` object.
+Custom YAML tags are rejected even if the parser cannot execute them: configuration is data.
 
-## The config is invalid
+Typos such as `protectedPath:` or `adaptors:` are refused. Adapter namespace names are deliberately
+open, however: `adapters.gti:` can load but is not read by the Git adapter. Its actual key is
+`adapters.git`. After repair, run `pdks explain` and check the assembled registrations.
 
-**Symptom.** Every call exits 2 with an error naming the offending file — and, for schema
-violations, the exact key.
+<a id="grok-witness"></a>
+## Grok witness
 
-**Cause.** One of: a YAML parse error; a custom YAML tag (rejected even though the parser
-cannot execute it — config data stays uncomputable by contract); an unknown key (a typo
-like `protectedPath:` is rejected with the full field path — with one open ground: an
-adapter namespace's *name* is not validated, so `adapters.gti:` for `adapters.git:` loads
-clean and its entries are simply never read; that one spelling you check yourself); or an
-empty `languages` block, the schema's one required entry.
+A hook not yet loaded and an unavailable witness valve are different problems:
 
-**Recovery.** Fix the named key in the named file. The error is specific on purpose — no
-rewrite-and-hope needed.
+- After `pdks init grok`, reload the Hooks tab or start a new session. Verify an actual call and
+  its telemetry; a successful installer run does not prove the open host loaded the hook.
+- Grok's ACP history does not supply the Claude-format human message required by the current
+  session witness valve. Reloading does not add that capability. Perform a necessary repair
+  from your own terminal rather than trying to send a Claude witness token through Grok.
 
-## A Grok session does not pick up a newly installed hook
+A commit witness authorizes its staged check only. It cannot release a blocked Grok tool call.
 
-**Symptom.** `pdks init grok` reported created files, but this session's tool calls still
-leave no telemetry row.
+<a id="config-fault"></a>
+## Config-fault
 
-**Cause.** Grok loads hooks at session start. An already-open session keeps that snapshot.
+The configuration loaded, but an entry could not compile into a judgment. A matching registration
+records `skipped` with `config-fault`; `pdks explain` shows the fault. Check extraction step names,
+arguments, regex syntax, and paired versus single extraction use. Fix the named declaration and
+repeat the same observation. A skipped entry is not a passing one.
 
-**Recovery.** Press `r` in the Hooks tab, or start a new session. The witness valve also
-does not open on Grok — a block is recovered from another terminal or the commit-surface TTY.
-
-## One Grok tool call leaves two telemetry rows
-
-**Symptom.** In a tree wired for both Claude Code and Grok, every `write` or
-`run_terminal_command` in a Grok session appends two rows to `.polydeukes/roi.log`,
-milliseconds apart.
-
-**Cause.** Grok reads `.claude/settings.json` as well as `.grok/hooks/*.json` and collapses
-the two registrations only when `command` and `matcher` are both identical. A grok JSON
-whose matcher differs from the settings entry spawns the judge a second time.
-
-**Recovery.** Make the grok JSON's `matcher` the same string as the settings entry that
-registers the same command. Re-running either installer does it: every grok entry that
-names the Claude hook takes the settings entry's matcher.
-
-## `pdks init claude-code` refuses to run
-
-**Symptom.** The installer prints an install command and exits 2 without creating anything.
-
-**Cause.** Preflight: before writing any file, the installer proves the `polydeukes`
-package resolves from the target project root. A hook generated without that would block
-every call through its own fail-closed catch — an uneditable tree. The usual trigger is
-running via a one-off `npx` without installing, or running in the wrong directory (it
-installs where it is invoked).
-
-**Recovery.** `pnpm add -D polydeukes` in the project you meant, then re-run from that
-root. Zero files were written, so there is no partial state to clean up.
-
+<a id="judge-cannot-be-loaded"></a>
 ## The judge cannot be loaded
 
-**Symptom.** Every call exits 2 with `covenant hook failed closed: Cannot find package
-'polydeukes'` — or an error naming a judge-body file that does not exist.
+A missing package or judging module fails closed. Reinstall the package or run the complete
+workspace build from your own terminal. The generated hook delegates to the installed package;
+it is not an independent copy of the judge. Verify another real call after repair. A failure
+before telemetry can load may leave no row at all.
 
-**Cause.** The hook is wired but the package it delegates to is gone or incomplete: the
-dependency was removed, the tree is a fresh clone that was never installed, or (in a
-source clone of this repository) the judge's build output is missing. The installer's
-preflight prevents *wiring* a project into this state, but nothing prevents a wired
-project from entering it later.
+The session hook prefixes the message with `covenant hook failed closed:` and the commit check
+with `covenant check failed closed:`. The two shapes you will see:
 
-**Recovery.** From your own terminal, reinstall the dependency (`pnpm install`, or
-`pnpm add -D polydeukes` if it was removed). In a source clone, run the build. The hook
-file itself needs no repair — it is a delegator, and it recovers the moment the package
-resolves again.
+```text
+covenant hook failed closed: Cannot find package 'polydeukes' imported from …
+covenant check failed closed: the covenant judges could not be loaded from … — run 'pnpm build' to rebuild them: Cannot find module './self-mod.js' …
+```
 
+The first is the installed package missing; the second is a source checkout whose judge
+build output is missing or partial.
+
+<a id="reading-verdict"></a>
 ## Reading a verdict
 
-**Symptom.** Something was blocked (or passed) and you want to know what the record says.
-
-**Cause.** Not a failure — this is the measurement working. Every judgment appends exactly
-one record to the telemetry log (`.polydeukes/roi.log` by default, `telemetry.logPath` to
-move it).
-
-**Recovery.** Read the last lines and the six-word vocabulary:
-
-| Word | Means |
+| Record | Meaning |
 |---|---|
-| `passed` | Judged, upheld the covenant. |
-| `blocked` | Judged, broke it. The call did not run. |
-| `witnessed` | A blocked verdict a human opened in person. Never silent. |
-| `advised` | Commit surface at `advise` level: a break recorded without stopping the commit. |
-| `skipped` | A registration matched but could not judge — **the recorded absence of a judgment, not a pass.** |
-| `unattributed` | A protected entry changed on disk and no judgment explains it — **an observation, not a verdict.** Nothing was blocked; the write already happened. |
+| `passed` | The observed input was judged and upheld the covenant. |
+| `blocked` | A violation stopped the operation. |
+| `witnessed` | A blocking result was allowed through its witness valve. |
+| `advised` | A violation was recorded without stopping the operation, on either surface. |
+| `skipped` | No judgment was possible for the matching registration. This is not a pass. |
+| `unattributed` | Baseline comparison found protected changes without an explaining judgment, or could not read a valid baseline. This is an observation, not a verdict. |
 
-An `unattributed` row names the entry, not the file inside it. Rebuilding a protected `dist`
-without a judged call producing one is expected — it says a write reached that entry outside
-the session's view, which is exactly what the row is for.
+Judgments append telemetry at `.polydeukes/roi.log` unless `telemetry.logPath` changes the location.
+Logging is fail-open: a write failure does not alter the verdict. Exit 0 means the operation may
+continue, not that every discipline passed.
 
-## Opening a blocked call — the witness
+<a id="opening-a-blocked-call"></a>
+## Opening a blocked call
 
-**Symptom.** A call you and your agent agree should proceed was blocked, and you want it
-through without editing the policy.
+In a supported Claude Code session, type the configured witness token alone on the first line
+of a human message, then retry within its configured TTL. The message may also precede an
+intentional protected edit; no previous failed attempt is required. The token is not a secret.
+The valve checks human provenance and applies only to a blocking judgment. A successful retry
+appends a `witnessed` row; it does not rewrite the earlier blocked row.
 
-**Cause.** The valve exists for exactly this, and it sits *after* the verdict — only a
-judgment that actually blocked can be witnessed open.
+A witness cannot repair missing modules or other failures that prevent judgment assembly.
 
-**Recovery.** Type the token from your config's `witness:` block so it stands **alone on
-the first line** of a conversation message. The window holds for `ttlMinutes`, then
-blocking resumes on its own. Three things that do not work, by design: quoting or
-mentioning the token mid-sentence (invocation is first-line-standalone only); witnessing a
-call that was never blocked (the valve is consulted only after a block); and the agent
-typing the token for itself (only human-authored messages count — the defence is
-provenance, not secrecy). Every allowance lands as one `witnessed` row.
-
+<a id="blocked-commit"></a>
 ## A blocked commit
 
-**Symptom.** `git commit` stops at a prompt asking a human to witness a staged protected
-change — or, from an agent, the commit simply fails with exit 2.
+Run the commit from your own terminal and answer its TTY prompt with the complete configured
+token. A non-interactive staged check cannot obtain that answer. The check exits 2 when it refuses;
+Git may report a different nonzero exit code for the failed commit.
 
-**Cause.** The commit surface at the default `block` level judges the staged diff, and its
-valve is a TTY prompt. An agent-spawned commit has no TTY, so for it the valve is not even
-assembled — a terminal-holding human is the pass condition, not a workaround.
+A normal entry blocks only when its own level and the adapter's level both permit blocking.
+Setting only `adapters.git.enforce: block` does not promote default-`advise` entries. Changing a
+level is a policy decision, not a required repair. The prompt is separate from a session message.
 
-**Recovery.** Run the commit from your own terminal and answer the prompt with the full
-token — one answer covers that whole commit. If you want the commit surface to measure
-without stopping, set `adapters.git.enforce: advise`: verdicts are then recorded as
-`advised` and the commit proceeds with one advisory line on stderr. At either level a run
-that *cannot judge* (missing or invalid config, an unresolvable judge) still exits 2 —
-`advise` relaxes the verdict, never the gate's integrity.
-
+<a id="skipped-rows-on-the-commit-surface"></a>
 ## `skipped` rows on the commit surface
 
-**Symptom.** A `precedent` declaration that judges normally in sessions always lands as
-`skipped` on commits.
+A transcript-reading declaration with `supply: { session: 'pass' }` records `supply-pass` when the
+commit surface has no session. Use the session surface for that promise; a skip does not verify
+history. Other unavailable channels can produce `no-observation`. Inspect the registration and
+reason instead of treating every missing source as the same failure.
 
-**Cause.** A declaration that reads the session judges *session history* — was the required
-step actually executed before this change. A commit has no session to read, so the
-declaration's own `supply: { session: 'pass' }` takes over: when its scope matches a staged
-change it records `skipped` with the reason `supply-pass` and the entry's id, and proceeds.
+A command-scoped declaration does not match a staged diff's absent command line and records no
+judgment there. Configuration, scope matching, supply, and the final comparison are separate steps.
 
-**Recovery.** None needed — this is a declared condition of the surface, not a defect. The
-row is the point: a gate that did nothing says so in the data. `pdks explain` shows the
-same fact before any commit: the entry appears under the commit surface with its
-`transcript` source, which that surface never supplies. Such a declaration is
-really a session-surface tool — on a project that wires only the commit surface, such an
-entry only ever buys telemetry, so declare it where an AI partner's session exists to be
-judged. The row appears only when the entry's scope actually matched, so an unrelated
-commit records nothing.
+<a id="local-state"></a>
+## Moving a project between machines
+
+Telemetry and `.polydeukes/baseline.json` are local state, not a portable history supplied by Git.
+A clone without them does not reconstruct prior judgments. The session hook records an absent
+or invalid baseline and establishes one for subsequent comparisons; this is not proof that old
+changes were judged. Preserve needed logs separately when migrating, and check any custom
+`telemetry.logPath` rather than assuming `.polydeukes/` holds all records.
+
+<a id="next-steps"></a>
+## Next steps
+
+- [Connect the surfaces](./how-to/connect-surfaces.md)
+- [Configure the project](./how-to/configure-project.md)
+- [Write disciplines](./how-to/write-disciplines.md)

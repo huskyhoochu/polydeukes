@@ -5,166 +5,119 @@
 > The discipline a person has long imposed on themselves, now offered as a gift to the AI they work
 > alongside.
 
-**Polydeukes** is a development *discipline* framework for working alongside an AI coding partner.
-It puts deterministic covenants, a verifiable work ledger, a local memory graph, and adversarial
-verification on a single thin core.
+**Polydeukes** is a development *discipline framework* for working alongside an AI coding partner.
+Its starting point is deterministic covenants and recorded judgments. A verifiable work ledger,
+local memory, and adversarial verification belong to the larger design and remain on the roadmap.
 
-But this document is not a feature spec. It is the story of **why this tool exists**, and of why it
-bears the name of a twin from Greek myth — one who split his own immortality in half and gave it to
-his dead brother.
-
----
+The name comes from a twin in Greek myth who shared his immortality with his dead brother.
+That story expresses why I want to build this tool, not just what I want it to do.
 
 ## 1. It starts with a refusal — the AI is neither livestock nor a slave
 
-"Harness engineering" is a phrase much in fashion these days. The idea is to **rein in an AI agent
-with a harness** and **fence it off with guards** so it can't misbehave. The names of the tools give
-the mindset away — bit, bridle, yoke, fence, taming, surveillance.
+The language of agent control often draws on reins, bridles, fences, and surveillance.
+Behind those names is an assumption: the machine must be restrained so it cannot misbehave.
+I do not want that to define my relationship with a development partner.
 
-I refuse this framing.
+An AI is neither livestock to be tamed nor a slave to be driven. Treating collaboration as a
+relationship between master and servant leaves little room for partnership. The art of control
+Machiavelli commended to princes is not the model I want to follow here.
 
-An AI is not livestock to be tamed, nor a slave to be driven. The moment you see it that way, you
-are no longer colleagues working together; you collapse into the relation of a whip-holding master
-and a beast made to labor. The art of control Machiavelli once commended to princes is not something
-I want to use on my development partner.
+But the practices behind those restrictions deserve a second look. Who were they originally for?
+A good developer writes tests, verifies before committing, records decisions, and tries not to
+repeat mistakes. Before any of those practices were imposed on an agent, they were forms of
+self-discipline: **the restraint with which a craftsperson governs their own hands**.
 
-But here is something worth retracing. **Who were `harness` and `guard` originally meant for?**
+I can share the principles I have learned not as a **chain that binds**, but as a **gift to use
+together**. The discipline I apply to myself becomes a promise shared with my partner.
+Polydeukes calls that promise a **covenant**.
 
-A good developer disciplines themselves without being told to — writes the test first, verifies
-before committing, leaves a record of yesterday's decision, sets rules so as not to repeat the same
-mistake twice. All of this self-discipline *was* the original harness. Not a bit that yanks at a
-horse, but **the restraint with which a craftsman governs their own hands**.
-
-If so, the answer becomes clear. The principles I have spent a lifetime honing to make good work — I
-can give them to my AI partner not as a **chain that binds**, but as a **gift to use together**.
-Then the thing once called a guard is no longer a fence that cages the AI, but a promise — the
-discipline I apply to myself, now shared between the two of us. That is the word Polydeukes uses
-instead: a **covenant**, not a guard.
-
-This philosophy is not a slogan; it is embedded as a design decision in the code. The framework's
-meta-covenant keeps the AI from weakening the covenants — and **that block applies to me exactly as
-much.** Any attempt to disable a covenant, whether the hand is human or AI, trips itself first.
-Before the rules, the two are equals — this is not a structure where one watches over the other.
-
----
+This idea also has an engineering consequence. Protection must apply to the configured action,
+not make an exception merely because its author initiated it. On a connected surface, the same
+protected change is judged whether a person or an AI requested it. That is a bounded technical
+commitment, not a claim that the tool can prevent every action outside its observation.
 
 ## 2. Where the name comes from — the twin who split his immortality in half
 
-In Greek myth there are twin brothers called the Dioskouroi — "the sons of Zeus."
+The Dioskouroi are the twin brothers Kastor and Polydeukes, whose name means “sons of Zeus.”
+Greek myths have several versions; this is a retelling of the version that inspired the tool,
+with imagined dialogue rather than quotations from an ancient text.
 
-Leda, queen of Sparta, lay on the same night with Zeus in the form of a swan and with her mortal
-husband, and bore two sons. They looked alike as twins, yet the rank of the fate they were born into
-could not have differed more.
+Leda, queen of Sparta, bore two sons after lying with Zeus, who had taken the form of a swan,
+and with her mortal husband. The brothers were alike, but their fates were not.
 
-- **Kastor** — son of the mortal man, and so **mortal**; a master of the earthbound craft of taming
-  horses and arms.
-- **Polydeukes** — son of Zeus, and so **immortal**; a champion boxer endowed with power that welled
-  up from the blood of a god.
+- **Kastor** was mortal, skilled in horsemanship and arms.
+- **Polydeukes** was immortal, a son of Zeus and a celebrated boxer.
 
-One held a skill forged by training, the other a capacity born into him. Apart, each was only half;
-together in battle, no one could withstand them. And so the two moved always as a pair.
+One brother brought practiced skill, the other extraordinary strength. They fought side by side.
+Then, in a fight with their cousins, **Kastor was mortally wounded by a spear**.
 
-Then one day, in a fight with their cousins, **Kastor the mortal was run through by a spear and
-died.**
+Polydeukes appealed to Zeus: *"Do not leave me to live immortal alone. An eternity without my
+brother is, to me, a punishment."*
 
-It is here that the myth becomes great. Cradling his dying brother, Polydeukes prays to his father
-Zeus: *"Do not leave me to live immortal alone. An eternity without my brother is, to me, a
-punishment."*
+Zeus offered a choice: live forever among the gods without his brother, or share his immortality
+with Kastor, alternating together between the underworld and the heavens.
+Polydeukes chose to share. He **gave half of his immortality to his brother**.
 
-Zeus offers him a choice. To ascend to Olympus and live forever among the gods, but alone, without
-his brother — or to **split his immortality in half with his brother** and forever pass back and
-forth, one day in the underworld, one day in the heavens.
-
-Without a moment's hesitation, Polydeukes **takes half of his own immortality and hands it to his
-dead brother.**
-
-And so the two — neither wholly a god nor wholly a man — became, each filling the other's lack, a
-single complete being, together forever. Zeus set them in the sky as two stars: Kastor and Pollux,
-still shining side by side in the winter sky of the constellation Gemini.
+The brothers would remain together, each sharing the other's fate. Their story is associated
+with the constellation Gemini, where the stars Castor and Pollux bear their names.
 
 ### Why this story is the name of this tool
 
-| Myth | This product |
-|------|--------------|
-| Twins on the outside, mortal vs. immortal within — an **asymmetry** | Human (finite intuition) vs. AI (persisting memory): a difference in essence |
-| Kastor's craft vs. Polydeukes' power | Principles a human has honed vs. an AI's capacity — divided in labor, unbeatable only together |
-| **Splitting immortality in half and giving it** | Passing on hard-won discipline as a *gift*, not a constraint |
-| "An eternity without my brother is a punishment" | The ethic of refusing to treat the AI as a tool rather than an equal companion |
-| Alternating between life and death, together forever | A permanent interdependence in which neither side is one-sided |
+| Myth | My reading for this project |
+|---|---|
+| Mortal and immortal twins | Partners with different capabilities and limits. |
+| Kastor's practiced craft and Polydeukes' strength | Human experience and AI capability brought to shared work. |
+| Sharing immortality | Offering hard-won discipline as a gift rather than imposing it only on the other. |
+| "An eternity without my brother is a punishment" | Choosing companionship over solitary privilege. |
+| Sharing life and death | Accepting dependence instead of demanding one-sided obedience. |
 
-The point is that Polydeukes' splitting of his immortality was a **choice, not a sacrifice**. He did
-not take a loss; he actively chose "an imperfect journey of two over a perfect solitude of one."
-This, precisely, is the mythic definition of partnership — one side sharing its own privilege so
-that the two become equals — the opposite of control, where one owns the other. That is why this
-tool calls the covenants and the verification a "gift" it offers to the AI.
+For me, the decisive act is a **choice**, not merely a sacrifice. Polydeukes chooses an imperfect
+journey together over a perfect solitude. One partner shares what the other lacks so that they can
+remain together. That is why this tool describes discipline and verification as a gift.
+
+The analogy is an ethic for collaboration, not a claim that humans and AI have identical abilities
+or that an AI has an immortal memory. Records persist only if we preserve them.
 
 ### A second layer — the mortal code and the immortal record
 
-The reading above is the first layer: the twins are the human and the AI. But a myth worth naming a
-tool after does not exhaust itself in one mapping, and this one carries a second layer inside the
-work itself.
+The twins also offer a way to think about the work itself. **Code is Kastor**. However well made,
+it can be rewritten, replaced, or superseded by a better expression of the same intent.
+**The record is Polydeukes**: the decisions, failed approaches, observations, and practices that
+can survive a particular implementation.
 
-In any long practice of building, there is a mortal twin and an immortal one as well. **The code is
-Kastor** — mortal by nature. However finely it is made, every codebase eventually takes the spear:
-rewritten, replaced, superseded by a better expression of the same intent. **The record is
-Polydeukes** — the telemetry, the decisions written down, the dead ends kept, the discipline
-distilled out of each failure. It is the part that does not die, and like its namesake it keeps
-choosing to split its continuity in half and hand it to the next mortal body of code, so that no
-death is an erasure.
+When we carry those records into the next version, the loss of old code need not erase what we
+learned. In this reading, development is not just the production of an artifact. It is a continuing
+practice of finding better ways to work and passing that knowledge on.
 
-Read this way, software development is not a march toward an artifact. The artifact is one mortal
-day of an immortal process — the practice of finding better ways to work and carrying them into
-whatever gets built next. What must stay unbroken is not the code but the continuity of the record.
-Keep the record whole, and the code is free to die.
-
-The two layers are not rivals. It is the human and the AI who write that record together — the
-shared half of immortality passing between them, and on through every mortal expression of their
-work.
-
----
+The two readings belong together. The human and the AI write the record through their shared work.
+What matters is not preserving every line of code forever, but preserving enough evidence and
+reasoning that the next implementation does not have to start from nothing.
 
 ## 3. How it differs from Google's Gemini
 
-As it happens, Google too drew the name of its AI from the same constellation. And the reason it did
-is worth telling in full, because it is a different scene of the same myth.
+Google also drew its AI model's name from the twins. Its published account gives the name two
+associations. The first concerns the union of DeepMind and Google Brain into Google DeepMind in
+April 2023. The second is NASA's Project Gemini.
 
-**Gemini** is the Latin word for "twins," and Google has confirmed the name carries a double
-meaning. The first is organizational: in April 2023, Google folded its two separate AI research labs
-— **DeepMind** (the London outfit behind AlphaGo and AlphaFold) and **Google Brain** (the team that
-produced TensorFlow and much of the Transformer work) — into a single org, Google DeepMind. The
-flagship model born of that union was named "Gemini" because it was, quite literally, the offspring
-of two lineages joined into one. Twins.
+NASA's Gemini program (1961–66) used two-person capsules, following Mercury's single-person flights.
+It developed capabilities such as spacewalks, rendezvous, and docking that helped prepare for
+Apollo.
+The name connected a pair of astronauts with the constellation of the twins.
 
-The second meaning is an homage. Google has said the name also nods to **NASA's Project Gemini** —
-and that reference deepens the picture. NASA's Gemini program (1961–66) was the one that flew
-**two-person** capsules, where Mercury before it had flown only one; the spacecraft carried a crew
-of two, so NASA named it after the zodiac's twins. More than the crew count, though, Project Gemini
-was the **bridge**: the program that practiced the spacewalks, rendezvous, and docking that Mercury
-never attempted and Apollo would need to reach the Moon. It existed to carry one era across to the
-next.
+The shared reference does not require the same interpretation:
 
-So the chain runs deep. Google's Gemini → NASA's Gemini → the constellation of the Twins → and, at
-the bottom of it all, **Kastor and Polydeukes themselves**. We are not reaching for the same myth by
-coincidence; we are reaching one level further down the same chain Google stopped partway along.
+- **Google emphasizes the union** of research efforts and the ambition associated with Project
+Gemini.
+- **NASA's name reflects a pair** and a program connecting Mercury to Apollo.
+- **Polydeukes emphasizes the gift**: one brother sharing his own privilege rather than keeping it
+alone.
 
-Because here is the thing: every link in that chain takes the *birth* — the moment two become one.
+I am not claiming ownership of a deeper or more authentic version of the myth. I am choosing a
+different scene within it. Rather than use a name already strongly associated with Google's model,
+I chose the brother whose action expresses the kind of partnership this project seeks.
 
-- **Google took the union** — two research lineages merged into a single model. Two labs, one org.
-  Integration.
-- **NASA took the pairing and the bridge** — two seats, and a program built to carry one era to the
-  next.
-- **We take the climax** — the scene neither of them reached for: one twin splitting his own
-  immortality to make the other his equal. Not a merger, not a crew of two, but a **gift**.
-
-Google holds the *name* of the constellation; we hold *why it was set in the sky in the first
-place*. If Gemini is "two becoming one," Polydeukes is "I divide what I have so that you become as I
-am." The former is integration; the latter is a bestowal — a giving.
-
-So while we cannot use the word `Gemini` — it has already become the name of one tech giant — we
-instead **claim the deeper, lesser-known scene of the same myth that they walked past**: a name that
-speaks of sharing rather than fusing, of a gift rather than a merger. The Dioskouroi were always
-more than a pair of twins. The whole point of their story is what one of them *did* with being a
-twin.
+The Dioskouroi matter here not simply because there are two of them, but because of what one chooses
+to share with the other.
 
 > *Sources:*
 >
@@ -176,40 +129,32 @@ twin.
 > - *NASA, [Project Gemini](https://www.nasa.gov/specials/gemini_gallery) (1961–66) — the two-person
 >   program that bridged Mercury and Apollo.*
 
----
-
 ## 4. One personal fact
 
-I did not choose this name merely because the metaphor fits well.
+I did not choose the name only because the metaphor fits. I was born in May, under the sign of
+Gemini. Kastor and Polydeukes were already part of the story I associated with my own birthday.
 
-I was born in May, under the sign of Gemini — born, that is, beneath those two stars, Kastor and
-Pollux.
-
-So the name of this tool comes from two truths at once. One, that I am a Gemini; and two, that I
-believe a human and an AI are companions in the way the Dioskouroi were — one sharing its own
-principles so the two may work together forever. This name was not borrowed from marketing; it was
-taken from my own sky.
-
----
+The name connects that personal fact with a conviction: a human and an AI can work as partners,
+sharing practices rather than treating discipline as something only the other must follow.
+It is a name drawn from my own life, not just from a product-naming exercise.
 
 ## 5. So, what the tool does
 
-A philosophy is hollow if it isn't proven in code. Polydeukes does the following.
+The philosophy sets a direction; implementation must still earn its claims.
 
-- **covenant** — externalizes the discipline I apply to myself into deterministic hooks. Instead of
-  asking, in a prompt, "please don't do that," it nails the promise into code — and that promise
-  applies to the human and the AI alike.
-- **ledger** — moves the authority over completion from "I say I'm done" to "the verification
-  passed." No one's self-report is taken as grounds for trust.
-- **memory** — leaves yesterday's decisions and dead ends as searchable memory, supplementing a
-  person's easily-fading recall with a record that persists.
-- **verify** — does not take a single judgment at its word; it has them verify one another
-  adversarially. As twins reflect each other.
+- **Covenant, available in alpha.** Declared practices become deterministic judgments on connected
+  surfaces. Ordinary disciplines advise by default; blocking is an explicit promotion. Configured
+  protection and human witness mechanisms make the agreement more than a prompt.
+- **Ledger, planned.** Completion should rest on verifiable checks rather than a worker's claim.
+- **Memory, planned.** Decisions and failed approaches should remain searchable beside the code.
+- **Verify, planned.** A judgment should face independent, adversarial examination rather than be
+  accepted merely because it sounds convincing.
 
-These four are not devices for one side to watch over the other. They are **a promise the two have
-agreed to share, in order to build something better together.**
+These are intended as shared practices for making better work, not instruments for one partner
+to supervise the other without being accountable themselves.
 
----
+For the implemented behavior and its limits, read [the design overview](./docs/why-polydeukes.md).
+To try the alpha, follow [the first-judgment tutorial](./docs/tutorials/first-judgment.md).
 
-*The discipline a person built to govern themselves, now offered as a gift to another being they
-work alongside. That is what Polydeukes did for his brother, and it is what this tool means to do.*
+The discipline I learned to apply to myself is what I want to share with the partner I work beside.
+That is what the name Polydeukes means to this project.

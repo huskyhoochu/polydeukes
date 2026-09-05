@@ -484,21 +484,105 @@ describe('the bundled docs answer from the installed tree', () => {
       const result = spawnDocs('install');
 
       expect(result.status, `stderr: ${result.stderr}`).toBe(0);
-      expect(result.stdout).toContain('# Installing Polydeukes');
+      expect(result.stdout).toContain('# Install and get your first judgment');
     } finally {
       // Restored for the cases below, which spawn the same tree.
       renameSync(stashed, adapterDir);
     }
   }, 60_000);
 
-  it('refuses a two-argument form with the usage line', () => {
-    // The argv half, which no unit test reaches: `docs` is the bin's one form taking a
-    // variable argument count, so the arity bound lives only here. Dropping it would make
-    // `pdks docs install extra` answer as though the trailing word were not there.
+  it('refuses an extra positional argument instead of silently ignoring it', () => {
     const result = spawnDocs('install', 'extra');
 
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
-    expect(result.stderr).toContain('usage:');
+    expect(result.stderr).toContain('unexpected docs argument: extra');
+  }, 60_000);
+
+  it('searches and retrieves Korean offline without config or judging dependencies', () => {
+    const umbrellaDir = dirname(
+      realpathSync(join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json')),
+    );
+    const configPath = join(consumerRoot, CONFIG_REL);
+    const savedConfig = readFileSync(configPath);
+    const dependencies = ['core', 'covenant', 'adapter-git', 'adapter-claude-code'];
+    const moved: [string, string][] = [];
+    const offline = join(packRoot, 'offline-docs.mjs');
+    writeFileSync(
+      offline,
+      `
+import net from 'node:net';
+import http from 'node:http';
+import https from 'node:https';
+import {syncBuiltinESMExports} from 'node:module';
+const denied = () => { throw new Error('network disabled for installed docs'); };
+net.Socket.prototype.connect = denied;
+http.request = http.get = https.request = https.get = denied;
+globalThis.fetch = denied;
+syncBuiltinESMExports();
+`,
+    );
+    const invoke = (...args: string[]) =>
+      spawnSync(
+        process.execPath,
+        ['--import', offline, join(umbrellaDir, 'dist/bin.js'), 'docs', ...args],
+        {
+          cwd: consumerRoot,
+          encoding: 'utf8',
+          timeout: 5_000,
+        },
+      );
+    try {
+      for (const name of dependencies) {
+        const path = join(dirname(umbrellaDir), '@polydeukes', name);
+        const stash = join(packRoot, `docs-only-${name}`);
+        renameSync(path, stash);
+        moved.push([path, stash]);
+      }
+      rmSync(configPath);
+      const search = invoke('search', '번역 키 짝 맞춤', '--lang', 'ko', '--limit', '3', '--json');
+      expect(search.status, search.stderr).toBe(0);
+      const answer = JSON.parse(search.stdout);
+      expect(answer.packageVersion).toBe(
+        JSON.parse(readFileSync(join(umbrellaDir, 'package.json'), 'utf8')).version,
+      );
+      expect(answer.results).toContainEqual(
+        expect.objectContaining({
+          documentId: 'write-disciplines',
+          sectionId: 'locale-key-pairing',
+        }),
+      );
+      writeFileSync(configPath, 'invalid: [');
+      const show = invoke('show', 'write-disciplines', '--lang', 'ko', '--json');
+      expect(show.status, show.stderr).toBe(0);
+      expect(JSON.parse(show.stdout).markdown).toBe(
+        readFileSync(join(umbrellaDir, 'dist/docs/how-to/write-disciplines.ko.md'), 'utf8'),
+      );
+      for (const topic of TOPICS) expect(invoke(topic, '--lang', 'ko').status).toBe(0);
+    } finally {
+      writeFileSync(configPath, savedConfig);
+      for (const [path, stash] of moved.reverse()) renameSync(stash, path);
+    }
+  }, 60_000);
+
+  it('rejects damaged installed bundle metadata without partial stdout', () => {
+    const indexPath = join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'dist/docs/index.json');
+    const original = readFileSync(indexPath);
+    try {
+      const index = JSON.parse(original.toString('utf8'));
+      index.sections = [];
+      writeFileSync(indexPath, JSON.stringify(index));
+      for (const args of [
+        ['search', 'config'],
+        ['show', 'configuration'],
+      ]) {
+        const result = spawnDocs(...args);
+        expect(result.status).toBe(2);
+        expect(result.stdout).toBe('');
+        expect(result.stderr).toContain('mismatch');
+      }
+    } finally {
+      writeFileSync(indexPath, original);
+    }
   }, 60_000);
 });

@@ -1,33 +1,50 @@
-<!-- markdownlint-disable MD013 -- npm renders this page; its prose is authored as single-line paragraphs. -->
+# `@polydeukes/core`
 
-# @polydeukes/core
+**English** · [한국어](./README.ko.md)
 
-**English** · [한국어](https://github.com/huskyhoochu/polydeukes/blob/main/packages/core/README.ko.md)
+The core package is the vocabulary layer. It exports the covenant protocol, config validation,
+telemetry helpers, and shared types used by the judge and adapters.
 
-> The thin, domain- and agent-agnostic core of Polydeukes — a development *discipline* framework for building alongside an AI coding partner.
+<a id="overview"></a>
+## Overview
 
-**Alpha.** The API surface may move between milestones; for anything not landed here, the repository's design docs are the source of truth.
+Public contract symbols include:
 
-## What lives here
+- `defineConfig`
+- `parseInput`
+- `verdictToExitCode`
+- `normalizeProtectedPaths`
+- `appendRecordFailOpen`
+- `readRecords`
+- `noopTranscript`
+- `ResolvedConfig`
+- `CovenantInput`
+- `CovenantVerdict`
+- `EXIT_UPHOLD`
+- `EXIT_BREAK_NON_BLOCKING`
+- `EXIT_BREAK_BLOCKING`
 
-Every unit below is landed and tested — not blueprint:
+<a id="examples"></a>
+## Examples
 
-- **Covenant protocol** — the contract every covenant (a deterministic, mutually binding promise) speaks: input arrives as stdin-JSON (`CovenantInput`, `parseInput`), verdicts leave as exit codes. A covenant body only ever emits `0` (upheld) or `1` (broken, non-blocking); translating `1` into the blocking `2` is the wrapper's job. Parsing is fail-closed — an unjudgeable payload resolves to `2`, never to a silent pass. Each tool call optionally carries its own `fileChange` — agent-neutral evidence as a discriminated union (`create`/`modify`/`delete`, deletion first-class) adapters fill from their own sources (virtual apply, git blobs) so delta judgments never touch disk; `allFileChanges` flattens it for consumers that need no attribution.
-- **ROI telemetry** — a single append-only, line-oriented collector (`appendRecord`, `readRecords`) plus the `gain` aggregation (`runGain`). Every package writes through this one collector — via `appendRecordFailOpen`, the shared fail-open wrapper. Observation is fail-open: a logging failure never changes a verdict.
-- **Config schema v2 (config as data)** — `defineConfig(unknown)` validates parsed yml/json data. Unknown keys are rejected loudly at the level this package owns (a typo must not silently disable a discipline) while an adapter namespace's contents are its own adapter's to validate, `testCmd` is a `{scope}` template string compiled into a callable, and the matching JSON Schema ships as `@polydeukes/core/schema.json` — held equivalent to the validator by a contract test. The schema now includes `disciplines:` — user-declared discipline entries (one `declare` block each, or a `draft`) validated here as pure data and compiled by the covenant package.
-- **Algebra declaration schema (`ALGEBRA-01`)** — `validateAlgebraDeclaration(unknown)` checks the shape of one declaration (`judge = relate ∘ extract`: `scope` · `sources` · `supply` · `extract` · `relate` · `witness` blocks — `sources` binds a name to a repo-relative file outside the target, its kind position closed to `file`; a relation position closed to seven names, a binary combinator position closed to three, an open unary extraction vocabulary) and returns it as data. The matching JSON Schema ships as `@polydeukes/core/algebra-declaration.schema.json`, held equivalent by the same kind of contract test. The core validates shape only — it runs no extraction and evaluates no relation; `disciplines:` does not accept these blocks until the engine lands (`ALGEBRA-02`).
-- **Fail policy table** — one table (`resolveFailMode`) decides fail-open vs fail-closed per failure kind; "cannot judge" always means block.
-- **Protected-path normalization** — `normalizeProtectedPaths` turns the declared `protectedPaths` list into the literal path strings the dispatcher matches on (trim, prefix/suffix strip, dedupe). Adapter settings live in the `adapters:` namespace map — one object per adapter, contents validated by that adapter, passed through the core verbatim.
-- **Canonical transcript seam** — `CanonicalTranscript` is the query interface covenants use to ask about session history: subagent invocations, user messages, and tool calls (`findToolCalls`, whose name and args are adapter-supplied values). The default is a noop, so an uninjected consumer converges on "nothing happened"; real transcripts stay behind adapters.
+```ts
+import { defineConfig, parseInput } from '@polydeukes/core';
 
-## Invariants
+const config = defineConfig({
+  languages: {
+    typescript: {
+      productionGlob: 'packages/*/src/**/*.ts',
+      testCmd: 'pnpm --filter {scope} test',
+    },
+  },
+});
 
-- **Zero runtime dependencies.** Validation is hand-rolled; the published JSON Schema is a sibling artifact the source never reads.
-- **No agent, tool, or language literals.** Editor tool verbs and test-runner names are *values* supplied by configs and adapters, never part of this package's vocabulary — grep gates in the acceptance criteria keep it that way.
-- **One-way dependencies.** Every other `@polydeukes/*` package depends only on `core`; core depends on none of them.
+const payload = parseInput('{"toolCalls":[],"subagentSpawns":[],"userMessages":[]}');
+```
 
-See the [project repository](https://github.com/huskyhoochu/polydeukes) for the architecture blueprint and design rationale.
+<a id="see-also"></a>
+## See also
 
-## License
-
-MIT
+- [`@polydeukes/core` package reference](../../docs/reference/packages/core.md)
+- [`Configuration reference`](../../docs/reference/configuration/index.md)
+- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.md)

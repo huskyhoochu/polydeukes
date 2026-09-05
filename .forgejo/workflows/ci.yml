@@ -28,4 +28,10 @@ jobs:
 
       - run: pnpm turbo run build
 
+      # After build: the adapters and the umbrella resolve their workspace siblings through
+      # each sibling's dist/index.d.ts, which a fresh checkout does not have.
+      - run: pnpm -r typecheck
+
       - run: pnpm -r test
+
+      - run: node scripts/check-docs.mjs

@@ -197,3 +197,25 @@ One path a consumer may import a package by.
 **Barrel**:
 The module behind an entry point that only re-exports. The consumer's contract, never the
 test surface.
+
+## Release verification
+
+**Release verification**:
+The execution of a milestone's completion criteria, each with the evidence it produced or the
+note that it did not run. Never a plan's checkmark.
+*Avoid*: Sign-off, QA pass
+
+**Human review**:
+A judgment a person performed and recorded under their own name. What an AI performed is an AI
+review and is labelled as such, however thorough.
+*Avoid*: Approval (unless a person gave it), review (unqualified)
+
+**Representative paragraph**:
+One paragraph chosen from a public document as the sample a human review of prose style judges.
+Twelve per milestone, six per language.
+
+**Reader task**:
+One of the six fixed tasks a first-time reader performs from the documents alone — install,
+write a discipline, recover from an error, look up an option, call a package, read a search
+result — recording where they got stuck. Each language is a separate run.
+*Avoid*: User test, usability study

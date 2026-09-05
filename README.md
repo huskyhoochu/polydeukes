@@ -25,7 +25,7 @@ pdks docs [topic]        # read the bundled documentation, offline
 
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
 recurring problem to your AI partner and the skill classifies it into a config entry — judged
-at advise when the current families can express it, a `draft: true` entry otherwise.
+at advise when the current declaration grammar can express it, a `draft: true` entry otherwise.
 
 Since v0.5.0 the default posture is diagnostic. A broken discipline lands as a recorded
 advisory — exit 0, one `advised` telemetry row, the entry's own `why` on stderr — rather
@@ -41,6 +41,7 @@ verify` (adversarial verification) and `pdks ledger start <id>` (work tracking).
 
 ---
 
+<a id="what-it-is"></a>
 ## What it is
 
 Polydeukes externalizes the discipline a developer applies to themselves — test first, verify before
@@ -51,10 +52,10 @@ The framing is partnership, not control. A covenant is not a fence that cages th
 promise that applies equally to the human and the AI. The origin of the name and the philosophy
 behind it are in [`STORY.md`](./STORY.md).
 
-The design starts from an AI development harness embedded in a real production monorepo — the very
-"harness engineering" framing this project sets out to reclaim — and from an analysis of whether
-that machinery can be extracted into a general framework.
+The design starts from AI development tooling embedded in a real production monorepo,
+and from an analysis of whether that tooling can be extracted into a general discipline framework.
 
+<a id="thin-core-and-packages"></a>
 ## Structure — a thin core plus independent packages
 
 Not all-or-nothing: install only the pieces you need. Each package depends only on the core and
@@ -64,14 +65,16 @@ knows nothing of the others.
 |---------|------|
 | `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
 | `@polydeukes/covenant` | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
-| `@polydeukes/ledger` | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
-| `@polydeukes/memory` | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
-| `@polydeukes/verify` | A multi-agent adversarial verification orchestrator |
+| `@polydeukes/ledger` *(planned)* | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
+| `@polydeukes/memory` *(planned)* | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
+| `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
 
-The recommended adoption order is `covenant` → `memory` → `ledger` → `verify`. `covenant` and
-`memory` pay off immediately regardless of project size, while `ledger` and `verify` shine at the
-scale of multiple worktrees and team workflows.
+Only `core`, `covenant`, and the two adapters ship today. The planned adoption order once the
+rest exists is `covenant` → `memory` → `ledger` → `verify`: `covenant` and `memory` are expected to
+pay off regardless of project size, while `ledger` and `verify` target the scale of multiple
+worktrees and team workflows.
 
+<a id="design-blueprint"></a>
 ## Design blueprint (in brief)
 
 The core principle of the extraction strategy is a one-way layering: **general core inward, domain
@@ -103,32 +106,33 @@ Three separations:
 - **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then
   feed it back in a closed loop. Prove "it produces safer code" with data.
 
+<a id="documents"></a>
 ## Documents
 
-[`docs/README.md`](./docs/README.md) is the documentation index — the same map as below,
-with a one-page summary of how the framework works. The tables here are grouped by layer;
-start at the top layer you need.
+[`docs/README.md`](./docs/README.md) is the documentation index — the same map as below, with a
+one-page summary of how the framework works. The tables here are grouped by layer; start at the top
+layer you need.
 
-### Getting started
-
-| Document | Contents |
-|----------|----------|
-| [`docs/installation.md`](./docs/installation.md) | Install guide — the session surface (`pdks init claude-code` · `pdks init grok`) and the manually wired commit surface |
-
-### Guides
+<a id="tutorials-and-guides"></a>
+### Tutorials and guides
 
 | Document | Contents |
 |----------|----------|
-| [`docs/configuration.md`](./docs/configuration.md) | Config guide — the file, discovery, IDE wiring, and what enforcement looks like |
-| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | The fail-closed states and how to recover, reading verdicts, and the witness valve |
+| [`docs/tutorials/first-judgment.md`](./docs/tutorials/first-judgment.md) | First visible judgment — install, wire Claude Code, and watch a protected edit get judged |
+| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md) | Connect the session and commit surfaces, including Grok |
+| [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block |
+| [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing |
+| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | Fail-closed states, the witness valve, and the telemetry log |
 
+<a id="reference-layer"></a>
 ### Reference
 
 | Document | Contents |
 |----------|----------|
-| [`docs/reference/configuration.md`](./docs/reference/configuration.md) | Configuration reference — every key, its rules, and its pitfalls |
-| [`docs/reference/`](./docs/reference/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
+| [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
 
+<a id="why-and-the-journal"></a>
 ### Why, and the journal
 
 | Document | Contents |
@@ -138,6 +142,7 @@ start at the top layer you need.
 | [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
+<a id="license"></a>
 ## License
 
 [MIT](./LICENSE)

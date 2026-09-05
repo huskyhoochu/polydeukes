@@ -1,13 +1,14 @@
 # `@polydeukes/core`
 
-**English** · [한국어](./core.ko.md)
+**English** · [한국어](core.ko.md)
 
 > **The protocol every covenant speaks** — the input IR, the verdict shape, the config
 > schema, and the telemetry collector.
 >
 > Alpha. A transitive dependency of the umbrella: you do not install it and you do not import
-> it. The consumer entry point is [`polydeukes`](./polydeukes.md).
+> it. The consumer entry point is [`polydeukes`](polydeukes.md).
 
+<a id="ownership"></a>
 ## What this package owns
 
 The protocol every covenant speaks, and nothing that knows what a covenant is *about*.
@@ -34,13 +35,16 @@ copies would disagree silently instead of failing at install time. The umbrella 
 ordinary dependency that satisfies that peer, which is why a consumer still installs one
 package and gets core transitively.
 
+<a id="protocol"></a>
 ## The judged protocol
 
 This is the contract the shipped judges speak: a judge receives a `CovenantInput` — parsed
 once from the stdin-JSON payload the surface hands the dispatcher — and answers with a
-verdict the wrapper translates into an exit code. Every row in `.polydeukes/roi.log` traces
-back to one
-of these verdicts, so this vocabulary is what a blocked row is written in.
+verdict the wrapper translates into an exit code. Blocked rows in `.polydeukes/roi.log`
+use this judgment vocabulary.
+
+`world` is supplied by the surface (`files`, `changes`, `channels`). The judge does not
+read it from disk.
 
 ```ts
 type CovenantInput = {
@@ -48,6 +52,11 @@ type CovenantInput = {
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
   actor?: { agentType?: string };
+  world?: {
+    files?: Record<string, string>;
+    changes?: string[];
+    channels?: { sidecar?: string };
+  };
 };
 
 type FileChange =
@@ -85,26 +94,30 @@ required collection — each resolves to a blocking `{ ok: false, exitCode: 2 }`
 unjudgeable input can never be mistaken for a valid one.
 
 `verdictToExitCode` returns `0` or `1` and never `2`. Translating a break into a block is
-the wrapper's policy, not the body's — see [exit codes](./polydeukes.md#exit-codes).
+the wrapper's policy, not the body's — see [exit codes](polydeukes.md#polydeukes-failure-boundaries).
+The exported constants are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`), and
+`EXIT_BREAK_BLOCKING` (`2`).
 
 `allFileChanges` flattens every call's evidence in call order for consumers that need no
 attribution. Calls without evidence are skipped, never substituted for.
 
+<a id="consumer-contract"></a>
 ## Where the consumer touches it
 
 Three places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
-  [the configuration reference](./configuration.md).
+  [the configuration reference](../configuration/index.md).
 - **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath, for a
   project that installs this package directly. A consumer of the umbrella names the copy
   bundled there instead; both spellings are in
-  [configuration.md's IDE section](../configuration.md#ide-support).
+  [configuration.md's IDE section](../../how-to/configure-project.md#add-ide-support).
 - **The protocol above** — reading a `blocked` row means reading the vocabulary a body
   answered in.
 
 Everything else here is reached through `polydeukes`.
 
+<a id="limits"></a>
 ## Declared limits
 
 - **Adapter namespaces are validated by shape, not by name.** `defineConfig()` checks that

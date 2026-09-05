@@ -12,7 +12,7 @@
  * the witness valve is structurally unreachable, so only a human at a terminal can arm it.
  */
 
-import { closeSync, openSync, readSync, writeSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, readSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // Type-only, so the runner itself stays off this file's load path (the lazy import below
@@ -113,15 +113,17 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'grok') {
   }
 }
 
-if (args[0] === 'docs' && args.length <= 2) {
+if (args[0] === 'docs') {
   try {
     // Imported inside the try for the same reason `init` is: the query core and the
     // markdown behind it have no business on `covenant check`'s load path.
-    const { queryDocs } = await import('./docs-query.ts');
+    const { runDocs } = await import('./docs-library.ts');
     // The bundle ships beside this file, so the docs root comes from the module's own
     // location — never from the working directory, which is whatever shell invoked us.
     const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
-    const { text } = queryDocs({ docsRoot, topic: args[1] });
+    const manifest = JSON.parse(readFileSync(join(docsRoot, '../../package.json'), 'utf8'));
+    if (typeof manifest.version !== 'string') throw new Error('missing package version');
+    const { text } = runDocs({ docsRoot, args: args.slice(1), version: manifest.version });
     await emitAndExit(text);
   } catch (error) {
     // stdout stays at zero bytes on this path: what cannot be answered is never answered
@@ -175,7 +177,7 @@ const domain =
 
 if (domain === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic]\n',
+    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
   );
   process.exit(2);
 }

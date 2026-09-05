@@ -1,14 +1,15 @@
 # `@polydeukes/adapter-git`
 
-**English** · [한국어](./adapter-git.ko.md)
+**English** · [한국어](adapter-git.ko.md)
 
 > **The commit surface's translator** — a staged diff becomes the covenant input IR, and
 > the `adapters.git` config namespace is defined here.
 >
 > Alpha. A transitive dependency of the umbrella: you do not install it and you do not
 > import it. The commit surface reaches it through
-> [`pdks covenant check`](./polydeukes.md#pdks-covenant-check).
+> [`pdks covenant check`](polydeukes.md#polydeukes-bin).
 
+<a id="ownership"></a>
 ## What this package owns
 
 The boundary where git's vocabulary is translated away. A staged diff becomes the same
@@ -26,10 +27,12 @@ runners, or valves — wiring it into a pre-commit hook is a deployment act that
 umbrella. It names `@polydeukes/core` as a `peerDependency`: the vocabulary is shared with
 the judge, not installed a second time here.
 
+<a id="collection"></a>
 ## Collection and the `adapters.git` namespace
 
 **Three collectors, one shape.** `collectStagedChanges`, `collectWorktreeChanges`, and
-`collectRangeChanges({ repoRoot, range: '<base>..<head>' | '<base>...<head>' })` each return the same
+`collectRangeChanges({ repoRoot, range: '<base>..<head>' | '<base>...<head>' })` each return the
+same
 `StagedChange[]`, so the translator and everything after it is one path.
 
 | Collector | `pre` | `post` | Also |
@@ -67,7 +70,7 @@ vocabulary, its validator, and its defaults all live here.
 
 An unknown key, an `enforce` outside the two values, or a `protectedPaths` that is not an
 array of strings each fail fast with the full field path. The writing reference is
-[the configuration reference's `adapters` section](./configuration.md#adapters).
+[the configuration reference's `adapters` section](../configuration/index.md#adapters).
 
 **The additive scope is additive for a reason.** The level belongs to the observer, and so
 does the scope: entries listed here are judged when work becomes history, and the session
@@ -75,26 +78,31 @@ surface never reads them. That is what lets a repository leave judge *sources* e
 a session while still stopping the commit that promotes them.
 
 Under `enforce: advise` the valve is structurally absent: a verdict is recorded as
-`advised`, one advisory line lands on stderr, and the commit proceeds. Only the verdict is
-relaxed — a run that cannot judge still fails closed at exit `2` at either level.
+`advised`, one advisory line lands on stderr, and the commit proceeds. The response to a violation
+changes, not the judgment criteria: a run that cannot judge still fails closed at exit `2` at either
+level.
 
+<a id="consumer-contract"></a>
 ## Where the consumer touches it
 
 - **The `adapters.git` block** in your config.
 - **The pre-commit hook** that runs `pdks covenant check`, wired by hand — the manual
   procedure for three hook managers is in
-  [installation](../installation.md#the-commit-surface--developing-by-yourself).
+  [installation](../../how-to/connect-surfaces.md#commit-surface).
 
 No import.
 
+<a id="limits"></a>
 ## Declared limits
 
 - **A declaration that reads the session cannot be judged here.** A `precedent` needs
-  session history and a commit has none, so a matching entry records `skipped`. A permanent
-  condition of this surface, not a fault in the entry.
-- **A commit never shows a gitignored file.** Anything outside version control — a built
-  `dist`, a generated hook script — is invisible to this surface by nature. That is why the
-  session surface carries those paths on the common list instead.
+  session history and a commit has none. The entry records `skipped` with `supply-pass`
+  only when its own `supply` is `pass`; with no policy the missing session is unjudgeable
+  (exit 2). A permanent condition of this surface, not a fault in the entry.
+- **Untracked ignored files are invisible here; already-tracked files are not.** `.gitignore`
+  does not hide a path git already tracks. A built `dist` that was never added stays
+  invisible; a tracked file that later matches an ignore line still appears in `git diff`.
+  That is why the session surface carries generated paths on the common list instead.
 - **The valve needs a human at a terminal.** No TTY means no prompt and no way through: a
   CI run and an agent-spawned `git commit` reach the same closed door. Nothing is ever
   persisted, so one answer never covers a later commit.

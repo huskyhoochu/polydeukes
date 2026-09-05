@@ -63,9 +63,15 @@ jobs:
 
       - run: pnpm turbo run build
 
+      # After build: the adapters and the umbrella resolve their workspace siblings through
+      # each sibling's dist/index.d.ts, which a fresh checkout does not have.
+      - run: pnpm -r typecheck
+
       # The publish gate: unit suites plus the two DIST-03 e2e suites (tarball contents,
       # clean-environment install → init → live judgments).
       - run: pnpm -r test
+
+      - run: node scripts/check-docs.mjs
 
       # The root package is private and skips itself; the five workspace packages publish
       # in dependency order with workspace:/catalog: specifiers rewritten to real versions.

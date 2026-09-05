@@ -34,20 +34,27 @@ const DIST_PREFIX = 'package/dist/';
 const UMBRELLA_DIR = 'polydeukes';
 const DOCS_PREFIX = 'package/dist/docs/';
 /**
- * The docs bundle, enumerated here as a second copy on purpose: the copy step reads its
- * own list, so a test deriving the list from the same place would go green on a bundle
- * that silently lost a member.
+ * The required reader journeys, enumerated independently of the source catalog so losing
+ * a catalog member cannot silently shrink the published documentation.
  */
 const BUNDLED_DOCS = [
-  'installation.md',
-  'configuration.md',
+  'README.md',
+  'tutorials/first-judgment.md',
+  'how-to/connect-surfaces.md',
+  'how-to/configure-project.md',
+  'how-to/write-disciplines.md',
   'troubleshooting.md',
-  'reference/configuration.md',
-  'reference/polydeukes.md',
-  'reference/core.md',
-  'reference/covenant.md',
-  'reference/adapter-claude-code.md',
-  'reference/adapter-git.md',
+  'concepts/judgment.md',
+  'reference/cli/covenant-check.md',
+  'reference/cli/init.md',
+  'reference/cli/explain.md',
+  'reference/cli/docs.md',
+  'reference/configuration/index.md',
+  'reference/packages/polydeukes.md',
+  'reference/packages/core.md',
+  'reference/packages/covenant.md',
+  'reference/packages/adapter-claude-code.md',
+  'reference/packages/adapter-git.md',
 ];
 
 /** Absence enumeration — development-only files that must never ship. */
@@ -152,7 +159,7 @@ describe('tarball contents match the published enumeration', () => {
 });
 
 describe('the umbrella tarball carries the docs bundle', () => {
-  it('ships the eight English documents under dist/docs', () => {
+  it('ships every required document in both languages with catalog and index', () => {
     // A copy step dropped from the build script, a member lost from its list, or
     // `dist/docs` excluded from what npm packs each install a package whose `pdks docs`
     // exits 2 for the missing topic, with nothing consumer-side explaining why.
@@ -160,18 +167,21 @@ describe('the umbrella tarball carries the docs bundle', () => {
 
     for (const relative of BUNDLED_DOCS) {
       expect(entries).toContain(`${DOCS_PREFIX}${relative}`);
+      expect(entries).toContain(`${DOCS_PREFIX}${relative.replace(/\.md$/, '.ko.md')}`);
     }
+    expect(entries).toContain(`${DOCS_PREFIX}catalog.json`);
+    expect(entries).toContain(`${DOCS_PREFIX}index.json`);
   }, 30_000);
 
-  it('ships no Korean mirror in the bundle', () => {
-    // The absence half, breaking in the opposite direction: a copy step widened into a
-    // directory sweep pulls in the mirrors, the whitepaper, and the build-in-public posts.
-    // The presence test above stays green through exactly that mutation.
+  it('excludes move notices, historical posts, and the whitepaper from bundled Markdown', () => {
     const entries = tarEntries(UMBRELLA_DIR);
-    const bundled = entries.filter((entry) => entry.startsWith(DOCS_PREFIX));
-
-    expect(bundled.filter((entry) => entry.endsWith('.ko.md'))).toEqual([]);
-    expect(bundled).toHaveLength(BUNDLED_DOCS.length);
+    const bundled = entries.filter(
+      (entry) => entry.startsWith(DOCS_PREFIX) && entry.endsWith('.md'),
+    );
+    const expected = BUNDLED_DOCS.flatMap((path) => [path, path.replace(/\.md$/, '.ko.md')]).map(
+      (path) => `${DOCS_PREFIX}${path}`,
+    );
+    expect(bundled.sort()).toEqual(expected.sort());
   }, 30_000);
 });
 

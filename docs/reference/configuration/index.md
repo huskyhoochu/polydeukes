@@ -1,13 +1,15 @@
 # Configuration reference
 
-**English** · [한국어](./configuration.ko.md)
+**English** · [한국어](index.ko.md)
 
 Every key of `polydeukes.config.yaml`, one section per key. The guide — what the file is,
 how discovery fails, and the IDE wiring — is
-[Configuring Polydeukes](../configuration.md), and what a verdict looks like when a
+[Configuring Polydeukes](../../how-to/configure-project.md), and what a verdict looks like when a
 discipline fires is its
-[What enforcement looks like](../configuration.md#what-enforcement-looks-like) section.
+[What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block)
+section.
 
+<a id="languages"></a>
 ## `languages`
 
 Required. The language axis, first-class. Keys are your values (`typescript`, `python`, …) —
@@ -24,6 +26,7 @@ languages:
 all other braces (`${VAR}`, `{a,b}`, `awk '{print}'`) pass through untouched. A command
 that ignores scope (`pnpm test`) is equally valid.
 
+<a id="protectedpaths"></a>
 ## `protectedPaths`
 
 Optional. Raw path patterns whose files the covenants protect from modification — by
@@ -42,6 +45,7 @@ to `protectedPaths` — an edit that would lower your own gates goes through the
 as everything else. If the file that declares the disciplines were not itself under the
 disciplines, the whole chain would be decoration.
 
+<a id="adapters"></a>
 ## `adapters`
 
 Optional. Adapter namespaces. One config file, one namespace per adapter: each key names an
@@ -58,6 +62,7 @@ adapters:
       - 'packages/core/src'
 ```
 
+<a id="adapters-git"></a>
 ### `adapters.git` — the git commit adapter
 
 | Key | Values | Default | Meaning |
@@ -65,7 +70,9 @@ adapters:
 | `enforce` | `block` \| `advise` | `block` | Enforcement level of the commit surface |
 | `protectedPaths` | string array | `[]` | Additive protection scope judged by the commit surface only |
 
-- **`block`** — a staged change that breaks a covenant blocks the commit (exit 2). The
+- **`block`** — a staged change that breaks a covenant judged at block level blocks the
+  commit (exit 2): a protected path, or an entry promoted with `enforce: block`. An ordinary
+  entry keeps its own default `advise` under this setting (see `enforce` below). The
   only way through is the witness valve: a human answering the TTY prompt with the full
   token. The prompt names what it asks the human to witness — the broken registration,
   the matched entry, and the fact that the one answer covers the whole commit. An absent
@@ -73,9 +80,9 @@ adapters:
   writing the key selects the strictest level.
 - **`advise`** — the commit surface becomes a backstop without a block: a verdict on a
   staged change is recorded as an `advised` telemetry event and the commit proceeds
-  (exit 0) with one advisory line on stderr. No TTY prompt fires. Only the verdict is
-  relaxed — a run that cannot judge (missing or invalid config, an unresolvable judge
-  body) still fails closed at exit 2, at either level.
+  (exit 0) with one advisory line on stderr. No TTY prompt fires. The judgment criteria stay
+  the same; violations no longer block. A run that cannot judge (missing or invalid config,
+  an unresolvable judge body) still fails closed at exit 2, at either level.
 
 **`protectedPaths` here is an additive scope.** The commit surface judges the union of the
 top-level `protectedPaths` and this list — concatenated (common first) and normalized as one,
@@ -92,8 +99,8 @@ shell axes, the session transcript, an assembly that cannot judge (missing or in
 config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
 entry promoted with `enforce: block`. Every other discipline entry lands `advised` there.
 
-**Declarations that read the session skip on the commit surface.** A commit has no session
-to look at, so a declaration whose `sources` bind the transcript — a `precedent`,
+**Declarations that read the session skip on the commit surface when their supply policy is `pass`.**
+A commit has no session to look at, so a declaration whose `sources` bind the transcript — a `precedent`,
 `phase-order`, `turn-locality` or `stated-ground` entry — cannot be judged there; demanding
 evidence a commit cannot carry would block every matching commit with no legitimate way
 through. The declaration's own `supply: { session: 'pass' }` disposes of the absence: when
@@ -105,9 +112,10 @@ source records nothing at all there: a staged diff carries no command line, so n
 observes is ever admitted.
 
 This is the same disposition the session surface uses whenever it has no transcript to
-read. One rule, both surfaces: evidence that cannot be evaluated is skipped and measured,
-never blocked and never silent.
+read **and** the declaration's `supply` is `pass`. Without that policy a missing source is
+unjudgeable (exit 2), not an automatic skip.
 
+<a id="telemetry"></a>
 ## `telemetry`
 
 Optional.
@@ -122,6 +130,7 @@ Telemetry is fail-open by design: a logging failure never changes a verdict. The
 itself is still validated at load time — an empty or whitespace-only `logPath` is
 rejected.
 
+<a id="witness"></a>
 ## `witness`
 
 Optional.
@@ -174,6 +183,7 @@ when the token arrives in a message positively identified as human-typed in the 
 transcript, so an AI that knows the token still cannot forge one. Witnessed judgments are
 recorded as `witnessed`, never silent.
 
+<a id="disciplines"></a>
 ## `disciplines`
 
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
@@ -192,10 +202,14 @@ error, and `draft: false` is rejected as dead data.
 
 ```yaml
 disciplines:
-  - id: 'bilingual-docs-sync'
-    why: 'en and ko doc mirrors must move together.'
+  - id: 'benchmark-supports-performance-claim'
+    why: 'a performance claim must be supported by a fresh benchmark run during judgment.'
     draft: true
 ```
+
+A bilingual mirror pair is not a draft. The engine already judges that shape as `companion`
+(this repository's `docs-stay-bilingual` entry). Use `draft: true` only for a promise the
+current grammar cannot express.
 
 A `why` is never judged — it changes no verdict. It is appended to the break message once a
 verdict has blocked, so whoever reads the block gets the rationale in the same line instead
@@ -242,21 +256,21 @@ regular expressions over the path.
 
 ```yaml
 disciplines:
-  - id: 'covenant-vocabulary'
-    why: 'control-framing vocabulary is banned in package sources.'
+  - id: 'no-focused-tests-in-src'
+    why: 'a focused test must not land in shared source.'
     declare:
       mechanism: 'added-only'
-      scope: { source: 'target.path', include: ['^packages/[^/]+/src/'] }
+      scope: { source: 'target.path', include: ['^src/', '^test/'] }
       supply: { pre: 'empty', post: 'empty' }
       extract:
         before:
           - { op: 'source', of: 'pre' }
           - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+          - { op: 'keyByPattern', re: '(\.only\()' }
         after:
           - { op: 'source', of: 'post' }
           - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(guard|harness|kb)\b' }
+          - { op: 'keyByPattern', re: '(\.only\()' }
         added:
           - { op: 'onlyIn', of: 'after', notIn: 'before' }
       relate:
@@ -266,12 +280,13 @@ disciplines:
 ```
 
 The key is the match text, so a line carrying a word the file already has anywhere is
-forgiven, and a line carrying two new words surfaces the first one now and the second on the
-next judgment.
+forgiven. A line carrying two new words surfaces only the first match; the second appears
+on a later judgment **after that first match is removed**. Re-judging the same input yields
+the same first match.
 
 **A frozen path is a declaration too.** A file that may be created once and never modified
 or deleted: `pre` present means a modification, `post` absent means a deletion, and either
-breaks.
+breaks. Creating the file, including with empty contents (`post: ''`), passes.
 
 ```yaml
   - id: 'archived-records-stay-frozen'
@@ -360,10 +375,12 @@ adds nothing to an added-only difference and the discipline silently passes: mak
 pattern span the whole value that can change. Both failure shapes compile, run, and answer
 `passed`, so measure a new entry against a real file and a realistic edit.
 
-**The cheap way through is the honest one.** Unlike the witness, session evidence lives on
-the AI's own surface, so it is not forgery-proof. It does not need to be: the least
-effortful way to open this gate is to actually run the command, and that is exactly the
-behaviour the discipline exists to induce.
+**Witnesses and precedent evidence are different.** A pattern seeking precedent evidence must
+distinguish the required action from a mere mention. Session evidence lives on the AI's own
+surface, so it is not forgery-proof; the design relies on the least effortful way to satisfy
+the check being to actually run the command, which is the behaviour the discipline exists to
+induce. A pattern alone does not eliminate the possibility of forged evidence. Test both valid
+and violating cases.
 
 **`declare` — declaration family.** One judgment written as data, in the algebra grammar
 the core publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The
@@ -372,22 +389,23 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
 `discipline` key, and `in`/`except`/`when` are refused — the `scope` block is the scope.
 
 ```yaml
-  - id: 'db-only-under-knowledge'
-    why: 'a *.db file may exist only under _docs/knowledge/'
+  - id: 'db-files-only-under-data'
+    why: 'a *.db file may exist only under data/'
     declare:
       mechanism: 'naming'
       scope: { source: 'target.path', include: ['\.db$'] }
       extract:
         outside:
           - { op: 'source', of: 'target.path' }
-          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+          - { op: 'matches', re: '^(?!data/)' }
       relate:
         - id: 'placed'
           relation: { op: 'empty', of: 'outside' }
-          message: '{value} is outside _docs/knowledge/'
+          message: '{value} is outside data/'
 ```
 
-This repository's live config carries the same declaration as `sqlite-only-under-knowledge`.
+This repository's live config uses the same mechanism with `_docs/knowledge/` as
+`sqlite-only-under-knowledge`.
 
 Each observation is judged as one **world** with seven source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —

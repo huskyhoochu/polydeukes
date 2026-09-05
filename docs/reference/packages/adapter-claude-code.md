@@ -1,14 +1,15 @@
 # `@polydeukes/adapter-claude-code`
 
-**English** · [한국어](./adapter-claude-code.ko.md)
+**English** · [한국어](adapter-claude-code.ko.md)
 
 > **The session surface's translator** — PreToolUse payloads become the covenant input IR,
 > with the file-change evidence and the transcript channel the judge reads.
 >
 > Alpha. A transitive dependency of the umbrella: you do not install it and you do not
 > import it. The session surface reaches it through
-> [`polydeukes/claude-code`](./polydeukes.md#subpaths).
+> [`polydeukes/claude-code`](polydeukes.md#session-export).
 
+<a id="ownership"></a>
 ## What this package owns
 
 The boundary where Claude Code's vocabulary is translated away. Agent and tool literals
@@ -28,6 +29,7 @@ umbrella, which keeps dependencies one-way, through the core alone. It names
 `@polydeukes/core` as a `peerDependency`: the vocabulary is shared with the judge, not
 installed a second time here.
 
+<a id="translation"></a>
 ## Payload translation and the three axes
 
 **Three axes reach the judge**, and they differ in what evidence they can carry.
@@ -56,11 +58,12 @@ witness valve human-only: an AI cannot synthesize its own witness. A read failur
 judged, an unreadable one is no evidence channel at all and is skipped. Either way the
 valve turns off, never open.
 
-**The precedent evaluator judges two keys.** `subagent` is exact spawn-kind equality, since
-a kind is a value rather than a pattern; `tool` matches observed tool names as a regular
-expression. Any key outside this vocabulary returns `undefined` — the handshake that tells
-the compiler the evidence is unjudgeable, so the entry skips instead of judging on a guess.
+**Precedent is a declaration, not an adapter evaluator.** This adapter supplies the
+transcript snapshot. The declaration engine extracts succeeded `toolUses` and matches them;
+there is no separate precedent evaluator in this package. The grammar is in
+[Configuration — disciplines](../configuration/index.md#disciplines).
 
+<a id="consumer-contract"></a>
 ## Where the consumer touches it
 
 - **The generated hook**, which loads this adapter through the umbrella's `claude-code`
@@ -68,6 +71,7 @@ the compiler the evidence is unjudgeable, so the entry skips instead of judging 
 
 No import, and no configuration namespace of its own.
 
+<a id="limits"></a>
 ## Declared limits
 
 - **A child process's writes are outside observation.** This surface judges *declared tool
