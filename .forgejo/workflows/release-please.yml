@@ -51,6 +51,29 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # The port composes every changelog link as <changelog-host>/<owner>/<repo>, and the
+      # owner is this instance's (b95labs) while the copy of this repository a reader can
+      # open is github.com/huskyhoochu/polydeukes — this instance answers on the tailnet
+      # only. No input moves the owner, so the release branch is rewritten after the port
+      # has pushed it. The port rebuilds that branch from main on its next run, and this
+      # step rewrites it again; the rewrite is idempotent.
+      - name: Check out the release branch
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: release-please--branches--main--components--polydeukes-monorepo
+
+      - name: Point CHANGELOG links at the readable mirror
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        run: |
+          set -euo pipefail
+          sed -i 's#https://github.com/b95labs/polydeukes#https://github.com/huskyhoochu/polydeukes#g' CHANGELOG.md
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'forgejo-actions[bot]'
+          git config user.email 'forgejo-actions@noreply.gem12'
+          git commit -am 'chore(main): point CHANGELOG links at the readable mirror'
+          git push origin HEAD:release-please--branches--main--components--polydeukes-monorepo
+
       # Only runs on the push that merges a release PR; every other push stops above.
       - name: Check out for tag annotation
         if: ${{ steps.release.outputs.release_created }}

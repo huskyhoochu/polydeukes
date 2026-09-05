@@ -2,5 +2,7 @@
   // Lint ignores only — rule configuration stays in .markdownlint.yaml.
   // _docs is gitignored; this keeps manual `markdownlint-cli2 "_docs/**"` runs
   // from descending into spike virtualenvs' vendored markdown.
-  "ignores": ["**/.venv/**", "**/node_modules/**"]
+  // CHANGELOG.md is release-please output: every release repeats the same section
+  // headings (MD024), and a hand edit to it must not have to restyle generated text.
+  "ignores": ["**/.venv/**", "**/node_modules/**", "CHANGELOG.md"]
 }
