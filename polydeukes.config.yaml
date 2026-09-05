@@ -196,7 +196,7 @@ disciplines:
       scope:
         source: 'target.path'
         include: ['\.md$']
-        exclude: ['^\.claude/', '^CLAUDE(\.ko)?\.md$', '^CHANGELOG(\.ko)?\.md$']
+        exclude: ['^\.claude/', '^CLAUDE(\.ko)?\.md$', '^CHANGELOG(\.ko)?\.md$', '^CONTEXT\.md$']
       extract:
         en:
           - { op: 'source', of: 'target.path' }
