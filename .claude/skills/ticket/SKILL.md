@@ -92,15 +92,17 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   would reach the review but never `main`, while multiplying the witness prompts above by the
   number of commits. **Opens when the merge strategy stops squashing** — until then the
   benefit is review granularity alone, which does not pay for the prompts.
-- Review by launching the repo's review workflow. On Claude Code:
-  `Workflow({ name: "pdks-code-review", args: "high <PR# or target> — <context>" })`
-  (`.claude/workflows/pdks-code-review.js`). On Grok Build:
+- Review with the built-in skill. On Claude Code:
+  `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`.
+  At `high` it fans out finder subagents by angle, verifies each candidate with an
+  independent subagent, and the main session dedups, ranks, and reports. The finders and
+  verifiers run on the subagent default model from `.claude/settings.json`; the synthesis is
+  the main session's — that split is the model policy in `.claude/rules/model-tiers.md`.
+  On Grok Build:
   `workflow({ source: { type: "name", name: "pdks-code-review" },
   args: { target: "<PR# or branch>", level: "high",
   context: "<PRD invariants>" } })`
-  (`.grok/workflows/pdks-code-review.rhai` — same topology: Scope → Find → Verify → Synthesize).
-  The Claude JS file is a fork of the built-in `/code-review` workflow, vendored because that
-  skill is user-invocable only (`disable-model-invocation`). Grok cannot execute that JS file.
+  (`.grok/workflows/pdks-code-review.rhai` — Scope → Find → Verify → Synthesize).
   This skill instructing the launch is the sanctioned opt-in; do not treat the launch as
   needing separate user approval. In the args, pass the PRD's invariants and severity
   framing as review context (the finder/verifier agents honor it). Findings land
@@ -117,9 +119,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
     they can no longer edit freely, a command that now refuses, a default that assumes they
     are the threat. A finding that names only the risk has reported half of itself. This
     product's disciplines are self-imposed, so a fix that removes the owner's choice is a
-    regression even when the risk is real. (A human typing `/code-review`
-  still runs Claude Code's own version; the two drift independently — the fork's header
-  comment records the divergences.)
+    regression even when the risk is real.
 - Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run
   the `code-review:code-review` plugin (5-perspective review posted as a GitHub comment).
   Know its shape: findings scoring below its confidence cut are silently dropped, so it

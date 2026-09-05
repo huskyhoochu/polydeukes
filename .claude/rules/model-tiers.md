@@ -1,8 +1,3 @@
----
-paths:
-  - ".claude/**"
----
-
 # Which model runs where
 
 The top tier (`fable`) is reserved for the steps where one judgment shapes everything
