@@ -14,24 +14,21 @@ crossed by accident.
 
 ## Never ask a semantic question with a syntactic pattern
 
-Three review rounds went into a `when` regex answering "is this string a new dependency
+Three review rounds went into a trigger regex answering "is this string a new dependency
 version". It leaked both ways every time — missing ranges, tags and protocol forms, then
-catching `workspace:` and `engines` once widened. The entry now carries no `when` at all.
+catching `workspace:` and `engines` once widened. The entry now carries no trigger at all.
 
 Before adding a pattern, name the question it answers. If the answer depends on meaning rather
-than shape, the pattern is the wrong tool: narrow the scope (`in`) instead, or accept that the
-trigger is "editing this file at all".
+than shape, the pattern is the wrong tool: narrow the declaration's `scope` instead, or accept
+that the trigger is "editing this file at all".
 
 ## A line anchor silently disarms a multi-line pattern
 
-`^` without the `m` flag anchors to the whole string. The context family's `when` scans a
-file's whole content as one string, so a line-shaped pattern written with `^` matches only
-the first line and the discipline silently stops firing — write `(^|\n)` there. A
-declaration's `lines` step splits first, so `^` inside `keyByPattern` or `matches` after it
-is a line start. The command
-family judges the union of each line and the whole string, so `^` means start of a line on
-that axis and a pattern spanning a line boundary still matches. Any anchored pattern needs
-a fixture with the violation on a later line.
+`^` without the `m` flag anchors to the whole string. A pattern that runs over a whole text
+as one string therefore matches only the first line and the discipline silently stops
+firing — write `(^|\n)` there. A declaration's `lines` step splits first, so `^` inside
+`keyByPattern` or `matches` after it is a line start, and a pattern spanning a line boundary
+does not match. Any anchored pattern needs a fixture with the violation on a later line.
 
 ## A predicate belongs to the layer that knows the answer
 

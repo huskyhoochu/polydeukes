@@ -137,18 +137,15 @@ describe('compileDisciplineRegistrations — a declare registration carries its 
     ]);
   });
 
-  it('a forbid entry and a declare entry without a sources block carry no binding', () => {
-    // A family that names no file must not plan one: an invented binding (`target.path`
-    // as a file, say) reads the target twice and keys the supplied value under a name no
-    // declaration asked for. Absent and empty both plan nothing.
+  it('a declare entry without a sources block carries no binding', () => {
+    // A declaration that names no file must not plan one: an invented binding
+    // (`target.path` as a file, say) reads the target twice and keys the supplied value
+    // under a name no declaration asked for. Absent and empty both plan nothing.
     const regs = compileDisciplineRegistrations(
-      specWith([
-        { id: 'no-secrets', forbid: 'SECRET' } as DisciplineEntry,
-        declareEntry({ ...READS_EN, sources: undefined, supply: { [EN]: 'pass' } }),
-      ]),
+      specWith([declareEntry({ ...READS_EN, sources: undefined, supply: { [EN]: 'pass' } })]),
     );
 
-    expect(regs.length).toBeGreaterThanOrEqual(2);
+    expect(regs.length).toBeGreaterThanOrEqual(1);
     for (const reg of regs) expect(reg.sources ?? []).toEqual([]);
   });
 });

@@ -15,26 +15,34 @@ function withDisciplines(disciplines: unknown): unknown {
   return { ...validLanguages, disciplines };
 }
 
+/** The declaration every entry below carries; only the level under test varies. */
+const ban = {
+  mechanism: 'forbidden-command',
+  scope: { source: 'command' },
+  extract: {
+    hits: [{ op: 'source', of: 'command' }, { op: 'lines' }, { op: 'matches', re: 'zzz_banned' }],
+  },
+  relate: [{ id: 'no-hit', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
+};
+
 const VALID_CONFIGS: readonly unknown[] = [
-  withDisciplines([{ id: 'softly-held', forbidCommand: 'zzz_banned', enforce: 'advise' }]),
-  withDisciplines([{ id: 'hard-held', forbidCommand: 'zzz_banned', enforce: 'block' }]),
-  // The key on every judged family, beside an enforce-less sibling and a draft: the
-  // level must be admitted by each judged oneOf branch, not only the delta one.
+  withDisciplines([{ id: 'softly-held', declare: ban, enforce: 'advise' }]),
+  withDisciplines([{ id: 'hard-held', declare: ban, enforce: 'block' }]),
+  // The key beside an enforce-less sibling and a draft: the level must be admitted by the
+  // judged oneOf branch while the draft branch keeps refusing it.
   withDisciplines([
-    { id: 'plain-held', forbidCommand: 'zzz_banned' },
-    { id: 'soft-precedent', requirePrecedent: { command: 'npm view ' }, enforce: 'advise' },
-    { id: 'soft-command', forbidCommand: 'zzz_cmd', enforce: 'advise' },
-    { id: 'soft-context', requirePrecedent: { command: 'zzz view ' }, enforce: 'advise' },
+    { id: 'plain-held', declare: ban },
+    { id: 'soft-held', declare: ban, enforce: 'advise' },
     { id: 'bilingual-docs-sync', why: 'keep the en and ko doc mirrors in sync', draft: true },
   ]),
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
   // An unknown level — the enumeration is closed.
-  withDisciplines([{ id: 'measured-probe', forbidCommand: 'x', enforce: 'measure' }]),
+  withDisciplines([{ id: 'measured-probe', declare: ban, enforce: 'measure' }]),
   // A boolean kills a schema that types the key loosely and a validator that tests
   // presence or truthiness rather than the value.
-  withDisciplines([{ id: 'boolean-probe', forbidCommand: 'x', enforce: true }]),
+  withDisciplines([{ id: 'boolean-probe', declare: ban, enforce: true }]),
   // A draft carrying the level — pins the draft branch's `additionalProperties: false`,
   // whose key set stays id·why·draft.
   withDisciplines([{ id: 'draft-with-enforce', why: 'w', draft: true, enforce: 'advise' }]),

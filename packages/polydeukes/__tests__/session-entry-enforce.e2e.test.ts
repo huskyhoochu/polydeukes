@@ -96,21 +96,25 @@ function writePayload(filePath: string, content: string) {
   };
 }
 
-const softEntry = {
-  id: SOFT_ID,
-  forbidCommand: FORBIDDEN_COMMAND,
-  why: SOFT_WHY,
-  enforce: 'advise',
-};
-const plainEntry = { id: PLAIN_ID, forbidCommand: FORBIDDEN_COMMAND, why: SOFT_WHY };
-const hardEntry = {
-  id: HARD_ID,
-  forbidCommand: FORBIDDEN_COMMAND,
-  why: SOFT_WHY,
-  enforce: 'block',
+/** The ban over the command line; only the entry's level varies between the three. */
+const banDeclare = {
+  mechanism: 'forbidden-command',
+  scope: { source: 'command' },
+  extract: {
+    hits: [
+      { op: 'source', of: 'command' },
+      { op: 'lines' },
+      { op: 'matches', re: FORBIDDEN_COMMAND },
+    ],
+  },
+  relate: [{ id: 'no-probe', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
 };
 
-/** The call that breaks the command entry: the forbidden command at the head of the line. */
+const softEntry = { id: SOFT_ID, declare: banDeclare, why: SOFT_WHY, enforce: 'advise' };
+const plainEntry = { id: PLAIN_ID, declare: banDeclare, why: SOFT_WHY };
+const hardEntry = { id: HARD_ID, declare: banDeclare, why: SOFT_WHY, enforce: 'block' };
+
+/** The call that breaks the ban: the forbidden command at the head of the line. */
 const breakingCall = bashPayload(`${FORBIDDEN_COMMAND} --run`);
 
 describe('real hook spawn: the session surface honours an entry at advise', () => {

@@ -291,20 +291,17 @@ describe('compileDisciplineRegistrations — entry enforce reaches the body-bear
     }
   });
 
-  it('fills nothing on the early-return skip arms — a pattern fault and a precedent entry with no transcript', () => {
-    // These two arms return before the body composes, on code paths distinct from the
-    // appended shell skip arms above. A level on an unjudgeable arm would let the dispatcher
-    // relax a routing that could not answer.
-    const faulty: EntryWithEnforce = { id: 'bad-pattern', forbidCommand: '(' };
-    const precedent: EntryWithEnforce = {
-      id: 'needs-read',
-      in: ['src/**'],
-      requirePrecedent: { command: 'cat ' },
-    };
-    const regs = compileDisciplineRegistrations(specWith([faulty, precedent]));
-    const arms = levelsOf(regs).filter(
-      (r) => r.label === 'bad-pattern' || r.label === 'needs-read',
-    );
+  it('fills nothing on the early-return skip arm — a declaration that does not compile', () => {
+    // This arm returns before the body composes, on a code path distinct from the appended
+    // shell skip arms above. A level on an unjudgeable arm would let the dispatcher relax a
+    // routing that could not answer.
+    const faulty = deltaEntry();
+    faulty.id = 'bad-declaration';
+    (faulty.declare as { extract: Record<string, unknown> }).extract.added = [
+      { op: 'sha256', of: 'after' },
+    ];
+    const regs = compileDisciplineRegistrations(specWith([faulty]));
+    const arms = levelsOf(regs).filter((r) => r.label === 'bad-declaration');
 
     expect(arms.length).toBeGreaterThan(0);
     for (const reg of arms) {

@@ -141,9 +141,7 @@ describe('discipline classification skill — the embedded config examples are l
     const judged = yamlFences(GENERATED_SKILL).filter((fence) => /enforce:\s*advise\b/.test(fence));
 
     expect(judged.length).toBeGreaterThan(0);
-    expect(
-      judged.some((fence) => /\b(declare|forbidCommand|requirePrecedent)\s*:/.test(fence)),
-    ).toBe(true);
+    expect(judged.some((fence) => /\bdeclare\s*:/.test(fence))).toBe(true);
   });
 
   it('captures every fence pair as yaml — no example escapes validation under another tag', () => {
@@ -167,11 +165,11 @@ describe('discipline classification skill — the embedded config examples are l
 });
 
 describe('discipline classification skill — vocabulary matches the shipped surface', () => {
-  it('names all three family predicate keys with the shipped spelling', () => {
+  it('names the judged entry key and the draft marker with the shipped spelling', () => {
     // A misspelled key in the lookup table sends every classification to a key defineConfig
     // rejects as unknown. The word boundary keeps `declare` from being satisfied by the
     // inside of a longer word.
-    for (const key of ['declare', 'forbidCommand', 'requirePrecedent']) {
+    for (const key of ['declare', 'draft']) {
       expect(GENERATED_SKILL, key).toMatch(new RegExp(`\\b${key}\\b`));
     }
   });

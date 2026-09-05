@@ -41,13 +41,6 @@ the core, which is how the core's agent-neutrality stays a testable claim rather
   the second. The transcript this surface parses is also a declaration source (`{ transcript:
   true }`): the covenant flattens it into a snapshot at supply time, so this adapter adds no
   reader for it.
-- **Precedent evidence evaluator** — `evaluatePrecedent` is this adapter's own evidence vocabulary
-  for the context-family discipline, the same namespace stance as `resolveGitAdapterSettings` in the
-  git adapter. It judges `subagent` (exact spawn-kind equality — a kind is a value, not a pattern)
-  and `tool` (observed tool names matched as a regular expression), and returns `undefined` for any
-  key outside its vocabulary — the handshake that tells the compiler this evidence is unjudgeable,
-  so the entry skips instead of judging on a guess. A malformed value is absent evidence, never a
-  throw.
 - **Telemetry wiring** — `runAdapterPath` drives the full funnel: raw payload → translation (a
   failure logs one blocked record and exits `2`) → dispatch through an *injected* seam → funnel
   completion, so exactly one record lands per call, witnessed rows included. The dispatch seam is

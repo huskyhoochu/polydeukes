@@ -10,7 +10,6 @@ import { validate, validLanguages } from './helpers.ts';
 const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: [{ id: 'empty-forbid', forbid: '' }] },
   { ...validLanguages, disciplines: [{ id: 'empty-added', forbid: { added: '' } }] },
-  { ...validLanguages, disciplines: [{ id: 'empty-cmd', forbidCommand: '' }] },
   // The empty element sits next to a valid one: per-element checking is what is under test.
   { ...validLanguages, protectedPaths: ['src/covenant/**', ''] },
   // Boundary: validator trim-length 0 ⟺ schema minLength 1.

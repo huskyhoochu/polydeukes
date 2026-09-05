@@ -19,10 +19,11 @@ const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 // covers three families so one sequence exercises meta-covenants AND disciplines.
 const PROTECTED_ENTRY = '.git/hooks';
 const DELTA_ID = 'no-todo';
-const COMMAND_ID = 'hooks-armed';
 const CONTEXT_ID = 'needs-precedent';
 const CONTEXT_TOOL = 'WebFetch';
+const SESSION = 'session';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
+const DISCIPLINE_SCOPE_RE = '^lib/.*\\.ts$';
 const SCOPED_TARGET = 'lib/a.ts';
 const DELTA_WHY = 'todos rot in place';
 /** The block reason the session surface must keep emitting byte-for-byte. */
@@ -54,8 +55,29 @@ const DISCIPLINES = [
     },
     why: DELTA_WHY,
   },
-  { id: COMMAND_ID, forbidCommand: 'zzz_probe_cmd', why: 'the probe reshapes unseen state' },
-  { id: CONTEXT_ID, requirePrecedent: { tool: CONTEXT_TOOL }, in: DISCIPLINE_SCOPE },
+  {
+    id: CONTEXT_ID,
+    declare: {
+      mechanism: 'precedent',
+      scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+      sources: { [SESSION]: { transcript: true } },
+      supply: { [SESSION]: 'pass' },
+      extract: {
+        fetched: [
+          { op: 'source', of: SESSION },
+          { op: 'toolUses', names: [CONTEXT_TOOL] },
+          { op: 'field', name: 'name' },
+        ],
+      },
+      relate: [
+        {
+          id: 'fetched-first',
+          relation: { op: 'nonEmpty', of: 'fetched' },
+          message: 'no {value} call precedes this edit',
+        },
+      ],
+    },
+  },
 ];
 
 // The declare entry judges the path alone, so a create on either surface supplies every
@@ -112,7 +134,7 @@ afterEach(() => {
 
 const rows = () => telemetryRows(telemetryPath);
 
-/** A transcript carrying ONE successful CONTEXT_TOOL call — the context entry's evidence. */
+/** A transcript carrying ONE successful CONTEXT_TOOL call — the precedent declaration's evidence. */
 function transcriptWithPrecedent(): string {
   const path = join(tmpRoot, 'session.jsonl');
   const lines = [
@@ -332,13 +354,35 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
     expect(rows()).toEqual([['advised', DELTA_ID, SCOPED_TARGET]]);
   });
 
-  it('a requirePrecedent discipline on a matched staged change records ONE skipped row (exit 0, silent)', () => {
-    // The commit surface's permanent no-transcript condition must stay a recorded skip:
+  it('a session-reading discipline on a matched staged change records ONE skipped row (exit 0, silent)', () => {
+    // The commit surface's permanent no-session condition must stay a recorded skip:
     // neither a block, nor a pass with NO row.
     const result = runCommitCheck(
       {
         disciplines: [
-          { id: CONTEXT_ID, requirePrecedent: { tool: CONTEXT_TOOL }, in: DISCIPLINE_SCOPE },
+          {
+            id: CONTEXT_ID,
+            declare: {
+              mechanism: 'precedent',
+              scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+              sources: { [SESSION]: { transcript: true } },
+              supply: { [SESSION]: 'pass' },
+              extract: {
+                fetched: [
+                  { op: 'source', of: SESSION },
+                  { op: 'toolUses', names: [CONTEXT_TOOL] },
+                  { op: 'field', name: 'name' },
+                ],
+              },
+              relate: [
+                {
+                  id: 'fetched-first',
+                  relation: { op: 'nonEmpty', of: 'fetched' },
+                  message: 'no {value} call precedes this edit',
+                },
+              ],
+            },
+          },
         ],
       },
       'export const y = 2;\n',

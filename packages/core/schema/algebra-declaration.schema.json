@@ -29,7 +29,8 @@
         "naming",
         "added-only",
         "one-way-marker",
-        "scoped-valve"
+        "scoped-valve",
+        "forbidden-command"
       ]
     },
     "scope": {
@@ -102,7 +103,7 @@
         "type": "string",
         "minLength": 1,
         "not": {
-          "enum": ["target.path", "pre", "post", "state", "changes"]
+          "enum": ["target.path", "pre", "post", "state", "changes", "command"]
         }
       },
       "additionalProperties": {

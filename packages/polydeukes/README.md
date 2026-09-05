@@ -21,8 +21,8 @@ one-way, through the core alone.
   translated into the covenant input IR, and dispatched through the very in-process judges the
   session hook calls — one judge, every surface. `--worktree` and `--range <base>..<head>` run the same
   judgment over the working tree or a ref range as a diagnostic call, with no witness prompt.
-  Context-family disciplines (`requirePrecedent`) assemble
-  here like any other, but with no session to read they become skip registrations: when one
+  Declarations that read the session (`precedent` and the other history mechanisms) assemble
+  here like any other, but with no session to read their `supply: pass` takes over: when one
   matches a staged change it records a `skipped` event carrying its id and that change, and the
   commit proceeds. Judging them would block every matching commit with no legitimate pass path;
   filtering them out would hide that a gate stood down. It is the same disposition the session

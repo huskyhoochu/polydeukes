@@ -92,16 +92,17 @@ shell axes, the session transcript, an assembly that cannot judge (missing or in
 config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
 entry promoted with `enforce: block`. Every other discipline entry lands `advised` there.
 
-**Context-family disciplines skip on the commit surface.** A commit has no session to look
-at, so a `requirePrecedent` entry cannot be judged there — demanding evidence a commit
-cannot carry would block every matching commit with no legitimate way through.
-
-They are not filtered out, though. They assemble like any other discipline and become
-*skip registrations*: routing intact, no judge body. When one matches a staged change it
-records a `skipped` telemetry event and lets the commit proceed. The record carries the
-entry's `id` and the change it would have judged, so a gate that did nothing says so in
-the data — and it appears **only when the entry's scope actually matched**, so a commit
-touching nothing the entry cares about records nothing at all.
+**Declarations that read the session skip on the commit surface.** A commit has no session
+to look at, so a declaration whose `sources` bind the transcript — a `precedent`,
+`phase-order`, `turn-locality` or `stated-ground` entry — cannot be judged there; demanding
+evidence a commit cannot carry would block every matching commit with no legitimate way
+through. The declaration's own `supply: { session: 'pass' }` disposes of the absence: when
+its scope matches a staged change it records a `skipped` telemetry event carrying the reason
+token `supply-pass` and lets the commit proceed. The record carries the entry's `id` and the
+change it would have judged, so a gate that did nothing says so in the data — and it appears
+**only when the entry's scope actually matched**. A declaration scoped on the `command`
+source records nothing at all there: a staged diff carries no command line, so no world it
+observes is ever admitted.
 
 This is the same disposition the session surface uses whenever it has no transcript to
 read. One rule, both surfaces: evidence that cannot be evaluated is skipped and measured,
@@ -176,11 +177,10 @@ recorded as `witnessed`, never silent.
 ## `disciplines`
 
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
-data. An entry carries exactly **one** predicate (zero or two is rejected), an `id` (the
-telemetry label), and optionally a `why` (the reason, which travels with the block message
-the agent reads) plus, on a `requirePrecedent` entry, `in` (the file globs it judges) and
-`except` (globs carved out of that scope). The third predicate, `declare`, carries its own
-scope inside the block and takes none of those three keys.
+data. A judged entry carries a `declare` block — the one judged form, a declaration whose
+`scope` lives inside the block — an `id` (the telemetry label), and optionally a `why` (the
+reason, which travels with the block message the agent reads) and an `enforce` level. The
+closed key set is `id` · `why` · `enforce` · `declare`; any other key is refused.
 
 **`draft` — an unpromoted entry.** The one shape that carries no predicate:
 `{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of
@@ -218,8 +218,17 @@ the session header states the default.
 ```yaml
   - id: 'hooks-stay-armed'
     why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
-    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
     enforce: advise
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+      relate:
+        - { id: 'gates-armed', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
 ```
 
 **Added-direction content is a declaration.** A promise about what an edit *adds* — a
@@ -281,95 +290,80 @@ breaks.
         - { id: 'frozen', relation: { op: 'empty', of: 'touched' }, message: '{value} is frozen' }
 ```
 
-**`forbidCommand` — command family.** Blocks shell commands matching the pattern, even
-when the command mentions no protected path. This is how gate-disarming commands are
-caught. A multi-line command is judged twice over — the pattern is tested against each
-line and against the whole string, so `^` means the start of a line while a pattern
-spanning a line boundary still matches (the whole-content caution further down applies
-to the context family's `when`). An empty pattern is rejected at load time — it would
-match every command.
+**A command line is a source.** On the session surface a shell call carries its command
+line as the fixed source `command`, and a call that changes no file is still one
+observation — it is judged as a world of its own, with subject `-`. A `forbidden-command`
+declaration reads that source, cuts it into lines, keeps the lines a pattern matches, and
+requires the result to be `empty`. It scopes on `command` so that only shell calls are
+admitted: an Edit carries no command line, and a declaration reading a source its world
+lacks is unjudgeable. A multi-line command is judged line by line, so `^` means the start
+of a line; a pattern that would span a line boundary does not match.
 
 ```yaml
   - id: 'hooks-stay-armed'
     why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
-    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+      relate:
+        - { id: 'gates-armed', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
 ```
 
-**`requirePrecedent` — context family.** Blocks a change that arrives without a required
-step having happened earlier in the session. The other three families all ask "is this
-change itself bad"; this one asks something else. The change is legitimate — what is
-missing is the procedure in front of it, so what gets judged is not the mutation but the
-session history.
-
-Evidence means an **execution**, not a request. A call the covenant blocked, one a human
-refused, and one that simply failed all leave the same trace in a session, and none of
-them is precedent — the transcript is read for what actually ran and reported success.
-That is what keeps the cheapest way through the gate being the thing the discipline
-asks for.
-
-Two consequences are worth knowing before you write one. The outcome is read per command
-LINE, so a chain where the required command ran but a later step failed does not count.
-And the pattern is matched at the start of a simple command, so the same words in an
-argument or a comment do not count either. **In both cases running the command on its own
-opens the gate** — the block message says so.
+**A precedent is a declaration over the session.** Most declarations ask "is this change
+itself bad"; a `precedent` asks whether a required step happened earlier in the session.
+The change is legitimate — what is missing is the procedure in front of it, so what gets
+judged is the session history: `sources: { session: { transcript: true } }` hands the
+declaration the user turns and tool calls as one snapshot, `toolUses` picks the calls,
+`filter` keeps the ones that ran and **succeeded**, `select` reaches the command line, and
+`matches` finds the required one; `nonEmpty` is the verdict. A call the covenant blocked,
+one a human refused, and one that simply failed are not precedent. The pattern is matched
+anywhere in a command line — a line that merely mentions the command counts, a declared
+limit. `supply: { session: 'pass' }` is what makes the commit surface record `skipped`
+instead of blocking every matching commit.
 
 ```yaml
   - id: 'dependency-needs-npm-view'
     why: 'a dependency version must be measured before it is written.'
-    in:
-      - 'package.json'
-      - 'packages/*/package.json'
-    when: '(^|\n)\s*"[^"]+"\s*:\s*"[~^]?\d[^"]*"'
-    requirePrecedent:
-      command: 'npm view '
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        npmView:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\bnpm view ' }
+      relate:
+        - { id: 'npm-view', relation: { op: 'nonEmpty', of: 'npmView' }, message: 'no successful npm view precedes this manifest edit' }
 ```
 
-The evidence vocabulary is layered. `command` is the core's own key — a shell call is a surface
-every agent shares — and the core validates it fully, rejecting an empty string or a pattern that
-does not compile. It is matched **at the start of a simple command**, not anywhere in the command
-line, so `echo "npm view yaml"` and a mention parked behind a `#` are not evidence while `cd pkg &&
-npm view yaml` is. Every other key belongs to an adapter: the core checks the container only (a flat
-object carrying exactly one evidence key) and passes the value through verbatim, and the adapter
-that owns the word validates and judges it. The Claude Code adapter brings two: `subagent` (exact
-match on a spawn kind) and `tool` (a regex over tool names) — so "query the docs tool before
-touching this" is expressible today. Both follow the same execution rule as `command`. An evidence
-key no assembled adapter recognizes cannot be judged, so the entry compiles to a skip registration:
-routing stays, the body is dropped, assembly names the fault once on stderr, and every matching
-change afterwards records `skipped` rather than a verdict. A typo therefore never passes itself off
-as adapter vocabulary — but it does leave the discipline inert, and the `skipped` rows are where
-that shows.
+A tool call is evidence the same way: `toolUses` without `names`, then `field name` and
+`matches` over the tool's name, or `toolUses` with `subagentType` for a spawn of one agent
+kind. The other history mechanisms read the same snapshot — `phase-order` relates two
+spawn ordinals with `ordered`, `turn-locality` keeps the user turns inside a time window
+(`userTexts → ageMs → filter lte`), and `stated-ground` requires a user turn matching a
+pattern; the last two are usually scoped on `command`, so that only the shell call they
+apply to is judged.
 
-`when` (optional) is the trigger: an added-direction delta regex, combinable with
-`requirePrecedent` and with nothing else. When it is absent, every change inside `in`
-scope triggers the discipline. The two keys divide the work — `in` says which files are
-watched, `when` says which change in them demands the precedent.
+**A caution on line anchors.** A declaration's `lines` step splits the text first, so `^`
+inside `keyByPattern` or `matches` after it is the start of a line. A pattern that stops
+mid-value — say at the first digit of a version — keys `4.0.5` and `4.0.6` alike, so a bump
+adds nothing to an added-only difference and the discipline silently passes: make the
+pattern span the whole value that can change. Both failure shapes compile, run, and answer
+`passed`, so measure a new entry against a real file and a realistic edit.
 
-**A caution on line anchors.** These patterns are matched against the file's whole content
-as a single string, and the config schema takes a regex string with no flags. `^` therefore
-anchors to the start of the *file*, not the start of a line, so a line-shaped pattern
-written with `^` matches only the first line and the discipline silently stops firing —
-the regex still compiles, the judgment still runs, and the verdict is `passed`. Write
-`(^|\n)` when you mean the start of a line. This is why the example above carries
-`(^|\n)\s*"[^"]+"…` rather than `^\s*"[^"]+"…`.
-
-**And a caution on match length.** The delta keys on the matched *text*: a change is only
-seen as added when the matched string itself differs between the file's before and after.
-A pattern that stops mid-value — say at the first digit of a version — produces the same
-match text for `4.0.5` and `4.0.6`, so a version bump adds nothing to the delta and the
-discipline silently passes. Make the pattern span the whole value that can change; the
-example above runs through the closing quote (`\d[^"]*"`) for exactly this reason. Both
-failure shapes are the same class: the regex compiles, the verdict says `passed`, and
-nothing tells you the discipline is inert — so when you add an entry, measure it against
-a real file and a realistic edit, not a one-line snippet.
-
-The kind of change matters at the trigger. With `when` present, a deletion never triggers
-— deleting adds no content. With `when` absent, deletion triggers like any other change in
-scope, since the declared scope is the whole mutation.
-
-**The cheap way through is the honest one.** Unlike the witness, this evidence lives on the
-AI's own surface, so it is not forgery-proof. It does not need to be: the least effortful
-way to open this gate is to actually call the tool, and that is exactly the behaviour the
-discipline exists to induce.
+**The cheap way through is the honest one.** Unlike the witness, session evidence lives on
+the AI's own surface, so it is not forgery-proof. It does not need to be: the least
+effortful way to open this gate is to actually run the command, and that is exactly the
+behaviour the discipline exists to induce.
 
 **`declare` — declaration family.** One judgment written as data, in the algebra grammar
 the core publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The
@@ -395,19 +389,23 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
 
 This repository's live config carries the same declaration as `sqlite-only-under-knowledge`.
 
-Each file change is judged as one **world** with five source names: `target.path` (the
+Each observation is judged as one **world** with six source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
 a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
 on a modification), and `changes` (every path the observation changes — the one call on the
-session surface, the whole staged set on the commit surface). A declaration that reads
+session surface, the whole staged set on the commit surface), and `command` (the shell
+call's command line — present on a shell call only, and a shell call that changes no file
+is one world of its own, so a declaration scoped on `command` sees it while one scoped on
+`target.path` does not). A declaration that reads
 `changes` is judged only where the whole change set is observed: the session surface
-records it `skipped`, the same disposition the commit surface gives the context family,
+records it `skipped`, the same disposition the commit surface gives a declaration that reads
+the session,
 because one call can never carry the other half of a pair. This repository's live config
 carries one — `docs-stay-bilingual`, an `implies` over the `.md`/`.ko.md` pair, advised
 on the commit surface when one side is staged without the other. A declaration that needs a
 file outside the target names it in a `sources` block, `sources: { en: { file:
 'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
-repo-relative (no leading `/`, no `..` segment) and the name may not be one of the five. The
+repo-relative (no leading `/`, no `..` segment) and the name may not be one of the six. The
 surface reads the file the way it observes the tree — the disk in a session, the index for a
 staged commit, the `<to>` commit for a range — except that a named file the change itself
 touches is read from the change's `post`, so both surfaces judge the same text. A second
@@ -416,12 +414,12 @@ instead of a path — the subagent records the host keeps beside the transcript,
 one JSON array; where the channel lives is the surface's fact, so the value is the marker
 `true`, and on the commit surface (which has no session) the channel is always absent. A
 third kind, `sources: { session: { transcript: true } }`, names the session's own
-conversation history — the user turns and tool calls the surface already reads for the
-context family, handed to the declaration as one snapshot whose entries carry their
+conversation history — the user turns and tool calls the surface reads, handed to the
+declaration as one snapshot whose entries carry their
 observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
 `agentType` reads the parsed sidecar. This repository's live config carries one —
 `tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, which
-the commit surface (no session) records `skipped`. A `supply` key must name one of the five
+the commit surface (no session) records `skipped`. A `supply` key must name one of the six
 fixed sources or one of the declaration's own `sources`; any other key is refused. A
 source the change does not carry is absent, and the declaration's
 `supply` block says what that means: `error` (the default) makes the call unjudgeable —
@@ -436,7 +434,7 @@ fifth field naming the elements the relation failed on (at most eight per relate
 the true count beside them). A `skipped` row uses the same field for a reason token instead —
 `no-observation` (the surface has no channel for what the entry reads), `config-fault` (the
 block could not be assembled), or `supply-pass` (the declaration's own `supply: pass` let an
-absent source through). Every declaration also names its `mechanism` — one of seventeen
+absent source through). Every declaration also names its `mechanism` — one of eighteen
 catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
 name whose shape the declaration does not match: the axes its sources derive (`change` for
 the fixed names, `world` for a `file` or `sidecar` source, `history` for a `transcript`

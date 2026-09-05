@@ -8,7 +8,6 @@
  * reaches the core.
  */
 
-export { type EvaluatePrecedentSpec, evaluatePrecedent } from './precedent.js';
 export {
   type AdapterPathOutcome,
   type DispatchAdapterView,

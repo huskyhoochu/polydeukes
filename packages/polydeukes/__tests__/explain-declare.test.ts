@@ -1,7 +1,7 @@
 // `pdks explain` renders a `declare` entry on BOTH surfaces as its own kind with a
 // description that reads (mechanism, derived axes, relation with its relate ids), then the
 // scope source and regex list sizes, the `sources` count with its sidecar share, the valve
-// mark, and the why mark; the tally gains a `declare` bucket that `judged` never absorbs.
+// mark, and the why mark; the tally counts declarations in their own bucket.
 // A declaration the engine cannot compile renders as a `skip` row naming the offending
 // step. The config is loaded through the real validator, so every declaration here
 // carries a mechanism its own shape satisfies.
@@ -91,20 +91,17 @@ function rowOf(text: string, header: string, kind: string, label: string): strin
 }
 
 /** The tally line's numbers in their fixed word order — a reordering fails the match. */
-const TALLY =
-  /registrations (\d+) · judged (\d+) · declare (\d+) · skip (\d+) · meta (\d+) · excluded (\d+) · draft (\d+)/;
+const TALLY = /registrations (\d+) · declare (\d+) · skip (\d+) · meta (\d+) · draft (\d+)/;
 
 function tallyOf(section: string): Record<string, number> {
   const match = TALLY.exec(section);
   expect(match, 'tally line missing or out of order').not.toBeNull();
-  const [, registrations, judged, declare, skip, meta, excluded, draft] = match as RegExpExecArray;
+  const [, registrations, declare, skip, meta, draft] = match as RegExpExecArray;
   return {
     registrations: Number(registrations),
-    judged: Number(judged),
     declare: Number(declare),
     skip: Number(skip),
     meta: Number(meta),
-    excluded: Number(excluded),
     draft: Number(draft),
   };
 }
@@ -163,9 +160,8 @@ describe('explain renders a declare entry as its own kind on both surfaces', () 
 });
 
 describe('the tally counts declare in its own bucket', () => {
-  it('a declare-only config tallies `declare 1` and `judged 0` in the fixed word order', async () => {
-    // `judged` counts the four glob families only; a tally that folds the declare row into
-    // `judged` — or omits the `declare` word — fails the ordered match.
+  it('a declare-only config tallies `declare 1` in the fixed word order', async () => {
+    // A tally that omits the `declare` word, or reorders the buckets, fails the ordered match.
     writeFixtureConfig([declareEntry]);
 
     const { text } = await explain({ repoRoot });
@@ -173,9 +169,7 @@ describe('the tally counts declare in its own bucket', () => {
     for (const header of SURFACE_HEADERS) {
       const tally = tallyOf(surfaceSection(text, header));
       expect(tally.declare).toBe(1);
-      expect(tally.judged).toBe(0);
       expect(tally.draft).toBe(0);
-      expect(tally.excluded).toBe(0);
     }
   });
 

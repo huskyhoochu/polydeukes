@@ -40,27 +40,78 @@ const HOOKS_ID = 'hooks-stay-armed';
 const hooksEntry = {
   id: HOOKS_ID,
   why: 'the valve must not be cut',
-  forbidCommand: 'rm -rf hooks',
+  declare: {
+    mechanism: 'forbidden-command',
+    scope: { source: 'command' },
+    extract: {
+      hits: [
+        { op: 'source', of: 'command' },
+        { op: 'lines' },
+        { op: 'matches', re: 'rm -rf hooks' },
+      ],
+    },
+    relate: [{ id: 'no-hit', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
+  },
 };
+const SESSION = 'session';
+const MANIFEST_RE = '^manifest\\.json$';
 const NPM_VIEW_ID = 'manifest-needs-npm-view';
 const npmViewEntry = {
   id: NPM_VIEW_ID,
-  in: 'manifest.json',
-  requirePrecedent: { command: 'npm view ' },
+  declare: {
+    mechanism: 'precedent',
+    scope: { source: 'target.path', include: [MANIFEST_RE] },
+    sources: { [SESSION]: { transcript: true } },
+    supply: { [SESSION]: 'pass' },
+    extract: {
+      npmView: [
+        { op: 'source', of: SESSION },
+        { op: 'toolUses', names: ['Bash'] },
+        { op: 'select', path: 'args.command' },
+        { op: 'matches', re: '\\bnpm view ' },
+      ],
+    },
+    relate: [
+      {
+        id: 'npm-view',
+        relation: { op: 'nonEmpty', of: 'npmView' },
+        message: 'no npm view precedes this edit',
+      },
+    ],
+  },
 };
 const CONTEXT7_ID = 'manifest-needs-context7';
 const context7Entry = {
   id: CONTEXT7_ID,
   why: 'read the docs first',
-  in: 'manifest.json',
-  requirePrecedent: { tool: 'context7' },
+  declare: {
+    mechanism: 'precedent',
+    scope: { source: 'target.path', include: [MANIFEST_RE] },
+    sources: { [SESSION]: { transcript: true } },
+    supply: { [SESSION]: 'pass' },
+    extract: {
+      docs: [
+        { op: 'source', of: SESSION },
+        { op: 'toolUses' },
+        { op: 'field', name: 'name' },
+        { op: 'matches', re: 'context7' },
+      ],
+    },
+    relate: [
+      {
+        id: 'context7',
+        relation: { op: 'nonEmpty', of: 'docs' },
+        message: 'no context7 call precedes this edit',
+      },
+    ],
+  },
 };
 
 const LIVE_LIKE_DISCIPLINES = [vocabEntry, hooksEntry, npmViewEntry, context7Entry];
 
 const SESSION_HEADER = 'surface: session (claude-code hook)';
 const COMMIT_HEADER = 'surface: commit (git pre-commit)';
-const KINDS = ['meta', 'judge', 'declare', 'skip', 'excluded'] as const;
+const KINDS = ['meta', 'declare', 'skip'] as const;
 type Kind = (typeof KINDS)[number];
 
 let repoRoot: string;
@@ -94,26 +145,21 @@ function surfaceSection(text: string, header: string): string {
 function kindLabelRows(section: string): [Kind, string][] {
   const rows: [Kind, string][] = [];
   for (const line of section.split('\n')) {
-    const match = /^\s+(meta|judge|declare|skip|excluded)\s+(\S+)/.exec(line);
+    const match = /^\s+(meta|judge|declare|skip)\s+(\S+)/.exec(line);
     if (match !== null) rows.push([match[1] as Kind, match[2]]);
   }
   return rows;
 }
 
 function summary(section: string): Record<string, number> {
-  const match =
-    /registrations (\d+) · judged (\d+) · declare (\d+) · skip (\d+) · meta (\d+) · excluded (\d+)/.exec(
-      section,
-    );
+  const match = /registrations (\d+) · declare (\d+) · skip (\d+) · meta (\d+)/.exec(section);
   expect(match, 'summary line missing').not.toBeNull();
-  const [, registrations, judged, declare, skip, meta, excluded] = match as RegExpExecArray;
+  const [, registrations, declare, skip, meta] = match as RegExpExecArray;
   return {
     registrations: Number(registrations),
-    judged: Number(judged),
     declare: Number(declare),
     skip: Number(skip),
     meta: Number(meta),
-    excluded: Number(excluded),
   };
 }
 
@@ -138,9 +184,7 @@ describe("explain renders the roots' own assembly", () => {
       covenant: realCovenant,
     }).map((registration: CovenantRegistration) => registration.label);
     const { text } = await explain({ repoRoot });
-    const rendered = kindLabelRows(surfaceSection(text, COMMIT_HEADER))
-      .filter(([kind]) => kind !== 'excluded')
-      .map(([, label]) => label);
+    const rendered = kindLabelRows(surfaceSection(text, COMMIT_HEADER)).map(([, label]) => label);
 
     expect(rendered).toEqual(expected);
   });
@@ -162,27 +206,7 @@ describe("explain renders the roots' own assembly", () => {
   });
 });
 
-describe('the four skip reasons surface with their entry', () => {
-  it('commit surface: a requirePrecedent command entry skips with the absent-transcript reason', async () => {
-    writeFixtureConfig([npmViewEntry]);
-
-    const { text } = await explain({ repoRoot });
-
-    expect(lineOf(text, COMMIT_HEADER, 'skip', NPM_VIEW_ID)).toContain(
-      'no session transcript to read',
-    );
-  });
-
-  it('commit surface: a requirePrecedent tool entry skips with the absent-evaluator reason', async () => {
-    writeFixtureConfig([context7Entry]);
-
-    const { text } = await explain({ repoRoot });
-
-    expect(lineOf(text, COMMIT_HEADER, 'skip', CONTEXT7_ID)).toContain(
-      'no precedent evaluator injected',
-    );
-  });
-
+describe('the skip reasons surface with their entry', () => {
   it("renders a declare entry's shell-skip arm under the entry id with its reason", async () => {
     writeFixtureConfig([vocabEntry]);
 
@@ -204,30 +228,31 @@ describe('the four skip reasons surface with their entry', () => {
     }
   });
 
-  it('session surface: a context entry is a judge, not a skip — the model carries a transcript', async () => {
+  it('session surface: a history declaration renders as declare, not as a skip', async () => {
+    // The session model carries a transcript, so the declaration that reads it is a
+    // rendered judgment rather than a channel the surface does not have.
     writeFixtureConfig([npmViewEntry, context7Entry]);
 
     const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
-    expect(linesOf(session, 'judge', NPM_VIEW_ID)).toHaveLength(1);
-    expect(linesOf(session, 'judge', CONTEXT7_ID)).toHaveLength(1);
+    expect(linesOf(session, 'declare', NPM_VIEW_ID)).toHaveLength(1);
+    expect(linesOf(session, 'declare', CONTEXT7_ID)).toHaveLength(1);
     expect(session).not.toContain('no session transcript to read');
-    expect(session).not.toContain('transcript threw');
   });
 });
 
 describe('surface placement', () => {
-  it('renders a forbidCommand entry as excluded on the commit surface and as judge on the session surface', async () => {
+  it('renders a command-reading declaration on both surfaces', async () => {
+    // The commit surface observes no shell call, so the declaration lands no row there at
+    // judgment time — but the entry is still assembled, and explain renders the table that
+    // would judge rather than the rows a run produced.
     writeFixtureConfig([hooksEntry]);
 
     const { text } = await explain({ repoRoot });
-    const commit = surfaceSection(text, COMMIT_HEADER);
-    const session = surfaceSection(text, SESSION_HEADER);
 
-    expect(linesOf(commit, 'excluded', HOOKS_ID).join('\n')).toContain('no shell axis');
-    expect(linesOf(commit, 'judge', HOOKS_ID)).toHaveLength(0);
-    expect(linesOf(session, 'judge', HOOKS_ID)).toHaveLength(1);
-    expect(linesOf(session, 'excluded', HOOKS_ID)).toHaveLength(0);
+    for (const header of [SESSION_HEADER, COMMIT_HEADER]) {
+      expect(linesOf(surfaceSection(text, header), 'declare', HOOKS_ID)).toHaveLength(1);
+    }
   });
 
   it('self-mod counts the common list (+config) on session and the git union on commit', async () => {
@@ -253,26 +278,24 @@ describe('surface placement', () => {
   });
 });
 
-describe('routing scope per family and the why mark', () => {
-  it('renders the command family as `(no path scope)`', async () => {
+describe('routing scope and the why mark', () => {
+  it('renders a command-scoped declaration with its mechanism coordinate', async () => {
     writeFixtureConfig([hooksEntry]);
 
-    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'judge', HOOKS_ID);
+    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'declare', HOOKS_ID);
 
-    expect(line).toContain('forbidCommand');
-    expect(line).toContain('(no path scope)');
+    expect(line).toContain('forbidden-command');
   });
 
-  it('renders the context family with its evidence key and `in` scope', async () => {
+  it('renders a scoped history declaration with its mechanism and its scope', async () => {
     writeFixtureConfig([npmViewEntry, context7Entry]);
 
     const { text } = await explain({ repoRoot });
 
-    expect(lineOf(text, SESSION_HEADER, 'judge', NPM_VIEW_ID)).toContain(
-      'requirePrecedent command',
-    );
-    expect(lineOf(text, SESSION_HEADER, 'judge', NPM_VIEW_ID)).toContain('in manifest.json');
-    expect(lineOf(text, SESSION_HEADER, 'judge', CONTEXT7_ID)).toContain('requirePrecedent tool');
+    const line = lineOf(text, SESSION_HEADER, 'declare', NPM_VIEW_ID);
+    expect(line).toContain('precedent');
+    expect(line).toContain('scope target.path');
+    expect(lineOf(text, SESSION_HEADER, 'declare', CONTEXT7_ID)).toContain('precedent');
   });
 });
 
@@ -287,12 +310,10 @@ describe('the tallies are the rendered lines', () => {
       const rows = kindLabelRows(section);
       const count = (kind: Kind) => rows.filter(([k]) => k === kind).length;
       expect(summary(section)).toEqual({
-        registrations: count('meta') + count('judge') + count('declare') + count('skip'),
-        judged: count('judge'),
+        registrations: count('meta') + count('declare') + count('skip'),
         declare: count('declare'),
         skip: count('skip'),
         meta: count('meta'),
-        excluded: count('excluded'),
       });
     }
   });
@@ -304,42 +325,34 @@ describe('the tallies are the rendered lines', () => {
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
       registrations: 4,
-      judged: 0,
       declare: 0,
       skip: 1,
       meta: 3,
-      excluded: 0,
     });
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
       registrations: 2,
-      judged: 0,
       declare: 0,
       skip: 1,
       meta: 1,
-      excluded: 0,
     });
   });
 
-  it('the multi-entry config: absolute tallies differ per surface and count the excluded entry', async () => {
+  it('the multi-entry config: absolute tallies differ per surface', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
 
     const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
       registrations: 11,
-      judged: 3,
-      declare: 1,
+      declare: 4,
       skip: 4,
       meta: 3,
-      excluded: 0,
     });
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
-      registrations: 5,
-      judged: 0,
-      declare: 1,
-      skip: 3,
+      registrations: 6,
+      declare: 4,
+      skip: 1,
       meta: 1,
-      excluded: 1,
     });
   });
 

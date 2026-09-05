@@ -21,7 +21,6 @@ agent-neutrality a claim a test can check rather than a slogan.
 | Virtual post-state | Computes what a file *would* contain after an edit applies, without touching disk |
 | File-change evidence | Pairs the disk pre-state with the virtual post-state into union evidence |
 | Transcript provider | Turns a session JSONL file into a `CanonicalTranscript` |
-| Precedent evaluator | This adapter's own evidence vocabulary for the context family |
 | Telemetry wiring | Drives the full funnel so exactly one row lands per call |
 
 This package never imports the covenant package. The dispatch seam is *injected* by the
@@ -64,7 +63,6 @@ the compiler the evidence is unjudgeable, so the entry skips instead of judging 
 
 - **The generated hook**, which loads this adapter through the umbrella's `claude-code`
   subpath. Upgrading the package upgrades what runs; the hook file itself never changes.
-- **`requirePrecedent` entries** using the `subagent` or `tool` evidence keys.
 
 No import, and no configuration namespace of its own.
 

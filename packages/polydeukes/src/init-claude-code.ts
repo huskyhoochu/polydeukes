@@ -162,13 +162,13 @@ promises and classify each separately.
 
 Ask these questions in order; the first yes decides.
 
-| # | Question | Family | Entry key |
-| --- | --- | --- | --- |
-| 1 | Is the promise about content newly ADDED to a file (a pattern that must not appear in new lines)? | declaration | \`declare\` (mechanism \`added-only\`) |
-| 2 | Is it about a whole path that must not be modified or deleted (creating it once stays allowed)? | declaration | \`declare\` (mechanism \`self-absolution-ban\`) |
-| 3 | Is it about the shell command line itself, regardless of files? | command | \`forbidCommand\` |
-| 4 | Does it require that something else was already done earlier in the session (a tool call that must precede this one)? | context | \`requirePrecedent\` |
-| 5 | None of the above | — | \`draft: true\` (step 4b) |
+| # | Question | Entry key |
+| --- | --- | --- |
+| 1 | Is the promise about content newly ADDED to a file (a pattern that must not appear in new lines)? | \`declare\` (mechanism \`added-only\`) |
+| 2 | Is it about a whole path that must not be modified or deleted (creating it once stays allowed)? | \`declare\` (mechanism \`self-absolution-ban\`) |
+| 3 | Is it about the shell command line itself, regardless of files? | \`declare\` (mechanism \`forbidden-command\`, reading the \`command\` source) |
+| 4 | Does it require that something else was already done earlier in the session (a tool call that must precede this one)? | \`declare\` (mechanism \`precedent\`, reading a \`transcript\` source) |
+| 5 | None of the above | \`draft: true\` (step 4b) |
 
 An \`added-only\` declaration forgives existing occurrences — only what the edit adds breaks
 the promise. That is usually what you want: a discipline adopted today should not indict
@@ -228,19 +228,43 @@ disciplines:
     enforce: advise
 \`\`\`
 
+A command-line ban reads the fixed source \`command\` and scopes on it — the scope is part of
+the mechanism's shape, so a \`forbidden-command\` entry without it is refused at load time:
+
+\`\`\`yaml
+languages:
+  placeholder:
+    productionGlob: 'src/**'
+    testCmd: 'echo "set a verification command for {scope}"'
+disciplines:
+  - id: 'no-force-push'
+    why: 'a force push rewrites history nobody reviewed'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: 'git push\\\\b.*--force(?![\\\\w-])' }
+      relate:
+        - { id: 'no-force', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+    enforce: advise
+\`\`\`
+
 **Write the regex yourself — the user states the promise, you author the pattern.** The
 pattern is the part users find hardest, so never hand the prose back and ask for one. Three
 authoring traps, each measured on a live config:
 
 - **A pattern answers a syntactic question only.** "Is this string a forbidden word" is
   syntax; "is this a new dependency version" is meaning, and a regex leaks both ways on a
-  semantic question. When the question is semantic, narrow \`in:\` to the files where any
-  match IS a break (a declaration's own \`scope\` block, or \`in:\`/\`except:\` on
-  \`requirePrecedent\`), or accept "editing this file at all" as the trigger.
+  semantic question. When the question is semantic, narrow the declaration's own \`scope\`
+  block to the files where any match IS a break, or accept "editing this file at all" as
+  the trigger.
 - **\`^\` means what the preceding step left.** After a \`lines\` step a declaration's
   pattern sees one line at a time, so \`^\` anchors to that line; over an unsplit source it
-  anchors to the whole text and matches the first line only. \`forbidCommand\` judges per
-  line and the whole string, so \`^\` is safe on that axis.
+  anchors to the whole text and matches the first line only. A ban over the command line
+  puts \`lines\` before its \`matches\` for exactly that reason.
 - **Author both directions.** Before registering, write down one string the pattern must
   match and one nearby string it must not (\`only(\` vs \`only_helper(\`, a flag vs its
   substring). A pattern checked in only the breaking direction over-fires in review-proof
@@ -285,18 +309,18 @@ disciplines:
 
 ### 5. Prove it fires, then close
 
-Run \`pdks explain\` and confirm the new entry is listed (a judged entry with its family and
-surfaces; a draft as unpromoted).
+Run \`pdks explain\` and confirm the new entry is listed (a judged entry with its mechanism
+and surfaces; a draft as unpromoted).
 
 For a judged entry, registration is not the finish — a pattern that never fires protects
-nothing while looking installed. Fire it once for real, with the proof run its family can
-actually reach:
+nothing while looking installed. Fire it once for real, with the proof run the declaration's
+own mechanism can actually reach:
 
-| Family | Break it once | The entry's id shows up in |
+| Mechanism | Break it once | The entry's id shows up in |
 | --- | --- | --- |
-| \`declare\` | one scratch edit matching the must-match direction | \`pdks covenant check --worktree\` output — the exit stays 0 at advise, the id is the proof |
-| \`forbidCommand\` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
-| \`requirePrecedent\` | one in-scope edit made without the required precedent | the telemetry log tail — this family judges on the session surface only (the commit surface records it \`skipped\`) |
+| a file-reading one (\`added-only\`, \`naming\`, …) | one scratch edit matching the must-match direction | \`pdks covenant check --worktree\` output — the exit stays 0 at advise, the id is the proof |
+| \`forbidden-command\` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
+| \`precedent\` | one in-scope edit made without the required precedent | the telemetry log tail — a declaration reading the session judges on the session surface only (the commit surface has none, so its \`supply\` policy records it \`skipped\`) |
 
 Then undo the scratch break, repeat the same run, and confirm silence on the
 must-NOT-match direction. Close by telling the user which rung the entry landed on and

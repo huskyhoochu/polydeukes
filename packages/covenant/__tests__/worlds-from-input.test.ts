@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { worldsFromInput } from '../src/discipline.ts';
 
 const ROOT = '/repo';
+/** No shell tool is named, so no call here is a shell call and no world carries `command`. */
+const NO_SHELL = { shellTools: [], commandArgs: [] };
 const PATH_SOURCE = 'target.path';
 
 /** A CovenantInput whose evidence rides each call's own element, in the given order. */
@@ -30,6 +32,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'create', path: 'lib/new.db', post: 'body' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds).toHaveLength(1);
@@ -48,6 +51,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'modify', path: 'lib/a.db', pre: 'before', post: 'after' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual([
@@ -72,6 +76,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'delete', path: 'lib/old.db', pre: 'gone' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(Object.keys(worlds[0]?.world ?? {}).sort()).toEqual(['changes', 'pre', PATH_SOURCE]);
@@ -88,6 +93,7 @@ describe('worldsFromInput — one world per change, keyed by the three kinds', (
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'delete', path: 'lib/blob.db' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(Object.keys(worlds[0]?.world ?? {})).toEqual([PATH_SOURCE, 'changes']);
@@ -102,6 +108,7 @@ describe('worldsFromInput — path relativization and order', () => {
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'create', path: `${ROOT}/lib/abs.db`, post: 'x' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.path)).toEqual(['lib/abs.db']);
@@ -118,6 +125,7 @@ describe('worldsFromInput — path relativization and order', () => {
         { kind: 'create', path: 'lib/in.db', post: 'y' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.path)).toEqual(['lib/in.db']);
@@ -132,6 +140,7 @@ describe('worldsFromInput — path relativization and order', () => {
         { kind: 'create', path: 'a/first.db', post: '1' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.path)).toEqual(['z/second.db', 'a/first.db']);
@@ -146,6 +155,7 @@ describe('worldsFromInput — path relativization and order', () => {
         { kind: 'create', path: 'lib/ok.db', post: 'x' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.path)).toEqual(['lib/ok.db']);
@@ -157,6 +167,7 @@ describe('worldsFromInput — path relativization and order', () => {
     const worlds = worldsFromInput({
       input: inputWithChanges([undefined, { kind: 'create', path: 'lib/only.db', post: 'x' }]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.path)).toEqual(['lib/only.db']);

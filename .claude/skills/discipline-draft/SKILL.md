@@ -1,6 +1,6 @@
 ---
 name: discipline-draft
-description: Turn a described discipline problem into a registered entry in polydeukes.config — a judged entry when the current families can express it, a draft entry otherwise. Use when the user describes a recurring problem they want promised away ("I keep...", "stop X from happening", "we should never...", "how do I enforce Y").
+description: Turn a described discipline problem into a registered entry in polydeukes.config — a judged entry when the declaration grammar can express it, a draft entry otherwise. Use when the user describes a recurring problem they want promised away ("I keep...", "stop X from happening", "we should never...", "how do I enforce Y").
 ---
 
 # discipline-draft — from a problem description to a registered discipline
@@ -26,8 +26,8 @@ Ask these questions in order; the first yes decides.
 | --- | --- | --- | --- |
 | 1 | Is the promise about content newly ADDED to a file (a pattern that must not appear in new lines)? | declaration | `declare` — mechanism `added-only` (step 4a) |
 | 2 | Is it about a whole path that must not be modified or deleted (creating it once stays allowed)? | declaration | `declare` — the frozen-path shape (step 4a) |
-| 3 | Is it about the shell command line itself, regardless of files? | command | `forbidCommand` |
-| 4 | Does it require that something else was already done earlier in the session (a tool call that must precede this one)? | context | `requirePrecedent` |
+| 3 | Is it about the shell command line itself, regardless of files? | declaration | `declare` — mechanism `forbidden-command` (step 4a) |
+| 4 | Does it require that something else was already done earlier in the session (a tool call that must precede this one)? | declaration | `declare` — mechanism `precedent` (step 4a) |
 | 5 | None of the above | — | `draft: true` (step 4b) |
 
 Existing occurrences are forgiven by an added-only declaration — only new additions break the promise.
@@ -86,20 +86,74 @@ and `extract` = `prior` (source `pre`) · `here` (source `target.path`) · `afte
 `deleted`), related by `empty` over `touched`. The `keyByPattern` regex must carry one
 capture group — group 1 is the key — so wrap the whole pattern in parentheses.
 
+The command-line shape (question 3) reads the fixed source `command` and scopes on it, so
+only shell calls are judged; `lines` splits the command line, `matches` keeps the banned
+lines, and `empty` is the verdict:
+
+```yaml
+languages:
+  placeholder:
+    productionGlob: 'src/**'
+    testCmd: 'echo "set a verification command for {scope}"'
+disciplines:
+  - id: 'no-force-push'
+    why: 'a force push rewrites history nobody reviewed'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits: [{ op: 'source', of: 'command' }, { op: 'lines' }, { op: 'matches', re: 'git push\\b.*--force(?![\\w-])' }]
+      relate:
+        - { id: 'no-force', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+    enforce: advise
+```
+
+The precedent shape (question 4) binds the session's transcript, keeps the tool calls that
+ran and succeeded, and requires one matching the precedent — `nonEmpty` is the verdict.
+`supply: { session: 'pass' }` makes the commit surface, which has no session, record
+`skipped` instead of blocking:
+
+```yaml
+languages:
+  placeholder:
+    productionGlob: 'src/**'
+    testCmd: 'echo "set a verification command for {scope}"'
+disciplines:
+  - id: 'manifest-needs-npm-view'
+    why: 'a dependency version must be measured before it is written'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\\.json$'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        npmView:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\\bnpm view ' }
+      relate:
+        - { id: 'npm-view', relation: { op: 'nonEmpty', of: 'npmView' }, message: 'no successful npm view precedes this edit' }
+    enforce: advise
+```
+
+A precedent that is a tool call rather than a shell command drops `names`, then reads
+`field name` and `matches` over it; a spawn of one agent kind is `toolUses` with
+`subagentType`.
+
 **Write the regex yourself — the user states the promise, you author the pattern.** The
 pattern is the part users find hardest, so never hand the prose back and ask for one. Three
 authoring traps, each measured on a live config:
 
 - **A pattern answers a syntactic question only.** "Is this string a forbidden word" is
   syntax; "is this a new dependency version" is meaning, and a regex leaks both ways on a
-  semantic question. When the question is semantic, narrow `in:` to the files where any
-  match IS a break (`in:`/`except:` scope `requirePrecedent`; a declaration's `scope`
-  block does the same with regular expressions), or
-  accept "editing this file at all" as the trigger.
+  semantic question. When the question is semantic, narrow the declaration's `scope` block
+  (regular expressions over the path) to the files where any match IS a break, or accept
+  "editing this file at all" as the trigger.
 - **`^` means a line start only after `lines`.** A declaration's `lines` step splits the
-  content first, so `^` inside `keyByPattern` is a line start; the context family's `when`
-  scans whole file content as one string, so write `(^|\n)` there. `forbidCommand` judges
-  per line and the whole string, so `^` is safe on that axis.
+  content first, so `^` inside `keyByPattern` or `matches` after it is a line start; a
+  pattern over an unsplit text anchors to the whole text, so write `(^|\n)` there.
 - **Author both directions.** Before registering, write down one string the pattern must
   match and one nearby string it must not (`forbid` vs `forbidden`, a flag vs its
   substring). A pattern checked in only the breaking direction over-fires in review-proof
@@ -144,18 +198,18 @@ disciplines:
 
 ### 5. Prove it fires, then close
 
-Run `pdks explain` and confirm the new entry is listed (a judged entry with its family and
-surfaces; a draft as unpromoted).
+Run `pdks explain` and confirm the new entry is listed (a judged entry with its mechanism
+and surfaces; a draft as unpromoted).
 
 For a judged entry, registration is not the finish — a pattern that never fires protects
-nothing while looking installed. Fire it once for real, with the proof run its family can
+nothing while looking installed. Fire it once for real, with the proof run its shape can
 actually reach:
 
 | Family | Break it once | The entry's id shows up in |
 | --- | --- | --- |
 | `declare` (added-only / frozen path) | one scratch edit matching the must-match direction | `pdks covenant check --worktree` output — the exit stays 0 at advise, the id is the proof |
-| `forbidCommand` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
-| `requirePrecedent` | one in-scope edit made without the required precedent | the telemetry log tail — this family judges on the session surface only (the commit surface records it `skipped`) |
+| `declare` (forbidden-command) | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
+| `declare` (precedent) | one in-scope edit made without the required precedent | the telemetry log tail — a session-reading declaration judges on the session surface only (the commit surface records it `skipped`) |
 
 Then undo the scratch break, repeat the same run, and confirm silence on the
 must-NOT-match direction. Close by telling the user which rung the entry landed on and

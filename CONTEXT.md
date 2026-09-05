@@ -107,11 +107,12 @@ takes.
 *Avoid*: Predicate family, rule set
 
 **World**:
-Everything one judgment may see about one unit of change: the change itself plus the values
-no payload carries that the surface supplies.
+Everything one judgment may see about one observation — a change, or a shell call that
+changes nothing: the observation itself plus the values no payload carries that the surface
+supplies.
 
 **Source**:
-A named value inside a world that an extraction may start from. Five are fixed for every
+A named value inside a world that an extraction may start from. Six are fixed for every
 world; a declaration may bind more.
 
 **Supply**:

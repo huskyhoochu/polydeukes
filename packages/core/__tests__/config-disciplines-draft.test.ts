@@ -27,8 +27,21 @@ const draftEntry = {
   why: 'keep the en and ko doc mirrors in sync',
   draft: true,
 };
-const judgedForbid = { id: 'no-todo', forbidCommand: 'TODO' };
-const judgedImmutable = { id: 'changelog-frozen', requirePrecedent: { command: 'npm view ' } };
+/** The declaration a judged entry carries beside the drafts under test. */
+const judgedDeclare = {
+  mechanism: 'naming',
+  scope: { source: 'target.path', include: ['\\.db$'] },
+  extract: {
+    outside: [
+      { op: 'source', of: 'target.path' },
+      { op: 'matches', re: '^(?!store/)' },
+    ],
+  },
+  relate: [{ id: 'placed', relation: { op: 'empty', of: 'outside' }, message: 'm' }],
+};
+
+const judgedFirst = { id: 'no-todo', declare: judgedDeclare };
+const judgedSecond = { id: 'changelog-frozen', declare: judgedDeclare };
 
 /** Asserts the concrete error instance and returns it so callers can assert on the message. */
 function expectConfigValidationError(invalidConfig: unknown): ConfigValidationError {
@@ -54,10 +67,10 @@ describe('defineConfig disciplines — draft acceptance and resolution split', (
     // a draft left in disciplines would reach the covenant compiler, and extracting it must
     // not disturb the judged entries' relative order.
     const resolved = defineConfig(
-      withDisciplines([judgedForbid, draftEntry, judgedImmutable]),
+      withDisciplines([judgedFirst, draftEntry, judgedSecond]),
     ) as ResolvedWithDrafts;
 
-    expect(resolved.disciplines).toEqual([judgedForbid, judgedImmutable]);
+    expect(resolved.disciplines).toEqual([judgedFirst, judgedSecond]);
     expect(resolved.drafts).toEqual([draftEntry]);
   });
 
@@ -66,7 +79,7 @@ describe('defineConfig disciplines — draft acceptance and resolution split', (
     // re-sorting them instead of keeping array order shows up here.
     const secondDraft = { id: 'measure-before-design', why: 'count producers first', draft: true };
     const resolved = defineConfig(
-      withDisciplines([draftEntry, judgedForbid, secondDraft]),
+      withDisciplines([draftEntry, judgedFirst, secondDraft]),
     ) as ResolvedWithDrafts;
 
     expect(resolved.drafts).toEqual([draftEntry, secondDraft]);
@@ -75,7 +88,7 @@ describe('defineConfig disciplines — draft acceptance and resolution split', (
   it('does not fabricate a drafts key when the array carries no draft', () => {
     // Zero drafts leaves no `drafts` field at all — a default-fill assigning `drafts: []`
     // would make an absent key indistinguishable from an explicit empty one.
-    const resolved = defineConfig(withDisciplines([judgedForbid])) as ResolvedWithDrafts;
+    const resolved = defineConfig(withDisciplines([judgedFirst])) as ResolvedWithDrafts;
 
     expect('drafts' in resolved).toBe(false);
   });
@@ -127,42 +140,14 @@ describe('defineConfig disciplines — draft rejections', () => {
     expect(error.message).toContain('draft-with-declare');
   });
 
-  it('rejects draft: true combined with `requirePrecedent`', () => {
+  it('rejects draft: true combined with `enforce`', () => {
+    // A level on an entry that never judges is dead data; the draft branch's key set is
+    // id · why · draft and nothing else.
     const error = expectConfigValidationError(
-      withDisciplines([
-        { id: 'draft-with-precedent', why: 'w', draft: true, requirePrecedent: { command: 'x' } },
-      ]),
+      withDisciplines([{ id: 'draft-with-enforce', why: 'w', draft: true, enforce: 'block' }]),
     );
 
-    expect(error.message).toContain('draft-with-precedent');
-  });
-
-  it('rejects draft: true combined with `forbidCommand`', () => {
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-command', why: 'w', draft: true, forbidCommand: 'x' }]),
-    );
-
-    expect(error.message).toContain('draft-with-command');
-  });
-
-  it('rejects draft: true combined with `requirePrecedent`', () => {
-    const error = expectConfigValidationError(
-      withDisciplines([
-        { id: 'draft-with-precedent', why: 'w', draft: true, requirePrecedent: { command: 'x' } },
-      ]),
-    );
-
-    expect(error.message).toContain('draft-with-precedent');
-  });
-
-  it('rejects draft: true combined with `except`', () => {
-    // The scope gate elsewhere reads `in`/`except` together, but the draft branch is its own
-    // code path: an implementation blocking only `in` there would let `except` through.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-except', why: 'w', draft: true, except: 'src/**' }]),
-    );
-
-    expect(error.message).toContain('draft-with-except');
+    expect(error.message).toContain('draft-with-enforce');
   });
 
   it('rejects a truthy non-boolean draft value', () => {
@@ -174,25 +159,6 @@ describe('defineConfig disciplines — draft rejections', () => {
     );
 
     expect(error.message).toContain('draft-truthy-number');
-  });
-
-  it('rejects draft: true combined with `in`', () => {
-    // No judgment means no scope: `in` on a draft is dead data implying a routing that
-    // never happens.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-in', why: 'w', draft: true, in: 'src/**' }]),
-    );
-
-    expect(error.message).toContain('draft-with-in');
-  });
-
-  it('rejects draft: true combined with `when`', () => {
-    // `when` is the context family's trigger; on a draft it implies a trigger that never fires.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'draft-with-when', why: 'w', draft: true, when: 'x' }]),
-    );
-
-    expect(error.message).toContain('draft-with-when');
   });
 
   it('rejects draft: false as dead data', () => {
@@ -223,7 +189,7 @@ describe('defineConfig disciplines — draft rejections', () => {
     // id would leave explain and the promotion path unsure which entry the id names.
     const error = expectConfigValidationError(
       withDisciplines([
-        { id: 'shared-id', forbidCommand: 'x' },
+        { id: 'shared-id', declare: judgedDeclare },
         { id: 'shared-id', why: 'w', draft: true },
       ]),
     );

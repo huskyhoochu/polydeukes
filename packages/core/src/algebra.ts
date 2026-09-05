@@ -218,7 +218,7 @@ function quotedList(names: readonly string[]): string {
  * channel is the surface's JSON text — a regex over any of them matches nothing, so a
  * declaration scoped on one is refused here rather than answering zero worlds at runtime.
  */
-const STRING_VALUED_FIXED_SOURCES = ['target.path', 'pre', 'post'] as const;
+const STRING_VALUED_FIXED_SOURCES = ['target.path', 'pre', 'post', 'command'] as const;
 
 function validateScope(scope: unknown, sources: unknown, location: string): void {
   if (!isPlainObject(scope)) {
@@ -309,7 +309,7 @@ function validateSources(sources: unknown, location: string): void {
 /**
  * Validate the `supply` block: every key names a source this declaration can be missing.
  *
- * The universe of source names is the fixed five plus whatever `sources` binds, and it is
+ * The universe of source names is the fixed six plus whatever `sources` binds, and it is
  * closed, so a key outside it is a name nothing supplies — a misspelling whose policy never
  * applies while the real source falls to the default.
  */

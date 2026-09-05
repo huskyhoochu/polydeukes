@@ -149,11 +149,8 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
       mutatingToolNames: [STAGED_WRITE, STAGED_DELETE],
       witness,
     }),
-    // No shell axis here, so command-family entries are left out. Context-family entries
-    // stay in: with no transcript the compiler gives them skip registrations, which record
-    // `skipped` on a match.
     ...covenant.compileDisciplineRegistrations({
-      disciplines: disciplines.filter((entry) => entry.forbidCommand === undefined),
+      disciplines,
       rootDir,
       shellTools: [],
       commandArgs: [],

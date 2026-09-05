@@ -45,9 +45,9 @@ const ADAPTER_LABEL = 'adapter-claude-code';
 /** A library module the covenant barrel imports eagerly — absent, the import throws. */
 const BARREL_MODULE = 'self-mod.js';
 /** A discipline whose evidence this run cannot read — it compiles to a body-less skip. */
-const PRECEDENT_ID = 'needs-precedent';
-const PRECEDENT_TOOL = 'WebFetch';
+const CHANGE_SET_ID = 'needs-the-whole-change-set';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
+const DISCIPLINE_SCOPE_RE = '^lib/.*\\.ts$';
 const SCOPED_TARGET = 'lib/a.ts';
 
 let repoRoot: string;
@@ -305,16 +305,33 @@ describe('a registration this run never composes costs it nothing', () => {
   });
 
   it('a discipline compiling to a body-less skip records skipped, not a fail-closed (exit 0, one skipped row)', async () => {
-    // Declaring a discipline is not the same as spawning one: with no transcript this
-    // entry's evidence can never be read, so it compiles to a skip with no body and
-    // nothing will ever run. The skipped row is the load-bearing half — it proves the
-    // compiler still ran and the entry still routed, with the scoped target the trigger
-    // matched as subject — so a fix that stops compiling when the body is absent cannot
-    // pass.
+    // Declaring a discipline is not the same as spawning one: one PreToolUse call is the
+    // whole observation, so a declaration reading the change set can never be judged here.
+    // It compiles to a skip with no body and nothing will ever run. The skipped row is the
+    // load-bearing half — it proves the compiler still ran and the entry still routed, with
+    // the scoped target as subject — so a fix that stops compiling when the body is absent
+    // cannot pass.
     writeConfig({
       protectedPaths: [PROTECTED_ENTRY],
       disciplines: [
-        { id: PRECEDENT_ID, requirePrecedent: { tool: PRECEDENT_TOOL }, in: DISCIPLINE_SCOPE },
+        {
+          id: CHANGE_SET_ID,
+          declare: {
+            mechanism: 'companion',
+            scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+            extract: {
+              own: [{ op: 'source', of: 'target.path' }],
+              changed: [{ op: 'source', of: 'changes' }, { op: 'items' }],
+            },
+            relate: [
+              {
+                id: 'has-companion',
+                relation: { op: 'implies', of: 'own', requires: 'changed' },
+                message: '{value} changed alone',
+              },
+            ],
+          },
+        },
       ],
     });
 
@@ -326,6 +343,6 @@ describe('a registration this run never composes costs it nothing', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['skipped', PRECEDENT_ID, SCOPED_TARGET]]);
+    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['skipped', CHANGE_SET_ID, SCOPED_TARGET]]);
   });
 });

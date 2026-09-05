@@ -22,8 +22,8 @@ const SESSION_DEFAULT_PHRASE = 'disciplines: advise unless enforce: block';
 const SESSION_META_PHRASE = 'meta: block';
 
 // Ids deliberately avoid the token so a containment check reads the DESCRIPTION column,
-// not the label. All three judged entries are delta family, which renders as `judge` on
-// both surfaces — the one family whose rows are comparable across the two tables.
+// not the label. All three entries are one declaration under three ids, so their rows are
+// comparable across the two surface tables.
 const SOFT_ID = 'softly-held';
 const HARD_ID = 'hard-held';
 const PLAIN_ID = 'plain-held';

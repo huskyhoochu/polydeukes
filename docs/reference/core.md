@@ -109,10 +109,6 @@ Everything else here is reached through `polydeukes`.
   not check that a namespace *name* is one anybody implements, and it does not look inside
   the namespace at all. Unknown vocabulary inside `adapters.git` is rejected by the git
   adapter's own validator, at its own layer — not here.
-- **`requirePrecedent` evidence is layered the same way.** The core fully validates the
-  `command` key, because a shell command is the surface where an agent crosses into the
-  system. Every other key is validated for container shape alone — a flat object holding
-  exactly one key — and its value passes through verbatim for the owning adapter to judge.
 - **The default transcript is a noop.** A consumer that injects no real transcript
   converges on "nothing happened", which is the safe direction for a valve: it never opens.
   Real transcripts live behind adapters.

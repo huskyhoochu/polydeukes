@@ -7,4 +7,11 @@
  */
 
 /** The source names the world supplies on its own; a `sources` entry may not shadow one. */
-export const FIXED_SOURCE_NAMES = ['target.path', 'pre', 'post', 'state', 'changes'] as const;
+export const FIXED_SOURCE_NAMES = [
+  'target.path',
+  'pre',
+  'post',
+  'state',
+  'changes',
+  'command',
+] as const;

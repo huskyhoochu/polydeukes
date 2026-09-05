@@ -1,13 +1,13 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CanonicalTranscript, CovenantInput, DisciplineEntry } from '@polydeukes/core';
+import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// The shell axis reaches the disciplines: delta/context routing closures join shell-derived
-// computable targets, each delta/context entry gains a per-entry SKIP registration for
+// The shell axis reaches the disciplines: a declaration's routing closure joins
+// shell-derived computable targets, each entry gains a per-entry SKIP registration for
 // detected-but-uncomputable writes in its scope, and one common `shell-unjudgeable` skip
 // registration receives the target-unknown remainder. The body enriches stdin IR with derived
-// evidence (disk pre injected there — an absent file means create) before judgeDiscipline.
+// evidence (disk pre injected there — an absent file means create) before it judges.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
 import type { CovenantRegistration } from '../src/dispatch.ts';
 
@@ -85,20 +85,6 @@ function lines(...parts: string[]): string {
   return parts.join('\n');
 }
 
-/**
- * Stub the canonical-transcript seam with a fixed tool-call history. Only a call the provider
- * saw run AND succeed counts as evidence, so a fixture supplying evidence must set `succeeded`.
- */
-function transcriptWithToolCalls(
-  calls: { name: string; args: Record<string, unknown>; succeeded?: boolean }[],
-): CanonicalTranscript {
-  return {
-    findUserMessages: () => [],
-    findToolCalls: (name?: string) =>
-      name === undefined ? calls : calls.filter((c) => c.name === name),
-  } as unknown as CanonicalTranscript;
-}
-
 /** The body-bearing registration compiled for an entry id. */
 function bodyRegOf(regs: CovenantRegistration[], label: string): CovenantRegistration | undefined {
   return regs.find((reg) => reg.label === label && reg.skip === undefined);
@@ -152,26 +138,6 @@ describe('compileDisciplineRegistrations — delta matches joins shell-derived t
   });
 });
 
-describe('compileDisciplineRegistrations — context matches routes shell targets when-blind', () => {
-  it('routes a computable in-scope shell write even though its content never matches when', () => {
-    // A when-bearing context entry routes shell-derived targets WITHOUT the when judgment,
-    // because no pre-state exists at routing time. Applying the when pattern to derived
-    // content makes the context gate silently never fire on shell-delivered edits.
-    const whenEntry = {
-      id: 'needs-view',
-      in: ['packages/**/*.ts'],
-      when: 'needs-precedent',
-      requirePrecedent: { command: 'npm view ' },
-    } as DisciplineEntry;
-    const regs = compileDisciplineRegistrations(
-      specWith([whenEntry], { transcript: transcriptWithToolCalls([]) }),
-    );
-    const input = bashInput("echo 'no trigger token here' > packages/core/src/dep.ts");
-
-    expect(bodyRegOf(regs, 'needs-view')?.matches?.(input)).toBe('packages/core/src/dep.ts');
-  });
-});
-
 describe('compileDisciplineRegistrations — per-entry skip registration', () => {
   it('adds exactly one skip-arm registration per delta entry, labeled with the entry id', () => {
     // Labelling the skip with the entry id keeps the gain aggregation in one group. Without
@@ -212,34 +178,6 @@ describe('compileDisciplineRegistrations — per-entry skip registration', () =>
     const [skipReg] = skipArmsOf(regs, deltaEntry.id);
 
     expect(skipReg?.matches?.(bashInput(`echo ${BANNED} > packages/core/src/x.ts`))).toBeNull();
-  });
-
-  it('a context entry gains the per-entry skip registration too', () => {
-    // Skip generation keyed on `forbid` alone drops a context entry's scoped `sed -i` to the
-    // common label, losing the per-entry attribution the gain aggregation relies on.
-    const contextEntry = {
-      id: 'needs-view',
-      in: ['packages/**/*.ts'],
-      requirePrecedent: { command: 'npm view ' },
-    } as DisciplineEntry;
-    const regs = compileDisciplineRegistrations(
-      specWith([contextEntry], { transcript: transcriptWithToolCalls([]) }),
-    );
-    const skips = skipArmsOf(regs, 'needs-view');
-
-    expect(skips).toHaveLength(1);
-    expect(skips[0]?.matches?.(bashInput('sed -i s/x/y/ packages/core/src/a.ts'))).toBe(
-      'packages/core/src/a.ts',
-    );
-  });
-
-  it('a command entry gains NO per-entry skip registration', () => {
-    // A command entry's axis is the string itself, always judgeable. Adding a skip for
-    // every family mints phantom rows under labels whose judgment needs no shell evidence.
-    const commandEntry: DisciplineEntry = { id: 'pnpm-only', forbidCommand: 'npm install' };
-    const regs = compileDisciplineRegistrations(specWith([commandEntry]));
-
-    expect(skipArmsOf(regs, 'pnpm-only')).toHaveLength(0);
   });
 });
 
@@ -604,34 +542,6 @@ describe('compiled discipline thunk — absent-file append, same-path chaining, 
     expect(result.exitCode).toBe(1);
     expect(result.reason).toContain('no-banned');
   });
-
-  it('a context entry judges a computable shell write by the transported verdict', async () => {
-    // The derivation trigger meeting the precedent verdict: missing breaks (exit 1), found
-    // upholds (exit 0). A context body that ignores derived evidence upholds a
-    // missing-precedent shell write; one that breaks on derivation alone ignores the verdict.
-    const contextEntry = {
-      id: 'needs-view',
-      in: ['scoped/**'],
-      requirePrecedent: { command: 'npm view ' },
-    } as DisciplineEntry;
-    writeFileSync(target, 'plain line\n');
-    const command = `echo 'dep bump' > ${target}`;
-
-    // The compiler evaluates the evidence against the injected transcript and binds the answer
-    // into the thunk, so the two directions are driven by what that transcript witnessed.
-    const missing = await judgeEntryBody(contextEntry, command, {
-      transcript: transcriptWithToolCalls([]),
-    });
-    const found = await judgeEntryBody(contextEntry, command, {
-      transcript: transcriptWithToolCalls([
-        { name: SHELL_TOOL, args: { [COMMAND_ARG]: 'npm view yaml version' }, succeeded: true },
-      ]),
-    });
-
-    expect(missing.exitCode).toBe(1);
-    expect(missing.reason).toContain('needs-view');
-    expect(found.exitCode).toBe(0);
-  });
 });
 
 describe('review-round regressions — routing scope spelling', () => {
@@ -711,11 +621,13 @@ describe('review-round regressions — thunk pre-read failure', () => {
 // compile to body-less skips. Both halves are pinned here.
 
 describe('compileDisciplineRegistrations — a body is composed only where one can judge', () => {
-  const precedentEntry = {
-    id: 'needs-precedent',
-    in: ['packages/**/*.ts'],
-    requirePrecedent: { tool: 'WebFetch' },
-  } as DisciplineEntry;
+  const faultyEntry = {
+    id: 'unregistered-step',
+    declare: {
+      ...(deltaEntry.declare as Record<string, unknown>),
+      extract: { added: [{ op: 'sha256', of: 'post' }] },
+    },
+  } as unknown as DisciplineEntry;
 
   it('composes no body when no discipline is declared, and the backstop is still emitted', () => {
     // An assembly root that answers the judgment question itself skips this call, and skipping
@@ -729,12 +641,12 @@ describe('compileDisciplineRegistrations — a body is composed only where one c
   });
 
   it('composes no body for an entry that compiles to a body-less skip', () => {
-    // Entry count is not the question either: a requirePrecedent entry with no transcript and
-    // no evaluator injected — the commit surface's own shape — compiles to a skip carrying no
-    // body. A body composed on the skip arm would judge an entry whose evidence channel is
-    // absent and block every matched input with no legitimate pass path.
-    const regs = compileDisciplineRegistrations(specWith([precedentEntry]));
-    const reg = regs.find((r) => r.label === precedentEntry.id);
+    // Entry count is not the question either: a declaration naming a step the registry does
+    // not carry compiles to a skip carrying no body. A body composed on the skip arm would
+    // judge an entry assembly could not compile and block every matched input with no
+    // legitimate pass path.
+    const regs = compileDisciplineRegistrations(specWith([faultyEntry]));
+    const reg = regs.find((r) => r.label === faultyEntry.id);
 
     expect(reg?.skip).toBeDefined();
     expect(reg?.body).toBeUndefined();

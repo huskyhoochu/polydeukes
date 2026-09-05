@@ -51,8 +51,6 @@ const exportedNames = (text: string): Set<string> => {
  */
 const KEPT_EXPORTS: readonly string[] = [
   // umbrella session composition root, each with the spec type its signature names
-  'evaluatePrecedent',
-  'EvaluatePrecedentSpec',
   'runAdapterPath',
   'RunAdapterPathSpec',
   'AdapterPathOutcome',

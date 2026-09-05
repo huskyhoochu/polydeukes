@@ -67,14 +67,47 @@ disciplines:
   - id: 'hooks-stay-armed'
     why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself. the rung is block because the gate definitions such a command neutralizes are already on the protected list — leaving the command at advise let one defence hold its files while its bypass passed.'
     enforce: block
-    forbidCommand: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b' }
+      relate:
+        - id: 'gates-armed'
+          relation: { op: 'empty', of: 'hits' }
+          message: 'command line disarms a commit gate: {value}'
   - id: 'work-stays-recoverable'
     why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, never an agent default. the rung is block because an advisory arrives after the work is gone: for this entry the way through is the witness valve, a human answering in person.'
     enforce: block
-    forbidCommand: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git push\b.*--force(?![\w-])'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git push\b.*--force(?![\w-])' }
+      relate:
+        - id: 'recoverable'
+          relation: { op: 'empty', of: 'hits' }
+          message: 'command line destroys uncommitted or remote state: {value}'
   - id: 'pnpm-only'
     why: 'the runtime pins pnpm; npm/yarn mutations desync the lockfile. read-only npm (view, info) stays allowed for version measurement.'
-    forbidCommand: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b' }
+      relate:
+        - id: 'no-npm-mutation'
+          relation: { op: 'empty', of: 'hits' }
+          message: 'command line mutates dependencies outside pnpm: {value}'
   - id: 'english-only-sources'
     why: 'code comments and test titles are English-only; Korean belongs in docs and conversation.'
     declare:
@@ -237,50 +270,94 @@ disciplines:
         - id: 'nothing-added'
           relation: { op: 'empty', of: 'added' }
           message: 'adds {key}: {value}'
-  # A manifest edit needs BOTH a measured version and read docs, and `requirePrecedent`
-  # takes exactly one key — hence two entries. No `when`: "is this a new version" is a
-  # semantic question a regex leaked both ways on, so scope alone is the trigger.
-  - id: 'manifest-needs-npm-view'
-    why: 'a dependency version must be measured before it is written; training knowledge is not evidence of what npm currently resolves.'
-    in:
-      - 'package.json'
-      - 'packages/*/package.json'
-    requirePrecedent:
-      command: 'npm view '
-  - id: 'manifest-needs-context7'
-    why: 'the API a dependency exposes is read from its docs, not recalled. this is the adapter evidence vocabulary rather than the core one — the observation is a tool call, and no shell command carries it.'
-    in:
-      - 'package.json'
-      - 'packages/*/package.json'
-    requirePrecedent:
-      tool: 'context7'
-  # Editing a package's sources requires having READ its recorded experience. The evidence
-  # is a SHELL read: `tool:` matches a name and never its arguments, so it would be
-  # satisfied by reading anything. `foundation.` is excluded on purpose — one read would
-  # open all four packages. This family always lands `skipped` on the commit surface.
+  # A manifest edit needs BOTH a measured version and read docs: two relate entries on one
+  # declaration. No trigger beyond the scope — "is this a new version" is a semantic question
+  # a regex leaked both ways on, so editing the manifest at all is the trigger.
+  - id: 'manifest-needs-evidence'
+    why: 'a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        npmView:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\bnpm view ' }
+        context7:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses' }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'field', name: 'name' }
+          - { op: 'matches', re: 'context7' }
+      relate:
+        - id: 'npm-view'
+          relation: { op: 'nonEmpty', of: 'npmView' }
+          message: 'no successful npm view precedes this manifest edit'
+        - id: 'context7'
+          relation: { op: 'nonEmpty', of: 'context7' }
+          message: 'no successful context7 call precedes this manifest edit'
+  # Editing a package's sources requires having READ its recorded experience. The evidence is
+  # a successful shell read whose command line names an entry of that package's scope;
+  # `foundation.` is excluded on purpose — one read would open all four packages. The commit
+  # surface has no session, so these land skipped there.
   - id: 'covenant-needs-knowledge-read'
     why: 'the covenant package carries the most measured history in the store (37 dev-log and research entries); editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
-    in:
-      - 'packages/covenant/src/**'
-      - 'packages/covenant/__tests__/**'
-    requirePrecedent:
-      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/covenant/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of a covenant.dev-log or covenant.research entry precedes this edit — only a call that ran and succeeded counts'
   - id: 'core-needs-knowledge-read'
     why: 'the core is the one package every other depends on, so a change made without its recorded boundaries (parse validation, schema equivalence, adapter neutrality) propagates outward before it is noticed.'
-    in:
-      - 'packages/core/src/**'
-      - 'packages/core/__tests__/**'
-    requirePrecedent:
-      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/core/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of a core.dev-log or core.research entry precedes this edit — only a call that ran and succeeded counts'
   - id: 'adapter-needs-knowledge-read'
     why: 'both adapters translate an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong. one entry covers both because they share the `adapter.` scope.'
-    in:
-      - 'packages/adapter-claude-code/src/**'
-      - 'packages/adapter-claude-code/__tests__/**'
-      - 'packages/adapter-git/src/**'
-      - 'packages/adapter-git/__tests__/**'
-    requirePrecedent:
-      command: '(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.'
+    declare:
+      mechanism: 'precedent'
+      scope: { source: 'target.path', include: ['^packages/adapter-(claude-code|git)/(src|__tests__)/'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        reads:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash'] }
+          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.' }
+      relate:
+        - id: 'read-first'
+          relation: { op: 'nonEmpty', of: 'reads' }
+          message: 'no successful read of a adapter.dev-log or adapter.research entry precedes this edit — only a call that ran and succeeded counts'
   # A *.db file may exist only under _docs/knowledge/ — the knowledge store sits there so
   # gitignore-by-location keeps it out of history. Kind-to-location is a declaration:
   # scope the path, extract those outside the directory, Empty must hold.
@@ -339,8 +416,8 @@ disciplines:
   # its first spawn, so a session of several TDD cycles is not read as out of order. Only a
   # spawn that ran and succeeded counts. The session history is the source; the commit
   # surface has none, so `supply: pass` lands it skipped there. No scope block: every call
-  # that changes a file is judged, and a call that changes none makes no world and records
-  # nothing. A session with no implementer spawn has no order to violate; whether a writer
+  # is judged — a shell call that changes no file is its own world. A session with no
+  # implementer spawn has no order to violate; whether a writer
   # was spawned at all is the precedent mechanism's question, not this one's.
   - id: 'tests-before-implementation'
     why: 'the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after.'
@@ -367,3 +444,39 @@ disciplines:
         - id: 'writer-first'
           relation: { op: 'ordered', of: 'sequence' }
           message: 'the first implementer spawn #{value} precedes the first test-writer spawn'
+  # Merging is the user's decision (ticket loop §6). The agent runs `tea pr merge` only after
+  # a user turn asked for it inside the same window the witness valve uses (ttlMinutes).
+  - id: 'merge-is-the-users-call'
+    why: 'merging is the user''s decision: tea pr merge follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen.'
+    declare:
+      mechanism: 'turn-locality'
+      scope: { source: 'command', include: ['\btea\s+pr\s+merge\b'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        instruction:
+          - { op: 'source', of: 'session' }
+          - { op: 'userTexts', re: '머지|\bmerge\b', i: true }
+          - { op: 'ageMs' }
+          - { op: 'filter', when: [{ field: 'ageMs', lte: 600000 }] }
+      relate:
+        - id: 'fresh-instruction'
+          relation: { op: 'nonEmpty', of: 'instruction' }
+          message: 'no user turn asking for a merge within the last ten minutes'
+  # The ticket loop is the only sanctioned branch creation. A slash-command turn reaches the
+  # transcript as `<command-name>/ticket</command-name>` (measured 2026-09-05).
+  - id: 'branches-come-from-a-ticket'
+    why: 'the ticket loop is the only sanctioned branch creation; a branch nobody asked for is the thing the loop forbids.'
+    declare:
+      mechanism: 'stated-ground'
+      scope: { source: 'command', include: ['\bgit\s+(checkout\s+-b|switch\s+-c)\b'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        ticket:
+          - { op: 'source', of: 'session' }
+          - { op: 'userTexts', re: '<command-name>/ticket</command-name>' }
+      relate:
+        - id: 'ticket-named'
+          relation: { op: 'nonEmpty', of: 'ticket' }
+          message: 'no /ticket turn precedes this branch creation'

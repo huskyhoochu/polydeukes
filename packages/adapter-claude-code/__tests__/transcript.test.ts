@@ -196,8 +196,8 @@ describe('robustness — malformed input reduces evidence, never throws', () => 
   it('answers undefined for a nonexistent file — absence, not an empty session', () => {
     // undefined leaves the dispatcher on its noop default, so the witness stays shut either
     // way — but an unreadable file must not impersonate a session that has said nothing. The
-    // two demand opposite dispositions from the context family (judge an empty session, skip
-    // an absent one), and collapsing them blocked in-scope edits for the rest of a session
+    // two demand opposite dispositions from a history declaration (judge an empty session,
+    // skip an absent one), and collapsing them blocked in-scope edits for the rest of a session
     // with no message naming the cause.
     const dir = mkdtempSync(join(tmpdir(), 'pdks-transcript-'));
     const missingPath = join(dir, 'does-not-exist.jsonl');
@@ -211,7 +211,7 @@ describe('robustness — malformed input reduces evidence, never throws', () => 
 
   it('still answers an empty-but-real transcript for a file that exists and is empty', () => {
     // The contrast to the case above: a readable file with nothing in it IS a session, and
-    // the context family must judge against it rather than skip.
+    // a history declaration must judge against it rather than skip.
     const dir = mkdtempSync(join(tmpdir(), 'pdks-transcript-'));
     const emptyPath = join(dir, 'empty.jsonl');
     try {
@@ -301,7 +301,7 @@ describe('findToolCalls — tool-call extraction from tool_use blocks', () => {
 
   it('keeps a block whose input is not a plain object, reducing args to {} — call still counts', () => {
     // A string/array/null/absent input empties the args but the call itself remains
-    // evidence — dropping the block would flip a requirePrecedent gate from found to
+    // evidence — dropping the block would flip a precedent declaration from found to
     // missing for a name-only pattern. An array is included deliberately: it passes
     // typeof === 'object' and would be written through as args by a laxer check.
     const jsonl = toJsonl([

@@ -88,43 +88,6 @@ describe('defineConfig disciplines — declare entries are accepted and carried 
   });
 });
 
-describe('defineConfig disciplines — declare joins the exactly-one-predicate set', () => {
-  it('rejects `declare` beside `forbidCommand`, and the cardinality message names declare', () => {
-    // A declare that rides along with another family unnoticed is a second judgment the
-    // author never chose; the message must list `declare` among the predicate keys so the
-    // author learns it is one.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'declare-plus-command', forbidCommand: 'x', declare: declareBlock }]),
-    );
-
-    expect(error.message).toContain('declare-plus-command');
-    expect(error.message).toContain('exactly one');
-    expect(error.message).toContain('declare');
-  });
-});
-
-describe('defineConfig disciplines — declare refuses the entry-level scope and trigger keys', () => {
-  it('rejects `in` on a declare entry, naming the key', () => {
-    // Scope for a declaration lives in its own `scope` block; an entry-level `in` would be
-    // dead data implying a narrowing that is never applied.
-    const error = expectConfigValidationError(
-      withDisciplines([{ ...declareEntry, id: 'declare-with-in', in: 'lib/**' }]),
-    );
-
-    expect(error.message).toContain('declare-with-in');
-    expect(error.message).toContain('in');
-  });
-
-  it('rejects `when` on a declare entry', () => {
-    // `when` is the context family's trigger and combines with nothing else.
-    const error = expectConfigValidationError(
-      withDisciplines([{ ...declareEntry, id: 'declare-with-when', when: '\\.db$' }]),
-    );
-
-    expect(error.message).toContain('declare-with-when');
-  });
-});
-
 describe('defineConfig disciplines — the declaration name lives in the entry id only', () => {
   it('rejects a block carrying `discipline`, saying the entry id is the name', () => {
     // Two places for one name drift apart; the block must be refused rather than have the
@@ -198,15 +161,15 @@ describe('defineConfig disciplines — the block is validated with the entry loc
   });
 });
 
-describe('defineConfig disciplines — algebra blocks still live only under declare', () => {
-  it('rejects an `extract` block beside a forbidCommand predicate, naming that key', () => {
+describe('defineConfig disciplines — algebra blocks live only under declare', () => {
+  it('rejects an `extract` block at entry level, naming that key', () => {
     // Opening the `declare` key must not open the entry to the block's own keys: an
     // `extract` at entry level is still an unknown key, and the message names it.
     const error = expectConfigValidationError(
       withDisciplines([
         {
-          id: 'command-with-extract',
-          forbidCommand: 'x',
+          id: 'entry-with-extract',
+          declare: declareBlock,
           extract: { a: [{ op: 'source', of: SOURCE_PATH }] },
         },
       ]),

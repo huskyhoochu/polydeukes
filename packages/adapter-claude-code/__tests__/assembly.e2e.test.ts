@@ -125,13 +125,12 @@ function bashPayload(command: string) {
 
 describe('context family across the session boundary', () => {
   // Package manifests are not protected at the session surface this suite drives (they sit
-  // on the commit surface's additive list), so these payloads reach the context family
-  // alone, with no meta-covenant verdict mixed in. Two context entries share this scope,
-  // and neither carries a `when`: the content below is irrelevant to the trigger — touching
-  // a manifest is the trigger.
+  // on the commit surface's additive list), so these payloads reach the history declarations
+  // alone, with no meta-covenant verdict mixed in. The manifest declaration has no scope
+  // beyond the path: the content below is irrelevant — touching a manifest is what it reads.
   const manifest = 'packages/scratch/package.json';
   const dependencyLine = '{\n  "left-pad": "^1.3.0"\n}\n';
-  const CONTEXT_ENTRIES = ['manifest-needs-context7', 'manifest-needs-npm-view'];
+  const CONTEXT_ENTRIES = ['manifest-needs-evidence'];
   const HISTORY_ENTRY = 'tests-before-implementation';
 
   it('skips rather than blocks when no transcript accompanies the payload', () => {
@@ -250,18 +249,29 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     const byLabel = (label: string) => records.filter((r) => r.label === label);
     expect(byLabel('shell-mod').map((r) => r.event)).toEqual(['blocked']);
     expect(byLabel('self-mod').map((r) => r.event)).toEqual(['passed']);
-    // The unscoped history declaration observes this shell write too; with no session it
-    // skips, on the lane that blocks nothing.
-    expect(byLabel('tests-before-implementation').map((r) => r.event)).toEqual(['skipped']);
-    expect(records.length).toBe(3);
+    // The unscoped history declaration observes this call twice, on the lane that blocks
+    // nothing: once as the call world its own `supply: pass` disposes of, and once as the
+    // shell target whose result this layer cannot compute.
+    expect(
+      byLabel('tests-before-implementation')
+        .map((r) => r.reason)
+        .sort(),
+    ).toEqual(['no-observation', 'supply-pass']);
   });
 
   it('a read-only allowlisted command mentioning a protected path passes (exit 0)', () => {
     const result = runHook(bashPayload('cat .claude/hooks/covenant-pretooluse.mjs'));
 
     expect(result.status).toBe(0);
+    // Both meta-covenants upheld. The call world the shell call carries is judged by every
+    // command-reading declaration too, and each of those upholds — the assertion stays on
+    // the two labels this case is about, so a new entry in the live config cannot break it.
     const { records } = readRecords(telemetryPath);
-    expect(records.map((r) => r.event).sort()).toEqual(['passed', 'passed']);
+    const metaEvents = records
+      .filter((r) => r.label === 'self-mod' || r.label === 'shell-mod')
+      .map((r) => r.event);
+    expect(metaEvents.sort()).toEqual(['passed', 'passed']);
+    expect(records.some((r) => r.event === 'blocked' || r.event === 'advised')).toBe(false);
   });
 
   it('a fresh human-typed witness token witnesses the blocked edit open (exit 0), would-block only', () => {
@@ -314,10 +324,14 @@ describe('dogfooding assembly E2E — wired disciplines', () => {
     const result = runHook(bashPayload('LEFTHOOK=0 git push origin main'));
 
     expect(result.status).toBe(2);
+    // Every command-reading declaration judges the same call world; this one is the only
+    // break, and it is the only row that is not a pass.
     const { records } = readRecords(telemetryPath);
-    expect(records.length).toBe(1);
-    expect(records[0].label).toBe('hooks-stay-armed');
-    expect(records[0].event).toBe('blocked');
+    expect(
+      records
+        .filter((r) => r.event !== 'passed' && r.event !== 'skipped')
+        .map((r) => [r.label, r.event]),
+    ).toEqual([['hooks-stay-armed', 'blocked']]);
   });
 
   it("the break message carries the entry's why to stderr", () => {
@@ -333,7 +347,8 @@ describe('dogfooding assembly E2E — wired disciplines', () => {
     // separator twice — or padding the message — passes all three. Asserting the full line
     // is what makes this test discriminate at all.
     expect(result.stderr).toBe(
-      `discipline 'hooks-stay-armed' broken: command matches forbidden pattern` +
+      `discipline 'hooks-stay-armed' broken on -: ` +
+        `command line disarms a commit gate: LEFTHOOK=0 git push origin main` +
         ` — why: ${configuredWhy('hooks-stay-armed')}\n`,
     );
   });
@@ -343,13 +358,15 @@ describe('dogfooding assembly E2E — wired disciplines', () => {
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), so the judged-row count is taken over the verdict lane.
+    // block nothing), so the verdict lane is what is read. Every command-reading
+    // declaration judges this call world; the entry under test upholds, and nothing breaks.
     const records = readRecords(telemetryPath).records.filter(
       (record) => record.event !== 'unattributed',
     );
-    expect(records.length).toBe(1);
-    expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records.filter((r) => r.label === 'hooks-stay-armed').map((r) => r.event)).toEqual([
+      'passed',
+    ]);
+    expect(records.some((r) => r.event === 'blocked' || r.event === 'advised')).toBe(false);
   });
 
   it('a Write adding banned vocabulary to an in-scope source path is judged by covenant-vocabulary (advised)', () => {
@@ -527,7 +544,11 @@ describe('dogfooding assembly E2E — path notation variants', () => {
     const result = runHook(bashPayload('rm packages/*/dist/index.js'));
 
     expect(result.status).toBe(0);
-    const skipped = readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
+    // A `supply-pass` skip belongs to the call world every shell call carries, not to the
+    // shell axis this case measures, so the lane is narrowed to the write-target reason.
+    const skipped = readRecords(telemetryPath).records.filter(
+      (r) => r.event === 'skipped' && r.reason !== 'supply-pass',
+    );
     expect(skipped.map((r) => r.label)).toEqual(['shell-unjudgeable']);
   });
 
@@ -646,6 +667,12 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
   const rowsFor = (label: string) =>
     readRecords(telemetryPath).records.filter((r) => r.label === label);
   const skippedRows = () => readRecords(telemetryPath).records.filter((r) => r.event === 'skipped');
+  /**
+   * The shell-axis half of that lane. A `supply-pass` skip is a declaration disposing of an
+   * absent source on the CALL WORLD every shell call carries — a different lane from a write
+   * this layer could not compute, so a cardinality claim about the shell axis excludes it.
+   */
+  const shellSkippedRows = () => skippedRows().filter((r) => r.reason !== 'supply-pass');
 
   it('a heredoc delivering a banned word into a discipline-scoped file is judged (exit 0, advised)', () => {
     // A quoted delimiter makes the heredoc body literal, so the delivered text is computable.
@@ -667,24 +694,33 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
   it('a sed -i over a scoped file is recorded skipped under EACH discipline scoping it (exit 0)', () => {
     // Content incomputable, target known: one row per entry whose scope covers this path,
-    // attributed to the entry id and never the common label. The last row skips for a
-    // DIFFERENT reason — it is a context-family entry and this run injects no transcript,
-    // so its evidence question cannot be asked at all. Two reasons share one lane, which is
-    // why this enumerates the rows rather than counting them, and why the list grows with
-    // every delta entry whose scope covers this path.
+    // attributed to the entry id and never the common label. Every row here carries the
+    // same subject and the same reason, so what this enumerates is the ATTRIBUTION — the
+    // list grows with every entry whose scope covers this path. A command-scoped entry is
+    // NOT on it: it owns no path, and the shell call it judges is the call world its body
+    // already saw — a skip arm there would mint a second row under its label.
     const result = runHook(
       bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
     );
 
     expect(result.status).toBe(0);
-    expect(skippedRows().map((r) => [r.label, r.subject])).toEqual([
-      ['covenant-vocabulary', 'packages/adapter-git/src/collect.ts'],
-      ['english-only-sources', 'packages/adapter-git/src/collect.ts'],
-      ['comments-need-no-wiki', 'packages/adapter-git/src/collect.ts'],
-      ['comments-carry-no-process', 'packages/adapter-git/src/collect.ts'],
-      ['adapter-needs-knowledge-read', 'packages/adapter-git/src/collect.ts'],
-      ['tests-before-implementation', 'packages/adapter-git/src/collect.ts'],
+    const target = 'packages/adapter-git/src/collect.ts';
+    expect(shellSkippedRows().map((r) => r.label)).toEqual([
+      'covenant-vocabulary',
+      'english-only-sources',
+      'comments-need-no-wiki',
+      'comments-carry-no-process',
+      'adapter-needs-knowledge-read',
+      'tests-before-implementation',
     ]);
+    expect(shellSkippedRows().every((r) => r.subject === target)).toBe(true);
+    // The call world the same shell call carries is a separate lane: the unscoped history
+    // declaration disposes of the absent session there under its own `supply: pass`.
+    expect(
+      skippedRows()
+        .filter((r) => r.reason === 'supply-pass')
+        .map((r) => [r.label, r.subject]),
+    ).toEqual([['tests-before-implementation', '-']]);
   });
 
   it('a redirect to an opaque target leaves one common skipped row, never one per entry (exit 0)', () => {
@@ -692,7 +728,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     const result = runHook(bashPayload('echo x > $F'));
 
     expect(result.status).toBe(0);
-    expect(skippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
+    expect(shellSkippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
   });
 
   it('a nested shell invocation leaves one common skipped row (exit 0)', () => {
@@ -700,7 +736,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     const result = runHook(bashPayload('bash x.sh'));
 
     expect(result.status).toBe(0);
-    expect(skippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
+    expect(shellSkippedRows().map((r) => r.label)).toEqual(['shell-unjudgeable']);
   });
 
   it('a signal-free command stays silent — the volume defence (exit 0, adapter row only)', () => {
@@ -709,13 +745,14 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), so the judged-row count is taken over the verdict lane.
+    // block nothing), so the verdict lane is what is read. Every command-reading
+    // declaration judges the call world this shell call carries, so silence here means no
+    // break and no shell-axis skip — not an empty log.
     const records = readRecords(telemetryPath).records.filter(
       (record) => record.event !== 'unattributed',
     );
-    expect(records.length).toBe(1);
-    expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records.some((r) => r.event === 'blocked' || r.event === 'advised')).toBe(false);
+    expect(records.filter((r) => r.event === 'skipped' && r.reason !== 'supply-pass')).toEqual([]);
   });
 
   it('a read-only command carrying a glob stays silent — an opaque token alone is no signal (exit 0)', () => {
@@ -724,13 +761,14 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), so the judged-row count is taken over the verdict lane.
+    // block nothing), so the verdict lane is what is read. Every command-reading
+    // declaration judges the call world this shell call carries, so silence here means no
+    // break and no shell-axis skip — not an empty log.
     const records = readRecords(telemetryPath).records.filter(
       (record) => record.event !== 'unattributed',
     );
-    expect(records.length).toBe(1);
-    expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records.some((r) => r.event === 'blocked' || r.event === 'advised')).toBe(false);
+    expect(records.filter((r) => r.event === 'skipped' && r.reason !== 'supply-pass')).toEqual([]);
   });
 
   it('a NotebookEdit delivering a banned word into a scoped cell is judged (exit 0, advised)', () => {
@@ -822,13 +860,14 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
 
     expect(result.status).toBe(0);
     // The state comparison's own rows are on a different axis from the judgment (they
-    // block nothing), so the judged-row count is taken over the verdict lane.
+    // block nothing), so the verdict lane is what is read. Every command-reading
+    // declaration judges the call world this shell call carries, so silence here means no
+    // break and no shell-axis skip — not an empty log.
     const records = readRecords(telemetryPath).records.filter(
       (record) => record.event !== 'unattributed',
     );
-    expect(records.length).toBe(1);
-    expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records.some((r) => r.event === 'blocked' || r.event === 'advised')).toBe(false);
+    expect(records.filter((r) => r.event === 'skipped' && r.reason !== 'supply-pass')).toEqual([]);
   });
 
   it('a clean computable write into scope is passed and never also skipped (exit 0)', () => {

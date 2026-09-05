@@ -88,9 +88,9 @@ No import.
 
 ## Declared limits
 
-- **The context family cannot be judged here.** `requirePrecedent` needs session history
-  and a commit has none, so a matching entry records `skipped`. A permanent condition of
-  this surface, not a fault in the entry.
+- **A declaration that reads the session cannot be judged here.** A `precedent` needs
+  session history and a commit has none, so a matching entry records `skipped`. A permanent
+  condition of this surface, not a fault in the entry.
 - **A commit never shows a gitignored file.** Anything outside version control — a built
   `dist`, a generated hook script — is invisible to this surface by nature. That is why the
   session surface carries those paths on the common list instead.

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ConfigValidationError, defineConfig } from '../src/config.ts';
 import { validLanguages } from './helpers.ts';
 
-// Empty-string rejection in the five spots that carry a pattern or a path. An empty pattern
-// matches at every position, so one typo turns a scoped discipline into a universal block;
-// an empty logPath silently redirects telemetry.
+// Empty-string rejection in the spots that carry a path or a path list. An empty element
+// rides along unnoticed beside valid siblings, and an empty logPath silently redirects
+// telemetry.
 
 // Asserts the concrete error instance (not just "did it throw") and returns it so callers
 // can assert on the message.
@@ -17,19 +17,6 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
   }
   throw new Error('defineConfig should have thrown');
 }
-
-describe('empty-pattern rejection — discipline predicate fields', () => {
-  it('rejects a forbidCommand of "", naming the forbidCommand field', () => {
-    // An empty command pattern matches every shell call — the command family would block
-    // all of Bash. Its own branch needs the same non-empty check as the delta fields.
-    const error = expectConfigValidationError({
-      ...validLanguages,
-      disciplines: [{ id: 'empty-cmd', forbidCommand: '' }],
-    });
-
-    expect(error.message).toContain('forbidCommand');
-  });
-});
 
 describe('empty-element rejection — protectedPaths', () => {
   it('rejects an empty-string element among valid ones, naming protectedPaths', () => {
@@ -68,18 +55,30 @@ describe('telemetry.logPath — trim-then-non-empty (the witness.token idiom)', 
   });
 });
 
-describe('invariant — non-empty values in the same five spots stay accepted', () => {
-  it('accepts non-empty forbidCommand and requirePrecedent entries', () => {
+describe('invariant — non-empty values in the same spots stay accepted', () => {
+  it('accepts a judged entry beside the non-empty paths', () => {
     // The mirror direction: the rejections must not over-reach. Catches a non-empty check
     // inverted or applied to the wrong field.
     const resolved = defineConfig({
       ...validLanguages,
       disciplines: [
-        { id: 'command-form', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
-        { id: 'precedent-form', requirePrecedent: { command: 'npm view ' } },
+        {
+          id: 'declared-form',
+          declare: {
+            mechanism: 'naming',
+            scope: { source: 'target.path', include: ['\\.db$'] },
+            extract: {
+              outside: [
+                { op: 'source', of: 'target.path' },
+                { op: 'matches', re: '^(?!store/)' },
+              ],
+            },
+            relate: [{ id: 'placed', relation: { op: 'empty', of: 'outside' }, message: 'm' }],
+          },
+        },
       ],
     });
 
-    expect(resolved.disciplines?.map((d) => d.id)).toEqual(['command-form', 'precedent-form']);
+    expect(resolved.disciplines?.map((d) => d.id)).toEqual(['declared-form']);
   });
 });

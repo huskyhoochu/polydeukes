@@ -7,9 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Every skip registration names WHY it cannot judge with a token from the closed
 // `SKIP_REASONS` vocabulary, beside the sentence it already carried: `no-observation` when
 // the surface has no channel for what the entry reads (the one-call session surface for a
-// change-set declaration, a sessionless assembly for a context entry, a shell line whose
-// write this layer cannot compute), `config-fault` when assembly could not compile the
-// entry. The dispatcher writes the token into the `skipped` row's fifth field. A
+// change-set declaration, a shell line whose write this layer cannot compute),
+// `config-fault` when assembly could not compile the entry. The dispatcher writes the token into the `skipped` row's fifth field. A
 // declaration whose `supply: pass` waved an absent source through is the third token,
 // `supply-pass`, recorded as `skipped` rather than as a `passed` judgment.
 import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.ts';
@@ -28,7 +27,7 @@ const BILINGUAL_ID = 'docs-stay-bilingual';
 const EN_DOC = 'docs/a.md';
 const EN_PATTERN = '^(.+?)(?<!\\.ko)\\.md$';
 const KO_PATTERN = '^(.+)\\.ko\\.md$';
-const CONTEXT_ID = 'dep-needs-view';
+const FAULTY_ID = 'dep-needs-view';
 const PKG_FILE = 'pkg/index.ts';
 const LOCALE_ID = 'locale-keys';
 const EN = 'en';
@@ -71,13 +70,6 @@ const READS_EN_PASS = {
   },
   relate: [{ id: 'known', relation: { op: 'subset', of: 'own', in: 'allowed' }, message: 'm' }],
 };
-
-/** A context entry whose evidence is a shell command — judgeable only with a transcript. */
-const contextEntry = {
-  id: CONTEXT_ID,
-  in: ['pkg/**'],
-  requirePrecedent: { command: 'npm view ' },
-} as DisciplineEntry;
 
 function declareEntry(declare: Record<string, unknown>, id: string): DisciplineEntry {
   return { id, declare } as unknown as DisciplineEntry;
@@ -156,22 +148,6 @@ describe('compileDisciplineRegistrations — each skip site names its kind', () 
     expect(fileSkipOf(regs, BILINGUAL_ID, EN_DOC)?.skip?.kind).toBe('no-observation');
   });
 
-  it('a context entry with no transcript injected is no-observation', () => {
-    const regs = compileDisciplineRegistrations(specWith([contextEntry]));
-
-    expect(fileSkipOf(regs, CONTEXT_ID, PKG_FILE)?.skip?.kind).toBe('no-observation');
-  });
-
-  it('a context entry whose command pattern does not compile is config-fault', () => {
-    // The same family, the other kind: a compiler that stamps every context skip
-    // `no-observation` hides the one the author must fix among the ones no one can.
-    const regs = compileDisciplineRegistrations(
-      specWith([{ ...contextEntry, requirePrecedent: { command: '(' } } as DisciplineEntry]),
-    );
-
-    expect(fileSkipOf(regs, CONTEXT_ID, PKG_FILE)?.skip?.kind).toBe('config-fault');
-  });
-
   it('a declaration with an unregistered step is config-fault', () => {
     // The compile-fault skip routes nothing, so its kind is asserted on the registration.
     const faulty = {
@@ -207,13 +183,10 @@ describe('dispatchCovenants — the skipped row carries the registration’s kin
     // The dispatcher is the one writer of skip rows; a dispatch that keeps writing the
     // four-field row leaves every kind the compiler names on the floor.
     const registration: CovenantRegistration = {
-      label: CONTEXT_ID,
+      label: FAULTY_ID,
       protectedPaths: [],
       matches: () => PKG_FILE,
-      skip: {
-        reason: 'requirePrecedent.command is not a compilable pattern',
-        kind: 'config-fault',
-      },
+      skip: { reason: 'the declaration names an unregistered step', kind: 'config-fault' },
     };
 
     const { exitCode, results } = await dispatchCovenants({
@@ -223,8 +196,8 @@ describe('dispatchCovenants — the skipped row carries the registration’s kin
     });
 
     expect(exitCode).toBe(0);
-    expect(results).toEqual([{ label: CONTEXT_ID, exitCode: 0, event: 'skipped' }]);
-    expect(rowsOf(telemetryPath, CONTEXT_ID)).toEqual([
+    expect(results).toEqual([{ label: FAULTY_ID, exitCode: 0, event: 'skipped' }]);
+    expect(rowsOf(telemetryPath, FAULTY_ID)).toEqual([
       { event: 'skipped', subject: PKG_FILE, reason: 'config-fault' },
     ]);
   });

@@ -28,29 +28,6 @@ export type ExplainSpec = {
 /** The three meta-covenant labels: registrations that protect the judging chain itself. */
 const META_LABELS = new Set(['self-mod', 'shell-mod', 'transcript-mod']);
 
-/** Normalize an optional glob field to an array (absent = empty). */
-function toGlobs(value: string | string[] | undefined): string[] {
-  if (value === undefined) return [];
-  return typeof value === 'string' ? [value] : value;
-}
-
-/**
- * The routing scope of a config entry, in its own family's shape: the context family scopes
- * by `in`/`except` globs, and the command family by nothing at all — it judges the command
- * line, which no path scopes. A declaration renders through its own description.
- */
-function scopeOf(entry: DisciplineEntry): string {
-  if (entry.forbidCommand !== undefined) {
-    return 'forbidCommand · (no path scope)';
-  }
-  const family = `requirePrecedent ${Object.keys(entry.requirePrecedent ?? {}).join(', ')}`;
-  const inGlobs = toGlobs(entry.in);
-  const scope = inGlobs.length === 0 ? 'every file' : `in ${inGlobs.join(', ')}`;
-  const exceptGlobs = toGlobs(entry.except);
-  const except = exceptGlobs.length === 0 ? '' : ` · except ${exceptGlobs.join(', ')}`;
-  return `${family} · ${scope}${except}`;
-}
-
 /**
  * The description of a declaration entry: its catalogue coordinate (the mechanism, the axes
  * its sources derive, and the relations its entries decide), then what it routes on, how
@@ -104,7 +81,6 @@ function metaDescription(registration: CovenantRegistration, surface: string): s
 function renderSurface(spec: {
   header: string;
   registrations: CovenantRegistration[];
-  excluded: DisciplineEntry[];
   drafts: DisciplineDraft[];
   disciplines: DisciplineEntry[];
   selfModScope: string;
@@ -112,10 +88,8 @@ function renderSurface(spec: {
   const lines: string[] = [];
   const width = Math.max(
     ...spec.registrations.map((registration) => registration.label.length),
-    ...spec.excluded.map((entry) => entry.id.length),
     ...spec.drafts.map((draft) => draft.id.length),
   );
-  let judged = 0;
   let declare = 0;
   let skip = 0;
   let meta = 0;
@@ -132,26 +106,18 @@ function renderSurface(spec: {
       lines.push(row('skip', registration.label, width, registration.skip.reason));
       continue;
     }
+    // Every non-meta body registration is one config entry's declaration; a label the config
+    // does not carry is an assembly the renderer was never told about.
     const entry = spec.disciplines.find((candidate) => candidate.id === registration.label);
+    if (entry === undefined) {
+      throw new Error(`explain: registration '${registration.label}' matches no config entry`);
+    }
     // The DECLARED level is rendered, never the effective one: an omission stays unmarked
     // so the default and an author's explicit choice of it never read alike, and the
     // surface header states what the omission resolves to.
-    const level = entry?.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
-    if (entry?.declare !== undefined) {
-      declare += 1;
-      lines.push(row('declare', registration.label, width, declareDescription(entry, level)));
-      continue;
-    }
-    judged += 1;
-    const description =
-      entry === undefined
-        ? ''
-        : `${scopeOf(entry)} · why ${entry.why === undefined ? '—' : '✓'}${level}`;
-    lines.push(row('judge', registration.label, width, description));
-  }
-
-  for (const entry of spec.excluded) {
-    lines.push(row('excluded', entry.id, width, 'forbidCommand — no shell axis on this surface'));
+    const level = entry.enforce === undefined ? '' : ` · enforce: ${entry.enforce}`;
+    declare += 1;
+    lines.push(row('declare', registration.label, width, declareDescription(entry, level)));
   }
 
   for (const draft of spec.drafts) {
@@ -159,20 +125,17 @@ function renderSurface(spec: {
   }
 
   const tally =
-    `  registrations ${meta + judged + declare + skip} · judged ${judged} · ` +
-    `declare ${declare} · skip ${skip} · meta ${meta} · excluded ${spec.excluded.length} · ` +
-    `draft ${spec.drafts.length}`;
+    `  registrations ${meta + declare + skip} · ` +
+    `declare ${declare} · skip ${skip} · meta ${meta} · draft ${spec.drafts.length}`;
   return [spec.header, tally, ...lines].join('\n');
 }
 
 /**
  * Read the config at `repoRoot`, assemble both surfaces, and render them.
  *
- * The session assembly is given a transcript path, so its `transcript-mod` registration and
- * the context family exist here exactly as they do under a normal hook payload — the path is
- * never read, because the injected transcript is the no-op one. Without a transcript the
- * compiler would report every context entry as a skip, which is the COMMIT surface's answer,
- * not the session's.
+ * The session assembly is given a transcript path, so its `transcript-mod` registration
+ * exists here exactly as it does under a normal hook payload — the path is never read,
+ * because the injected transcript is the no-op one.
  */
 export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   const { config, configPath } = loadConfig({ rootDir: spec.repoRoot });
@@ -204,7 +167,6 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
       header:
         'surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block',
       registrations: session,
-      excluded: [],
       drafts,
       disciplines,
       selfModScope: 'common; includes the config file itself',
@@ -213,7 +175,6 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     renderSurface({
       header: `surface: commit (git pre-commit) · enforce: ${gitSettings.enforce} · disciplines: advise unless enforce: block`,
       registrations: commit,
-      excluded: disciplines.filter((entry) => entry.forbidCommand !== undefined),
       drafts,
       disciplines,
       selfModScope: 'common ∪ adapters.git; deduped, includes the config file itself',

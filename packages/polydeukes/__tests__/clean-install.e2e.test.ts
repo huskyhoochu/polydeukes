@@ -19,7 +19,7 @@ import { TOPICS } from '../src/docs-query.ts';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers';
 
 // The clean-install e2e. The consumer tree's only inputs are the tarballs this suite packs
-// and the public registry (yaml, picomatch), so the install graph is real — which is
+// and the public registry (yaml), so the install graph is real — which is
 // precisely what the symlink trees of init-claude-code.e2e cannot fake. The telemetryRows
 // helper reads rows repo-side (vitest aliases core to source); every SPAWNED process below
 // resolves through the tarball install alone.

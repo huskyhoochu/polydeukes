@@ -37,20 +37,14 @@ function expectConfigValidationError(invalidConfig: unknown): ConfigValidationEr
 }
 
 describe('defineConfig disciplines — valid entries', () => {
-  it('accepts one entry per predicate family and carries them verbatim', () => {
+  it('accepts a judged entry and carries it verbatim', () => {
     // A well-formed array must reach ResolvedConfig.disciplines byte-for-byte — compiling
     // patterns is the covenant package's job, not core's. The assertion catches the
-    // validator rewriting a declaration block, or dropping `why`/`in`/`except`.
+    // validator rewriting a declaration block, or dropping `why`.
     const disciplines = [
       {
-        id: 'needs-view',
-        why: 'a dependency bump without a registry check has shipped a broken major',
-        in: ['packages/core/src/**'],
-        except: 'packages/core/src/legacy/**',
-        requirePrecedent: { command: 'npm view ' },
-      },
-      {
         id: 'no-hex',
+        why: 'a hex literal in source is a colour that belongs in the token file',
         declare: {
           mechanism: 'added-only',
           scope: { source: 'target.path', include: ['^src/'] },
@@ -73,7 +67,6 @@ describe('defineConfig disciplines — valid entries', () => {
           ],
         },
       },
-      { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
     ];
 
     const resolved = defineConfig(withDisciplines(disciplines));
@@ -90,27 +83,13 @@ describe('defineConfig disciplines — valid entries', () => {
   });
 });
 
-describe('defineConfig disciplines — predicate cardinality', () => {
-  it('rejects an entry with zero predicate keys, naming the entry index', () => {
-    // An entry with no forbid/immutable/forbidCommand is unjudgeable; accepting it yields a
-    // dead discipline that protects nothing while appearing registered.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'no-predicate', why: 'oops' }]),
-    );
+describe('defineConfig disciplines — a judged entry needs its declaration', () => {
+  it('rejects an entry carrying no declare, naming the entry', () => {
+    // An entry with no declaration is unjudgeable; accepting it yields a dead discipline
+    // that protects nothing while appearing registered.
+    const error = expectConfigValidationError(withDisciplines([{ id: 'no-declare', why: 'oops' }]));
 
-    expect(error.message).toContain('no-predicate');
-  });
-
-  it('rejects an entry with two predicate keys, naming the entry', () => {
-    // Two predicates make the entry's family ambiguous, so the count is exactly one rather
-    // than at least one.
-    const error = expectConfigValidationError(
-      withDisciplines([
-        { id: 'two-predicates', forbidCommand: 'x', requirePrecedent: { command: 'y' } },
-      ]),
-    );
-
-    expect(error.message).toContain('two-predicates');
+    expect(error.message).toContain('no-declare');
   });
 });
 
@@ -119,30 +98,10 @@ describe('defineConfig disciplines — unknown key rejection (deferred-axis)', (
     // `witness` is a top-level key only. On an entry it must be refused rather than
     // silently dropped: an author who believes the key took effect gets a fail-open gate.
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'has-witness', forbid: 'x', witness: 'PDKS-1' }]),
+      withDisciplines([{ id: 'has-witness', witness: 'PDKS-1' }]),
     );
 
     expect(error.message).toContain('witness');
-  });
-});
-
-describe('defineConfig disciplines — scope keys are requirePrecedent-only', () => {
-  it('rejects `in` on a forbidCommand entry', () => {
-    // forbidCommand judges the command line, not paths, so a path narrowing cannot apply.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'command-with-in', forbidCommand: 'y', in: 'z/**' }]),
-    );
-
-    expect(error.message).toContain('command-with-in');
-  });
-
-  it('rejects `except` on a forbidCommand entry', () => {
-    // forbidCommand judges the command line, not paths, so a path exception cannot apply.
-    const error = expectConfigValidationError(
-      withDisciplines([{ id: 'command-with-except', forbidCommand: 'x', except: 'z/**' }]),
-    );
-
-    expect(error.message).toContain('command-with-except');
   });
 });
 
@@ -152,8 +111,8 @@ describe('defineConfig disciplines — id constraints', () => {
     // merges two disciplines' measurements.
     const error = expectConfigValidationError(
       withDisciplines([
-        { id: 'dup', forbid: 'a' },
-        { id: 'dup', immutable: 'b/**' },
+        { id: 'dup', declare: 'a' },
+        { id: 'dup', declare: 'b' },
       ]),
     );
 
@@ -163,19 +122,12 @@ describe('defineConfig disciplines — id constraints', () => {
   it('rejects an empty-string id', () => {
     // An empty id is a present-but-unusable handle: it satisfies a presence check while
     // naming nothing in telemetry.
-    expectConfigValidationError(withDisciplines([{ id: '', forbid: 'a' }]));
+    expectConfigValidationError(withDisciplines([{ id: '', declare: 'a' }]));
   });
 
   it('rejects a non-string id', () => {
     // A numeric id must be refused, not stringified.
-    expectConfigValidationError(withDisciplines([{ id: 7, forbid: 'a' }]));
-  });
-});
-
-// Core checks that a pattern compiles; it never runs one.
-describe('defineConfig disciplines — regex compilability', () => {
-  it('rejects a non-compilable forbidCommand regex string', () => {
-    expectConfigValidationError(withDisciplines([{ id: 'bad-cmd-re', forbidCommand: '(' }]));
+    expectConfigValidationError(withDisciplines([{ id: 7, declare: 'a' }]));
   });
 });
 
@@ -183,7 +135,7 @@ describe('defineConfig disciplines — container/entry shape', () => {
   it('rejects disciplines that is not an array', () => {
     // A single entry object is the plausible mistake here, and it is typeof 'object' like
     // the array — only an explicit Array.isArray check separates them.
-    expectConfigValidationError(withDisciplines({ id: 'x', forbid: 'a' }));
+    expectConfigValidationError(withDisciplines({ id: 'x', declare: 'a' }));
   });
 
   it('rejects a disciplines entry that is not an object', () => {
@@ -192,8 +144,9 @@ describe('defineConfig disciplines — container/entry shape', () => {
 });
 
 // An algebra declaration is a separate document with its own validator; the `disciplines`
-// surface does not carry its blocks. An entry smuggling `extract` or `relate` in beside a
-// predicate must be refused by the closed key set, and the message must name the key.
+// surface does not carry its blocks at entry level. An entry smuggling `extract` or
+// `relate` in beside `declare` must be refused by the closed key set, and the message must
+// name the key.
 
 describe('defineConfig disciplines — algebra blocks are not entry keys', () => {
   it('rejects an entry carrying an `extract` block, naming that key', () => {

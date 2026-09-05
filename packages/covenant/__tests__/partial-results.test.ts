@@ -1,7 +1,6 @@
-import type { CanonicalTranscript, CovenantInput, DisciplineEntry } from '@polydeukes/core';
+import type { CovenantInput } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
 import { type TokenizeResult, tokenizeCommandLine } from '../src/bash-line.js';
-import { type CompileDisciplinesSpec, compileDisciplineRegistrations } from '../src/discipline.js';
 import { type CovenantRegistration, matchRegistrations } from '../src/dispatch.js';
 import { deriveShellChanges } from '../src/shell-evidence.js';
 import {
@@ -14,11 +13,6 @@ import {
   type TranscriptModificationSpec,
 } from '../src/transcript-mod.js';
 import { exitThunk } from './helpers.js';
-
-// No fixture here drives a shell-derived write, so the injected pre-state reader is never
-// consulted; `null` — the file is not there — is the answer that would make a create if one
-// ever were.
-const readPreState = () => null;
 
 // The tokenizer never discards a line it could not finish reading: `TokenizeResult` is
 // `{ commands, unread }`, and the two judges narrow their mention fallback from the whole raw
@@ -539,78 +533,6 @@ describe('matchRegistrations never narrows routing on a partial read', () => {
     expect(matchRegistrations(input, [reg])).toEqual([
       { registration: reg, mentionedPath: PROTECTED_DIST },
     ]);
-  });
-});
-
-describe('precedent evidence refuses a partially read command line', () => {
-  const ROOT = '/repo';
-  const PRECEDENT_COMMAND = 'npm view ';
-
-  type ObservedCall = { name: string; args: Record<string, unknown>; succeeded?: boolean };
-
-  /** A shell tool call the transcript seam saw succeed. */
-  function observedCall(command: string): ObservedCall {
-    return { name: SHELL_TOOL, args: { [COMMAND_ARG]: command }, succeeded: true };
-  }
-
-  /** Stub the canonical-transcript seam with a fixed tool-call history. */
-  function transcriptWithToolCalls(calls: ObservedCall[]): CanonicalTranscript {
-    return {
-      findUserMessages: () => [],
-      findToolCalls: (name?: string) =>
-        name === undefined ? calls : calls.filter((call) => call.name === name),
-    } as unknown as CanonicalTranscript;
-  }
-
-  const entry: DisciplineEntry = {
-    id: 'dep-needs-view',
-    in: ['pkg/**'],
-    when: 'needs-precedent',
-    requirePrecedent: { command: PRECEDENT_COMMAND },
-  };
-
-  /** A change in the entry's scope whose added content fires its `when` trigger. */
-  const triggeringInput: CovenantInput = {
-    toolCalls: [
-      {
-        name: 'Write',
-        fileChange: { kind: 'create', path: 'pkg/dep.json', post: 'needs-precedent\n' },
-      },
-    ],
-    subagentSpawns: [],
-    userMessages: [],
-  };
-
-  function contextSpec(calls: ObservedCall[]): CompileDisciplinesSpec {
-    return {
-      disciplines: [entry],
-      rootDir: ROOT,
-      shellTools: [SHELL_TOOL],
-      commandArgs: [COMMAND_ARG],
-      readPreState,
-      transcript: transcriptWithToolCalls(calls),
-    };
-  }
-
-  /**
-   * What the assembly decided. The decision is bound INTO the judge thunk, so it is read from
-   * the verdict the thunk answers against a triggering input: uphold means found, break means
-   * missing.
-   */
-  async function precedentDecision(calls: ObservedCall[]): Promise<'found' | 'missing'> {
-    const [registration] = compileDisciplineRegistrations(contextSpec(calls));
-    const outcome = await registration?.body?.(triggeringInput);
-    return outcome?.exitCode === 0 ? 'found' : 'missing';
-  }
-
-  it('refuses a line whose read half anchors the pattern, while its fully read twin qualifies', async () => {
-    // The one consumer where accepting partial results OPENS a gate instead of closing one.
-    // Missing evidence blocks, so the moment the anchor scan trusts the commands it managed to
-    // read, a line nobody could finish reading becomes proof that a required command ran. The
-    // refusal is therefore kept on purpose. The control proves this shape really can qualify,
-    // pinning the refusal to the unread span rather than to an anchor that never matches.
-    expect(await precedentDecision([observedCall(`npm view yaml;echo 'x`)])).toBe('missing');
-    expect(await precedentDecision([observedCall('npm view yaml;echo x')])).toBe('found');
   });
 });
 

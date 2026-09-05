@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { worldsFromInput } from '../src/discipline.ts';
 
 const ROOT = '/repo';
+/** No shell tool is named, so no call here is a shell call and no world carries `command`. */
+const NO_SHELL = { shellTools: [], commandArgs: [] };
 const PATH_SOURCE = 'target.path';
 
 /** A CovenantInput whose evidence rides each call's own element, in the given order. */
@@ -39,6 +41,7 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
         { kind: 'delete', path: 'docs/m.ko.md' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds).toHaveLength(3);
@@ -56,6 +59,7 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
         { kind: 'create', path: 'docs/in.md', post: 'y' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds.map((w) => w.world.changes)).toEqual([['docs/in.md']]);
@@ -69,6 +73,7 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
         files: { 'locales/en.json': '{}' },
       }),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds[0]?.world.changes).toEqual(['docs/a.md']);
@@ -89,6 +94,7 @@ describe('worldsFromInput — the changes key, supplied by the root', () => {
         },
       ),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds).toHaveLength(1);
@@ -102,6 +108,7 @@ describe('worldsFromInput — the changes key, supplied by the root', () => {
     const worlds = worldsFromInput({
       input: inputWithChanges([{ kind: 'create', path: 'docs/a.md', post: 'x' }], { changes: [] }),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
 
     expect(worlds[0]?.world.changes).toEqual([]);
@@ -119,6 +126,7 @@ describe('worldsFromInput — the four existing keys are unchanged by the additi
         { kind: 'delete', path: 'lib/old.db', pre: 'gone' },
       ]),
       rootDir: ROOT,
+      ...NO_SHELL,
     });
     const changes = ['lib/new.db', 'lib/a.db', 'lib/old.db'];
 

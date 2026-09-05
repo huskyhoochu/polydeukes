@@ -29,7 +29,6 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
   COMMAND_ARGS,
-  evaluatePrecedent,
   MUTATING_TOOLS,
   runAdapterPath,
   SHELL_TOOLS,
@@ -199,9 +198,9 @@ export type SessionAssemblySpec = {
  */
 export function assembleSessionRegistrations(spec: SessionAssemblySpec): CovenantRegistration[] {
   const { config, rootDir, covenant, transcriptPath, transcript, witness } = spec;
-  // The live transcript is the evidence channel the context family reads AND the one the
-  // witness reads, so erasing or forging it disables every context discipline while opening
-  // or shutting the human valve on the same file. It must NOT join this list: it lives deep
+  // The live transcript is the session a history declaration reads AND the one the witness
+  // reads, so erasing or forging it disables every history discipline while opening or
+  // shutting the human valve on the same file. It must NOT join this list: it lives deep
   // under HOME, and a path entry makes every ancestor protected — which measured as an
   // over-block refusing `cd /home/<user>`, `echo $HOME`, and every edit whose content
   // carried a bare `~`. The dedicated `transcript-mod` registration below covers that one
@@ -228,7 +227,7 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
     }),
     // Routing is the matches predicate, never path mention, so the home directory cannot
     // become a protected ancestor. No transcript in the payload means nothing to protect —
-    // the valve and the context family already forfeited on the same absence.
+    // the valve and every history declaration already forfeited on the same absence.
     ...(transcriptPath === undefined
       ? []
       : [
@@ -254,16 +253,13 @@ export function assembleSessionRegistrations(spec: SessionAssemblySpec): Covenan
       readPreState: sessionPreStateReader,
       // One PreToolUse call is the whole observation, so the derived change set is a
       // singleton and a change-set declaration cannot be judged here — it records `skipped`,
-      // the shape the commit surface gives the context family.
+      // the shape the commit surface gives a history declaration.
       observesChangeSet: false,
       witness,
-      // Context-family evidence is evaluated here, at assembly: a spawned body cannot hold
-      // a transcript, and passing a path would leak JSONL knowledge into covenant. The
-      // adapter brings the evaluator for its own `subagent`/`tool` vocabulary; core owns
-      // `command`, which the compiler judges directly.
+      // The session itself, injected rather than its path: a declaration reading a
+      // `transcript` binding sees it flattened, and passing a path would leak JSONL
+      // knowledge into covenant.
       transcript,
-      evaluatePrecedent: (evidence, callTranscript) =>
-        evaluatePrecedent({ evidence, transcript: callTranscript }),
     }),
   ];
 

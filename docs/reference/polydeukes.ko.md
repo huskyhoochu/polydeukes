@@ -58,7 +58,7 @@ claude-code`와 `init grok`는 정확히 그 형태이며, `explain`은 한 단�
 | 설정이 없거나 둘 이상이거나 무효 | 종료 `2` |
 | 판정 본체를 적재할 수 없음 | 종료 `2` |
 
-맥락 계열 규율(discipline)인 `requirePrecedent`는 다른 항목과 똑같이 조립되지만, 이 표면에는
+세션을 읽는 선언(`precedent`와 다른 이력 기전)은 다른 항목과 똑같이 조립되지만, 이 표면에는
 읽을 세션이 없습니다. 매치되면 `skipped`를 기록하고 커밋은 진행됩니다. 결함이 아니라 커밋
 표면의 항구적 조건입니다.
 
@@ -137,38 +137,36 @@ JSON command가 그 파일을 가리켜 판정기를 둘 스폰하지 않습니�
 ```text
 pdks explain — polydeukes.config.yaml
 
-surface: session (claude-code hook)
-  registrations 29 · judged 13 · declare 1 · skip 12 · meta 3 · excluded 0 · draft 0
-  meta     self-mod                      paths 13 (common; includes the config file itself)
+surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block
+  registrations 42 · declare 18 · skip 21 · meta 3 · draft 1
+  meta     self-mod                      paths 14 (common; includes the config file itself)
   declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
-  declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  pnpm-only                     forbidden-command · change · empty no-npm-mutation · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
+  declare  manifest-needs-evidence       precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
   skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...
-surface: commit (git pre-commit) · enforce: advise
-  registrations 13 · judged 5 · declare 1 · skip 6 · meta 1 · excluded 3 · draft 0
-  skip     manifest-needs-npm-view       no session transcript to read
-  excluded hooks-stay-armed              forbidCommand — no shell axis on this surface
+surface: commit (git pre-commit) · enforce: advise · disciplines: advise unless enforce: block
+  registrations 21 · declare 19 · skip 1 · meta 1 · draft 1
+  declare  manifest-needs-evidence       precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
   declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
 ```
 
-등록 하나가 한 줄이고, 순서는 그 표면이 디스패치하는 순서입니다. 종류 열의 낱말은 여섯입니다.
+등록 하나가 한 줄이고, 순서는 그 표면이 디스패치하는 순서입니다. 종류 열의 낱말은 넷입니다.
 
 | 종류 | 뜻 |
 |---|---|
 | `meta` | 판정 사슬 자체를 보호하는 등록입니다. `self-mod`, `shell-mod`, 그리고 세션 표면의 `transcript-mod` |
-| `judge` | 판정 본체를 가진 항목입니다. 계열과 라우팅 스코프, `why` 유무를 함께 적습니다 |
-| `declare` | 선언 항목입니다. 범위 소스, include·exclude 목록의 크기, relate 항목 id를 함께 적습니다 |
+| `declare` | 선언 항목입니다. 기전과 축·관계, 범위 소스, include·exclude 목록의 크기, 소스, 밸브와 `why` 유무를 함께 적습니다 |
 | `skip` | 판정 대신 `skipped`를 기록하는 등록입니다. 컴파일러가 준 사유를 함께 적습니다. 평소에는 설정 결함일 때만 stderr에 닿는 그 사유입니다 |
-| `excluded` | 커밋 표면의 `forbidCommand` 항목입니다. 이 표면에는 셸 축이 없습니다 |
 | `draft` | 미승격 `draft: true` 항목입니다. 어느 표면에도 속하지 않으므로 양쪽에 표시됩니다 |
 
-`registrations`는 `meta` · `judge` · `declare` · `skip`을 세고, `excluded`와 `draft`는 등록이 되지 않는 항목이라 따로
+`registrations`는 `meta` · `declare` · `skip`을 세고, `draft`는 등록이 되지 않는 항목이라 따로
 셉니다. 커밋 표면 머리에는 `adapters.git.enforce` 강제 수준도 같이 적습니다. 권고하는
 표면은 같은 표를 기록하되 아무것도 차단하지 않기 때문입니다.
 
 세션 표면은 훅이 정상 페이로드에서 보는 대로, 곧 대화 기록이 있는 상태로 렌더됩니다.
-그래서 `transcript-mod`와 맥락 계열이 세션에서와 같이 나타나고, 커밋 표면은 맥락 계열을
-skip으로 보여 줍니다. 그것이 그 표면의 영구 조건입니다.
+그래서 `transcript-mod`와 세션을 읽는 선언이 세션에서와 같이 나타나고, 커밋 표면에서는 그
+선언이 매치될 때 `skipped`를 기록합니다. 그것이 그 표면의 영구 조건입니다.
 
 | 호출 | 결과 |
 |---|---|

@@ -34,13 +34,9 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "picomatch": "4.0.5"
-  },
   "devDependencies": {
     "@polydeukes/core": "workspace:^",
     "@types/node": "catalog:",
-    "@types/picomatch": "4.0.3",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

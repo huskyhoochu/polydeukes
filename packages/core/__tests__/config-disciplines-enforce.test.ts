@@ -21,9 +21,19 @@ function withDisciplines(disciplines: unknown): unknown {
   return { ...baseConfig, disciplines };
 }
 
-const adviseEntry = { id: 'softly-held', forbidCommand: 'zzz_banned', enforce: 'advise' };
-const blockEntry = { id: 'hard-held', forbidCommand: 'zzz_banned', enforce: 'block' };
-const plainEntry = { id: 'plain-held', forbidCommand: 'zzz_banned' };
+/** The declaration every entry below carries; only the level under test varies. */
+const ban = {
+  mechanism: 'forbidden-command',
+  scope: { source: 'command' },
+  extract: {
+    hits: [{ op: 'source', of: 'command' }, { op: 'lines' }, { op: 'matches', re: 'zzz_banned' }],
+  },
+  relate: [{ id: 'no-hit', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
+};
+
+const adviseEntry = { id: 'softly-held', declare: ban, enforce: 'advise' };
+const blockEntry = { id: 'hard-held', declare: ban, enforce: 'block' };
+const plainEntry = { id: 'plain-held', declare: ban };
 
 // Asserts the concrete error instance and returns it so callers can assert on the message.
 function expectConfigValidationError(invalidConfig: unknown): ConfigValidationError {
@@ -69,7 +79,7 @@ describe('defineConfig disciplines — enforce rejections', () => {
     // The enumeration is closed rather than "any string": a typo'd or speculative level
     // would otherwise judge silently at whichever branch default the code falls into.
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'measured-probe', forbidCommand: 'x', enforce: 'measure' }]),
+      withDisciplines([{ id: 'measured-probe', declare: ban, enforce: 'measure' }]),
     );
 
     expect(error.message).toContain('measured-probe');
@@ -79,7 +89,7 @@ describe('defineConfig disciplines — enforce rejections', () => {
     // Under a truthiness check `enforce: true` reads as "some level" and falls into a
     // branch nobody chose, so the value is validated by the enumeration, not by presence.
     const error = expectConfigValidationError(
-      withDisciplines([{ id: 'boolean-probe', forbidCommand: 'x', enforce: true }]),
+      withDisciplines([{ id: 'boolean-probe', declare: ban, enforce: true }]),
     );
 
     expect(error.message).toContain('boolean-probe');

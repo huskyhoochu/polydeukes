@@ -1,5 +1,5 @@
 /**
- * `catalogue.ts` — the seventeen judgment-mechanism names and the shape each one admits.
+ * `catalogue.ts` — the eighteen judgment-mechanism names and the shape each one admits.
  *
  * A mechanism name is a coordinate the machine checks, not a label: {@link deriveShape}
  * reads a declaration's shape from its syntax alone — which sources its `source` steps
@@ -38,9 +38,10 @@ export const MECHANISM_NAMES = [
   'one-way-marker',
   'delegated-scope',
   'scoped-valve',
+  'forbidden-command',
 ] as const;
 
-/** One of the seventeen mechanism names. */
+/** One of the eighteen mechanism names. */
 export type MechanismName = (typeof MECHANISM_NAMES)[number];
 
 /**
@@ -55,7 +56,7 @@ export type MechanismShape = {
   axes: ReadonlySet<Axis>;
   relations: ReadonlySet<RelationName>;
   requiresWitness?: true;
-  scopeSource?: 'target.path';
+  scopeSource?: 'target.path' | 'command';
   reserved?: string;
 };
 
@@ -129,6 +130,13 @@ export const MECHANISM_SHAPES: Record<MechanismName, MechanismShape> = {
     ]),
     requiresWitness: true,
   },
+  // A command-line ban scopes on the command it reads: a world with no shell call carries
+  // no `command`, and a scope-less reader would refuse every file-changing call as unjudgeable.
+  'forbidden-command': {
+    axes: CHANGE,
+    relations: new Set<RelationName>(['empty']),
+    scopeSource: 'command',
+  },
 };
 
 /** The names a rejection message lists so the author sees what is admitted. */
@@ -163,7 +171,7 @@ function sourceNames(declaration: DerivableDeclaration): string[] {
 /**
  * Read one declaration's shape from its syntax (pure).
  *
- * The axis of a source name is where the name comes from: one of the fixed five is the
+ * The axis of a source name is where the name comes from: one of the fixed six is the
  * change axis, a name the declaration's own `sources` block binds is the world axis unless
  * the binding is of the transcript kind, which is the history axis. A
  * name that is neither is refused by {@link validateMechanism} — skipping it would derive

@@ -175,8 +175,8 @@ export type TranscriptFromJsonlFileSpec = { path: string };
  * ANY read failure — missing file, permission, directory — answers `undefined`, never a
  * throw. It is deliberately NOT an empty transcript: the two are different facts, and
  * collapsing them hid the more likely one. An empty transcript is a session that has said
- * nothing yet, and judging against it is correct. An unreadable one is no evidence channel
- * at all, so the context family must skip rather than demand evidence from a session
+ * nothing yet, and judging against it is correct. An unreadable one is no session channel
+ * at all, so a history declaration must skip rather than demand evidence from a session
  * nobody can read — while the witness valve reads the same absence and stays shut, leaving
  * a dead end with no message naming the cause.
  *

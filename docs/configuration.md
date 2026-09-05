@@ -3,7 +3,7 @@
 **English** · [한국어](./configuration.ko.md)
 
 > Alpha. This guide covers the config surface as shipped today (schema v2, loader, and
-> the four built-in discipline predicates). Fields and predicates will grow; what is
+> the declaration grammar). Fields and steps will grow; what is
 > written here is tested and enforced now.
 
 `polydeukes.config.yaml` is the one file where a project declares its disciplines — the

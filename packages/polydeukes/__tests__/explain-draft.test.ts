@@ -23,15 +23,25 @@ const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 
 const DRAFT_ID = 'bilingual-docs-sync';
 const draftEntry = { id: DRAFT_ID, why: 'keep the en and ko doc mirrors in sync', draft: true };
-const JUDGED_FORBID_ID = 'no-todo';
-const judgedForbid = { id: JUDGED_FORBID_ID, forbidCommand: 'TODO' };
-const judgedImmutable = {
-  id: 'changelog-precedent',
-  requirePrecedent: { command: 'npm view ' },
-};
+const JUDGED_FIRST_ID = 'no-todo';
 
-const JUDGED_ONLY = [judgedForbid, judgedImmutable];
-const WITH_DRAFT = [judgedForbid, draftEntry, judgedImmutable];
+/** The declaration the judged entries below carry; only their ids differ. */
+const declareBlock = {
+  mechanism: 'naming',
+  scope: { source: 'target.path', include: ['\\.db$'] },
+  extract: {
+    outside: [
+      { op: 'source', of: 'target.path' },
+      { op: 'matches', re: '^(?!store/)' },
+    ],
+  },
+  relate: [{ id: 'placed', relation: { op: 'empty', of: 'outside' }, message: 'm' }],
+};
+const judgedFirst = { id: JUDGED_FIRST_ID, declare: declareBlock };
+const judgedSecond = { id: 'changelog-precedent', declare: declareBlock };
+
+const JUDGED_ONLY = [judgedFirst, judgedSecond];
+const WITH_DRAFT = [judgedFirst, draftEntry, judgedSecond];
 
 let repoRoot: string;
 let telemetryPath: string;
@@ -73,8 +83,8 @@ function registrationsOf(section: string): number {
 
 describe('explain renders the draft as unpromoted on both surfaces', () => {
   it('renders one `draft <id>` line with the fixed unpromoted description per surface', async () => {
-    // A draft rendered as `skip` or `excluded` would claim a judgment disposition it never
-    // had, so the kind word is pinned exactly, on both surfaces.
+    // A draft rendered as `skip` would claim a judgment disposition it never had, so the
+    // kind word is pinned exactly, on both surfaces.
     writeFixtureConfig(WITH_DRAFT);
 
     const { text } = await explain({ repoRoot });
@@ -87,8 +97,8 @@ describe('explain renders the draft as unpromoted on both surfaces', () => {
   });
 
   it('adds `· draft 1` to each surface header aggregate', async () => {
-    // Drafts get their own tally in the header, like `excluded` — never folded into
-    // another bucket's number.
+    // Drafts get their own tally in the header — never folded into another bucket's
+    // number.
     writeFixtureConfig(WITH_DRAFT);
 
     const { text } = await explain({ repoRoot });

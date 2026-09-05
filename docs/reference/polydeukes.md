@@ -62,9 +62,10 @@ two report exit `2` without a prompt, since there is no commit for a human to op
 | No config, more than one config, or an invalid one | exit `2` |
 | A judge body that cannot be loaded | exit `2` |
 
-Context-family disciplines (`requirePrecedent`) assemble here like any other entry, but this
-surface has no session to read: a match records `skipped` and the commit proceeds. That is a
-permanent condition of the commit surface, not a fault.
+Declarations that read the session (`precedent` and the other history mechanisms) assemble
+here like any other entry, but this surface has no session to read: a match records
+`skipped` and the commit proceeds. That is a permanent condition of the commit surface, not a
+fault.
 
 ### `pdks init claude-code`
 
@@ -144,39 +145,37 @@ read.
 ```text
 pdks explain — polydeukes.config.yaml
 
-surface: session (claude-code hook)
-  registrations 29 · judged 13 · declare 1 · skip 12 · meta 3 · excluded 0 · draft 0
-  meta     self-mod                      paths 13 (common; includes the config file itself)
+surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block
+  registrations 42 · declare 18 · skip 21 · meta 3 · draft 1
+  meta     self-mod                      paths 14 (common; includes the config file itself)
   declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
-  declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  pnpm-only                     forbidden-command · change · empty no-npm-mutation · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
+  declare  manifest-needs-evidence       precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
   skip     covenant-vocabulary           a shell write in scope whose result this layer cannot compute
   ...
-surface: commit (git pre-commit) · enforce: advise
-  registrations 13 · judged 5 · declare 1 · skip 6 · meta 1 · excluded 3 · draft 0
-  skip     manifest-needs-npm-view       no session transcript to read
-  excluded hooks-stay-armed              forbidCommand — no shell axis on this surface
+surface: commit (git pre-commit) · enforce: advise · disciplines: advise unless enforce: block
+  registrations 21 · declare 19 · skip 1 · meta 1 · draft 1
+  declare  manifest-needs-evidence       precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
   declare  sqlite-only-under-knowledge   naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
 ```
 
 One line per registration, in the order the surface dispatches them. The kind column has
-six words: `meta` (the registrations protecting the judging chain — `self-mod`,
-`shell-mod`, and on the session surface `transcript-mod`), `judge` (an entry with a judge
-body, with its family, routing scope, and whether it carries a `why`), `declare` (a
-declaration entry, with its scope source, the sizes of its include and exclude lists, and
-its relate ids), `skip` (a registration
-that records `skipped` instead of judging, with the reason the compiler gave — the reason
-that otherwise reaches stderr only on a config fault), `excluded` (a `forbidCommand`
-entry on the commit surface, which has no shell axis), and `draft` (an unpromoted
+four words: `meta` (the registrations protecting the judging chain — `self-mod`,
+`shell-mod`, and on the session surface `transcript-mod`), `declare` (a declaration entry,
+with its mechanism, axes and relations, its scope source, the sizes of its include and
+exclude lists, its sources, and whether it carries a valve and a `why`), `skip` (a
+registration that records `skipped` instead of judging, with the reason the compiler gave —
+the reason that otherwise reaches stderr only on a config fault), and `draft` (an unpromoted
 `draft: true` entry, shown on both surfaces since it belongs to neither). `registrations`
-counts the registrations; `excluded` and `draft` are tallied apart because neither ever
-becomes a registration. `registrations` counts `meta`, `judge`, `declare`, and `skip`.
+counts `meta`, `declare`, and `skip`; `draft` is tallied apart because it never becomes a
+registration.
 The commit surface's header also names its `adapters.git.enforce` level, since an advising
 surface records the same table but blocks nothing.
 
 The session surface is rendered as the hook sees it under a normal payload — with a
-transcript present — so `transcript-mod` and the context family appear as they do in a
-session; the commit surface shows the context family as skips, which is that surface's
-permanent condition.
+transcript present — so `transcript-mod` and the session-reading declarations appear as they
+do in a session; on the commit surface those declarations record `skipped` when matched,
+which is that surface's permanent condition.
 
 | Call | Result |
 |---|---|

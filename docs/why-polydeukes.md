@@ -81,13 +81,12 @@ semantics.
 
 **A discipline is one data entry.** Users declare a predicate as configuration data and
 get enforcement, per-discipline telemetry, and the escape valve — without writing any
-process plumbing. Three forms cover three kinds of evidence: a `declare` block judges the
-change as a world — what an edit adds, whether a path was touched, whether two files moved
-together — `forbidCommand` judges the command line itself, and `requirePrecedent` judges
-the session's own history — the only one whose subject is not the change but the procedure
-that should have come before it. The command
-family routes on content, so even a command that mentions no protected path is still
-judged.
+process plumbing. One form, a `declare` block, covers three kinds of evidence by what its
+sources bind: the change as a world — what an edit adds, whether a path was touched,
+whether two files moved together — the shell call's own command line, and the session's
+own history — the only one whose subject is not the change but the procedure that should
+have come before it. A command line is judged on content, so even a command that mentions
+no protected path is still judged.
 
 **The config that declares the discipline is itself under it.** The discovered config
 file joins the protection surface automatically, and so does the loader that reads it.
@@ -272,12 +271,12 @@ anyone — including its authors — claims so. The ledger and adversarial verif
 the same standard to completion claims and review judgments; they are still on the
 roadmap, and they will be held to the same log.
 
-One family of disciplines exists only because of this principle. Most rules forbid
-something; `requirePrecedent` **requires** something. The edit is legitimate — what is
-refused is arriving without the procedure that should have come first, like writing a
-dependency version you never actually looked up. It enforces order rather than prohibition,
-and it answers a question the other families do not: not "what does the rule forbid" but
-"what does it require".
+One mechanism exists only because of this principle. Most rules forbid something; a
+`precedent` declaration **requires** something. The edit is legitimate — what is refused
+is arriving without the procedure that should have come first, like writing a dependency
+version you never actually looked up. It enforces order rather than prohibition, and it
+answers a question the other mechanisms do not: not "what does the rule forbid" but "what
+does it require".
 
 Its evidence lives on a surface the AI controls, which means forgery is structurally
 possible — and it holds anyway, because the cheapest way through the gate is to actually
@@ -501,6 +500,16 @@ is what we believed and measured; corrected is what was wrong on the day it ship
      declaration reads as "the filtered set is empty" and nothing about the mechanism is
      visible. Publish with the v0.6.0 gate post, once the engine has judged live
      declarations on both surfaces.
+
+     Parked candidate (ALGEBRA-04b, 2026-09-05): deletion is the migration. Four
+     discipline families each had their own judging code; the plan was to keep their
+     syntax as sugar compiled into declarations. With zero consumers, two grammars is
+     confusion, not compatibility — so the families, their code, and their tests were
+     deleted, and what remained was three primitives: the command line as a source of
+     the world, one mechanism name for it, and one world for a shell call that changes
+     no file. The first live run then locked every Edit: a declaration that reads a
+     source its world may lack must say so in its own scope. Publish with the v0.6.0
+     gate post.
 
      Parked candidate (ALGEBRA-06, 2026-09-05): a name the machine does not check is a
      comment. The `mechanism` field was a free string for a month — every declaration

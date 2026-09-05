@@ -29,20 +29,20 @@ is what satisfies that peer for an ordinary consumer.
 
 ## Discipline families and meta-covenants
 
-**A `disciplines:` entry belongs to exactly one family**, decided by which predicate key it
-carries. The family determines what evidence the judgment needs — which is also what
-determines whether it can be judged on a given surface.
+**A `disciplines:` entry is one declaration** — `judge = relate ∘ extract` over the
+observation as a world. What the declaration's sources bind decides what evidence the
+judgment needs, which is also what decides whether it can be judged on a given surface.
 
-| Family | Key | Judges | Evidence needed |
-|---|---|---|---|
-| command | `forbidCommand` | The command line itself | None |
-| context | `requirePrecedent` | Session history — was a qualifying call actually executed *before* this one | A transcript |
-| declaration | `declare` | One judgment written as data — `relate ∘ extract` over the change as a world of `target.path`, `pre`, `post`, `state` | File change |
+| Sources | Judges | Evidence needed |
+|---|---|---|
+| the fixed names `target.path` · `pre` · `post` · `state` · `changes` | The change itself | A file change |
+| the fixed name `command` | The shell call's command line | A shell call — an Edit carries none |
+| `{ transcript: true }` | Session history — was a qualifying call actually executed *before* this one | A session |
+| `{ file: … }` · `{ sidecar: true }` | Another file, or the spawn-record channel | The surface's reader for it |
 
-`when` is a trigger, not a family: it narrows a `requirePrecedent` entry and combines with
-nothing else. The writing guide for these entries — the three predicate forms, the two
-pitfalls — is [the configuration reference's `disciplines` section](./configuration.md#disciplines);
-the declaration grammar is the core's `algebra-declaration.schema.json`.
+The writing guide for these entries is [the configuration reference's `disciplines`
+section](./configuration.md#disciplines); the declaration grammar is the core's
+`algebra-declaration.schema.json`.
 
 **Three meta-covenants** protect the judging chain. They are covenants like any other; the
 vocabulary below applies to them unchanged.
@@ -91,20 +91,21 @@ No import. The umbrella assembles this package for both surfaces.
   not "nothing gets through" — it is that **no call passes unrecorded**. A new spelling
   landing in `skipped` is the declared limit showing itself. A pass with no row at all, or
   one recorded `passed` without a judgment, is the defect class.
-- **The context family cannot be judged without a session.** On the commit surface there is
-  none, so a matching `requirePrecedent` entry always records `skipped`. That is a permanent
+- **A declaration that reads the session cannot be judged without one.** On the commit
+  surface there is none, so a matching `precedent` (or any other transcript-reading)
+  declaration records `skipped` with the reason `supply-pass`. That is a permanent
   condition of that surface.
-- **The command family is absent from the commit surface, and absent without a row.**
-  `forbidCommand` entries are filtered out before compilation there, since a staged diff
-  carries no command line to judge. Unlike the context family this leaves nothing in
-  `.polydeukes/roi.log`, so the log cannot separate a command discipline that never
-  triggered from one that was never registered on that surface.
-- **An unjudgeable entry compiles to a skip registration** — routing intact, no body. A
-  pattern that does not compile skips the same way. Assembly therefore never throws: one
-  unresolvable entry cannot take down its siblings, the meta-covenants, and the valve,
-  which would leave no way to fix the config that caused it. The one shape that is not a
-  skip is an entry whose predicate no family judges yet — core admitted it, covenant has no
-  branch for it: it routes, and its body answers unjudgeable (exit 2), never upheld.
+- **A declaration scoped on `command` is absent from the commit surface, and absent without
+  a row.** A staged diff carries no command line, so no world such a declaration observes is
+  admitted there. This leaves nothing in `.polydeukes/roi.log`, so the log cannot separate a
+  command discipline that never triggered from one whose surface never observed a command.
+- **A declaration the compiler cannot resolve compiles to a skip registration** — routing
+  intact, no body: a step outside the registry, an argument outside a step's keys, a pattern
+  that does not compile, a mechanism whose shape the syntax does not fit. Assembly therefore
+  never throws: one unresolvable entry cannot take down its siblings, the meta-covenants, and
+  the valve, which would leave no way to fix the config that caused it. A source the world
+  lacks at judgment time is a different case — the declaration's own `supply` policy
+  disposes of it, and with no policy the body answers unjudgeable (exit 2), never upheld.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected
   path blocks unless proven safe. Residual vectors such as indirect path computation are

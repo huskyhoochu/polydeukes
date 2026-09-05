@@ -13,7 +13,6 @@ import {
   ConfigValidationError,
   isNonEmptyString,
   isStringArray,
-  rejectUncompilableRegex,
   rejectUnknownKeys,
 } from './validation.js';
 
@@ -41,7 +40,7 @@ export type LanguageProfile = {
 /**
  * `AlgebraDeclarationBody` — an algebra declaration minus its name.
  *
- * The declaration family names itself with the entry's `id`, so the block under `declare`
+ * An entry names its declaration with the entry's `id`, so the block under `declare`
  * carries every other key and never `discipline`.
  */
 export type AlgebraDeclarationBody = Omit<AlgebraDeclaration, 'discipline'>;
@@ -56,10 +55,9 @@ export type EnforceLevel = 'block' | 'advise';
 /**
  * `DisciplineEntry` — one user-declared discipline. Pure JSON data.
  *
- * Exactly one predicate key (`forbidCommand` | `requirePrecedent` | `declare`) per entry;
- * `in`/`except` scope the context family.
- * Compilation is the covenant package's job — the core validates compilability of regex
- * strings but never executes them.
+ * The judgment is the `declare` block and nothing else; the other three keys name the
+ * entry, explain it, and set its level. Compilation is the covenant package's job — the
+ * core validates the block's grammar but never runs an extraction.
  */
 export type DisciplineEntry = {
   /** unique handle — telemetry label and verdict reason prefix */
@@ -68,36 +66,18 @@ export type DisciplineEntry = {
   why?: string;
   /** the author's level; composes with the observer's surface level, lenient side winning */
   enforce?: EnforceLevel;
-  /** context-family scope: glob(s) the file path must match (absent = every file change) */
-  in?: string | string[];
-  /** context-family scope: glob(s) excluded after `in` */
-  except?: string | string[];
-  /** command family — regex over shell command strings */
-  forbidCommand?: string;
-  /** context-family trigger: added-direction delta regex (absent = every in-scope change) */
-  when?: string;
-  /**
-   * context family — the session evidence one edit requires beforehand. Exactly one
-   * evidence key. The core owns and fully validates `command`; every other key is
-   * adapter vocabulary whose value passes through verbatim.
-   */
-  requirePrecedent?: Record<string, unknown>;
-  /**
-   * declaration family — one judgment written as data. The entry's `id` is the
-   * declaration's name and the block's own `scope` is its scope, so an entry carrying
-   * `declare` takes neither `in`/`except` nor `when`.
-   */
-  declare?: AlgebraDeclarationBody;
+  /** one judgment written as data — the entry's `id` is the declaration's name */
+  declare: AlgebraDeclarationBody;
 };
 
 /**
  * `DisciplineDraft` — an unpromoted discipline: the promotion ladder's first rung,
- * registered as prose ahead of any predicate.
+ * registered as prose ahead of any declaration.
  *
  * A draft is declared, never inferred — only the literal `draft: true` makes one, and an
- * entry with neither a predicate nor the marker stays a validation error. It carries no
- * predicate, scope, or trigger key, produces no registration, no judgment, and no
- * telemetry row; `pdks explain` renders it as unpromoted.
+ * entry with neither a `declare` block nor the marker stays a validation error. It carries
+ * no declaration, produces no registration, no judgment, and no telemetry row;
+ * `pdks explain` renders it as unpromoted.
  */
 export type DisciplineDraft = {
   /** unique handle in the same label space as judged entries and meta-covenant labels */
@@ -203,35 +183,9 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
 const WITNESS_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
-const DISCIPLINE_KEYS: ReadonlySet<string> = new Set([
-  'id',
-  'why',
-  'enforce',
-  'in',
-  'except',
-  'forbidCommand',
-  'when',
-  'requirePrecedent',
-  'declare',
-]);
+const DISCIPLINE_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'enforce', 'declare']);
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
-const PREDICATE_KEYS = ['forbidCommand', 'requirePrecedent', 'declare'] as const;
-/**
- * The change-axis keys the declaration family replaced, each with the rewrite it points at.
- * An entry carrying one is refused by its own name rather than as an unknown key, so an
- * author reads what to write instead on the first run.
- */
-const REMOVED_PREDICATE_KEYS: readonly (readonly [string, string])[] = [
-  [
-    'forbid',
-    "'forbid' is no longer an entry key — write the promise as declare: (mechanism 'added-only')",
-  ],
-  ['immutable', "'immutable' is no longer an entry key — write the promise as declare:"],
-];
-/** The one predicate family `in`/`except` may scope — context. */
-const SCOPED_PREDICATE_KEYS: ReadonlySet<string> = new Set(['requirePrecedent']);
-
 /** True when the glob value is a present, non-empty string or a non-empty array of non-empty strings. */
 function isValidGlob(glob: unknown): glob is string | string[] {
   if (typeof glob === 'string') {
@@ -251,36 +205,6 @@ function compileTestCmd(template: string): (scope: string) => string {
   // Callback form: a string replacement would interpret `$`-patterns ($$, $&, $`, $')
   // via GetSubstitution, breaking literal insertion for scopes containing `$`.
   return (scope) => template.replaceAll('{scope}', () => scope);
-}
-
-/**
- * Validate a context-family `requirePrecedent` value.
- *
- * Evidence vocabulary is layered: the container (a flat object holding exactly one
- * evidence key) is the core's, and so is the `command` key — a shell command is the
- * agent-crossing surface, fully validated here. Every other key belongs to an adapter,
- * whose own validator judges the value; the core passes it through verbatim and never
- * inspects it. An unrecognized evidence key fails closed at assembly time, not here.
- */
-function validateRequirePrecedent(evidence: unknown, location: string): void {
-  if (!isPlainObject(evidence)) {
-    throw new ConfigValidationError(`${location} requirePrecedent must be an object`);
-  }
-  const keys = Object.keys(evidence);
-  if (keys.length !== 1) {
-    throw new ConfigValidationError(
-      `${location} requirePrecedent must have exactly one evidence key`,
-    );
-  }
-  if (keys[0] === 'command') {
-    const command = evidence.command;
-    if (typeof command !== 'string' || command.length === 0) {
-      throw new ConfigValidationError(
-        `${location} requirePrecedent.command must be a non-empty string pattern`,
-      );
-    }
-    rejectUncompilableRegex(command, `${location} requirePrecedent.command`);
-  }
 }
 
 type RawEntry = Record<string, unknown>;
@@ -322,80 +246,7 @@ function validateEntryHead(entry: RawEntry, location: string): void {
 }
 
 /**
- * Refuse an entry carrying a key the declaration family replaced, naming the rewrite.
- *
- * It runs ahead of the closed-key check, which would otherwise report the key as unknown and
- * leave the author without the migration target.
- */
-function rejectRemovedPredicates(entry: RawEntry, location: string): void {
-  for (const [key, message] of REMOVED_PREDICATE_KEYS) {
-    if (entry[key] !== undefined) {
-      throw new ConfigValidationError(`${location} ${message}`);
-    }
-  }
-}
-
-/** Select the entry's family — exactly one predicate key, plus the keys that family admits. */
-function selectFamily(entry: RawEntry, location: string): (typeof PREDICATE_KEYS)[number] {
-  const predicates = PREDICATE_KEYS.filter((key) => entry[key] !== undefined);
-  if (predicates.length !== 1) {
-    throw new ConfigValidationError(
-      `${location} must have exactly one predicate key ` +
-        `(forbidCommand | requirePrecedent | declare)`,
-    );
-  }
-  const predicate = predicates[0];
-  if (
-    !SCOPED_PREDICATE_KEYS.has(predicate) &&
-    (entry.in !== undefined || entry.except !== undefined)
-  ) {
-    throw new ConfigValidationError(
-      `${location} allows in/except only on a requirePrecedent entry`,
-    );
-  }
-  // `when` is the context family's trigger; on any other family it would be dead data
-  // implying a trigger that is never applied.
-  if (entry.when !== undefined && predicate !== 'requirePrecedent') {
-    throw new ConfigValidationError(`${location} allows when only on a requirePrecedent entry`);
-  }
-  if (entry.in !== undefined && !isValidGlob(entry.in)) {
-    throw new ConfigValidationError(`${location} in must be a non-empty glob or glob array`);
-  }
-  if (entry.except !== undefined && !isValidGlob(entry.except)) {
-    throw new ConfigValidationError(`${location} except must be a non-empty glob or glob array`);
-  }
-  return predicate;
-}
-
-function validateForbidCommand(entry: RawEntry, location: string): void {
-  if (typeof entry.forbidCommand !== 'string') {
-    throw new ConfigValidationError(`${location} forbidCommand must be a string pattern`);
-  }
-  if (entry.forbidCommand.length === 0) {
-    // An empty pattern matches every command line — one typo would block every
-    // shell call the entry sees.
-    throw new ConfigValidationError(`${location} forbidCommand must be a non-empty string pattern`);
-  }
-  rejectUncompilableRegex(entry.forbidCommand, `${location} forbidCommand`);
-}
-
-function validateContextEntry(entry: RawEntry, location: string): void {
-  if (entry.when !== undefined) {
-    if (typeof entry.when !== 'string') {
-      throw new ConfigValidationError(`${location} when must be a string pattern`);
-    }
-    if (entry.when.length === 0) {
-      // An empty pattern matches at every position, so the trigger would fire on any
-      // file that merely grows — reject it like every sibling pattern field.
-      throw new ConfigValidationError(`${location} when must be a non-empty string pattern`);
-    }
-    rejectUncompilableRegex(entry.when, `${location} when`);
-  }
-  validateRequirePrecedent(entry.requirePrecedent, location);
-}
-
-/**
- * Validate a declaration-family entry by delegating the block to the algebra validator.
+ * Validate a judged entry's declaration by delegating the block to the algebra validator.
  *
  * The entry's `id` supplies the declaration's name, so the block carrying its own
  * `discipline` is refused rather than silently overwritten. The delegated messages arrive
@@ -414,16 +265,6 @@ function validateDeclareEntry(entry: RawEntry, location: string): void {
   }
   validateAlgebraDeclaration({ discipline: entry.id, ...block }, `${location} declare`);
 }
-
-/** One validator per family, keyed by the predicate that selects the family. */
-const PREDICATE_VALIDATORS: Record<
-  (typeof PREDICATE_KEYS)[number],
-  (entry: RawEntry, location: string) => void
-> = {
-  forbidCommand: validateForbidCommand,
-  requirePrecedent: validateContextEntry,
-  declare: validateDeclareEntry,
-};
 
 /**
  * Validate the `disciplines` array and split judged entries from drafts. Throws
@@ -467,10 +308,8 @@ function validateDisciplines(disciplines: unknown): {
       return;
     }
 
-    rejectRemovedPredicates(entry, location);
     validateEntryHead(entry, location);
-    const predicate = selectFamily(entry, location);
-    PREDICATE_VALIDATORS[predicate](entry, location);
+    validateDeclareEntry(entry, location);
     judged.push(entry as DisciplineEntry);
   });
 

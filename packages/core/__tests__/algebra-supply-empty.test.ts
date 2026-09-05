@@ -95,15 +95,13 @@ describe('JSON schema mirror — the entry families and the supply value', () =>
     return branches.flatMap((branch) => branch.required ?? []);
   }
 
-  it('the disciplines oneOf carries no `forbid` and no `immutable` branch, and keeps the other three', () => {
+  it('the disciplines oneOf carries no `forbid` and no `immutable` branch, and keeps declare', () => {
     // A schema branch left behind keeps the IDE green on an entry the runtime refuses.
     const required = requiredKeysAcrossBranches();
 
     expect(required).not.toContain('forbid');
     expect(required).not.toContain('immutable');
-    expect(required).toEqual(
-      expect.arrayContaining(['declare', 'forbidCommand', 'requirePrecedent']),
-    );
+    expect(required).toEqual(expect.arrayContaining(['declare']));
   });
 
   it('an entry carrying `forbid` or `immutable` is refused by defineConfig AND by ajv', () => {

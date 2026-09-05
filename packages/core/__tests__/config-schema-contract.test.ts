@@ -49,19 +49,13 @@ const VALID_CONFIGS: readonly unknown[] = [
     },
     telemetry: {},
   },
-  // One entry per predicate family.
+  // A judged entry beside its optional why.
   {
     ...validLanguages,
     disciplines: [
       {
-        id: 'vocabulary',
-        why: 'ban new control-framing vocabulary',
-        in: ['packages/core/src/**'],
-        except: 'packages/core/src/legacy/**',
-        requirePrecedent: { command: 'npm view ' },
-      },
-      {
         id: 'no-banned',
+        why: 'ban new control-framing vocabulary',
         declare: {
           mechanism: 'added-only',
           scope: { source: 'target.path', include: ['^src/'] },
@@ -84,7 +78,6 @@ const VALID_CONFIGS: readonly unknown[] = [
           ],
         },
       },
-      { id: 'hooks-armed', forbidCommand: 'LEFTHOOK=(0|false)\\b' },
     ],
   },
   // A top-level `$schema` string (the IDE reference) must be accepted by both sides. The
@@ -188,10 +181,6 @@ const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: [{ id: 'added-number', forbid: { added: 1 } }] },
   { ...validLanguages, disciplines: [{ id: 'empty-forbid', forbid: {} }] },
   { ...validLanguages, disciplines: [{ id: 'immutable-with-in', immutable: 'y/**', in: 'z/**' }] },
-  {
-    ...validLanguages,
-    disciplines: [{ id: 'command-with-except', forbidCommand: 'x', except: 'z/**' }],
-  },
   // The two entries are byte-identical on purpose: JSON Schema cannot express by-key
   // uniqueness, so the schema side can only reject this through `uniqueItems` while
   // defineConfig rejects by duplicate id. Differing bodies would leave the schema silent.
@@ -211,7 +200,6 @@ const INVALID_CONFIGS: readonly unknown[] = [
   { ...validLanguages, disciplines: [{ id: 7, forbid: 'a' }] },
   // Non-compilable regexes; the schema side catches these through `format: regex`.
   { ...validLanguages, disciplines: [{ id: 'bad-forbid-re', forbid: '(' }] },
-  { ...validLanguages, disciplines: [{ id: 'bad-cmd-re', forbidCommand: '(' }] },
   { ...validLanguages, disciplines: { id: 'x', forbid: 'a' } },
   { ...validLanguages, disciplines: ['not-an-object'] },
   // A scalar and an array are both plausible witness mistakes, and an array is typeof

@@ -28,7 +28,7 @@ const DISCIPLINE_SCOPE_RE = '^lib/.*\\.ts$';
 
 /** A discipline whose evidence this surface cannot speak — it compiles to a body-less skip. */
 const PRECEDENT_ID = 'needs-precedent';
-const PRECEDENT_TOOL = 'WebFetch';
+const SESSION = 'session';
 
 let repo: CheckRepo;
 let repoRoot: string;
@@ -99,14 +99,32 @@ function stageCleanScopedChange(enforce: string): void {
 }
 
 /**
- * Stage a scoped change under a config whose ONLY discipline is a requirePrecedent entry.
- * This surface injects neither a transcript nor an evaluator, so that entry always compiles
- * to a skip carrying no body: one `skipped` row, identical at both enforce levels.
+ * Stage a scoped change under a config whose ONLY discipline reads the session. This surface
+ * injects no transcript, and the declaration's own `supply: pass` disposes of the absence:
+ * one `skipped` row, identical at both enforce levels.
  */
 function stagePrecedentScopedChange(enforce: string): void {
   writeConfig({
     disciplines: [
-      { id: PRECEDENT_ID, requirePrecedent: { tool: PRECEDENT_TOOL }, in: DISCIPLINE_SCOPE },
+      {
+        id: PRECEDENT_ID,
+        declare: {
+          mechanism: 'precedent',
+          scope: { source: 'target.path', include: [DISCIPLINE_SCOPE_RE] },
+          sources: { [SESSION]: { transcript: true } },
+          supply: { [SESSION]: 'pass' },
+          extract: {
+            calls: [{ op: 'source', of: SESSION }, { op: 'toolUses' }],
+          },
+          relate: [
+            {
+              id: 'any-call',
+              relation: { op: 'nonEmpty', of: 'calls' },
+              message: 'no session call precedes this edit',
+            },
+          ],
+        },
+      },
     ],
     adapters: { git: { enforce } },
   });

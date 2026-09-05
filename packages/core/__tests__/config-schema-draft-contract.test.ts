@@ -21,11 +21,23 @@ const VALID_CONFIGS: readonly unknown[] = [
   withDisciplines([
     { id: 'bilingual-docs-sync', why: 'keep the en and ko doc mirrors in sync', draft: true },
   ]),
-  // A mixed array: the draft branch must coexist with the judged branches inside one array.
+  // A mixed array: the draft branch must coexist with the judged branch inside one array.
   withDisciplines([
-    { id: 'no-todo', forbidCommand: 'TODO' },
+    {
+      id: 'no-todo',
+      declare: {
+        mechanism: 'naming',
+        scope: { source: 'target.path', include: ['\\.db$'] },
+        extract: {
+          outside: [
+            { op: 'source', of: 'target.path' },
+            { op: 'matches', re: '^(?!store/)' },
+          ],
+        },
+        relate: [{ id: 'placed', relation: { op: 'empty', of: 'outside' }, message: 'm' }],
+      },
+    },
     { id: 'bilingual-docs-sync', why: 'keep the en and ko doc mirrors in sync', draft: true },
-    { id: 'changelog-precedent', requirePrecedent: { command: 'npm view ' } },
   ]),
 ];
 
@@ -41,7 +53,7 @@ const INVALID_CONFIGS: readonly unknown[] = [
   // One fixture covers the whole closed-key-set gate: `additionalProperties: false` rejects
   // every extra key by the same mechanism, so sibling keys would re-test one gate. The
   // per-key axis, where the validator branches differ, is in config-disciplines-draft.test.ts.
-  withDisciplines([{ id: 'draft-with-command', why: 'w', draft: true, forbidCommand: 'x' }]),
+  withDisciplines([{ id: 'draft-with-enforce', why: 'w', draft: true, enforce: 'block' }]),
   // draft literal: only `true` exists
   // draft: false — dead data synonymous with absence.
   withDisciplines([{ id: 'dead-draft-false', why: 'w', draft: false }]),

@@ -29,29 +29,21 @@ telemetry.
   consulted only after a verdict blocked: the judge always runs, and only a real block can be
   witnessed open. AI-synthesized messages do not qualify, expiry re-blocks, and every witnessed
   pass is measured as `witnessed`.
-- **Delta layer** — pure new-violation-only judgment over a file's before/after pair:
-  pre-existing debt is forgiven, and only the matches an edit adds break the covenant. This is
-  the execution base the context family's `when` trigger builds on.
 - **Standard discipline library** — config `disciplines:` entries become enforcement without a
-  line of code: `forbidCommand` (command family — a content predicate
-  that routes commands mentioning *no* protected path, closing the path-mention routing gap), and
-  `requirePrecedent` (context family — see below), and `declare` (declaration family — an
-  algebra declaration the engine below judges, each file change supplied as one world). One
-  entry compiles into one registration:
-  per-discipline telemetry labels, a generic judged body, and the same witness seam.
-- **Context family (`requirePrecedent`)** — the one predicate whose subject is not the mutation
-  but the *session history*: the change itself is legitimate, and what breaks the covenant is
-  arriving without the procedure that should have preceded it. Evidence is evaluated at assembly
-  time and bound into the judge thunk — handing the judge a transcript path would leak adapter
-  knowledge into the covenant package. The compiler evaluates the `command` vocabulary itself and
-  delegates every other key to an injected adapter evaluator. Routing is by trigger match alone,
-  so a triggered entry runs its judge and records `passed` even when the evidence was there —
+  line of code: every judged entry is a `declare` block, an algebra declaration the engine below
+  judges. Each observation is supplied as one world — a file change under its path, or a shell
+  call that changes no file under the subject `-` with its command line as the fixed source
+  `command`. One entry compiles into one registration: per-discipline telemetry labels, a
+  generic judged body, and the same witness seam. A declaration that binds the session's
+  transcript (`precedent`, `phase-order`, `turn-locality`, `stated-ground`) reads the history
+  the surface injects, flattened into a plain snapshot at supply time; routing is by scope alone,
+  so an admitted call runs its judge and records `passed` even when the evidence was there —
   that the gate checked at all is worth measuring.
-- **Unjudgeable is a third result, not a failure** — evidence evaluation answers found, missing,
-  or *unjudgeable*: no session to read, an unreadable one, a key no evaluator recognizes, no
-  evaluator injected, or command evidence with no shell surface. An unjudgeable entry compiles to
-  a **skip registration** — routing intact, no body — and a match records one `skipped` instead
-  of judging. A pattern that does not compile skips the same way, in all four families. Assembly
+- **Unjudgeable is a third result, not a failure** — a declaration the compiler cannot resolve
+  (a step outside the registry, an argument outside a step's keys, a mechanism whose shape the
+  syntax does not fit) compiles to a **skip registration** — routing intact, no body — and a
+  match records one `skipped` instead of judging; a source the world lacks is the declaration's
+  own `supply` policy's to dispose of. Assembly
   therefore never throws: one unresolvable entry cannot take down its siblings, both
   meta-covenants, and the witness valve, which would leave no way to fix the config that caused
   it. A configuration fault names itself on stderr; an absent session stays quiet.

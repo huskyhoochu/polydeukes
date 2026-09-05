@@ -177,11 +177,11 @@ Three things to know about this surface:
   protected change stops at a prompt only a human at a terminal can answer. Configure your
   hook runner so it does not swallow that prompt (lefthook needs `interactive: true`).
 - **Declarations judge here.** A staged diff carries file changes and nothing else, so
-  protection lists and every `declare` entry over the change judge in full. A
-  command-family entry (`forbidCommand`) has no command line to read in a staged diff and
-  is not assembled on this surface, and a context-family entry
-  (`requirePrecedent`) is recorded as `skipped` — declare those two where an AI partner's
-  session exists to be judged.
+  protection lists and every `declare` entry over the change judge in full. A declaration
+  scoped on `command` has no command line to read in a staged diff and observes nothing on
+  this surface, and a declaration that reads the session (`precedent` and the other history
+  mechanisms) is recorded as `skipped` — declare those where an AI partner's session exists
+  to be judged.
 - **The commit surface has its own additive scope.** Paths that are fine to edit freely
   but whose promotion into history deserves a judged checkpoint go under the adapter
   namespace, judged on top of the shared list:

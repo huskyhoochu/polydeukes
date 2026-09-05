@@ -45,17 +45,11 @@ a fifth field is a family runtime skip and reads back with no reason.
 
 ## Discipline families — key → family
 
-A `disciplines:` entry belongs to exactly one family, decided by which predicate key it
-carries.
-
-| Family | Key | Evidence |
-|--------|-----|---------|
-| **command** | `forbidCommand` | The command line itself; no file evidence. |
-| **context** | `requirePrecedent` | Session history; without a transcript channel the entry records `skipped`. |
-| **declaration** | `declare` | One algebra declaration over each file change as a world; its `scope` block is its scope, no `in`/`except`/`when`. |
-
-`when` is a trigger, not a family — it narrows a `requirePrecedent` entry and combines with
-nothing else.
+A `disciplines:` entry is one `declare` block (or a `draft`). What its sources bind decides
+the evidence the judgment needs: the fixed names read the change, the fixed name `command`
+reads the shell call's command line (a shell call that changes no file is one world of its
+own, subject `-`), and a `{ transcript: true }` binding reads the session history; without a
+transcript channel such an entry records `skipped` by its own `supply: pass`.
 
 ## Surfaces, axes, meta-covenants
 
@@ -79,16 +73,18 @@ is a closed enumeration whose single source is the `as const` tuple in that modu
 outside a closed list is rejected by validation, never coerced.
 
 - **Declaration blocks** — six keys: **`scope`** (a source name plus constant regex lists),
-  **`sources`** (bindings outside the fixed five — `{ name: { file: '<repo-relative path>' } }`,
+  **`sources`** (bindings outside the fixed six — `{ name: { file: '<repo-relative path>' } }`,
   `{ name: { sidecar: true } }` or `{ name: { transcript: true } }`; the kind position is closed
   to `file` · `sidecar` · `transcript`, and a sidecar or transcript binding's value is the marker
-  `true`, never a path), **`supply`** (keys must name one of the fixed five or one of the
+  `true`, never a path), **`supply`** (keys must name one of the fixed six or one of the
   declaration's own `sources`; values `error` | `pass` | `empty` — `empty` reads an absent single
   source as an empty item list and never applies to `state`), **`extract`**, **`relate`**,
   **`witness`** (its own `extract` + `relate`, same grammar; it sees the body's extract names,
   the body never sees its). `mechanism` is required; there is no `axis` key.
-- **Fixed source names** — five per world: `target.path` · `pre` · `post` · `state`
-  (`{ pre, post }`, modifications only) · `changes` (the observation unit's change set). A side
+- **Fixed source names** — six per world: `target.path` · `pre` · `post` · `state`
+  (`{ pre, post }`, modifications only) · `changes` (the observation unit's change set) ·
+  `command` (the shell call's command line; a shell call that changes no file is one world of
+  its own at subject `-`, admitted only by a scope that does not name `target.path`). A side
   the change lacks is an absent key — the declaration's `supply` policy, never the host, says
   what that means.
 - **Supply layer** — `planSources` · `supplySources` in the covenant package fill the IR's
@@ -109,12 +105,13 @@ outside a closed list is rejected by validation, never coerced.
   both ways, `implies ≡ subset` of key projections, `unchanged ≡ equal` over shared keys); the
   expansion is engine-internal. camelCase like every other position; the capitalised research
   spelling is refused.
-- **Mechanism catalogue** — seventeen names in `packages/core/src/catalogue.ts`: `pairing` ·
+- **Mechanism catalogue** — eighteen names in `packages/core/src/catalogue.ts`: `pairing` ·
   `companion` · `monotonic-order` · `fingerprint-sync` · `producer-owned` · `self-absolution-ban`
   · `actor-scope` · `precedent` · `phase-order` · `turn-locality` · `stated-ground` ·
   `controlled-vocabulary` · `naming` · `added-only` · `one-way-marker` · `delegated-scope` ·
-  `scoped-valve`. Structural markers: `scoped-valve` needs a `witness` block, `naming` scopes on
-  `target.path`, `delegated-scope` is reserved for the definition-time milestone. The derived
+  `scoped-valve` · `forbidden-command`. Structural markers: `scoped-valve` needs a `witness`
+  block, `naming` scopes on `target.path`, `forbidden-command` scopes on `command`,
+  `delegated-scope` is reserved for the definition-time milestone. The derived
   shape is read from syntax alone (every `source` step's name gives an axis, every relate
   entry's `op` a relation) and must be a subset of the spec; a `source` name neither fixed nor
   bound is refused, so the empty shape never satisfies an axis-restricted name.
