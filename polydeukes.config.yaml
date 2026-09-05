@@ -203,7 +203,7 @@ disciplines:
     why: 'a release heading is a record: once CHANGELOG carries a version it never loses it. release-please prepends, a hand edit may fix a line, and neither removes a heading.'
     declare:
       mechanism: 'one-way-marker'
-      scope: { source: 'target.path', include: ['^CHANGELOG(\.ko)?\.md$'] }
+      scope: { source: 'target.path', include: ['^CHANGELOG\.md$'] }
       supply: { pre: 'empty', post: 'empty' }
       extract:
         before:
@@ -330,7 +330,7 @@ disciplines:
       scope:
         source: 'target.path'
         include: ['\.md$']
-        exclude: ['^\.claude/', '^CLAUDE(\.ko)?\.md$', '^CHANGELOG(\.ko)?\.md$', '^CONTEXT\.md$']
+        exclude: ['^\.claude/', '^CLAUDE(\.ko)?\.md$', '^CHANGELOG\.md$', '^CONTEXT\.md$']
       extract:
         en:
           - { op: 'source', of: 'target.path' }
