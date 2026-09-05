@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 // `defineConfig(unknown)` accepts an optional top-level `disciplines: DisciplineEntry[]`.
-// Exactly one predicate key per entry (forbid | immutable | forbidCommand); `in`/`except`
-// only on forbid entries; ids unique and non-empty; regex strings must be compilable;
-// unknown keys rejected. Every failure throws ConfigValidationError with a field path
-// naming the offending entry or key, and validated data passes through to
-// ResolvedConfig.disciplines verbatim.
+// An entry is one `declare` block or a `draft`; ids unique and non-empty; regex strings
+// must be compilable; unknown keys rejected. Every failure throws ConfigValidationError
+// with a field path naming the offending entry or key, and validated data passes through
+// to ResolvedConfig.disciplines verbatim.
 import { ConfigValidationError, defineConfig } from '../src/config.ts';
 
-// The banned-vocabulary literal appears only inside a discipline's forbid pattern string,
-// where it is the discipline data under test. testCmd bodies are deliberately fake
-// (`fake-runner`) because the core never runs the command it carries.
+// testCmd bodies are deliberately fake (`fake-runner`) because the core never runs the
+// command it carries.
 
 const baseConfig = {
   languages: {
@@ -153,9 +151,7 @@ describe('defineConfig disciplines — algebra blocks are not entry keys', () =>
     // Opening the entry to `extract` without a judgment path would register a discipline
     // nothing judges — a fail-open entry that reads as armed.
     const error = expectConfigValidationError(
-      withDisciplines([
-        { id: 'has-extract', forbid: 'x', extract: { a: [{ op: 'source', of: 'pre' }] } },
-      ]),
+      withDisciplines([{ id: 'has-extract', extract: { a: [{ op: 'source', of: 'pre' }] } }]),
     );
 
     expect(error.message).toContain('extract');
@@ -168,7 +164,6 @@ describe('defineConfig disciplines — algebra blocks are not entry keys', () =>
       withDisciplines([
         {
           id: 'has-relate',
-          forbid: 'x',
           relate: [{ id: 'r', relation: { op: 'empty', of: 'a' }, message: 'm' }],
         },
       ]),

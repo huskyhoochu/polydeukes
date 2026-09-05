@@ -127,18 +127,21 @@ describe('sessionChannelReader — the sidecar kind', () => {
     expect(JSON.parse(text as string)).toEqual([WRITER_META]);
   });
 
-  it('throws on a permission refusal — never absence', () => {
-    // The same fail direction the file readers pin: folding a refusal into absence lets a
-    // `supply: pass` declaration skip a channel the root could not read, with no
-    // fail-closed row saying so.
-    writeMeta('agent-001.meta.json', JSON.stringify(WRITER_META));
-    chmodSync(subagentsDir, 0o000);
-    try {
-      expect(() => sessionChannelReader({ transcriptPath })(SIDECAR)).toThrow();
-    } finally {
-      chmodSync(subagentsDir, 0o700);
-    }
-  });
+  it.skipIf(typeof process.getuid === 'function' && process.getuid() === 0)(
+    'throws on a permission refusal — never absence',
+    () => {
+      // The same fail direction the file readers pin: folding a refusal into absence lets a
+      // `supply: pass` declaration skip a channel the root could not read, with no
+      // fail-closed row saying so. Skipped as root, which no mode can refuse.
+      writeMeta('agent-001.meta.json', JSON.stringify(WRITER_META));
+      chmodSync(subagentsDir, 0o000);
+      try {
+        expect(() => sessionChannelReader({ transcriptPath })(SIDECAR)).toThrow();
+      } finally {
+        chmodSync(subagentsDir, 0o700);
+      }
+    },
+  );
 
   it('answers undefined for a kind it does not carry', () => {
     // The kind universe is the caller's plan; a reader that answers the sidecar text for
