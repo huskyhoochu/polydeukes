@@ -1,3 +1,8 @@
+/**
+ * Public Markdown checker: bilingual pairs, local links and anchors, and `docs/catalog.json`
+ * coverage. Runs on the repository root by default (`--root` overrides). Exit 1 on any error,
+ * 2 on bad usage. No dependencies, so it runs before a build.
+ */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +15,7 @@ if (args.length !== 0 && (args.length !== 2 || args[0] !== '--root')) {
 const root = resolve(args[1] ?? join(dirname(fileURLToPath(import.meta.url)), '..'));
 const errors = [];
 const files = [];
+/** Recursively gathers `.md` files under `directory`; missing directories are skipped. */
 function collect(directory) {
   if (!existsSync(directory)) return;
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -32,6 +38,7 @@ if (existsSync(join(root, 'packages'))) {
 }
 if (files.length === 0) errors.push('No public Markdown files found');
 
+/** Strips HTML comments and fenced code blocks so links inside them are not checked. */
 function prose(markdown) {
   let fence;
   return markdown
@@ -54,6 +61,7 @@ function prose(markdown) {
     .join('\n');
 }
 
+/** Replaces each balanced inline code span with a single space. */
 function stripInlineCode(text) {
   let result = '';
   let i = 0;
@@ -91,10 +99,13 @@ function stripInlineCode(text) {
   return result;
 }
 
+/** Relative path with `/` separators, for stable error messages across platforms. */
 function posixRelative(from, to) {
   return relative(from, to).split(sep).join('/');
 }
 
+// Pass 1: collect anchors per file (explicit `<a id>` plus GitHub-style heading slugs) and
+// require the `.md` / `.ko.md` sibling.
 const texts = new Map(files.map((file) => [file, prose(readFileSync(file, 'utf8'))]));
 const anchors = new Map();
 const explicitAnchors = new Map();
@@ -128,6 +139,7 @@ for (const [file, text] of texts) {
       `${posixRelative(root, file)}: missing language pair ${posixRelative(root, sibling)}`,
     );
 }
+// Pass 2: resolve local link destinations and fragments.
 // Declared limit: CommonMark autolinks, images, and HTML hrefs are not extracted.
 for (const [file, text] of texts) {
   const linkable = stripInlineCode(text);
@@ -154,6 +166,8 @@ for (const [file, text] of texts) {
   }
 }
 
+// Pass 3: every file under `docs/` is listed in the catalog, every catalog path exists, and
+// every topic `sectionId` is an explicit anchor in both languages.
 const catalogPath = join(root, 'docs', 'catalog.json');
 if (existsSync(catalogPath)) {
   let catalog;
