@@ -91,7 +91,7 @@ beforeAll(() => {
   }
 
   // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella arrives as
-  // a direct file: dependency; the four scoped packages arrive through pnpm.overrides
+  // a direct file: dependency; the scoped packages arrive through pnpm.overrides
   // pointing at their tarballs — the rewritten `^` ranges in the umbrella's packed manifest
   // would otherwise resolve from the registry, where the published 0.3.0 answers them with
   // a judge that predates the exports this build's hook imports.
@@ -343,6 +343,42 @@ describe('the witness valve spawns live in the generated tree', () => {
   }, 60_000);
 });
 
+/**
+ * Evaluate one ESM snippet with the consumer root as its resolution base — the import a
+ * consumer's own code would make, through the tarball install's exports map alone.
+ */
+function evalInConsumer(source: string): SpawnSyncReturns<string> {
+  return spawnSync(process.execPath, ['--input-type=module', '-e', source], {
+    cwd: consumerRoot,
+    encoding: 'utf-8',
+  });
+}
+
+describe('the umbrella has no barrel entry point', () => {
+  // A `.` entry left in the packed manifest (or `main` still answering for it) serves a
+  // barrel the contract no longer lists; the error code pins that resolution refused,
+  // rather than resolved to a file that then failed to load.
+  it("import('polydeukes') is refused with ERR_PACKAGE_PATH_NOT_EXPORTED", () => {
+    const result = evalInConsumer(
+      "console.log(await import('polydeukes').then(() => 'resolved', (error) => error.code));",
+    );
+
+    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+    expect(result.stdout.trim()).toBe('ERR_PACKAGE_PATH_NOT_EXPORTED');
+  }, 60_000);
+
+  // The subpath the delegator imports must keep resolving through the same map that
+  // refuses `.`; a map rewritten to drop `.` by dropping the whole block strands the hook.
+  it("import('polydeukes/claude-code') resolves and carries the hook verb", () => {
+    const result = evalInConsumer(
+      "const m = await import('polydeukes/claude-code'); console.log(typeof m.runClaudeCodeHook);",
+    );
+
+    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+    expect(result.stdout.trim()).toBe('function');
+  }, 60_000);
+});
+
 describe('the core schema resolves from the installed tree', () => {
   it('the schema subpath resolves through the real pnpm layout and the file exists', () => {
     // In a real pnpm layout only direct dependencies surface in the consumer's
@@ -460,26 +496,26 @@ describe('the bundled docs answer from the installed tree', () => {
     expect(result.stderr).toContain('nonexistent-topic');
   }, 60_000);
 
-  it('answers even when the packages only the commit surface needs are gone', () => {
+  it('answers even when the vocabulary package the judge imports is gone', () => {
     // The bootstrap direction: `pdks docs install` is what an agent runs to find out how to
     // install and build, so it has to answer in a tree where the build has not happened.
-    // `runCovenantCheck` imported at the top of bin.ts would make the git adapter, the
-    // core, and the judge all resolve before argv is even read, because ESM imports are
-    // eager, and this query would die at node's exit 1 with a module-resolution stack trace
-    // instead of the documented 0 or 2. Moving the package aside reproduces the unbuilt or
-    // pruned tree without needing one.
+    // `runCovenantCheck` imported at the top of bin.ts would make the core and the folded
+    // judge resolve before argv is even read, because ESM imports are eager, and this
+    // query would die at node's exit 1 with a module-resolution stack trace instead of
+    // the documented 0 or 2. Moving the package aside reproduces the unbuilt or pruned
+    // tree without needing one.
     // Resolved through the umbrella's own realpath, never the consumer root: under pnpm the
     // scoped packages are transitive and never surface at the top level, so they live
     // beside the umbrella inside the store.
     const umbrellaDir = dirname(
       realpathSync(join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json')),
     );
-    const adapterDir = join(dirname(umbrellaDir), '@polydeukes', 'covenant');
-    if (!existsSync(adapterDir)) {
-      throw new Error(`the layout this case moves aside is not where it expected: ${adapterDir}`);
+    const coreDir = join(dirname(umbrellaDir), '@polydeukes', 'core');
+    if (!existsSync(coreDir)) {
+      throw new Error(`the layout this case moves aside is not where it expected: ${coreDir}`);
     }
-    const stashed = join(packRoot, 'covenant-stashed');
-    renameSync(adapterDir, stashed);
+    const stashed = join(packRoot, 'core-stashed');
+    renameSync(coreDir, stashed);
     try {
       const result = spawnDocs('install');
 
@@ -487,7 +523,7 @@ describe('the bundled docs answer from the installed tree', () => {
       expect(result.stdout).toContain('# Install and get your first judgment');
     } finally {
       // Restored for the cases below, which spawn the same tree.
-      renameSync(stashed, adapterDir);
+      renameSync(stashed, coreDir);
     }
   }, 60_000);
 
@@ -505,7 +541,7 @@ describe('the bundled docs answer from the installed tree', () => {
     );
     const configPath = join(consumerRoot, CONFIG_REL);
     const savedConfig = readFileSync(configPath);
-    const dependencies = ['core', 'covenant', 'adapter-claude-code'];
+    const dependencies = ['core', 'adapter-claude-code'];
     const moved: [string, string][] = [];
     const offline = join(packRoot, 'offline-docs.mjs');
     writeFileSync(

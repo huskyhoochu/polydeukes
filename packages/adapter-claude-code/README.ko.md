@@ -38,4 +38,4 @@ const outcome = await runAdapterPath({
 - [`@polydeukes/adapter-claude-code` 패키지
 레퍼런스](../../docs/reference/packages/adapter-claude-code.ko.md)
 - [`polydeukes/claude-code`](../../docs/reference/packages/polydeukes.ko.md#polydeukes-entry-points)
-- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.ko.md)
+- [판정기(`covenant` 모듈)](../../docs/reference/packages/polydeukes.ko.md#covenant-module)

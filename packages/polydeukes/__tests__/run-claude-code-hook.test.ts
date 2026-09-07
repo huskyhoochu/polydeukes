@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The session surface's assembled entry point, the counterpart of runCovenantCheck on
 // the commit surface.
 //
-//   runClaudeCodeHook({ repoRoot, rawPayload?, telemetryPath?, covenantDist? })
+//   runClaudeCodeHook({ repoRoot, rawPayload?, telemetryPath?, covenant? })
 //     : Promise<{ exitCode: 0 | 2 }>
 //   - NEVER throws: every failure branch translates to { exitCode: 2 } inside, and a
 //     failure leaves one blocked row at the telemetry path the run already knows. For a
@@ -15,9 +15,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //     cannot escape as a rejection either. Asserted via .resolves, because an async
 //     not.toThrow is a no-op.
 //   - rawPayload absent means read fd 0; every case here injects it.
-//   - the judge bodies resolve through the REAL covenant package dist even though this
-//     suite's vitest alias maps @polydeukes/covenant to source, so the covenantDist seam
-//     is the only way a test can take a body away.
+//   - `covenant` absent means the statically imported judge module; every case here
+//     leaves it absent, so what answers is the real judge.
 //
 // Each test builds a throwaway repoRoot and writes its own tmp config, so no protected
 // path of THIS repository is ever referenced. Payloads deliberately omit transcript_path:
@@ -27,8 +26,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
-  distWithout as sharedDistWithout,
   telemetryRows,
+  unjudgeableSelfModCovenant,
   writeConfigAt,
 } from './helpers.ts';
 
@@ -42,8 +41,6 @@ const PROTECTED_FILE = 'gate/inner.txt';
 const FAIL_CLOSED_LABEL = 'hook';
 /** The label runAdapterPath records under — the funnel supplement and payload faults. */
 const ADAPTER_LABEL = 'adapter-claude-code';
-/** A library module the covenant barrel imports eagerly — absent, the import throws. */
-const BARREL_MODULE = 'self-mod.js';
 /** A discipline whose evidence this run cannot read — it compiles to a body-less skip. */
 const CHANGE_SET_ID = 'needs-the-whole-change-set';
 const DISCIPLINE_SCOPE = 'lib/**/*.ts';
@@ -56,12 +53,6 @@ let telemetryPath: string;
 /** Minimal valid config (languages is required) plus the caller's extra keys. */
 function writeConfig(extra: Record<string, unknown>): void {
   writeConfigAt(repoRoot, telemetryPath, extra, DISCIPLINE_SCOPE);
-}
-
-/** This suite's dist fixtures, all rooted at the current throwaway directory. `null` omits
- * nothing: the complete mirror, which must judge exactly as the real build. */
-function distWithout(moduleFileName: string | null): string {
-  return sharedDistWithout(repoRoot, moduleFileName);
 }
 
 /**
@@ -197,24 +188,32 @@ describe('runClaudeCodeHook — every failure resolves to exit 2, recorded', () 
       ['passed', ADAPTER_LABEL],
     ]);
   });
+});
 
-  it('resolves { exitCode: 2 } and records ONE hook blocked row when the covenant dist is missing a barrel module', async () => {
-    // The payload touches NO protected path on purpose: an assembly that dropped the
-    // existence proof, or ignored the covenantDist seam and resolved the real build,
-    // would dispatch, match nothing, and answer exit 0 with an adapter passed row. Only
-    // the fail-closed label proves the assembly stopped before judging.
+describe('the injected judge module is what answers', () => {
+  it('a self-mod judge that cannot judge lands blocked (exit 2), never advised', async () => {
+    // The seam: the root must assemble with the module it was handed. The dispatcher runs
+    // every matched registration with no short-circuit, so shell-mod still lands its own
+    // passed row beside the block; what this case pins is that the unjudgeable body's
+    // outcome is the ONE blocked row and lands under self-mod, never softened to
+    // `advised` — the fail-open hole.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
+    const target = join(repoRoot, PROTECTED_FILE);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, 'locked: yes\n');
 
     await expect(
       runClaudeCodeHook({
         repoRoot,
-        rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
+        rawPayload: editPayload(target),
         telemetryPath,
-        covenantDist: distWithout(BARREL_MODULE),
+        covenant: unjudgeableSelfModCovenant(),
       }),
     ).resolves.toEqual({ exitCode: 2 });
 
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['blocked', FAIL_CLOSED_LABEL, '-']]);
+    const blocked = rows().filter(([event]) => event === 'blocked');
+    expect(blocked).toEqual([['blocked', 'self-mod', PROTECTED_ENTRY]]);
+    expect(rows().filter(([event]) => event === 'advised')).toEqual([]);
   });
 });
 
@@ -263,9 +262,7 @@ describe('parity shape — the assembled session judgment', () => {
 
 // The over-blocking direction: a body this run never registers is not required to be
 // present, or an ordinary config shape turns into a lockout that sends people to the
-// witness. runClaudeCodeHook resolves the covenant package through createRequire from the
-// REAL umbrella location, so a fixture tree cannot redirect that resolution and the
-// covenantDist seam is where these cases live.
+// witness.
 
 describe('a registration this run never composes costs it nothing', () => {
   it('a payload carrying NO transcript composes no transcript-mod registration (exit 0)', async () => {
@@ -279,25 +276,6 @@ describe('a registration this run never composes costs it nothing', () => {
       repoRoot,
       rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
       telemetryPath,
-      covenantDist: distWithout(null),
-    });
-
-    expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
-  });
-
-  it('a config declaring NO disciplines still judges and still compiles the backstop (exit 0)', async () => {
-    // Zero entries still compile the body-less shell-unjudgeable backstop, but nothing
-    // composes the discipline body's path, so its absence is not this run's concern.
-    // Demanding it would close every call in a repository that simply declares no
-    // disciplines — the ordinary config shape.
-    writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
-
-    const result = await runClaudeCodeHook({
-      repoRoot,
-      rawPayload: writePayload(join(repoRoot, 'notes/ordinary.txt')),
-      telemetryPath,
-      covenantDist: distWithout(null),
     });
 
     expect(result.exitCode).toBe(0);
@@ -339,7 +317,6 @@ describe('a registration this run never composes costs it nothing', () => {
       repoRoot,
       rawPayload: writePayload(join(repoRoot, SCOPED_TARGET), 'export const y = 2;\n'),
       telemetryPath,
-      covenantDist: distWithout(null),
     });
 
     expect(result.exitCode).toBe(0);

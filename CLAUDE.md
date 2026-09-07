@@ -3,18 +3,17 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is alpha.** Four packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is alpha.** Three packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
-schema), `covenant` (the judge: Bash analysis, path-routing dispatcher, meta-covenants, TTL
-witness, discipline library, and the declaration engine — extract steps, seven relations,
-witness lists),
-`adapter-claude-code` (the session payload onto the input IR; the commit surface is a unified
-diff on stdin that the umbrella translates itself), and the `polydeukes`
-umbrella (the `pdks` bin, `loadConfig`, both surfaces' composition roots, and the disk they
-need — only the umbrella may depend sideways). The judge and the adapter take `core` as a
-`peerDependency` so one copy of the vocabulary is shared rather than duplicated; the umbrella's
-ordinary dependency is what satisfies it. `covenant` opens no file at all, and core's only file
-I/O is the telemetry log it appends every judgment to.
+schema), `adapter-claude-code` (the session payload onto the input IR; the commit surface is a
+unified diff on stdin that the umbrella translates itself), and the `polydeukes`
+umbrella (the `pdks` bin, `loadConfig`, both surfaces' composition roots, the disk they
+need — only the umbrella may depend sideways — and the judge itself as its `src/covenant/`
+module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
+library, and the declaration engine — extract steps, seven relations, witness lists). The
+adapter takes `core` as a `peerDependency` so one copy of the vocabulary is shared rather than
+duplicated; the umbrella's ordinary dependency is what satisfies it. The judge module opens no
+file at all, and core's only file I/O is the telemetry log it appends every judgment to.
 Details live in the code and the archived PRDs (the merged contracts).
 The design docs own everything not yet implemented; when a design doc and shipped code disagree,
 neither side wins by default — triage against the archived PRD: it may be a stale doc, or a code
@@ -55,12 +54,13 @@ keeps the roadmap a plan rather than a defect list.
 A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
 pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of the same
 promises. The hook is a thin delegator calling `runClaudeCodeHook` through the package's session
-subpath (the barrel is eager and would load the commit surface on every session call), so what we
+subpath (the umbrella has no `.` entry point; the session subpath and the judge module it
+loads keep the commit surface's translator and reader off the session load path), so what we
 are judged by every day is the shipped artifact itself; `pdks init claude-code` generates the same
 delegator for a consumer project, and `pdks init grok` reuses that file when it already exists.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.git/hooks`), the four packages' gitignored `dist`, and the root config. The
+`biome.json`, `.git/hooks`), the three packages' gitignored `dist`, and the root config. The
 commit surface has no list of its own and no prompt: it judges the piped diff and lands every
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
 line does not — a staged gate-file change has already passed the session surface). The
@@ -90,7 +90,12 @@ session locks.
   terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one package's dist
   rebuilt against sources the sibling dist has not seen crashes assembly on every call, and
   `pnpm build` (run by a human — the locked session cannot) clears it only if the whole tree
-  already typechecks, so gate any dist-touching command on `tsc --noEmit` first.
+  already typechecks, so gate any dist-touching command on `tsc --noEmit` first. A third shape
+  leaves a COMPLETE dist behind: a source edit that makes one member of the judge object
+  (`src/covenant/module.ts`) undefined, then a rebuild — the hook fails with
+  `covenant.<verb> is not a function` on every call. A review agent probing the seam did
+  exactly this (2026-09-07). Recovery is `git checkout -- <file> && pnpm build` in a human
+  terminal; the built module is asserted by `surface-fold-contract.test.ts` when dist exists.
 - **Rewiring the hook cuts your own valve** — the delegator and the dist it loads are two links
   of one protected chain. Verify a rewired hook against real payloads *before* relying on it,
   and never remove the current valve until the replacement is proven; otherwise recovery is a

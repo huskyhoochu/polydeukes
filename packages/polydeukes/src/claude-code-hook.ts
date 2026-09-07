@@ -2,11 +2,11 @@
  * `runClaudeCodeHook` — the assembled session-surface judgment runner.
  *
  * The session counterpart of {@link runCovenantCheck}, and the one place where the Claude
- * Code adapter (tool vocabulary, up-translation) and the covenant package (dispatcher +
- * judge bodies) meet. Packages stay one-way — each depends only on core — so their
- * composition lives here, in the umbrella, and the repository's PreToolUse hook shrinks to
- * a delegator that calls this function. That is what makes the session surface installable:
- * a consumer registers a hook that resolves this package instead of copying assembly.
+ * Code adapter (tool vocabulary, up-translation) and the judge module (dispatcher + judge
+ * bodies) meet. The adapter depends only on core, so their composition lives here, in the
+ * umbrella, and the repository's PreToolUse hook shrinks to a delegator that calls this
+ * function. That is what makes the session surface installable: a consumer registers a hook
+ * that resolves this package instead of copying assembly.
  *
  * The protection-policy data (protectedPaths / disciplines / witness) is read from the root
  * data config through {@link loadConfig}, which also attaches the config file to its own
@@ -17,11 +17,11 @@
  * `witnessed` rows are would-block only. Its defence is provenance rather than secrecy: only
  * a real human utterance carries the transcript marking `findUserMessages()` admits.
  *
- * fail-closed: ANY failure — an unbuilt judge body, an unreadable stdin, a missing or
- * invalid config file — resolves to `{ exitCode: 2 }` with one `blocked` record under the
- * `hook` label. Nothing throws: an uncaught rejection would exit the delegator non-blocking,
- * the cheapest bypass vector there is. Recovery from an unbuilt clone is `pnpm build` (it
- * mentions no protected path, so it is never blocked).
+ * fail-closed: ANY failure — an unreadable stdin, a missing or invalid config file — resolves
+ * to `{ exitCode: 2 }` with one `blocked` record under the `hook` label. Nothing throws: an
+ * uncaught rejection would exit the delegator non-blocking, the cheapest bypass vector there
+ * is. Recovery from an unbuilt clone is `pnpm build` (it mentions no protected path, so it is
+ * never blocked).
  */
 
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -45,9 +45,10 @@ import {
   normalizeProtectedPaths,
   readRecords,
 } from '@polydeukes/core';
-import { type CovenantRegistration, ttlWitness } from '@polydeukes/covenant';
 import { findUnattributed, readBaseline, snapshotBaseline, writeBaseline } from './baseline.ts';
-import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import type { CovenantRegistration } from './covenant/dispatch.ts';
+import { type CovenantModule, covenantModule } from './covenant/module.ts';
+import { ttlWitness } from './covenant/ttl-witness.ts';
 import { loadConfig } from './load-config.ts';
 import { sessionPreStateReader } from './pre-state-reader.ts';
 
@@ -62,8 +63,8 @@ export type ClaudeCodeHookSpec = {
   rawPayload?: string;
   /** Overrides the config's telemetry log path (tests and assembly injection). */
   telemetryPath?: string;
-  /** Overrides the resolved covenant dist directory (tests and assembly injection). */
-  covenantDist?: string;
+  /** Overrides the judge module the run assembles against (tests and assembly injection). */
+  covenant?: CovenantModule;
 };
 
 /** The label every post-hoc state comparison row carries. */
@@ -180,9 +181,8 @@ export type SessionAssemblySpec = {
   config: ReturnType<typeof loadConfig>['config'];
   rootDir: string;
   /**
-   * The covenant surface the registrations are built from — the module the caller loaded
-   * from the resolved dist, so what judges a call is what that dist carries, and what
-   * `explain` renders is what would judge it.
+   * The judge module the registrations are built from, so what judges a call and what
+   * `explain` renders come from one surface.
    */
   covenant: CovenantModule;
   /** The payload's transcript path. ABSENT leaves the transcript-mod registration out. */
@@ -357,14 +357,9 @@ async function judgeHookCall(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOu
             ttlMs: config.witness.ttlMinutes * 60_000,
           });
 
-    // The judges are the covenant package's built barrel — resolved through the real
-    // package (never a test alias), so the session surface runs the same judges the commit
-    // surface does. An injected directory overrides that resolution, which is how a fixture
-    // reaches a dist that real Node resolution would never land on. Awaited HERE, before
-    // any registration is composed: a dist the barrel cannot load throws now, into the
-    // fail-closed catch, instead of leaving a half-judged table behind.
-    const covenantDist = spec.covenantDist ?? resolveCovenantDist();
-    const covenant = await loadCovenantModule(covenantDist);
+    // The umbrella's own judge module, so the session surface runs the judges the commit
+    // surface does; a test injects a module with one member replaced.
+    const covenant = spec.covenant ?? covenantModule;
 
     // Assembled HERE, outside the dispatch seam: a judge takes its call set as an argument,
     // so assembly needs no payload, and an assembly throw belongs to this function's own

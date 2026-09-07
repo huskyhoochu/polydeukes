@@ -25,9 +25,8 @@
 | 문서 | 답하는 것 |
 |---|---|
 | [설정 레퍼런스](./reference/configuration/index.ko.md) | `polydeukes.config.yaml`에 무엇을 넣을 수 있고 각 키가 무엇을 하는지 |
-| [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md) | 패키지 계약. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
+| [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md) | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
 | [`@polydeukes/core`](./reference/packages/core.ko.md) | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리 |
-| [`@polydeukes/covenant`](./reference/packages/covenant.ko.md) | 판정기입니다. 디스패처와 규율 라이브러리, 메타 약속, 밸브 |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
 
 <a id="shape-of-the-thing"></a>

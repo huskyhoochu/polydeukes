@@ -1,6 +1,6 @@
 ---
 paths:
-  - "packages/covenant/**"
+  - "packages/polydeukes/src/covenant/**"
 ---
 
 # Judging paths and shell lines

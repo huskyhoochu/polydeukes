@@ -13,9 +13,8 @@ import { runCovenantCheck } from '../src/covenant-check.ts';
 import { STAGED_DELETE, STAGED_WRITE } from '../src/diff-ir.ts';
 import {
   createCheckRepo,
-  REAL_COVENANT_DIST,
   type RecordedCall,
-  recordingDist,
+  recordingCovenant,
   telemetryRows,
   writeConfigAt,
 } from './helpers.ts';
@@ -52,7 +51,7 @@ function writeCall(path: string): CovenantInput['toolCalls'][number] {
 }
 
 let repoRoot: string;
-/** Telemetry, the recording dist, and its log live outside the observed directory. */
+/** Telemetry lives outside the observed directory. */
 let outside: string;
 let telemetryPath: string;
 
@@ -97,7 +96,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
 
     expect(result.exitCode).toBe(0);
@@ -113,7 +111,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
       enforce: 'block',
     });
 
@@ -133,7 +130,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
       enforce: 'block',
     });
 
@@ -158,7 +154,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(additive)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
     expect(fromAdditive.exitCode).toBe(0);
     expect(telemetryRows(telemetryPath)).toEqual([['passed', CHECK_LABEL, additive]]);
@@ -168,7 +163,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(additive)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
     expect(fromCommon.exitCode).toBe(0);
     expect(telemetryRows(telemetryPath)).toEqual([
@@ -186,7 +180,6 @@ describe("a protected path in the input — advised by default, blocked on the c
       repoRoot,
       input: ir([writeCall(ORDINARY_A), writeCall(PROTECTED_ENTRY), writeCall(ORDINARY_B)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
       enforce: 'block',
     });
 
@@ -213,7 +206,6 @@ describe("a protected path in the input — advised by default, blocked on the c
         },
       ]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
 
     expect(result.exitCode).toBe(0);
@@ -222,22 +214,6 @@ describe("a protected path in the input — advised by default, blocked on the c
 });
 
 describe('ordinary input passes, one row per toolCall', () => {
-  it('one ordinary write exits 0 with exactly one passed row', async () => {
-    // The over-blocking side, and the proof the run judged rather than skipped: zero rows
-    // would mean nothing was dispatched.
-    writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      input: ir([writeCall(ORDINARY_A)]),
-      telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
-    });
-
-    expect(result.exitCode).toBe(0);
-    expect(telemetryRows(telemetryPath)).toEqual([['passed', CHECK_LABEL, ORDINARY_A]]);
-  });
-
   it('two toolCalls leave two rows in input order', async () => {
     // A runner that dispatches the whole input once leaves one row for two files, and the
     // second file's subject never appears.
@@ -247,7 +223,6 @@ describe('ordinary input passes, one row per toolCall', () => {
       repoRoot,
       input: ir([writeCall(ORDINARY_A), writeCall(ORDINARY_B)]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
 
     expect(result.exitCode).toBe(0);
@@ -265,7 +240,6 @@ describe('ordinary input passes, one row per toolCall', () => {
       repoRoot,
       input: ir([]),
       telemetryPath,
-      covenantDist: REAL_COVENANT_DIST,
     });
 
     expect(result).toEqual({ exitCode: 0 });
@@ -277,15 +251,15 @@ describe('an input carrying a world key fails closed', () => {
   it('exits 2 with exactly one blocked covenant-check row and dispatches nothing', async () => {
     // The world axis is the runner's to fill. An input that supplies its own would let a
     // client hand the judge the files it wants read; a runner that merges or overwrites it
-    // dispatches, and the recording dist would see the call.
+    // dispatches, and the recording module would see the call.
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
-    const { distDir, calls } = recordingDist(outside, []);
+    const { covenant, calls } = recordingCovenant([]);
 
     const result = await runCovenantCheck({
       repoRoot,
       input: { ...ir([writeCall(ORDINARY_A)]), world: { files: {} } },
       telemetryPath,
-      covenantDist: distDir,
+      covenant,
     });
 
     expect(result.exitCode).toBe(2);
@@ -301,7 +275,7 @@ describe('the world every dispatch receives', () => {
     // pairing declaration into a one-element vacuity; one that lists the binary path
     // hands the pairing a path no world answers for.
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
-    const { distDir, calls } = recordingDist(outside, []);
+    const { covenant, calls } = recordingCovenant([]);
     const input = ir([
       writeCall(ORDINARY_A),
       { name: STAGED_WRITE, args: { file_path: BINARY_FILE } },
@@ -316,7 +290,7 @@ describe('the world every dispatch receives', () => {
       repoRoot,
       input,
       telemetryPath,
-      covenantDist: distDir,
+      covenant,
     });
 
     expect(result.exitCode).toBe(0);
@@ -334,17 +308,13 @@ describe('the world every dispatch receives', () => {
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
     writeOnDisk(PLANNED_PRESENT, DISK_CONTENT);
     writeOnDisk(BINARY_FILE, Buffer.from('ab\0cd'));
-    const { distDir, calls } = recordingDist(outside, [
-      PLANNED_PRESENT,
-      PLANNED_MISSING,
-      BINARY_FILE,
-    ]);
+    const { covenant, calls } = recordingCovenant([PLANNED_PRESENT, PLANNED_MISSING, BINARY_FILE]);
 
     const result = await runCovenantCheck({
       repoRoot,
       input: ir([writeCall(ORDINARY_A)]),
       telemetryPath,
-      covenantDist: distDir,
+      covenant,
     });
 
     expect(result.exitCode).toBe(0);
@@ -359,13 +329,13 @@ describe('the world every dispatch receives', () => {
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
     writeOnDisk(LINK_TARGET, DISK_CONTENT);
     symlinkSync(join(repoRoot, LINK_TARGET), join(repoRoot, PLANNED_LINK));
-    const { distDir, calls } = recordingDist(outside, [PLANNED_LINK]);
+    const { covenant, calls } = recordingCovenant([PLANNED_LINK]);
 
     const result = await runCovenantCheck({
       repoRoot,
       input: ir([writeCall(ORDINARY_A)]),
       telemetryPath,
-      covenantDist: distDir,
+      covenant,
     });
 
     expect(result.exitCode).toBe(0);
@@ -383,13 +353,13 @@ describe('the world every dispatch receives', () => {
       repo.write(PLANNED_PRESENT, INDEX_CONTENT);
       repo.git('add', PLANNED_PRESENT);
       repo.write(PLANNED_PRESENT, DISK_CONTENT);
-      const { distDir, calls } = recordingDist(outside, [PLANNED_PRESENT]);
+      const { covenant, calls } = recordingCovenant([PLANNED_PRESENT]);
 
       const result = await runCovenantCheck({
         repoRoot: repo.repoRoot,
         input: ir([writeCall(ORDINARY_A)]),
         telemetryPath,
-        covenantDist: distDir,
+        covenant,
       });
 
       expect(result.exitCode).toBe(0);

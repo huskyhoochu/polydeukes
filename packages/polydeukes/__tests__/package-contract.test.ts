@@ -32,8 +32,15 @@ interface Violation {
  */
 const KNOWN_VIOLATIONS: { package: string; check: Check; entryPoint: string }[] = [];
 
-/** The only manifest allowed to publish surface entry points. */
+/**
+ * The only manifest allowed to publish surface entry points — and the one manifest with
+ * NO `.` entry point: its contract is the bin, the surface subpaths, and the data file.
+ */
 const UMBRELLA_NAME = 'polydeukes';
+/** The umbrella's `bin` names, both pointing at one script. */
+const UMBRELLA_BIN_NAMES: readonly string[] = ['pdks', 'polydeukes'];
+/** The umbrella's data entry point and the subpath it must be served from. */
+const UMBRELLA_DATA_ENTRY_POINT = './schema.json';
 /** The vocabulary package: its functions are positional, so the verb and constant checks skip it. */
 const VOCABULARY_NAME = '@polydeukes/core';
 /**
@@ -268,7 +275,10 @@ const verbShapeFaults = ({ params, returns }: Signature): string[] => {
 const checkEntryPoints = ({ name, exports }: Pkg): Violation[] => {
   const keys = Object.keys(exports);
   const out: Violation[] = [];
-  if (!keys.includes('.'))
+  const hasDot = keys.includes('.');
+  if (name === UMBRELLA_NAME && hasDot)
+    out.push({ package: name, check: '①', detail: 'the umbrella carries a "." entry point' });
+  if (name !== UMBRELLA_NAME && !hasDot)
     out.push({ package: name, check: '①', detail: 'missing "." entry point' });
   for (const key of keys) {
     if (key === '.' || isDataEntryPoint(key, exports[key] as string)) continue;
@@ -436,13 +446,21 @@ interface Manifest {
   name: string;
   private?: boolean;
   exports?: ExportsMap;
+  bin?: Record<string, string>;
+  main?: string;
+  module?: string;
+  types?: string;
 }
+
+/** Every workspace manifest, by package name — the umbrella describe reads fields Pkg leaves out. */
+const MANIFESTS = new Map<string, Manifest>();
 
 /** Publishable packages — same domain `pnpm -r publish` acts on (manifest not private). */
 const PACKAGES: Pkg[] = readdirSync(join(repoRoot, 'packages'))
   .map((dirName): { dir: string; manifest: Manifest } => {
     const dir = join(repoRoot, 'packages', dirName);
     const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')) as Manifest;
+    MANIFESTS.set(manifest.name, manifest);
     return { dir, manifest };
   })
   .filter((p) => p.manifest.private !== true)
@@ -468,7 +486,8 @@ describe('package contract', () => {
     const name = pkg.name;
     for (const check of CHECKS) {
       const listed = KNOWN_VIOLATIONS.find((k) => k.package === name && k.check === check);
-      // ①: a new subpath (e.g. `./extra`) or a dropped `.` goes green.
+      // ①: a new subpath (e.g. `./extra`), a sibling's dropped `.`, or a `.` regrown on the
+      //    umbrella goes green.
       // ②: a definition, `import`, or `export *` in a barrel goes green; an umbrella runtime
       //    re-export from a sibling goes green.
       // ③: an executor verb taking a second positional parameter, an inline spec literal, or
@@ -513,6 +532,46 @@ describe('package contract', () => {
     expect(Object.keys(umbrella?.exports ?? {})).toEqual(
       expect.arrayContaining([...SURFACE_ENTRY_POINTS]),
     );
+  });
+});
+
+// The umbrella manifest as a whole: ① bounds each subpath one at a time, so a manifest
+// that is exactly the closed set plus the data file, with the bin and nothing else, is
+// pinned here as one literal.
+describe('the umbrella manifest', () => {
+  const umbrella = PACKAGES.find((p) => p.name === UMBRELLA_NAME);
+  const manifest = MANIFESTS.get(UMBRELLA_NAME);
+
+  // A `.` regrown (a barrel coming back), a surface added outside the closed list, or the
+  // data entry dropped each change the key set; ① alone tolerates the dropped data entry.
+  it('exports exactly the surface list plus the schema data entry, and no `.`', () => {
+    expect(Object.keys(umbrella?.exports ?? {}).sort()).toEqual(
+      [...SURFACE_ENTRY_POINTS, UMBRELLA_DATA_ENTRY_POINT].sort(),
+    );
+  });
+
+  // With `.` gone, `main`/`module`/`types` are the only way an `import 'polydeukes'` could
+  // still resolve on an older resolver — a barrel deleted from `exports` but left in
+  // `main` still ships a contract nobody reviewed.
+  it('declares no main, module, or types field', () => {
+    expect(manifest?.main).toBeUndefined();
+    expect(manifest?.module).toBeUndefined();
+    expect(manifest?.types).toBeUndefined();
+  });
+
+  // The bin is the umbrella's one code entry point now; losing either name strands the
+  // lefthook line (`pdks`) or the documented long form (`polydeukes`).
+  it('publishes both bin names, pointing at one script', () => {
+    const bin = manifest?.bin ?? {};
+    expect(Object.keys(bin).sort()).toEqual([...UMBRELLA_BIN_NAMES].sort());
+    expect(new Set(Object.values(bin)).size).toBe(1);
+  });
+
+  // The data entry served from a `.js` would pass an `exports` diff and fail every
+  // `$schema` resolution.
+  it('serves the schema data entry from a .json file', () => {
+    const target = importTarget(umbrella?.exports[UMBRELLA_DATA_ENTRY_POINT] ?? '');
+    expect(target?.endsWith('.json')).toBe(true);
   });
 });
 
@@ -579,10 +638,30 @@ const ROWS: Row[] = [
     violates: true,
   },
   {
-    label: '① a manifest with no `.` entry point',
+    label: '① a sibling manifest with no `.` entry point',
     check: '①',
     pkg: synthetic('@polydeukes/sib', {}, { './schema.json': './schema.json' }),
     violates: true,
+  },
+  {
+    label: '① the umbrella with a `.` entry point — a barrel regrown',
+    check: '①',
+    pkg: synthetic(
+      UMBRELLA_NAME,
+      {},
+      { '.': './dist/index.js', './claude-code': './dist/c.js', './schema.json': './s.json' },
+    ),
+    violates: true,
+  },
+  {
+    label: '① the umbrella without `.` — the surface list and the data file alone',
+    check: '①',
+    pkg: synthetic(
+      UMBRELLA_NAME,
+      {},
+      { './claude-code': './dist/c.js', './schema.json': './s.json' },
+    ),
+    violates: false,
   },
   {
     label: '① a `.json` subpath is a data entry point',

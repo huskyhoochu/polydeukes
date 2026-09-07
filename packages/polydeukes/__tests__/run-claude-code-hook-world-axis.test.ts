@@ -13,16 +13,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // judge, so the root supplying the payload's post here would hide a missing override
 // behind a value that happened to coincide.
 //
-// The dispatcher and the supply verbs are observed through a recording dist on the
-// `covenantDist` seam (helpers.ts `recordingDist`); the real judges still run behind it.
+// The dispatcher and the supply verbs are observed through a recording judge module on
+// the `covenant` seam (helpers.ts `recordingCovenant`); the real judges still run behind it.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
-import { type RecordedCall, recordingDist, telemetryRows, writeConfigAt } from './helpers.ts';
+import type { CovenantModule } from '../src/covenant/module.ts';
+import { type RecordedCall, recordingCovenant, telemetryRows, writeConfigAt } from './helpers.ts';
 
 /** Injected fixture values — the declare entry, the file its source names, the protected entry. */
 const DECLARE_ID = 'en-locale-has-keys';
 const SOURCE_NAME = 'en';
 const EN_FILE = 'locales/en.json';
-/** Planned by the recording dist, never written to disk. */
+/** Planned by the recording module, never written to disk. */
 const MISSING_FILE = 'locales/missing.json';
 const PROTECTED_ENTRY = 'gate';
 /** The umbrella's protected-paths registration label — an observable contract, not a fixture choice. */
@@ -64,16 +65,13 @@ const declareEntry = {
 
 let repoRoot: string;
 let telemetryPath: string;
-/** The recording dist and its log sit outside the repository, as on the commit surface. */
-let outside: string;
 let calls: () => RecordedCall[];
-let covenantDist: string;
+let covenant: CovenantModule;
 
 beforeEach(() => {
   repoRoot = mkdtempSync(join(tmpdir(), 'pdks-session-world-axis-'));
   telemetryPath = join(repoRoot, 'roi.log');
-  outside = mkdtempSync(join(tmpdir(), 'pdks-session-world-axis-outside-'));
-  ({ distDir: covenantDist, calls } = recordingDist(outside, [EN_FILE, MISSING_FILE]));
+  ({ covenant, calls } = recordingCovenant([EN_FILE, MISSING_FILE]));
   writeConfigAt(repoRoot, telemetryPath, {
     protectedPaths: [PROTECTED_ENTRY],
     disciplines: [declareEntry],
@@ -85,7 +83,6 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
-  rmSync(outside, { recursive: true, force: true });
 });
 
 /** One PreToolUse Edit of the locale — the target IS the planned file. */
@@ -130,7 +127,7 @@ describe('session hook — the world is read from disk under repoRoot', () => {
       repoRoot,
       rawPayload: editLocalePayload(),
       telemetryPath,
-      covenantDist,
+      covenant,
     });
 
     expectJudged(result);
@@ -148,7 +145,7 @@ describe('session hook — the world is read from disk under repoRoot', () => {
       repoRoot,
       rawPayload: editLocalePayload(),
       telemetryPath,
-      covenantDist,
+      covenant,
     });
 
     expectJudged(result);
@@ -168,7 +165,7 @@ describe('session hook — the plan is made from the assembled registrations', (
       repoRoot,
       rawPayload: editLocalePayload(),
       telemetryPath,
-      covenantDist,
+      covenant,
     });
 
     expectJudged(result);
@@ -189,7 +186,7 @@ describe('session hook — a planned path the disk cannot give as text is an abs
   it('a planned path that is a directory yields no key, and the call is still judged once', async () => {
     // `readFileSync` on a directory throws EISDIR; a `read` that folds only ENOENT
     // propagates it, and the root fails closed on a path that is merely not a file.
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [DIR_PATH, EN_FILE]));
+    ({ covenant, calls } = recordingCovenant([DIR_PATH, EN_FILE]));
     mkdirSync(join(repoRoot, DIR_PATH), { recursive: true });
     writeFileSync(join(repoRoot, DIR_PATH, 'inner.json'), '{}');
 
@@ -197,7 +194,7 @@ describe('session hook — a planned path the disk cannot give as text is an abs
       repoRoot,
       rawPayload: editLocalePayload(),
       telemetryPath,
-      covenantDist,
+      covenant,
     });
 
     expectJudged(result);
@@ -208,14 +205,14 @@ describe('session hook — a planned path the disk cannot give as text is an abs
     // A utf-8 decode of binary content is a string, so a `read` without the NUL check
     // supplies it as text; `json` then fails to parse and the declaration breaks on a
     // file that was never a locale.
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [BINARY_FILE, EN_FILE]));
+    ({ covenant, calls } = recordingCovenant([BINARY_FILE, EN_FILE]));
     writeFileSync(join(repoRoot, BINARY_FILE), Buffer.from('ab\0cd'));
 
     const result = await runClaudeCodeHook({
       repoRoot,
       rawPayload: editLocalePayload(),
       telemetryPath,
-      covenantDist,
+      covenant,
     });
 
     expectJudged(result);

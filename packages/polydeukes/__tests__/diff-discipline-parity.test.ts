@@ -12,7 +12,7 @@ import { parse, stringify } from 'yaml';
 // context into `pre` or `post` flips the verdict.
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
-import { type CheckRepo, createCheckRepo, REAL_COVENANT_DIST } from './helpers.ts';
+import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 const ROOT_CONFIG = resolve(import.meta.dirname, '../../../polydeukes.config.yaml');
 
@@ -84,7 +84,6 @@ async function checkStaged(): Promise<{ exitCode: number }> {
     repoRoot,
     input: covenantInputFromUnifiedDiff({ text: git('diff', '--cached') }),
     telemetryPath,
-    covenantDist: REAL_COVENANT_DIST,
   });
 }
 

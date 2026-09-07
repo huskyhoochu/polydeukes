@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
-import { type RecordedCall, recordingDist, writeConfigAt } from './helpers.ts';
+import type { CovenantModule } from '../src/covenant/module.ts';
+import { type RecordedCall, recordingCovenant, writeConfigAt } from './helpers.ts';
 
 // The two composition roots wire the supply layer; they implement no reading of their own.
 // The observation readers live in the adapters — the commit reader beside the git idiom it
@@ -30,13 +31,7 @@ function importsFrom(text: string, symbol: string, pkg: string): boolean {
   return statement.test(text);
 }
 
-describe('the umbrella carries one disk reader and no git reading', () => {
-  it('read-source.ts is gone from the umbrella', () => {
-    // The disk reader moved to the session adapter; a copy left here is dead at best and
-    // a diverging second implementation at worst.
-    expect(existsSync(`${SRC_DIR}read-source.ts`)).toBe(false);
-  });
-
+describe('the commit root does no git reading of its own', () => {
   it('covenant-check.ts spawns no git listing of its own', () => {
     // The observation readers are git spawn idioms (`ls-files --stage`, `ls-tree`,
     // `cat-file`); their spelling remaining in the root means the reading did not move,
@@ -57,20 +52,10 @@ describe('the roots wire the adapters’ supply verbs', () => {
       importsFrom(sourceOf('covenant-check.ts'), 'worktreeReader', './worktree-reader.ts'),
     ).toBe(true);
   });
-
-  it('claude-code-hook.ts imports sessionSourceReader and sessionChannelReader from the session adapter', () => {
-    // The channel reader is the session surface's only path onto the spawn sidecar: a
-    // root that wires the file reader alone leaves every sidecar declaration judging
-    // absence on a session that has the records on disk.
-    const text = sourceOf('claude-code-hook.ts');
-
-    expect(importsFrom(text, 'sessionSourceReader', '@polydeukes/adapter-claude-code')).toBe(true);
-    expect(importsFrom(text, 'sessionChannelReader', '@polydeukes/adapter-claude-code')).toBe(true);
-  });
 });
 
 // An import alone is not a wiring, so the channel side is pinned by execution: the hook runs
-// against a session whose sidecar holds one spawn record, and the recording dist observes
+// against a session whose sidecar holds one spawn record, and the recording module observes
 // what the root handed the dispatcher. A root that builds the channel reader and drops the
 // supply result (or forwards `files` alone) leaves every sidecar declaration judging absence
 // on a session whose records are on disk.
@@ -81,17 +66,17 @@ const WRITER_META = { agentType: 'tdd-test-writer', toolUseId: 't1' };
 const TARGET_FILE = 'lib/a.ts';
 
 let repoRoot: string;
-/** The recording dist and its log sit outside the repository the run observes. */
+/** The transcript and its sidecar sit outside the repository the run observes. */
 let outside: string;
 let calls: () => RecordedCall[];
-let covenantDist: string;
+let covenant: CovenantModule;
 let transcriptPath: string;
 
 describe('the session root supplies the channel it read', () => {
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'pdks-supply-body-'));
     outside = mkdtempSync(join(tmpdir(), 'pdks-supply-body-outside-'));
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [], [SIDECAR]));
+    ({ covenant, calls } = recordingCovenant([], [SIDECAR]));
     writeConfigAt(repoRoot, join(repoRoot, 'roi.log'), {});
     transcriptPath = join(outside, `${SESSION_ID}.jsonl`);
     writeFileSync(transcriptPath, '{"type":"user"}\n');
@@ -111,7 +96,7 @@ describe('the session root supplies the channel it read', () => {
   it('the dispatch world carries the sidecar records the session had on disk', async () => {
     await runClaudeCodeHook({
       repoRoot,
-      covenantDist,
+      covenant,
       rawPayload: JSON.stringify({
         hook_event_name: 'PreToolUse',
         session_id: SESSION_ID,

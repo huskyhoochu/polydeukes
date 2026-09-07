@@ -1,7 +1,7 @@
 ---
 paths:
-  - "packages/covenant/src/extract-steps.ts"
-  - "packages/covenant/src/declaration-engine.ts"
+  - "packages/polydeukes/src/covenant/extract-steps.ts"
+  - "packages/polydeukes/src/covenant/declaration-engine.ts"
 ---
 
 # Registering an extract step

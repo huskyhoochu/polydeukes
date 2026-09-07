@@ -38,4 +38,4 @@ const outcome = await runAdapterPath({
 - [`@polydeukes/adapter-claude-code` package
 reference](../../docs/reference/packages/adapter-claude-code.md)
 - [`polydeukes/claude-code`](../../docs/reference/packages/polydeukes.md#polydeukes-entry-points)
-- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.md)
+- [The judge (`covenant` module)](../../docs/reference/packages/polydeukes.md#covenant-module)

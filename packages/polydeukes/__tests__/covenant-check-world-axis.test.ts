@@ -2,14 +2,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { CovenantModule } from '../src/covenant/module.ts';
 // The commit root's `plan → supply → dispatch` wiring. After the registrations are
 // assembled the root plans the sources they name, reads each one from the WORKING TREE,
 // and hands every per-change dispatch one `world`: the supplied files plus the whole
 // observed change set. The kernel never opens the tree — the root's `read` is the only
 // place the disk is reached, so it is the only place it can be wrong.
 //
-// The dispatcher and the two supply verbs are observed through a recording dist injected
-// on the `covenantDist` seam (helpers.ts `recordingDist`): the real judges still run, and
+// The dispatcher and the two supply verbs are observed through a recording judge module
+// injected on the `covenant` seam (helpers.ts `recordingCovenant`): the real judges still run, and
 // every spec's `world` is written down before it reaches them. Each case is a real
 // throwaway git repository whose config carries its own declare entry; nothing of THIS
 // repository is referenced. The staged diff is translated to the IR the runner judges,
@@ -20,7 +21,7 @@ import {
   type CheckRepo,
   createCheckRepo,
   type RecordedCall,
-  recordingDist,
+  recordingCovenant,
   telemetryRows,
 } from './helpers.ts';
 
@@ -28,7 +29,7 @@ import {
 const DECLARE_ID = 'en-locale-has-keys';
 const SOURCE_NAME = 'en';
 const EN_FILE = 'locales/en.json';
-/** Planned by the recording dist, never present in the observed tree. */
+/** Planned by the recording module, never present in the observed tree. */
 const MISSING_FILE = 'locales/missing.json';
 /** The umbrella's protected-paths registration label — an observable contract, not a fixture choice. */
 const SELF_MOD_LABEL = 'self-mod';
@@ -71,11 +72,11 @@ let repoRoot: string;
 let git: CheckRepo['git'];
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
-/** Everything the run must not observe lives outside the repository: telemetry, the dist, its log. */
+/** What the run must not observe lives outside the repository: the telemetry log. */
 let outside: string;
 let telemetryPath: string;
 let calls: () => RecordedCall[];
-let covenantDist: string;
+let covenant: CovenantModule;
 
 /** The staged diff of the fixture repository, translated to the IR the runner judges. */
 function stagedInput() {
@@ -87,7 +88,7 @@ beforeEach(() => {
   ({ repoRoot, git, write, writeConfig } = repo);
   outside = mkdtempSync(join(tmpdir(), 'pdks-check-world-axis-outside-'));
   telemetryPath = join(outside, 'roi.log');
-  ({ distDir: covenantDist, calls } = recordingDist(outside, [EN_FILE, MISSING_FILE]));
+  ({ covenant, calls } = recordingCovenant([EN_FILE, MISSING_FILE]));
 });
 
 afterEach(() => {
@@ -132,7 +133,7 @@ describe('covenant check — the read is the working tree', () => {
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: stagedInput(),
     });
 
@@ -161,7 +162,7 @@ describe('covenant check — the change set is the whole observation, on every d
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: observed,
     });
 
@@ -184,7 +185,7 @@ describe('covenant check — the plan is made from the assembled registrations',
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: stagedInput(),
     });
 
@@ -221,12 +222,12 @@ describe('covenant check — a planned path the tree cannot give as text is an a
     write(DIR_INNER, '{}\n');
     write(EN_FILE, DISK_CONTENT);
     git('add', DIR_INNER, EN_FILE);
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [DIR_PATH, EN_FILE]));
+    ({ covenant, calls } = recordingCovenant([DIR_PATH, EN_FILE]));
 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: stagedInput(),
     });
 
@@ -244,12 +245,12 @@ describe('covenant check — a planned path the tree cannot give as text is an a
     writeBinary(BINARY_FILE);
     write(EN_FILE, DISK_CONTENT);
     git('add', BINARY_FILE, EN_FILE);
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [BINARY_FILE, EN_FILE]));
+    ({ covenant, calls } = recordingCovenant([BINARY_FILE, EN_FILE]));
 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: stagedInput(),
     });
 
@@ -276,7 +277,7 @@ describe('covenant check — the change set lists the changes that produce a wor
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
-      covenantDist,
+      covenant,
       input: observed,
     });
 

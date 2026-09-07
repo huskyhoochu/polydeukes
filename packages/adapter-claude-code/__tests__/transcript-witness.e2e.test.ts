@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 // dependency graph one-way while still verifying the cross-package assembly end to end.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
-const covenantDist = resolve(repoRoot, 'packages/covenant/dist/index.js');
+const covenantDist = resolve(repoRoot, 'packages/polydeukes/dist/covenant/ttl-witness.js');
 const adapterDist = resolve(repoRoot, 'packages/adapter-claude-code/dist/transcript.js');
 
 const TOKEN = 'PDKS-WITNESS-42';

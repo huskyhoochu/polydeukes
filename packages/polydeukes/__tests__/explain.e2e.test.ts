@@ -9,8 +9,8 @@ import { writeConfigAt } from './helpers.ts';
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
-const SESSION_HEADER = 'surface: session (claude-code hook)';
-const COMMIT_HEADER = 'surface: commit (git pre-commit)';
+const SESSION_HEADER = 'input: call IR (one call, stdin)';
+const COMMIT_HEADER = 'input: --diff (change set, stdin)';
 
 const ENTRY_ID = 'no-fixme-anywhere';
 const DECLARE_ID = 'db-only-under-knowledge';
@@ -98,6 +98,10 @@ describe('pdks explain on the built bin', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain(SESSION_HEADER);
     expect(result.stdout).toContain(COMMIT_HEADER);
+    // The old surface headers named a host and a VCS; either phrase back on stdout means
+    // the header rewrite did not reach the built bin.
+    expect(result.stdout).not.toContain('claude-code hook');
+    expect(result.stdout).not.toContain('git pre-commit');
     expect(result.stdout).toContain(ENTRY_ID);
     expect(result.stderr).not.toContain('pdks explain:');
   });

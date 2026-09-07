@@ -22,7 +22,7 @@ what a caller must know to fill one spec.**
 
 | Skeleton | Packages | Runtime exports | Other exports | Discriminator |
 |---|---|---|---|---|
-| **executor** | covenant, adapter-*, polydeukes | **verbs** — each takes **one spec object** and returns **one result** | the types a spec needs, spec ingredients | takes a spec |
+| **executor** | adapter-*, polydeukes | **verbs** — each takes **one spec object** and returns **one result** | the types a spec needs, spec ingredients | takes a spec |
 | **vocabulary** | core | positional pure functions, protocol primitives | types, `as const` tuples | takes no spec |
 
 A function that takes a spec is executor code and does not belong in core. A package that seems
@@ -49,13 +49,13 @@ to need a third skeleton is split wrong.
 
 ## Entry points
 
-Three kinds of `exports` subpath: `.` (the contract), a `.json` data file (`./schema.json`,
+Three kinds of `exports` subpath: `.` (the contract — sibling packages; the umbrella has none),
+a `.json` data file (`./schema.json`,
 `./algebra-declaration.schema.json` — the subpath and its target both end in `.json`), and
 `./<surface>` — the umbrella alone, closed list
 `['./claude-code']` kept as a literal in the test. Adding a surface entry point edits that
 literal, and the diff is the review signal. Sibling packages have `.` alone. Condition keys
-(`types` / `import` / `default`) are not entry points — covenant's `default` is the fallback that
-keeps `createRequire` resolution alive.
+(`types` / `import` / `default`) are not entry points.
 
 ## Barrels
 
@@ -64,9 +64,7 @@ keeps `createRequire` resolution alive.
   `import` (a re-export needs none, `import type` included), no `export *` in any form
   (`export * as ns` re-exports a whole module under one name — the contract lists names).
   ESM re-exports are eager, so a definition in a barrel is instantiated
-  by every consumer of any other export — and that eagerness is load-bearing: the umbrella's
-  fail-closed proof is that a dist missing one module throws on the barrel import, before any
-  assembly. Keep re-exports static.
+  by every consumer of any other export. Keep re-exports static.
 - The barrel is the **consumer contract, not the test surface**. A package's own tests import
   `../src/<module>.ts` directly, never `../src/index.ts` in any spelling — check ⑥ in
   `package-contract.test.ts` holds that for every `__tests__` tree, and the

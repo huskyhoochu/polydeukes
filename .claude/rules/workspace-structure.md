@@ -26,29 +26,31 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   DOCS-02), and `explain` (the assembled-registration renderer, since CLI-01).
   Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file. Since
+  SURFACE-02 it also owns **the judge (`src/covenant/`)** — the dispatcher, the discipline
+  library, the meta-covenants, the TTL witness, and the declaration engine — which both
+  composition roots and `pdks explain` import statically. Since
   ALGEBRA-03c it also owns the surfaces' pre-state readers (`pre-state-reader.ts`) and the
-  baseline comparator (`baseline.ts`), so **`covenant` opens no file**: what the judge needs
+  baseline comparator (`baseline.ts`), so **the judge module opens no file**: what the judge needs
   from disk arrives injected. core keeps one file-I/O site of its own, the telemetry log
   (`telemetry.ts`), which every surface appends a row to. Since DIST-01 it also owns **both
   surfaces' composition roots** —
   `runCovenantCheck` (commit) and `runClaudeCodeHook` (session) — because assembly needs an
-  adapter AND covenant at once, which no sibling may depend on. That is the umbrella's structural
+  adapter AND the judge at once, which no sibling may depend on. That is the umbrella's structural
   privilege, not a convenience: it is the only package allowed to reach sideways. Only
   umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in
   scoped `@polydeukes/*` packages. The loader feeds the
-  judges, so it is protected — but at different surfaces (CONFIG-08): its `dist` is on the
-  common list (a gitignored judge executable no commit can show), while its `src` **and its
-  `package.json`** (the manifest the commit surface resolves the `pdks` bin through) are on the
-  commit surface's additive one, so editing them in a session is the work itself and the commit
-  that stages them is what gets judged. The unscoped name was verified free on npm and is a
+  judges, so its `dist` is on the protected list (a gitignored judge executable no commit can
+  show); its `src` and `package.json` are not — editing them in a session is the work itself,
+  and the commit that stages them is what the commit surface judges (advise by default since
+  SURFACE-01). The unscoped name was verified free on npm and is a
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
-- **Dependency direction is one-way:** every other package (`covenant`, `ledger`, `memory`,
+- **Dependency direction is one-way:** every other package (`ledger`, `memory`,
   `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
   re-export them, but core must never depend on any sibling. Enforce this when adding packages.
-- **The kind of that dependency is `peerDependencies`** (ALGEBRA-03c) for `covenant` and the two
-  adapters, paired with a `devDependencies` entry so each package still builds and tests alone.
+- **The kind of that dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,
+  paired with a `devDependencies` entry so each package still builds and tests alone.
   The umbrella alone takes core as an ordinary dependency, and that is what satisfies the peer —
   a consumer still installs one package. The reason is runtime identity rather than types: a
   value tuple like `SOURCE_KINDS` and the `parseInput` validation have to be ONE copy for the

@@ -1,7 +1,7 @@
 import { execSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // The publish tarballs, verified as artifacts. `pnpm pack` is the same producer
@@ -52,9 +52,17 @@ const BUNDLED_DOCS = [
   'reference/configuration/index.md',
   'reference/packages/polydeukes.md',
   'reference/packages/core.md',
-  'reference/packages/covenant.md',
   'reference/packages/adapter-claude-code.md',
 ];
+
+/** The npm packages after the fold: the umbrella, the vocabulary package, the session adapter. */
+const PUBLISHED_PACKAGE_COUNT = 3;
+/** The tarball name prefix the retired judge package would pack under. */
+const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
+/** Where the folded judge's modules sit inside the umbrella tarball. */
+const JUDGE_DIST_PREFIX = 'package/dist/covenant/';
+/** The umbrella barrel's build output — gone with the `.` entry point. */
+const UMBRELLA_BARREL_ENTRY = 'package/dist/index.js';
 
 /** Absence enumeration — development-only files that must never ship. */
 const FORBIDDEN_PREFIXES = ['package/src/', 'package/__tests__/'];
@@ -181,6 +189,25 @@ describe('the umbrella tarball carries the docs bundle', () => {
       (path) => `${DOCS_PREFIX}${path}`,
     );
     expect(bundled.sort()).toEqual(expected.sort());
+  }, 30_000);
+});
+
+describe('the judge ships inside the umbrella tarball', () => {
+  // The retired judge directory left publishable packs a fourth tarball that publishes
+  // a judge nobody depends on; a private-flag mistake on a sibling packs two.
+  it('packs exactly three tarballs and none for the retired judge package', () => {
+    expect(PACKAGE_DIRS).toHaveLength(PUBLISHED_PACKAGE_COUNT);
+    const names = PACKAGE_DIRS.map((dir) => basename(tarballOf(dir)));
+    expect(names.filter((name) => name.startsWith(RETIRED_TARBALL_PREFIX))).toEqual([]);
+  }, 30_000);
+
+  // The folded modules missing from the tarball make every installed judgment fail closed
+  // at import; a `dist/index.js` still present ships the barrel the manifest no longer
+  // exports, and `main` resolution on an older resolver would serve it.
+  it('the umbrella tarball carries dist/covenant/ and no dist/index.js', () => {
+    const entries = tarEntries(UMBRELLA_DIR);
+    expect(entries.some((entry) => entry.startsWith(JUDGE_DIST_PREFIX))).toBe(true);
+    expect(entries).not.toContain(UMBRELLA_BARREL_ENTRY);
   }, 30_000);
 });
 

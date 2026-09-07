@@ -47,4 +47,4 @@ const payload = parseInput('{"toolCalls":[],"subagentSpawns":[],"userMessages":[
 
 - [`@polydeukes/core` 패키지 레퍼런스](../../docs/reference/packages/core.ko.md)
 - [`설정 레퍼런스`](../../docs/reference/configuration/index.ko.md)
-- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.ko.md)
+- [판정기(`covenant` 모듈)](../../docs/reference/packages/polydeukes.ko.md#covenant-module)

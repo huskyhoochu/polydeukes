@@ -2,8 +2,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { MECHANISM_NAMES, MECHANISM_SHAPES } from '@polydeukes/core';
-import { compileDeclaration, judgeDeclaration, type World } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  compileDeclaration,
+  judgeDeclaration,
+  type World,
+} from '../src/covenant/declaration-engine.ts';
 // The discipline classification skill is the sixth generated artifact: a procedure the
 // agent follows to translate a prose problem statement into a config entry — a judged
 // entry at advise, or a `draft: true` entry when no current family can express it. The

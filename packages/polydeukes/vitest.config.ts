@@ -10,7 +10,6 @@ export default defineConfig({
     // exports map points only at dist/ (gitignored), so resolve it to source here.
     alias: {
       '@polydeukes/core': resolve(import.meta.dirname, '../core/src/index.ts'),
-      '@polydeukes/covenant': resolve(import.meta.dirname, '../covenant/src/index.ts'),
       '@polydeukes/adapter-claude-code': resolve(
         import.meta.dirname,
         '../adapter-claude-code/src/index.ts',

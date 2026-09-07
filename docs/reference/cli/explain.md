@@ -13,8 +13,8 @@ a second opinion.
 pdks explain
 ```
 
-Any extra argument is invalid. The command reads the config at the working directory, loads the
-covenant distribution, assembles both surfaces, and prints the result.
+Any extra argument is invalid. The command reads the config at the working directory, assembles
+both surfaces, and prints the result.
 
 <a id="explain-what-it-shows"></a>
 ## What it shows
@@ -38,10 +38,9 @@ it would under a normal hook payload.
 
 | Situation | Result |
 |---|---|
-| Config loads and the covenant dist resolves | exit `0` |
+| Config loads and both surfaces assemble | exit `0` |
 | Any extra argument | exit `2`, usage line on stderr |
 | Missing, ambiguous, or invalid config | exit `2` |
-| The covenant distribution cannot load | exit `2` |
 | Any assembly failure | exit `2` |
 
 The command leaves stdout at zero bytes on failure. It never prints a partial table.
@@ -59,13 +58,13 @@ commit surface. A starter config with no extra disciplines looks like this:
 ```text
 pdks explain — polydeukes.config.yaml
 
-surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block
+input: call IR (one call, stdin) · disciplines: advise unless enforce: block · meta: block
   registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
   meta     self-mod        paths N (common; includes the config file itself)
   meta     shell-mod       paths N (common)
   meta     transcript-mod  content predicate · conditional: transcript_path
 
-surface: commit (git pre-commit) · disciplines: advise unless enforce: block
+input: --diff (change set, stdin) · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
   meta     self-mod   paths N (common; includes the config file itself)
   meta     shell-mod  paths N (common)
@@ -80,5 +79,5 @@ catalogue coordinate as its description. A `skip` row names a skip reason. A `dr
 
 - [`pdks covenant check`](./covenant-check.md)
 - [`pdks init`](./init.md)
-- [`@polydeukes/covenant`](../packages/covenant.md)
+- [The judge (`covenant` module)](../packages/polydeukes.md#covenant-module)
 - [`Configuration reference`](../configuration/index.md)

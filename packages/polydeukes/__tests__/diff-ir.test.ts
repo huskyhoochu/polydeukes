@@ -500,11 +500,11 @@ describe('the empty observation and the keys the IR never carries', () => {
   });
 
   it('the translator module never imports the judge', () => {
-    // Judgment has one home. The source text is the oracle: an import of the covenant
-    // package here would let the translator decide instead of describe.
+    // Judgment has one home. The source text is the oracle: an import from the judge's
+    // modules here would let the translator decide instead of describe.
     const source = readFileSync(resolve(import.meta.dirname, '../src/diff-ir.ts'), 'utf-8');
 
-    expect(source).not.toContain('@polydeukes/covenant');
+    expect(source).not.toMatch(/from\s+['"]\.\/covenant\//);
   });
 });
 

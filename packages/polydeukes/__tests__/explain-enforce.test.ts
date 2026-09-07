@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { explain } from '../src/explain.ts';
 import { writeConfigAt } from './helpers.ts';
 
-const SESSION_HEADER = 'surface: session (claude-code hook)';
-const COMMIT_HEADER = 'surface: commit (git pre-commit)';
+const SESSION_HEADER = 'input: call IR (one call, stdin)';
+const COMMIT_HEADER = 'input: --diff (change set, stdin)';
 const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 
 /** The level words the rendered row must carry — asserted as tokens, never as a format. */
@@ -123,7 +123,7 @@ function surfaceSection(text: string, header: string): string {
   const start = text.indexOf(header);
   expect(start, `surface header missing: ${header}`).toBeGreaterThanOrEqual(0);
   const rest = text.slice(start + header.length);
-  const next = rest.indexOf('\nsurface:');
+  const next = rest.indexOf('\ninput:');
   return next === -1 ? rest : rest.slice(0, next);
 }
 

@@ -17,7 +17,6 @@ protectedPaths:
   - "biome.json"
   - ".git/hooks"
   - "packages/core/dist"
-  - "packages/covenant/dist"
   - "packages/polydeukes/dist"
   - "packages/adapter-claude-code/dist"
 
@@ -435,7 +434,7 @@ disciplines:
       scope:
         {
           source: "target.path",
-          include: ["^packages/covenant/(src|__tests__)/"],
+          include: ["^packages/polydeukes/(src|__tests__)/covenant/"],
         }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }

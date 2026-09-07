@@ -9,7 +9,6 @@
       "bump-patch-for-minor-pre-major": false,
       "extra-files": [
         { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "packages/covenant/package.json", "jsonpath": "$.version" },
         {
           "type": "json",
           "path": "packages/adapter-claude-code/package.json",

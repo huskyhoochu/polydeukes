@@ -47,4 +47,4 @@ const payload = parseInput('{"toolCalls":[],"subagentSpawns":[],"userMessages":[
 
 - [`@polydeukes/core` package reference](../../docs/reference/packages/core.md)
 - [`Configuration reference`](../../docs/reference/configuration/index.md)
-- [`@polydeukes/covenant`](../../docs/reference/packages/covenant.md)
+- [The judge (`covenant` module)](../../docs/reference/packages/polydeukes.md#covenant-module)

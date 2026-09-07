@@ -27,9 +27,8 @@ is aspirational.
 | Document | Answers |
 |---|---|
 | [Configuration reference](./reference/configuration/index.md) | What may go in `polydeukes.config.yaml`, and what each key does |
-| [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
+| [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
-| [`@polydeukes/covenant`](./reference/packages/covenant.md) | The judge — dispatcher, discipline library, meta-covenants, the valve |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Session surface — hook payloads become the input IR |
 
 <a id="shape-of-the-thing"></a>
