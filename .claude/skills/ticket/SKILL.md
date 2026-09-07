@@ -126,6 +126,12 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
     are the threat. A finding that names only the risk has reported half of itself. This
     product's disciplines are self-imposed, so a fix that removes the owner's choice is a
     regression even when the risk is real.
+  - **No live-tree probes.** Finders and verifiers read; they never mutate the working tree
+    or run `pnpm build` to test a hypothesis. The session hook loads the built dist, so a
+    mutation probe that reaches dist (a source edit plus a rebuild, or a stub dropped into
+    `dist/`) locks every tool call in this session — twice on 2026-09-07 (SURFACE-02), each
+    recovered only by the owner's terminal. A verifier that needs execution spawns the
+    built bin against a fixture tree it created, never against this repository.
 - Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run
   the `code-review:code-review` plugin (5-perspective review posted as a GitHub comment).
   Know its shape: findings scoring below its confidence cut are silently dropped, so it
