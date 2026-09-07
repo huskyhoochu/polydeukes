@@ -214,7 +214,7 @@ actually reach:
 
 | Family | Break it once | The entry's id shows up in |
 | --- | --- | --- |
-| `declare` (added-only / frozen path) | one scratch edit matching the must-match direction | `pdks covenant check --worktree` output — the exit stays 0 at advise, the id is the proof |
+| `declare` (added-only / frozen path) | one scratch edit matching the must-match direction | `pdks covenant check --diff` output over `git diff HEAD` on stdin — the exit stays 0 at advise, the id is the proof |
 | `declare` (forbidden-command) | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
 | `declare` (precedent) | one in-scope edit made without the required precedent | the telemetry log tail — a session-reading declaration judges on the session surface only (the commit surface records it `skipped`) |
 

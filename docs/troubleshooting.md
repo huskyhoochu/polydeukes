@@ -28,8 +28,8 @@ field. Repair invalid YAML, custom tags, unknown fields, or an empty `languages`
 Custom YAML tags are rejected even if the parser cannot execute them: configuration is data.
 
 Typos such as `protectedPath:` or `adaptors:` are refused. Adapter namespace names are deliberately
-open, however: `adapters.gti:` can load but is not read by the Git adapter. Its actual key is
-`adapters.git`. After repair, run `pdks explain` and check the assembled registrations.
+open, however: a namespace nobody implements loads without being read by anything. After repair,
+run `pdks explain` and check the assembled registrations.
 
 <a id="grok-witness"></a>
 ## Grok witness
@@ -101,13 +101,16 @@ A witness cannot repair missing modules or other failures that prevent judgment 
 <a id="blocked-commit"></a>
 ## A blocked commit
 
-Run the commit from your own terminal and answer its TTY prompt with the complete configured
-token. A non-interactive staged check cannot obtain that answer. The check exits 2 when it refuses;
-Git may report a different nonzero exit code for the failed commit.
+The commit surface does not prompt. By default it exits 0 on every verdict and records the
+break as `advised`; it exits 2 only when the check runs with `--enforce block` (a protected
+path or an entry set to `enforce: block` broke) or when it could not judge at all. Whether the
+commit stops is your hook wiring — a hook that honours the exit code stops it, one that ignores
+it does not. Git may report a different nonzero exit code for the failed commit.
 
-A normal entry blocks only when its own level and the adapter's level both permit blocking.
-Setting only `adapters.git.enforce: block` does not promote default-`advise` entries. Changing a
-level is a policy decision, not a required repair. The prompt is separate from a session message.
+A normal entry blocks only when it declares `enforce: block` and the check runs with
+`--enforce block`; nothing in the config promotes a default-`advise` entry. Changing a level is
+a policy decision, not a required repair. To let a judged break through, drop `--enforce block`
+from the hook command rather than editing the config — the row is still written.
 
 <a id="skipped-rows-on-the-commit-surface"></a>
 ## `skipped` rows on the commit surface

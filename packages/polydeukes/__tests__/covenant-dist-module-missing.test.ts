@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // under the surface's own label, and the recovery command on stderr.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import {
   BASELINE_FIRST_RUN_ROW,
   type CheckRepo,
@@ -38,32 +39,32 @@ describe('commit surface: a module-gutted covenant dist fails closed', () => {
     vi.restoreAllMocks();
   });
 
-  /** Stage a protected change; advise is the level where a fake verdict passes. */
-  function stageProtectedChange(enforce: 'advise' | 'block' = 'advise'): void {
-    repo.writeConfig({
-      protectedPaths: [PROTECTED_ENTRY],
-      adapters: { git: { enforce } },
-    });
+  /** Stage a protected change — the self-mod label is what a real judgment leaves. */
+  function stageProtectedChange(): void {
+    repo.writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     repo.write(PROTECTED_ENTRY, 'sensitive\n');
     repo.git('add', PROTECTED_ENTRY, 'polydeukes.config.json');
   }
 
-  it('the COMPLETE mirror still judges normally (exit 0, advised self-mod rows)', async () => {
+  it('the COMPLETE mirror still judges normally (exit 2, self-mod rows naming the targets)', async () => {
     // Without this control, an import proof that rejected any injected dist would leave
     // the gutted cases below green while proving nothing.
     stageProtectedChange();
 
     const result = await runCovenantCheck({
+      enforce: 'block',
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
       covenantDist: sharedDistWithout(repo.repoRoot, null),
     });
 
-    expect(result.exitCode).toBe(0);
-    // Two staged files, two advised rows — the subjects are the judged targets.
+    expect(result.exitCode).toBe(2);
+    // Two staged files, two self-mod rows — the subjects are the judged targets, and the
+    // label is what separates a real verdict from the fail-closed handler's row.
     expect(telemetryRows(repo.telemetryPath)).toEqual([
-      ['advised', 'self-mod', 'polydeukes.config.json'],
-      ['advised', 'self-mod', PROTECTED_ENTRY],
+      ['blocked', 'self-mod', 'polydeukes.config.json'],
+      ['blocked', 'self-mod', PROTECTED_ENTRY],
     ]);
   });
 
@@ -76,6 +77,7 @@ describe('commit surface: a module-gutted covenant dist fails closed', () => {
     const result = await runCovenantCheck({
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
       covenantDist: sharedDistWithout(repo.repoRoot, BARREL_MODULE),
     });
 
@@ -86,15 +88,16 @@ describe('commit surface: a module-gutted covenant dist fails closed', () => {
     expect(emitted).toContain(BARREL_MODULE);
   });
 
-  it('under enforce block: the SAME single covenant-check row — the label separates a fail-closed from a fabricated verdict', async () => {
-    // Block already exits 2 here, but an import proof wired into the advise branch alone
-    // would reach it through a self-mod VERDICT no judge produced — which an
-    // exit-code-only assertion cannot see.
-    stageProtectedChange('block');
+  it('a gutted dist leaves ONE covenant-check row — the label separates a fail-closed from a fabricated verdict', async () => {
+    // The exit code alone cannot tell the two apart: a self-mod VERDICT no judge produced
+    // exits 2 the same way an assembly that never started does. The label is the
+    // discriminator.
+    stageProtectedChange();
 
     const result = await runCovenantCheck({
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
       covenantDist: sharedDistWithout(repo.repoRoot, BARREL_MODULE),
     });
 

@@ -11,7 +11,6 @@
  */
 
 import { join } from 'node:path';
-import { resolveGitAdapterSettings } from '@polydeukes/adapter-git';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
@@ -158,7 +157,6 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     rootDir: spec.repoRoot,
     covenant,
   });
-  const gitSettings = resolveGitAdapterSettings({ namespace: config.adapters?.git });
 
   const text = [
     `pdks explain — ${configPath}`,
@@ -173,11 +171,11 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     }),
     '',
     renderSurface({
-      header: `surface: commit (git pre-commit) · enforce: ${gitSettings.enforce} · disciplines: advise unless enforce: block`,
+      header: 'surface: commit (git pre-commit) · disciplines: advise unless enforce: block',
       registrations: commit,
       drafts,
       disciplines,
-      selfModScope: 'common ∪ adapters.git; deduped, includes the config file itself',
+      selfModScope: 'common; includes the config file itself',
     }),
     '',
   ].join('\n');

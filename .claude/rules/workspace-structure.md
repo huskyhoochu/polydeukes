@@ -19,7 +19,7 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
   `pdks` CLI entry point — since ADAPTER-git the bin is real. Subcommands:
-  `covenant check` (the judgment runner over staged, worktree, or ref-range changes),
+  `covenant check` (the judgment runner over an input IR or a unified diff on stdin),
   `init claude-code` (the Claude Code session-surface installer, since DIST-02),
   `init grok` (the Grok session-surface installer, since DIST-06), `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since

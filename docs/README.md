@@ -31,7 +31,6 @@ is aspirational.
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
 | [`@polydeukes/covenant`](./reference/packages/covenant.md) | The judge — dispatcher, discipline library, meta-covenants, the valve |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Session surface — hook payloads become the input IR |
-| [`@polydeukes/adapter-git`](./reference/packages/adapter-git.md) | Commit surface — staged, worktree, and range diffs become the input IR |
 
 <a id="shape-of-the-thing"></a>
 ## The shape of the thing, in one page
@@ -58,7 +57,8 @@ in the whitepaper, which were all found by counting rows rather than by reading 
 | Surface | Judges | Wired by | For |
 |---|---|---|---|
 | **Session** | A tool call, before it runs | `pdks init claude-code` or `pdks init grok` | A project developed with an AI partner |
-| **Commit** | A diff — staged, the working tree, or a ref range | A pre-commit hook, or run on demand | A human developing alone, and CI |
+| **Commit** | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand | A human developing alone, and CI |
 
-The commit judge also answers on demand: `pdks covenant check --worktree` after a task, `--range`
-before a PR. Same verdict a commit would receive, delivered as a report with no prompt and no gate.
+The commit judge also answers on demand: `git diff HEAD | pdks covenant check --diff` after a task,
+`git diff main...HEAD | …` before a PR. Same verdict a commit would receive, delivered as an exit
+code with no prompt — the gate is whatever consumes that code.

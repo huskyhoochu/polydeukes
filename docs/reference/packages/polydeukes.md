@@ -45,7 +45,7 @@ exit codes are in [`pdks docs`](../cli/docs.md).
 | `runCovenantCheck` | function | Runs the commit-surface runner and resolves to `{ exitCode: 0 \| 2 }`. |
 | `ResolvedConfig` | type | Re-export from `@polydeukes/core`. |
 | `LoadConfigSpec`, `LoadedConfig` | types | Configuration loader input and result. |
-| `CovenantCheckSpec`, `CovenantCheckOutcome`, `CheckDomain` | types | Commit runner input, result, and observation selection. |
+| `CovenantCheckSpec`, `CovenantCheckOutcome` | types | Commit runner input and result. |
 
 <a id="session-export"></a>
 ### `./claude-code`
@@ -84,16 +84,10 @@ function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome
 
 type CovenantCheckSpec = {
   repoRoot: string;
+  input: CovenantInput | (() => CovenantInput);
   telemetryPath?: string;
   covenantDist?: string;
-  ttyPrompt?: (prompt: string) => string | null;
-  domain?: CheckDomain;
 };
-
-type CheckDomain =
-  | { kind: 'staged' }
-  | { kind: 'worktree' }
-  | { kind: 'range'; base: string; head: string; ancestry?: 'merge-base' };
 
 function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome>;
 
@@ -105,7 +99,7 @@ type ClaudeCodeHookSpec = {
 };
 ```
 
-`ancestry: 'merge-base'` is the `<base>...<head>` reading. `rawPayload` absent means the hook reads
+`input` is the covenant input IR, or a thunk returning it. `rawPayload` absent means the hook reads
 fd 0. The hook types live on `polydeukes/claude-code`, not on the root barrel.
 
 ```ts
@@ -113,7 +107,7 @@ import { loadConfig, runCovenantCheck } from 'polydeukes';
 import { runClaudeCodeHook } from 'polydeukes/claude-code';
 
 const { configPath } = loadConfig({ rootDir: process.cwd() });
-const check = await runCovenantCheck({ repoRoot: process.cwd() });
+const check = await runCovenantCheck({ repoRoot: process.cwd(), input: { toolCalls: [] } });
 const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}' });
 ```
 
@@ -126,8 +120,8 @@ const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}'
 - The numeric codes are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`), and
   `EXIT_BREAK_BLOCKING` (`2`) from `@polydeukes/core`. The umbrella runners expose only `0` or
   `2`; they never return `1`.
-- `pdks covenant check` prompts for a witness token only for the staged domain, never for
-`--worktree` or `--range`.
+- `pdks covenant check` never prompts. It reads stdin and exits 0 or 2; the caller decides what
+that exit code means.
 - `pdks docs` and `pdks explain` print nothing partial on failure.
 
 <a id="polydeukes-see-also"></a>

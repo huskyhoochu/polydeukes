@@ -56,44 +56,19 @@ rejected by that adapter's validator, with the full field path in the error.
 
 ```yaml
 adapters:
-  git:
-    enforce: advise
-    protectedPaths:
-      - 'packages/core/src'
+  example:
+    someKey: 'a value the example adapter defines'
 ```
 
-<a id="adapters-git"></a>
-### `adapters.git` — the git commit adapter
+**`protectedPaths` is one list for both surfaces.** There is no additive commit-only scope
+and no surface-level enforcement key in the config. The commit surface judges the same
+normalized list the session surface does. A violation exits 2 on the session surface; on the
+commit surface it lands `advised` at exit 0 unless the check runs with `--enforce block`. The
+judge emits only that exit code: whether a commit stops is the user's hook wiring, so a
+telemetry row records the verdict, not the commit's fate — a `blocked` row can sit beside a
+commit that proceeded because the wiring ignored the exit code.
 
-| Key | Values | Default | Meaning |
-|---|---|---|---|
-| `enforce` | `block` \| `advise` | `block` | Enforcement level of the commit surface |
-| `protectedPaths` | string array | `[]` | Additive protection scope judged by the commit surface only |
-
-- **`block`** — a staged change that breaks a covenant judged at block level blocks the
-  commit (exit 2): a protected path, or an entry promoted with `enforce: block`. An ordinary
-  entry keeps its own default `advise` under this setting (see `enforce` below). The
-  only way through is the witness valve: a human answering the TTY prompt with the full
-  token. The prompt names what it asks the human to witness — the broken registration,
-  the matched entry, and the fact that the one answer covers the whole commit. An absent
-  namespace, an absent `adapters` map, or an absent `enforce` key all mean `block` — not
-  writing the key selects the strictest level.
-- **`advise`** — the commit surface becomes a backstop without a block: a verdict on a
-  staged change is recorded as an `advised` telemetry event and the commit proceeds
-  (exit 0) with one advisory line on stderr. No TTY prompt fires. The judgment criteria stay
-  the same; violations no longer block. A run that cannot judge (missing or invalid config,
-  an unresolvable judge body) still fails closed at exit 2, at either level.
-
-**`protectedPaths` here is an additive scope.** The commit surface judges the union of the
-top-level `protectedPaths` and this list — concatenated (common first) and normalized as one,
-so spelling and dedupe rules are identical for both. The session surface never reads it: the
-list exists for paths whose edit is legitimate work during a session but must pass a judged
-checkpoint when it is promoted into repository history — a judgment chain's own sources are
-the canonical tenant. As the enforcement level is the observer's setting, so is the
-additional scope. There is no subtractive vocabulary: a config line can widen a surface's
-scope, never quietly strip one.
-
-The session surface (the editor-time hook) has no level setting here. What it blocks is the
+The session surface (the editor-time hook) has no level setting either. What it blocks is the
 judging chain's own protection — `protectedPaths` mutations and mentions on the tool and
 shell axes, the session transcript, an assembly that cannot judge (missing or invalid
 config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
@@ -219,10 +194,10 @@ is one line.
 **`enforce` — the entry's own level.** Optional on any judged entry: `block` or `advise`.
 **Absent means `advise`.** Under `advise` a break is recorded as an `advised` telemetry
 event and the call proceeds (exit 0), with the break message still written to stderr;
-`block` is the promotion — it pins the entry at block. The entry's level composes with the
-surface's (`adapters.git.enforce` on the commit surface; the session surface has none) and
-the lenient side wins — an `advise` on either axis makes the entry advise, and an explicit
-`block` never raises a surface the observer set to advise. An unjudgeable body (never
+`block` is the promotion — it pins the entry at block. The config carries no surface-level
+enforcement key: absent or `advise` means `advised` on both surfaces, `block` means exit 2 on
+the session surface and on a commit check run with `--enforce block` (the commit surface's
+default posture is advise for every verdict). An unjudgeable body (never
 built, or one that cannot be loaded) still blocks whatever the level. A draft carries no
 `enforce`; any
 other value is rejected at load time. `pdks explain` prints the level an entry declares

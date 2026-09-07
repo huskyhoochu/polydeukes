@@ -15,7 +15,6 @@ export default defineConfig({
         import.meta.dirname,
         '../adapter-claude-code/src/index.ts',
       ),
-      '@polydeukes/adapter-git': resolve(import.meta.dirname, '../adapter-git/src/index.ts'),
     },
   },
   test: {

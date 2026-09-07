@@ -54,9 +54,10 @@ prevent every possible edit outside connected surfaces. Protecting the discovere
 a built-in behavior; protecting other source files depends on the configured paths.
 
 A human witness can allow a blocking judgment without rewriting the policy. In a supported session,
-the token must stand alone on the first line of a human message and remain within its TTL. A staged
-commit uses a TTY prompt instead. Both consult the valve after judgment. Neither repairs a broken
-assembly, and a commit answer cannot authorize a pending session call.
+the token must stand alone on the first line of a human message and remain within its TTL. The
+commit surface has no prompt: the valve is the session surface's TTL witness, and the commit
+surface only emits an exit code that the user's hook consumes. The valve is consulted after
+judgment and does not repair a broken assembly.
 
 ### Deterministic judgment, explicit enforcement
 

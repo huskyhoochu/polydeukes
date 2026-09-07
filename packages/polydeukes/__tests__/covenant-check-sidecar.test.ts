@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Each test builds a real throwaway git repo and writes its own tmp config, so no
 // protected path of THIS repository is ever referenced; the judging dist is the real one.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 const TARGET_FILE = 'lib/a.ts';
@@ -42,6 +43,12 @@ let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
 let git: CheckRepo['git'];
+
+/** The staged diff of the fixture repository, translated to the IR the runner judges. */
+function stagedInput() {
+  return covenantInputFromUnifiedDiff({ text: git('diff', '--cached') });
+}
+
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
@@ -63,7 +70,7 @@ describe('covenant check — a sidecar declaration on the surface with no channe
     // staging it would land a self-mod block that has nothing to do with the channel.
     git('add', TARGET_FILE);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(0);
   });
@@ -78,7 +85,7 @@ describe('covenant check — a sidecar declaration on the surface with no channe
     git('add', TARGET_FILE);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(2);
     const lines = stderrSpy.mock.calls.map((call) => String(call[0])).join('');

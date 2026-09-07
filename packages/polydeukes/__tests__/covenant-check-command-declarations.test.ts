@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // Each case builds a real throwaway git repo and writes its own config, so no protected
 // path of THIS repository is ever referenced.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 /** Injected fixture values — ids, sources, patterns. */
@@ -67,6 +68,12 @@ let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
 let git: CheckRepo['git'];
+
+/** The staged diff of the fixture repository, translated to the IR the runner judges. */
+function stagedInput() {
+  return covenantInputFromUnifiedDiff({ text: git('diff', '--cached') });
+}
+
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
@@ -103,7 +110,7 @@ describe('covenant check — a forbidden-command declaration on the commit surfa
     write(LIB_A, 'export const x = 1;\n');
     git('add', LIB_A);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(0);
     expect(rowsOf(BAN_ID)).toEqual([]);
@@ -122,7 +129,7 @@ describe('covenant check — a precedent declaration on the commit surface', () 
     write(LIB_B, 'export const y = 2;\n');
     git('add', LIB_A, LIB_B);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(0);
     expect(rowsOf(PRECEDENT_ID).sort()).toEqual([

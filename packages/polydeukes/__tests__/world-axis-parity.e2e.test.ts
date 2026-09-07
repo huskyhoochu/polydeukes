@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // Two surfaces, one content-parity verdict. A declaration that
 // compares the key sets of two locale files (`sources` ko + en, `json` · `flattenKeys`,
 // `Equal`) is judged over an Edit payload adding a key to `en.json` (session) and over the
-// worktree holding the same edit (commit `--worktree`). Both must land the same label, the
+// worktree holding the same edit (commit, `git diff HEAD` piped). Both must land the same label, the
 // same `advised` event, and the same witness key.
 //
 // The session case is the proof of the override rule: the disk `en.json` is still the
@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // a suite that rebuilds mid-edit is how a session locks itself out.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';
 
 /** Injected fixture values — the parity declaration and the two locales it names. */
@@ -161,7 +162,7 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     ).toEqual([['advised', DECLARE_ID, [ADDED_KEY], ['right']]]);
   });
 
-  it('commit --worktree: the same edit on disk lands the same (label, event) and the same witness key as the session', async () => {
+  it('commit over git diff HEAD: the same edit on disk lands the same (label, event) and the same witness key as the session', async () => {
     // Two observers, one verdict. The commit root reads the worktree, the session root
     // read the payload's post over a pre-edit disk — if either surface assembles the world
     // differently (wrong `read`, missing override, a supplied `changes` that shadows the
@@ -185,10 +186,11 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     });
 
     commitRepo.write(EN_FILE, EDITED_CONTENT);
+    commitRepo.git('add', EN_FILE);
     const commit = await runCovenantCheck({
       repoRoot: commitRepo.repoRoot,
       telemetryPath: commitLog,
-      domain: { kind: 'worktree' },
+      input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
     });
 
     expect(commit.exitCode).toBe(0);

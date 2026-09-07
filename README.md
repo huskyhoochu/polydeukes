@@ -8,17 +8,18 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol),
-`@polydeukes/covenant` (the judge), the two adapters (`adapter-claude-code`, `adapter-git`), and
+**Status: alpha.** Four packages ship — `@polydeukes/core` (the covenant protocol),
+`@polydeukes/covenant` (the judge), the session adapter (`adapter-claude-code`), and
 the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
 memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init claude-code    # wire the Claude Code session surface into a project
 pdks init grok           # wire the Grok session surface into a project
-pdks covenant check      # judge the staged diff (the pre-commit entry point)
-pdks covenant check --worktree            # the same judgment over the working tree
-pdks covenant check --range main...HEAD   # ... or over a ref range (a PR's scope)
+git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
+git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree
+git diff main...HEAD | pdks covenant check --diff   # ... or over a ref range (a PR's scope)
+pdks covenant check < input.json                    # or an input IR another program built
 pdks explain             # print what each surface judges, skips, and excludes — no judgment
 pdks docs [topic]        # read the bundled documentation, offline
 ```

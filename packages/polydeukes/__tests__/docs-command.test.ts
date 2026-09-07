@@ -30,8 +30,8 @@ const queries = [
   ['ko', 'Grok 증인', 'troubleshooting', 'grok-witness'],
   ['en', 'config-fault', 'troubleshooting', 'config-fault'],
   ['ko', '미판정 config-fault', 'troubleshooting', 'config-fault'],
-  ['en', '--worktree', 'cli-covenant-check', 'worktree'],
-  ['ko', '작업 트리 검사', 'cli-covenant-check', 'worktree'],
+  ['en', 'hunk lines', 'cli-covenant-check', 'diff-translation'],
+  ['ko', 'hunk 줄', 'cli-covenant-check', 'diff-translation'],
 ] as const;
 
 function invoke(args: string[]) {

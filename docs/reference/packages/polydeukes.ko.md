@@ -44,7 +44,7 @@
 | `runCovenantCheck` | 함수 | 커밋 표면을 실행하고 `{ exitCode: 0 \| 2 }`를 반환합니다. |
 | `ResolvedConfig` | 타입 | `@polydeukes/core`에서 다시 내보냅니다. |
 | `LoadConfigSpec`, `LoadedConfig` | 타입 | 설정 로더의 입력과 결과입니다. |
-| `CovenantCheckSpec`, `CovenantCheckOutcome`, `CheckDomain` | 타입 | 커밋 실행기의 입력, 결과, 관측 범위입니다. |
+| `CovenantCheckSpec`, `CovenantCheckOutcome` | 타입 | 커밋 실행기의 입력과 결과입니다. |
 
 <a id="session-export"></a>
 ### `./claude-code`
@@ -82,16 +82,10 @@ function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome
 
 type CovenantCheckSpec = {
   repoRoot: string;
+  input: CovenantInput | (() => CovenantInput);
   telemetryPath?: string;
   covenantDist?: string;
-  ttyPrompt?: (prompt: string) => string | null;
-  domain?: CheckDomain;
 };
-
-type CheckDomain =
-  | { kind: 'staged' }
-  | { kind: 'worktree' }
-  | { kind: 'range'; base: string; head: string; ancestry?: 'merge-base' };
 
 function runClaudeCodeHook(spec: ClaudeCodeHookSpec): Promise<ClaudeCodeHookOutcome>;
 
@@ -103,7 +97,7 @@ type ClaudeCodeHookSpec = {
 };
 ```
 
-`ancestry: 'merge-base'`는 `<base>...<head>`와 같이 공통 조상을 기준으로 비교한다는 뜻입니다.
+`input`은 약속 입력 IR이거나 그것을 돌려주는 함수입니다.
 `rawPayload`가 없으면 훅은 표준 입력인 파일 디스크립터 0을 읽습니다. 훅 타입은 루트 배럴이 아니라 `polydeukes/claude-code`에 있습니다.
 
 ```ts
@@ -111,7 +105,7 @@ import { loadConfig, runCovenantCheck } from 'polydeukes';
 import { runClaudeCodeHook } from 'polydeukes/claude-code';
 
 const { configPath } = loadConfig({ rootDir: process.cwd() });
-const check = await runCovenantCheck({ repoRoot: process.cwd() });
+const check = await runCovenantCheck({ repoRoot: process.cwd(), input: { toolCalls: [] } });
 const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}' });
 ```
 
@@ -122,7 +116,7 @@ const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}'
 - `runCovenantCheck()`와 `runClaudeCodeHook()`는 예외를 던지지 않고 `{ exitCode: 0 \| 2 }`를 반환합니다.
 - 숫자 코드는 `@polydeukes/core`의 `EXIT_UPHOLD`(`0`), `EXIT_BREAK_NON_BLOCKING`(`1`),
   `EXIT_BREAK_BLOCKING`(`2`)입니다. 우산 실행기는 `0` 또는 `2`만 노출하며 `1`을 반환하지 않습니다.
-- `pdks covenant check`가 증인 토큰을 요청하는 것은 스테이징한 변경을 검사할 때뿐입니다. `--worktree`와 `--range`에서는 묻지 않습니다.
+- `pdks covenant check`는 사람에게 묻지 않습니다. 표준 입력을 읽고 종료 코드 0 또는 2를 내며, 그 종료 코드의 뜻은 호출한 쪽이 정합니다.
 - `pdks docs`와 `pdks explain`은 실패 시 중간 출력 없이 끝납니다.
 
 <a id="polydeukes-see-also"></a>

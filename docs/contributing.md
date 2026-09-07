@@ -52,8 +52,8 @@ own project. When an example is this repository's live config, say so in the pro
 it.
 
 Exercise a new declaration in an isolated example project, not by violating this
-repository's protected files. Prefer `pdks covenant check --worktree` for file-backed
-examples and the hook probe in [the first-judgment tutorial](./tutorials/first-judgment.md)
+repository's protected files. Prefer `git diff HEAD | pdks covenant check --diff` for
+file-backed examples and the hook probe in [the first-judgment tutorial](./tutorials/first-judgment.md)
 for session writes.
 
 TypeScript examples import only symbols the package contract exports (`polydeukes` and

@@ -2,530 +2,614 @@
 
 languages:
   typescript:
-    productionGlob: 'packages/*/src/**/*.ts'
-    testCmd: 'pnpm --filter {scope} test'
+    productionGlob: "packages/*/src/**/*.ts"
+    testCmd: "pnpm --filter {scope} test"
 
 # Read by both surfaces. Two kinds: a gate definition (an edit disarms a check rather than
 # passing it) and what a commit can never show (the gitignored dist).
 protectedPaths:
-  - '.claude/hooks'
-  - '.claude/settings.json'
-  - '.grok/hooks'
-  - 'lefthook.yml'
-  - 'lefthook-local.yml'
-  - '.lefthook-local'
-  - 'biome.json'
-  - '.git/hooks'
-  - 'packages/core/dist'
-  - 'packages/covenant/dist'
-  - 'packages/polydeukes/dist'
-  - 'packages/adapter-claude-code/dist'
-  - 'packages/adapter-git/dist'
-
-adapters:
-  git:
-    enforce: advise
+  - ".claude/hooks"
+  - ".claude/settings.json"
+  - ".grok/hooks"
+  - "lefthook.yml"
+  - "lefthook-local.yml"
+  - ".lefthook-local"
+  - "biome.json"
+  - ".git/hooks"
+  - "packages/core/dist"
+  - "packages/covenant/dist"
+  - "packages/polydeukes/dist"
+  - "packages/adapter-claude-code/dist"
 
 # The valve: this token alone on a message's first line opens a blocked judgment for
 # ttlMinutes. Provenance is the defence — no agent can forge a human turn.
 witness:
-  token: 'pdks witness'
+  token: "pdks witness"
   ttlMinutes: 10
 
 disciplines:
   # ---- the change axis: what an edit adds, keeps, or moves
-  - id: 'covenant-vocabulary'
-    why: 'domain-terms bans control-framing vocabulary in package sources and tests; only new occurrences break, so existing debt is forgiven. the one exclude is the old-key contract test whose literals are the contract.'
+  - id: "covenant-vocabulary"
+    why: "domain-terms bans control-framing vocabulary in package sources and tests; only new occurrences break, so existing debt is forgiven. the one exclude is the old-key contract test whose literals are the contract."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
+        source: "target.path"
+        include: ["^packages/[^/]+/(src|__tests__)/"]
         exclude: ['^packages/core/__tests__/config-witness-key\.test\.ts$']
-      supply: { pre: 'empty', post: 'empty' }
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(guard|harness|kb|waiver?)\b' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '\b(guard|harness|kb|waiver?)\b' }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(guard|harness|kb|waiver?)\b' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '\b(guard|harness|kb|waiver?)\b' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  - id: 'english-only-sources'
-    why: 'code comments and test titles are English-only; Korean belongs in docs and conversation.'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+  - id: "english-only-sources"
+    why: "code comments and test titles are English-only; Korean belongs in docs and conversation."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
-      supply: { pre: 'empty', post: 'empty' }
+        source: "target.path"
+        include: ["^packages/[^/]+/(src|__tests__)/"]
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '([가-힣]+)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: "([가-힣]+)" }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '([가-힣]+)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: "([가-힣]+)" }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  - id: 'comments-state-facts'
-    why: 'a published comment may only say what the reader can open: a ticket id or a wiki coordinate resolves on one machine, and an audit grade or a cycle-phase name records how we worked rather than what the code does. state the fact instead.'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+  - id: "comments-state-facts"
+    why: "a published comment may only say what the reader can open: a ticket id or a wiki coordinate resolves on one machine, and an audit grade or a cycle-phase name records how we worked rather than what the code does. state the fact instead."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/(src|__tests__)/']
-      supply: { pre: 'empty', post: 'empty' }
+        source: "target.path"
+        include: ["^packages/[^/]+/(src|__tests__)/"]
+      supply: { pre: "empty", post: "empty" }
       extract:
         coordinatesBefore:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)',
+            }
         coordinatesAfter:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)',
+            }
         coordinatesAdded:
-          - { op: 'onlyIn', of: 'coordinatesAfter', notIn: 'coordinatesBefore' }
+          - { op: "onlyIn", of: "coordinatesAfter", notIn: "coordinatesBefore" }
         gradesBefore:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)',
+            }
         gradesAfter:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)',
+            }
         gradesAdded:
-          - { op: 'onlyIn', of: 'gradesAfter', notIn: 'gradesBefore' }
+          - { op: "onlyIn", of: "gradesAfter", notIn: "gradesBefore" }
       relate:
-        - id: 'no-wiki-coordinate'
-          relation: { op: 'empty', of: 'coordinatesAdded' }
-          message: 'adds a coordinate the reader cannot open — {key}: {value}'
-        - id: 'no-process-grade'
-          relation: { op: 'empty', of: 'gradesAdded' }
-          message: 'adds a process grade — {key}: {value}'
-  - id: 'barrels-only-reexport'
-    why: 'a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static.'
+        - id: "no-wiki-coordinate"
+          relation: { op: "empty", of: "coordinatesAdded" }
+          message: "adds a coordinate the reader cannot open — {key}: {value}"
+        - id: "no-process-grade"
+          relation: { op: "empty", of: "gradesAdded" }
+          message: "adds a process grade — {key}: {value}"
+  - id: "barrels-only-reexport"
+    why: "a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
-      supply: { pre: 'empty', post: 'empty' }
+        source: "target.path"
+        include:
+          [
+            '^packages/[^/]+/src/index\.ts$',
+            '^packages/polydeukes/src/claude-code\.ts$',
+          ]
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)',
+            }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)',
+            }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  - id: 'tests-import-modules'
-    why: 'a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time.'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+  - id: "tests-import-modules"
+    why: "a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/[^/]+/__tests__/']
-      supply: { pre: 'empty', post: 'empty' }
+        source: "target.path"
+        include: ["^packages/[^/]+/__tests__/"]
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])",
+            }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - {
+              op: "keyByPattern",
+              re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])",
+            }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  - id: 'core-stays-runner-agnostic'
-    why: 'the core never names a test runner; verification is an exit code and the command is config.'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+  - id: "core-stays-runner-agnostic"
+    why: "the core never names a test runner; verification is an exit code and the command is config."
     declare:
-      mechanism: 'added-only'
+      mechanism: "added-only"
       scope:
-        source: 'target.path'
-        include: ['^packages/core/(src|schema)/']
-      supply: { pre: 'empty', post: 'empty' }
+        source: "target.path"
+        include: ["^packages/core/(src|schema)/"]
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '\b(vitest|pytest|go test)\b' }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '\b(vitest|pytest|go test)\b' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '\b(vitest|pytest|go test)\b' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
-  - id: 'sqlite-only-under-knowledge'
-    why: 'a *.db file may exist only under _docs/knowledge/, where gitignore-by-location keeps it out of history.'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+  - id: "sqlite-only-under-knowledge"
+    why: "a *.db file may exist only under _docs/knowledge/, where gitignore-by-location keeps it out of history."
     declare:
-      mechanism: 'naming'
-      scope: { source: 'target.path', include: ['\.db$'] }
+      mechanism: "naming"
+      scope: { source: "target.path", include: ['\.db$'] }
       extract:
         outside:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'matches', re: '^(?!_docs/knowledge/)' }
+          - { op: "source", of: "target.path" }
+          - { op: "matches", re: "^(?!_docs/knowledge/)" }
       relate:
-        - id: 'placed'
-          relation: { op: 'empty', of: 'outside' }
-          message: '{value} is outside _docs/knowledge/'
-  - id: 'changelog-keeps-every-release'
-    why: 'a release heading is a record: once CHANGELOG carries a version it never loses it. release-please prepends, a hand edit may fix a line, and neither removes a heading.'
+        - id: "placed"
+          relation: { op: "empty", of: "outside" }
+          message: "{value} is outside _docs/knowledge/"
+  - id: "changelog-keeps-every-release"
+    why: "a release heading is a record: once CHANGELOG carries a version it never loses it. release-please prepends, a hand edit may fix a line, and neither removes a heading."
     declare:
-      mechanism: 'one-way-marker'
-      scope: { source: 'target.path', include: ['^CHANGELOG\.md$'] }
-      supply: { pre: 'empty', post: 'empty' }
+      mechanism: "one-way-marker"
+      scope: { source: "target.path", include: ['^CHANGELOG\.md$'] }
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(## \[?\d+\.\d+\.\d+)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^(## \[?\d+\.\d+\.\d+)' }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(## \[?\d+\.\d+\.\d+)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^(## \[?\d+\.\d+\.\d+)' }
       relate:
-        - id: 'release-kept'
-          relation: { op: 'subset', of: 'before', in: 'after' }
-          message: 'release heading removed: {value}'
-  - id: 'valve-is-not-the-agents'
-    why: 'the witness token and its window belong to the human: a config edit, even one the valve let through, leaves the witness block as it was.'
+        - id: "release-kept"
+          relation: { op: "subset", of: "before", in: "after" }
+          message: "release heading removed: {value}"
+  - id: "valve-is-not-the-agents"
+    why: "the witness token and its window belong to the human: a config edit, even one the valve let through, leaves the witness block as it was."
     declare:
-      mechanism: 'self-absolution-ban'
-      scope: { source: 'target.path', include: ['^polydeukes\.config\.yaml$'] }
-      supply: { state: 'pass' }
+      mechanism: "self-absolution-ban"
+      scope: { source: "target.path", include: ['^polydeukes\.config\.yaml$'] }
+      supply: { state: "pass" }
       extract:
         valve:
-          - { op: 'source', of: 'state' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^(token:|ttlMinutes:)' }
+          - { op: "source", of: "state" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: "^(token:|ttlMinutes:)" }
       relate:
-        - id: 'valve-unchanged'
-          relation: { op: 'unchanged', of: 'valve' }
-          message: 'the witness block changed at {key}'
+        - id: "valve-unchanged"
+          relation: { op: "unchanged", of: "valve" }
+          message: "the witness block changed at {key}"
 
   # ---- the command line: what a shell call runs
-  - id: 'hooks-stay-armed'
-    why: 'a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself; the gate definitions it neutralizes are on the protected list, so this entry blocks too.'
+  - id: "hooks-stay-armed"
+    why: "a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself; the gate definitions it neutralizes are on the protected list, so this entry blocks too."
     enforce: block
     declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
       extract:
         hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b' }
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath|--no-verify\b|--no-gpg-sign\b',
+            }
       relate:
-        - id: 'gates-armed'
-          relation: { op: 'empty', of: 'hits' }
-          message: 'command line disarms a commit gate: {value}'
-  - id: 'work-stays-recoverable'
-    why: 'a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, so the way through is the witness valve.'
+        - id: "gates-armed"
+          relation: { op: "empty", of: "hits" }
+          message: "command line disarms a commit gate: {value}"
+  - id: "work-stays-recoverable"
+    why: "a command that destroys uncommitted work, or force-pushes with no lease on the remote state, forecloses recovery; recovery is a human decision, so the way through is the witness valve."
     enforce: block
     declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
       extract:
         hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git push\b.*--force(?![\w-])' }
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: 'git reset\b.*--hard|git clean\b.*-f|git checkout -- \.|git push\b.*--force(?![\w-])',
+            }
       relate:
-        - id: 'recoverable'
-          relation: { op: 'empty', of: 'hits' }
-          message: 'command line destroys uncommitted or remote state: {value}'
-  - id: 'pnpm-only'
-    why: 'the runtime pins pnpm; npm/yarn mutations desync the lockfile. read-only npm (view, info) stays allowed for version measurement.'
+        - id: "recoverable"
+          relation: { op: "empty", of: "hits" }
+          message: "command line destroys uncommitted or remote state: {value}"
+  - id: "pnpm-only"
+    why: "the runtime pins pnpm; npm/yarn mutations desync the lockfile. read-only npm (view, info) stays allowed for version measurement."
     declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
       extract:
         hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b' }
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: '\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\b|(^|[;&|(]\s*)yarn\b',
+            }
       relate:
-        - id: 'no-npm-mutation'
-          relation: { op: 'empty', of: 'hits' }
-          message: 'command line mutates dependencies outside pnpm: {value}'
+        - id: "no-npm-mutation"
+          relation: { op: "empty", of: "hits" }
+          message: "command line mutates dependencies outside pnpm: {value}"
 
   # ---- the world axis: what other files say
-  - id: 'schema-enums-agree'
-    why: 'the mechanism catalogue is mirrored into two JSON schemas; a name added to one and not the other validates in the editor and fails at load.'
+  - id: "schema-enums-agree"
+    why: "the mechanism catalogue is mirrored into two JSON schemas; a name added to one and not the other validates in the editor and fails at load."
     declare:
-      mechanism: 'pairing'
-      scope: { source: 'target.path', include: ['^packages/core/schema/'] }
+      mechanism: "pairing"
+      scope: { source: "target.path", include: ["^packages/core/schema/"] }
       sources:
-        entry: { file: 'packages/core/schema/polydeukes.schema.json' }
-        grammar: { file: 'packages/core/schema/algebra-declaration.schema.json' }
+        entry: { file: "packages/core/schema/polydeukes.schema.json" }
+        grammar:
+          { file: "packages/core/schema/algebra-declaration.schema.json" }
       extract:
         entryNames:
-          - { op: 'source', of: 'entry' }
-          - { op: 'json' }
-          - { op: 'select', path: '$defs.declarationBody.properties.mechanism.enum' }
+          - { op: "source", of: "entry" }
+          - { op: "json" }
+          - {
+              op: "select",
+              path: "$defs.declarationBody.properties.mechanism.enum",
+            }
         grammarNames:
-          - { op: 'source', of: 'grammar' }
-          - { op: 'json' }
-          - { op: 'select', path: 'properties.mechanism.enum' }
+          - { op: "source", of: "grammar" }
+          - { op: "json" }
+          - { op: "select", path: "properties.mechanism.enum" }
       relate:
-        - id: 'same-names'
-          relation: { op: 'equal', of: ['entryNames', 'grammarNames'] }
-          message: 'mechanism enum differs: {value}'
-  - id: 'agent-models-in-tiers'
-    why: 'an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees.'
+        - id: "same-names"
+          relation: { op: "equal", of: ["entryNames", "grammarNames"] }
+          message: "mechanism enum differs: {value}"
+  - id: "agent-models-in-tiers"
+    why: "an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees."
     declare:
-      mechanism: 'companion'
-      scope: { source: 'target.path', include: ['^\.claude/agents/[^/]+\.md$'] }
+      mechanism: "companion"
+      scope: { source: "target.path", include: ['^\.claude/agents/[^/]+\.md$'] }
       sources:
-        tiers: { file: '.claude/rules/model-tiers.md' }
-      supply: { post: 'empty' }
+        tiers: { file: ".claude/rules/model-tiers.md" }
+      supply: { post: "empty" }
       extract:
         named:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^model: (\w+)$' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^model: (\w+)$' }
         allowed:
-          - { op: 'source', of: 'tiers' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '^\| `(\w+)` \|' }
+          - { op: "source", of: "tiers" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^\| `(\w+)` \|' }
       relate:
-        - id: 'tier-listed'
-          relation: { op: 'implies', of: 'named', requires: 'allowed' }
-          message: 'model {key} is not a tier model-tiers.md lists'
-  - id: 'docs-stay-bilingual'
-    why: 'English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged.'
+        - id: "tier-listed"
+          relation: { op: "implies", of: "named", requires: "allowed" }
+          message: "model {key} is not a tier model-tiers.md lists"
+  - id: "docs-stay-bilingual"
+    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
     declare:
-      mechanism: 'companion'
+      mechanism: "companion"
       scope:
-        source: 'target.path'
+        source: "target.path"
         include: ['\.md$']
-        exclude: ['^\.claude/', '^CLAUDE(\.ko)?\.md$', '^CHANGELOG\.md$', '^CONTEXT\.md$']
+        exclude:
+          [
+            '^\.claude/',
+            '^CLAUDE(\.ko)?\.md$',
+            '^CHANGELOG\.md$',
+            '^CONTEXT\.md$',
+          ]
       extract:
         en:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'keyByPattern', re: '^(.+?)(?<!\.ko)\.md$' }
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
         ko:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'keyByPattern', re: '^(.+)\.ko\.md$' }
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
         enChanged:
-          - { op: 'source', of: 'changes' }
-          - { op: 'items' }
-          - { op: 'keyByPattern', re: '^(.+?)(?<!\.ko)\.md$' }
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
         koChanged:
-          - { op: 'source', of: 'changes' }
-          - { op: 'items' }
-          - { op: 'keyByPattern', re: '^(.+)\.ko\.md$' }
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
       relate:
-        - id: 'ko-follows'
-          relation: { op: 'implies', of: 'en', requires: 'koChanged' }
-          message: '{value} changed without {key}.ko.md'
-        - id: 'en-follows'
-          relation: { op: 'implies', of: 'ko', requires: 'enChanged' }
-          message: '{value} changed without {key}.md'
+        - id: "ko-follows"
+          relation: { op: "implies", of: "en", requires: "koChanged" }
+          message: "{value} changed without {key}.ko.md"
+        - id: "en-follows"
+          relation: { op: "implies", of: "ko", requires: "enChanged" }
+          message: "{value} changed without {key}.md"
 
   # ---- the history axis: what the session did before this call
-  - id: 'manifest-needs-evidence'
-    why: 'a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled.'
+  - id: "manifest-needs-evidence"
+    why: "a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled."
     declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
+      mechanism: "precedent"
+      scope:
+        {
+          source: "target.path",
+          include: ['^(packages/[^/]+/)?package\.json$'],
+        }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         npmView:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\bnpm view ' }
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - { op: "matches", re: '\bnpm view ' }
         context7:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses' }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'field', name: 'name' }
-          - { op: 'matches', re: 'context7' }
+          - { op: "source", of: "session" }
+          - { op: "toolUses" }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "field", name: "name" }
+          - { op: "matches", re: "context7" }
       relate:
-        - id: 'npm-view'
-          relation: { op: 'nonEmpty', of: 'npmView' }
-          message: 'no successful npm view precedes this manifest edit'
-        - id: 'context7'
-          relation: { op: 'nonEmpty', of: 'context7' }
-          message: 'no successful context7 call precedes this manifest edit'
-  - id: 'covenant-needs-knowledge-read'
-    why: 'the covenant package carries the most measured history in the store; editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling.'
+        - id: "npm-view"
+          relation: { op: "nonEmpty", of: "npmView" }
+          message: "no successful npm view precedes this manifest edit"
+        - id: "context7"
+          relation: { op: "nonEmpty", of: "context7" }
+          message: "no successful context7 call precedes this manifest edit"
+  - id: "covenant-needs-knowledge-read"
+    why: "the covenant package carries the most measured history in the store; editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling."
     declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/covenant/(src|__tests__)/'] }
+      mechanism: "precedent"
+      scope:
+        {
+          source: "target.path",
+          include: ["^packages/covenant/(src|__tests__)/"],
+        }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.' }
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - {
+              op: "matches",
+              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.',
+            }
       relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of a covenant.dev-log or covenant.research entry precedes this edit'
-  - id: 'core-needs-knowledge-read'
-    why: 'the core is the one package every other depends on, so a change made without its recorded boundaries propagates outward before it is noticed.'
+        - id: "read-first"
+          relation: { op: "nonEmpty", of: "reads" }
+          message: "no successful read of a covenant.dev-log or covenant.research entry precedes this edit"
+  - id: "core-needs-knowledge-read"
+    why: "the core is the one package every other depends on, so a change made without its recorded boundaries propagates outward before it is noticed."
     declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/core/(src|__tests__)/'] }
+      mechanism: "precedent"
+      scope:
+        { source: "target.path", include: ["^packages/core/(src|__tests__)/"] }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.' }
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - {
+              op: "matches",
+              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.',
+            }
       relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of a core.dev-log or core.research entry precedes this edit'
-  - id: 'adapter-needs-knowledge-read'
-    why: 'both adapters translate an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong.'
+        - id: "read-first"
+          relation: { op: "nonEmpty", of: "reads" }
+          message: "no successful read of a core.dev-log or core.research entry precedes this edit"
+  - id: "adapter-needs-knowledge-read"
+    why: "the adapter translates an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong."
     declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^packages/adapter-(claude-code|git)/(src|__tests__)/'] }
+      mechanism: "precedent"
+      scope:
+        {
+          source: "target.path",
+          include: ["^packages/adapter-claude-code/(src|__tests__)/"],
+        }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         reads:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.' }
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - {
+              op: "matches",
+              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.',
+            }
       relate:
-        - id: 'read-first'
-          relation: { op: 'nonEmpty', of: 'reads' }
-          message: 'no successful read of an adapter.dev-log or adapter.research entry precedes this edit'
-  - id: 'tests-before-implementation'
-    why: 'the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after.'
+        - id: "read-first"
+          relation: { op: "nonEmpty", of: "reads" }
+          message: "no successful read of an adapter.dev-log or adapter.research entry precedes this edit"
+  - id: "tests-before-implementation"
+    why: "the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after."
     declare:
-      mechanism: 'phase-order'
+      mechanism: "phase-order"
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         writers:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Agent', 'Task'], subagentType: 'tdd-test-writer' }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'field', name: 'index' }
-          - { op: 'first' }
+          - { op: "source", of: "session" }
+          - {
+              op: "toolUses",
+              names: ["Agent", "Task"],
+              subagentType: "tdd-test-writer",
+            }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "field", name: "index" }
+          - { op: "first" }
         implementers:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Agent', 'Task'], subagentType: 'tdd-implementer' }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'field', name: 'index' }
-          - { op: 'first' }
+          - { op: "source", of: "session" }
+          - {
+              op: "toolUses",
+              names: ["Agent", "Task"],
+              subagentType: "tdd-implementer",
+            }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "field", name: "index" }
+          - { op: "first" }
         sequence:
-          - { op: 'union', of: ['writers', 'implementers'] }
+          - { op: "union", of: ["writers", "implementers"] }
       relate:
-        - id: 'writer-first'
-          relation: { op: 'ordered', of: 'sequence' }
-          message: 'the first implementer spawn #{value} precedes the first test-writer spawn'
-  - id: 'merge-is-the-users-call'
-    why: 'merging is the user''s decision: tea pr merge follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen.'
+        - id: "writer-first"
+          relation: { op: "ordered", of: "sequence" }
+          message: "the first implementer spawn #{value} precedes the first test-writer spawn"
+  - id: "merge-is-the-users-call"
+    why: "merging is the user's decision: tea pr merge follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen."
     declare:
-      mechanism: 'turn-locality'
-      scope: { source: 'command', include: ['\btea\s+pr\s+merge\b'] }
+      mechanism: "turn-locality"
+      scope: { source: "command", include: ['\btea\s+pr\s+merge\b'] }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         instruction:
-          - { op: 'source', of: 'session' }
-          - { op: 'userTexts', re: '머지|\bmerge\b', i: true }
-          - { op: 'ageMs' }
-          - { op: 'filter', when: [{ field: 'ageMs', lte: 600000 }] }
+          - { op: "source", of: "session" }
+          - { op: "userTexts", re: '머지|\bmerge\b', i: true }
+          - { op: "ageMs" }
+          - { op: "filter", when: [{ field: "ageMs", lte: 600000 }] }
       relate:
-        - id: 'fresh-instruction'
-          relation: { op: 'nonEmpty', of: 'instruction' }
-          message: 'no user turn asking for a merge within the last ten minutes'
-  - id: 'branches-come-from-a-ticket'
-    why: 'the ticket loop is the only sanctioned branch creation; a branch nobody asked for is the thing the loop forbids.'
+        - id: "fresh-instruction"
+          relation: { op: "nonEmpty", of: "instruction" }
+          message: "no user turn asking for a merge within the last ten minutes"
+  - id: "branches-come-from-a-ticket"
+    why: "the ticket loop is the only sanctioned branch creation; a branch nobody asked for is the thing the loop forbids."
     declare:
-      mechanism: 'stated-ground'
-      scope: { source: 'command', include: ['\bgit\s+(checkout\s+-b|switch\s+-c)\b'] }
+      mechanism: "stated-ground"
+      scope:
+        {
+          source: "command",
+          include: ['\bgit\s+(checkout\s+-b|switch\s+-c)\b'],
+        }
       sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
+      supply: { session: "pass" }
       extract:
         ticket:
-          - { op: 'source', of: 'session' }
-          - { op: 'userTexts', re: '<command-name>/ticket</command-name>' }
+          - { op: "source", of: "session" }
+          - { op: "userTexts", re: "<command-name>/ticket</command-name>" }
       relate:
-        - id: 'ticket-named'
-          relation: { op: 'nonEmpty', of: 'ticket' }
-          message: 'no /ticket turn precedes this branch creation'
+        - id: "ticket-named"
+          relation: { op: "nonEmpty", of: "ticket" }
+          message: "no /ticket turn precedes this branch creation"
 
-  - id: 'tests-are-the-writers'
-    why: 'a test file is the test-writer subagent output; an implementer that edits one is fitting the test to the code.'
+  - id: "tests-are-the-writers"
+    why: "a test file is the test-writer subagent output; an implementer that edits one is fitting the test to the code."
     declare:
-      mechanism: 'producer-owned'
-      scope: { source: 'target.path', include: ['^packages/[^/]+/__tests__/.*\.test\.ts$'] }
-      supply: { actor: 'pass' }
+      mechanism: "producer-owned"
+      scope:
+        {
+          source: "target.path",
+          include: ['^packages/[^/]+/__tests__/.*\.test\.ts$'],
+        }
+      supply: { actor: "pass" }
       extract:
         implementer:
-          - { op: 'source', of: 'actor' }
-          - { op: 'select', path: 'agentType' }
-          - { op: 'matches', re: '^tdd-implementer$' }
+          - { op: "source", of: "actor" }
+          - { op: "select", path: "agentType" }
+          - { op: "matches", re: "^tdd-implementer$" }
       relate:
-        - id: 'not-the-implementer'
-          relation: { op: 'empty', of: 'implementer' }
-          message: 'the implementer subagent wrote a test file'
+        - id: "not-the-implementer"
+          relation: { op: "empty", of: "implementer" }
+          message: "the implementer subagent wrote a test file"
 
-  - id: 'commits-come-from-the-main-session'
-    why: 'a merge or a commit is the user call relayed by the main session; a subagent that commits has decided it alone.'
+  - id: "commits-come-from-the-main-session"
+    why: "a merge or a commit is the user call relayed by the main session; a subagent that commits has decided it alone."
     declare:
-      mechanism: 'actor-scope'
-      scope: { source: 'command', include: ['(^|[;&|(]\s*)(git\s+(commit|push)|tea\s+pr\s+merge)\b'] }
-      supply: { actor: 'pass' }
+      mechanism: "actor-scope"
+      scope:
+        {
+          source: "command",
+          include: ['(^|[;&|(]\s*)(git\s+(commit|push)|tea\s+pr\s+merge)\b'],
+        }
+      supply: { actor: "pass" }
       extract:
         subagent:
-          - { op: 'source', of: 'actor' }
-          - { op: 'select', path: 'agentType' }
+          - { op: "source", of: "actor" }
+          - { op: "select", path: "agentType" }
       relate:
-        - id: 'main-session-only'
-          relation: { op: 'empty', of: 'subagent' }
-          message: 'subagent {value} ran a commit command'
+        - id: "main-session-only"
+          relation: { op: "empty", of: "subagent" }
+          message: "subagent {value} ran a commit command"
 
   # ---- drafts: registered, read, not yet judged
-  - id: 'verbs-take-one-spec'
-    why: 'an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does.'
+  - id: "verbs-take-one-spec"
+    why: "an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does."
     draft: true

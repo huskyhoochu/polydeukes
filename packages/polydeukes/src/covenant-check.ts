@@ -1,55 +1,43 @@
 /**
  * `pdks covenant check` — the commit surface's composition root.
  *
- * Assembly mirrors the session hook — loadConfig → normalizeProtectedPaths → collect →
- * dispatchCovenants — and spawns the same covenant dist bodies, so a change receives the
- * verdict a session tool call would. Each change is dispatched as its own input so
- * telemetry stays one row per file. The witness valve is a `/dev/tty` prompt that only
- * the staged domain assembles; the other domains open no commit.
+ * The judged unit is the input IR the caller hands in; this root opens no repository. Assembly
+ * mirrors the session hook — loadConfig → normalizeProtectedPaths → dispatchCovenants — and
+ * spawns the same covenant dist bodies, so a change receives the verdict a session tool call
+ * would. Each toolCall is dispatched as its own input so telemetry stays one row per file.
  *
- * fail-closed: a missing config, an unbuilt body, or a collector failure exits 2 with one
- * blocked record. An empty domain is an explicit pass with no records.
+ * fail-closed: a missing config, an unbuilt body, an input that could not be produced, or an
+ * input carrying its own `world` exits 2 with one blocked record. An input with no toolCalls
+ * is an explicit pass with no records.
  */
 
 import { resolve } from 'node:path';
 import {
-  collectRangeChanges,
-  collectStagedChanges,
-  collectWorktreeChanges,
-  covenantInputFromStagedChanges,
-  type Observation,
-  observationSourceReader,
-  resolveGitAdapterSettings,
-  STAGED_DELETE,
-  STAGED_WRITE,
-  type StagedChange,
-} from '@polydeukes/adapter-git';
-import {
   appendRecordFailOpen,
+  type CovenantInput,
   DEFAULT_TELEMETRY_LOG_PATH,
   normalizeProtectedPaths,
 } from '@polydeukes/core';
 import type { CovenantRegistration } from '@polydeukes/covenant';
 import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
 import { loadConfig } from './load-config.ts';
 import { unobservedPreStateReader } from './pre-state-reader.ts';
-
-/**
- * Which observation of the commit surface a run judges. Only the collector differs between
- * them; the IR, the assembly, and the dispatcher are one path.
- *
- * The adapter that owns the git grammar owns the type: its supply body reads a path the way
- * each observation sees the tree, and this root names the same fact for its callers.
- */
-export type CheckDomain = Observation;
+import { worktreeReader } from './worktree-reader.ts';
 
 /** {@link runCovenantCheck} result — the exit code the check process leaves with. */
 export type CovenantCheckOutcome = { exitCode: 0 | 2 };
 
 /** `runCovenantCheck` input. */
 export type CovenantCheckSpec = {
-  /** Repository root — config discovery and staged collection both anchor here. */
+  /** Repository root — config discovery and the world axis's disk reads both anchor here. */
   repoRoot: string;
+  /**
+   * The observation to judge, or a thunk that produces it. A thunk that throws fails the
+   * run closed after the config settles, so a caller translating an input of its own leaves
+   * the same one blocked row a missing config would.
+   */
+  input: CovenantInput | (() => CovenantInput);
   /**
    * Overrides where telemetry is written (tests and assembly injection) — the first term
    * of the precedence, ahead of the config's `telemetry.logPath` and of the default this
@@ -59,43 +47,14 @@ export type CovenantCheckSpec = {
   /** Overrides the resolved covenant dist directory (tests and assembly injection). */
   covenantDist?: string;
   /**
-   * TTY valve seam: writes the given prompt and returns the line a human typed, or null
-   * for no input. ABSENT means a non-TTY environment — the valve never opens, which is
-   * what keeps it human-only.
+   * The observer's posture for the whole run. ABSENT means `advise`: every break, a
+   * protected path included, lands as a row and exit 0 — the commit surface's default, since
+   * a staged gate-file change has already passed the session surface or was made by a human,
+   * and this surface has no valve a human could answer. `block` is the caller's opt-in
+   * (`--enforce block` on the bin); an entry's own level composes lenient-wins as always.
    */
-  ttyPrompt?: (prompt: string) => string | null;
-  /** Which observation to judge. ABSENT means `staged`. */
-  domain?: CheckDomain;
+  enforce?: 'advise' | 'block';
 };
-
-/**
- * The TTY witness predicate, or undefined when no valve can exist (no witness configured
- * or no TTY seam). It fires on the first registration that broke, names it from the
- * dispatcher's context, and caches the answer: one commit, at most one prompt, full-token
- * equality. Both sides are trimmed like the session valve, since config validation accepts
- * a padded token. The cache latches closed before the seam is consulted so a throwing seam
- * never re-prompts.
- */
-function ttyWitnessValve(
-  witness: { token: string } | undefined,
-  ttyPrompt: ((prompt: string) => string | null) | undefined,
-): CovenantRegistration['witness'] | undefined {
-  if (witness === undefined || ttyPrompt === undefined) return undefined;
-  const token = witness.token.trim();
-  let verdict: boolean | undefined;
-  return (_input, _transcript, context) => {
-    if (verdict === undefined) {
-      const prompt =
-        `covenant: '${context.label}' broke on the staged change matching '${context.subject}'.\n` +
-        'answering opens the valve for the whole commit, not just this change.\n' +
-        'type the agreed token in full to open it (enter to refuse): ';
-      verdict = false;
-      const answer = ttyPrompt(prompt);
-      verdict = answer !== null && answer.trim() === token;
-    }
-    return verdict;
-  };
-}
 
 /**
  * One blocked record for a run that failed closed before any dispatch could judge.
@@ -122,7 +81,6 @@ export type CommitAssemblySpec = {
    * `explain` renders is what would judge it.
    */
   covenant: CovenantModule;
-  witness?: CovenantRegistration['witness'];
 };
 
 /**
@@ -130,24 +88,14 @@ export type CommitAssemblySpec = {
  * `explain` renders.
  */
 export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantRegistration[] {
-  const { config, rootDir, covenant, witness } = spec;
-  const { protectedPaths: gitAdditivePaths } = resolveGitAdapterSettings({
-    namespace: config.adapters?.git,
-  });
-
-  // Union of the common list and the git-additive one, common first so first-occurrence
-  // dedupe is deterministic. The session hook reads the common list alone.
-  const protectedPaths = normalizeProtectedPaths({
-    protectedPaths: [...(config.protectedPaths ?? []), ...gitAdditivePaths],
-  });
-
+  const { config, rootDir, covenant } = spec;
+  const protectedPaths = normalizeProtectedPaths({ protectedPaths: config.protectedPaths ?? [] });
   const disciplines = config.disciplines ?? [];
 
   const registrations: CovenantRegistration[] = [
     covenant.selfModRegistration({
       protectedPaths,
       mutatingToolNames: [STAGED_WRITE, STAGED_DELETE],
-      witness,
     }),
     ...covenant.compileDisciplineRegistrations({
       disciplines,
@@ -156,7 +104,6 @@ export function assembleCommitRegistrations(spec: CommitAssemblySpec): CovenantR
       commandArgs: [],
       readPreState: unobservedPreStateReader,
       observesChangeSet: true,
-      witness,
     }),
   ];
 
@@ -196,68 +143,43 @@ function settleConfig(
 }
 
 /**
- * Collect the changes of one domain. The three collectors return the same shape, so
- * everything downstream of this dispatch is one path.
- */
-function collectDomain(repoRoot: string, domain: CheckDomain): StagedChange[] {
-  if (domain.kind === 'worktree') return collectWorktreeChanges({ repoRoot });
-  if (domain.kind === 'range') {
-    const separator = domain.ancestry === 'merge-base' ? '...' : '..';
-    return collectRangeChanges({
-      repoRoot,
-      range: `${domain.base}${separator}${domain.head}`,
-    });
-  }
-  return collectStagedChanges({ repoRoot });
-}
-
-/**
- * The observation's change set: the paths of the collected changes that carry file-change
- * evidence, in collection order.
+ * The observation's change set: the paths of the input's toolCalls that carry file-change
+ * evidence, in input order.
  *
  * The same definition the judge derives its own set from, so both surfaces name the same
- * changes. A deletion carries evidence and stays; a binary blob, which the collector gives
- * a call with no evidence, produces no world of its own — listing it would hand the
- * change-set relations a path no world can ever answer for.
+ * changes. A deletion carries evidence and stays; a binary blob, which arrives as a call
+ * with no evidence, produces no world of its own — listing it would hand the change-set
+ * relations a path no world can ever answer for.
  */
-function changedPaths(changes: StagedChange[]): string[] {
+function changedPaths(input: CovenantInput): string[] {
   const paths: string[] = [];
-  for (const call of covenantInputFromStagedChanges({ changes }).toolCalls) {
+  for (const call of input.toolCalls) {
     if (call.fileChange !== undefined) paths.push(call.fileChange.path);
   }
   return paths;
 }
 
 /**
- * Assemble the registrations and dispatch every collected change. Any throw here (an
- * unbuilt dist, a registration-build failure) is unjudgeable: block and leave one record.
+ * Assemble the registrations and dispatch every toolCall. Any throw here (an unbuilt dist, a
+ * registration-build failure) is unjudgeable: block and leave one record.
  */
-async function judgeChanges(
+async function judgeInput(
   spec: CovenantCheckSpec,
-  domain: CheckDomain,
   telemetryPath: string,
   config: ReturnType<typeof loadConfig>['config'],
-  changes: StagedChange[],
+  input: CovenantInput,
 ): Promise<CovenantCheckOutcome> {
   try {
-    // Inside the try so an invalid adapter namespace fails closed.
-    const { enforce } = resolveGitAdapterSettings({ namespace: config.adapters?.git });
-
     // Real Node resolution of the covenant package, so the commit surface runs the same
     // judges the session hook does; tests inject a directory instead. Awaited before any
     // registration is composed, so a dist the barrel cannot load fails the run closed here
     // rather than leaving a half-judged table behind.
     const covenantDist = spec.covenantDist ?? resolveCovenantDist();
     const covenant = await loadCovenantModule(covenantDist);
-    // No valve under advise (nothing to witness) and none outside `staged`.
-    const witness =
-      enforce === 'advise' || domain.kind !== 'staged'
-        ? undefined
-        : ttyWitnessValve(config.witness, spec.ttyPrompt);
 
     let blocked = false;
     let advisedCount = 0;
-    // Assembled ONCE for the run, not per change: a judge takes its call set as an argument,
+    // Assembled ONCE for the run, not per call: a judge takes its call set as an argument,
     // so the table is payload-free. Recompiling per file would repeat every compile-time
     // side effect — the stderr line a config-faulted discipline names itself with would
     // print once per staged file rather than once.
@@ -265,34 +187,45 @@ async function judgeChanges(
       config,
       rootDir: spec.repoRoot,
       covenant,
-      witness,
     });
 
-    // One plan and one supply for the run: the per-change loop shares them, so the tree is
-    // read once per named file rather than once per change. `changes` carries the whole
-    // observation because this surface dispatches one change at a time to keep telemetry at
+    // One plan and one supply for the run: the per-call loop shares them, so the tree is
+    // read once per named file rather than once per change. The change set carries the whole
+    // observation because this surface dispatches one call at a time to keep telemetry at
     // one row per file — a set no judge could derive from the input it is handed.
     const { files } = covenant.supplySources({
       plan: covenant.planSources({ registrations }),
-      read: observationSourceReader({ repoRoot: spec.repoRoot, observation: domain }),
+      read: worktreeReader({ repoRoot: spec.repoRoot }),
     });
-    const world = { files, changes: changedPaths(changes) };
+    const world = { files, changes: changedPaths(input) };
 
-    for (const change of changes) {
-      const input = covenantInputFromStagedChanges({ changes: [change] });
+    for (const call of input.toolCalls) {
       const { exitCode, results } = await covenant.dispatchCovenants({
-        stdinPayload: JSON.stringify(input),
+        stdinPayload: JSON.stringify({
+          toolCalls: [call],
+          subagentSpawns: input.subagentSpawns,
+          userMessages: input.userMessages,
+        }),
         registrations,
         telemetryPath,
         dispatcherLabel: 'covenant-check',
-        enforce,
+        enforce: spec.enforce ?? 'advise',
         world,
       });
       if (exitCode === 2) blocked = true;
       advisedCount += results.filter((result) => result.event === 'advised').length;
+      // One call, one record: a call no registration routed leaves no row of its own, so
+      // the runner writes the pass under its label — the session surface does the same.
+      if (exitCode === 0 && results.length === 0) {
+        const subject = call.args?.file_path;
+        appendRecordFailOpen(telemetryPath, {
+          event: 'passed',
+          label: 'covenant-check',
+          subject: typeof subject === 'string' ? subject : '-',
+        });
+      }
     }
-    // Names no level: surface-level and entry-level advice mix in one run, so the commit's
-    // fate is read from the run.
+    // Names no level: the commit's fate is read from the run.
     if (advisedCount > 0) {
       const outcome = blocked ? 'commit blocked by another verdict' : 'commit allowed';
       process.stderr.write(
@@ -306,23 +239,28 @@ async function judgeChanges(
 }
 
 /**
- * Judge one observation of `repoRoot` exactly as the session surface would — the staged
- * diff by default, the working tree or a ref range on request. Async because the dispatcher
- * spawns covenant bodies. An empty domain is an explicit pass: nothing to judge, no records.
+ * Judge one observation of `repoRoot` exactly as the session surface would, from the IR the
+ * caller hands in. Async because the dispatcher spawns covenant bodies. An input with no
+ * toolCalls is an explicit pass: nothing to judge, no records.
  */
 export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome> {
   const settlement = settleConfig(spec);
   if (!settlement.settled) return { exitCode: settlement.exitCode };
   const { telemetryPath, config } = settlement;
 
-  const domain: CheckDomain = spec.domain ?? { kind: 'staged' };
-  let changes: StagedChange[];
+  let input: CovenantInput;
   try {
-    changes = collectDomain(spec.repoRoot, domain);
+    input = typeof spec.input === 'function' ? spec.input() : spec.input;
+    // The world axis is this root's to fill. An input that supplies its own would let a
+    // caller choose the files the judge reads.
+    if ('world' in input) {
+      throw new Error('input carries a world key: the world axis is the runner’s');
+    }
+    if (!Array.isArray(input.toolCalls)) throw new Error('input carries no toolCalls array');
   } catch (error) {
     return failClosed(telemetryPath, error);
   }
-  if (changes.length === 0) return { exitCode: 0 };
+  if (input.toolCalls.length === 0) return { exitCode: 0 };
 
-  return judgeChanges(spec, domain, telemetryPath, config, changes);
+  return judgeInput(spec, telemetryPath, config, input);
 }

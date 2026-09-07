@@ -72,24 +72,26 @@ Loading this setting does not itself run the command.
 
 | Setting | Effect on a violation |
 |---|---|
-| `adapters.git.enforce: advise` | Record advice and let the commit continue, without a witness prompt. |
-| `adapters.git.enforce: block` | Refuse a blocking judgment; the staged path can offer a TTY witness prompt. |
+| `enforce: advise` on an entry (or absent) | Record advice and let the call proceed, exit 0. |
+| `enforce: block` on an entry | Refuse the judged call, exit 2. |
 
-An ordinary discipline also has its own level, defaulting to `advise`. **The lenient level wins.**
-Setting only the adapter to `block` does not promote an ordinary entry. Protection of configured
-paths is separate from that per-entry default. Assembly errors still exit 2 at either level.
+**Absent means `advise`.** There is no surface-level enforcement key in the config: each entry
+carries its own level and nothing promotes an absent one. Protection of configured paths is
+separate from that per-entry default — it blocks on the session surface, and on the commit
+surface it lands `advised` unless the command is run with `--enforce block`. Assembly errors
+still exit 2.
 
-Top-level `protectedPaths` applies to both surfaces. `adapters.git.protectedPaths` adds commit-only
-paths. Use the latter for files that may be edited in a session but need protection when committed.
+`protectedPaths` is a single top-level list that applies to both surfaces. On the commit surface
+the judge only emits the exit code; whether the commit stops is your hook wiring.
 See [surface connection and witnesses](./connect-surfaces.md#witness-and-recovery).
 
 <a id="confirm-the-project"></a>
 ## Confirm the project
 
 - `pdks explain` loads the configuration and shows registrations without judging a change.
-- `pdks covenant check --worktree` compares HEAD with disk, including untracked, non-ignored files.
-- `pdks covenant check` observes staged changes. A blocking result can prompt only when a TTY is
-  available; the command does not prompt merely because the adapter is set to `block`.
+- `git diff HEAD | pdks covenant check --diff` judges everything not yet committed.
+- `git diff --cached | pdks covenant check --diff` observes staged changes — the pre-commit shape.
+  The command never prompts; it exits 0 or 2 and your hook wiring decides the commit's fate.
 
 Check stderr and telemetry as well as the exit code. Advice and some skipped observations exit 0.
 If assembly fails, diagnose the named configuration or missing package before testing a discipline.

@@ -54,7 +54,6 @@ const BUNDLED_DOCS = [
   'reference/packages/core.md',
   'reference/packages/covenant.md',
   'reference/packages/adapter-claude-code.md',
-  'reference/packages/adapter-git.md',
 ];
 
 /** Absence enumeration — development-only files that must never ship. */

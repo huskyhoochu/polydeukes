@@ -49,7 +49,7 @@ ID는 소문자 ASCII kebab-case입니다. `<a id>`는 제목 바로 앞 줄에 
 이 저장소에서 실제 사용하는 설정을 인용할 때는 그 사실을 본문에 밝힙니다.
 
 새 선언은 이 저장소의 보호 파일을 위반하지 말고 격리된 예제 프로젝트에서 실행합니다.
-파일 예제는 `pdks covenant check --worktree`, 세션 쓰기는
+파일 예제는 `git diff HEAD | pdks covenant check --diff`, 세션 쓰기는
 [첫 판정 튜토리얼](./tutorials/first-judgment.ko.md)의 훅 프로브를 씁니다.
 
 TypeScript 예제에서는 패키지가 공개하는 심볼만 가져옵니다 (`polydeukes`와

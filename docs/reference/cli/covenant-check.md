@@ -3,96 +3,140 @@
 **English** · [한국어](./covenant-check.ko.md)
 
 `pdks covenant check` runs the commit-surface judgment against the installed package. It reads the
-config from the working directory, collects one repository observation, translates it into covenant
-input IR, and dispatches the same judge bodies that the session hook uses.
+config from the working directory, takes one observation from **stdin**, and dispatches the same
+judge bodies that the session hook uses. It never opens a repository and never calls `git`: the
+caller produces the observation, the command judges it and answers with an exit code.
 
 <a id="covenant-check-syntax"></a>
 ## Syntax
 
 ```sh
-pdks covenant check
-pdks covenant check --worktree
-pdks covenant check --range <base>..<head>
-pdks covenant check --range <base>...<head>
+pdks covenant check [--diff] [--enforce advise|block]
 ```
 
-The default form judges the staged diff. `--worktree` judges the working tree. `--range` judges two
-refs; the `...` form reads from their merge-base.
+Without `--diff`, stdin is the covenant input IR — the JSON document `@polydeukes/core` defines
+(`toolCalls`, `subagentSpawns`, `userMessages`). With `--diff`, stdin is a unified diff and the
+command translates it into that IR first. `--enforce` is the observer's posture for the run and
+defaults to `advise`: every break lands as a row and exit 0. `--enforce block` makes a protected
+path or an entry set to `enforce: block` exit 2. Each flag at most once, in either order; any
+other argument is a usage error. stdin is read to EOF.
 
 <a id="covenant-check-boundaries"></a>
 ## Observation boundaries
 
-The command is explicit about what it observes.
+The command judges exactly what stdin carries. Which diff you pipe decides the observation:
 
-| Form | Observed set | `pre` → `post` | Notes |
-|---|---|---|---|
-| `pdks covenant check` | Staged changes only | HEAD blob → staged blob | This is the pre-commit gate. |
-| `pdks covenant check --worktree` | Working tree changes | HEAD blob → bytes on disk | Includes untracked files that are not ignored. |
-| `pdks covenant check --range <base>..<head>` | The change set between two refs | base blob → head blob | Fails if the refs cannot be resolved. |
-| `pdks covenant check --range <base>...<head>` | The merge-base reading of two refs | merge-base blob → head blob | Uses the common ancestor of the refs. |
+| Pipe | Observed set |
+|---|---|
+| `git diff --cached \| pdks covenant check --diff` | Staged changes — the pre-commit shape |
+| `git diff HEAD \| pdks covenant check --diff` | The working tree against HEAD |
+| `git diff <base>..<head> \| pdks covenant check --diff` | The change set between two refs (`...` for the merge-base reading) |
+| `pdks covenant check < input.json` | Whatever IR the caller built |
 
-Untracked, non-ignored files are part of `--worktree`. Untracked ignored files are not
-observed. A file git already tracks still appears even if it later matches `.gitignore`. The commit
-surface never prompts for a witness token on `--worktree` or `--range` because those forms are
-diagnostic only.
+The diff format is VCS-neutral: git, jj, hg, and a hand-written `diff -u` all produce it.
 
-<a id="worktree"></a>
-## Inspect the working tree with `--worktree`
+<a id="diff-translation"></a>
+## How a diff becomes the IR
 
-Run `pdks covenant check --worktree` from a git repository with a valid Polydeukes configuration.
-It compares HEAD to the bytes currently on disk, not to the staged contents. Untracked,
-non-ignored files are included as additions; tracked files missing from disk are deletions.
-Before the first commit, existing tracked and non-ignored untracked files have no `pre` value.
+One `toolCall` per file block, in input order. The tool name is `staged-write` for a creation or
+modification and `staged-delete` for a deletion; `args.file_path` is the repo-relative path with
+one `a/` or `b/` prefix stripped and quoted paths unescaped.
 
-This observation does not create a commit or ask for a witness token. It still applies the
-configured enforcement: exit 0 can include advice or skips; an unwitnessed block or assembly
-failure exits 2. A clean observation set does not prove that unrelated files or session history
-were judged. It appends telemetry for judgments; it is not a read-only query like `pdks docs`.
+| Diff block | Evidence |
+|---|---|
+| `--- /dev/null` → `+++ b/P` | `create`, `post` = every `+` line |
+| `--- a/P` → `+++ /dev/null` | `delete`, `pre` = every `-` line |
+| `--- a/P` → `+++ b/P` with hunks | `modify`, `pre` = the `-` lines, `post` = the `+` lines |
+| Same path, no hunks (a mode change) | `modify` with empty `pre` and `post` |
+| `rename from O` / `rename to N` | `staged-delete` O, then `staged-write` N as `modify` over the hunks |
+| `Binary files … differ` / `GIT binary patch` | The path only — no evidence, so only path judgments apply |
+
+**A modification's `pre` and `post` are the hunk lines, not the whole file.** Context lines and
+the `\ No newline at end of file` marker are dropped. Every shipped discipline that reads `pre`
+and `post` compares keyed lines, so the verdict is the one the whole file would give; a
+declaration that needs a file's full text names it as a `source`, and that is read from the
+world axis below. Creations and deletions carry the full text.
+
+**The world axis is the working tree.** A file a declaration names by `source` is read from disk
+under the working directory — not from the index, not from a ref. When the index and the disk
+differ (a partially staged file), the judged text is the disk's. The change set (`world.changes`)
+is the list of paths whose toolCalls carry evidence.
+
+**No actor.** A diff proves no author, so the translated IR carries no `actor` key; actor-scoped
+disciplines skip on this surface.
 
 <a id="covenant-check-results"></a>
 ## Results and exit codes
 
 | Situation | Result |
 |---|---|
-| No covenant breaks | exit `0` |
-| A break under `enforce: advise` | exit `0`, one `advised` row on stderr and telemetry |
-| A staged break under `enforce: block` with a configured witness block | Prompts once on `/dev/tty`; a correct token opens the block, a missing or wrong answer exits `2` |
-| A staged break under `enforce: block` without a witness block | exit `2`, no prompt |
-| A break on `--worktree` or `--range` under `enforce: block` | exit `2`, no prompt |
-| Empty domain | exit `0` |
-| Invalid flag syntax | exit `2` with the usage line on stderr |
+| No covenant breaks | exit `0`; a toolCall no registration routed leaves one `passed` row under the `covenant-check` label |
+| A break on a discipline entry (default `advise`) | exit `0`, one `advised` row, the `why` and one advisory summary on stderr |
+| A break on a protected path or an entry set to `enforce: block`, default posture | exit `0`, one `advised` row — this surface has no valve a human could answer, and a staged gate-file change already passed the session surface |
+| The same break under `--enforce block` | exit `2`, one `blocked` row |
+| 0 bytes on stdin with `--diff` | exit `0`, no rows — nothing staged is nothing to judge |
+| 0 bytes on stdin without `--diff` | exit `2` — an empty payload is not an IR |
+| Unparseable JSON, a non-object, or a missing `toolCalls` array | exit `2`, one `blocked` `covenant-check` row |
+| An IR carrying its own `world` key | exit `2` — the world axis is the command's to fill |
+| A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line | exit `2`, one `blocked` `covenant-check` row |
+| Any other argument | exit `2` with the usage line on stderr, stdin unread |
 | Missing, ambiguous, or invalid config | exit `2` |
-| Unresolved range or missing merge-base | exit `2` |
 | Judge body cannot load | exit `2` |
 
-An entry defaults to `advise`; `adapters.git.enforce: block` does not promote it. Protected-path
-violations and entries explicitly set to `enforce: block` can block when the surface is also at
-`block`. A witness prompt additionally requires a configured token and an accessible terminal.
-
-`exit 0` can mean passing, advising, skipping, or an empty observation set. `exit 2` means the run
-was fail-closed or the witness token did not open the gate.
+The posture lives on the command line, not in the config, and there is no prompt. The command
+answers success or failure; whether a commit proceeds is decided by the hook that spawned it. A
+row records the verdict, not the commit's fate — a `blocked` row can sit beside a commit that
+landed because the wiring ignored the exit code.
 
 <a id="covenant-check-examples"></a>
 ## Examples
 
 ```sh
-pdks covenant check
-pdks covenant check --worktree
-pdks covenant check --range main..HEAD
-pdks covenant check --range main...feature
+git diff --cached | pdks covenant check --diff                    # pre-commit, record only
+git diff --cached | pdks covenant check --diff --enforce block    # pre-commit, refuse a break
+git diff HEAD | pdks covenant check --diff                        # after a task
+git diff main...HEAD | pdks covenant check --diff                 # before a PR
+pdks covenant check < input.json                                   # an IR another program built
 ```
+
+<a id="pin-the-producer"></a>
+## Pin the producer
+
+The observation is produced by a process outside this package, and git's own configuration
+can change its text. Wire a hook with these flags so the judged text is the staged text:
+
+| Flag | What it prevents |
+|---|---|
+| `--no-color` | `color.ui=always` wraps every line in escape codes; the translator recognizes no block and the run fails closed (exit 2) |
+| `--no-ext-diff` / `--no-textconv` | `diff.external` or a `.gitattributes` textconv driver substitutes text that exists nowhere on disk, and the disciplines judge that text |
+| `--src-prefix=a/ --dst-prefix=b/` | `diff.mnemonicPrefix` prints `c/`, `i/`, `w/`; the translator strips exactly `a/` and `b/`, so any other prefix survives into the judged path |
+
+A producer that dies mid-stream leaves 0 bytes on stdin, which is the empty observation and
+exit 0. Where the shell supports it, `set -o pipefail;` in front of the pipeline makes git's
+failure the hook's failure.
+
+A lefthook command that records every verdict and stops the commit only on a fail-closed run:
+
+```yaml
+pre-commit:
+  commands:
+    covenant:
+      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+```
+
+Append `--enforce block` to that line to stop the commit on a protected-path break too.
 
 ```ts
 import { runCovenantCheck } from 'polydeukes';
 
-const result = await runCovenantCheck({ repoRoot: process.cwd() });
-// result is { exitCode: 0 | 2 }
+const result = await runCovenantCheck({ repoRoot: process.cwd(), input });
+// input is the covenant input IR; result is { exitCode: 0 | 2 }
 ```
 
 <a id="covenant-check-see-also"></a>
 ## See also
 
 - [`pdks explain`](./explain.md)
-- [`@polydeukes/adapter-git`](../packages/adapter-git.md)
+- [`@polydeukes/core`](../packages/core.md)
 - [`@polydeukes/covenant`](../packages/covenant.md)
-- [`Configuration reference`](../configuration/index.md#adapters-git)
+- [Configuration reference](../configuration/index.md)

@@ -45,8 +45,8 @@ timed-out hook fails open.
 
 Grok does not supply the Claude-format human message needed by the session witness valve. The
 session log is ACP `updates.jsonl`, not Claude's JSONL.
-For an intentional blocked edit, use your own terminal. A commit-surface prompt witnesses only
-that commit; it cannot authorize a blocked Grok tool call.
+For an intentional blocked edit, use your own terminal. The commit surface has no prompt, so there
+is no way to authorize a blocked Grok tool call from the commit side either.
 
 <a id="commit-surface"></a>
 ## Commit surface
@@ -55,31 +55,33 @@ Use this when you want git to judge staged changes before they become history.
 
 1. Create `polydeukes.config.yaml` at the project root.
 2. Add the pre-commit hook.
-3. Run `pnpm exec pdks covenant check` when you want the same judgment on demand.
+3. Run `git diff HEAD | pnpm exec pdks covenant check --diff` when you want the same judgment
+   on demand.
 
-A minimal lefthook entry looks like this:
+A minimal lefthook entry looks like this. The `git diff` flags pin what the judge receives:
+no color codes, no external diff driver, no textconv rewrite, and the `a/`/`b/` prefixes the
+translator strips — a user's git config cannot change the observation (see the CLI reference).
 
 ```yaml
 pre-commit:
   commands:
     covenant:
       priority: 1
-      interactive: true
-      run: ./node_modules/.bin/pdks covenant check
+      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 A husky hook looks like this:
 
 ```sh
 # .husky/pre-commit
-./node_modules/.bin/pdks covenant check
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 A plain git hook works too:
 
 ```sh
 #!/bin/sh
-./node_modules/.bin/pdks covenant check
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 If you use the plain hook, save it as `.git/hooks/pre-commit` and make it executable with
@@ -87,12 +89,12 @@ If you use the plain hook, save it as `.git/hooks/pre-commit` and make it execut
 For lefthook, install it with your package manager and run its hook installer after saving the YAML.
 For husky, save `.husky/pre-commit` through husky's own installer so git can find it.
 
-`adapters.git.enforce: advise` records violations as `advised`, writes diagnostics to stderr,
-and lets the commit continue. With `block`, protected-path violations and entries explicitly set
-to `enforce: block` can stop the commit. An ordinary entry still defaults to `advise`; the surface
-does not promote it. When configured and attached to a terminal, the staged path offers a witness
-prompt on `/dev/tty`. `--worktree` and `--range` report without prompting. Assembly errors remain
-exit 2 at either level.
+The judge emits exit 0 or exit 2 and never prompts. By default every break on this surface — a
+`protectedPaths` violation included — lands as a row with a diagnostic on stderr and exit 0: a
+staged gate-file change has already passed the session surface or was made by a human, and
+this surface has no valve a human could answer. Add `--enforce block` to the command when you
+want a `protectedPaths` violation or an entry set to `enforce: block` to exit 2. Whether a commit
+stops is your hook wiring: the entries above honour the exit code. Assembly errors always exit 2.
 
 <a id="witness-and-recovery"></a>
 ## Witness and recovery
@@ -100,7 +102,8 @@ exit 2 at either level.
 The witness token is the same idea on both surfaces, but the delivery is different.
 
 - On the session surface, type the token on its own first line in a conversation message.
-- On the commit surface, type the full token into the TTY prompt.
+- The commit surface has no prompt. Its judgment reaches you as an exit code, and your hook
+  wiring decides what to do with it.
 
 The valve is consulted after the judgment returns a block. You can supply the token before an
 intentional edit; a previous failed attempt is not required. It does not change a passing verdict
@@ -114,5 +117,5 @@ cannot be loaded, reinstall the package or rebuild the workspace and try again.
 
 - `pdks explain` shows which registrations each surface assembled.
 - `.polydeukes/roi.log` records the rows that the surfaces wrote.
-- `pdks covenant check --worktree` is a good on-demand check after a task.
-- `pdks covenant check --range <base>..<head>` is the shape to use before a PR.
+- `git diff HEAD | pdks covenant check --diff` is a good on-demand check after a task.
+- `git diff <base>..<head> | pdks covenant check --diff` is the shape to use before a PR.

@@ -6,51 +6,39 @@
  * table. Anything else prints usage and exits 2 — an unknown argument must never pass
  * silently (fail-closed, the same posture as an unjudgeable payload).
  *
- * The real TTY is wired HERE, not in the library: the runner receives an injectable
- * seam, and this shim binds it to /dev/tty. When /dev/tty cannot be opened (git run by
- * CI or by an agent-spawned shell — no controlling terminal), the seam stays absent and
- * the witness valve is structurally unreachable, so only a human at a terminal can arm it.
+ * `covenant check` reads its observation from stdin and nothing else: the IR JSON by
+ * default, a unified diff under `--diff`. No other file descriptor is opened, so the
+ * process never asks a human anything.
  */
 
-import { closeSync, openSync, readFileSync, readSync, writeSync } from 'node:fs';
+import { readFileSync, readSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-// Type-only, so the runner itself stays off this file's load path (the lazy import below
-// is what actually pulls it in).
-import type { CheckDomain } from './covenant-check.ts';
 
 /**
- * Bind the TTY prompt seam to /dev/tty, or undefined when no terminal exists. The runner
- * composes the prompt text (it is the side that knows what broke); this shim only writes
- * it and reads the line back.
+ * Read stdin to EOF. `readFileSync(0)` returns only what the first read delivers, so a
+ * diff larger than the pipe buffer would arrive truncated and translate to a partial
+ * observation; this loops until a read answers zero bytes.
  */
-function openTtyPrompt(): ((prompt: string) => string | null) | undefined {
-  let fd: number;
-  try {
-    fd = openSync('/dev/tty', 'r+');
-  } catch {
-    return undefined;
-  }
-  return (prompt) => {
+function readStdin(): string {
+  const chunks: Buffer[] = [];
+  const buffer = Buffer.alloc(65536);
+  for (;;) {
+    let bytes: number;
     try {
-      writeSync(fd, prompt);
-      const buffer = Buffer.alloc(4096);
-      const bytes = readSync(fd, buffer, 0, buffer.length, null);
-      return buffer
-        .subarray(0, Math.max(bytes, 0))
-        .toString('utf-8')
-        .replace(/\r?\n$/, '');
-    } catch {
-      return null;
-    } finally {
-      try {
-        closeSync(fd);
-      } catch {
-        // An EBADF thrown from this finally would override the `return null` above and
-        // escape the seam.
-      }
+      bytes = readSync(0, buffer, 0, buffer.length, null);
+    } catch (error) {
+      const { code } = error as NodeJS.ErrnoException;
+      // A pipe with no writer left answers EOF this way on some platforms; EAGAIN is a
+      // non-blocking fd with nothing ready yet, which is not the end of the input.
+      if (code === 'EOF') break;
+      if (code === 'EAGAIN') continue;
+      throw error;
     }
-  };
+    if (bytes === 0) break;
+    chunks.push(Buffer.from(buffer.subarray(0, bytes)));
+  }
+  return Buffer.concat(chunks).toString('utf-8');
 }
 
 /**
@@ -151,49 +139,60 @@ if (args.length === 1 && args[0] === 'explain') {
 }
 
 /**
- * Read the `covenant check` flags as a domain, or null when the argv is not one of the
- * three recognized forms: no flags is the staged diff, `--worktree` is the working tree,
- * and `--range <base>..<head>` (or `...` for the merge-base reading) is a ref range.
+ * Read the `covenant check` flags, or null for any argv outside the finite table: `--diff`
+ * at most once, `--enforce` at most once with `advise` or `block`, in either order, and
+ * nothing else.
  */
-function parseCheckDomain(flags: string[]): CheckDomain | null {
-  if (flags.length === 0) return { kind: 'staged' };
-  if (flags.length === 1 && flags[0] === '--worktree') return { kind: 'worktree' };
-  if (flags.length !== 2 || flags[0] !== '--range') return null;
-
-  const range = flags[1] as string;
-  if (range.startsWith('--')) return null;
-  const mergeBase = range.includes('...');
-  const separator = mergeBase ? '...' : '..';
-  const at = range.indexOf(separator);
-  if (at === -1) return null;
-  const base = range.slice(0, at);
-  const head = range.slice(at + separator.length);
-  if (base === '' || head === '') return null;
-  return { kind: 'range', base, head, ...(mergeBase && { ancestry: 'merge-base' as const }) };
+function parseCheckFlags(
+  flags: string[],
+): { diffMode: boolean; enforce?: 'advise' | 'block' } | null {
+  let diffMode = false;
+  let enforce: 'advise' | 'block' | undefined;
+  for (let i = 0; i < flags.length; i += 1) {
+    const flag = flags[i];
+    if (flag === '--diff' && !diffMode) {
+      diffMode = true;
+      continue;
+    }
+    if (flag === '--enforce' && enforce === undefined) {
+      const level = flags[i + 1];
+      if (level !== 'advise' && level !== 'block') return null;
+      enforce = level;
+      i += 1;
+      continue;
+    }
+    return null;
+  }
+  return { diffMode, enforce };
 }
 
-const domain =
-  args[0] === 'covenant' && args[1] === 'check' ? parseCheckDomain(args.slice(2)) : null;
+const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(args.slice(2)) : null;
 
-if (domain === null) {
+if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--worktree | --range <base>..<head>] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
   );
   process.exit(2);
 }
+const { diffMode, enforce } = check;
 
 try {
   // Loaded here rather than at the top of the file. This runner statically pulls in the
-  // git adapter, the core, and the judge, so a top-level import made every subcommand
-  // wait on all three resolving — and `docs` is the one that has to answer in a tree
-  // where they do not, since a package installed but never built is exactly the state
-  // `pdks docs install` is asked about. The catch below already answers for whatever
-  // this import cannot do, at the same exit 2 it answers everything else with.
+  // core and the judge, so a top-level import made every subcommand wait on both
+  // resolving — and `docs` is the one that has to answer in a tree where they do not,
+  // since a package installed but never built is exactly the state `pdks docs install`
+  // is asked about. The catch below already answers for whatever this import cannot do,
+  // at the same exit 2 it answers everything else with.
   const { runCovenantCheck } = await import('./covenant-check.ts');
+  const { covenantInputFromUnifiedDiff } = await import('./diff-ir.ts');
+  const text = readStdin();
   const { exitCode } = await runCovenantCheck({
     repoRoot: process.cwd(),
-    ttyPrompt: openTtyPrompt(),
-    domain,
+    // A thunk, not a value: the runner settles the telemetry path before calling it, so a
+    // translation or parse failure lands as the same one blocked row every other
+    // fail-closed branch leaves.
+    input: () => (diffMode ? covenantInputFromUnifiedDiff({ text }) : (JSON.parse(text) as never)),
+    ...(enforce !== undefined && { enforce }),
   });
   process.exit(exitCode);
 } catch (error) {

@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// One `runCovenantCheck` call reads the config ONCE, whichever domain it observes. The
-// spy wraps the real loader so the run still judges a real config.
+// One `runCovenantCheck` call reads the config ONCE. The spy wraps the real loader so the
+// run still judges a real config.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
@@ -17,8 +18,7 @@ const CLEAN_SOURCE = 'lib/a.ts';
 
 let repo: CheckRepo;
 let repoRoot: string;
-let base: string;
-/** Telemetry lives OUTSIDE the repository so the worktree domain never collects the log. */
+/** Telemetry lives OUTSIDE the repository so the log is never one of the judged changes. */
 let logDir: string;
 
 beforeEach(() => {
@@ -29,7 +29,8 @@ beforeEach(() => {
   repo.write(CLEAN_SOURCE, 'export const x = 1;\n');
   repo.git('add', 'polydeukes.config.json', CLEAN_SOURCE);
   repo.git('commit', '--quiet', '-m', 'baseline');
-  base = repo.git('rev-parse', 'HEAD').trim();
+  repo.write(CLEAN_SOURCE, 'export const x = 2;\n');
+  repo.git('add', CLEAN_SOURCE);
   vi.mocked(loadConfig).mockClear();
 });
 
@@ -39,17 +40,13 @@ afterEach(() => {
 });
 
 describe('loadConfig is read once per runCovenantCheck call', () => {
-  it.each([
-    ['staged', () => ({ kind: 'staged' as const })],
-    ['worktree', () => ({ kind: 'worktree' as const })],
-    ['range', () => ({ kind: 'range' as const, base, head: 'HEAD' })],
-  ])('%s domain calls loadConfig exactly once', async (name, domain) => {
+  it('a run over a staged change calls loadConfig exactly once', async () => {
     // A second read of a file that changed between stages would judge with one config
     // and record under another; zero reads would mean the run never settled a config.
     await runCovenantCheck({
       repoRoot,
-      telemetryPath: join(logDir, `${name}.log`),
-      domain: domain(),
+      telemetryPath: join(logDir, 'run.log'),
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
     });
 
     expect(vi.mocked(loadConfig).mock.calls.length).toBe(1);

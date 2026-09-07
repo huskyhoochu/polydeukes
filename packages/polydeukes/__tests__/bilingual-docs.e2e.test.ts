@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // a suite that rebuilds mid-edit is how a session locks itself out.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';
 
 /** Injected fixture values — the bilingual declaration and the pair it judges. */
@@ -116,7 +117,7 @@ function bilingualRows(telemetryPath: string): BilingualRow[] {
 let sessionRoot: string;
 let sessionLog: string;
 let commitRepo: CheckRepo;
-/** Commit telemetry lives outside the repository — the worktree domain collects untracked files. */
+/** Commit telemetry lives outside the repository so the log is never a staged change. */
 let commitLogDir: string;
 let commitLog: string;
 
@@ -156,7 +157,7 @@ async function checkStaged(files: [string, string][]) {
   return runCovenantCheck({
     repoRoot: commitRepo.repoRoot,
     telemetryPath: commitLog,
-    domain: { kind: 'staged' },
+    input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
   });
 }
 
@@ -234,7 +235,7 @@ describe('the commit surface judges presence in the staged change set', () => {
 });
 
 describe('the two surfaces answer the same edit differently, by declaration', () => {
-  it('session Edit of README.md lands skipped; commit --worktree of the same edit lands advised ko-follows', async () => {
+  it('session Edit of README.md lands skipped; commit over git diff HEAD of the same edit lands advised ko-follows', async () => {
     // The session surface observes one call and cannot see the pair, so it records the
     // absence of a judgment; the commit surface observes the worktree and judges. An
     // `advised` row from the session is the structural false positive the skip prevents;
@@ -260,10 +261,11 @@ describe('the two surfaces answer the same edit differently, by declaration', ()
     });
 
     commitRepo.write(EN_DOC, EN_EDITED);
+    commitRepo.git('add', EN_DOC);
     const commit = await runCovenantCheck({
       repoRoot: commitRepo.repoRoot,
       telemetryPath: commitLog,
-      domain: { kind: 'worktree' },
+      input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
     });
 
     expect(session.exitCode).toBe(0);

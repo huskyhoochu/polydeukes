@@ -474,11 +474,11 @@ describe('the bundled docs answer from the installed tree', () => {
     const umbrellaDir = dirname(
       realpathSync(join(consumerRoot, 'node_modules', UMBRELLA_DIR, 'package.json')),
     );
-    const adapterDir = join(dirname(umbrellaDir), '@polydeukes', 'adapter-git');
+    const adapterDir = join(dirname(umbrellaDir), '@polydeukes', 'covenant');
     if (!existsSync(adapterDir)) {
       throw new Error(`the layout this case moves aside is not where it expected: ${adapterDir}`);
     }
-    const stashed = join(packRoot, 'adapter-git-stashed');
+    const stashed = join(packRoot, 'covenant-stashed');
     renameSync(adapterDir, stashed);
     try {
       const result = spawnDocs('install');
@@ -505,7 +505,7 @@ describe('the bundled docs answer from the installed tree', () => {
     );
     const configPath = join(consumerRoot, CONFIG_REL);
     const savedConfig = readFileSync(configPath);
-    const dependencies = ['core', 'covenant', 'adapter-git', 'adapter-claude-code'];
+    const dependencies = ['core', 'covenant', 'adapter-claude-code'];
     const moved: [string, string][] = [];
     const offline = join(packRoot, 'offline-docs.mjs');
     writeFileSync(

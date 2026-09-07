@@ -65,9 +65,9 @@ surface: session (claude-code hook) · disciplines: advise unless enforce: block
   meta     shell-mod       paths N (common)
   meta     transcript-mod  content predicate · conditional: transcript_path
 
-surface: commit (git pre-commit) · enforce: block · disciplines: advise unless enforce: block
+surface: commit (git pre-commit) · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
-  meta     self-mod   paths N (common ∪ adapters.git; deduped, includes the config file itself)
+  meta     self-mod   paths N (common; includes the config file itself)
   meta     shell-mod  paths N (common)
 ```
 

@@ -6,7 +6,6 @@ paths:
   - "lefthook.yml"
   - "packages/covenant/**"
   - "packages/adapter-claude-code/**"
-  - "packages/adapter-git/**"
 ---
 
 # How the two surfaces judge

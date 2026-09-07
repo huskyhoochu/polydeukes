@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // protected path of THIS repository is ever referenced. The fixture dists are symlink
 // mirrors of the real build living INSIDE the throwaway repo, so they die with it.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import {
   type CheckRepo,
   createCheckRepo,
@@ -34,6 +35,12 @@ let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
 let git: CheckRepo['git'];
+
+/** The staged diff of the fixture repository, translated to the IR the runner judges. */
+function stagedInput() {
+  return covenantInputFromUnifiedDiff({ text: git('diff', '--cached') });
+}
+
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
@@ -153,15 +160,17 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     stageProtectedChange('advise');
 
     const result = await runCovenantCheck({
+      enforce: 'block',
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: mirroredDist(),
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(2);
     expect(rows()).toEqual([
-      ['advised', 'self-mod'],
-      ['advised', 'self-mod'],
+      ['blocked', 'self-mod'],
+      ['blocked', 'self-mod'],
     ]);
   });
 
@@ -173,15 +182,17 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     stageProtectedChange('advise');
 
     const result = await runCovenantCheck({
+      enforce: 'block',
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: mirroredDist(),
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(2);
     expect(rows()).toEqual([
-      ['advised', 'self-mod'],
-      ['advised', 'self-mod'],
+      ['blocked', 'self-mod'],
+      ['blocked', 'self-mod'],
     ]);
   });
 
@@ -198,6 +209,7 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: mirroredDist(),
     });
 
@@ -213,8 +225,10 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     stageProtectedChange('block');
 
     const result = await runCovenantCheck({
+      enforce: 'block',
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: REAL_COVENANT_DIST,
     });
 
@@ -233,6 +247,7 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: REAL_COVENANT_DIST,
     });
 
@@ -257,6 +272,7 @@ describe('covenant check — a resolvable dist is judged exactly as before', () 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
+      input: stagedInput(),
       covenantDist: mirroredDist(),
     });
 

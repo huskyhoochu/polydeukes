@@ -123,12 +123,12 @@
       "en": {
         "path": "reference/cli/covenant-check.md",
         "title": "`pdks covenant check`",
-        "summary": "Inspect staged changes, --worktree, or a revision range."
+        "summary": "Judge a unified diff or an input IR from stdin, and read the exit codes."
       },
       "ko": {
         "path": "reference/cli/covenant-check.ko.md",
         "title": "`pdks covenant check`",
-        "summary": "스테이징한 변경, 작업 트리 검사, 리비전 범위 검사를 설명합니다."
+        "summary": "stdin의 unified diff나 입력 IR을 판정하고 종료 코드를 읽는 방법을 설명합니다."
       }
     },
     {
@@ -257,22 +257,6 @@
         "path": "reference/packages/adapter-claude-code.ko.md",
         "title": "`@polydeukes/adapter-claude-code`",
         "summary": "adapter-claude-code 패키지의 계약과 한계를 확인합니다."
-      }
-    },
-    {
-      "id": "package-adapter-git",
-      "category": "reference",
-      "order": 16,
-      "bundled": true,
-      "en": {
-        "path": "reference/packages/adapter-git.md",
-        "title": "`@polydeukes/adapter-git`",
-        "summary": "Consult the adapter-git package contract and its limits."
-      },
-      "ko": {
-        "path": "reference/packages/adapter-git.ko.md",
-        "title": "`@polydeukes/adapter-git`",
-        "summary": "adapter-git 패키지의 계약과 한계를 확인합니다."
       }
     },
     {

@@ -42,8 +42,8 @@ Grok의 `command`도 그 파일을 가리킵니다. `.claude/settings.json`도 �
 
 Grok는 세션 증인 밸브에 필요한 Claude 형식의 인간 메시지를 공급하지 않습니다. 대화 기록은
 Claude JSONL이 아니라 ACP `updates.jsonl`입니다.
-의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 커밋 표면의 증인 프롬프트는 해당
-커밋에만 적용되며, 차단된 Grok 도구 호출을 허용하지는 않습니다.
+의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 커밋 표면에는 증인 프롬프트가 없으므로
+차단된 Grok 도구 호출을 커밋 쪽에서 허용할 방법도 없습니다.
 
 <a id="commit-surface"></a>
 ## 커밋 표면
@@ -52,31 +52,33 @@ Claude JSONL이 아니라 ACP `updates.jsonl`입니다.
 
 1. 프로젝트 루트에 `polydeukes.config.yaml`을 만듭니다.
 2. pre-commit 훅을 추가합니다.
-3. 필요할 때는 `pnpm exec pdks covenant check`를 직접 돌려 같은 판정을 봅니다.
+3. 필요할 때는 `git diff HEAD | pnpm exec pdks covenant check --diff`를 직접 돌려 같은
+   판정을 봅니다.
 
-lefthook 예시는 다음과 같습니다.
+lefthook 예시는 다음과 같습니다. `git diff`의 플래그는 판정기가 받는 것을 고정합니다. 색 코드
+없음, 외부 diff 드라이버 없음, textconv 변환 없음, 번역기가 벗기는 `a/`·`b/` 접두입니다. 사용자의
+git 설정이 관측을 바꾸지 못합니다(CLI 레퍼런스 참고).
 
 ```yaml
 pre-commit:
   commands:
     covenant:
       priority: 1
-      interactive: true
-      run: ./node_modules/.bin/pdks covenant check
+      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 husky 예시는 다음과 같습니다.
 
 ```sh
 # .husky/pre-commit
-./node_modules/.bin/pdks covenant check
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 일반 git 훅으로 연결해도 됩니다.
 
 ```sh
 #!/bin/sh
-./node_modules/.bin/pdks covenant check
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
 ```
 
 일반 훅은 `.git/hooks/pre-commit`으로 저장한 뒤 `chmod +x .git/hooks/pre-commit`으로
@@ -84,12 +86,13 @@ husky 예시는 다음과 같습니다.
 관리자로 설치하고 YAML을 저장한 뒤 훅 설치 명령을 실행합니다. husky는 git이 찾을 수 있도록
 husky 설치기로 `.husky/pre-commit`을 저장하세요.
 
-`adapters.git.enforce: advise`이면 위반을 `advised`로 기록하고 stderr에 알린 뒤 커밋을
-허용합니다. `block`이면 보호 경로 위반과 `enforce: block`으로 지정한 항목의 위반을
-차단할 수 있습니다. 일반 항목의 기본값은 여전히 `advise`이며 표면 설정이 이를 승격하지
-않습니다. 증인이 설정돼 있고 터미널에 연결된 경우, 스테이징 검사에서 `/dev/tty` 프롬프트를
-제공합니다. `--worktree`와 `--range`는 프롬프트 없이 보고합니다. 조립 실패는 어느 강제
-수준에서도 종료 코드 2를 반환합니다.
+판정기는 종료 코드 0 또는 2만 내고 사람에게 묻지 않습니다. 기본값에서는 `protectedPaths`
+위반을 포함한 이 표면의 모든 위반이 stderr에 진단 한 줄을 남기고 행으로 기록되며 종료
+코드 0입니다. 스테이징된 관문 파일 변경은 이미 세션 표면에서 판정을 받았거나 사람이 직접
+한 것이고, 이 표면에는 사람이 답할 밸브가 없기 때문입니다. `protectedPaths` 위반이나
+`enforce: block` 항목의 위반을 종료 코드 2로 받으려면 명령에 `--enforce block`을 붙입니다.
+커밋을 멈출지는 훅 배선이 정합니다. 위 예시는 종료 코드를 그대로 따릅니다. 조립 실패는
+언제나 종료 코드 2입니다.
 
 <a id="witness-and-recovery"></a>
 ## 증인과 회복
@@ -97,7 +100,8 @@ husky 설치기로 `.husky/pre-commit`을 저장하세요.
 증인 토큰은 두 표면에서 같은 뜻이지만 전달 방식은 다릅니다.
 
 - 세션 표면에서는 대화 메시지 첫 줄에 토큰만 단독으로 넣습니다.
-- 커밋 표면에서는 TTY 프롬프트에 전체 토큰을 입력합니다.
+- 커밋 표면에는 프롬프트가 없습니다. 판정은 종료 코드로 전달되고, 그것으로 무엇을 할지는
+  훅 배선이 정합니다.
 
 밸브는 판정 결과가 차단일 때 확인합니다. 의도한 편집 전에 토큰을 입력해도 되며, 먼저
 실패하는 요청을 보낼 필요는 없습니다. 정상 판정은 바꾸지 않고, 현재 Grok 대화 기록
@@ -111,5 +115,5 @@ Grok가 훅을 아직 읽지 못했다면 Hooks 탭을 다시 불러오거나 �
 
 - `pdks explain`은 각 표면이 어떤 등록을 조립했는지 보여 줍니다.
 - `.polydeukes/roi.log`는 표면이 남긴 행을 기록합니다.
-- `pdks covenant check --worktree`는 작업 뒤에 쓰기 좋은 즉시 확인 명령입니다.
-- `pdks covenant check --range <base>..<head>`는 PR 전에 쓰기 좋은 형태입니다.
+- `git diff HEAD | pdks covenant check --diff`는 작업 뒤에 쓰기 좋은 즉시 확인 명령입니다.
+- `git diff <base>..<head> | pdks covenant check --diff`는 PR 전에 쓰기 좋은 형태입니다.

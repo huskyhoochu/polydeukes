@@ -298,14 +298,15 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
   writeFileSync(target, editedContent);
   git('add', SCOPED_TARGET);
 
-  return spawnSync(process.execPath, [BIN, 'covenant', 'check'], {
+  return spawnSync(process.execPath, [BIN, 'covenant', 'check', '--diff'], {
     cwd: projectRoot,
     encoding: 'utf-8',
+    input: git('diff', '--cached'),
   });
 }
 
 describe('③ commit surface advise translation (the domain W1 never measured)', () => {
-  it('a staged delta violation under adapters.git advise: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
+  it('a staged delta violation lands advised: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
     // Advise is not mute: the reason line, the entry's `why`, and one advisory summary
     // all reach stderr.
     const result = runCommitCheck(
@@ -341,7 +342,6 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
             why: DELTA_WHY,
           },
         ],
-        adapters: { git: { enforce: 'advise' } },
       },
       'export const y = 1;\n// TODO: later\n',
     );
@@ -404,9 +404,10 @@ function runCommitCheckCreating(name: string, relPath: string, content: string) 
   writeFileSync(target, content);
   git('add', relPath);
 
-  return spawnSync(process.execPath, [BIN, 'covenant', 'check'], {
+  return spawnSync(process.execPath, [BIN, 'covenant', 'check', '--diff'], {
     cwd: projectRoot,
     encoding: 'utf-8',
+    input: git('diff', '--cached'),
   });
 }
 

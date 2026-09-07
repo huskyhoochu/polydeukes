@@ -123,8 +123,8 @@ Everything else here is reached through `polydeukes`.
 - **Adapter namespaces are validated by shape, not by name.** `defineConfig()` checks that
   `adapters` is a map of plain objects and that each namespace value is an object. It does
   not check that a namespace *name* is one anybody implements, and it does not look inside
-  the namespace at all. Unknown vocabulary inside `adapters.git` is rejected by the git
-  adapter's own validator, at its own layer — not here.
+  the namespace at all. Unknown vocabulary inside a namespace is rejected by that adapter's
+  own validator, at its own layer — not here.
 - **The default transcript is a noop.** A consumer that injects no real transcript
   converges on "nothing happened", which is the safe direction for a valve: it never opens.
   Real transcripts live behind adapters.

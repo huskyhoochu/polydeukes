@@ -302,11 +302,12 @@ describe('discipline classification skill — publishable to a reader without th
 });
 
 describe('discipline classification skill — a registered pattern is proven to fire', () => {
-  it('names the worktree judgment command that fires a new pattern for real', () => {
+  it('names the diff-piped judgment command that fires a new pattern for real', () => {
     // The procedure ends with firing the entry once against a scratch violation; a skill
     // spelling that command wrong sends every consumer's proof run to a CLI that exits
     // with usage instead of a judgment.
-    expect(GENERATED_SKILL).toContain('pdks covenant check --worktree');
+    expect(GENERATED_SKILL).toContain('pdks covenant check --diff');
+    expect(GENERATED_SKILL).toContain('git diff HEAD');
   });
 });
 

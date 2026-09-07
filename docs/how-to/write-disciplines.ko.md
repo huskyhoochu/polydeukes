@@ -64,7 +64,7 @@ printf '{"home":"홈"}\n' > locales/ko.json
 git add locales/en.json locales/ko.json
 git commit -m 'docs: prepare locale example'
 printf '{"home":"Home","settings":"Settings"}\n' > locales/en.json
-pnpm exec pdks covenant check --worktree
+git diff HEAD | pnpm exec pdks covenant check --diff
 ```
 
 `locale-key-parity`의 `advised` 진단에 영어에만 있는 `settings` 키가 나와야 합니다.
@@ -72,7 +72,7 @@ pnpm exec pdks covenant check --worktree
 
 ```sh
 printf '{"home":"홈","settings":"설정"}\n' > locales/ko.json
-pnpm exec pdks covenant check --worktree
+git diff HEAD | pnpm exec pdks covenant check --diff
 ```
 
 이제 키 비교 진단이 없어야 합니다. 번역 값은 서로 다르지만 키는 같습니다.
@@ -82,8 +82,9 @@ pnpm exec pdks covenant check --worktree
 git restore -- locales/en.json locales/ko.json
 ```
 
-`--worktree`는 git이 추적하지 않더라도 무시 대상이 아닌 파일을 추가된 파일로 포함합니다.
-이 예제는 수정 사례를 검사하고 쉽게 원상 복구하기 위해 기준 상태를 커밋합니다.
+`git diff HEAD`는 마지막 커밋과의 차이를 냅니다. 아직 git이 추적하지 않는 파일은
+`git add -N`을 거쳐야 diff에 나타납니다. 이 예제는 수정 사례를 검사하고 쉽게 원상 복구하기
+위해 기준 상태를 커밋합니다.
 소스 파일이 존재한다는 이유만으로 선언이 실행되지는 않습니다. 관측된 변경 중 하나
 이상이 해당 선언의 적용 범위와 일치해야 합니다.
 
@@ -110,7 +111,7 @@ disciplines:
 ## 한 번은 실제로 판정해 보기
 
 설정을 저장한 뒤에는 필요한 증거를 공급할 수 있는 판정 경로로 위반과 정상 사례를 모두
-검사합니다. `pdks covenant check --worktree`는 현재 작업 트리의 변경을 판정하고,
+검사합니다. `git diff HEAD | pdks covenant check --diff`는 현재 작업 트리의 변경을 판정하고,
 `pdks explain`은 선언과 초안의 등록 상태를 보여 줍니다. 위 번역 예제처럼 한쪽 파일만
 바꾼 경우와 양쪽 키를 맞춘 경우를 비교하세요.
 

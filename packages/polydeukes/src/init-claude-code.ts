@@ -427,7 +427,7 @@ own mechanism can actually reach:
 
 | Mechanism | Break it once | The entry's id shows up in |
 | --- | --- | --- |
-| a file-reading one (\`added-only\`, \`naming\`, …) | one scratch edit matching the must-match direction | \`pdks covenant check --worktree\` output — the exit stays 0 at advise, the id is the proof |
+| a file-reading one (\`added-only\`, \`naming\`, …) | one scratch edit matching the must-match direction | \`pdks covenant check --diff\` output over \`git diff HEAD\` on stdin — the exit stays 0 at advise, the id is the proof |
 | \`forbidden-command\` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
 | \`precedent\` | one in-scope edit made without the required precedent | the telemetry log tail — a declaration reading the session judges on the session surface only (the commit surface has none, so its \`supply\` policy records it \`skipped\`) |
 

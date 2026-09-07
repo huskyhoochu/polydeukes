@@ -30,7 +30,7 @@ function importsFrom(text: string, symbol: string, pkg: string): boolean {
   return statement.test(text);
 }
 
-describe('the umbrella carries no reading implementation', () => {
+describe('the umbrella carries one disk reader and no git reading', () => {
   it('read-source.ts is gone from the umbrella', () => {
     // The disk reader moved to the session adapter; a copy left here is dead at best and
     // a diverging second implementation at worst.
@@ -50,15 +50,11 @@ describe('the umbrella carries no reading implementation', () => {
 });
 
 describe('the roots wire the adapters’ supply verbs', () => {
-  it('covenant-check.ts imports observationSourceReader from the git adapter', () => {
-    // Removing the root's own reader without wiring the adapter's leaves `supplySources`
-    // with no `read` at all — every declare entry refuses under `error` on every commit.
+  it('covenant-check.ts imports worktreeReader from the umbrella’s own reader module', () => {
+    // Removing the root's reader wiring leaves `supplySources` with no `read` at all —
+    // every declare entry refuses under `error` on every commit.
     expect(
-      importsFrom(
-        sourceOf('covenant-check.ts'),
-        'observationSourceReader',
-        '@polydeukes/adapter-git',
-      ),
+      importsFrom(sourceOf('covenant-check.ts'), 'worktreeReader', './worktree-reader.ts'),
     ).toBe(true);
   });
 

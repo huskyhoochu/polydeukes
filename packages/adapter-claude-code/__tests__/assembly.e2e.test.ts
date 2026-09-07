@@ -71,25 +71,25 @@ function runHook(
  */
 function configuredToken(): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
-  const match = /^\s*token:\s*'([^']+)'/m.exec(cfg);
+  const match = /^\s*token:\s*(['"])([^'"]+)\1/m.exec(cfg);
   if (!match) throw new Error('witness token not found in polydeukes.config.yaml');
-  return match[1];
+  return match[2];
 }
 
 /**
  * Read one discipline's `why` out of the live root config — textual for the same reason
  * {@link configuredToken} is.
  *
- * A single-quoted YAML scalar escapes an apostrophe by doubling it, and these values are
- * prose sentences where an apostrophe is ordinary. Matching `[^']*` would stop at the first
- * half of such a pair and hand back a prefix, so the assertion using it would silently check
- * less than it claims. The pair is consumed here and unescaped on the way out.
+ * The scalar may be single- or double-quoted (a formatter chooses). A single-quoted YAML
+ * scalar escapes an apostrophe by doubling it, a double-quoted one escapes a quote with a
+ * backslash, and these values are prose sentences where either is ordinary — so the whole
+ * line is captured up to the closing quote and unescaped on the way out.
  */
 function configuredWhy(id: string): string {
   const cfg = readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8');
-  const match = new RegExp(`- id: '${id}'\\n\\s*why: '((?:[^']|'')*)'`).exec(cfg);
+  const match = new RegExp(`- id: ["']${id}["']\\n\\s*why: (["'])(.*)\\1$`, 'm').exec(cfg);
   if (!match) throw new Error(`why not found for discipline '${id}'`);
-  return match[1].replaceAll("''", "'");
+  return match[1] === "'" ? match[2].replaceAll("''", "'") : match[2].replaceAll('\\"', '"');
 }
 
 /** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
@@ -700,11 +700,11 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     // NOT on it: it owns no path, and the shell call it judges is the call world its body
     // already saw — a skip arm there would mint a second row under its label.
     const result = runHook(
-      bashPayload("sed -i 's/alpha/beta/' packages/adapter-git/src/collect.ts"),
+      bashPayload("sed -i 's/alpha/beta/' packages/adapter-claude-code/src/collect.ts"),
     );
 
     expect(result.status).toBe(0);
-    const target = 'packages/adapter-git/src/collect.ts';
+    const target = 'packages/adapter-claude-code/src/collect.ts';
     expect(shellSkippedRows().map((r) => r.label)).toEqual([
       'covenant-vocabulary',
       'english-only-sources',
@@ -914,10 +914,9 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
   });
 });
 
-// The session surface never reads the git namespace. The commit-only additive list
-// (adapters.git.protectedPaths) exists so judgment-chain sources can block at promotion
-// time while staying free during work, and that split only holds if the hook's observation
-// scope stays the COMMON list. These spawn against a fixture tree carrying a config the
+// The session surface never reads an adapter namespace: its observation scope is the
+// COMMON protectedPaths list, and a namespace entry a config still carries is not a
+// second list. These spawn against a fixture tree carrying a config the
 // test authors, because the entries pinned here cannot live in the real repo config.
 
 describe('dogfooding assembly E2E — session surface ignores the git-additive list', () => {
@@ -964,9 +963,8 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
   }
 
   it('an Edit under a git-additive path passes the session surface with no witness (exit 0)', () => {
-    // "The hook does not read the git namespace" is a promise, not an omission: source
-    // stays free during work and gates only at promotion. A hook assembly that unioned
-    // adapters.git.protectedPaths would block here on self-mod.
+    // "The hook does not read an adapter namespace" is a promise, not an omission. A hook
+    // assembly that unioned a namespace's protectedPaths would block here on self-mod.
     const result = runHookWithFixtureConfig(editPayload(`${GIT_ADDITIVE_ENTRY}/index.ts`));
 
     expect(result.status).toBe(0);

@@ -1,21 +1,21 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { collectStagedChanges } from '@polydeukes/adapter-git';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// The commit root's `plan → supply → dispatch` wiring. After the
-// registrations are assembled the root plans the sources they name, reads each one THE
-// WAY ITS DOMAIN OBSERVES THE TREE (staged: the index, worktree: disk, range: the `<to>`
-// commit), and hands every per-change dispatch one `world`: the supplied files plus the
-// whole collected change set. The kernel never opens the tree — the root's `read` is the
-// only place the domain distinction lives, so it is the only place it can be wrong.
+// The commit root's `plan → supply → dispatch` wiring. After the registrations are
+// assembled the root plans the sources they name, reads each one from the WORKING TREE,
+// and hands every per-change dispatch one `world`: the supplied files plus the whole
+// observed change set. The kernel never opens the tree — the root's `read` is the only
+// place the disk is reached, so it is the only place it can be wrong.
 //
 // The dispatcher and the two supply verbs are observed through a recording dist injected
 // on the `covenantDist` seam (helpers.ts `recordingDist`): the real judges still run, and
 // every spec's `world` is written down before it reaches them. Each case is a real
 // throwaway git repository whose config carries its own declare entry; nothing of THIS
-// repository is referenced.
+// repository is referenced. The staged diff is translated to the IR the runner judges,
+// which is what a caller pipes in through `--diff`.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import {
   type CheckRepo,
   createCheckRepo,
@@ -28,15 +28,12 @@ import {
 const DECLARE_ID = 'en-locale-has-keys';
 const SOURCE_NAME = 'en';
 const EN_FILE = 'locales/en.json';
-/** Planned by the recording dist, never present in any observed tree. */
+/** Planned by the recording dist, never present in the observed tree. */
 const MISSING_FILE = 'locales/missing.json';
 /** The umbrella's protected-paths registration label — an observable contract, not a fixture choice. */
 const SELF_MOD_LABEL = 'self-mod';
-/** Three distinct texts for the three places one path can hold content at once. */
 const HEAD_CONTENT = '{"head":true}\n';
-const INDEX_CONTENT = '{"index":true}\n';
 const DISK_CONTENT = '{"disk":true}\n';
-const RANGE_BRANCH = 'observed';
 const declareEntry = {
   id: DECLARE_ID,
   why: 'the English locale must carry at least one key',
@@ -80,6 +77,11 @@ let telemetryPath: string;
 let calls: () => RecordedCall[];
 let covenantDist: string;
 
+/** The staged diff of the fixture repository, translated to the IR the runner judges. */
+function stagedInput() {
+  return covenantInputFromUnifiedDiff({ text: git('diff', '--cached') });
+}
+
 beforeEach(() => {
   repo = createCheckRepo('pdks-check-world-axis-');
   ({ repoRoot, git, write, writeConfig } = repo);
@@ -118,98 +120,53 @@ function expectJudged(result: { exitCode: number }): void {
   expect(telemetryRows(telemetryPath).filter(([event]) => event === 'blocked')).toEqual([]);
 }
 
-describe('covenant check — the read follows the domain', () => {
-  it('staged: the world carries the INDEX blob of a planned file, and no key for a planned file the index lacks', async () => {
-    // Three contents sit on one path at once — HEAD, index, disk — and only the index is
-    // what the commit will contain. A `read` over the disk hands the judge an edit the
-    // commit does not carry; one over HEAD hands it the state the commit replaces. The
-    // missing file kills a `read` that folds git's exit 128 into '' or null instead of
-    // leaving the key absent — the `supply` policy can only dispose of absence it can see.
+describe('covenant check — the read is the working tree', () => {
+  it('the world carries the DISK text of a planned file, and no key for a planned file the disk lacks', async () => {
+    // The missing file kills a `read` that folds an absent path into '' or null instead
+    // of leaving the key absent — the `supply` policy can only dispose of absence it can
+    // see.
     commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', EN_FILE);
     write(EN_FILE, DISK_CONTENT);
-
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
-
-    expectJudged(result);
-    expect(dispatchedWorlds().map((world) => world.files)).toEqual([{ [EN_FILE]: INDEX_CONTENT }]);
-  });
-
-  it('worktree: the world carries the DISK text of a planned file, and no key for one the disk lacks', async () => {
-    // The same three-way split observed from the worktree arm: here disk is the truth and
-    // the index is the wrong source. A root that built one `read` for every domain — the
-    // staged one, say — leaves this case reading the index. `changes` must ride this arm
-    // too: a root that fills it in the staged loop alone leaves the diagnostic domains
-    // with a one-element derivation.
-    commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
     git('add', EN_FILE);
-    write(EN_FILE, DISK_CONTENT);
 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
       covenantDist,
-      domain: { kind: 'worktree' },
+      input: stagedInput(),
     });
 
     expectJudged(result);
-    expect(dispatchedWorlds().map((world) => [world.files, world.changes])).toEqual([
-      [{ [EN_FILE]: DISK_CONTENT }, [EN_FILE]],
-    ]);
-  });
-
-  it('range: the world carries the `<to>` commit blob of a planned file, not `<from>` and not the disk', async () => {
-    // A range judges what the `<to>` commit contains. Reading `<from>` compares the
-    // change against the state it replaced; reading the disk mixes in edits no commit in
-    // the range holds. All three differ here, so only `git show <to>:<path>` lands the
-    // pinned text.
-    const base = commitBaseline();
-    git('checkout', '--quiet', '-b', RANGE_BRANCH);
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', EN_FILE);
-    git('commit', '--quiet', '-m', 'observed');
-    write(EN_FILE, DISK_CONTENT);
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist,
-      domain: { kind: 'range', base, head: RANGE_BRANCH },
-    });
-
-    expectJudged(result);
-    expect(dispatchedWorlds().map((world) => [world.files, world.changes])).toEqual([
-      [{ [EN_FILE]: INDEX_CONTENT }, [EN_FILE]],
-    ]);
+    expect(dispatchedWorlds().map((world) => world.files)).toEqual([{ [EN_FILE]: DISK_CONTENT }]);
   });
 });
 
 describe('covenant check — the change set is the whole observation, on every dispatch', () => {
-  it('three staged changes dispatch three times, each carrying the same three paths in collection order', async () => {
+  it('three staged changes dispatch three times, each carrying the same three paths in input order', async () => {
     // The commit root dispatches once per change so every change leaves its own row, and
     // that is exactly why the judge cannot derive the change set from its input — the
     // input holds one change. A root that passes each dispatch its own path (or omits
     // `changes`) turns every `Implies` over the change set into a one-element vacuity:
     // the `*.md ⇒ *.ko.md` pairing never finds a pair and never finds one missing. The
-    // order is the collector's, so the judge's witnesses keep the observation's order.
+    // order is the input's, so the judge's witnesses keep the observation's order.
     commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
+    write(EN_FILE, DISK_CONTENT);
     write('notes/a.txt', 'a\n');
     write('notes/b.txt', 'b\n');
     git('add', EN_FILE, 'notes/a.txt', 'notes/b.txt');
-    const collected = collectStagedChanges({ repoRoot: repoRoot }).map((change) => change.path);
-    expect(collected).toHaveLength(3);
+    const observed = stagedInput();
+    const changed = observed.toolCalls.map((call) => call.fileChange?.path);
+    expect(changed).toHaveLength(3);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist,
+      input: observed,
+    });
 
     expectJudged(result);
-    expect(dispatchedWorlds().map((world) => world.changes)).toEqual([
-      collected,
-      collected,
-      collected,
-    ]);
+    expect(dispatchedWorlds().map((world) => world.changes)).toEqual([changed, changed, changed]);
   });
 });
 
@@ -221,10 +178,15 @@ describe('covenant check — the plan is made from the assembled registrations',
     // judgment about the wiring, misread as one about the change. One plan per run: the
     // per-change loop shares it, or the tree is read once per change.
     commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
+    write(EN_FILE, DISK_CONTENT);
     git('add', EN_FILE);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist,
+      input: stagedInput(),
+    });
 
     expectJudged(result);
     const plans = calls().filter((call) => call.kind === 'plan');
@@ -233,68 +195,39 @@ describe('covenant check — the plan is made from the assembled registrations',
   });
 });
 
-/** A planned path that is a directory, the file inside it, and two more shapes a path can hold. */
+/** A planned path that is a directory, the file inside it, and the binary shape. */
 const DIR_PATH = 'locales/nested';
 const DIR_INNER = 'locales/nested/inner.json';
 const BINARY_FILE = 'assets/blob.bin';
-/** On disk only — committed nowhere, staged nowhere. */
-const FRESH_FILE = 'locales/fresh.json';
 const BINARY_CONTENT = Buffer.from('ab\0cd');
 
-/** Write bytes the collectors classify as binary (a NUL inside) at a repo-relative path. */
+/** Write bytes a text source cannot carry (a NUL inside) at a repo-relative path. */
 function writeBinary(relPath: string): void {
   const absolute = join(repoRoot, relPath);
   mkdirSync(dirname(absolute), { recursive: true });
   writeFileSync(absolute, BINARY_CONTENT);
 }
 
-/** Commit the nested directory on top of the baseline, so HEAD and the disk both hold it. */
-function commitNestedDirectory(): void {
-  write(DIR_INNER, '{}\n');
-  git('add', DIR_INNER);
-  git('commit', '--quiet', '-m', 'nested');
-}
-
-describe('covenant check — a planned path the domain cannot give as text is an absence, not a refusal', () => {
-  // The defect class is fail-closed on a mere absence: a path that is a directory, a
-  // binary blob, or a file git can see on disk but not in the observed tree is not a
-  // text a declaration can parse, and refusing the whole run for it turns every commit
-  // in the repository into a witness prompt. Each case keeps the planned locale beside
-  // the odd path, so a `read` that answers absence for everything on any failure is
-  // refuted by the locale's text still landing.
-  it('worktree: a planned path that is a directory on disk yields no key, and the file beside it is read', async () => {
+describe('covenant check — a planned path the tree cannot give as text is an absence, not a refusal', () => {
+  // The defect class is fail-closed on a mere absence: a path that is a directory or a
+  // binary blob is not a text a declaration can parse, and refusing the whole run for it
+  // turns every commit in the repository into a refusal. Each case keeps the planned
+  // locale beside the odd path, so a `read` that answers absence for everything on any
+  // failure is refuted by the locale's text still landing.
+  it('a planned path that is a directory on disk yields no key, and the file beside it is read', async () => {
     // `readFileSync` on a directory throws EISDIR; a `read` that folds only ENOENT
-    // propagates it and the run lands `supply-error` on a tree that merely has a folder.
+    // propagates it and the run refuses a tree that merely has a folder.
     commitBaseline();
-    commitNestedDirectory();
+    write(DIR_INNER, '{}\n');
     write(EN_FILE, DISK_CONTENT);
+    git('add', DIR_INNER, EN_FILE);
     ({ distDir: covenantDist, calls } = recordingDist(outside, [DIR_PATH, EN_FILE]));
 
     const result = await runCovenantCheck({
       repoRoot,
       telemetryPath,
       covenantDist,
-      domain: { kind: 'worktree' },
-    });
-
-    expectJudged(result);
-    expect(dispatchedWorlds().map((world) => world.files)).toEqual([{ [EN_FILE]: DISK_CONTENT }]);
-  });
-
-  it('worktree: a planned path holding NUL bytes on disk yields no key, not a lossy decode', async () => {
-    // A utf-8 decode of binary content is still a string; without the NUL check the
-    // bytes are supplied as text and `json` breaks the declaration on a file that was
-    // never a locale.
-    commitBaseline();
-    writeBinary(BINARY_FILE);
-    write(EN_FILE, DISK_CONTENT);
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [BINARY_FILE, EN_FILE]));
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist,
-      domain: { kind: 'worktree' },
+      input: stagedInput(),
     });
 
     expectJudged(result);
@@ -303,126 +236,49 @@ describe('covenant check — a planned path the domain cannot give as text is an
     for (const world of worlds) expect(world.files).toEqual({ [EN_FILE]: DISK_CONTENT });
   });
 
-  it('staged: a planned path that is a directory in HEAD and on disk yields no key, and the run still judges', async () => {
-    // The index holds no directory entry, so git refuses `:<dir>` with a message that
-    // is not "does not exist": a `read` matching that one phrase throws here and the
-    // run fails closed on a folder the repository has always had.
-    commitBaseline();
-    commitNestedDirectory();
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', EN_FILE);
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [DIR_PATH, EN_FILE]));
-
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
-
-    expectJudged(result);
-    expect(dispatchedWorlds().map((world) => world.files)).toEqual([{ [EN_FILE]: INDEX_CONTENT }]);
-  });
-
-  it('range: a planned path that is a directory at <to> yields no key — the tree listing is not a file', async () => {
-    // `git show <to>:<dir>` exits 0 and prints a tree listing; a `read` that trusts exit
-    // 0 supplies "tree observed:locales/nested\n\ninner.json" as the file's text.
-    const base = commitBaseline();
-    git('checkout', '--quiet', '-b', RANGE_BRANCH);
-    write(DIR_INNER, '{}\n');
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', DIR_INNER, EN_FILE);
-    git('commit', '--quiet', '-m', 'observed');
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [DIR_PATH, EN_FILE]));
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist,
-      domain: { kind: 'range', base, head: RANGE_BRANCH },
-    });
-
-    expectJudged(result);
-    const worlds = dispatchedWorlds();
-    expect(worlds).toHaveLength(2);
-    for (const world of worlds) expect(world.files).toEqual({ [EN_FILE]: INDEX_CONTENT });
-  });
-
-  it('range: a planned path on disk but absent from <to> yields no key rather than a refusal', async () => {
-    // git answers "exists on disk, but not in '<to>'" with exit 128 — a different phrase
-    // from the not-in-index one. A `read` matching the phrase throws, and an untracked
-    // scratch file next to the locales fails every range run closed.
-    const base = commitBaseline();
-    git('checkout', '--quiet', '-b', RANGE_BRANCH);
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', EN_FILE);
-    git('commit', '--quiet', '-m', 'observed');
-    write(FRESH_FILE, 'fresh\n');
-    ({ distDir: covenantDist, calls } = recordingDist(outside, [FRESH_FILE, EN_FILE]));
-
-    const result = await runCovenantCheck({
-      repoRoot,
-      telemetryPath,
-      covenantDist,
-      domain: { kind: 'range', base, head: RANGE_BRANCH },
-    });
-
-    expectJudged(result);
-    expect(dispatchedWorlds().map((world) => world.files)).toEqual([{ [EN_FILE]: INDEX_CONTENT }]);
-  });
-
-  it('staged: a planned path whose index blob carries NUL bytes yields no key', async () => {
-    // `git show :<path>` hands back the bytes; decoding them as utf-8 without the NUL
-    // check supplies garbage as text, the same lossy decode the collectors already refuse.
+  it('a planned path holding NUL bytes on disk yields no key, not a lossy decode', async () => {
+    // A utf-8 decode of binary content is still a string; without the NUL check the
+    // bytes are supplied as text and `json` breaks the declaration on a file that was
+    // never a locale.
     commitBaseline();
     writeBinary(BINARY_FILE);
-    write(EN_FILE, INDEX_CONTENT);
+    write(EN_FILE, DISK_CONTENT);
     git('add', BINARY_FILE, EN_FILE);
     ({ distDir: covenantDist, calls } = recordingDist(outside, [BINARY_FILE, EN_FILE]));
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist,
+      input: stagedInput(),
+    });
 
     expectJudged(result);
     const worlds = dispatchedWorlds();
-    expect(worlds).toHaveLength(2);
-    for (const world of worlds) expect(world.files).toEqual({ [EN_FILE]: INDEX_CONTENT });
-  });
-
-  it('staged: a missing planned path is still an absence when the environment names a non-English locale', async () => {
-    // git localizes its "does not exist" message; a `read` that recognizes absence by
-    // the English phrase refuses every commit on a machine whose LANG is not English.
-    // The variables are set on the process the run spawns git from and restored after.
-    commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
-    git('add', EN_FILE);
-    const saved = { LC_ALL: process.env.LC_ALL, LANG: process.env.LANG };
-    process.env.LC_ALL = 'ko_KR.UTF-8';
-    process.env.LANG = 'fr_FR.UTF-8';
-    try {
-      const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
-
-      expectJudged(result);
-      expect(dispatchedWorlds().map((world) => world.files)).toEqual([
-        { [EN_FILE]: INDEX_CONTENT },
-      ]);
-    } finally {
-      for (const name of ['LC_ALL', 'LANG'] as const) {
-        if (saved[name] === undefined) delete process.env[name];
-        else process.env[name] = saved[name];
-      }
-    }
+    expect(worlds.length).toBeGreaterThan(0);
+    for (const world of worlds) expect(world.files).toEqual({ [EN_FILE]: DISK_CONTENT });
   });
 });
 
 describe('covenant check — the change set lists the changes that produce a world', () => {
   it('a staged binary file is dispatched but not listed in changes', async () => {
-    // The collector gives a binary staged blob a call with no evidence, so it produces no
-    // world of its own; listing its path in `changes` hands the pairing declarations a
-    // path no world will ever answer for. The dispatch itself still happens — the path
-    // judges still see the call — so the count stays at one per staged change.
+    // A binary staged blob translates to a call with no evidence, so it produces no world
+    // of its own; listing its path in `changes` hands the pairing declarations a path no
+    // world will ever answer for. The dispatch itself still happens — the path judges
+    // still see the call — so the count stays at one per staged change.
     commitBaseline();
-    write(EN_FILE, INDEX_CONTENT);
+    write(EN_FILE, DISK_CONTENT);
     writeBinary(BINARY_FILE);
     git('add', EN_FILE, BINARY_FILE);
-    const collected = collectStagedChanges({ repoRoot: repoRoot }).map((change) => change.path);
-    expect(collected).toHaveLength(2);
+    const observed = stagedInput();
+    expect(observed.toolCalls).toHaveLength(2);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, covenantDist });
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      covenantDist,
+      input: observed,
+    });
 
     expectJudged(result);
     expect(dispatchedWorlds().map((world) => world.changes)).toEqual([[EN_FILE], [EN_FILE]]);

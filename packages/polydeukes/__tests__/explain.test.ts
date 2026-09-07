@@ -255,13 +255,15 @@ describe('surface placement', () => {
     }
   });
 
-  it('self-mod counts the common list (+config) on session and the git union on commit', async () => {
+  it('self-mod counts the common list (+config) on both surfaces — one list, one count', async () => {
+    // The commit surface reads the same protected list the session one does; a second,
+    // commit-only list would make the two counts disagree.
     writeFixtureConfig([]);
 
     const { text } = await explain({ repoRoot });
 
     expect(lineOf(text, SESSION_HEADER, 'meta', 'self-mod')).toMatch(/paths 3\b/);
-    expect(lineOf(text, COMMIT_HEADER, 'meta', 'self-mod')).toMatch(/paths 4\b/);
+    expect(lineOf(text, COMMIT_HEADER, 'meta', 'self-mod')).toMatch(/paths 3\b/);
   });
 
   it('shell-mod and transcript-mod exist only on the session surface', async () => {
@@ -364,24 +366,6 @@ describe('the tallies are the rendered lines', () => {
     expect(text.split('\n')[0]).toContain('pdks explain — ');
     expect(text.split('\n')[0]).toContain('polydeukes.config.json');
     expect(text).not.toMatch(/\bskipped\b/);
-  });
-});
-
-describe('the commit surface names its enforce level', () => {
-  it('renders enforce: block by default and enforce: advise when the namespace says so', async () => {
-    writeFixtureConfig([]);
-    expect(surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER)).toContain(
-      'enforce: block',
-    );
-
-    writeConfigAt(repoRoot, telemetryPath, {
-      protectedPaths: COMMON_PATHS,
-      adapters: { git: { enforce: 'advise', protectedPaths: GIT_ONLY_PATHS } },
-      disciplines: [],
-    });
-    expect(surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER)).toContain(
-      'enforce: advise',
-    );
   });
 });
 

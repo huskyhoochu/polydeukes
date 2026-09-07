@@ -63,7 +63,7 @@ printf '{"home":"홈"}\n' > locales/ko.json
 git add locales/en.json locales/ko.json
 git commit -m 'docs: prepare locale example'
 printf '{"home":"Home","settings":"Settings"}\n' > locales/en.json
-pnpm exec pdks covenant check --worktree
+git diff HEAD | pnpm exec pdks covenant check --diff
 ```
 
 Expect an `advised` diagnostic for `locale-key-parity` naming `settings` as present only in English.
@@ -71,7 +71,7 @@ The command still exits 0. Fix the mismatch and run the same observation again:
 
 ```sh
 printf '{"home":"홈","settings":"설정"}\n' > locales/ko.json
-pnpm exec pdks covenant check --worktree
+git diff HEAD | pnpm exec pdks covenant check --diff
 ```
 
 The parity diagnostic should disappear. The values differ intentionally; the keys now match.
@@ -81,8 +81,9 @@ Restore the two example files to their committed baseline when finished:
 git restore -- locales/en.json locales/ko.json
 ```
 
-`--worktree` also includes untracked, non-ignored files as additions. This example commits a
-baseline to exercise modifications and make cleanup predictable. A declaration does not run
+`git diff HEAD` reports changes against the last commit, so an untracked file needs `git add -N`
+before it appears in the diff. This example commits a baseline to exercise modifications and make
+cleanup predictable. A declaration does not run
 merely because its source exists: at least one observed change must match its scope.
 
 <a id="when-to-draft"></a>
@@ -109,7 +110,7 @@ verdict or telemetry. It is still part of the config, so the file remains loadab
 
 After you save the config, run the judgment path that can actually see it.
 
-- `pdks covenant check --worktree` shows the same entry against the current tree.
+- `git diff HEAD | pdks covenant check --diff` shows the same entry against the current tree.
 - `pdks explain` shows the registration and whether it is a declare or a draft.
 - A one-sided edit to `locales/en.json` or `locales/ko.json` is a good smoke test for the pairing
 example.

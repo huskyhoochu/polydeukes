@@ -1,20 +1,26 @@
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// The commit surface honours an entry's own enforce level. The surface stays at block
-// (no `adapters.git` namespace), so the only advise in play is the entry's: a staged
+// The commit surface honours an entry's own enforce level. The surface has no level of
+// its own, so the only advise in play is the entry's: a staged
 // delta breaking it passes (exit 0), records `advised` under the entry's id, and emits
 // one advisory line. Without that line an item-level advise would pass silently.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo } from './helpers.ts';
 
 const SOFT_ID = 'no-todo-softly';
 const PLAIN_ID = 'no-todo-plainly';
-const HARD_ID = 'no-todo-hardly';
 
 let repo: CheckRepo;
 let repoRoot: string;
 let telemetryPath: string;
 let git: CheckRepo['git'];
+
+/** The staged diff of the fixture repository, translated to the IR the runner judges. */
+function stagedInput() {
+  return covenantInputFromUnifiedDiff({ text: git('diff', '--cached') });
+}
+
 let write: CheckRepo['write'];
 let writeConfig: CheckRepo['writeConfig'];
 
@@ -71,7 +77,7 @@ describe('covenant check — an advise entry under a block surface', () => {
     // The advised row must carry the entry's own id, not the dispatcher label.
     stageSoftBreak();
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(0);
     const advised = readRecords(telemetryPath).records.filter((r) => r.event === 'advised');
@@ -84,7 +90,7 @@ describe('covenant check — an advise entry under a block surface', () => {
     stageSoftBreak();
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-    await runCovenantCheck({ repoRoot, telemetryPath });
+    await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     const advisoryLines = stderrWrite.mock.calls
       .map((call) => String(call[0]))
@@ -166,7 +172,12 @@ describe('covenant check — an advise entry under a block surface', () => {
     git('add', 'lib/a.ts');
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+      enforce: 'block',
+    });
 
     expect(result.exitCode).toBe(2);
     const advisoryLines = stderrWrite.mock.calls
@@ -233,59 +244,9 @@ describe('covenant check — the entry default is advise, explicit block is the 
     // the entry axis, not the observer's.
     stageBreakUnder({ id: PLAIN_ID });
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
+    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
 
     expect(result.exitCode).toBe(0);
     expect(entryRows(PLAIN_ID)).toEqual([['advised', PLAIN_ID]]);
-  });
-
-  it("an explicit enforce: 'block' entry under adapters.git.enforce: advise lands advised (exit 0) — the lenient axis wins", async () => {
-    // The observer set advise, so the author's promotion cannot raise the surface back:
-    // the lenient side of the two axes wins. Observed at assembly level, so the
-    // config → git settings → dispatch chain runs for real.
-    writeConfig({
-      adapters: { git: { enforce: 'advise' } },
-      disciplines: [
-        {
-          id: HARD_ID,
-          declare: {
-            mechanism: 'added-only',
-            scope: { source: 'target.path', include: ['^lib/.*\\.ts$'] },
-            supply: { pre: 'empty', post: 'empty' },
-            extract: {
-              before: [
-                { op: 'source', of: 'pre' },
-                { op: 'lines' },
-                { op: 'keyByPattern', re: '(TODO)' },
-              ],
-              after: [
-                { op: 'source', of: 'post' },
-                { op: 'lines' },
-                { op: 'keyByPattern', re: '(TODO)' },
-              ],
-              added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
-            },
-            relate: [
-              {
-                id: 'nothing-added',
-                relation: { op: 'empty', of: 'added' },
-                message: 'adds {key}',
-              },
-            ],
-          },
-          enforce: 'block',
-        },
-      ],
-    });
-    write('lib/a.ts', 'export const x = 1;\n');
-    git('add', 'lib/a.ts', 'polydeukes.config.json');
-    git('commit', '--quiet', '-m', 'initial');
-    write('lib/a.ts', 'export const x = 1;\n// TODO fix later\n');
-    git('add', 'lib/a.ts');
-
-    const result = await runCovenantCheck({ repoRoot, telemetryPath });
-
-    expect(result.exitCode).toBe(0);
-    expect(entryRows(HARD_ID)).toEqual([['advised', HARD_ID]]);
   });
 });

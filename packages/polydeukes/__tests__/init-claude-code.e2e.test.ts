@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -16,7 +16,6 @@ import { initClaudeCode } from '../src/init-claude-code.ts';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
-const umbrellaRoot = resolve(import.meta.dirname, '..');
 /** The registration artifact init generates — the file every case spawns. */
 const HOOK_REL = '.claude/hooks/covenant-pretooluse.mjs';
 /** The gate entry the block cases target — protected by the GENERATED config. */
@@ -30,8 +29,6 @@ const SETTINGS_REL = '.claude/settings.json';
 const DOGFOODING_ONLY_PROTECTED = 'lefthook.yml';
 /** The funnel supplement's label — the row a clean judged call leaves. */
 const ADAPTER_LABEL = 'adapter-claude-code';
-/** The scope entry the isolation case swaps for a dist-less stand-in. */
-const GIT_ADAPTER_ENTRY = 'adapter-git';
 
 let projectRoot: string;
 let telemetryPath: string;
@@ -60,53 +57,6 @@ afterEach(() => {
  */
 function wireRealGraph(): void {
   symlinkSync(join(repoRoot, 'node_modules'), join(projectRoot, 'node_modules'), 'dir');
-  initClaudeCode({ projectRoot });
-}
-
-/**
- * The umbrella package mirrored per-entry (package.json + dist symlinked), its
- * node_modules mirrored per-entry, and inside the @polydeukes scope the git adapter either
- * linked whole or replaced by a stand-in carrying its real manifest and NO dist — a
- * checkout nobody built, one level above distWithout()'s covenant mirror.
- *
- * The mirror only interposes under a --preserve-symlinks spawn: default ESM resolution
- * realpaths a symlinked module file, so the umbrella dist's bare specifiers would walk the
- * REAL packages/polydeukes/node_modules and find the real adapter-git regardless (measured
- * 2026-08-03). What these cases prove — which packages the subpath entry's module graph
- * loads — belongs to the import specifiers, not to the resolution mode, and the case above
- * covers the flagless production-shaped spawn.
- */
-function wireMirroredGraph(spec: { gitAdapterBuilt: boolean }): void {
-  const mirrorPkg = join(projectRoot, 'node_modules', 'polydeukes');
-  mkdirSync(mirrorPkg, { recursive: true });
-  symlinkSync(join(umbrellaRoot, 'package.json'), join(mirrorPkg, 'package.json'));
-  symlinkSync(join(umbrellaRoot, 'dist'), join(mirrorPkg, 'dist'), 'dir');
-
-  const realDeps = join(umbrellaRoot, 'node_modules');
-  const mirrorDeps = join(mirrorPkg, 'node_modules');
-  mkdirSync(mirrorDeps);
-  for (const entry of readdirSync(realDeps)) {
-    if (entry !== '@polydeukes') {
-      symlinkSync(join(realDeps, entry), join(mirrorDeps, entry), 'dir');
-      continue;
-    }
-    const scope = join(mirrorDeps, entry);
-    mkdirSync(scope);
-    for (const pkg of readdirSync(join(realDeps, entry))) {
-      if (pkg === GIT_ADAPTER_ENTRY && !spec.gitAdapterBuilt) {
-        const standIn = join(scope, pkg);
-        mkdirSync(standIn);
-        // The manifest is real so resolution reaches its exports map; the dist the map
-        // names is what is absent — ERR_MODULE_NOT_FOUND for whoever imports the package.
-        symlinkSync(
-          join(repoRoot, 'packages', GIT_ADAPTER_ENTRY, 'package.json'),
-          join(standIn, 'package.json'),
-        );
-        continue;
-      }
-      symlinkSync(join(realDeps, entry, pkg), join(scope, pkg), 'dir');
-    }
-  }
   initClaudeCode({ projectRoot });
 }
 
@@ -175,60 +125,6 @@ describe('the generated hook judges real payloads', () => {
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(SETTINGS_REL);
-    expect(rows()).toEqual([
-      BASELINE_FIRST_RUN_ROW,
-      ['blocked', 'self-mod', SETTINGS_REL],
-      ['passed', 'shell-mod', SETTINGS_REL],
-    ]);
-  });
-});
-
-describe('subpath isolation: the session never loads the git adapter', () => {
-  it('the COMPLETE per-entry mirror judges normally (control: exit 0, one adapter passed row)', () => {
-    // The premise both distless cases rest on: a mirror the resolver cannot walk — a
-    // dropped dependency entry, a reversed link — dies at the same exit 2 a barrel import
-    // produces, and the distless cases would go red while proving nothing about isolation.
-    // A normal pass here leaves the git adapter's absent dist as the only variable between
-    // the trees.
-    wireMirroredGraph({ gitAdapterBuilt: true });
-
-    const result = spawnGeneratedHook(writePayload('docs/notes.md', 'hello\n'), {
-      preserveSymlinks: true,
-    });
-
-    expect(result.status).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
-  });
-
-  it('a clean Write still passes when the git adapter carries NO dist (exit 0, adapter row)', () => {
-    // The isolation pin. A generated hook importing the package barrel instead of the
-    // session subpath drags covenant-check.js and its static @polydeukes/adapter-git
-    // import along, because barrel re-exports are eager. In this tree that import is
-    // ERR_MODULE_NOT_FOUND, so the delegator's catch answers exit 2 with ZERO telemetry
-    // rows (measured 2026-08-03). Both assertions refute it.
-    wireMirroredGraph({ gitAdapterBuilt: false });
-
-    const result = spawnGeneratedHook(writePayload('docs/notes.md', 'hello\n'), {
-      preserveSymlinks: true,
-    });
-
-    expect(result.status).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
-  });
-
-  it('a protected Write in the same distless tree still blocks as a VERDICT, not a crash', () => {
-    // The other end of "judgment works without the commit surface's adapter": clean calls
-    // passing (above) could survive an assembly that only touches adapter-git on the
-    // judging path, and a block that crashes instead of judging is exit 2 for the wrong
-    // reason. The self-mod row — unreachable for an assembly that died before dispatch —
-    // is what separates the two.
-    wireMirroredGraph({ gitAdapterBuilt: false });
-
-    const result = spawnGeneratedHook(writePayload(SETTINGS_REL, '{}'), {
-      preserveSymlinks: true,
-    });
-
-    expect(result.status).toBe(2);
     expect(rows()).toEqual([
       BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', SETTINGS_REL],

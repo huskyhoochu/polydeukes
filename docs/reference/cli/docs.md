@@ -25,10 +25,10 @@ The default language is English. The five legacy topics remain `install`, `confi
 ```sh
 pdks docs search 'locale key pairing'
 pdks docs search '번역 키 짝 맞춤' --lang ko --limit 3
-pdks docs search --worktree --json
+pdks docs search --diff --json
 ```
 
-The query is one argument. Quote multiword queries. A literal identifier such as `--worktree`
+The query is one argument. Quote multiword queries. A literal identifier such as `--diff`
 is accepted as the first search argument; subsequent unknown flags are errors. Limits are
 integers from 1 to 50, defaulting to 5. Search selects sections in the requested language and
 uses their titles, document metadata, and Markdown text. Every whitespace-separated query term

@@ -29,7 +29,6 @@
 | [`@polydeukes/core`](./reference/packages/core.ko.md) | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리 |
 | [`@polydeukes/covenant`](./reference/packages/covenant.ko.md) | 판정기입니다. 디스패처와 규율 라이브러리, 메타 약속, 밸브 |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
-| [`@polydeukes/adapter-git`](./reference/packages/adapter-git.ko.md) | 커밋 표면입니다. 스테이징·작업 트리·범위 diff에서 입력 IR로 |
 
 <a id="shape-of-the-thing"></a>
 ## 한 페이지로 보는 구조
@@ -54,7 +53,8 @@
 | 표면 | 판정 대상 | 배선 방법 | 대상 |
 |---|---|---|---|
 | **세션** | 도구 호출, 실행되기 전에 | `pdks init claude-code` 또는 `pdks init grok` | AI 파트너와 함께 개발하는 프로젝트 |
-| **커밋** | diff — 스테이징 영역, 작업 트리, ref 범위 | pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI |
+| **커밋** | stdin의 unified diff — 스테이징 영역, 작업 트리, ref 범위 | `git diff --cached`를 파이프로 넘기는 pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI |
 
-커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는 `pdks covenant check --worktree`,
-PR 전에는 `--range`를 사용합니다. 같은 판정 기준으로 결과를 보고하며 증인 입력은 요청하지 않습니다.
+커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는 `git diff HEAD | pdks covenant check --diff`,
+PR 전에는 `git diff main...HEAD | …`를 사용합니다. 같은 판정 기준을 종료 코드로 답하며 묻지
+않습니다. 관문은 그 코드를 소비하는 쪽입니다.

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows, writeConfigAt } from './helpers.ts';
 
 const DRAFT_ID = 'bilingual-docs-sync';
@@ -120,6 +121,7 @@ describe('commit surface judgment parity', () => {
     const { exitCode } = await runCovenantCheck({
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
     });
     return { exitCode, rows: normalizedRows(repo.telemetryPath, repo.repoRoot) };
   }

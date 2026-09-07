@@ -3,14 +3,15 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is alpha.** Five packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is alpha.** Four packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
 schema), `covenant` (the judge: Bash analysis, path-routing dispatcher, meta-covenants, TTL
 witness, discipline library, and the declaration engine — extract steps, seven relations,
 witness lists),
-`adapter-claude-code` and `adapter-git` (two payloads onto one input IR), and the `polydeukes`
+`adapter-claude-code` (the session payload onto the input IR; the commit surface is a unified
+diff on stdin that the umbrella translates itself), and the `polydeukes`
 umbrella (the `pdks` bin, `loadConfig`, both surfaces' composition roots, and the disk they
-need — only the umbrella may depend sideways). The judge and the two adapters take `core` as a
+need — only the umbrella may depend sideways). The judge and the adapter take `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated; the umbrella's
 ordinary dependency is what satisfies it. `covenant` opens no file at all, and core's only file
 I/O is the telemetry log it appends every judgment to.
@@ -52,21 +53,22 @@ keeps the roadmap a plan rather than a defect list.
 ## Self-dogfooding (ON since 2026-07-14)
 
 A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
-pre-commit spawns `pdks covenant check` over the staged diff — two observations of the same
+pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of the same
 promises. The hook is a thin delegator calling `runClaudeCodeHook` through the package's session
 subpath (the barrel is eager and would load the commit surface on every session call), so what we
 are judged by every day is the shipped artifact itself; `pdks init claude-code` generates the same
 delegator for a consumer project, and `pdks init grok` reuses that file when it already exists.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.git/hooks`), the five packages' gitignored `dist`, and the root config. Package
-sources are on the commit surface's own list instead (`adapters.git.protectedPaths`): a session
-edit is free, and the commit that stages it stops unless a human answers the TTY prompt with the
-witness token. The `disciplines:` entries land `advised` on both surfaces (exit 0, the `why`
+`biome.json`, `.git/hooks`), the four packages' gitignored `dist`, and the root config. The
+commit surface has no list of its own and no prompt: it judges the piped diff and lands every
+verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
+line does not — a staged gate-file change has already passed the session surface). The
+`disciplines:` entries land `advised` on both surfaces (exit 0, the `why`
 on stderr) unless an entry says `enforce: block`. The session-protected list is a separate
 list, not an override applied to those entries: nothing promotes a discipline's own `advise`
 to a block, and since POSTURE-01 the protected list above is the only thing that blocks
-unasked. Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored).
+unasked — on the session surface. Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored).
 
 **What each axis compares, and the witness valve, are in
 `.claude/rules/dogfooding-axes.md`** — it auto-loads for the hook, the config, and the judge

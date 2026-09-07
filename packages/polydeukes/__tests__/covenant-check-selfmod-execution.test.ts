@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // always breaks — so the observation is the judge's reason text, which the wrapper writes
 // through process.stderr.write and only a judge that actually ran can produce.
 import { runCovenantCheck } from '../src/covenant-check.ts';
+import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows } from './helpers.ts';
 
 /** Injected fixture values. */
@@ -23,26 +24,25 @@ afterEach(() => {
 });
 
 describe('the commit self-mod judge observably executes in-process', () => {
-  it('a staged protected change under advise puts the judge reason, naming the entry, on the spyable stderr', async () => {
-    // An advised self-mod row written without the judge running is a fabricated verdict;
-    // the reason text is producible only by an executed judgment.
-    repo.writeConfig({
-      protectedPaths: [PROTECTED_ENTRY],
-      adapters: { git: { enforce: 'advise' } },
-    });
+  it('a staged protected change puts the judge reason, naming the entry, on the spyable stderr', async () => {
+    // A self-mod row written without the judge running is a fabricated verdict; the
+    // reason text is producible only by an executed judgment.
+    repo.writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     repo.write(PROTECTED_ENTRY, 'sensitive\n');
     repo.git('add', PROTECTED_ENTRY, 'polydeukes.config.json');
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     const result = await runCovenantCheck({
+      enforce: 'block',
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
+      input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(2);
     expect(telemetryRows(repo.telemetryPath).map(([event, label]) => [event, label])).toEqual([
-      ['advised', 'self-mod'],
-      ['advised', 'self-mod'],
+      ['blocked', 'self-mod'],
+      ['blocked', 'self-mod'],
     ]);
     const reasonLines = stderrWrite.mock.calls
       .map((call) => String(call[0]))

@@ -12,15 +12,14 @@
  * This file is a barrel and nothing more. ESM re-exports are eager, so anything defined
  * here would be instantiated by every consumer of any other export. Keep definitions in
  * their own modules and let importers reach them directly. A session call enters through
- * the published `./claude-code` subpath instead, which keeps the commit surface and its git
- * adapter off that load path.
+ * the published `./claude-code` subpath instead, which keeps the commit surface off that
+ * load path.
  *
  * See https://github.com/huskyhoochu/polydeukes
  */
 
 export type { ResolvedConfig } from '@polydeukes/core';
 export {
-  type CheckDomain,
   type CovenantCheckOutcome,
   type CovenantCheckSpec,
   runCovenantCheck,

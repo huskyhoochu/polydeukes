@@ -2,7 +2,6 @@
 paths:
   - "packages/core/**"
   - "packages/adapter-claude-code/**"
-  - "packages/adapter-git/**"
 ---
 
 # Evidence and the IR

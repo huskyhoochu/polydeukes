@@ -7,17 +7,18 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
-**상태: 알파(alpha).** 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
-프로토콜), `@polydeukes/covenant`(판정기), 어댑터 둘(`adapter-claude-code` ·
-`adapter-git`), 그리고 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지
+**상태: 알파(alpha).** 네 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+프로토콜), `@polydeukes/covenant`(판정기), 세션 어댑터(`adapter-claude-code`),
+그리고 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지
 `polydeukes`입니다. ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
 ```sh
 pdks init claude-code    # 프로젝트에 Claude Code 세션 표면을 배선
 pdks init grok           # 프로젝트에 Grok 세션 표면을 배선
-pdks covenant check      # staged diff 판정 (pre-commit 진입점)
-pdks covenant check --worktree            # 같은 판정을 작업 트리에
-pdks covenant check --range main...HEAD   # ... 또는 ref 범위(PR의 범위)에
+git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
+git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에
+git diff main...HEAD | pdks covenant check --diff   # ... 또는 ref 범위(PR의 범위)에
+pdks covenant check < input.json                    # 또는 다른 프로그램이 만든 입력 IR에
 pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 출력 — 판정 없음
 pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
 ```

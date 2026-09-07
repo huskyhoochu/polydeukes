@@ -3,7 +3,6 @@ paths:
   - "packages/core/__tests__/**"
   - "packages/covenant/__tests__/**"
   - "packages/adapter-claude-code/__tests__/**"
-  - "packages/adapter-git/__tests__/**"
   - "packages/polydeukes/__tests__/**"
 ---
 

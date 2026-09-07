@@ -25,10 +25,10 @@ pdks docs show <document-id> [--lang en|ko] [--section <section-id>] [--json]
 ```sh
 pdks docs search 'locale key pairing'
 pdks docs search '번역 키 짝 맞춤' --lang ko --limit 3
-pdks docs search --worktree --json
+pdks docs search --diff --json
 ```
 
-검색어는 인수 하나입니다. 여러 단어로 검색할 때는 따옴표로 묶습니다. `--worktree` 같은
+검색어는 인수 하나입니다. 여러 단어로 검색할 때는 따옴표로 묶습니다. `--diff` 같은
 식별자도 첫 번째 검색 인수로 사용할 수 있습니다. 그 뒤에 오는 알 수 없는 플래그는
 오류입니다. 결과 개수는 1부터 50까지의 정수이며 기본값은 5입니다. 선택한 언어의 절을
 대상으로 제목, 문서 메타데이터, Markdown 본문을 검색합니다. 공백으로 나눈 검색어가
