@@ -73,6 +73,30 @@ export type CovenantInput = {
    * declaration's own supply policy.
    */
   actor?: Actor;
+  /**
+   * The host's tool roster — values, never vocabulary: `mutating` names the tools whose
+   * calls change a file, `shell` the ones carrying a command line, and `commandArgs` the
+   * argument keys that command line travels in. Absence leaves the runner on its own
+   * default roster.
+   */
+  tools?: { mutating: string[]; shell: string[]; commandArgs: string[] };
+  /**
+   * The evidence a live agent session carries that the repository's disk does not. Absence
+   * is the absence of a session; a session whose lists are empty is a host that named its
+   * evidence and could not deliver it.
+   *
+   * `evidencePath` is where that evidence was read from, so a surface can protect the file
+   * the session is judged from. `userMessages` carries `timestampMs` because a session can
+   * prove freshness a bare IR cannot, and `toolCalls` carries `succeeded` because a session
+   * can prove a call's outcome. `channels` is the host's own evidence channel text — a
+   * runner lifts it into the world it dispatches.
+   */
+  session?: {
+    evidencePath?: string;
+    userMessages: { text: string; timestampMs?: number }[];
+    toolCalls: { name: string; args?: Record<string, unknown>; succeeded?: boolean }[];
+    channels?: { sidecar?: string };
+  };
 };
 
 /**

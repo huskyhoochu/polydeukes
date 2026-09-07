@@ -9,7 +9,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // three stdio fds and passes its own `input` — the child never inherits the runner's stdin,
 // so a bin that reads any fd other than its own stdin has nothing to read and fails.
 import { STAGED_WRITE } from '../src/diff-ir.ts';
-import { telemetryRows, writeConfigAt } from './helpers.ts';
+import { BASELINE_FIRST_RUN_ROW, telemetryRows, writeConfigAt } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
@@ -267,5 +267,102 @@ describe('every other argv is usage exit 2 naming --diff', () => {
     expect(result.stderr).toContain('usage:');
     expect(result.stderr).toContain('--diff');
     expect(telemetryRows(logPath)).toEqual([]);
+  });
+});
+
+// A session-shaped IR: the host roster under `tools`, the session evidence under
+// `session`. The bin never reads git for it, so the fixture repository's commit is only
+// what the earlier blocks need; these cases rewrite the config where the case needs a
+// witness and hand the bin the IR alone.
+
+/** Injected fixture values — the host's mutating tool name and the witness. */
+const SESSION_WRITE_TOOL = 'session-write';
+const SESSION_TOOLS = { mutating: [SESSION_WRITE_TOOL], shell: [], commandArgs: [] };
+const SESSION_WITNESS_TOKEN = 'agreed-token';
+const SESSION_TTL_MINUTES = 10;
+
+/** The IR of one session write by the host's tool, evidence attached, no session. */
+function sessionWriteIr(path: string, post: string): CovenantInput {
+  return {
+    toolCalls: [
+      {
+        name: SESSION_WRITE_TOOL,
+        args: { file_path: path, content: post },
+        fileChange: { kind: 'create', path, post },
+      },
+    ],
+    subagentSpawns: [],
+    userMessages: [],
+  };
+}
+
+describe('IR mode: a session-shaped IR on stdin', () => {
+  it('a protected write by a tool in tools.mutating exits 2 with a blocked self-mod row under --enforce block', () => {
+    // The roster must reach the built bin's assembly: a bin that keeps the staged names as
+    // its mutating roster leaves the host's write unrouted and exits 0.
+    const withTools = { ...sessionWriteIr(PROTECTED_ENTRY, 'sensitive'), tools: SESSION_TOOLS };
+
+    const result = spawnCheck(JSON.stringify(withTools), '--enforce', 'block');
+
+    expect(result.status).toBe(2);
+    expect(telemetryRows(logPath)).toEqual([['blocked', SELF_MOD_LABEL, PROTECTED_ENTRY]]);
+  });
+
+  it('the same IR without tools exits 0 with one passed row — the host tool is unrouted', () => {
+    // The default roster is the staged names; a bin that hard-codes a host roster blocks
+    // here, and one that fails closed on an unknown tool name exits 2.
+    const result = spawnCheck(
+      JSON.stringify(sessionWriteIr(PROTECTED_ENTRY, 'sensitive')),
+      '--enforce',
+      'block',
+    );
+
+    expect(result.status).toBe(0);
+    expect(telemetryRows(logPath)).toEqual([['passed', expect.any(String), expect.any(String)]]);
+  });
+
+  it('a fresh token utterance in session.userMessages witnesses the block — exit 0, witnessed row', () => {
+    // The valve through stdin: the timestamp is the IR's, so a bin that drops it or reads
+    // the top-level `userMessages` instead exits 2 here.
+    writeConfigAt(projectRoot, logPath, {
+      protectedPaths: [PROTECTED_ENTRY],
+      witness: { token: SESSION_WITNESS_TOKEN, ttlMinutes: SESSION_TTL_MINUTES },
+    });
+    const witnessed = {
+      ...sessionWriteIr(PROTECTED_ENTRY, 'sensitive'),
+      tools: SESSION_TOOLS,
+      session: {
+        userMessages: [
+          { text: `${SESSION_WITNESS_TOKEN}\nproceed`, timestampMs: Date.now() - 1_000 },
+        ],
+        toolCalls: [],
+      },
+    };
+
+    const result = spawnCheck(JSON.stringify(witnessed), '--enforce', 'block');
+
+    expect(result.status).toBe(0);
+    // A session input compares the protected entries against the stored baseline around
+    // the judgment, so the first run in a fresh project records the absent baseline first.
+    expect(telemetryRows(logPath)).toEqual([
+      BASELINE_FIRST_RUN_ROW,
+      ['witnessed', SELF_MOD_LABEL, PROTECTED_ENTRY],
+    ]);
+  });
+
+  it('a session whose toolCalls is an object exits 2 with one blocked covenant-check row', () => {
+    // A session the bin cannot read is a block before judgment, never a default: a bin
+    // folding the object into `[]` would judge and exit 0 on the ordinary write.
+    const malformed = {
+      ...sessionWriteIr(ORDINARY_FILE, ORDINARY_TEXT),
+      tools: SESSION_TOOLS,
+      session: { userMessages: [], toolCalls: {} },
+    };
+
+    const result = spawnCheck(JSON.stringify(malformed), '--enforce', 'block');
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).not.toContain('usage:');
+    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 });

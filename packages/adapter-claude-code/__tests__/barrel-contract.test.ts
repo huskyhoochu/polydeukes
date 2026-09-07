@@ -68,6 +68,10 @@ const KEPT_EXPORTS: readonly string[] = [
   'SessionSourceReaderSpec',
   'sessionChannelReader',
   'SessionChannelReaderSpec',
+  // the session evidence the umbrella lifts into the IR's `session` key
+  'sessionEvidenceFromPayload',
+  'SessionEvidenceFromPayloadSpec',
+  'SessionEvidenceOutcome',
   // spec ingredients the composition root and the init generators both read
   'COMMAND_ARGS',
   'MUTATING_TOOLS',

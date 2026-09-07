@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "test": "turbo run test",
+    "test:watch": "pnpm -r --parallel exec vitest --exclude \"**/*.e2e.test.ts\"",
     "dev": "turbo run dev",
     "check": "biome check --write .",
     "format": "biome format --write --files-ignore-unknown=true .",

@@ -34,7 +34,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   from disk arrives injected. core keeps one file-I/O site of its own, the telemetry log
   (`telemetry.ts`), which every surface appends a row to. Since DIST-01 it also owns **both
   surfaces' composition roots** —
-  `runCovenantCheck` (commit) and `runClaudeCodeHook` (session) — because assembly needs an
+  `runCovenantCheck` (the CLI — a staged diff, or a host's IR carrying its tool roster and
+  session evidence since SURFACE-03a) and `runClaudeCodeHook` (the in-process session path,
+  until SURFACE-04 rewires this repository's hook) — because assembly needs an
   adapter AND the judge at once, which no sibling may depend on. That is the umbrella's structural
   privilege, not a convenience: it is the only package allowed to reach sideways. Only
   umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in

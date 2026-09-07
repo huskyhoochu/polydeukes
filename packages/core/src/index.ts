@@ -93,4 +93,5 @@ export {
   type TranscriptToolCall,
   type TranscriptUserMessage,
   transcriptFromInput,
+  transcriptFromSession,
 } from './transcript.ts';

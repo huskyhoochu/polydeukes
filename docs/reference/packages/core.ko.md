@@ -41,7 +41,10 @@
 `.polydeukes/roi.log`의 차단 기록도 이 판정 어휘를 사용합니다.
 
 `world`는 표면이 공급합니다(`files`, `changes`, `channels`). 판정기가 디스크에서 읽지
-않습니다.
+않습니다. `tools`와 `session`은 호스트가 공급합니다. 명부는 어댑터가 채우는 값이고, 세션은
+IR만으로는 증명하지 못하는 두 사실, 메시지의 신선도와 호출의 결과를 담은 증거입니다.
+`transcriptFromSession`은 그 키에서 증인이나 선행 조건 소비자가 읽는 대화 기록을 만들고,
+`transcriptFromInput`은 그 두 사실 없이 IR에서 같은 대화 기록을 만듭니다.
 
 ```ts
 type CovenantInput = {
@@ -52,6 +55,13 @@ type CovenantInput = {
   world?: {
     files?: Record<string, string>;
     changes?: string[];
+    channels?: { sidecar?: string };
+  };
+  tools?: { mutating: string[]; shell: string[]; commandArgs: string[] };
+  session?: {
+    evidencePath?: string;
+    userMessages: { text: string; timestampMs?: number }[];
+    toolCalls: { name: string; args?: Record<string, unknown>; succeeded?: boolean }[];
     channels?: { sidecar?: string };
   };
 };

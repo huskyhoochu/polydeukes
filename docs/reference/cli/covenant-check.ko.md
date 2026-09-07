@@ -15,8 +15,9 @@ pdks covenant check [--diff] [--enforce advise|block]
 ```
 
 `--diff`가 없으면 stdin은 약속(covenant) 입력 IR입니다. `@polydeukes/core`가 정의하는 JSON
-문서(`toolCalls` · `subagentSpawns` · `userMessages`)입니다. `--diff`를 주면 stdin은 unified
-diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이 실행의 관측자 자세이며
+문서(`toolCalls` · `subagentSpawns` · `userMessages`, 그리고 호스트가 더하는 선택 키 둘,
+도구 명부 `tools`와 살아 있는 에이전트 세션의 증거 `session`)입니다. `--diff`를 주면 stdin은
+unified diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이 실행의 관측자 자세이며
 기본값은 `advise`입니다. 기본값에서는 모든 위반이 행으로 기록되고 종료 코드 0입니다. `--enforce block`을
 주면 보호 경로 위반과 `enforce: block` 항목의 위반이 종료 코드 2가 됩니다. 플래그는 각각 한
 번씩, 순서는 무관합니다. 그 밖의 인자는 사용법 오류입니다. stdin은 EOF까지 읽습니다.
@@ -34,6 +35,16 @@ diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이
 | `pdks covenant check < input.json` | 호출자가 만든 IR 그대로 |
 
 diff 형식은 VCS 중립입니다. git · jj · hg · 손으로 쓴 `diff -u`가 모두 같은 형식을 냅니다.
+
+호스트가 만든 IR은 저장소 디스크에 없는 것을 담습니다. `tools`는 어느 도구 이름이 파일을
+바꾸고 어느 것이 명령줄을 담는지(`mutating` · `shell` · `commandArgs`)를 값으로 적습니다.
+어휘가 아니라 값이며, 이것이 없으면 명령은 diff가 만드는 staged 이름만 라우팅합니다.
+`session`은 타임스탬프가 있는 사람의 메시지(TTL 증인이 읽는 것), 이미 실행된 호출과 그
+결과(선행 조건 선언이 읽는 것), 증거를 읽어 온 파일의 절대 경로(이 실행 동안 동일성으로
+보호), 스폰 사이드카 텍스트를 담습니다. 선언이 지정한 파일은 명령이 작업 트리에서 직접
+읽고, 자체 `world` 키를 담은 IR은 거부합니다. 세션 입력은 이 명령이 관측하지 못하는 변경
+집합의 한 호출이므로 변경 집합 선언은 거기서 `skipped`로 기록됩니다. 판정 전후에는 세션
+표면과 같은 방식으로 보호 항목을 저장된 기준선과 비교합니다.
 
 <a id="diff-translation"></a>
 ## diff가 IR이 되는 방식
@@ -77,6 +88,8 @@ diff 형식은 VCS 중립입니다. git · jj · hg · 손으로 쓴 `diff -u`�
 | `--diff` 없이 0바이트 stdin | exit `2`. 빈 페이로드는 IR이 아닙니다 |
 | JSON 파싱 실패 · 객체가 아님 · `toolCalls` 배열 부재 | exit `2`, `covenant-check`의 `blocked` 행 하나 |
 | IR이 자체 `world` 키를 담은 경우 | exit `2`. 세계 축은 이 명령이 채웁니다 |
+| `tools`의 목록이 빠졌거나 문자열 아닌 이름을 담은 경우, `session`에 `userMessages`·`toolCalls` 배열이 없는 경우 | exit `2`, `blocked` `covenant-check` 행 1건. 판정할 수 없는 형상은 기본값이 아니라 차단입니다 |
+| `session`의 토큰 메시지가 설정의 `witness` 안에서 신선한 경우 | 차단 판정이 `witnessed`로 기록되고 exit `0`. 세션 표면이 여는 것과 같은 밸브입니다 |
 | 병합 diff(`diff --cc`) · 짝이 맞지 않는 `---`/`+++` · 미지의 hunk 줄 | exit `2`, `covenant-check`의 `blocked` 행 하나 |
 | 다른 인자 | exit `2`, stderr에 사용법 줄. stdin은 읽지 않습니다 |
 | 설정 부재 · 중복 · 무효 | exit `2` |

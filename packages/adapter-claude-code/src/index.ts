@@ -18,6 +18,11 @@ export {
   type SessionChannelReaderSpec,
   sessionChannelReader,
 } from './session-channel-reader.ts';
+export {
+  type SessionEvidenceFromPayloadSpec,
+  type SessionEvidenceOutcome,
+  sessionEvidenceFromPayload,
+} from './session-evidence.ts';
 export { type SessionSourceReaderSpec, sessionSourceReader } from './session-source-reader.ts';
 export {
   COMMAND_ARGS,

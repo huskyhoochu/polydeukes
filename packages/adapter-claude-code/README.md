@@ -13,6 +13,7 @@ Public contract symbols include:
 - `runAdapterPath`
 - `sessionSourceReader`
 - `sessionChannelReader`
+- `sessionEvidenceFromPayload`
 - `transcriptPathFromPayload`
 - `transcriptFromJsonlFile`
 - `COMMAND_ARGS`

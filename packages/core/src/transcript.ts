@@ -80,3 +80,33 @@ export function transcriptFromInput(input: CovenantInput): CanonicalTranscript {
         .map((call) => ({ name: call.name, args: structuredClone(call.args ?? {}) })),
   };
 }
+
+/**
+ * Wrap a {@link CovenantInput}'s `session` as a {@link CanonicalTranscript}.
+ *
+ * Differs from {@link transcriptFromInput} on exactly the two facts a session proves and a
+ * bare IR cannot: `findUserMessages` carries `timestampMs` through, so a witness consumer
+ * can read freshness, and `findToolCalls` carries `succeeded` through, so a precedent
+ * consumer can read outcome. Both keys stay ABSENT where the session had none — a filled-in
+ * timestamp would open a valve from nothing, and a filled-in outcome would turn a call
+ * nobody observed into evidence. An absent `args` reads as `{}` because the transcript type
+ * requires the field.
+ *
+ * Order preserved; the input is never mutated, and every query returns fresh objects — args
+ * deep-copied — so consumers never hold live aliases into the shared IR.
+ */
+export function transcriptFromSession(
+  session: NonNullable<CovenantInput['session']>,
+): CanonicalTranscript {
+  return {
+    findUserMessages: () => session.userMessages.map((message) => ({ ...message })),
+    findToolCalls: (name) =>
+      session.toolCalls
+        .filter((call) => name === undefined || call.name === name)
+        .map((call) => ({
+          name: call.name,
+          args: structuredClone(call.args ?? {}),
+          ...(call.succeeded === undefined ? {} : { succeeded: call.succeeded }),
+        })),
+  };
+}

@@ -15,8 +15,10 @@ pdks covenant check [--diff] [--enforce advise|block]
 ```
 
 Without `--diff`, stdin is the covenant input IR — the JSON document `@polydeukes/core` defines
-(`toolCalls`, `subagentSpawns`, `userMessages`). With `--diff`, stdin is a unified diff and the
-command translates it into that IR first. `--enforce` is the observer's posture for the run and
+(`toolCalls`, `subagentSpawns`, `userMessages`, and the two optional keys a host adds:
+`tools`, its tool roster, and `session`, the evidence a live agent session carries). With
+`--diff`, stdin is a unified diff and the command translates it into that IR first.
+`--enforce` is the observer's posture for the run and
 defaults to `advise`: every break lands as a row and exit 0. `--enforce block` makes a protected
 path or an entry set to `enforce: block` exit 2. Each flag at most once, in either order; any
 other argument is a usage error. stdin is read to EOF.
@@ -34,6 +36,17 @@ The command judges exactly what stdin carries. Which diff you pipe decides the o
 | `pdks covenant check < input.json` | Whatever IR the caller built |
 
 The diff format is VCS-neutral: git, jj, hg, and a hand-written `diff -u` all produce it.
+
+An IR built by a host carries what the repository's disk cannot show. `tools` names which tool
+names change a file and which carry a command line (`mutating`, `shell`, `commandArgs`) — values,
+never vocabulary — and without it only the staged names a diff produces are routed. `session`
+carries the human messages with their timestamps (what the TTL witness reads), the calls already
+made with their outcomes (what a precedent declaration reads), the absolute path the evidence was
+read from (protected by equality for the run), and the spawn sidecar text. The command reads the
+working tree itself for every file a declaration names; an IR that supplies its own `world` is
+refused. A session input is one call of a change set the command cannot see, so a change-set
+declaration records `skipped` there, and the protected entries are compared against the stored
+baseline around the judgment exactly as the session surface does.
 
 <a id="diff-translation"></a>
 ## How a diff becomes the IR
@@ -78,6 +91,8 @@ disciplines skip on this surface.
 | 0 bytes on stdin without `--diff` | exit `2` — an empty payload is not an IR |
 | Unparseable JSON, a non-object, or a missing `toolCalls` array | exit `2`, one `blocked` `covenant-check` row |
 | An IR carrying its own `world` key | exit `2` — the world axis is the command's to fill |
+| A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays | exit `2`, one `blocked` `covenant-check` row — a shape the command cannot judge is a block, never a default |
+| A `session` whose token message is fresh under the config's `witness` | the blocked verdict lands `witnessed`, exit `0` — the same valve the session surface opens |
 | A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line | exit `2`, one `blocked` `covenant-check` row |
 | Any other argument | exit `2` with the usage line on stderr, stdin unread |
 | Missing, ambiguous, or invalid config | exit `2` |

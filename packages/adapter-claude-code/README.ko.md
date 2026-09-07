@@ -13,6 +13,7 @@
 - `runAdapterPath`
 - `sessionSourceReader`
 - `sessionChannelReader`
+- `sessionEvidenceFromPayload`
 - `transcriptPathFromPayload`
 - `transcriptFromJsonlFile`
 - `COMMAND_ARGS`

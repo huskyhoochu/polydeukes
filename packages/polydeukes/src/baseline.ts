@@ -13,9 +13,16 @@
  */
 
 import { createHash } from 'node:crypto';
-import { type Dirent, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import type { TelemetryEvent, TelemetryRecord } from '@polydeukes/core';
+import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import {
+  appendRecordFailOpen,
+  normalizeProtectedPaths,
+  readRecords,
+  type TelemetryEvent,
+  type TelemetryRecord,
+} from '@polydeukes/core';
+import { loadConfig } from './load-config.ts';
 
 /** One hash per protected entry, keyed by the entry exactly as configured. */
 export type BaselineSnapshot = Record<string, string>;
@@ -195,5 +202,115 @@ export function readBaseline(path: string): StoredBaseline | null {
   return {
     entries: entries as BaselineSnapshot,
     cutAt: typeof cutAt === 'string' ? cutAt : undefined,
+  };
+}
+
+/** The label every post-hoc state comparison row carries. */
+export const BASELINE_LABEL = 'baseline';
+
+/**
+ * Compare the protected entries' on-disk state against the stored baseline and record what
+ * moved with no judgment explaining it.
+ *
+ * Runs at hook call START, before this call's own judgment rows land, so the window it reads
+ * is the one the previous comparison left open. Returns the record count as of right now —
+ * where the NEXT window opens, which {@link updateBaseline} persists at call end.
+ *
+ * The comparison records, it never blocks: no row it writes and no failure it hits changes
+ * a verdict or an exit code, which is why every caller keeps it outside the judgment path.
+ */
+export function compareBaseline(spec: {
+  repoRoot: string;
+  telemetryPath: string;
+  entries: string[];
+}): void {
+  const baselinePath = join(spec.repoRoot, '.polydeukes', 'baseline.json');
+  // Read before any row of this comparison lands, so the rows this call is about to write
+  // cannot fall inside the window they would then explain away.
+  const { records } = readRecords(spec.telemetryPath);
+  const stored = readBaseline(baselinePath);
+
+  if (stored === null) {
+    // Absence and corruption are the same signal. The baseline file is NOT on the protection
+    // list — protecting it would need a comparison of its own — so its disappearance has to
+    // stay legible in the log instead.
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'unattributed',
+      label: BASELINE_LABEL,
+      subject: baselinePath,
+    });
+    return;
+  }
+
+  const changed = findUnattributed({
+    previous: stored.entries,
+    current: snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
+    records,
+    // The cut travels with the hashes it belongs to, from the one read above. Rows older
+    // than it were already spent explaining the state that snapshot recorded.
+    cutAt: stored.cutAt,
+  });
+
+  // One row per changed entry — an aggregate row could not say WHICH gate definition moved.
+  for (const entry of changed) {
+    appendRecordFailOpen(spec.telemetryPath, {
+      event: 'unattributed',
+      label: BASELINE_LABEL,
+      subject: entry,
+    });
+  }
+}
+
+/**
+ * Re-establish the baseline at hook call END.
+ *
+ * At call end rather than right after the comparison: refreshing at comparison time would
+ * miss whatever this call's own judged writes changed, leaving detection permanently one
+ * call behind.
+ *
+ * The cut is stamped HERE, beside the snapshot, not at the comparison that opened the call.
+ * Both describe the same instant — everything this call did is already folded into the
+ * hashes — so the rows explaining it belong before the cut. Stamping the earlier instant
+ * instead would re-admit this call's own judgment rows into the next window, where they
+ * would attribute a change they had nothing to do with: a call that merely MENTIONED a
+ * protected entry would then absolve any tamper that followed it.
+ */
+export function updateBaseline(spec: { repoRoot: string; entries: string[] }): void {
+  const dotDir = join(spec.repoRoot, '.polydeukes');
+  mkdirSync(dotDir, { recursive: true });
+  writeBaseline(
+    join(dotDir, 'baseline.json'),
+    snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
+    new Date().toISOString(),
+  );
+}
+
+/**
+ * Where the comparison writes and what it observes, or `undefined`.
+ *
+ * The domain is derived from config rather than enumerated here, and the telemetry path is
+ * resolved by the same precedence the judgment uses so both land in one log. A config that
+ * does not load leaves NO domain, so there is nothing to compare and nothing to re-establish
+ * — the judgment path already answers that failure fail-closed, and a comparison row on top
+ * of it would report the same absence twice under a label that judges nothing.
+ */
+export function comparisonSpec(spec: {
+  repoRoot: string;
+  telemetryPath?: string;
+}): { repoRoot: string; telemetryPath: string; entries: string[] } | undefined {
+  let config: ReturnType<typeof loadConfig>['config'];
+  try {
+    config = loadConfig({ rootDir: spec.repoRoot }).config;
+  } catch {
+    return undefined;
+  }
+
+  return {
+    repoRoot: spec.repoRoot,
+    telemetryPath:
+      spec.telemetryPath ??
+      process.env.POLYDEUKES_TELEMETRY_PATH ??
+      resolve(spec.repoRoot, config.telemetry.logPath),
+    entries: normalizeProtectedPaths({ protectedPaths: config.protectedPaths }),
   };
 }

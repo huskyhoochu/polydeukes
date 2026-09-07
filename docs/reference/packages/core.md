@@ -44,7 +44,11 @@ verdict the wrapper translates into an exit code. Blocked rows in `.polydeukes/r
 use this judgment vocabulary.
 
 `world` is supplied by the surface (`files`, `changes`, `channels`). The judge does not
-read it from disk.
+read it from disk. `tools` and `session` are supplied by the host: the roster is values the
+adapter fills in, and the session is the evidence a live agent session proves that a bare
+IR cannot — message freshness and call outcome. `transcriptFromSession` wraps that key as
+the transcript a witness or a precedent consumer reads, the way `transcriptFromInput` wraps
+the bare IR without those two facts.
 
 ```ts
 type CovenantInput = {
@@ -55,6 +59,13 @@ type CovenantInput = {
   world?: {
     files?: Record<string, string>;
     changes?: string[];
+    channels?: { sidecar?: string };
+  };
+  tools?: { mutating: string[]; shell: string[]; commandArgs: string[] };
+  session?: {
+    evidencePath?: string;
+    userMessages: { text: string; timestampMs?: number }[];
+    toolCalls: { name: string; args?: Record<string, unknown>; succeeded?: boolean }[];
     channels?: { sidecar?: string };
   };
 };
