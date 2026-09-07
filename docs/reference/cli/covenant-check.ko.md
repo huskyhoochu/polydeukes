@@ -123,17 +123,13 @@ pre-commit:
 
 보호 경로 위반에도 커밋을 멈추려면 그 줄에 `--enforce block`을 덧붙입니다.
 
-```ts
-import { runCovenantCheck } from 'polydeukes';
-
-const result = await runCovenantCheck({ repoRoot: process.cwd(), input });
-// input은 약속(covenant) 입력 IR, result는 { exitCode: 0 | 2 }
-```
+다른 프로그램에서 판정을 쓰려면 `pdks covenant check`를 실행하고 그 프로세스의 표준 입력에
+입력 IR이나 diff를 씁니다. 종료 코드가 판정 결과입니다.
 
 <a id="covenant-check-see-also"></a>
 ## 같이 보기
 
 - [`pdks explain`](./explain.ko.md)
 - [`@polydeukes/core`](../packages/core.ko.md)
-- [`@polydeukes/covenant`](../packages/covenant.ko.md)
+- [판정기(`covenant` 모듈)](../packages/polydeukes.ko.md#covenant-module)
 - [설정 레퍼런스](../configuration/index.ko.md)

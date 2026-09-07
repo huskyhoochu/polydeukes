@@ -28,7 +28,7 @@ const editFixture: ClaudePreToolUsePayload = {
   cwd: '/repo',
   tool_name: 'Edit',
   tool_input: {
-    file_path: 'packages/covenant/src/dispatch.ts',
+    file_path: 'packages/polydeukes/src/covenant/dispatch.ts',
     old_string: 'a',
     new_string: 'b',
   },
@@ -207,7 +207,11 @@ describe('funnel supplement — exactly-one-record arithmetic', () => {
     // No double-counting: a matched registration recorded its own row, and results is
     // non-empty, so the adapter supplements nothing.
     const dispatch = stubDispatchingRegistrations(telemetryPath, [
-      { label: 'no-edit-covenant', event: 'blocked', subject: 'packages/covenant/src/dispatch.ts' },
+      {
+        label: 'no-edit-covenant',
+        event: 'blocked',
+        subject: 'packages/polydeukes/src/covenant/dispatch.ts',
+      },
     ]);
 
     const verdict = await runAdapterPath({
@@ -229,7 +233,11 @@ describe('funnel supplement — exactly-one-record arithmetic', () => {
     // adapter must not add a passed row on top. Catches a supplement condition that
     // triggers on "exit 0" regardless of results.length.
     const dispatch = stubDispatchingRegistrations(telemetryPath, [
-      { label: 'edit-covenant', event: 'passed', subject: 'packages/covenant/src/dispatch.ts' },
+      {
+        label: 'edit-covenant',
+        event: 'passed',
+        subject: 'packages/polydeukes/src/covenant/dispatch.ts',
+      },
     ]);
 
     const verdict = await runAdapterPath({
@@ -277,7 +285,11 @@ describe('roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', ()
         rawPayload: validRaw,
         telemetryPath,
         dispatch: stubDispatchingRegistrations(telemetryPath, [
-          { label: 'edit-covenant', event: 'passed', subject: 'packages/covenant/src/dispatch.ts' },
+          {
+            label: 'edit-covenant',
+            event: 'passed',
+            subject: 'packages/polydeukes/src/covenant/dispatch.ts',
+          },
         ]),
       });
     }
@@ -291,7 +303,7 @@ describe('roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', ()
           {
             label: 'push-covenant',
             event: 'blocked',
-            subject: 'packages/covenant/src/dispatch.ts',
+            subject: 'packages/polydeukes/src/covenant/dispatch.ts',
           },
         ]),
       });
@@ -306,7 +318,7 @@ describe('roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', ()
           {
             label: 'edit-covenant',
             event: 'witnessed',
-            subject: 'packages/covenant/src/dispatch.ts',
+            subject: 'packages/polydeukes/src/covenant/dispatch.ts',
           },
         ]),
       });
@@ -354,7 +366,11 @@ describe('roadmap-AC arithmetic — 10 mixed calls yield exactly 10 records', ()
       rawPayload: rawOf(editFixture),
       telemetryPath,
       dispatch: stubDispatchingRegistrations(telemetryPath, [
-        { label: 'edit-covenant', event: 'blocked', subject: 'packages/covenant/src/dispatch.ts' },
+        {
+          label: 'edit-covenant',
+          event: 'blocked',
+          subject: 'packages/polydeukes/src/covenant/dispatch.ts',
+        },
       ]),
     });
 

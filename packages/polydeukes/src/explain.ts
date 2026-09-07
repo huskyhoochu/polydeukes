@@ -13,10 +13,9 @@
 import { join } from 'node:path';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
-import type { CovenantRegistration } from '@polydeukes/covenant';
 import { assembleSessionRegistrations } from './claude-code-hook.ts';
-import { assembleCommitRegistrations } from './covenant-check.ts';
-import { loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import type { CovenantRegistration } from './covenant/dispatch.ts';
+import { assembleCommitRegistrations, covenantModule } from './covenant-check.ts';
 import { loadConfig } from './load-config.ts';
 
 /** `explain` input — the repository whose config is read. */
@@ -133,15 +132,14 @@ function renderSurface(spec: {
  * Read the config at `repoRoot`, assemble both surfaces, and render them.
  *
  * The session assembly is given a transcript path, so its `transcript-mod` registration
- * exists here exactly as it does under a normal hook payload — the path is never read,
+ * exists here exactly as it does under a normal call payload — the path is never read,
  * because the injected transcript is the no-op one.
  */
 export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   const { config, configPath } = loadConfig({ rootDir: spec.repoRoot });
-  // Resolved and imported exactly as the two runners do, so what this renders is the table
-  // that would judge: a dist those runners would refuse cannot be rendered as if it worked.
-  // The load names the missing module and the recovery command.
-  const covenant = await loadCovenantModule(resolveCovenantDist());
+  // The judge module the two runners assemble against, so what this renders is the table
+  // that would judge.
+  const covenant = covenantModule;
   const disciplines: DisciplineEntry[] = config.disciplines ?? [];
   const drafts: DisciplineDraft[] = config.drafts ?? [];
 
@@ -163,7 +161,7 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     '',
     renderSurface({
       header:
-        'surface: session (claude-code hook) · disciplines: advise unless enforce: block · meta: block',
+        'input: call IR (one call, stdin) · disciplines: advise unless enforce: block · meta: block',
       registrations: session,
       drafts,
       disciplines,
@@ -171,7 +169,7 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     }),
     '',
     renderSurface({
-      header: 'surface: commit (git pre-commit) · disciplines: advise unless enforce: block',
+      header: 'input: --diff (change set, stdin) · disciplines: advise unless enforce: block',
       registrations: commit,
       drafts,
       disciplines,

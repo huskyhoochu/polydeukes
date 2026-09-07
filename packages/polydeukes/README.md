@@ -2,20 +2,21 @@
 
 **English** · [한국어](./README.ko.md)
 
-Polydeukes is the umbrella package. Install this package; it ships the `pdks` bin, the config
-loader, the commit-surface runner, the session-surface runner subpath, and the bundled schema
+Polydeukes is the umbrella package. Install this package; it ships the `pdks` bin, the judge,
+both surfaces' composition roots, the session-surface runner subpath, and the bundled schema
 artifact.
 
 <a id="overview"></a>
 ## Overview
 
-Public contract symbols and entry points:
+Public contract entry points:
 
-- `loadConfig`
-- `runCovenantCheck`
-- `ResolvedConfig`
+- `pdks` / `polydeukes` — the bin
 - `polydeukes/claude-code` → `runClaudeCodeHook`
 - `polydeukes/schema.json`
+
+CLI commands:
+
 - `pdks covenant check`
 - `pdks init claude-code`
 - `pdks init grok`
@@ -26,22 +27,12 @@ Public contract symbols and entry points:
 ## Public symbols
 
 ```ts
-import { loadConfig, runCovenantCheck } from 'polydeukes';
 import { runClaudeCodeHook } from 'polydeukes/claude-code';
-```
 
-```ts
-function loadConfig(spec: { rootDir: string }): {
-  config: import('@polydeukes/core').ResolvedConfig;
-  configPath: string;
-};
-
-function runCovenantCheck(spec: {
+function runClaudeCodeHook(spec: {
   repoRoot: string;
+  rawPayload?: string;
   telemetryPath?: string;
-  covenantDist?: string;
-  ttyPrompt?: (prompt: string) => string | null;
-  domain?: unknown;
 }): Promise<{ exitCode: 0 | 2 }>;
 ```
 

@@ -4,7 +4,7 @@ paths:
   - ".claude/settings.json"
   - "polydeukes.config.yaml"
   - "lefthook.yml"
-  - "packages/covenant/**"
+  - "packages/polydeukes/src/covenant/**"
   - "packages/adapter-claude-code/**"
 ---
 

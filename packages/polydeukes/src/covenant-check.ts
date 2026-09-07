@@ -3,12 +3,12 @@
  *
  * The judged unit is the input IR the caller hands in; this root opens no repository. Assembly
  * mirrors the session hook — loadConfig → normalizeProtectedPaths → dispatchCovenants — and
- * spawns the same covenant dist bodies, so a change receives the verdict a session tool call
- * would. Each toolCall is dispatched as its own input so telemetry stays one row per file.
+ * runs the same judge bodies, so a change receives the verdict a session tool call would.
+ * Each toolCall is dispatched as its own input so telemetry stays one row per file.
  *
- * fail-closed: a missing config, an unbuilt body, an input that could not be produced, or an
- * input carrying its own `world` exits 2 with one blocked record. An input with no toolCalls
- * is an explicit pass with no records.
+ * fail-closed: a missing config, an input that could not be produced, or an input carrying its
+ * own `world` exits 2 with one blocked record. An input with no toolCalls is an explicit pass
+ * with no records.
  */
 
 import { resolve } from 'node:path';
@@ -18,12 +18,38 @@ import {
   DEFAULT_TELEMETRY_LOG_PATH,
   normalizeProtectedPaths,
 } from '@polydeukes/core';
-import type { CovenantRegistration } from '@polydeukes/covenant';
-import { type CovenantModule, loadCovenantModule, resolveCovenantDist } from './covenant-module.ts';
+import { compileDisciplineRegistrations } from './covenant/discipline.ts';
+import { type CovenantRegistration, dispatchCovenants } from './covenant/dispatch.ts';
+import { selfModRegistration } from './covenant/self-mod.ts';
+import { shellModRegistration } from './covenant/shell-mod.ts';
+import { planSources, supplySources } from './covenant/supply.ts';
+import { transcriptModRegistration } from './covenant/transcript-mod.ts';
 import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
 import { loadConfig } from './load-config.ts';
 import { unobservedPreStateReader } from './pre-state-reader.ts';
 import { worktreeReader } from './worktree-reader.ts';
+
+/** The judge verbs the composition roots call — the seam a test replaces one member of. */
+export type CovenantModule = {
+  dispatchCovenants: typeof dispatchCovenants;
+  compileDisciplineRegistrations: typeof compileDisciplineRegistrations;
+  selfModRegistration: typeof selfModRegistration;
+  shellModRegistration: typeof shellModRegistration;
+  transcriptModRegistration: typeof transcriptModRegistration;
+  planSources: typeof planSources;
+  supplySources: typeof supplySources;
+};
+
+/** The judge verbs the composition roots call — the seam a test replaces one member of. */
+export const covenantModule: CovenantModule = {
+  dispatchCovenants,
+  compileDisciplineRegistrations,
+  selfModRegistration,
+  shellModRegistration,
+  transcriptModRegistration,
+  planSources,
+  supplySources,
+};
 
 /** {@link runCovenantCheck} result — the exit code the check process leaves with. */
 export type CovenantCheckOutcome = { exitCode: 0 | 2 };
@@ -44,8 +70,8 @@ export type CovenantCheckSpec = {
    * runner settles before the config loads. Absent, both of those apply in that order.
    */
   telemetryPath?: string;
-  /** Overrides the resolved covenant dist directory (tests and assembly injection). */
-  covenantDist?: string;
+  /** Overrides the judge module the run assembles against (tests and assembly injection). */
+  covenant?: CovenantModule;
   /**
    * The observer's posture for the whole run. ABSENT means `advise`: every break, a
    * protected path included, lands as a row and exit 0 — the commit surface's default, since
@@ -76,9 +102,8 @@ export type CommitAssemblySpec = {
   config: ReturnType<typeof loadConfig>['config'];
   rootDir: string;
   /**
-   * The covenant surface the registrations are built from — the module the caller loaded
-   * from the resolved dist, so what judges a change is what that dist carries, and what
-   * `explain` renders is what would judge it.
+   * The judge module the registrations are built from, so what judges a change and what
+   * `explain` renders come from one surface.
    */
   covenant: CovenantModule;
 };
@@ -160,7 +185,7 @@ function changedPaths(input: CovenantInput): string[] {
 }
 
 /**
- * Assemble the registrations and dispatch every toolCall. Any throw here (an unbuilt dist, a
+ * Assemble the registrations and dispatch every toolCall. Any throw here (a
  * registration-build failure) is unjudgeable: block and leave one record.
  */
 async function judgeInput(
@@ -170,12 +195,9 @@ async function judgeInput(
   input: CovenantInput,
 ): Promise<CovenantCheckOutcome> {
   try {
-    // Real Node resolution of the covenant package, so the commit surface runs the same
-    // judges the session hook does; tests inject a directory instead. Awaited before any
-    // registration is composed, so a dist the barrel cannot load fails the run closed here
-    // rather than leaving a half-judged table behind.
-    const covenantDist = spec.covenantDist ?? resolveCovenantDist();
-    const covenant = await loadCovenantModule(covenantDist);
+    // The umbrella's own judge module, so the commit surface runs the judges the session
+    // hook does; a test injects a module with one member replaced.
+    const covenant = spec.covenant ?? covenantModule;
 
     let blocked = false;
     let advisedCount = 0;

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type { CovenantInput, DisciplineEntry } from '@polydeukes/core';
-import { compileDisciplineRegistrations } from '@polydeukes/covenant';
 import { describe, expect, it } from 'vitest';
+import { compileDisciplineRegistrations } from '../src/covenant/discipline.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { sessionPreStateReader } from '../src/pre-state-reader.ts';
 

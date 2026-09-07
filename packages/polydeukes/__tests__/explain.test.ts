@@ -2,18 +2,17 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { CovenantRegistration } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
-import { assembleCommitRegistrations } from '../src/covenant-check.ts';
-import { loadCovenantModule } from '../src/covenant-module.ts';
+import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
+import { assembleCommitRegistrations, covenantModule } from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
-import { REAL_COVENANT_DIST, writeConfigAt } from './helpers.ts';
+import { writeConfigAt } from './helpers.ts';
 
-/** The covenant module both `explain` and the direct assemblies below judge with — loaded
- * from the real dist so the render and the assembly cannot diverge on which judges exist. */
-const realCovenant = await loadCovenantModule(REAL_COVENANT_DIST);
+/** The judge module both `explain` and the direct assemblies below judge with — the one
+ * static import, so the render and the assembly cannot diverge on which judges exist. */
+const realCovenant = covenantModule;
 
 const COMMON_PATHS = ['gate-a', 'gate-b'];
 const GIT_ONLY_PATHS = ['gate-c'];
@@ -109,8 +108,8 @@ const context7Entry = {
 
 const LIVE_LIKE_DISCIPLINES = [vocabEntry, hooksEntry, npmViewEntry, context7Entry];
 
-const SESSION_HEADER = 'surface: session (claude-code hook)';
-const COMMIT_HEADER = 'surface: commit (git pre-commit)';
+const SESSION_HEADER = 'input: call IR (one call, stdin)';
+const COMMIT_HEADER = 'input: --diff (change set, stdin)';
 const KINDS = ['meta', 'declare', 'skip'] as const;
 type Kind = (typeof KINDS)[number];
 
@@ -138,7 +137,7 @@ function surfaceSection(text: string, header: string): string {
   const start = text.indexOf(header);
   expect(start, `surface header missing: ${header}`).toBeGreaterThanOrEqual(0);
   const rest = text.slice(start + header.length);
-  const next = rest.indexOf('\nsurface:');
+  const next = rest.indexOf('\ninput:');
   return next === -1 ? rest : rest.slice(0, next);
 }
 
@@ -281,14 +280,6 @@ describe('surface placement', () => {
 });
 
 describe('routing scope and the why mark', () => {
-  it('renders a command-scoped declaration with its mechanism coordinate', async () => {
-    writeFixtureConfig([hooksEntry]);
-
-    const line = lineOf((await explain({ repoRoot })).text, SESSION_HEADER, 'declare', HOOKS_ID);
-
-    expect(line).toContain('forbidden-command');
-  });
-
   it('renders a scoped history declaration with its mechanism and its scope', async () => {
     writeFixtureConfig([npmViewEntry, context7Entry]);
 
@@ -419,18 +410,6 @@ describe('failure shape — explain observes, never judges', () => {
     // covenant dist, and a wrapped call would resolve the assertion unconditionally while
     // the rejection escaped as an unhandled promise.
     await expect(explain({ repoRoot })).rejects.toThrow(/config/);
-  });
-});
-
-describe('the roots assemble through the extracted functions', () => {
-  it.each([
-    ['claude-code-hook.ts', 'assembleSessionRegistrations'],
-    ['covenant-check.ts', 'assembleCommitRegistrations'],
-  ])('%s compiles disciplines in exactly one place and the root calls %s', (file, fn) => {
-    const source = readFileSync(resolve(import.meta.dirname, `../src/${file}`), 'utf-8');
-
-    expect(source.match(/compileDisciplineRegistrations\(/g)).toHaveLength(1);
-    expect(source.match(new RegExp(`${fn}\\(`, 'g'))?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 });
 

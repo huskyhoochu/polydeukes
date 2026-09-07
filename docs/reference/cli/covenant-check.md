@@ -126,17 +126,13 @@ pre-commit:
 
 Append `--enforce block` to that line to stop the commit on a protected-path break too.
 
-```ts
-import { runCovenantCheck } from 'polydeukes';
-
-const result = await runCovenantCheck({ repoRoot: process.cwd(), input });
-// input is the covenant input IR; result is { exitCode: 0 | 2 }
-```
+Another program embeds the judgment by spawning `pdks covenant check` and writing its input IR
+or diff to that process's stdin; the exit code is the verdict.
 
 <a id="covenant-check-see-also"></a>
 ## See also
 
 - [`pdks explain`](./explain.md)
 - [`@polydeukes/core`](../packages/core.md)
-- [`@polydeukes/covenant`](../packages/covenant.md)
+- [The judge (`covenant` module)](../packages/polydeukes.md#covenant-module)
 - [Configuration reference](../configuration/index.md)

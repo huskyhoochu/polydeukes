@@ -1,18 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { expect } from 'vitest';
+import { type CovenantModule, covenantModule } from '../src/covenant-check.ts';
 
 /**
  * Every telemetry row at `telemetryPath` as `[event, label, subject]` — the three-column
@@ -42,64 +34,21 @@ export const BASELINE_FIRST_RUN_ROW: [string, string, unknown] = [
 /** The default `languages.typescript.productionGlob` every check suite's config carries. */
 export const DEFAULT_PRODUCTION_GLOB = 'lib/**/*.ts';
 
-/** The real built covenant dist — the "body present" end of the unbuilt-body axis. */
-export const REAL_COVENANT_DIST = resolve(import.meta.dirname, '../../covenant/dist');
-
 /**
- * A covenant dist under `repoRoot` mirroring the real build entry-by-entry, with at most
- * ONE judge body omitted — the state a source-side addition leaves behind when nobody
- * rebuilt. Every other file is present, so only a per-FILE existence proof tells this
- * apart from a good build. Pass `null` to omit nothing (the control end of the axis).
- *
- * The entries are SYMLINKS, not copies: Node resolves a module to its real path before
- * looking up `node_modules`, so a symlinked body still reaches the real build's
- * dependencies and actually runs. A copied body cannot — it dies at import with
- * ERR_MODULE_NOT_FOUND, which is body exit 1, which `advise` records as a verdict. That
- * would make every "present body" row a fabricated judgment and leave the fixture green
- * even if body execution broke entirely.
+ * The judge module with ONE member replaced: `selfModRegistration` answers the unjudgeable
+ * outcome (exit-2 equivalent) for every payload. Every other verb is the real one, so what
+ * a run observes is a judge that cannot judge — never a judge that is absent.
  */
-export function distWithout(repoRoot: string, omitBody: string | null): string {
-  const fixtureDist = join(repoRoot, 'covenant-dist-fixture');
-  mkdirSync(fixtureDist, { recursive: true });
-  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
-    if (entry === omitBody) continue;
-    symlinkSync(join(REAL_COVENANT_DIST, entry), join(fixtureDist, entry));
-  }
-  return fixtureDist;
-}
-
-/**
- * A covenant dist mirroring the real build with ONE module replaced: `self-mod.js` re-exports
- * the real one but overrides `selfModRegistration` to answer the unjudgeable outcome (exit-2
- * equivalent) for every payload. The barrel still loads and every other registration behaves
- * normally, so what a run observes is a judge that cannot judge — the in-process successor of
- * the `process.exit(2)` stub body.
- */
-export function stubDistWithUnjudgeableSelfMod(repoRoot: string): string {
-  const stubDist = join(repoRoot, 'covenant-dist-stub');
-  mkdirSync(stubDist, { recursive: true });
-  const overridden = 'self-mod.js';
-  for (const entry of readdirSync(REAL_COVENANT_DIST)) {
-    if (entry === overridden) continue;
-    symlinkSync(join(REAL_COVENANT_DIST, entry), join(stubDist, entry));
-  }
-  // Written beside the symlinks rather than symlinked: this is the one module whose
-  // behaviour the fixture replaces. It imports the real module by absolute path, so the
-  // re-exports the barrel needs still resolve to the real build.
-  const realSelfMod = join(REAL_COVENANT_DIST, overridden);
-  writeFileSync(
-    join(stubDist, overridden),
-    `export * from ${JSON.stringify(realSelfMod)};\n` +
-      'export function selfModRegistration(spec) {\n' +
-      '  return {\n' +
-      "    label: 'self-mod',\n" +
-      '    protectedPaths: spec.protectedPaths,\n' +
-      '    body: async () => ({ exitCode: 2 }),\n' +
-      '    ...(spec.witness !== undefined ? { witness: spec.witness } : {}),\n' +
-      '  };\n' +
-      '}\n',
-  );
-  return stubDist;
+export function unjudgeableSelfModCovenant(): CovenantModule {
+  return {
+    ...covenantModule,
+    selfModRegistration: (spec) => ({
+      label: 'self-mod',
+      protectedPaths: spec.protectedPaths,
+      body: async () => ({ exitCode: 2 }),
+      ...(spec.witness !== undefined ? { witness: spec.witness } : {}),
+    }),
+  };
 }
 
 /**
@@ -189,7 +138,7 @@ export function createCheckRepo(
   };
 }
 
-/** One call the recording dist observed — the plan's registrations, or one dispatch's world. */
+/** One call the recording module observed — the plan's registrations, or one dispatch's world. */
 export type RecordedCall =
   | { kind: 'plan'; labels: string[] }
   | {
@@ -204,79 +153,57 @@ export type RecordedCall =
     };
 
 /**
- * A covenant dist rooted at `dir` that re-exports the real build and replaces the three
- * members the world axis touches: `planSources` answers `plannedFiles` and `plannedChannels`
- * whatever it is given (and records the registration labels it was given), `supplySources`
- * folds the injected `read` and `readChannel` over that plan, and `dispatchCovenants` records
- * the `world` field of every spec before delegating to the real dispatcher.
+ * The judge module with the three members the world axis touches replaced: `planSources`
+ * answers `plannedFiles` and `plannedChannels` whatever it is given (and records the
+ * registration labels it was given), `supplySources` folds the injected `read` and
+ * `readChannel` over that plan, and `dispatchCovenants` records the `world` field of every
+ * spec before delegating to the real dispatcher. Every other verb is the real one.
  *
  * The plan is baked in rather than derived from the registrations on purpose: what this
- * dist lets a suite observe is the ROOT's wiring — which readers it built for its surface
- * and what it handed each dispatch — not the covenant package's own derivation, which the
- * covenant suite pins. `dir` must sit OUTSIDE any repository the run observes: a worktree
- * domain collects untracked files, and the recording log is one.
+ * module lets a suite observe is the ROOT's wiring — which readers it built for its surface
+ * and what it handed each dispatch — not the judge's own derivation, which the judge's
+ * suite pins. The record is an in-memory array, so nothing the run observes is written.
  */
-export function recordingDist(
-  dir: string,
+export function recordingCovenant(
   plannedFiles: readonly string[],
   plannedChannels: readonly string[] = [],
-): { distDir: string; calls: () => RecordedCall[] } {
-  const distDir = join(dir, 'covenant-dist-recording');
-  const recordPath = join(dir, 'calls.jsonl');
-  mkdirSync(distDir, { recursive: true });
-  const realBarrel = JSON.stringify(join(REAL_COVENANT_DIST, 'index.js'));
-  writeFileSync(
-    join(distDir, 'index.js'),
-    [
-      "import { appendFileSync } from 'node:fs';",
-      `import { dispatchCovenants as realDispatch } from ${realBarrel};`,
-      `export * from ${realBarrel};`,
-      `const RECORD = ${JSON.stringify(recordPath)};`,
-      `const PLANNED = ${JSON.stringify(plannedFiles)};`,
-      `const PLANNED_CHANNELS = ${JSON.stringify(plannedChannels)};`,
-      "const record = (call) => appendFileSync(RECORD, JSON.stringify(call) + '\\n');",
-      'export function planSources(spec) {',
-      "  record({ kind: 'plan', labels: spec.registrations.map((r) => r.label) });",
-      '  return { files: PLANNED, channels: PLANNED_CHANNELS };',
-      '}',
-      'export function supplySources(spec) {',
-      '  const files = {};',
-      '  for (const path of spec.plan.files) {',
-      '    const text = spec.read(path);',
-      '    if (text !== undefined) files[path] = text;',
-      '  }',
-      '  const channels = {};',
-      '  for (const kind of spec.plan.channels) {',
-      '    const text = spec.readChannel?.(kind);',
-      '    if (text !== undefined) channels[kind] = text;',
-      '  }',
-      '  return { files, channels };',
-      '}',
-      'export function dispatchCovenants(spec) {',
-      '  record({',
-      "    kind: 'dispatch',",
-      '    hasWorld: spec.world !== undefined,',
-      '    world:',
-      '      spec.world === undefined',
-      '        ? undefined',
-      '        : {',
-      '            keys: Object.keys(spec.world),',
-      '            files: spec.world.files,',
-      '            changes: spec.world.changes,',
-      '            channels: spec.world.channels,',
-      '          },',
-      '  });',
-      '  return realDispatch(spec);',
-      '}',
-      '',
-    ].join('\n'),
-  );
-  const calls = (): RecordedCall[] => {
-    if (!existsSync(recordPath)) return [];
-    return readFileSync(recordPath, 'utf-8')
-      .split('\n')
-      .filter((line) => line.length > 0)
-      .map((line) => JSON.parse(line) as RecordedCall);
+): { covenant: CovenantModule; calls: () => RecordedCall[] } {
+  const record: RecordedCall[] = [];
+  const covenant: CovenantModule = {
+    ...covenantModule,
+    planSources: (spec) => {
+      record.push({ kind: 'plan', labels: spec.registrations.map((r) => r.label) });
+      return { files: plannedFiles, channels: plannedChannels };
+    },
+    supplySources: (spec) => {
+      const files: Record<string, string> = {};
+      for (const path of spec.plan.files) {
+        const text = spec.read(path);
+        if (text !== undefined) files[path] = text;
+      }
+      const channels: Record<string, string> = {};
+      for (const kind of spec.plan.channels) {
+        const text = spec.readChannel?.(kind);
+        if (text !== undefined) channels[kind] = text;
+      }
+      return { files, channels };
+    },
+    dispatchCovenants: (spec) => {
+      record.push({
+        kind: 'dispatch',
+        hasWorld: spec.world !== undefined,
+        world:
+          spec.world === undefined
+            ? undefined
+            : {
+                keys: Object.keys(spec.world),
+                files: spec.world.files,
+                changes: spec.world.changes === undefined ? undefined : [...spec.world.changes],
+                channels: spec.world.channels,
+              },
+      });
+      return covenantModule.dispatchCovenants(spec);
+    },
   };
-  return { distDir, calls };
+  return { covenant, calls: () => [...record] };
 }

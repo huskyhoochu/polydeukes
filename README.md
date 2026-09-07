@@ -8,9 +8,9 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** Four packages ship — `@polydeukes/core` (the covenant protocol),
-`@polydeukes/covenant` (the judge), the session adapter (`adapter-claude-code`), and
-the `polydeukes` umbrella, whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
+**Status: alpha.** Three packages ship — `@polydeukes/core` (the covenant protocol), the
+session adapter (`adapter-claude-code`), and the `polydeukes` umbrella, which carries the judge
+and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
 memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
@@ -65,15 +65,15 @@ knows nothing of the others.
 | Package | Role |
 |---------|------|
 | `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
-| `@polydeukes/covenant` | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
+| `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` *(planned)* | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
 | `@polydeukes/memory` *(planned)* | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
 | `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
 
-Only `core`, `covenant`, and the two adapters ship today. The planned adoption order once the
-rest exists is `covenant` → `memory` → `ledger` → `verify`: `covenant` and `memory` are expected to
-pay off regardless of project size, while `ledger` and `verify` target the scale of multiple
-worktrees and team workflows.
+Only `core`, the umbrella `polydeukes`, and the session adapter ship today. The planned adoption
+order once the rest exists is `covenant` → `memory` → `ledger` → `verify`: `covenant` and `memory`
+are expected to pay off regardless of project size, while `ledger` and `verify` target the
+scale of multiple worktrees and team workflows.
 
 <a id="design-blueprint"></a>
 ## Design blueprint (in brief)
@@ -131,7 +131,7 @@ layer you need.
 | Document | Contents |
 |----------|----------|
 | [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
-| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the three packages owns |
 
 <a id="why-and-the-journal"></a>
 ### Why, and the journal

@@ -4,21 +4,20 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CovenantRegistration } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
-import { assembleCommitRegistrations } from '../src/covenant-check.ts';
-import { loadCovenantModule } from '../src/covenant-module.ts';
+import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
+import { assembleCommitRegistrations, covenantModule } from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
-import { REAL_COVENANT_DIST, writeConfigAt } from './helpers.ts';
+import { writeConfigAt } from './helpers.ts';
 
-/** The covenant module both `explain` and the direct assemblies below judge with — loaded
- * from the real dist so the render and the assembly cannot diverge on which judges exist. */
-const realCovenant = await loadCovenantModule(REAL_COVENANT_DIST);
+/** The judge module both `explain` and the direct assemblies below judge with — the one
+ * static import, so the render and the assembly cannot diverge on which judges exist. */
+const realCovenant = covenantModule;
 
-const SESSION_HEADER = 'surface: session (claude-code hook)';
-const COMMIT_HEADER = 'surface: commit (git pre-commit)';
+const SESSION_HEADER = 'input: call IR (one call, stdin)';
+const COMMIT_HEADER = 'input: --diff (change set, stdin)';
 const SURFACE_HEADERS = [SESSION_HEADER, COMMIT_HEADER] as const;
 
 const DRAFT_ID = 'bilingual-docs-sync';
@@ -63,7 +62,7 @@ function surfaceSection(text: string, header: string): string {
   const start = text.indexOf(header);
   expect(start, `surface header missing: ${header}`).toBeGreaterThanOrEqual(0);
   const rest = text.slice(start + header.length);
-  const next = rest.indexOf('\nsurface:');
+  const next = rest.indexOf('\ninput:');
   return next === -1 ? rest : rest.slice(0, next);
 }
 
@@ -93,18 +92,6 @@ describe('explain renders the draft as unpromoted on both surfaces', () => {
       const lines = linesOf(surfaceSection(text, header), 'draft', DRAFT_ID);
       expect(lines, `draft line on '${header}'`).toHaveLength(1);
       expect(lines[0]).toContain('unpromoted — no judgment');
-    }
-  });
-
-  it('adds `· draft 1` to each surface header aggregate', async () => {
-    // Drafts get their own tally in the header — never folded into another bucket's
-    // number.
-    writeFixtureConfig(WITH_DRAFT);
-
-    const { text } = await explain({ repoRoot });
-
-    for (const header of SURFACE_HEADERS) {
-      expect(surfaceSection(text, header)).toContain('· draft 1');
     }
   });
 

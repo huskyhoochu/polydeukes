@@ -22,7 +22,7 @@ what a caller must know to fill one spec.**
 
 | Skeleton | Packages | Runtime exports | Other exports | Discriminator |
 |---|---|---|---|---|
-| **executor** | covenant, adapter-*, polydeukes | **verbs** — each takes **one spec object** and returns **one result** | the types a spec needs, spec ingredients | takes a spec |
+| **executor** | adapter-*, polydeukes | **verbs** — each takes **one spec object** and returns **one result** | the types a spec needs, spec ingredients | takes a spec |
 | **vocabulary** | core | positional pure functions, protocol primitives | types, `as const` tuples | takes no spec |
 
 A function that takes a spec is executor code and does not belong in core. A package that seems
@@ -54,8 +54,7 @@ Three kinds of `exports` subpath: `.` (the contract), a `.json` data file (`./sc
 `./<surface>` — the umbrella alone, closed list
 `['./claude-code']` kept as a literal in the test. Adding a surface entry point edits that
 literal, and the diff is the review signal. Sibling packages have `.` alone. Condition keys
-(`types` / `import` / `default`) are not entry points — covenant's `default` is the fallback that
-keeps `createRequire` resolution alive.
+(`types` / `import` / `default`) are not entry points.
 
 ## Barrels
 

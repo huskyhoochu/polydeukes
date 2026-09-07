@@ -26,13 +26,14 @@ better verification.
 
 ## What exists now
 
-Five packages provide a shared input vocabulary, a judge, Claude Code and Git adapters, and the
-`polydeukes` umbrella with the `pdks` command. Two observation surfaces serve different purposes:
+Three packages provide a shared input vocabulary, a Claude Code adapter, and the `polydeukes`
+umbrella, which carries the judge and the `pdks` command. Two observation surfaces serve different purposes:
 
 - The **session surface** judges supported tool calls before execution. Claude Code and Grok have
   installers, but their available history and witness capabilities differ.
-- The **commit surface** judges staged changes, the working tree, or a revision range. It works
-  without an AI agent. A project may connect either or both surfaces according to its needs.
+- The **commit surface** judges a unified diff or an input IR read from stdin — a staged diff
+  piped by a pre-commit hook, or any diff a tool produces. It works without an AI agent. A
+  project may connect either or both surfaces according to its needs.
 
 A discipline is configuration data with extraction steps and relations. Seven relations and
 eighteen mechanism names form the current vocabulary; `delegated-scope` is reserved rather than
@@ -115,6 +116,11 @@ read telemetry at task boundaries. Host behavior must be checked rather than ass
 
 Four incidents changed a mechanism rather than a number. They are listed here because the
 current design is hard to explain without them.
+
+<!-- parked candidates (discharge when published):
+- SURFACE-02 (2026-09-07): the judge became a module of the CLI package; the vocabulary
+  (`@polydeukes/core`) stays the one library because adapters and SDKs must import the IR from
+  somewhere while the umbrella exposes only a bin. -->
 
 - **A banned word that edits respected and a shell heredoc did not.** The tool axis refused
   an edit carrying a banned word. The same content inside a heredoc reached the repository

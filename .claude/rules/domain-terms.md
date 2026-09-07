@@ -14,7 +14,7 @@ commit messages.
 
 | Concept | Package / code | Verb | CLI |
 |---------|----------------|------|-----|
-| **Covenant** | `@polydeukes/covenant` | uphold / break | `pdks covenant check` |
+| **Covenant** | `polydeukes`'s `src/covenant/` module | uphold / break | `pdks covenant check` |
 | **Discipline** | one `disciplines:` entry (prose + enforcement tag) | — | `pdks` (root) |
 | **Gain** | — (cross-cutting; reads every area's measurements) | gain | `pdks gain` |
 | **Ledger** | `@polydeukes/ledger` | record / verify | `pdks ledger {start,verify,finish}` |
@@ -90,7 +90,7 @@ outside a closed list is rejected by validation, never coerced.
   `actor` (the observation's actor, `{ agentType? }`, present where the host proved one). A
   side the change lacks is an absent key — the declaration's `supply` policy, never the host, says
   what that means.
-- **Supply layer** — `planSources` · `supplySources` in the covenant package fill the IR's
+- **Supply layer** — `planSources` · `supplySources` in the umbrella's covenant module fill the IR's
   `world` field: `files` through the surface's injected reader, `channels` through its channel
   reader (`sidecar` is the spawn-record list as JSON text; `'[]'` says the channel observed no
   spawn, an absent key says there is no channel), `changes` when the surface observes more than
@@ -128,7 +128,7 @@ outside a closed list is rejected by validation, never coerced.
 - **Witness list** — a relation's return type; its order preserves the extraction's input
   order (the premise on which two surfaces reach the same verdict).
 - **Relate entry** — `{ id, relation, message | messageBySide }`. Never `rule` in any name.
-- **Items** — `packages/covenant/src/declaration-engine.ts`: every extract step maps
+- **Items** — `packages/polydeukes/src/covenant/declaration-engine.ts`: every extract step maps
   `Items → Items`, an item is `{ key, value }`. `key` drives `onlyIn` · `intersect` · `implies` ·
   `unchanged`; `value` is compared by structural equality. A scalar source is one item under
   key `'0'`; a list without an index keys its elements by position. A key comes from an
@@ -142,7 +142,7 @@ outside a closed list is rejected by validation, never coerced.
 
 ## Term usage rules
 
-1. **Code / package names:** English concept word. `@polydeukes/covenant`, `upholdCovenant()`.
+1. **Code / package names:** English concept word. `upholdCovenant()`, `dispatchCovenants()`.
 2. **Docs / narrative:** concept word, with context where helpful — "a covenant (a promise both
    agree to share)".
 3. **CLI:** the subcommands in the table above are canonical. `pdks` aliases `polydeukes`. Most
@@ -232,7 +232,7 @@ The full skeleton and the test that keeps it are the archived
 | Term | Implementation | Not |
 |---|---|---|
 | **contract** | The `exports` subpath set plus the symbols each entry-point barrel re-exports; README-named symbols included. | Never "export surface". |
-| **executor skeleton** | covenant, adapter-*, polydeukes. | A verb with two or more positional parameters, or an anonymous return literal, breaks it. |
+| **executor skeleton** | adapter-*, polydeukes. | A verb with two or more positional parameters, or an anonymous return literal, breaks it. |
 | **vocabulary skeleton** | core. | There is no third skeleton. |
 | **spec** | Typed `<Verb>Spec`. | Not `Options`, not `Params`. |
 | **Verdict / Outcome** | `<Verb>Verdict` when it carries a verdict word, `<Verb>Outcome` otherwise, or a core-named type. | Never an anonymous literal. |

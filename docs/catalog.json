@@ -228,22 +228,6 @@
       }
     },
     {
-      "id": "package-covenant",
-      "category": "reference",
-      "order": 14,
-      "bundled": true,
-      "en": {
-        "path": "reference/packages/covenant.md",
-        "title": "`@polydeukes/covenant`",
-        "summary": "Consult the covenant package contract and its limits."
-      },
-      "ko": {
-        "path": "reference/packages/covenant.ko.md",
-        "title": "`@polydeukes/covenant`",
-        "summary": "covenant 패키지의 계약과 한계를 확인합니다."
-      }
-    },
-    {
       "id": "package-adapter-claude-code",
       "category": "reference",
       "order": 15,

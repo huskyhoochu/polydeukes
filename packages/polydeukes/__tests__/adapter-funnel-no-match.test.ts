@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runAdapterPath } from '@polydeukes/adapter-claude-code';
 import { readRecords } from '@polydeukes/core';
-import type { CovenantRegistration } from '@polydeukes/covenant';
-import { dispatchCovenants } from '@polydeukes/covenant';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
+import { dispatchCovenants } from '../src/covenant/dispatch.ts';
 
 // Through the real session funnel, the dispatcher contributes ZERO rows on a no-match
 // call — the single surviving row is the adapter's own funnel supplement, measured here
