@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { CovenantModule } from '../src/covenant/module.ts';
 // The commit root's `plan → supply → dispatch` wiring. After the registrations are
 // assembled the root plans the sources they name, reads each one from the WORKING TREE,
 // and hands every per-change dispatch one `world`: the supplied files plus the whole
@@ -14,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // throwaway git repository whose config carries its own declare entry; nothing of THIS
 // repository is referenced. The staged diff is translated to the IR the runner judges,
 // which is what a caller pipes in through `--diff`.
-import { type CovenantModule, runCovenantCheck } from '../src/covenant-check.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import {
   type CheckRepo,

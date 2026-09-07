@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
-import type { CovenantModule } from '../src/covenant-check.ts';
+import type { CovenantModule } from '../src/covenant/module.ts';
 import { type RecordedCall, recordingCovenant, writeConfigAt } from './helpers.ts';
 
 // The two composition roots wire the supply layer; they implement no reading of their own.

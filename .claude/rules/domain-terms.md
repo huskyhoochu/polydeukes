@@ -237,5 +237,5 @@ The full skeleton and the test that keeps it are the archived
 | **spec** | Typed `<Verb>Spec`. | Not `Options`, not `Params`. |
 | **Verdict / Outcome** | `<Verb>Verdict` when it carries a verdict word, `<Verb>Outcome` otherwise, or a core-named type. | Never an anonymous literal. |
 | **spec ingredient** | A constant that fills a field of an exported spec type. | A constant no spec consumes is implementation. |
-| **entry point** | Three kinds: `.`, a `.json` data file (`./schema.json`), `./<surface>` (umbrella only, closed list). Condition keys (`types` / `import` / `default`) are not entry points. | Sibling packages have `.` alone. |
+| **entry point** | Three kinds: `.` (sibling packages), a `.json` data file (`./schema.json`), `./<surface>` (umbrella only, closed list; the umbrella has no `.`). Condition keys (`types` / `import` / `default`) are not entry points. | Sibling packages have `.` alone. |
 | **barrel** | `src/index.ts`; a package's own tests import `../src/<module>.ts`. | No definitions, no `export *`, no second barrel. |

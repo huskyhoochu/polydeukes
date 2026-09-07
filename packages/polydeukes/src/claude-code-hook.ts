@@ -47,8 +47,8 @@ import {
 } from '@polydeukes/core';
 import { findUnattributed, readBaseline, snapshotBaseline, writeBaseline } from './baseline.ts';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
+import { type CovenantModule, covenantModule } from './covenant/module.ts';
 import { ttlWitness } from './covenant/ttl-witness.ts';
-import { type CovenantModule, covenantModule } from './covenant-check.ts';
 import { loadConfig } from './load-config.ts';
 import { sessionPreStateReader } from './pre-state-reader.ts';
 

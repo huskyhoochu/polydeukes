@@ -30,7 +30,7 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   library, the meta-covenants, the TTL witness, and the declaration engine — which both
   composition roots and `pdks explain` import statically. Since
   ALGEBRA-03c it also owns the surfaces' pre-state readers (`pre-state-reader.ts`) and the
-  baseline comparator (`baseline.ts`), so **`covenant` opens no file**: what the judge needs
+  baseline comparator (`baseline.ts`), so **the judge module opens no file**: what the judge needs
   from disk arrives injected. core keeps one file-I/O site of its own, the telemetry log
   (`telemetry.ts`), which every surface appends a row to. Since DIST-01 it also owns **both
   surfaces' composition roots** —
@@ -39,11 +39,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   privilege, not a convenience: it is the only package allowed to reach sideways. Only
   umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in
   scoped `@polydeukes/*` packages. The loader feeds the
-  judges, so it is protected — but at different surfaces (CONFIG-08): its `dist` is on the
-  common list (a gitignored judge executable no commit can show), while its `src` **and its
-  `package.json`** (the manifest the commit surface resolves the `pdks` bin through) are on the
-  commit surface's additive one, so editing them in a session is the work itself and the commit
-  that stages them is what gets judged. The unscoped name was verified free on npm and is a
+  judges, so its `dist` is on the protected list (a gitignored judge executable no commit can
+  show); its `src` and `package.json` are not — editing them in a session is the work itself,
+  and the commit that stages them is what the commit surface judges (advise by default since
+  SURFACE-01). The unscoped name was verified free on npm and is a
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.

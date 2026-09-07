@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { covenantModule } from '../src/covenant-check.ts';
+import { covenantModule } from '../src/covenant/module.ts';
 
 // The judge is a module of the umbrella, not a package beside it. These are text and
 // layout oracles over the working tree: which package directories exist, which names no
@@ -13,6 +14,7 @@ import { covenantModule } from '../src/covenant-check.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
+const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
 /** The package directories left after the fold. */
 const PACKAGE_DIRS = ['adapter-claude-code', 'core', 'polydeukes'];
@@ -151,6 +153,23 @@ describe('the judge module carries every verb the roots call', () => {
       COVENANT_MEMBERS.map(() => 'function'),
     );
   });
+
+  // The import above resolves to SOURCE; the hook loads dist. A dist whose literal lost a
+  // member passes every source-level check while refusing every session call, so the
+  // built artifact is read too. Skipped, never rebuilt, when no build exists.
+  const builtModule = join(umbrellaDist, 'covenant', 'module.js');
+  it.skipIf(!existsSync(builtModule))(
+    'the built dist carries the same seven verbs, each a function',
+    async () => {
+      const built = (await import(pathToFileURL(builtModule).href)) as {
+        covenantModule: Record<string, unknown>;
+      };
+      expect(Object.keys(built.covenantModule).sort()).toEqual(COVENANT_MEMBERS);
+      expect(Object.values(built.covenantModule).map((member) => typeof member)).toEqual(
+        COVENANT_MEMBERS.map(() => 'function'),
+      );
+    },
+  );
 });
 
 describe('explain speaks of input modes, not hosts', () => {
@@ -158,9 +177,14 @@ describe('explain speaks of input modes, not hosts', () => {
   // or hook name left in the module puts a surface name back into the header of a
   // command that no longer has one.
   it('explain.ts spells no host, VCS, or hook name', () => {
-    const text = readFileSync(join(umbrellaSrc, 'explain.ts'), 'utf-8');
+    // The session assembly import is the one spelling allowed: it names a module, not a
+    // surface, and the header strings are what this oracle guards.
+    const text = readFileSync(join(umbrellaSrc, 'explain.ts'), 'utf-8').replace(
+      "from './claude-code-hook.ts';",
+      '',
+    );
     const found = EXPLAIN_FOREIGN_WORDS.filter((word) =>
-      new RegExp(`(?<![\\w-])${word}(?![\\w-])`).test(text),
+      new RegExp(`(?<![\\w])${word}(?![\\w])`).test(text),
     );
     expect(found).toEqual([]);
   });

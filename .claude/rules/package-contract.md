@@ -49,7 +49,8 @@ to need a third skeleton is split wrong.
 
 ## Entry points
 
-Three kinds of `exports` subpath: `.` (the contract), a `.json` data file (`./schema.json`,
+Three kinds of `exports` subpath: `.` (the contract — sibling packages; the umbrella has none),
+a `.json` data file (`./schema.json`,
 `./algebra-declaration.schema.json` — the subpath and its target both end in `.json`), and
 `./<surface>` — the umbrella alone, closed list
 `['./claude-code']` kept as a literal in the test. Adding a surface entry point edits that
@@ -63,9 +64,7 @@ literal, and the diff is the review signal. Sibling packages have `.` alone. Con
   `import` (a re-export needs none, `import type` included), no `export *` in any form
   (`export * as ns` re-exports a whole module under one name — the contract lists names).
   ESM re-exports are eager, so a definition in a barrel is instantiated
-  by every consumer of any other export — and that eagerness is load-bearing: the umbrella's
-  fail-closed proof is that a dist missing one module throws on the barrel import, before any
-  assembly. Keep re-exports static.
+  by every consumer of any other export. Keep re-exports static.
 - The barrel is the **consumer contract, not the test surface**. A package's own tests import
   `../src/<module>.ts` directly, never `../src/index.ts` in any spelling — check ⑥ in
   `package-contract.test.ts` holds that for every `__tests__` tree, and the

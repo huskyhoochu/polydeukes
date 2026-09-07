@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The dispatcher and the supply verbs are observed through a recording judge module on
 // the `covenant` seam (helpers.ts `recordingCovenant`); the real judges still run behind it.
 import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
-import type { CovenantModule } from '../src/covenant-check.ts';
+import type { CovenantModule } from '../src/covenant/module.ts';
 import { type RecordedCall, recordingCovenant, telemetryRows, writeConfigAt } from './helpers.ts';
 
 /** Injected fixture values — the declare entry, the file its source names, the protected entry. */

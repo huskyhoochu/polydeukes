@@ -15,7 +15,8 @@ import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
 import { assembleSessionRegistrations } from './claude-code-hook.ts';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
-import { assembleCommitRegistrations, covenantModule } from './covenant-check.ts';
+import { covenantModule } from './covenant/module.ts';
+import { assembleCommitRegistrations } from './covenant-check.ts';
 import { loadConfig } from './load-config.ts';
 
 /** `explain` input — the repository whose config is read. */

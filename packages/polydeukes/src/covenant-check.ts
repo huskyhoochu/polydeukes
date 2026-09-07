@@ -18,38 +18,12 @@ import {
   DEFAULT_TELEMETRY_LOG_PATH,
   normalizeProtectedPaths,
 } from '@polydeukes/core';
-import { compileDisciplineRegistrations } from './covenant/discipline.ts';
-import { type CovenantRegistration, dispatchCovenants } from './covenant/dispatch.ts';
-import { selfModRegistration } from './covenant/self-mod.ts';
-import { shellModRegistration } from './covenant/shell-mod.ts';
-import { planSources, supplySources } from './covenant/supply.ts';
-import { transcriptModRegistration } from './covenant/transcript-mod.ts';
+import type { CovenantRegistration } from './covenant/dispatch.ts';
+import { type CovenantModule, covenantModule } from './covenant/module.ts';
 import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
 import { loadConfig } from './load-config.ts';
 import { unobservedPreStateReader } from './pre-state-reader.ts';
 import { worktreeReader } from './worktree-reader.ts';
-
-/** The judge verbs the composition roots call — the seam a test replaces one member of. */
-export type CovenantModule = {
-  dispatchCovenants: typeof dispatchCovenants;
-  compileDisciplineRegistrations: typeof compileDisciplineRegistrations;
-  selfModRegistration: typeof selfModRegistration;
-  shellModRegistration: typeof shellModRegistration;
-  transcriptModRegistration: typeof transcriptModRegistration;
-  planSources: typeof planSources;
-  supplySources: typeof supplySources;
-};
-
-/** The judge verbs the composition roots call — the seam a test replaces one member of. */
-export const covenantModule: CovenantModule = {
-  dispatchCovenants,
-  compileDisciplineRegistrations,
-  selfModRegistration,
-  shellModRegistration,
-  transcriptModRegistration,
-  planSources,
-  supplySources,
-};
 
 /** {@link runCovenantCheck} result — the exit code the check process leaves with. */
 export type CovenantCheckOutcome = { exitCode: 0 | 2 };

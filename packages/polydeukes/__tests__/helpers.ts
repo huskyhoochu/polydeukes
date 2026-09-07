@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { expect } from 'vitest';
-import { type CovenantModule, covenantModule } from '../src/covenant-check.ts';
+import { type CovenantModule, covenantModule } from '../src/covenant/module.ts';
 
 /**
  * Every telemetry row at `telemetryPath` as `[event, label, subject]` — the three-column
