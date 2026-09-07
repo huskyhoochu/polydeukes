@@ -59,22 +59,24 @@ function defineConfigAccepts(config: unknown): boolean {
 }
 
 describe('enforce schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
-  it.each(
-    VALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('valid enforce fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    // Both sides must accept. A validator-only key leaves every consumer's IDE schema
-    // rejecting it; a schema-only key validates configs defineConfig still throws on.
-    expect(defineConfigAccepts(config)).toBe(true);
-    expect(validate(config)).toBe(true);
-  });
+  it.each(VALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'valid enforce fixture #%i: defineConfig accepts AND ajv validates',
+    (_index, config) => {
+      // Both sides must accept. A validator-only key leaves every consumer's IDE schema
+      // rejecting it; a schema-only key validates configs defineConfig still throws on.
+      expect(defineConfigAccepts(config)).toBe(true);
+      expect(validate(config)).toBe(true);
+    },
+  );
 });
 
 describe('enforce schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
-  it.each(
-    INVALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('invalid enforce fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    // Both sides must reject; a one-sided rejection is the drift this file exists to catch.
-    expect(defineConfigAccepts(config)).toBe(false);
-    expect(validate(config)).toBe(false);
-  });
+  it.each(INVALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'invalid enforce fixture #%i: defineConfig throws AND ajv rejects',
+    (_index, config) => {
+      // Both sides must reject; a one-sided rejection is the drift this file exists to catch.
+      expect(defineConfigAccepts(config)).toBe(false);
+      expect(validate(config)).toBe(false);
+    },
+  );
 });

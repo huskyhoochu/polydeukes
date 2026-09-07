@@ -64,15 +64,18 @@ describe('pdks docs / explain — a reader that closes after one byte', () => {
   it.each([
     ['docs', ['docs']],
     ['explain', ['explain']],
-  ])('%s exits 0 or 2 and prints no stack trace when stdout is destroyed mid-write', async (_name, args) => {
-    // Without the `stdout.on('error')` handler, EPIPE surfaces as an uncaught exception —
-    // exit 1 with a stack trace. Whether the closed reader is met before the text drains
-    // depends on the pipe buffer, so the exit is pinned to the two documented outcomes
-    // (0 = drained, 2 = write error) and never 1; the trace absence is exact.
-    const result = await spawnWithClosedReader(...args);
+  ])(
+    '%s exits 0 or 2 and prints no stack trace when stdout is destroyed mid-write',
+    async (_name, args) => {
+      // Without the `stdout.on('error')` handler, EPIPE surfaces as an uncaught exception —
+      // exit 1 with a stack trace. Whether the closed reader is met before the text drains
+      // depends on the pipe buffer, so the exit is pinned to the two documented outcomes
+      // (0 = drained, 2 = write error) and never 1; the trace absence is exact.
+      const result = await spawnWithClosedReader(...args);
 
-    expect(result.firstByteSeen).toBe(true);
-    expect([0, 2]).toContain(result.exitCode);
-    expect(result.stderr).not.toMatch(STACK_FRAME);
-  });
+      expect(result.firstByteSeen).toBe(true);
+      expect([0, 2]).toContain(result.exitCode);
+      expect(result.stderr).not.toMatch(STACK_FRAME);
+    },
+  );
 });

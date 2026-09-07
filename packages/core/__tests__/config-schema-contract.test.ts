@@ -245,19 +245,21 @@ describe('JSON Schema artifact', () => {
 });
 
 describe('schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
-  it.each(
-    VALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('valid fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(true);
-    expect(validate(config)).toBe(true);
-  });
+  it.each(VALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'valid fixture #%i: defineConfig accepts AND ajv validates',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(true);
+      expect(validate(config)).toBe(true);
+    },
+  );
 });
 
 describe('schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
-  it.each(
-    INVALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('invalid fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(false);
-    expect(validate(config)).toBe(false);
-  });
+  it.each(INVALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'invalid fixture #%i: defineConfig throws AND ajv rejects',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(false);
+      expect(validate(config)).toBe(false);
+    },
+  );
 });

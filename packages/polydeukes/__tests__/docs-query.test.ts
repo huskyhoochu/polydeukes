@@ -34,14 +34,14 @@ describe('legacy heading extractor', () => {
     ).toContain('body');
   });
 
-  it.each([
-    '### Sibling',
-    '## Parent',
-  ])('ends before a same or higher level heading: %s', (next) => {
-    const part = extractSection(md('### One', 'one', next, 'outside'), '### One');
-    expect(part).toBe('### One\none');
-    expect(part).not.toContain('outside');
-  });
+  it.each(['### Sibling', '## Parent'])(
+    'ends before a same or higher level heading: %s',
+    (next) => {
+      const part = extractSection(md('### One', 'one', next, 'outside'), '### One');
+      expect(part).toBe('### One\none');
+      expect(part).not.toContain('outside');
+    },
+  );
 
   it('includes child headings and preserves a final section verbatim', () => {
     const doc = md('## Parent', '  two spaces  ', '### Child', 'body');
@@ -49,12 +49,12 @@ describe('legacy heading extractor', () => {
     expect(extractSection(`${doc}## Next\nother`, '## Parent')).toBe(doc.trimEnd());
   });
 
-  it.each([
-    '## reference',
-    '## Reference:',
-  ])('does not normalize a different heading: %s', (heading) => {
-    expect(() => extractSection(md(heading, 'body'), '## Reference')).toThrow();
-  });
+  it.each(['## reference', '## Reference:'])(
+    'does not normalize a different heading: %s',
+    (heading) => {
+      expect(() => extractSection(md(heading, 'body'), '## Reference')).toThrow();
+    },
+  );
 });
 
 describe('legacy topic interface over the current real catalog', () => {

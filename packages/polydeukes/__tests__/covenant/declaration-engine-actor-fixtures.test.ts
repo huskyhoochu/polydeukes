@@ -86,18 +86,18 @@ describe('actor-scope-commit-from-main · judge', () => {
     expect(judge(decl, callWorld(MAIN_SESSION)).kind).toBe('pass');
   });
 
-  it.each([
-    IMPLEMENTER,
-    REVIEWER,
-  ])('subagent %s running git commit → broken, the agent type is the witness', (agentType) => {
-    // No regex in this pipeline: ANY agent type breaks, and the witness value is the
-    // name the message interpolates. A pipeline copied from the producer-owned fixture
-    // (anchored on one name) lets every other subagent commit.
-    const verdict = judge(decl, callWorld({ agentType }));
+  it.each([IMPLEMENTER, REVIEWER])(
+    'subagent %s running git commit → broken, the agent type is the witness',
+    (agentType) => {
+      // No regex in this pipeline: ANY agent type breaks, and the witness value is the
+      // name the message interpolates. A pipeline copied from the producer-owned fixture
+      // (anchored on one name) lets every other subagent commit.
+      const verdict = judge(decl, callWorld({ agentType }));
 
-    expect(verdict.kind).toBe('broken');
-    expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: '0', value: agentType }]);
-  });
+      expect(verdict.kind).toBe('broken');
+      expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: '0', value: agentType }]);
+    },
+  );
 
   it.each([PUSH, MERGE])('subagent running %s → broken', (command) => {
     // The include names three heads; a scope pattern that matches `git commit` alone

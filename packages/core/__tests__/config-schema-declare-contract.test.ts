@@ -101,19 +101,21 @@ function defineConfigAccepts(config: unknown): boolean {
 }
 
 describe('declare schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
-  it.each(
-    VALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('valid declare fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(true);
-    expect(validate(config)).toBe(true);
-  });
+  it.each(VALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'valid declare fixture #%i: defineConfig accepts AND ajv validates',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(true);
+      expect(validate(config)).toBe(true);
+    },
+  );
 });
 
 describe('declare schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
-  it.each(
-    INVALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('invalid declare fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(false);
-    expect(validate(config)).toBe(false);
-  });
+  it.each(INVALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'invalid declare fixture #%i: defineConfig throws AND ajv rejects',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(false);
+      expect(validate(config)).toBe(false);
+    },
+  );
 });

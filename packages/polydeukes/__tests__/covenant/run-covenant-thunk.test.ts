@@ -134,25 +134,25 @@ describe('thunk verdicts translate exactly as body exit codes did', () => {
 });
 
 describe('a thunk THROW is the body-crash cell: blocked, valve consulted', () => {
-  it.each([
-    'block',
-    'advise',
-  ] as const)('a throwing thunk under %s with no valve fails closed: exit 2, exactly one blocked row', async (enforce) => {
-    const result = await runThunk({
-      body: async () => {
-        throw new Error('judge blew up mid-judgment');
-      },
-      label: LABEL,
-      telemetryPath,
-      enforce,
-    });
+  it.each(['block', 'advise'] as const)(
+    'a throwing thunk under %s with no valve fails closed: exit 2, exactly one blocked row',
+    async (enforce) => {
+      const result = await runThunk({
+        body: async () => {
+          throw new Error('judge blew up mid-judgment');
+        },
+        label: LABEL,
+        telemetryPath,
+        enforce,
+      });
 
-    expect(result.exitCode).toBe(2);
-    expect(result.event).toBe('blocked');
-    const lines = readTelemetryLines(telemetryPath);
-    expect(lines).toHaveLength(1);
-    expect(parseRecordLine(lines[0])?.event).toBe('blocked');
-  });
+      expect(result.exitCode).toBe(2);
+      expect(result.event).toBe('blocked');
+      const lines = readTelemetryLines(telemetryPath);
+      expect(lines).toHaveLength(1);
+      expect(parseRecordLine(lines[0])?.event).toBe('blocked');
+    },
+  );
 
   it('a throwing thunk with an open valve resolves witnessed at exit 0 — one row, never two', async () => {
     // The catch must precede the valve consultation, or a crash escapes the witness
@@ -216,35 +216,38 @@ describe('an out-of-shape thunk result fails closed (old-dist skew)', () => {
   it.each([
     ['block', 3],
     ['advise', 3],
-  ] as const)('an uninterpretable exitCode (3) under %s lands blocked at exit 2', async (enforce, code) => {
-    // An old dist answering a code the table does not carry must stay fail-closed.
-    const result = await runThunk({
-      body: async () => ({ exitCode: code }),
-      label: LABEL,
-      telemetryPath,
-      enforce,
-    });
+  ] as const)(
+    'an uninterpretable exitCode (3) under %s lands blocked at exit 2',
+    async (enforce, code) => {
+      // An old dist answering a code the table does not carry must stay fail-closed.
+      const result = await runThunk({
+        body: async () => ({ exitCode: code }),
+        label: LABEL,
+        telemetryPath,
+        enforce,
+      });
 
-    expect(result.exitCode).toBe(2);
-    expect(result.event).toBe('blocked');
-    expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('blocked');
-  });
+      expect(result.exitCode).toBe(2);
+      expect(result.event).toBe('blocked');
+      expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('blocked');
+    },
+  );
 
-  it.each([
-    'block',
-    'advise',
-  ] as const)('a thunk resolving a non-object under %s lands blocked at exit 2', async (enforce) => {
-    // An old-shape registration resolving undefined must land in the fail-closed cell
-    // rather than crash out of the wrapper or read as a pass.
-    const result = await runThunk({
-      body: (async () => undefined) as unknown as ThunkRunCovenantSpec['body'],
-      label: LABEL,
-      telemetryPath,
-      enforce,
-    });
+  it.each(['block', 'advise'] as const)(
+    'a thunk resolving a non-object under %s lands blocked at exit 2',
+    async (enforce) => {
+      // An old-shape registration resolving undefined must land in the fail-closed cell
+      // rather than crash out of the wrapper or read as a pass.
+      const result = await runThunk({
+        body: (async () => undefined) as unknown as ThunkRunCovenantSpec['body'],
+        label: LABEL,
+        telemetryPath,
+        enforce,
+      });
 
-    expect(result.exitCode).toBe(2);
-    expect(result.event).toBe('blocked');
-    expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('blocked');
-  });
+      expect(result.exitCode).toBe(2);
+      expect(result.event).toBe('blocked');
+      expect(parseRecordLine(readTelemetryLines(telemetryPath)[0])?.event).toBe('blocked');
+    },
+  );
 });

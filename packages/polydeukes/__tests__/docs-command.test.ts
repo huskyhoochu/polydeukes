@@ -83,33 +83,31 @@ afterAll(() => {
 });
 
 describe('real documentation through the CLI', () => {
-  it.each(
-    queries,
-  )('%s search %s returns %s#%s in the top three offline', (language, query, documentId, sectionId) => {
-    const start = performance.now();
-    const result = invoke(['search', query, '--lang', language, '--limit', '3', '--json']);
-    const elapsed = performance.now() - start;
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stderr).toBe('');
-    const answer = JSON.parse(result.stdout);
-    expect(answer.packageVersion).toBe(version);
-    expect(answer.language).toBe(language);
-    expect(answer.results).toContainEqual(expect.objectContaining({ documentId, sectionId }));
-    expect(elapsed).toBeLessThan(1_000);
-  });
+  it.each(queries)(
+    '%s search %s returns %s#%s in the top three offline',
+    (language, query, documentId, sectionId) => {
+      const start = performance.now();
+      const result = invoke(['search', query, '--lang', language, '--limit', '3', '--json']);
+      const elapsed = performance.now() - start;
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stderr).toBe('');
+      const answer = JSON.parse(result.stdout);
+      expect(answer.packageVersion).toBe(version);
+      expect(answer.language).toBe(language);
+      expect(answer.results).toContainEqual(expect.objectContaining({ documentId, sectionId }));
+      expect(elapsed).toBeLessThan(1_000);
+    },
+  );
 
-  it.each([
-    'install',
-    'config',
-    'discipline',
-    'covenant',
-    'witness',
-  ])('keeps the legacy %s topic in Korean', (topic) => {
-    const result = invoke([topic, '--lang', 'ko']);
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('See also: pdks docs show');
-    expect(result.stdout).toMatch(/[가-힣]/);
-  });
+  it.each(['install', 'config', 'discipline', 'covenant', 'witness'])(
+    'keeps the legacy %s topic in Korean',
+    (topic) => {
+      const result = invoke([topic, '--lang', 'ko']);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain('See also: pdks docs show');
+      expect(result.stdout).toMatch(/[가-힣]/);
+    },
+  );
 
   it('shows the exact full source document and stable section', () => {
     const full = invoke(['show', 'first-judgment', '--lang', 'ko', '--json']);

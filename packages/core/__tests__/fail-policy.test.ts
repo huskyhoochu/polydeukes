@@ -21,18 +21,16 @@ describe('resolveFailMode — registered kinds', () => {
 });
 
 describe('resolveFailMode — fail-closed default', () => {
-  it.each([
-    'unknown-kind',
-    '',
-    '__proto__',
-    'toString',
-  ])('resolves the unregistered kind %j to fail-closed', (kind) => {
-    // An unregistered failure means "cannot judge", so it must block; a lookup defaulting
-    // to 'open' (or leaking undefined) is the fail-open hole this covers. The
-    // prototype-pollution keys pin the table's null prototype: on a plain object they
-    // would resolve to truthy inherited members and skip the fallback entirely.
-    expect(resolveFailMode(kind)).toBe('closed');
-  });
+  it.each(['unknown-kind', '', '__proto__', 'toString'])(
+    'resolves the unregistered kind %j to fail-closed',
+    (kind) => {
+      // An unregistered failure means "cannot judge", so it must block; a lookup defaulting
+      // to 'open' (or leaking undefined) is the fail-open hole this covers. The
+      // prototype-pollution keys pin the table's null prototype: on a plain object they
+      // would resolve to truthy inherited members and skip the fallback entirely.
+      expect(resolveFailMode(kind)).toBe('closed');
+    },
+  );
 
   it('never throws on arbitrary input (a throw is itself a boundary collapse)', () => {
     // resolveFailMode is pure and total: a throw could be caught upstream and mistaken for

@@ -206,21 +206,23 @@ function validatorAccepts(declaration: unknown): boolean {
 }
 
 describe('algebra schema ⟺ validateAlgebraDeclaration equivalence — transcript (VALID fixtures)', () => {
-  it.each(
-    VALID_DECLARATIONS.map((declaration, index) => [index, declaration] as const),
-  )('valid transcript declaration #%i: validator accepts AND ajv validates', (_index, declaration) => {
-    // A validator-only acceptance leaves every consumer's IDE schema rejecting a legal
-    // history binding; a schema-only acceptance validates documents the validator throws on.
-    expect(validatorAccepts(declaration)).toBe(true);
-    expect(validateAlgebra(declaration)).toBe(true);
-  });
+  it.each(VALID_DECLARATIONS.map((declaration, index) => [index, declaration] as const))(
+    'valid transcript declaration #%i: validator accepts AND ajv validates',
+    (_index, declaration) => {
+      // A validator-only acceptance leaves every consumer's IDE schema rejecting a legal
+      // history binding; a schema-only acceptance validates documents the validator throws on.
+      expect(validatorAccepts(declaration)).toBe(true);
+      expect(validateAlgebra(declaration)).toBe(true);
+    },
+  );
 });
 
 describe('algebra schema ⟺ validateAlgebraDeclaration equivalence — transcript (INVALID fixtures)', () => {
-  it.each(
-    INVALID_DECLARATIONS.map((declaration, index) => [index, declaration] as const),
-  )('invalid transcript declaration #%i: validator throws AND ajv rejects', (_index, declaration) => {
-    expect(validatorAccepts(declaration)).toBe(false);
-    expect(validateAlgebra(declaration)).toBe(false);
-  });
+  it.each(INVALID_DECLARATIONS.map((declaration, index) => [index, declaration] as const))(
+    'invalid transcript declaration #%i: validator throws AND ajv rejects',
+    (_index, declaration) => {
+      expect(validatorAccepts(declaration)).toBe(false);
+      expect(validateAlgebra(declaration)).toBe(false);
+    },
+  );
 });

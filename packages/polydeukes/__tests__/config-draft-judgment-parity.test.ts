@@ -79,19 +79,22 @@ describe('session surface judgment parity', () => {
   it.each([
     ['passing', PASSING_CONTENT],
     ['breaking', BREAKING_CONTENT],
-  ] as const)('the %s payload: identical exit and rows with and without the draft', async (_kind, content) => {
-    // Any divergence means the draft reached a judge.
-    const without = await sessionRun(JUDGED_ONLY, content);
-    const withDraft = await sessionRun(WITH_DRAFT, content);
+  ] as const)(
+    'the %s payload: identical exit and rows with and without the draft',
+    async (_kind, content) => {
+      // Any divergence means the draft reached a judge.
+      const without = await sessionRun(JUDGED_ONLY, content);
+      const withDraft = await sessionRun(WITH_DRAFT, content);
 
-    expect(withDraft.exitCode).toBe(without.exitCode);
-    expect(withDraft.rows).toEqual(without.rows);
-    // A row carrying the draft id would be a judgment the entry never promised.
-    for (const [, label, subject] of withDraft.rows) {
-      expect(label).not.toContain(DRAFT_ID);
-      expect(subject).not.toContain(DRAFT_ID);
-    }
-  });
+      expect(withDraft.exitCode).toBe(without.exitCode);
+      expect(withDraft.rows).toEqual(without.rows);
+      // A row carrying the draft id would be a judgment the entry never promised.
+      for (const [, label, subject] of withDraft.rows) {
+        expect(label).not.toContain(DRAFT_ID);
+        expect(subject).not.toContain(DRAFT_ID);
+      }
+    },
+  );
 });
 
 describe('commit surface judgment parity', () => {
@@ -129,16 +132,19 @@ describe('commit surface judgment parity', () => {
   it.each([
     ['passing', PASSING_CONTENT],
     ['breaking', BREAKING_CONTENT],
-  ] as const)('the %s staged diff: identical exit and rows with and without the draft', async (_kind, content) => {
-    // Same contract as the session case, observed on the staged-diff re-observation.
-    const without = await commitRun(JUDGED_ONLY, content);
-    const withDraft = await commitRun(WITH_DRAFT, content);
+  ] as const)(
+    'the %s staged diff: identical exit and rows with and without the draft',
+    async (_kind, content) => {
+      // Same contract as the session case, observed on the staged-diff re-observation.
+      const without = await commitRun(JUDGED_ONLY, content);
+      const withDraft = await commitRun(WITH_DRAFT, content);
 
-    expect(withDraft.exitCode).toBe(without.exitCode);
-    expect(withDraft.rows).toEqual(without.rows);
-    for (const [, label, subject] of withDraft.rows) {
-      expect(label).not.toContain(DRAFT_ID);
-      expect(subject).not.toContain(DRAFT_ID);
-    }
-  });
+      expect(withDraft.exitCode).toBe(without.exitCode);
+      expect(withDraft.rows).toEqual(without.rows);
+      for (const [, label, subject] of withDraft.rows) {
+        expect(label).not.toContain(DRAFT_ID);
+        expect(subject).not.toContain(DRAFT_ID);
+      }
+    },
+  );
 });

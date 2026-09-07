@@ -472,19 +472,22 @@ describe('deriveShape — the history axis from a transcript binding', () => {
     ['phase-order-writer-before-implementer', 'phase-order', 'ordered'],
     ['turn-locality-fresh-permission', 'turn-locality', 'nonEmpty'],
     ['stated-ground-plan-before-edit', 'stated-ground', 'nonEmpty'],
-  ])('the %s fixture validates under %s and derives history with %s', (name, mechanism, relation) => {
-    // The three history mechanisms each get a real declaration; a catalogue that still
-    // reads history as underivable refuses all three, and a fixture whose relation drifted
-    // (say `nonEmpty` under `phase-order`) is caught here rather than in the engine.
-    const declaration = validateAlgebraDeclaration(loadFixture(name));
+  ])(
+    'the %s fixture validates under %s and derives history with %s',
+    (name, mechanism, relation) => {
+      // The three history mechanisms each get a real declaration; a catalogue that still
+      // reads history as underivable refuses all three, and a fixture whose relation drifted
+      // (say `nonEmpty` under `phase-order`) is caught here rather than in the engine.
+      const declaration = validateAlgebraDeclaration(loadFixture(name));
 
-    expect(declaration.mechanism).toBe(mechanism);
-    expect(deriveShape(declaration)).toEqual({
-      axes: new Set(['history']),
-      relations: new Set([relation]),
-      witness: false,
-    });
-  });
+      expect(declaration.mechanism).toBe(mechanism);
+      expect(deriveShape(declaration)).toEqual({
+        axes: new Set(['history']),
+        relations: new Set([relation]),
+        witness: false,
+      });
+    },
+  );
 
   it('phase-order carrying nonEmpty is rejected, naming the mismatch without the underivable note', () => {
     // The negative probe: history now derives, so the axis matches and the relation alone

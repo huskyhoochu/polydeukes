@@ -89,23 +89,27 @@ describe('validateAlgebraDeclaration — sources block, accepted declarations', 
     expect(() => validateAlgebraDeclaration(withoutSupply, LOCATION)).not.toThrow();
   });
 
-  it.each(
-    FIXED_NAMES,
-  )('accepts supply naming the fixed source %s with no sources block', (name) => {
-    // The supply cross-check must resolve against sources OR the fixed list. Checking
-    // against `sources` alone rejects every declaration that names `pre` today; a fixed list
-    // that stayed at four rejects `changes`, the newest fixed name.
-    const { sources: _sources, ...unsourced } = sourcedDeclaration;
-    // With the block gone the extract reads fixed sources only: an unbound source name is
-    // its own fault, and this case is about the supply cross-check.
-    const declaration = {
-      ...unsourced,
-      supply: { [name]: 'pass' },
-      extract: { ...sourcedDeclaration.extract, [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }] },
-    };
+  it.each(FIXED_NAMES)(
+    'accepts supply naming the fixed source %s with no sources block',
+    (name) => {
+      // The supply cross-check must resolve against sources OR the fixed list. Checking
+      // against `sources` alone rejects every declaration that names `pre` today; a fixed list
+      // that stayed at four rejects `changes`, the newest fixed name.
+      const { sources: _sources, ...unsourced } = sourcedDeclaration;
+      // With the block gone the extract reads fixed sources only: an unbound source name is
+      // its own fault, and this case is about the supply cross-check.
+      const declaration = {
+        ...unsourced,
+        supply: { [name]: 'pass' },
+        extract: {
+          ...sourcedDeclaration.extract,
+          [EXTRACT_KO]: [{ op: 'source', of: SOURCE_PRE }],
+        },
+      };
 
-    expect(() => validateAlgebraDeclaration(declaration, LOCATION)).not.toThrow();
-  });
+      expect(() => validateAlgebraDeclaration(declaration, LOCATION)).not.toThrow();
+    },
+  );
 
   it('accepts a nested relative path', () => {
     // A path check that admits only a bare filename (no `/`) refuses every real layout.

@@ -77,22 +77,24 @@ function defineConfigAccepts(config: unknown): boolean {
 }
 
 describe('draft schema ⟺ defineConfig equivalence (VALID fixtures)', () => {
-  it.each(
-    VALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('valid draft fixture #%i: defineConfig accepts AND ajv validates', (_index, config) => {
-    // If only one side gains the draft branch, a validator-only draft leaves every
-    // consumer's IDE schema rejecting it, and a schema-only draft validates configs
-    // defineConfig still throws on.
-    expect(defineConfigAccepts(config)).toBe(true);
-    expect(validate(config)).toBe(true);
-  });
+  it.each(VALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'valid draft fixture #%i: defineConfig accepts AND ajv validates',
+    (_index, config) => {
+      // If only one side gains the draft branch, a validator-only draft leaves every
+      // consumer's IDE schema rejecting it, and a schema-only draft validates configs
+      // defineConfig still throws on.
+      expect(defineConfigAccepts(config)).toBe(true);
+      expect(validate(config)).toBe(true);
+    },
+  );
 });
 
 describe('draft schema ⟺ defineConfig equivalence (INVALID fixtures)', () => {
-  it.each(
-    INVALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('invalid draft fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(false);
-    expect(validate(config)).toBe(false);
-  });
+  it.each(INVALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'invalid draft fixture #%i: defineConfig throws AND ajv rejects',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(false);
+      expect(validate(config)).toBe(false);
+    },
+  );
 });

@@ -193,22 +193,22 @@ describe('findUnattributed — pure attribution over snapshots', () => {
     expect(result).toEqual([]);
   });
 
-  it.each([
-    'witnessed',
-    'advised',
-  ] as const)('a %s row with the entry as subject attributes the change (no alarm)', (event) => {
-    // The two words that mean a mutation of a protected entry was judged and let through
-    // anyway — a human opening it in person, or an advise-level surface recording without
-    // stopping. Dropping either from the accepted set turns every sanctioned edit into an
-    // alarm and teaches the reader to ignore the row.
-    const result = findUnattributed({
-      previous: { [ENTRY_A]: 'h1' },
-      current: { [ENTRY_A]: 'h2' },
-      records: [row(event, ENTRY_A)],
-    });
+  it.each(['witnessed', 'advised'] as const)(
+    'a %s row with the entry as subject attributes the change (no alarm)',
+    (event) => {
+      // The two words that mean a mutation of a protected entry was judged and let through
+      // anyway — a human opening it in person, or an advise-level surface recording without
+      // stopping. Dropping either from the accepted set turns every sanctioned edit into an
+      // alarm and teaches the reader to ignore the row.
+      const result = findUnattributed({
+        previous: { [ENTRY_A]: 'h1' },
+        current: { [ENTRY_A]: 'h2' },
+        records: [row(event, ENTRY_A)],
+      });
 
-    expect(result).toEqual([]);
-  });
+      expect(result).toEqual([]);
+    },
+  );
 
   it('a skipped row does NOT attribute — a recorded absence of judgment explains nothing', () => {
     // `skipped` means "could not judge", so letting it absolve a change would make the

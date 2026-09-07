@@ -29,10 +29,11 @@ function defineConfigAccepts(config: unknown): boolean {
 }
 
 describe('schema ⟺ defineConfig equivalence — empty-value fixtures (INVALID)', () => {
-  it.each(
-    INVALID_CONFIGS.map((config, index) => [index, config] as const),
-  )('invalid fixture #%i: defineConfig throws AND ajv rejects', (_index, config) => {
-    expect(defineConfigAccepts(config)).toBe(false);
-    expect(validate(config)).toBe(false);
-  });
+  it.each(INVALID_CONFIGS.map((config, index) => [index, config] as const))(
+    'invalid fixture #%i: defineConfig throws AND ajv rejects',
+    (_index, config) => {
+      expect(defineConfigAccepts(config)).toBe(false);
+      expect(validate(config)).toBe(false);
+    },
+  );
 });

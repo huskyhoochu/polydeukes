@@ -463,16 +463,20 @@ describe('the bundled docs answer from the installed tree', () => {
     });
   }
 
-  it.each([...TOPICS])('answers %s from the tarball install alone', (topic) => {
-    // Measured on the real install graph. A bundle member missing from the tarball, a docs
-    // root resolved from the working directory instead of the module's own location, or a
-    // topic in the map with no shipped document behind it all pass the repo-side unit
-    // suite, where `docs/` is one directory away.
-    const result = spawnDocs(topic);
+  it.each([...TOPICS])(
+    'answers %s from the tarball install alone',
+    (topic) => {
+      // Measured on the real install graph. A bundle member missing from the tarball, a docs
+      // root resolved from the working directory instead of the module's own location, or a
+      // topic in the map with no shipped document behind it all pass the repo-side unit
+      // suite, where `docs/` is one directory away.
+      const result = spawnDocs(topic);
 
-    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
-    expect(result.stdout.trim().length).toBeGreaterThan(0);
-  }, 60_000);
+      expect(result.status, `stderr: ${result.stderr}`).toBe(0);
+      expect(result.stdout.trim().length).toBeGreaterThan(0);
+    },
+    60_000,
+  );
 
   it('lists every topic when called with no argument', () => {
     // The discovery form on the shipped artifact: an agent learns what it may ask ONLY

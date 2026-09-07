@@ -70,7 +70,7 @@ describe('defineConfig disciplines — enforce acceptance', () => {
     const resolved = defineConfig(withDisciplines([plainEntry]));
 
     expect(resolved.disciplines).toEqual([plainEntry]);
-    expect('enforce' in (resolved.disciplines?.[0] as object)).toBe(false);
+    expect('enforce' in (resolved.disciplines?.[0] ?? {})).toBe(false);
   });
 });
 

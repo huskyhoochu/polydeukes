@@ -88,11 +88,12 @@ describe('core source carries no agent, tool, or language literals (grep gate)',
     expect(sourceFiles(SRC_DIR).length).toBeGreaterThan(0);
   });
 
-  it.each(
-    BANNED_LITERALS.map((entry) => [entry.label, entry.pattern] as const),
-  )('has zero occurrences of %s', (_label, pattern) => {
-    // Asserting against the violation list rather than a count makes the failure message
-    // name file, line, and offending text, so a leak is located and not merely reported.
-    expect(findViolations(pattern)).toEqual([]);
-  });
+  it.each(BANNED_LITERALS.map((entry) => [entry.label, entry.pattern] as const))(
+    'has zero occurrences of %s',
+    (_label, pattern) => {
+      // Asserting against the violation list rather than a count makes the failure message
+      // name file, line, and offending text, so a leak is located and not merely reported.
+      expect(findViolations(pattern)).toEqual([]);
+    },
+  );
 });

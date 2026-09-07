@@ -311,11 +311,14 @@ describe('validateAlgebraDeclaration — the combinator position is closed to th
   it.each([
     ['no arguments', { op: 'union' }],
     ['a single-string of', { op: 'union', of: EXTRACT_A }],
-  ])('rejects union with %s — a combinator name is a combinator whatever its shape', (_label, step) => {
-    // The three names are reserved: a step named `union` is never read as a unary step, so
-    // one that lacks the two-name shape is an argument violation, not an open-vocabulary pass.
-    expectRejection(withExtract({ ...minimalExtract, both: [step] }));
-  });
+  ])(
+    'rejects union with %s — a combinator name is a combinator whatever its shape',
+    (_label, step) => {
+      // The three names are reserved: a step named `union` is never read as a unary step, so
+      // one that lacks the two-name shape is an argument violation, not an open-vocabulary pass.
+      expectRejection(withExtract({ ...minimalExtract, both: [step] }));
+    },
+  );
 
   it('rejects an unknown key on a combinator step', () => {
     // Combinator args are closed; only unary args pass through.

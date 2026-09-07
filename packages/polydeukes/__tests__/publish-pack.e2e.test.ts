@@ -137,32 +137,38 @@ function tarManifest(dir: string): string {
 }
 
 describe('tarball contents match the published enumeration', () => {
-  it.each(
-    PACKAGE_DIRS,
-  )('the %s tarball ships the runnable set: manifest, dist, README, LICENSE', (dir) => {
-    // A dropped `files` whitelist entry yields a dist-less tarball, which installs a
-    // package whose every hook call fails closed. Measured 2026-08-03: pnpm pack inherits
-    // the workspace root LICENSE when the package has none, so this pin holds under both
-    // arrangements (root inheritance, per-package copies) and breaks when a producer swap
-    // or file move ships MIT-declared packages carrying no license text.
-    const entries = tarEntries(dir);
-    for (const required of REQUIRED_ENTRIES) {
-      expect(entries).toContain(required);
-    }
-    expect(entries.some((entry) => entry.startsWith(DIST_PREFIX))).toBe(true);
-  }, 30_000);
+  it.each(PACKAGE_DIRS)(
+    'the %s tarball ships the runnable set: manifest, dist, README, LICENSE',
+    (dir) => {
+      // A dropped `files` whitelist entry yields a dist-less tarball, which installs a
+      // package whose every hook call fails closed. Measured 2026-08-03: pnpm pack inherits
+      // the workspace root LICENSE when the package has none, so this pin holds under both
+      // arrangements (root inheritance, per-package copies) and breaks when a producer swap
+      // or file move ships MIT-declared packages carrying no license text.
+      const entries = tarEntries(dir);
+      for (const required of REQUIRED_ENTRIES) {
+        expect(entries).toContain(required);
+      }
+      expect(entries.some((entry) => entry.startsWith(DIST_PREFIX))).toBe(true);
+    },
+    30_000,
+  );
 
-  it.each(PACKAGE_DIRS)('the %s tarball ships no development-only files', (dir) => {
-    // A `files` whitelist deleted or widened makes npm pack the whole directory, and
-    // src/, tests, and tsconfigs ride into every consumer install. This enumeration and
-    // the presence one above break in opposite directions, so neither can stand in for
-    // the other.
-    const entries = tarEntries(dir);
-    expect(entries.filter((e) => FORBIDDEN_PREFIXES.some((p) => e.startsWith(p)))).toEqual([]);
-    for (const forbidden of FORBIDDEN_ENTRIES) {
-      expect(entries).not.toContain(forbidden);
-    }
-  }, 30_000);
+  it.each(PACKAGE_DIRS)(
+    'the %s tarball ships no development-only files',
+    (dir) => {
+      // A `files` whitelist deleted or widened makes npm pack the whole directory, and
+      // src/, tests, and tsconfigs ride into every consumer install. This enumeration and
+      // the presence one above break in opposite directions, so neither can stand in for
+      // the other.
+      const entries = tarEntries(dir);
+      expect(entries.filter((e) => FORBIDDEN_PREFIXES.some((p) => e.startsWith(p)))).toEqual([]);
+      for (const forbidden of FORBIDDEN_ENTRIES) {
+        expect(entries).not.toContain(forbidden);
+      }
+    },
+    30_000,
+  );
 });
 
 describe('the umbrella tarball carries the docs bundle', () => {
@@ -212,15 +218,17 @@ describe('the judge ships inside the umbrella tarball', () => {
 });
 
 describe('packed manifests carry no workspace-only specifier', () => {
-  it.each(
-    PACKAGE_DIRS,
-  )('the %s packed manifest has zero workspace: and zero catalog: occurrences', (dir) => {
-    // Packing with npm instead of pnpm leaves `workspace:^` and `catalog:` unrewritten,
-    // and every install of the published manifest then fails on a specifier no registry
-    // can resolve. String-zero over the whole manifest text covers every dependency field
-    // at once, devDependencies included.
-    const manifest = tarManifest(dir);
-    expect(manifest).not.toContain('workspace:');
-    expect(manifest).not.toContain('catalog:');
-  }, 30_000);
+  it.each(PACKAGE_DIRS)(
+    'the %s packed manifest has zero workspace: and zero catalog: occurrences',
+    (dir) => {
+      // Packing with npm instead of pnpm leaves `workspace:^` and `catalog:` unrewritten,
+      // and every install of the published manifest then fails on a specifier no registry
+      // can resolve. String-zero over the whole manifest text covers every dependency field
+      // at once, devDependencies included.
+      const manifest = tarManifest(dir);
+      expect(manifest).not.toContain('workspace:');
+      expect(manifest).not.toContain('catalog:');
+    },
+    30_000,
+  );
 });

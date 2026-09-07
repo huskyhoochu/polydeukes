@@ -225,15 +225,18 @@ describe('IR mode: CovenantInput JSON on stdin', () => {
     ['text that is not JSON', 'not json'],
     ['a top-level array', '[]'],
     ['an object with no toolCalls', '{"subagentSpawns":[],"userMessages":[]}'],
-  ])('%s on stdin exits 2 with one blocked covenant-check row and no usage line', (_name, payload) => {
-    // The shape check is the dispatcher's; what the bin owes is landing that refusal as
-    // exit 2 with a row, never as node's exit 1 crash and never as a usage error.
-    const result = spawnCheck(payload);
+  ])(
+    '%s on stdin exits 2 with one blocked covenant-check row and no usage line',
+    (_name, payload) => {
+      // The shape check is the dispatcher's; what the bin owes is landing that refusal as
+      // exit 2 with a row, never as node's exit 1 crash and never as a usage error.
+      const result = spawnCheck(payload);
 
-    expect(result.status).toBe(2);
-    expect(result.stderr).not.toContain('usage:');
-    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
-  });
+      expect(result.status).toBe(2);
+      expect(result.stderr).not.toContain('usage:');
+      expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+    },
+  );
 
   it('an IR carrying a top-level world key exits 2 with one blocked row', () => {
     const withWorld = { ...creationIr(ORDINARY_FILE, ORDINARY_TEXT), world: { files: {} } };
