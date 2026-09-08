@@ -73,7 +73,8 @@ What differs from the Claude Code installer:
 - It does not create `.claude/` files.
 - It writes a Grok hook JSON registration instead of `.claude/settings.json`.
 - If a Claude delegator already exists, the Grok JSON names it instead of creating another
-delegator.
+  delegator. Run this form after `pdks-claude-code init`; in the other order each surface keeps
+  its own delegator and a tree carrying both spawns two judges per call.
 - Generated registrations use a timeout of 60 seconds. The Grok host default is 5 seconds, and a
   timed-out hook fails open. When Claude settings register the same command, the Grok matcher
   follows that registration so command and matcher agree.

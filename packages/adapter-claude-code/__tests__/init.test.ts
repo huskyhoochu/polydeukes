@@ -407,20 +407,27 @@ describe('preflight — resolution proven before any write or spawn', () => {
   });
 });
 
-describe('the run never reports success without the registration', () => {
-  it('throws when the written settings file does not carry the registration', () => {
-    // The merge can drop the entry without failing: a settings file whose root is an array
-    // takes the assignment as a non-index property and JSON.stringify discards it, so
-    // without the read-back this reports every artifact created while the judge never
-    // spawns. The fixture is one witness; the assertion is on the code path (every write
-    // is read back).
-    mkdirSync(join(projectRoot, dirname(SETTINGS_REL)), { recursive: true });
-    writeFileSync(join(projectRoot, SETTINGS_REL), '[]\n');
+describe('a settings file whose root is not an object is a precondition failure', () => {
+  it.each([
+    ['an array', '[]\n'],
+    ['null', 'null\n'],
+  ])(
+    'refuses %s before the scaffold and leaves the file and the tree untouched',
+    (_shape, content) => {
+      // An array root takes the merge's assignment as a non-index property that
+      // JSON.stringify discards; a null root throws inside the merge. Either failure after the
+      // scaffold spawn would leave the config, an orphan delegator, and an overwritten settings
+      // file behind — so the shape is refused where the file is read.
+      mkdirSync(join(projectRoot, dirname(SETTINGS_REL)), { recursive: true });
+      writeFileSync(join(projectRoot, SETTINGS_REL), content);
 
-    expect(() => init()).toThrow(/registration/);
+      expect(() => init()).toThrow(/settings\.json/);
 
-    expect(read(SETTINGS_REL)).not.toContain(HOOK_FILENAME);
-  });
+      expect(read(SETTINGS_REL)).toBe(content);
+      expect(readdirSync(projectRoot)).toEqual(['.claude']);
+      expect(scaffoldCalls).toEqual([]);
+    },
+  );
 });
 
 describe('an unreadable settings file is a precondition failure', () => {
@@ -451,9 +458,10 @@ describe('the discovery file — literals that must agree with the umbrella', ()
     init();
 
     const discovery = read(DISCOVERY_REL);
-    for (const topic of tupleLiterals('docs-types.ts', 'DOCS_TOPICS')) {
-      expect(discovery, topic).toMatch(new RegExp(`\\bpdks docs ${topic}\\b`));
-    }
+    const taught = [...discovery.matchAll(/`pdks docs ([a-z]+)`/g)].map((m) => m[1] as string);
+    expect([...new Set(taught)].sort()).toEqual(
+      [...tupleLiterals('docs-types.ts', 'DOCS_TOPICS')].sort(),
+    );
   });
 
   it('lists every config filename the umbrella discovers in its paths frontmatter', () => {
@@ -466,9 +474,10 @@ describe('the discovery file — literals that must agree with the umbrella', ()
     expect(discovery.startsWith('---\n')).toBe(true);
     const frontmatter = discovery.split('\n---')[0] ?? '';
     expect(frontmatter).toMatch(/(^|\n)paths:/);
-    for (const name of tupleLiterals('load-config.ts', 'CONFIG_FILENAMES')) {
-      expect(frontmatter, name).toContain(name);
-    }
+    const listed = [...frontmatter.matchAll(/^ {2}- "([^"]+)"$/gm)].map((m) => m[1] as string);
+    expect(listed.sort()).toEqual(
+      [...tupleLiterals('load-config.ts', 'CONFIG_FILENAMES'), '.claude/**'].sort(),
+    );
   });
 });
 

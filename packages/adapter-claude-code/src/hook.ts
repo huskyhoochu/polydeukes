@@ -166,6 +166,9 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     stdin = buildStdin(rawPayload);
   } catch (error) {
     stdin = `${FAILURE_PREFIX} ${error instanceof Error ? error.message : String(error)}\n`;
+    // The child fails closed on this line as non-JSON, but its own stderr names only the
+    // parse failure. The reason reaches the operator from here.
+    process.stderr.write(stdin);
   }
 
   const spawn = spec.spawn ?? spawnCovenantCheck;
@@ -175,5 +178,12 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     cwd: spec.repoRoot,
     stdin,
   });
+  if (status !== EXIT_UPHOLD && status !== EXIT_BREAK_BLOCKING) {
+    // Not a verdict: the judge crashed or was signalled, so no row was written. Exit 2 is
+    // still right for the host; the line is what tells the operator this was not a break.
+    process.stderr.write(
+      `covenant hook failed closed: the judge exited with status ${String(status)} before a verdict\n`,
+    );
+  }
   return { exitCode: status === EXIT_UPHOLD ? EXIT_UPHOLD : EXIT_BREAK_BLOCKING };
 }

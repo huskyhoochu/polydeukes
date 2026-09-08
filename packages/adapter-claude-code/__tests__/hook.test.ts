@@ -246,6 +246,12 @@ describe('runHook — the child’s status is the exit code', () => {
     const { spawn } = recordingSpawn(status);
 
     expect(runHook({ repoRoot, rawPayload: editPayload(), spawn })).toEqual({ exitCode });
+    // A crash or a signal wrote no row; the operator learns it from stderr, and a real
+    // verdict (0 or 2) leaves that channel silent.
+    const crashed = status !== 0 && status !== 2;
+    expect(stderr.join('')).toEqual(
+      crashed ? expect.stringContaining(`status ${String(status)} before a verdict`) : '',
+    );
   });
 });
 
@@ -267,6 +273,8 @@ describe('runHook — a failure before the spawn still spawns', () => {
     expect(stdin.startsWith(FAILURE_PREFIX)).toBe(true);
     expect(calls[0]?.args).toEqual([expect.stringMatching(/bin\.js$/), ...CHECK_ARGS]);
     expect(calls[0]?.cwd).toBe(repoRoot);
+    // The child's stderr names only its parse failure, so the reason must also leave here.
+    expect(stderr.join('')).toContain(stdin);
     return stdin.slice(FAILURE_PREFIX.length).trim();
   }
 

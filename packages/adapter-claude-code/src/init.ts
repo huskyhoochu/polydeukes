@@ -21,6 +21,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { isPlainObject } from '@polydeukes/core';
 import { findUmbrellaBin, UMBRELLA_PACKAGE } from './resolve-umbrella.ts';
 import { MUTATING_TOOLS, SHELL_TOOLS } from './session-vocabulary.ts';
 
@@ -40,20 +41,22 @@ const SKILL_RELATIVE = '.claude/skills/discipline-draft/SKILL.md';
 const HOOK_COMMAND = `node "$CLAUDE_PROJECT_DIR"/${HOOK_RELATIVE}`;
 /** Which calls reach the judge — this package's own vocabulary, never a copy of it. */
 const HOOK_MATCHER = [...MUTATING_TOOLS, ...SHELL_TOOLS].join('|');
-/** The docs topics the discovery file teaches, and what a session is about to do per topic. */
-const DOCS_TOPIC_PURPOSE: Record<string, string> = {
+/** The umbrella's docs topics — a copy of its `DOCS_TOPICS` tuple, pinned equal by test. */
+const DOCS_TOPICS = ['install', 'config', 'discipline', 'covenant', 'witness'] as const;
+/** What a session is about to do per topic — the correspondence the generated file carries. */
+const DOCS_TOPIC_PURPOSE: Record<(typeof DOCS_TOPICS)[number], string> = {
   install: 'install Polydeukes, or wire another surface into this project',
   config: 'edit `polydeukes.config.*` — every key and what reads it',
   discipline: 'add or change a `disciplines` entry',
   covenant: 'explain a verdict, or why a surface failed closed',
   witness: 'open a blocked call in person',
 };
-/** The config spellings the umbrella's loader discovers — the discovery file's `paths`. */
+/** The umbrella's config spellings — a copy of its `CONFIG_FILENAMES` tuple, pinned equal by test. */
 const CONFIG_FILENAMES = [
   'polydeukes.config.yaml',
   'polydeukes.config.yml',
   'polydeukes.config.json',
-];
+] as const;
 
 /**
  * The generated hook. It carries no assembly at all, so upgrading the package upgrades the
@@ -542,6 +545,15 @@ function readSettings(projectRoot: string): SettingsFile {
     );
   }
 
+  // Only a plain object can carry a `hooks` key. An array root takes the assignment as a
+  // non-index property that JSON.stringify discards, and a null root throws inside the merge
+  // — both after the scaffold and the delegator have already landed. Refusing here keeps
+  // every precondition failure at zero files.
+  if (!isPlainObject(parsed)) {
+    throw new Error(
+      `${SETTINGS_RELATIVE} in ${projectRoot} is not a JSON object — fix it and re-run`,
+    );
+  }
   return parsed as SettingsFile;
 }
 
