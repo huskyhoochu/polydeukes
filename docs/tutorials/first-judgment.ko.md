@@ -17,8 +17,8 @@ mkdir pdks-example
 cd pdks-example
 git init
 printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes   # 프로젝트 의존성. 일회성 npx 실행이 아님
-pnpm exec pdks init claude-code
+pnpm add -D polydeukes @polydeukes/adapter-claude-code   # 프로젝트 의존성. 일회성 npx 실행이 아님
+pnpm exec pdks-claude-code init
 ```
 
 설치기는 각 파일을 만들었으면 `created`, 이미 있어서 보존했으면 `skipped`로 보고합니다.

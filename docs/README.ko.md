@@ -51,7 +51,7 @@
 
 | 표면 | 판정 대상 | 배선 방법 | 대상 |
 |---|---|---|---|
-| **세션** | 도구 호출, 실행되기 전에 | `pdks init claude-code` 또는 `pdks init grok` | AI 파트너와 함께 개발하는 프로젝트 |
+| **세션** | 도구 호출, 실행되기 전에 | `pdks-claude-code init` 또는 `pdks init grok` | AI 파트너와 함께 개발하는 프로젝트 |
 | **커밋** | stdin의 unified diff — 스테이징 영역, 작업 트리, ref 범위 | `git diff --cached`를 파이프로 넘기는 pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI |
 
 커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는 `git diff HEAD | pdks covenant check --diff`,

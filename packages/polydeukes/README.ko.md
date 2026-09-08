@@ -17,7 +17,7 @@ Polydeukes는 우산 패키지입니다. 이 패키지 하나에 `pdks` 실행 �
 CLI 명령은 다음과 같습니다.
 
 - `pdks covenant check`
-- `pdks init claude-code`
+- `pdks init`
 - `pdks init grok`
 - `pdks explain`
 - `pdks docs [topic]`

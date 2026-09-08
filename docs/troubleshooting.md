@@ -11,8 +11,9 @@ or the judging packages, provided its own installed documentation bundle is inta
 
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root.
-Restore the intended file from Git, or use `pdks init claude-code` / `pdks init grok` for a new
-project. Then run `pdks explain`. No configuration means no silent default policy.
+Restore the intended file from Git, or use `pdks init` / `pdks-claude-code init` /
+`pdks init grok` for a new project. Then run `pdks explain`. No configuration means no silent
+default policy.
 
 <a id="multiple-config"></a>
 ## More than one config file

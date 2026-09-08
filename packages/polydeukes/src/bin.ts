@@ -57,14 +57,14 @@ async function emitAndExit(text: string): Promise<never> {
 
 const args = process.argv.slice(2);
 
-if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
+if (args.length === 1 && args[0] === 'init') {
   try {
-    // Imported inside the try, not above it: ESM imports are eager, so the installer stays
+    // Imported inside the try, not above it: ESM imports are eager, so the scaffold stays
     // off `covenant check`'s load path, which a pre-commit hook spawns on every commit. A
     // rejected import outside the try would reach node's unhandled-rejection exit 1, the
     // exact crash this bin refuses to make.
-    const { initClaudeCode } = await import('./init-claude-code.ts');
-    const { created, skipped } = initClaudeCode({ projectRoot: process.cwd() });
+    const { scaffoldProject } = await import('./scaffold-project.ts');
+    const { created, skipped } = scaffoldProject(process.cwd());
     for (const path of created) {
       process.stdout.write(`created ${path}\n`);
     }
@@ -76,7 +76,7 @@ if (args.length === 2 && args[0] === 'init' && args[1] === 'claude-code') {
     // A precondition failure leaves zero files; the message names what the user has to do
     // before running this again.
     process.stderr.write(
-      `pdks init claude-code failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      `pdks init failed: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     process.exit(2);
   }
@@ -170,7 +170,7 @@ const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(ar
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init claude-code | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
   );
   process.exit(2);
 }

@@ -14,9 +14,11 @@ to be written.
 
 Use this when the project is developed alongside an AI partner in Claude Code.
 
-1. Install the package as a project dependency: `pnpm add -D polydeukes`. A one-off `npx` run is
-   not enough — both surfaces load the judge from the project's own installed package.
-2. Wire the project: `pnpm exec pdks init claude-code`.
+1. Install both packages as project dependencies: `pnpm add -D polydeukes
+   @polydeukes/adapter-claude-code`. A one-off `npx` run is not enough — both surfaces load the
+   judge from the project's own installed package.
+2. Wire the project from its root: `pnpm exec pdks-claude-code init`. The adapter ships this bin;
+   it runs `pdks init` for the scaffold, then writes the Claude Code registration artifacts.
 3. Keep the generated hook file, settings merge, starter config, discovery rule, and
 discipline-draft skill.
 4. Reopen the project when the hook changes. The generated hook is a delegator, so upgrading the

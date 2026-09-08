@@ -62,6 +62,10 @@ judgment and does not repair a broken assembly.
 
 ### Deterministic judgment, explicit enforcement
 
+<!-- parked candidate (SURFACE-03b, 2026-09-08): the Claude Code adapter writes no telemetry row of
+its own — a failure before it can spawn the judge travels to the judge on stdin, so one writer keeps
+the one-call-one-row invariant. Promote once the repository itself runs on that delegator. -->
+
 The judge evaluates supplied data without opening files or making network requests. Reproducing
 a verdict requires the same declaration and supplied evidence, not merely the same path name.
 The two surfaces need not produce the same result when their observations differ.

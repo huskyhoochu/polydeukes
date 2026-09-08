@@ -33,10 +33,10 @@ const EXCLUDED_DIRS = new Set(['_docs', 'node_modules', 'dist', '.git', '.polyde
 const EXCLUDED_FILES = new Set(['CHANGELOG.md']);
 /**
  * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies;
- * the two installers carry it inside the hook-file template they write for a consumer,
+ * the Grok installer carries it inside the hook-file template it writes for a consumer,
  * which is text emitted to disk, not a load path of this package.
  */
-const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'init-claude-code.ts', 'init-grok.ts']);
+const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'init-grok.ts']);
 /** The words the `explain` module may no longer spell: host, VCS, and hook names. */
 const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook', 'grok'];
 /** The seven verbs the composition roots call on the judge module. */

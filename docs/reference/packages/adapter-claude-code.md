@@ -2,12 +2,11 @@
 
 **English** · [한국어](adapter-claude-code.ko.md)
 
-> **The session surface's translator** — PreToolUse payloads become the covenant input IR,
-> with the file-change evidence and the transcript channel the judge reads.
+> **The Claude Code install unit** — PreToolUse payloads become the covenant input IR,
+> with the file-change evidence and the transcript channel the judge reads, and the
+> package installs the session surface into a project.
 >
-> Alpha. A transitive dependency of the umbrella: you do not install it and you do not
-> import it. The session surface reaches it through
-> [`polydeukes/claude-code`](polydeukes.md#session-export).
+> Alpha. Install it next to `polydeukes`, which it names as a `peerDependency`.
 
 <a id="ownership"></a>
 ## What this package owns
@@ -18,16 +17,23 @@ agent-neutrality a claim a test can check rather than a slogan.
 
 | Unit | What it does |
 |---|---|
+| `pdks-claude-code` bin | One subcommand, `pdks-claude-code init`, which registers the session surface in a project |
+| `runHook` | Translates one PreToolUse payload into the input IR and spawns the judge |
 | Payload up-translation | A raw PreToolUse payload becomes a `CovenantInput` |
 | Virtual post-state | Computes what a file *would* contain after an edit applies, without touching disk |
 | File-change evidence | Pairs the disk pre-state with the virtual post-state into union evidence |
 | Transcript provider | Turns a session JSONL file into a `CanonicalTranscript` |
-| Telemetry wiring | Drives the full funnel so exactly one row lands per call |
 
-This package never imports the covenant package. The dispatch seam is *injected* by the
-umbrella, which keeps dependencies one-way, through the core alone. It names
-`@polydeukes/core` as a `peerDependency`: the vocabulary is shared with the judge, not
-installed a second time here.
+`runHook({ repoRoot })` is what the generated hook delegator imports. It builds the IR — the
+`tools` and `session` evidence included — then spawns `pdks covenant check --enforce block` in
+`repoRoot` and returns the child's exit code. The judging happens in that child process; this
+package carries no judgment logic.
+
+**This package writes no telemetry rows.** A failure before the spawn is sent to `pdks` on
+stdin as a plain line, and `pdks` records the fail-closed row, so one call still leaves one
+row. It never imports the judge: `polydeukes` and `@polydeukes/core` are both
+`peerDependencies`, so the vocabulary and the judge are shared rather than installed a second
+time here.
 
 <a id="translation"></a>
 ## Payload translation and the three axes
@@ -66,10 +72,22 @@ there is no separate precedent evaluator in this package. The grammar is in
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
 
-- **The generated hook**, which loads this adapter through the umbrella's `claude-code`
-  subpath. Upgrading the package upgrades what runs; the hook file itself never changes.
+Two lines install the Claude Code session surface, run from the project root:
 
-No import, and no configuration namespace of its own.
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npx pdks-claude-code init
+```
+
+`pdks-claude-code init` resolves `polydeukes` from the project, spawns `pdks init` for the
+agent-neutral scaffold, then writes the four Claude Code artifacts non-destructively. A re-run
+reports each existing artifact as skipped and overwrites nothing. The full artifact list is in
+[`pdks init`](../cli/init.md#init-claude-code).
+
+- **The generated hook** imports `runHook` from this package. Upgrading the package upgrades
+  what runs; the hook file itself never changes.
+
+No configuration namespace of its own.
 
 <a id="limits"></a>
 ## Declared limits
@@ -86,3 +104,11 @@ No import, and no configuration namespace of its own.
   are compared for a mention rather than a proven target.
 - **Out-of-repository ancestors stay out of scope.** A path above the project root is not
   observed here; the agent's own deny policy owns that ground.
+- **An unresolvable `polydeukes` leaves no row.** When the umbrella cannot be resolved from the
+  project there is no process to spawn and no log path to write to, so the hook exits `2` with
+  one line on stderr and the telemetry log gains nothing. Every other pre-spawn failure does
+  reach `pdks` and does leave a row.
+- **A Grok tree that reuses this delegator sends Grok tool names here.** `pdks init grok` points
+  the Grok registration at an existing Claude delegator rather than creating a second one, so
+  Grok payloads arrive at this adapter. Their tool names are not Claude's, so the meta-covenants
+  do not route them until a Grok adapter ships.

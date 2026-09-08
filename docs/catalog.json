@@ -139,12 +139,12 @@
       "en": {
         "path": "reference/cli/init.md",
         "title": "`pdks init`",
-        "summary": "Install the Claude Code or Grok integration."
+        "summary": "Create the project scaffold, and find the Claude Code and Grok installers."
       },
       "ko": {
         "path": "reference/cli/init.ko.md",
         "title": "`pdks init`",
-        "summary": "Claude Code 또는 Grok 연동을 설치합니다."
+        "summary": "프로젝트 초기 파일을 만들고, Claude Code와 Grok 설치기를 찾습니다."
       }
     },
     {
@@ -235,12 +235,12 @@
       "en": {
         "path": "reference/packages/adapter-claude-code.md",
         "title": "`@polydeukes/adapter-claude-code`",
-        "summary": "Consult the adapter-claude-code package contract and its limits."
+        "summary": "Install the Claude Code session surface, and consult the adapter package contract and its limits."
       },
       "ko": {
         "path": "reference/packages/adapter-claude-code.ko.md",
         "title": "`@polydeukes/adapter-claude-code`",
-        "summary": "adapter-claude-code 패키지의 계약과 한계를 확인합니다."
+        "summary": "Claude Code 세션 표면을 설치하고, 어댑터 패키지의 계약과 한계를 확인합니다."
       }
     },
     {

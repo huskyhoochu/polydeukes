@@ -12,9 +12,11 @@
 
 Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
-1. 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes`. 일회성 `npx` 실행만으로는
-   부족합니다. 두 표면 모두 프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
-2. 프로젝트를 배선합니다. `pnpm exec pdks init claude-code`.
+1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes
+   @polydeukes/adapter-claude-code`. 일회성 `npx` 실행만으로는 부족합니다. 두 표면 모두
+   프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
+2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-claude-code init`. 이 실행 파일은 어댑터가
+   제공하며, 먼저 `pdks init`으로 초기 파일을 만든 뒤 Claude Code 등록 산출물을 씁니다.
 3. 생성된 훅, 병합된 설정, 초기 설정 파일, 문서 안내와 `discipline-draft` 스킬을 확인합니다.
 4. 훅이 바뀌면 프로젝트를 다시 엽니다. 생성된 훅은 패키지에 판정을 위임하므로 패키지를
    갱신할 때 훅 파일까지 다시 쓸 필요는 없습니다.

@@ -36,8 +36,9 @@ monorepo sub-package whose dependencies installed at the workspace root, count t
 # yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
 
-`pdks init claude-code` adds the schema line only when the default path resolves relative to the
-generated config. If the line is absent, add a relative path to the installed schema yourself.
+`pdks init` — which `pdks-claude-code init` runs for you — adds the schema line only when the
+default path resolves relative to the generated config. If the line is absent, add a relative path
+to the installed schema yourself.
 An unresolvable `$schema` can disable editor validation without displaying an error.
 
 If you installed `@polydeukes/core` directly rather than the umbrella, name its copy:

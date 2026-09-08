@@ -8,6 +8,7 @@
  * reaches the core.
  */
 
+export { type RunHookOutcome, type RunHookSpec, runHook } from './hook.ts';
 export {
   type AdapterPathOutcome,
   type DispatchAdapterView,

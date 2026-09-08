@@ -2,31 +2,31 @@
 
 **English** · [한국어](./init.ko.md)
 
-`pdks init` wires a project into the session surface. The command has two forms: `claude-code` and
-`grok`. Both start with the same preflight: the package must resolve from the target project before
-anything is written.
+`pdks init` creates the agent-neutral project scaffold: the config file and the telemetry ignore
+line. It knows no agent. Registering a session surface is a separate command owned by that
+agent's adapter — `pdks-claude-code init` for Claude Code, and `pdks init grok` for Grok.
 
 <a id="init-syntax"></a>
 ## Syntax
 
 ```sh
-pdks init claude-code
+pdks init
 pdks init grok
 ```
 
-Both forms are idempotent. Existing artifacts are left in place and reported as skipped. A preflight
-failure writes nothing and exits `2`.
+Those are the two forms the command accepts. Any other argument prints usage and exits `2`.
+Both forms are idempotent: existing artifacts are left in place and reported as skipped, and a
+preflight failure writes nothing and exits `2`.
 
 <a id="init-common"></a>
-## Shared preflight and scaffold
+## `pdks init` — the scaffold
 
-The installer does three things in order:
+The command does two things in order:
 
 1. Resolve `polydeukes` from the target project.
 2. Create the shared project-side scaffold: config and telemetry ignore line.
-3. Add the surface-specific registration artifacts.
 
-The shared scaffold is the same for both installers:
+The scaffold is the same one every surface starts from:
 
 - `polydeukes.config.yaml`
 - `.gitignore` with `.polydeukes/`
@@ -35,34 +35,26 @@ The config file starts with the language block, a protection list, a witness blo
 discipline examples. It is a starter policy, not a complete project policy.
 
 <a id="init-claude-code"></a>
-## `pdks init claude-code`
+## Claude Code — `pdks-claude-code init`
 
-This form installs the Claude Code session surface.
+The Claude Code session surface is installed by
+[`@polydeukes/adapter-claude-code`](../packages/adapter-claude-code.md), which ships its own bin:
 
-Created artifacts:
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npx pdks-claude-code init
+```
+
+That command runs `pdks init` for the scaffold, then writes the Claude Code registration
+artifacts:
 
 - `.claude/hooks/covenant-pretooluse.mjs`
 - `.claude/settings.json`
 - `.claude/rules/polydeukes.md`
 - `.claude/skills/discipline-draft/SKILL.md`
-- `polydeukes.config.yaml`
-- `.gitignore`
 
-What each artifact does:
-
-- The hook file is a delegator that imports `polydeukes/claude-code`.
-- The settings file merges a PreToolUse registration instead of replacing the whole file.
-- The discovery file tells the AI partner to use `pdks docs` instead of web search.
-- The skill file turns a described discipline problem into a config entry.
-- The config and ignore line come from the shared scaffold.
-
-Existing hook, config, discovery, and skill files are preserved. Settings registrations are
-merged and the ignore entry is appended if absent. Re-running can also reconcile a generated
-Grok registration as described below; it is not an unconditional no-op.
-
-Package upgrades do not overwrite a customized skill. Generate a fresh copy in a disposable
-project, compare it with the existing file, and merge the selected changes after taking a backup.
-Do not delete the working project's skill merely to force regeneration.
+Details and the per-artifact behaviour are in
+[Connect the surfaces](../../how-to/connect-surfaces.md#claude-code).
 
 <a id="init-grok"></a>
 ## `pdks init grok`
@@ -76,7 +68,7 @@ Created artifacts:
 - `polydeukes.config.yaml`
 - `.gitignore`
 
-What differs from the Claude Code form:
+What differs from the Claude Code installer:
 
 - It does not create `.claude/` files.
 - It writes a Grok hook JSON registration instead of `.claude/settings.json`.
@@ -85,8 +77,7 @@ delegator.
 - Generated registrations use a timeout of 60 seconds. The Grok host default is 5 seconds, and a
   timed-out hook fails open. When Claude settings register the same command, the Grok matcher
   follows that registration so command and matcher agree.
-- Re-running either installer can retarget a generated Grok-delegator command to the existing
-  Claude file and reconcile its matcher. A custom command is left alone; an existing timeout stays.
+- A custom command is left alone; an existing timeout stays.
 - If you later remove Claude settings, regenerate the Grok JSON to restore the Grok-native matcher.
   Back up custom settings first. Reload Grok's Hooks tab or start a new session after changes.
 
@@ -114,16 +105,18 @@ filesystem problem, and rerun rather than assuming every failed installation lef
 ## Examples
 
 ```sh
-pdks init claude-code
+pdks init
 pdks init grok
+npx pdks-claude-code init
 ```
 
-The installer is a CLI command. It is not a symbol on the `polydeukes` or
-`polydeukes/claude-code` contract.
+The installers are CLI commands. They are not symbols on the `polydeukes` contract.
 
 <a id="init-see-also"></a>
 ## See also
 
+- [`@polydeukes/adapter-claude-code`](../packages/adapter-claude-code.md) — the Claude Code
+install unit and its bin.
 - [`pdks docs`](../packages/polydeukes.md#polydeukes-bin) — the installed documentation reader lives
 in the same package.
 - [`pdks explain`](./explain.md)
