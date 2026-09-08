@@ -54,7 +54,7 @@ const { packageManager } = JSON.parse(readFileSync(join(repoRoot, 'package.json'
   packageManager: string;
 };
 
-/** The artifacts `pdks init claude-code` generates, as consumer-root-relative paths. */
+/** The artifacts `pdks-claude-code init` generates, as consumer-root-relative paths. */
 const HOOK_REL = '.claude/hooks/covenant-pretooluse.mjs';
 const CONFIG_REL = 'polydeukes.config.yaml';
 /** On the GENERATED config's protection list — the block/witness cases' target. */
@@ -65,8 +65,10 @@ const CLEAN_TARGET = 'docs/notes.md';
 const NEAR_MISS_TARGET = '.claude/settings.json.bak';
 /** Where a judgment lands by default in the tree the hook defends. */
 const TELEMETRY_REL = '.polydeukes/roi.log';
-/** The funnel supplement's label — the row a clean judged call leaves. */
-const ADAPTER_LABEL = 'adapter-claude-code';
+/** The runner's label — the one writer of every row a generated delegator's call leaves. */
+const RUNNER_LABEL = 'covenant-check';
+/** The adapter's package directory — the install unit the consumer wires the hook through. */
+const ADAPTER_DIR = 'adapter-claude-code';
 /** The consumer-side subpath an editor's `$schema` line is measured against. */
 const CORE_SCHEMA_SPECIFIER = '@polydeukes/core/schema.json';
 /** The umbrella subpath, for runtime code that reads the schema. */
@@ -90,11 +92,12 @@ beforeAll(() => {
     tarballs.set(dir, packOne(dir));
   }
 
-  // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella arrives as
-  // a direct file: dependency; the scoped packages arrive through pnpm.overrides
-  // pointing at their tarballs — the rewritten `^` ranges in the umbrella's packed manifest
-  // would otherwise resolve from the registry, where the published 0.3.0 answers them with
-  // a judge that predates the exports this build's hook imports.
+  // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella and the
+  // adapter arrive as direct file: dependencies — the two packages a Claude Code project
+  // installs; the remaining scoped packages arrive through pnpm.overrides pointing at
+  // their tarballs — the rewritten `^` ranges in the packed manifests would otherwise
+  // resolve from the registry, where an older release answers them with a judge that
+  // predates the exports this build's hook imports.
   consumerRoot = mkdtempSync(join(tmpdir(), 'pdks-clean-install-consumer-'));
   const overrides = Object.fromEntries(
     PACKAGE_DIRS.filter((dir) => dir !== UMBRELLA_DIR).map((dir) => [
@@ -109,7 +112,10 @@ beforeAll(() => {
         name: 'pdks-clean-install-consumer',
         private: true,
         packageManager,
-        dependencies: { [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}` },
+        dependencies: {
+          [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}`,
+          [packageNameOf(ADAPTER_DIR)]: `file:${tarballOf(ADAPTER_DIR)}`,
+        },
         pnpm: { overrides },
       },
       null,
@@ -138,11 +144,10 @@ beforeAll(() => {
 
   // Run once and asserted in its own case below: subsequent cases spawn the artifacts this
   // command generates.
-  initResult = spawnSync(
-    join(consumerRoot, 'node_modules', '.bin', 'pdks'),
-    ['init', 'claude-code'],
-    { cwd: consumerRoot, encoding: 'utf-8' },
-  );
+  initResult = spawnSync(join(consumerRoot, 'node_modules', '.bin', 'pdks-claude-code'), ['init'], {
+    cwd: consumerRoot,
+    encoding: 'utf-8',
+  });
 }, 600_000);
 
 afterAll(() => {
@@ -204,7 +209,9 @@ function spawnConsumerHook(payload: unknown): SpawnSyncReturns<string> {
 
 /**
  * Every telemetry row in the consumer tree as [event, label, subject]. Each spawn clears
- * `.polydeukes/` first, so every row list opens with the state comparison's first-run row.
+ * `.polydeukes/` first. The state comparison runs only for a call carrying session
+ * evidence, so a payload without a transcript leaves judgment rows alone and the witness
+ * case below opens with the comparison's first-run row.
  */
 const rows = () => telemetryRows(join(consumerRoot, TELEMETRY_REL));
 
@@ -241,12 +248,12 @@ function generatedToken(): string {
 }
 
 describe('tarball install, init, and two real judgments', () => {
-  it('pdks init claude-code exits 0 from the tarball install and writes the hook and config', () => {
-    // A packaging defect anywhere in the chain — the bin not shipped or not executable,
-    // the session subpath missing from the packed exports map, a scoped tarball the
-    // umbrella cannot resolve — surfaces as a non-zero exit on the first command a
-    // consumer ever runs. The symlink trees of init-claude-code.e2e pass all of those;
-    // only a real install graph reaches them.
+  it('pdks-claude-code init exits 0 from the tarball install and writes the hook and config', () => {
+    // A packaging defect anywhere in the chain — either bin not shipped or not executable,
+    // the adapter unable to resolve the umbrella it spawns, a scoped tarball the umbrella
+    // cannot resolve — surfaces as a non-zero exit on the first command a consumer ever
+    // runs. The symlink trees of the adapter's init e2e pass all of those; only a real
+    // install graph reaches them.
     expect(initResult.status, `init stderr: ${initResult.stderr}`).toBe(0);
     expect(existsSync(join(consumerRoot, HOOK_REL))).toBe(true);
     expect(existsSync(join(consumerRoot, CONFIG_REL))).toBe(true);
@@ -261,7 +268,7 @@ describe('tarball install, init, and two real judgments', () => {
     const result = spawnConsumerHook(writePayload(CLEAN_TARGET, 'hello\n'));
 
     expect(result.status, `hook stderr: ${result.stderr}`).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
+    expect(rows().map((row) => row.slice(0, 2))).toEqual([['passed', RUNNER_LABEL]]);
   }, 60_000);
 
   it('a Write one segment past a protected entry passes: the generated list matches segments, not prefixes', () => {
@@ -272,7 +279,7 @@ describe('tarball install, init, and two real judgments', () => {
     const result = spawnConsumerHook(writePayload(NEAR_MISS_TARGET, '{}'));
 
     expect(result.status, `hook stderr: ${result.stderr}`).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['passed', ADAPTER_LABEL, '-']]);
+    expect(rows().map((row) => row.slice(0, 2))).toEqual([['passed', RUNNER_LABEL]]);
   }, 60_000);
 
   it('a Bash sed -i on the generated settings registration blocks on the shell axis: exit 2', () => {
@@ -284,7 +291,6 @@ describe('tarball install, init, and two real judgments', () => {
 
     expect(result.status).toBe(2);
     expect(rows()).toEqual([
-      BASELINE_FIRST_RUN_ROW,
       ['passed', 'self-mod', SETTINGS_REL],
       ['blocked', 'shell-mod', SETTINGS_REL],
     ]);
@@ -293,14 +299,13 @@ describe('tarball install, init, and two real judgments', () => {
   it('a Write into the generated settings registration blocks: exit 2, blocked verdict row', () => {
     // Fail-open is the defect class this suite exists for: the packed artifact must still
     // BLOCK a mutation of the file that registers the judge. The rows pin WHO answered — a
-    // fail-closed crash exits 2 under the adapter label with no self-mod verdict, so the
-    // exit code alone could go green while the judge never judged.
+    // fail-closed crash exits 2 under the runner's own label with no self-mod verdict, so
+    // the exit code alone could go green while the judge never judged.
     const result = spawnConsumerHook(writePayload(SETTINGS_REL, '{}'));
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(SETTINGS_REL);
     expect(rows()).toEqual([
-      BASELINE_FIRST_RUN_ROW,
       ['blocked', 'self-mod', SETTINGS_REL],
       ['passed', 'shell-mod', SETTINGS_REL],
     ]);

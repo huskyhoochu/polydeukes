@@ -76,6 +76,11 @@ const KEPT_EXPORTS: readonly string[] = [
   'COMMAND_ARGS',
   'MUTATING_TOOLS',
   'SHELL_TOOLS',
+  // the session entry point the generated delegator calls: builds the IR and spawns
+  // `pdks covenant check`, with the spec and outcome types its signature names
+  'runHook',
+  'RunHookSpec',
+  'RunHookOutcome',
 ];
 
 /**

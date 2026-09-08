@@ -24,7 +24,7 @@ what a consumer reaches is the bin, the session subpath, and the schema file.
 | Command | Purpose |
 |---|---|
 | `pdks covenant check` | Judge an input IR (default) or a unified diff (`--diff`) from stdin |
-| `pdks init claude-code` | Install the Claude Code session surface |
+| `pdks init` | Create the project scaffold: config file and telemetry ignore line |
 | `pdks init grok` | Install the Grok session surface |
 | `pdks explain` | Render the assembled registration table without judging |
 | `pdks docs [topic]` | Read a bundled topic |

@@ -14,9 +14,11 @@ to be written.
 
 Use this when the project is developed alongside an AI partner in Claude Code.
 
-1. Install the package as a project dependency: `pnpm add -D polydeukes`. A one-off `npx` run is
-   not enough — both surfaces load the judge from the project's own installed package.
-2. Wire the project: `pnpm exec pdks init claude-code`.
+1. Install both packages as project dependencies: `pnpm add -D polydeukes
+   @polydeukes/adapter-claude-code`. A one-off `npx` run is not enough — both surfaces load the
+   judge from the project's own installed package.
+2. Wire the project from its root: `pnpm exec pdks-claude-code init`. The adapter ships this bin;
+   it runs `pdks init` for the scaffold, then writes the Claude Code registration artifacts.
 3. Keep the generated hook file, settings merge, starter config, discovery rule, and
 discipline-draft skill.
 4. Reopen the project when the hook changes. The generated hook is a delegator, so upgrading the
@@ -32,14 +34,19 @@ described problem into either a judged entry or a draft entry.
 
 Use this when the project is developed in Grok.
 
-1. Install the package as a project dependency: `pnpm add -D polydeukes`.
+1. Install both packages as project dependencies: `pnpm add -D polydeukes @polydeukes/adapter-claude-code`.
+   The Grok registration reuses the Claude delegator when one exists, and that delegator loads
+   the adapter.
 2. Wire the project: `pnpm exec pdks init grok`.
 3. Reload the Hooks tab or open a new session after the installer finishes.
 
-A Grok tree gets its own hook JSON under `.grok/hooks/`. When a Claude hook already exists, the Grok
-command points at that file so the host does not spawn two judges. If the tree also has
+A Grok tree gets its own hook JSON under `.grok/hooks/`. When a Claude delegator already exists,
+the Grok command points at that file so the host does not spawn two judges. If the tree also has
 `.claude/settings.json`, the Grok matcher follows the Claude registration that names the same
-command, because Grok collapses the two registrations only when command and matcher match.
+command, because Grok collapses the two registrations only when command and matcher match. Run
+`pdks init grok` after `pdks-claude-code init`: in the other order the Grok registration keeps
+its own delegator, and a tree carrying both registrations spawns two judges per call until a
+Grok adapter ships.
 Generated registrations use a timeout of 60 seconds. The Grok host default is 5 seconds, and a
 timed-out hook fails open.
 

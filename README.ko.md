@@ -13,7 +13,8 @@ bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지 `polydeukes`입
 ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
 ```sh
-pdks init claude-code    # 프로젝트에 Claude Code 세션 표면을 배선
+pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
+pdks-claude-code init    # Claude Code 세션 표면을 배선 (@polydeukes/adapter-claude-code가 제공)
 pdks init grok           # 프로젝트에 Grok 세션 표면을 배선
 git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
 git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에

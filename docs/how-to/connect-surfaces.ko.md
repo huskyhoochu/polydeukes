@@ -12,9 +12,11 @@
 
 Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
-1. 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes`. 일회성 `npx` 실행만으로는
-   부족합니다. 두 표면 모두 프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
-2. 프로젝트를 배선합니다. `pnpm exec pdks init claude-code`.
+1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes
+   @polydeukes/adapter-claude-code`. 일회성 `npx` 실행만으로는 부족합니다. 두 표면 모두
+   프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
+2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-claude-code init`. 이 실행 파일은 어댑터가
+   제공하며, 먼저 `pdks init`으로 초기 파일을 만든 뒤 Claude Code 등록 산출물을 씁니다.
 3. 생성된 훅, 병합된 설정, 초기 설정 파일, 문서 안내와 `discipline-draft` 스킬을 확인합니다.
 4. 훅이 바뀌면 프로젝트를 다시 엽니다. 생성된 훅은 패키지에 판정을 위임하므로 패키지를
    갱신할 때 훅 파일까지 다시 쓸 필요는 없습니다.
@@ -29,14 +31,17 @@ Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
 Grok에서 개발할 때 씁니다.
 
-1. 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes`.
+1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/adapter-claude-code`.
+   Grok 등록은 Claude 위임자가 있으면 그 파일을 재사용하고, 그 위임자가 어댑터를 불러오기 때문입니다.
 2. 프로젝트를 배선합니다. `pnpm exec pdks init grok`.
 3. 설치가 끝나면 Hooks 탭을 다시 불러오거나 새 세션을 엽니다.
 
 Grok 프로젝트에는 `.grok/hooks/` 아래에 훅 JSON 파일이 생깁니다. Claude 훅이 이미 있으면
 Grok의 `command`도 그 파일을 가리킵니다. `.claude/settings.json`도 있다면 같은 `command`를
 등록한 Claude 항목에 맞춰 Grok의 `matcher`를 설정합니다. 두 값이 모두 같아야 Grok가 중복 등록을
-하나로 처리해 판정기를 두 번 실행하지 않기 때문입니다.
+하나로 처리해 판정기를 두 번 실행하지 않기 때문입니다. `pdks init grok`은 `pdks-claude-code init`
+뒤에 실행합니다. 순서가 반대이면 Grok 등록이 자기 위임자를 따로 갖게 되고, 두 등록을 모두 가진
+프로젝트는 Grok 어댑터가 나오기 전까지 호출마다 판정기를 두 번 실행합니다.
 새 등록의 제한 시간은 60초입니다. Grok 호스트의 기본값은 5초이며, 훅 실행이 시간 초과로
 끝나면 해당 호출을 차단하지 않습니다(fail-open).
 

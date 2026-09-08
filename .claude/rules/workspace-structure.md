@@ -20,7 +20,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
   `pdks` CLI entry point — since ADAPTER-git the bin is real. Subcommands:
   `covenant check` (the judgment runner over an input IR or a unified diff on stdin),
-  `init claude-code` (the Claude Code session-surface installer, since DIST-02),
+  `init` (the agent-neutral project scaffold — config file and telemetry ignore line — since
+  SURFACE-03b; the Claude Code registration moved to the adapter's own `pdks-claude-code init`),
   `init grok` (the Grok session-surface installer, since DIST-06), `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), and `explain` (the assembled-registration renderer, since CLI-01).
@@ -38,7 +39,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   session evidence since SURFACE-03a) and `runClaudeCodeHook` (the in-process session path,
   until SURFACE-04 rewires this repository's hook) — because assembly needs an
   adapter AND the judge at once, which no sibling may depend on. That is the umbrella's structural
-  privilege, not a convenience: it is the only package allowed to reach sideways. Only
+  privilege, not a convenience: until SURFACE-04 it is the only package that reaches a sibling
+  adapter. Only
   umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in
   scoped `@polydeukes/*` packages. The loader feeds the
   judges, so its `dist` is on the protected list (a gitignored judge executable no commit can
@@ -48,13 +50,18 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
-- **Dependency direction is one-way:** every other package (`ledger`, `memory`,
-  `verify`, `adapter-*`) depends only on `core` — never on each other. The umbrella `polydeukes` may
-  re-export them, but core must never depend on any sibling. Enforce this when adding packages.
-- **The kind of that dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,
+- **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`)
+  depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
+  adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
+  `pdks` bin and ships its own bin (`pdks-claude-code`) — and never as a devDependency: while the
+  umbrella still depends on the adapter for its old in-process path, a devDependency would
+  close a cycle in turbo's task graph and the build refuses to run. That umbrella dependency
+  goes with SURFACE-04. Enforce this when adding packages.
+- **The kind of the core dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,
   paired with a `devDependencies` entry so each package still builds and tests alone.
-  The umbrella alone takes core as an ordinary dependency, and that is what satisfies the peer —
-  a consumer still installs one package. The reason is runtime identity rather than types: a
+  The umbrella takes core as an ordinary dependency, and that is what satisfies the peer in a
+  consumer tree that installs the umbrella and one adapter. The reason is runtime identity
+  rather than types: a
   value tuple like `SOURCE_KINDS` and the `parseInput` validation have to be ONE copy for the
   validator and the engine to agree, and two copies would disagree silently instead of failing
   at install time.

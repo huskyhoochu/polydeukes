@@ -17,8 +17,8 @@ mkdir pdks-example
 cd pdks-example
 git init
 printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes   # a project dependency, not a one-off npx run
-pnpm exec pdks init claude-code
+pnpm add -D polydeukes @polydeukes/adapter-claude-code   # project dependencies, not a one-off npx run
+pnpm exec pdks-claude-code init
 ```
 
 The installer reports `created` or `skipped` for each artifact. It creates a starter config,

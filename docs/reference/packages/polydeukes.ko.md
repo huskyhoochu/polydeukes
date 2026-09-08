@@ -24,7 +24,7 @@
 | 명령 | 목적 |
 |---|---|
 | `pdks covenant check` | 표준 입력의 입력 IR(기본) 또는 통합 diff(`--diff`)를 판정 |
-| `pdks init claude-code` | Claude Code 세션 표면 설치 |
+| `pdks init` | 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목 |
 | `pdks init grok` | Grok 세션 표면 설치 |
 | `pdks explain` | 조립된 등록표를 판정 없이 표시 |
 | `pdks docs [topic]` | 동봉된 주제를 읽음 |

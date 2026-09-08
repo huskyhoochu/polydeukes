@@ -12,6 +12,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "pdks-claude-code": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -40,6 +43,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@polydeukes/core": "workspace:^"
+    "@polydeukes/core": "workspace:^",
+    "polydeukes": "workspace:^"
   }
 }

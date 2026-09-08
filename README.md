@@ -14,7 +14,8 @@ and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
 memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
-pdks init claude-code    # wire the Claude Code session surface into a project
+pdks init                # create the project scaffold: config file and telemetry ignore line
+pdks-claude-code init    # wire the Claude Code session surface (ships with @polydeukes/adapter-claude-code)
 pdks init grok           # wire the Grok session surface into a project
 git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
 git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree

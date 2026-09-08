@@ -18,7 +18,7 @@ Public contract entry points:
 CLI commands:
 
 - `pdks covenant check`
-- `pdks init claude-code`
+- `pdks init`
 - `pdks init grok`
 - `pdks explain`
 - `pdks docs [topic]`

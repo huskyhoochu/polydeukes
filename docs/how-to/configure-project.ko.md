@@ -36,8 +36,8 @@ YAML 파일에는 다음 줄을 넣어 설치된 스키마를 편집기에서 �
 # yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
 ```
 
-`pdks init claude-code`는 생성한 설정 파일을 기준으로 기본 경로의 스키마를 찾을 수 있을 때만
-스키마 줄을 넣습니다. 이 줄이 없다면 스키마 위치에 맞춰 상대 경로를 직접 추가하세요.
+`pdks init`은 생성한 설정 파일을 기준으로 기본 경로의 스키마를 찾을 수 있을 때만 스키마 줄을
+넣습니다. `pdks-claude-code init`이 이 명령을 대신 실행합니다. 이 줄이 없다면 스키마 위치에 맞춰 상대 경로를 직접 추가하세요.
 `$schema` 경로를 찾지 못하면 편집기에 오류가 표시되지 않은 채 스키마 검증이 중단될 수 있습니다.
 
 우산이 아니라 `@polydeukes/core`를 직접 설치했다면 그 사본을 가리킵니다.

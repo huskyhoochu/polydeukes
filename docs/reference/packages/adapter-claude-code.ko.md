@@ -2,11 +2,11 @@
 
 [English](adapter-claude-code.md) · **한국어**
 
-> **세션 표면의 번역기**입니다. PreToolUse 페이로드가 약속(covenant) 입력 IR이 되고,
-> 판정기가 읽는 파일 변경 증거와 대화 기록(transcript) 통로가 함께 실립니다.
+> **Claude Code의 설치 단위**입니다. PreToolUse 페이로드가 약속(covenant) 입력 IR이 되고,
+> 판정기가 읽는 파일 변경 증거와 대화 기록(transcript) 통로가 함께 실립니다. 세션 표면을
+> 프로젝트에 설치하는 것도 이 패키지가 합니다.
 >
-> 알파입니다. 통합 패키지의 의존성으로 설치되므로 일반 사용자가 따로 설치하거나 불러올 필요는 없습니다. 세션 표면은
-> [`polydeukes/claude-code`](polydeukes.ko.md#session-export)를 통해 닿습니다.
+> 알파입니다. `polydeukes`와 함께 설치하며, `polydeukes`는 이 패키지의 `peerDependency`입니다.
 
 <a id="ownership"></a>
 ## 담당하는 기능
@@ -16,15 +16,22 @@ Claude Code의 입력을 공통 형식으로 번역합니다. 에이전트와 �
 
 | 단위 | 하는 일 |
 |---|---|
+| `pdks-claude-code` 실행 파일 | 하위 명령 하나 `pdks-claude-code init`으로 프로젝트에 세션 표면을 등록합니다 |
+| `runHook` | PreToolUse 페이로드 하나를 입력 IR로 바꾸고 판정기를 스폰합니다 |
 | 페이로드 상향 번역 | 원본 PreToolUse 페이로드가 `CovenantInput`이 됩니다 |
 | 예상 변경 후 상태 | 편집이 적용되면 파일이 무엇을 담을지 디스크를 건드리지 않고 계산합니다 |
 | 파일 변경 증거 | 디스크의 변경 전 상태와 예상 변경 후 상태를 짝지어 변경 증거를 만듭니다 |
 | 대화 기록(transcript) 제공자 | 세션 JSONL 파일을 `CanonicalTranscript`로 바꿉니다 |
-| 텔레메트리 배선 | 전체 처리 경로에서 호출이 기록되도록 연결합니다 |
 
-이 패키지는 약속(covenant) 패키지를 결코 불러오지 않습니다. 판정 전달 함수는 통합 패키지가
-**주입**하고, 그래서 의존은 코어를 통해 한 방향으로만 흐릅니다. `@polydeukes/core`는
-`peerDependency`로 부릅니다. 판정기와 같은 어휘를 공유하며 별도 사본을 설치하지 않습니다.
+생성된 훅 위임자가 불러오는 것이 `runHook({ repoRoot })`입니다. `tools`와 `session` 증거를
+실은 입력 IR을 만든 뒤 `repoRoot`에서 `pdks covenant check --enforce block`을 스폰하고 그
+자식 프로세스의 종료 코드를 그대로 돌려줍니다. 판정은 그 자식 프로세스가 하며, 이 패키지에는
+판정 코드가 없습니다.
+
+**이 패키지는 텔레메트리 행을 쓰지 않습니다.** 스폰 전에 실패하면 그 사실을 한 줄로 만들어
+`pdks`의 표준 입력으로 보내고, `pdks`가 fail-closed 행을 기록합니다. 호출 하나에 행 하나는
+그대로입니다. 판정기를 불러오지도 않습니다. `polydeukes`와 `@polydeukes/core` 모두
+`peerDependencies`이므로 어휘와 판정기를 공유할 뿐 사본을 따로 설치하지 않습니다.
 
 <a id="translation"></a>
 ## 페이로드 번역과 세 축
@@ -62,9 +69,22 @@ Claude Code의 입력을 공통 형식으로 번역합니다. 에이전트와 �
 <a id="consumer-contract"></a>
 ## 사용자와의 접점
 
-- **생성된 훅.** 통합 패키지의 `claude-code` 서브패스를 통해 이 어댑터를 불러옵니다. 패키지를 갱신하면 실행할 구현도 바뀌지만 훅 파일은 그대로입니다.
+프로젝트 루트에서 두 줄이면 Claude Code 세션 표면이 섭니다.
 
-일반 사용자가 직접 불러올 필요는 없으며 별도 설정 네임스페이스도 없습니다.
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npx pdks-claude-code init
+```
+
+`pdks-claude-code init`은 프로젝트에서 `polydeukes`를 찾고, 에이전트와 무관한 초기 파일을
+만드는 `pdks init`을 스폰한 뒤, Claude Code 산출물 넷을 기존 파일을 덮지 않고 씁니다.
+다시 실행하면 이미 있는 산출물마다 `skipped`로 보고하고 아무것도 덮어쓰지 않습니다.
+산출물 전체 목록은 [`pdks init`](../cli/init.ko.md#init-claude-code)에 있습니다.
+
+- **생성된 훅.** 이 패키지의 `runHook`을 불러옵니다. 패키지를 갱신하면 실행할 구현도 바뀌지만
+  훅 파일은 그대로입니다.
+
+별도 설정 네임스페이스는 없습니다.
 
 <a id="limits"></a>
 ## 선언된 한계
@@ -81,3 +101,11 @@ Claude Code의 입력을 공통 형식으로 번역합니다. 에이전트와 �
   경로가 언급됐는지 대조합니다.
 - **저장소 밖 조상은 범위 밖입니다.** 프로젝트 루트 위의 경로는 여기서 관측하지 않습니다.
   그 범위는 에이전트 실행 환경의 권한 정책으로 제한해야 합니다.
+- **`polydeukes`를 찾지 못하면 행이 남지 않습니다.** 프로젝트에서 우산 패키지를 찾지 못하면
+  스폰할 프로세스도, 기록할 로그 경로도 없습니다. 훅은 stderr에 한 줄을 남기고 종료 코드
+  `2`를 내며 텔레메트리 로그에는 아무것도 추가되지 않습니다. 스폰 전 실패 가운데 이 경우만
+  그렇고, 나머지는 모두 `pdks`에 도달해 행을 남깁니다.
+- **이 위임자를 재사용하는 Grok 프로젝트는 Grok 도구 이름을 여기로 보냅니다.**
+  `pdks init grok`은 위임자를 새로 만들지 않고 이미 있는 Claude 위임자를 Grok 등록이
+  가리키게 합니다. 그래서 Grok 페이로드가 이 어댑터에 도착합니다. 그 도구 이름은 Claude의
+  것이 아니므로 Grok 어댑터가 나오기 전까지는 메타 약속이 그 호출을 라우팅하지 않습니다.

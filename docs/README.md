@@ -55,7 +55,7 @@ in the whitepaper, which were all found by counting rows rather than by reading 
 
 | Surface | Judges | Wired by | For |
 |---|---|---|---|
-| **Session** | A tool call, before it runs | `pdks init claude-code` or `pdks init grok` | A project developed with an AI partner |
+| **Session** | A tool call, before it runs | `pdks-claude-code init` or `pdks init grok` | A project developed with an AI partner |
 | **Commit** | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand | A human developing alone, and CI |
 
 The commit judge also answers on demand: `git diff HEAD | pdks covenant check --diff` after a task,
