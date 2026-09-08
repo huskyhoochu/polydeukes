@@ -71,20 +71,13 @@ docs' shared language?** The public surface is `docs/why-polydeukes.md` (+ `.ko.
 in-flight designs. This is the public counterpart of the dev-log question: dev-log feeds
 internal memory, this feeds the common language outsiders can understand.
 
-If yes, do the smallest honest thing this session: fill one `TODO` section, add one
-sentence, or park the candidate on a **durable surface** — one line inside the target
-section's `TODO`/parked-candidates comment in `docs/why-polydeukes.md` (both languages).
-The `### Post-task` block alone does not count: it lives only in the session transcript,
-so a candidate recorded nowhere else evaporates when the session ends (this exact leak
-ate the CONFIG-04 candidate before it was recovered by hand). If no, record
-`public docs: none` explicitly.
-
-**Discharge is part of this check.** Whenever this session published into
-`docs/build-in-public/` or `docs/why-polydeukes.md`, re-read the parked-candidates comment in
-**both** language files and delete every candidate the publication satisfied. Nothing else
-removes an entry, so a published candidate stays in the queue until this step does it (the
-2026-09-02 audit found two, and two more that existed in one language only). A candidate
-whose condition is only partly met stays, with the unmet half named.
+If yes, promote it this session: add the sentence or fill the section in both language
+files, in the present tense, as a decision and its reason. If the decision is real but its
+public statement is not yet true (it depends on a ticket that has not merged), it is a "no"
+for this check: record the candidate in the ticket's PRD §8 or a dev-log in `_docs/`, and
+the ticket that makes it true promotes it. Nothing is parked in the public files — no
+`TODO`, no parked-candidates comment, no marker of any kind (`.claude/rules/current-state-only.md`);
+a public file is either changed or left alone. If no, record `public docs: none` explicitly.
 
 ## The mandatory block
 
@@ -95,7 +88,7 @@ Emit this before proceeding to the PR (or the final commit):
 - TSDoc: <files documented, or "no exported symbols changed">
 - Docs drift: <stale sentence found + fix applied | "no drift" (checked: <files>)>
 - Dev-log: <_docs/knowledge/<scope>.dev-log.<name>.md — one-line conclusion | "none">
-- Public docs: <section filled / sentence added / candidate noted: <what> | "none">
+- Public docs: <section filled / sentence added: <what> | "none" (candidate, if any, recorded in <PRD §8 | dev-log>)>
 ```
 
 The user may exempt a run via the literal phrase `skip post-task` in their **most recent**
