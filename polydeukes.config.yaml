@@ -499,6 +499,27 @@ disciplines:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
           message: "no successful read of an adapter.dev-log or adapter.research entry precedes this edit"
+  - id: "prd-needs-its-method-read"
+    why: "a PRD names its writing method in its own header, and citing that file is not reading it. the shape of earlier PRDs is easy to copy and the method is what catches an unsatisfiable criterion — measured 2026-09-08, when a requirement table citing this method carried a criterion no implementation could ever satisfy."
+    declare:
+      mechanism: "precedent"
+      scope: { source: "target.path", include: ["^_docs/prd/"] }
+      sources: { session: { transcript: true } }
+      supply: { session: "pass" }
+      extract:
+        reads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - {
+              op: "matches",
+              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bfirst-principles-prd\b',
+            }
+      relate:
+        - id: "read-first"
+          relation: { op: "nonEmpty", of: "reads" }
+          message: "no successful read of foundation.research.first-principles-prd precedes this PRD edit"
   - id: "tests-before-implementation"
     why: "the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after."
     declare:
