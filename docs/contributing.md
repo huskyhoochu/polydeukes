@@ -56,8 +56,9 @@ repository's protected files. Prefer `git diff HEAD | pdks covenant check --diff
 file-backed examples and the hook probe in [the first-judgment tutorial](./tutorials/first-judgment.md)
 for session writes.
 
-TypeScript examples import only symbols the package contract exports (`polydeukes` and
-`polydeukes/claude-code`).
+TypeScript examples import only symbols a package contract exports. The umbrella
+publishes no TypeScript entry point — it is reached as the `pdks` bin — so those symbols
+come from `@polydeukes/core` or an agent adapter.
 
 Before committing a docs change, run:
 

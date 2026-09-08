@@ -21,11 +21,10 @@ const CLAUDE_DIR_LITERAL = '.claude/';
  */
 const UMBRELLA_DECLARED_CARRIERS = ['scaffold-project.ts'];
 /**
- * The one adapter file still writing rows: the in-process session path the umbrella's
- * `runClaudeCodeHook` calls until this repository's own hook is rewired to `runHook`. It is
- * the parity oracle and is left unchanged; every other adapter file writes none.
+ * No adapter file writes a row: every verdict this package's calls earn is the spawned
+ * judge's, so the set of declared writers here is empty.
  */
-const ADAPTER_DECLARED_ROW_WRITERS = ['run-adapter-path.ts'];
+const ADAPTER_DECLARED_ROW_WRITERS: string[] = [];
 
 const stripComments = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -57,7 +56,7 @@ type Manifest = {
 const manifest = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf-8')) as Manifest;
 
 describe('the adapter writes no row and loads no umbrella module', () => {
-  it('has zero appendRecord calls under src outside the old in-process path', () => {
+  it('has zero appendRecord calls anywhere under src', () => {
     // The row a call leaves on the spawn path is written by `pdks` alone. A second writer
     // means a pre-spawn failure lands two rows, or lands one under a label the runner never
     // uses, and the one-call-one-row accounting the log is read by breaks. The set is

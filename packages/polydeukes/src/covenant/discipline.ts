@@ -59,6 +59,13 @@ type ShellSurface = {
  * `observesChangeSet` says whether this surface's input carries the observation unit's whole
  * change set. Absent means true — the declaration judges the change set derived from the
  * input, which is what every surface did before the flag existed.
+ *
+ * `observesPreState` says whether this surface has a pre-state channel at all. Absent means
+ * true — the reader answers per location, and its `undefined` is that one location failing.
+ * False is a surface that can never answer, so a shell write it derives yields no world
+ * rather than the unjudgeable exit: an absent channel is an environment fact, not a break.
+ * That write routes to the entry's skip arm, since an entry handed no world would otherwise
+ * answer pass for a file it never read.
  */
 export type CompileDisciplinesSpec = {
   disciplines: DisciplineEntry[];
@@ -67,6 +74,7 @@ export type CompileDisciplinesSpec = {
   commandArgs: string[];
   readPreState: (location: string) => string | null | undefined;
   observesChangeSet?: boolean;
+  observesPreState?: boolean;
   witness?: CovenantRegistration['witness'];
   transcript?: CanonicalTranscript;
 };
@@ -356,6 +364,15 @@ function firstAdmittedPath(
 }
 
 /**
+ * Whether a surface completes a computable shell write into a file world at all. Without a
+ * pre-state channel the derivation stops at the command text, so such a write is as
+ * uncomputable here as one this layer's table refuses.
+ */
+function completesShellWrites(spec: CompileDisciplinesSpec): boolean {
+  return spec.observesPreState !== false;
+}
+
+/**
  * Whether an entry's shell-delivered writes are attributable to it — a declaration that
  * compiles has a scope to attribute them by, and one that does not compile defines no match.
  */
@@ -374,6 +391,10 @@ function hasShellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): 
  * The per-entry skip registration: a detected write in this entry's scope whose result
  * cannot be computed records one `skipped` under the entry's own label, keeping the gain
  * aggregation in one group instead of falling to the common backstop.
+ *
+ * On a surface with no pre-state channel the computable writes join them, because there the
+ * judging arm receives no world for such a write either: routing it there would record the
+ * entry as having judged a file it never read.
  */
 function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): CovenantRegistration {
   const opts: ShellSurface = {
@@ -382,21 +403,29 @@ function shellSkipArm(entry: DisciplineEntry, spec: CompileDisciplinesSpec): Cov
     commandArgs: spec.commandArgs,
     readPreState: spec.readPreState,
   };
-  // This arm carries the UNCOMPUTABLE writes only — a computable one becomes a file change
-  // the judging arm sees, so admitting it here would leave one call two rows.
+  // Where the surface completes them, this arm carries the UNCOMPUTABLE writes only — a
+  // computable one becomes a file change the judging arm sees, so admitting it here would
+  // leave one call two rows.
+  const completes = completesShellWrites(spec);
   const compiled = compileEntryDeclaration(entry);
-  const uncomputable = (input: CovenantInput): string[] =>
-    deriveShellSignals(input, opts).unjudgeable.flatMap((signal) => signal.path ?? []);
+  const unjudgeable = (input: CovenantInput): string[] => {
+    const signals = deriveShellSignals(input, opts);
+    const paths = signals.unjudgeable.flatMap((signal) => signal.path ?? []);
+    if (completes) return paths;
+    return [...paths, ...signals.evidence.map((derived) => derived.change.path)];
+  };
   const scoped = isFault(compiled)
     ? () => null
-    : (input: CovenantInput) => firstAdmittedPath(compiled, uncomputable(input), spec.rootDir);
+    : (input: CovenantInput) => firstAdmittedPath(compiled, unjudgeable(input), spec.rootDir);
 
   return {
     label: entry.id,
     protectedPaths: [],
     matches: scoped,
     skip: {
-      reason: 'a shell write in scope whose result this layer cannot compute',
+      reason: completes
+        ? 'a shell write in scope whose result this layer cannot compute'
+        : 'a shell write in scope on a surface with no pre-state channel to complete it',
       kind: 'no-observation',
     },
   };
@@ -661,6 +690,11 @@ function declareRegistration(
   // the body's channel — asking here would read the disk once per routing pass as well.
   // File-change evidence already carries its own worlds, and a shell write contributes the
   // path it names; whether that write is in scope is settled from `target.path` alone.
+  //
+  // The shell fallback belongs to a surface that completes such a write. Where none does,
+  // the body would be handed no world for it and answer pass, so the write routes to this
+  // entry's skip arm instead and the missing channel is what the row records.
+  const completes = completesShellWrites(spec);
   const route = (input: CovenantInput): string | null => {
     const fixed = worldsFromInput({
       input,
@@ -669,10 +703,11 @@ function declareRegistration(
       commandArgs: spec.commandArgs,
     });
     const values = sourceValues(bindings, fixed, input.world, spec.transcript);
-    return (
-      fixed.find((supplied) => scopeAdmits(compiled, { ...supplied.world, ...values }))?.path ??
-      firstAdmittedShellWrite(compiled, input, opts, spec.rootDir)
-    );
+    const matched = fixed.find((supplied) =>
+      scopeAdmits(compiled, { ...supplied.world, ...values }),
+    )?.path;
+    if (matched !== undefined) return matched;
+    return completes ? firstAdmittedShellWrite(compiled, input, opts, spec.rootDir) : null;
   };
 
   // A surface that dispatches its whole observation at once derives a one-element change
@@ -764,6 +799,12 @@ export function compileDisciplineRegistrations(
 ): CovenantRegistration[] {
   // One enrichment per input, shared by every declaration: the pre-state reader is opened
   // once for a call however many entries judge it, and they all judge the same world.
+  //
+  // A surface with no pre-state channel completes no shell evidence: the enrichment's every
+  // read would answer `undefined`, which means "this location failed" and would block the
+  // call. That reading is right for a surface that has the channel and lost one location,
+  // and wrong for one that never had it — there the input's own file changes are the whole
+  // evidence, and a declaration reading nothing else judges as it would with no shell call.
   const shell: ShellSurface = {
     rootDir: spec.rootDir,
     shellTools: spec.shellTools,
@@ -772,6 +813,7 @@ export function compileDisciplineRegistrations(
   };
   const enrichedOf = new WeakMap<CovenantInput, CovenantInput>();
   const enrich = (input: CovenantInput): CovenantInput => {
+    if (spec.observesPreState === false) return input;
     const cached = enrichedOf.get(input);
     if (cached !== undefined) return cached;
     const enriched = enrichWithShellEvidence(input, shell);

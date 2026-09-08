@@ -12,11 +12,12 @@
 | 지정자 | 무엇인가 |
 |---|---|
 | `pdks` / `polydeukes` | 실행 파일입니다. `bin`에 이름 둘로 등록된 같은 CLI입니다 |
-| `polydeukes/claude-code` | `runClaudeCodeHook`과 입력·결과 타입 |
 | `polydeukes/schema.json` | 동봉된 설정 JSON Schema |
 
 `.` 진입점은 없습니다. `import 'polydeukes'`는 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패합니다.
-사용자가 닿는 것은 실행 파일과 세션 서브패스, 그리고 스키마 파일입니다.
+사용자가 닿는 것은 실행 파일과 스키마 파일입니다. 세션 표면도 셸과 같은 방법으로 이
+패키지에 닿습니다. 즉 `pdks covenant check`를 스폰하므로, 에이전트 어댑터는 이 패키지를
+import하지 않고 peer 의존으로 선언합니다.
 
 <a id="polydeukes-bin"></a>
 ## CLI 명령
@@ -37,25 +38,6 @@
 
 <a id="polydeukes-export-map"></a>
 ## 공개 심볼
-
-<a id="session-export"></a>
-### `./claude-code`
-
-| 심볼 | 종류 | 메모 |
-|---|---|---|
-| `runClaudeCodeHook` | 함수 | 세션 표면을 실행하고 `{ exitCode: 0 \| 2 }`를 반환합니다. |
-| `ClaudeCodeHookSpec` | 타입 | 세션 실행기 입력입니다. |
-| `ClaudeCodeHookOutcome` | 타입 | 세션 실행기 결과입니다. |
-
-```ts
-import { runClaudeCodeHook } from 'polydeukes/claude-code';
-
-const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}' });
-```
-
-`ClaudeCodeHookSpec`은 `repoRoot`(설정을 찾을 저장소), `rawPayload`(훅 페이로드 텍스트이며,
-없으면 훅이 표준 입력인 파일 디스크립터 0을 읽습니다), `telemetryPath`(판정 기록을 추가할
-위치)를 받습니다.
 
 <a id="schema-export"></a>
 ### `./schema.json`
@@ -175,7 +157,7 @@ fail-open입니다.
 <a id="polydeukes-failure-boundaries"></a>
 ## 실패 경계
 
-- `runClaudeCodeHook()`는 예외를 던지지 않고 `{ exitCode: 0 \| 2 }`를 반환합니다.
+- `runCovenantCheck()`는 예외를 던지지 않고 `{ exitCode: 0 \| 2 }`를 반환합니다.
 - 숫자 코드는 `@polydeukes/core`의 `EXIT_UPHOLD`(`0`), `EXIT_BREAK_NON_BLOCKING`(`1`),
   `EXIT_BREAK_BLOCKING`(`2`)입니다. 우산 실행기는 `0` 또는 `2`만 노출하며 `1`을 반환하지 않습니다.
 - `pdks covenant check`는 사람에게 묻지 않습니다. 표준 입력을 읽고 종료 코드 0 또는 2를 내며, 그 종료 코드의 뜻은 호출한 쪽이 정합니다.

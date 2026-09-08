@@ -11,7 +11,6 @@ Polydeukes는 우산 패키지입니다. 이 패키지 하나에 `pdks` 실행 �
 공개 계약 진입점은 다음과 같습니다.
 
 - `pdks` / `polydeukes` — 실행 파일
-- `polydeukes/claude-code` → `runClaudeCodeHook`
 - `polydeukes/schema.json`
 
 CLI 명령은 다음과 같습니다.
@@ -25,15 +24,11 @@ CLI 명령은 다음과 같습니다.
 <a id="public-symbols"></a>
 ## 공개 심볼
 
-```ts
-import { runClaudeCodeHook } from 'polydeukes/claude-code';
-
-function runClaudeCodeHook(spec: {
-  repoRoot: string;
-  rawPayload?: string;
-  telemetryPath?: string;
-}): Promise<{ exitCode: 0 | 2 }>;
-```
+없습니다. 이 패키지는 TypeScript 진입점을 공개하지 않습니다. `import 'polydeukes'`는
+`ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, 사용자가 닿는 것은 `pdks` 실행 파일과 동봉된
+스키마입니다. 표면은 판정기에 표준 입력으로 입력을 넘기고 종료 코드를 읽습니다. 에이전트
+어댑터의 훅이 하는 일이 바로 그것입니다. 이 패키지를 peer 의존으로 선언하고 import 없이
+실행 파일을 스폰합니다.
 
 <a id="see-also"></a>
 ## 같이 보기

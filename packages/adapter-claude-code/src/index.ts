@@ -10,12 +10,6 @@
 
 export { type RunHookOutcome, type RunHookSpec, runHook } from './hook.ts';
 export {
-  type AdapterPathOutcome,
-  type DispatchAdapterView,
-  type RunAdapterPathSpec,
-  runAdapterPath,
-} from './run-adapter-path.ts';
-export {
   type SessionChannelReaderSpec,
   sessionChannelReader,
 } from './session-channel-reader.ts';

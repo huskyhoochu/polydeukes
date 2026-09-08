@@ -249,11 +249,15 @@ describe('① session surface, passing payload (measured pre-conversion)', () =>
 describe('② session surface, blocking payload (measured pre-conversion)', () => {
   it('a Write targeting a protected file blocks: exit 2, blocked self-mod then passed shell-mod, the reason verbatim on stderr', () => {
     // The reason reaches stderr verbatim — never reformatted, dropped, or written twice.
+    // The transcript rides along because the baseline comparison is what a session call
+    // carries: it runs on the evidence the host proved, so a payload without one is a
+    // different observation, not the same one with less noise.
     const result = runHook({
       hook_event_name: 'PreToolUse',
       session_id: 's-1',
       tool_name: 'Write',
       tool_input: { file_path: `${PROTECTED_ENTRY}/pre-commit`, content: '#!/bin/sh\nexit 0\n' },
+      transcript_path: transcriptWithPrecedent(),
     });
 
     expect(result.status).toBe(2);

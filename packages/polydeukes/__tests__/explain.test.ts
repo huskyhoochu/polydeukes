@@ -3,10 +3,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
 import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
 import { covenantModule } from '../src/covenant/module.ts';
-import { assembleCommitRegistrations } from '../src/covenant-check.ts';
+import { assembleCheckRegistrations, assembleCommitRegistrations } from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { writeConfigAt } from './helpers.ts';
@@ -189,15 +188,19 @@ describe("explain renders the roots' own assembly", () => {
     expect(rendered).toEqual(expected);
   });
 
-  it('renders the session surface in the exact label order assembleSessionRegistrations returns', async () => {
+  it('renders the session surface in the exact label order the session assembly returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
     const { config } = loadConfig({ rootDir: repoRoot });
 
-    const expected = assembleSessionRegistrations({
+    const expected = assembleCheckRegistrations({
       config,
       rootDir: repoRoot,
       covenant: realCovenant,
-      transcriptPath: join(repoRoot, 'session.jsonl'),
+      session: {
+        evidencePath: join(repoRoot, 'transcript.jsonl'),
+        userMessages: [],
+        toolCalls: [],
+      },
     }).map((registration: CovenantRegistration) => registration.label);
     const { text } = await explain({ repoRoot });
     const rendered = kindLabelRows(surfaceSection(text, SESSION_HEADER)).map(([, label]) => label);
@@ -207,13 +210,16 @@ describe("explain renders the roots' own assembly", () => {
 });
 
 describe('the skip reasons surface with their entry', () => {
-  it("renders a declare entry's shell-skip arm under the entry id with its reason", async () => {
+  it('renders a declare entry once, with no shell-skip arm beside it', async () => {
+    // The shell arm exists only where a shell roster does, and a roster is what an adapter
+    // loads onto a call; a renderer that reads the config alone has none to name, so the
+    // entry renders as its judgment and nothing else.
     writeFixtureConfig([vocabEntry]);
 
     const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
     expect(linesOf(session, 'declare', VOCAB_ID)).toHaveLength(1);
-    expect(linesOf(session, 'skip', VOCAB_ID).join('\n')).toContain('shell write in scope');
+    expect(linesOf(session, 'skip', VOCAB_ID)).toHaveLength(0);
   });
 
   it('renders the shell-unjudgeable backstop with its reason on both surfaces', async () => {
@@ -266,17 +272,20 @@ describe('surface placement', () => {
     expect(lineOf(text, COMMIT_HEADER, 'meta', 'self-mod')).toMatch(/paths 3\b/);
   });
 
-  it('shell-mod and transcript-mod exist only on the session surface', async () => {
+  it('transcript-mod exists only on the session surface, and shell-mod on neither', async () => {
+    // transcript-mod follows the session's evidence path, which is the one session fact a
+    // config reader knows. shell-mod follows the roster, which it does not, so no surface
+    // rendered from the config alone carries it.
     writeFixtureConfig([]);
 
     const { text } = await explain({ repoRoot });
     const session = surfaceSection(text, SESSION_HEADER);
     const commit = surfaceSection(text, COMMIT_HEADER);
 
-    expect(linesOf(session, 'meta', 'shell-mod')).toHaveLength(1);
     expect(linesOf(session, 'meta', 'transcript-mod')).toHaveLength(1);
-    expect(linesOf(commit, 'meta', 'shell-mod')).toHaveLength(0);
     expect(linesOf(commit, 'meta', 'transcript-mod')).toHaveLength(0);
+    expect(linesOf(session, 'meta', 'shell-mod')).toHaveLength(0);
+    expect(linesOf(commit, 'meta', 'shell-mod')).toHaveLength(0);
   });
 });
 
@@ -312,16 +321,16 @@ describe('the tallies are the rendered lines', () => {
     }
   });
 
-  it('disciplines: [] — the smallest assembly is 4 session rows and 2 commit rows', async () => {
+  it('disciplines: [] — the smallest assembly is 3 session rows and 2 commit rows', async () => {
     writeFixtureConfig([]);
 
     const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
-      registrations: 4,
+      registrations: 3,
       declare: 0,
       skip: 1,
-      meta: 3,
+      meta: 2,
     });
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
       registrations: 2,
@@ -337,10 +346,10 @@ describe('the tallies are the rendered lines', () => {
     const { text } = await explain({ repoRoot });
 
     expect(summary(surfaceSection(text, SESSION_HEADER))).toEqual({
-      registrations: 11,
+      registrations: 7,
       declare: 4,
-      skip: 4,
-      meta: 3,
+      skip: 1,
+      meta: 2,
     });
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
       registrations: 6,

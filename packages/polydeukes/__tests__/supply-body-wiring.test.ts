@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import type { CovenantModule } from '../src/covenant/module.ts';
+import { runCovenantCheck } from '../src/covenant-check.ts';
 import { type RecordedCall, recordingCovenant, writeConfigAt } from './helpers.ts';
 
 // The two composition roots wire the supply layer; they implement no reading of their own.
@@ -54,16 +54,18 @@ describe('the roots wire the adapters’ supply verbs', () => {
   });
 });
 
-// An import alone is not a wiring, so the channel side is pinned by execution: the hook runs
-// against a session whose sidecar holds one spawn record, and the recording module observes
-// what the root handed the dispatcher. A root that builds the channel reader and drops the
-// supply result (or forwards `files` alone) leaves every sidecar declaration judging absence
-// on a session whose records are on disk.
+// An import alone is not a wiring, so the channel side is pinned by execution: the runner
+// judges an input whose session carries one spawn record, and the recording module observes
+// what the root handed the dispatcher. A root that reads the session's channels and drops
+// them (or forwards `files` alone) leaves every sidecar declaration judging absence on a
+// session whose records the host already observed.
 
 const SESSION_ID = 's-1';
 const SIDECAR = 'sidecar';
 const WRITER_META = { agentType: 'tdd-test-writer', toolUseId: 't1' };
 const TARGET_FILE = 'lib/a.ts';
+/** The name the host's mutating roster carries for this call — a value, not vocabulary. */
+const WRITE_TOOL = 'write-tool';
 
 let repoRoot: string;
 /** The transcript and its sidecar sit outside the repository the run observes. */
@@ -80,9 +82,6 @@ describe('the session root supplies the channel it read', () => {
     writeConfigAt(repoRoot, join(repoRoot, 'roi.log'), {});
     transcriptPath = join(outside, `${SESSION_ID}.jsonl`);
     writeFileSync(transcriptPath, '{"type":"user"}\n');
-    const subagents = join(outside, SESSION_ID, 'subagents');
-    mkdirSync(subagents, { recursive: true });
-    writeFileSync(join(subagents, 'agent-001.meta.json'), JSON.stringify(WRITER_META));
     const target = join(repoRoot, TARGET_FILE);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, 'export {};\n');
@@ -93,18 +92,30 @@ describe('the session root supplies the channel it read', () => {
     rmSync(outside, { recursive: true, force: true });
   });
 
-  it('the dispatch world carries the sidecar records the session had on disk', async () => {
-    await runClaudeCodeHook({
+  it('the dispatch world carries the sidecar records the session carried', async () => {
+    const path = join(repoRoot, TARGET_FILE);
+    await runCovenantCheck({
       repoRoot,
       covenant,
-      rawPayload: JSON.stringify({
-        hook_event_name: 'PreToolUse',
-        session_id: SESSION_ID,
-        transcript_path: transcriptPath,
-        cwd: repoRoot,
-        tool_name: 'Write',
-        tool_input: { file_path: join(repoRoot, TARGET_FILE), content: 'export {};\n' },
-      }),
+      telemetryPath: join(repoRoot, 'roi.log'),
+      input: {
+        toolCalls: [
+          {
+            name: WRITE_TOOL,
+            args: { file_path: path },
+            fileChange: { kind: 'create', path, post: 'export {};\n' },
+          },
+        ],
+        subagentSpawns: [],
+        userMessages: [],
+        tools: { mutating: [WRITE_TOOL], shell: [], commandArgs: [] },
+        session: {
+          evidencePath: transcriptPath,
+          userMessages: [],
+          toolCalls: [],
+          channels: { [SIDECAR]: JSON.stringify([WRITER_META]) },
+        },
+      },
     });
 
     const worlds = calls()

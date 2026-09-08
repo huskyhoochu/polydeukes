@@ -17,7 +17,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // suite is honest; invoking this file alone after editing a judge reports on the previous
 // build until `pnpm build` runs. This file deliberately carries no rebuild of its own —
 // a suite that rebuilds mid-edit is how a session locks itself out.
-import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';
@@ -26,6 +25,9 @@ import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';
 const DECLARE_ID = 'docs-stay-bilingual';
 const KO_FOLLOWS = 'ko-follows';
 const EN_FOLLOWS = 'en-follows';
+/** The name the host's mutating roster carries for this call — a value, not vocabulary. */
+const EDIT_TOOL = 'edit-tool';
+
 const EN_DOC = 'README.md';
 const KO_DOC = 'README.ko.md';
 const STEM = 'README';
@@ -242,22 +244,25 @@ describe('the two surfaces answer the same edit differently, by declaration', ()
     // a session with no row at all is a declaration that went inert; and a commit that
     // also skips has lost the only surface that can judge this declaration.
     expect(readFileSync(join(sessionRoot, EN_DOC), 'utf-8')).toBe(EN_BASE);
-    const rawPayload = JSON.stringify({
-      hook_event_name: 'PreToolUse',
-      session_id: 's-1',
-      cwd: sessionRoot,
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: join(sessionRoot, EN_DOC),
-        old_string: EN_BASE,
-        new_string: EN_EDITED,
-      },
-    });
-
-    const session = await runClaudeCodeHook({
+    const path = join(sessionRoot, EN_DOC);
+    const session = await runCovenantCheck({
       repoRoot: sessionRoot,
-      rawPayload,
       telemetryPath: sessionLog,
+      // The IR an adapter hands in for one live edit, session key included: this surface
+      // observes one call rather than the change set the declaration needs.
+      input: {
+        toolCalls: [
+          {
+            name: EDIT_TOOL,
+            args: { file_path: path },
+            fileChange: { kind: 'modify', path, pre: EN_BASE, post: EN_EDITED },
+          },
+        ],
+        subagentSpawns: [],
+        userMessages: [],
+        tools: { mutating: [EDIT_TOOL], shell: [], commandArgs: [] },
+        session: { userMessages: [], toolCalls: [] },
+      },
     });
 
     commitRepo.write(EN_DOC, EN_EDITED);

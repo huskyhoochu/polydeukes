@@ -14,10 +14,10 @@ library, and the declaration engine — extract steps, seven relations, witness 
 adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` registers the
 hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
-`polydeukes` as a `peerDependency` for the bin it spawns; the umbrella still depends on
-`adapter-claude-code` for its old in-process session path until `SURFACE-04` removes it. The
-judge module opens no file at all, and core's only file I/O is the telemetry log it appends
-every judgment to.
+`polydeukes` as a `peerDependency` for the bin it spawns. Nothing depends the other way:
+the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
+its agents need. The judge module opens no file at all, and core's only file I/O is the
+telemetry log it appends every judgment to.
 Details live in the code and the archived PRDs (the merged contracts).
 The design docs own everything not yet implemented; when a design doc and shipped code disagree,
 neither side wins by default — triage against the archived PRD: it may be a stale doc, or a code
@@ -56,14 +56,16 @@ keeps the roadmap a plan rather than a defect list.
 ## Self-dogfooding (ON since 2026-07-14)
 
 A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
-pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of the same
-promises. The hook is a thin delegator calling `runClaudeCodeHook` through the package's session
-subpath (the umbrella has no `.` entry point; the session subpath and the judge module it
-loads keep the commit surface's translator and reader off the session load path), so what we
-are judged by every day is the shipped artifact itself. A consumer project gets its delegator
-from the adapter's `pdks-claude-code init` (it imports the adapter's `runHook`, which spawns
-`pdks covenant check`; `SURFACE-04` moves this repository onto that delegator). Grok
-consumers run `pdks-grok init`, which writes its own delegator.
+pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of
+the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
+builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
+so the delegator never needs regenerating. The two files here are byte-identical to what
+`pdks-claude-code init` and `pdks-grok init` write into a consumer's tree, which is what makes
+the verdicts we meet every day a measurement of the shipped install units rather than a private
+arrangement; `delegators-are-generated.test.ts` runs both installers and diffs the result
+against these files. The Grok registration matches on that host's own names (`write` ·
+`search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
+stands between a Grok call and its judgment.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
 `biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. The
@@ -74,7 +76,8 @@ line does not — a staged gate-file change has already passed the session surfa
 on stderr) unless an entry says `enforce: block`. The session-protected list is a separate
 list, not an override applied to those entries: nothing promotes a discipline's own `advise`
 to a block, and since POSTURE-01 the protected list above is the only thing that blocks
-unasked — on the session surface. Every judgment appends one row to `.polydeukes/roi.log` (local, gitignored).
+unasked — on the session surface. Every judgment appends one row to `.polydeukes/roi.log`
+(local, gitignored).
 
 **What each axis compares, and the witness valve, are in
 `.claude/rules/dogfooding-axes.md`** — it auto-loads for the hook, the config, and the judge

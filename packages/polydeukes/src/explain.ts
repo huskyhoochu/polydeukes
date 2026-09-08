@@ -10,13 +10,11 @@
  * given halfway.
  */
 
-import { join } from 'node:path';
 import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
-import { assembleSessionRegistrations } from './claude-code-hook.ts';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
 import { covenantModule } from './covenant/module.ts';
-import { assembleCommitRegistrations } from './covenant-check.ts';
+import { assembleCheckRegistrations, assembleCommitRegistrations } from './covenant-check.ts';
 import { loadConfig } from './load-config.ts';
 
 /** `explain` input — the repository whose config is read. */
@@ -26,6 +24,13 @@ export type ExplainSpec = {
 
 /** The three meta-covenant labels: registrations that protect the judging chain itself. */
 const META_LABELS = new Set(['self-mod', 'shell-mod', 'transcript-mod']);
+
+/**
+ * What the session assembly here is given as its evidence path. The real one is loaded per
+ * call by an adapter, so this renderer names the IR key instead of a file: the assembly
+ * needs a present value to build the conditional registration, and nothing prints it.
+ */
+const SESSION_EVIDENCE_PATH_KEY = 'session.evidencePath';
 
 /**
  * The description of a declaration entry: its catalogue coordinate (the mechanism, the axes
@@ -71,7 +76,7 @@ function row(kind: string, label: string, width: number, description: string): s
 /** The description of a meta-covenant registration — how much surface it covers. */
 function metaDescription(registration: CovenantRegistration, surface: string): string {
   if (registration.label === 'transcript-mod') {
-    return 'content predicate · conditional: transcript_path';
+    return 'content predicate · conditional: session.evidencePath';
   }
   return `paths ${registration.protectedPaths.length} (${surface})`;
 }
@@ -144,11 +149,17 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   const disciplines: DisciplineEntry[] = config.disciplines ?? [];
   const drafts: DisciplineDraft[] = config.drafts ?? [];
 
-  const session = assembleSessionRegistrations({
+  const session = assembleCheckRegistrations({
     config,
     rootDir: spec.repoRoot,
     covenant,
-    transcriptPath: join(spec.repoRoot, 'transcript.jsonl'),
+    // The session key alone, and no roster: a roster is what an adapter loads onto each
+    // call, so a reader of the config would be shown one agent's names chosen by this
+    // renderer. The evidence path is the same kind of per-call value and is named by the
+    // key rather than by a filename: what a config reader is being shown is that the
+    // session surface carries a transcript-mod registration, and the renderer prints the
+    // key, never the path. The empty lists are the session a run supplies.
+    session: { evidencePath: SESSION_EVIDENCE_PATH_KEY, userMessages: [], toolCalls: [] },
     transcript: noopTranscript,
   });
   const commit = assembleCommitRegistrations({

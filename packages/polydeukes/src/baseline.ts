@@ -14,15 +14,13 @@
 
 import { createHash } from 'node:crypto';
 import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import {
   appendRecordFailOpen,
-  normalizeProtectedPaths,
   readRecords,
   type TelemetryEvent,
   type TelemetryRecord,
 } from '@polydeukes/core';
-import { loadConfig } from './load-config.ts';
 
 /** One hash per protected entry, keyed by the entry exactly as configured. */
 export type BaselineSnapshot = Record<string, string>;
@@ -283,34 +281,4 @@ export function updateBaseline(spec: { repoRoot: string; entries: string[] }): v
     snapshotBaseline({ rootDir: spec.repoRoot, entries: spec.entries }),
     new Date().toISOString(),
   );
-}
-
-/**
- * Where the comparison writes and what it observes, or `undefined`.
- *
- * The domain is derived from config rather than enumerated here, and the telemetry path is
- * resolved by the same precedence the judgment uses so both land in one log. A config that
- * does not load leaves NO domain, so there is nothing to compare and nothing to re-establish
- * — the judgment path already answers that failure fail-closed, and a comparison row on top
- * of it would report the same absence twice under a label that judges nothing.
- */
-export function comparisonSpec(spec: {
-  repoRoot: string;
-  telemetryPath?: string;
-}): { repoRoot: string; telemetryPath: string; entries: string[] } | undefined {
-  let config: ReturnType<typeof loadConfig>['config'];
-  try {
-    config = loadConfig({ rootDir: spec.repoRoot }).config;
-  } catch {
-    return undefined;
-  }
-
-  return {
-    repoRoot: spec.repoRoot,
-    telemetryPath:
-      spec.telemetryPath ??
-      process.env.POLYDEUKES_TELEMETRY_PATH ??
-      resolve(spec.repoRoot, config.telemetry.logPath),
-    entries: normalizeProtectedPaths({ protectedPaths: config.protectedPaths }),
-  };
 }

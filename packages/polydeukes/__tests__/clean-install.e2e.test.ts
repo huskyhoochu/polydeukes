@@ -376,17 +376,6 @@ describe('the umbrella has no barrel entry point', () => {
     expect(result.status, `stderr: ${result.stderr}`).toBe(0);
     expect(result.stdout.trim()).toBe('ERR_PACKAGE_PATH_NOT_EXPORTED');
   }, 60_000);
-
-  // The subpath the delegator imports must keep resolving through the same map that
-  // refuses `.`; a map rewritten to drop `.` by dropping the whole block strands the hook.
-  it("import('polydeukes/claude-code') resolves and carries the hook verb", () => {
-    const result = evalInConsumer(
-      "const m = await import('polydeukes/claude-code'); console.log(typeof m.runClaudeCodeHook);",
-    );
-
-    expect(result.status, `stderr: ${result.stderr}`).toBe(0);
-    expect(result.stdout.trim()).toBe('function');
-  }, 60_000);
 });
 
 describe('the core schema resolves from the installed tree', () => {
@@ -555,7 +544,10 @@ describe('the bundled docs answer from the installed tree', () => {
     );
     const configPath = join(consumerRoot, CONFIG_REL);
     const savedConfig = readFileSync(configPath);
-    const dependencies = ['core', 'adapter-claude-code'];
+    // Everything the umbrella depends on, stashed so the docs reader answers with the
+    // judging code absent. The session adapters are not here: a consumer installs those
+    // itself, and the umbrella names none of them.
+    const dependencies = ['core'];
     const moved: [string, string][] = [];
     const offline = join(packRoot, 'offline-docs.mjs');
     writeFileSync(

@@ -52,8 +52,9 @@ ID는 소문자 ASCII kebab-case입니다. `<a id>`는 제목 바로 앞 줄에 
 파일 예제는 `git diff HEAD | pdks covenant check --diff`, 세션 쓰기는
 [첫 판정 튜토리얼](./tutorials/first-judgment.ko.md)의 훅 프로브를 씁니다.
 
-TypeScript 예제에서는 패키지가 공개하는 심볼만 가져옵니다 (`polydeukes`와
-`polydeukes/claude-code`).
+TypeScript 예제에서는 패키지 계약이 공개하는 심볼만 가져옵니다. 우산은 TypeScript
+진입점을 공개하지 않고 `pdks` 실행 파일로만 닿으므로, 그 심볼은 `@polydeukes/core`나
+에이전트 어댑터에서 옵니다.
 
 문서 변경을 커밋하기 전에 다음을 실행합니다.
 

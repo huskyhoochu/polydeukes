@@ -71,6 +71,11 @@ exercising both valid and violating cases. A surface's level and an entry's leve
 lenient side winning. Assembly errors remain failures; telemetry write failures do not change a
 verdict. Missing evidence follows the declared supply policy rather than an invented empty source.
 
+One call leaves one row, and one component writes it. An agent adapter translates a host's
+payload into the judge's input and hands it over; it decides nothing and records nothing. That
+holds on the failure path too: when an adapter cannot build the input, it sends the reason to
+the judge instead of recording the failure itself, so the writer never changes with the outcome.
+
 ### Evidence with a stated boundary
 
 `passed`, `blocked`, `witnessed`, `advised`, and `skipped` describe judgment outcomes.

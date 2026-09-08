@@ -12,7 +12,6 @@ artifact.
 Public contract entry points:
 
 - `pdks` / `polydeukes` — the bin
-- `polydeukes/claude-code` → `runClaudeCodeHook`
 - `polydeukes/schema.json`
 
 CLI commands:
@@ -26,15 +25,11 @@ CLI commands:
 <a id="public-symbols"></a>
 ## Public symbols
 
-```ts
-import { runClaudeCodeHook } from 'polydeukes/claude-code';
-
-function runClaudeCodeHook(spec: {
-  repoRoot: string;
-  rawPayload?: string;
-  telemetryPath?: string;
-}): Promise<{ exitCode: 0 | 2 }>;
-```
+None. This package publishes no TypeScript entry point: `import 'polydeukes'` fails with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`, and what a consumer reaches is the `pdks` bin and the
+bundled schema. A surface hands the judge its input on stdin and reads the exit code, which
+is what an agent adapter's hook does — it takes this package as a peer dependency and
+spawns the bin rather than importing it.
 
 <a id="see-also"></a>
 ## See also

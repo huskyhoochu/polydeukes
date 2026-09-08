@@ -2,10 +2,12 @@
 paths:
   - ".claude/hooks/**"
   - ".claude/settings.json"
+  - ".grok/hooks/**"
   - "polydeukes.config.yaml"
   - "lefthook.yml"
   - "packages/polydeukes/src/covenant/**"
   - "packages/adapter-claude-code/**"
+  - "packages/adapter-grok/**"
 ---
 
 # How the two surfaces judge
@@ -46,6 +48,24 @@ stale-but-present body carries no such signal.
   scoped on `command` observes nothing there. A declaration
   reading the `changes` world needs the whole change set, so the session surface lands it
   `skipped` the same way — one call is its whole observation (`docs-stay-bilingual`).
+
+## What a host proves, and what follows from it
+
+The axes above describe a surface whose payload carries a transcript path — this repository's
+Claude hook, and any host that names one. The IR's `session` key is what says so, and three
+things hang off it: the witness valve (it reads human utterances, so with no session there is
+none to read), the transcript axis, and the completion of shell-write evidence into the file
+world, which needs a pre-state channel.
+
+The Grok adapter proves no session — that host's PreToolUse payload carries no transcript
+path — so on that surface a shell write lands `skipped` with reason `no-observation` rather
+than being judged against the file it targets. The tool axis and the path-mention judgment are
+unaffected: they read the call's own arguments. A discipline scoped on `command` is unaffected
+too, for the same reason.
+
+That skip is the contract, not a gap: a surface that cannot answer says so in a row. The defect
+class is the opposite shape — the same call landing `passed` against a subject nothing judged,
+which is what this repository shipped for one commit before a review caught it.
 
 ## The sixth word nobody's judgment writes
 

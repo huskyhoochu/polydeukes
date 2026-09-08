@@ -35,7 +35,7 @@ export type TranscriptPathFromPayloadSpec = { rawPayload: string };
  * (unparseable JSON, a non-object payload, a non-string field), never a throw: lost
  * evidence leaves the dispatcher on its `noopTranscript` default, which shuts the
  * witness valve rather than opening it. A payload this function
- * cannot parse is still dispatched — `runAdapterPath` owns that verdict.
+ * cannot parse is still dispatched — the spawned judge owns that verdict.
  */
 export function transcriptPathFromPayload(spec: TranscriptPathFromPayloadSpec): string | undefined {
   let parsed: unknown;

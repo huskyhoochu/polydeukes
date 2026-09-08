@@ -33,10 +33,10 @@ afterEach(() => {
 });
 
 describe('a tree whose umbrella has no dist', () => {
-  // The delegator resolves `polydeukes/claude-code` from its own location, so the
-  // manifest is found and the target is not. A catch that exits 0, or one that lets the
-  // rejection escape (node's exit 1, no message), lets every session call through an
-  // unbuilt clone — the one state a fail-closed hook exists for.
+  // The delegator resolves its adapter from its own location, so the manifest is found
+  // and the target is not. A catch that exits 0, or one that lets the rejection escape
+  // (node's exit 1, no message), lets every session call through an unbuilt clone — the
+  // one state a fail-closed hook exists for.
   it('the hook delegator exits 2 with its fail-closed message', () => {
     const result = spawnSync(process.execPath, [join(treeRoot, HOOK_REL)], {
       cwd: treeRoot,

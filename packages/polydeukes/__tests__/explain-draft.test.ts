@@ -5,10 +5,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assembleSessionRegistrations } from '../src/claude-code-hook.ts';
 import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
 import { covenantModule } from '../src/covenant/module.ts';
-import { assembleCommitRegistrations } from '../src/covenant-check.ts';
+import { assembleCheckRegistrations, assembleCommitRegistrations } from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { writeConfigAt } from './helpers.ts';
@@ -159,11 +158,15 @@ describe('judgment invariance: assembly never sees the draft', () => {
       registrations.map((registration) => registration.label);
     const sessionOf = (config: typeof judgedOnlyConfig) =>
       labels(
-        assembleSessionRegistrations({
+        assembleCheckRegistrations({
           config,
           rootDir: repoRoot,
           covenant: realCovenant,
-          transcriptPath: join(repoRoot, 'session.jsonl'),
+          session: {
+            evidencePath: join(repoRoot, 'transcript.jsonl'),
+            userMessages: [],
+            toolCalls: [],
+          },
         }),
       );
     const commitOf = (config: typeof judgedOnlyConfig) =>

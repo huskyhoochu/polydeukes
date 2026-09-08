@@ -3,7 +3,6 @@
 // row ever carries the draft id.
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, telemetryRows, writeConfigAt } from './helpers.ts';
@@ -30,6 +29,9 @@ const judgedForbid = {
 const JUDGED_ONLY = [judgedForbid];
 const WITH_DRAFT = [judgedForbid, draftEntry];
 
+/** The name the host's mutating roster carries for this call — a value, not vocabulary. */
+const WRITE_TOOL = 'write-tool';
+
 const PASSING_CONTENT = 'export const a = 1;\n';
 const BREAKING_CONTENT = 'export const a = 1; // TODO remove\n';
 
@@ -55,7 +57,7 @@ describe('session surface judgment parity', () => {
     }
   });
 
-  /** Run the session hook once in a fresh repo under the given disciplines. */
+  /** Judge one session call in a fresh repo under the given disciplines. */
   async function sessionRun(
     disciplines: unknown[],
     content: string,
@@ -63,15 +65,26 @@ describe('session surface judgment parity', () => {
     const repo = createCheckRepo('pdks-draft-parity-session-');
     repos.push(repo);
     writeConfigAt(repo.repoRoot, repo.telemetryPath, { disciplines });
-    const rawPayload = JSON.stringify({
-      tool_name: 'Write',
-      tool_input: { file_path: join(repo.repoRoot, 'lib/a.ts'), content },
-    });
+    const path = join(repo.repoRoot, 'lib/a.ts');
 
-    const { exitCode } = await runClaudeCodeHook({
+    const { exitCode } = await runCovenantCheck({
       repoRoot: repo.repoRoot,
-      rawPayload,
       telemetryPath: repo.telemetryPath,
+      // The IR an adapter hands in for one live call: the roster it declared, and the
+      // session key that makes this a session observation rather than a change set.
+      input: {
+        toolCalls: [
+          {
+            name: WRITE_TOOL,
+            args: { file_path: path },
+            fileChange: { kind: 'create', path, post: content },
+          },
+        ],
+        subagentSpawns: [],
+        userMessages: [],
+        tools: { mutating: [WRITE_TOOL], shell: [], commandArgs: [] },
+        session: { userMessages: [], toolCalls: [] },
+      },
     });
     return { exitCode, rows: normalizedRows(repo.telemetryPath, repo.repoRoot) };
   }

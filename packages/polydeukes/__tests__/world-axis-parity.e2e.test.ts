@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { readRecords, type TelemetryRecord } from '@polydeukes/core';
+import { type CovenantInput, readRecords, type TelemetryRecord } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // Two surfaces, one content-parity verdict. A declaration that
 // compares the key sets of two locale files (`sources` ko + en, `json` · `flattenKeys`,
@@ -20,10 +20,32 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // suite is honest; invoking this file alone after editing a judge reports on the previous
 // build until `pnpm build` runs. This file deliberately carries no rebuild of its own —
 // a suite that rebuilds mid-edit is how a session locks itself out.
-import { runClaudeCodeHook } from '../src/claude-code-hook.ts';
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';
+
+/** The name the host's mutating roster carries for these calls — a value, not vocabulary. */
+const EDIT_TOOL = 'edit-tool';
+
+/**
+ * The IR an adapter hands in for one live edit: the change's own `post` beside a disk that
+ * is still pre-edit, plus the session key that makes this a session observation.
+ */
+function sessionEdit(path: string, pre: string, post: string): CovenantInput {
+  return {
+    toolCalls: [
+      {
+        name: EDIT_TOOL,
+        args: { file_path: path },
+        fileChange: { kind: 'modify', path, pre, post },
+      },
+    ],
+    subagentSpawns: [],
+    userMessages: [],
+    tools: { mutating: [EDIT_TOOL], shell: [], commandArgs: [] },
+    session: { userMessages: [], toolCalls: [] },
+  };
+}
 
 /** Injected fixture values — the parity declaration and the two locales it names. */
 const DECLARE_ID = 'locale-key-parity';
@@ -133,22 +155,10 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     // `blocked` (a supply refusal dressed as a verdict), or a witness naming nothing would
     // each be a judgment that never compared the edited key set.
     expect(readFileSync(join(sessionRoot, EN_FILE), 'utf-8')).toBe(BASE_CONTENT);
-    const rawPayload = JSON.stringify({
-      hook_event_name: 'PreToolUse',
-      session_id: 's-1',
-      cwd: sessionRoot,
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: join(sessionRoot, EN_FILE),
-        old_string: BASE_CONTENT,
-        new_string: EDITED_CONTENT,
-      },
-    });
-
-    const result = await runClaudeCodeHook({
+    const result = await runCovenantCheck({
       repoRoot: sessionRoot,
-      rawPayload,
       telemetryPath: sessionLog,
+      input: sessionEdit(join(sessionRoot, EN_FILE), BASE_CONTENT, EDITED_CONTENT),
     });
 
     expect(result.exitCode).toBe(0);
@@ -168,21 +178,10 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     // differently (wrong `read`, missing override, a supplied `changes` that shadows the
     // derivation) the rows part here, and the fifth field is compared as the string the
     // log carries so a witness list serialised in another order cannot pass as equal.
-    const sessionPayload = JSON.stringify({
-      hook_event_name: 'PreToolUse',
-      session_id: 's-1',
-      cwd: sessionRoot,
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: join(sessionRoot, EN_FILE),
-        old_string: BASE_CONTENT,
-        new_string: EDITED_CONTENT,
-      },
-    });
-    await runClaudeCodeHook({
+    await runCovenantCheck({
       repoRoot: sessionRoot,
-      rawPayload: sessionPayload,
       telemetryPath: sessionLog,
+      input: sessionEdit(join(sessionRoot, EN_FILE), BASE_CONTENT, EDITED_CONTENT),
     });
 
     commitRepo.write(EN_FILE, EDITED_CONTENT);
@@ -211,18 +210,12 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
 describe('the parity declaration over the shapes a locale pair actually takes', () => {
   /** Edit `file` to `content` through the session surface, answering the rows it left. */
   async function editThroughSession(file: string, content: string): Promise<ParityRow[]> {
-    const rawPayload = JSON.stringify({
-      hook_event_name: 'PreToolUse',
-      session_id: 's-1',
-      cwd: sessionRoot,
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: join(sessionRoot, file),
-        old_string: readFileSync(join(sessionRoot, file), 'utf-8'),
-        new_string: content,
-      },
+    const path = join(sessionRoot, file);
+    await runCovenantCheck({
+      repoRoot: sessionRoot,
+      telemetryPath: sessionLog,
+      input: sessionEdit(path, readFileSync(path, 'utf-8'), content),
     });
-    await runClaudeCodeHook({ repoRoot: sessionRoot, rawPayload, telemetryPath: sessionLog });
     return parityRows(sessionLog);
   }
 

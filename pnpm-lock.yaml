@@ -106,9 +106,6 @@ importers:
 
   packages/polydeukes:
     dependencies:
-      '@polydeukes/adapter-claude-code':
-        specifier: workspace:^
-        version: link:../adapter-claude-code
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core

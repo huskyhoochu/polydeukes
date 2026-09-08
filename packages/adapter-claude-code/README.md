@@ -20,7 +20,6 @@ npx pdks-claude-code init
 Public contract symbols include:
 
 - `runHook`
-- `runAdapterPath`
 - `sessionSourceReader`
 - `sessionChannelReader`
 - `sessionEvidenceFromPayload`
@@ -41,20 +40,10 @@ import { runHook } from '@polydeukes/adapter-claude-code';
 const { exitCode } = runHook({ repoRoot: process.cwd() });
 ```
 
-```ts
-import { runAdapterPath } from '@polydeukes/adapter-claude-code';
-
-const outcome = await runAdapterPath({
-  rawPayload: '{}',
-  telemetryPath: '.polydeukes/roi.log',
-  dispatch: async () => ({ exitCode: 0, results: [] }),
-});
-```
-
 <a id="see-also"></a>
 ## See also
 
 - [`@polydeukes/adapter-claude-code` package
 reference](../../docs/reference/packages/adapter-claude-code.md)
-- [`polydeukes/claude-code`](../../docs/reference/packages/polydeukes.md#polydeukes-entry-points)
+- [The umbrella's entry points](../../docs/reference/packages/polydeukes.md#polydeukes-entry-points)
 - [The judge (`covenant` module)](../../docs/reference/packages/polydeukes.md#covenant-module)

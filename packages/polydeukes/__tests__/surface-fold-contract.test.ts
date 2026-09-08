@@ -175,12 +175,7 @@ describe('explain speaks of input modes, not hosts', () => {
   // or hook name left in the module puts a surface name back into the header of a
   // command that no longer has one.
   it('explain.ts spells no host, VCS, or hook name', () => {
-    // The session assembly import is the one spelling allowed: it names a module, not a
-    // surface, and the header strings are what this oracle guards.
-    const text = readFileSync(join(umbrellaSrc, 'explain.ts'), 'utf-8').replace(
-      "from './claude-code-hook.ts';",
-      '',
-    );
+    const text = readFileSync(join(umbrellaSrc, 'explain.ts'), 'utf-8');
     const found = EXPLAIN_FOREIGN_WORDS.filter((word) =>
       new RegExp(`(?<![\\w])${word}(?![\\w])`).test(text),
     );

@@ -1,8 +1,6 @@
 ---
 paths:
   - "packages/*/src/index.ts"
-  - "packages/*/src/claude-code.ts"
-  - "packages/*/src/claude-code-hook.ts"
   - "packages/*/package.json"
   - "packages/*/README.md"
 ---
@@ -52,10 +50,10 @@ to need a third skeleton is split wrong.
 Three kinds of `exports` subpath: `.` (the contract — sibling packages; the umbrella has none),
 a `.json` data file (`./schema.json`,
 `./algebra-declaration.schema.json` — the subpath and its target both end in `.json`), and
-`./<surface>` — the umbrella alone, closed list
-`['./claude-code']` kept as a literal in the test. Adding a surface entry point edits that
-literal, and the diff is the review signal. Sibling packages have `.` alone. Condition keys
-(`types` / `import` / `default`) are not entry points.
+`./<surface>` — the umbrella alone, an empty closed list kept as a literal in the test.
+Adding a surface entry point edits that literal, and the diff is the review signal. Sibling
+packages have `.` alone. Condition keys (`types` / `import` / `default`) are not entry
+points.
 
 ## Barrels
 
@@ -70,10 +68,8 @@ literal, and the diff is the review signal. Sibling packages have `.` alone. Con
   `package-contract.test.ts` holds that for every `__tests__` tree, and the
   `tests-import-modules` discipline advises on the edit. There is no second barrel
   (`internal.ts`).
-- A symbol has one entry point. The umbrella's `./claude-code` carries the session hook verb
-  and its spec type, and `.` does not repeat them; two entry points may re-export the same
-  module only when they carry different names from it. A barrel never re-exports another
-  barrel.
+- A symbol has one entry point. Two entry points may re-export the same module only when
+  they carry different names from it. A barrel never re-exports another barrel.
 - The umbrella is not a facade: it re-exports no sibling verbs. From `@polydeukes/*` only
   `export type` (the `loadConfig` result type `ResolvedConfig` is the one case).
 - Adding a name to a barrel widens the contract. The reason must be a sibling package, the

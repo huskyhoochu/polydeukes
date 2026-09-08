@@ -47,7 +47,7 @@ const VOCABULARY_NAME = '@polydeukes/core';
  * The closed list of surface entry points. Adding a surface means editing this literal —
  * the diff is the deliberate friction that shows "a surface grew" in review.
  */
-const SURFACE_ENTRY_POINTS: readonly string[] = ['./claude-code'];
+const SURFACE_ENTRY_POINTS: readonly string[] = [];
 
 type ExportsMap = Record<string, string | Record<string, string>>;
 /** A package as the checks see it: a name, an exports map, and text reachable by relative path. */
@@ -525,8 +525,8 @@ describe('package contract', () => {
     expect(KNOWN_VIOLATIONS.filter((k) => !names.includes(k.package))).toEqual([]);
   });
 
-  // Dropping `./claude-code` from the umbrella manifest would pass ① silently (the closed
-  // list only bounds what may exist, not what must).
+  // A surface entry point dropped from the umbrella manifest would pass ① silently (the
+  // closed list only bounds what may exist, not what must).
   it('umbrella exports every surface entry point in the closed list', () => {
     const umbrella = PACKAGES.find((p) => p.name === UMBRELLA_NAME);
     expect(Object.keys(umbrella?.exports ?? {})).toEqual(
@@ -654,13 +654,9 @@ const ROWS: Row[] = [
     violates: true,
   },
   {
-    label: '① the umbrella without `.` — the surface list and the data file alone',
+    label: '① the umbrella without `.` — the data file alone',
     check: '①',
-    pkg: synthetic(
-      UMBRELLA_NAME,
-      {},
-      { './claude-code': './dist/c.js', './schema.json': './s.json' },
-    ),
+    pkg: synthetic(UMBRELLA_NAME, {}, { './schema.json': './s.json' }),
     violates: false,
   },
   {
@@ -1078,35 +1074,6 @@ describe('synthetic fixtures', () => {
         check: '③',
         detail: '. (src/index.ts): run — takes 2 parameters, expected 1',
       },
-    ]);
-  });
-});
-
-// The umbrella's session entry point, pinned by symbol: check ② proves the barrel shape,
-// but an empty barrel passes it — and a `./claude-code` that stops carrying
-// `runClaudeCodeHook` crashes the live hook on import, before any verdict, where the
-// witness valve is never consulted.
-describe('the ./claude-code entry point', () => {
-  const umbrella = PACKAGES.find((p) => p.name === UMBRELLA_NAME);
-
-  // A map target left on the hook module serves consumers the module's whole export
-  // surface instead of the one-line barrel.
-  it('resolves both conditions to the claude-code barrel dist', () => {
-    expect(umbrella?.exports['./claude-code']).toEqual({
-      types: './dist/claude-code.d.ts',
-      import: './dist/claude-code.js',
-    });
-  });
-
-  // Dropping the verb strands the delegator; dropping the spec or outcome type leaves a
-  // caller no name for the argument or the result. An added name widens the surface without
-  // review.
-  it('re-exports exactly the hook verb, its spec type, and its outcome type', () => {
-    const names = exportedNames(umbrella?.readFile('src/claude-code.ts') ?? '');
-    expect([...names].sort()).toEqual([
-      'ClaudeCodeHookOutcome',
-      'ClaudeCodeHookSpec',
-      'runClaudeCodeHook',
     ]);
   });
 });

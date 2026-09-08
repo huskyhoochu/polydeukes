@@ -153,6 +153,11 @@ export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantReg
       // A session call is judged before its tool runs, so the working tree IS the pre-state;
       // without one the input carries the pre its own observation saw.
       readPreState: session === undefined ? unobservedPreStateReader : sessionPreStateReader,
+      // That reader answers nothing, so the surface has no pre-state channel to complete a
+      // shell write's evidence with. Saying so keeps the absence an environment fact: a
+      // reader that answers `undefined` per location means that location failed, which
+      // blocks, and a shell call would then decide entries that never read its evidence.
+      observesPreState: session !== undefined,
       // One session call is one of a wider change set this runner cannot see, so a
       // change-set declaration records `skipped`; a session-free input is its own whole
       // change set.
@@ -196,9 +201,16 @@ function settleConfig(
   | { settled: false; exitCode: 2 } {
   let telemetryPath: string | undefined;
   try {
-    telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
+    // The environment variable sits between the caller's path and the config's, matching
+    // what the baseline comparison in this same process already resolves — the two write
+    // to one log, so they must agree on which one. It is how a test run collects its own
+    // rows without editing the config it is measuring.
+    const envPath = process.env.POLYDEUKES_TELEMETRY_PATH;
+    telemetryPath =
+      spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
     const { config } = loadConfig({ rootDir: spec.repoRoot });
-    telemetryPath = spec.telemetryPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
+    telemetryPath =
+      spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
     return { settled: true, telemetryPath, config };
   } catch (error) {
     return { settled: false, ...failClosed(telemetryPath, error) };

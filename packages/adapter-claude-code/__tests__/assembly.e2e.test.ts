@@ -13,9 +13,10 @@ import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-// Spawns the REAL PreToolUse hook as a black box — real adapter dist, real dispatcher,
-// real judge bodies. Spawning the repo-level hook (rather than importing the judge) keeps
-// the package dependency graph one-way: this package must not depend on covenant.
+// Spawns the REAL PreToolUse hook as a black box, and the hook spawns the judge as a
+// second process: the delegator loads this package's dist, builds the IR, and hands it to
+// `pdks covenant check` on stdin. Both ends run for real, and the process boundary between
+// them is what keeps the dependency graph one-way — this package never loads the judge.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
@@ -38,10 +39,11 @@ afterEach(() => {
 });
 
 /**
- * Spawn the real hook with one payload. The valve is the TTL witness: a test that wants
- * the valve open passes `transcriptPath` pointing at a JSONL transcript carrying a fresh
- * human-typed token, and the hook parses it out of the raw payload. Block cases simply
- * omit it — no transcript, no valve. `env` entries are spread over the spawn env last, so
+ * Spawn the real hook with one payload. `transcriptPath` is the session channel the host
+ * always supplies, and it decides two things at once: the TTL witness reads it (a fresh
+ * human-typed token, alone on the first line, opens the valve — a case that wants the
+ * valve shut omits the path), and the surface reads it to know it may complete a shell
+ * write's evidence from the pre-state. `env` entries are spread over the spawn env last, so
  * a test can hand the hook a real HOME without touching the telemetry seam callers rely on.
  */
 function runHook(
@@ -90,6 +92,17 @@ function configuredWhy(id: string): string {
   const match = new RegExp(`- id: ["']${id}["']\\n\\s*why: (["'])(.*)\\1$`, 'm').exec(cfg);
   if (!match) throw new Error(`why not found for discipline '${id}'`);
   return match[1] === "'" ? match[2].replaceAll("''", "'") : match[2].replaceAll('\\"', '"');
+}
+
+/**
+ * An empty session file: a real session that has said nothing, carrying no token, so the
+ * channel is present and the valve stays shut. A shell payload without one is a different
+ * observation than the host makes, not the same one with less noise.
+ */
+function quietTranscript(): string {
+  const path = join(tmpRoot, 'quiet-session.jsonl');
+  writeFileSync(path, '');
+  return path;
 }
 
 /** A JSONL transcript whose only entry is a human-typed invocation of the token, sent now. */
@@ -208,12 +221,12 @@ describe('context family across the session boundary', () => {
 });
 
 describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', () => {
-  it('a no-match call exits 0 and leaves EXACTLY one adapter passed row (cross-package funnel pin)', () => {
-    // Pins the behavioral contract the adapter supplement infers from results.length:
-    // when nothing matches, the real dispatcher writes zero rows, so the assembled
-    // funnel total is exactly the one adapter-supplied passed row. If a future
-    // dispatcher starts recording no-match calls itself, this total becomes 2 and
-    // the gain double-count is caught here rather than in a gain report months later.
+  it('a no-match call exits 0 and leaves EXACTLY one judge passed row (cross-package funnel pin)', () => {
+    // Pins the behavioral contract the funnel row infers from results.length: when nothing
+    // matches, the registrations write zero rows, so the total is exactly the one row the
+    // judge supplies under its own label. The adapter writes no row of its own — it builds
+    // the input and spawns the judge — so a second row here would be a double-count, caught
+    // now rather than in a gain report months later.
     const result = runHook(editPayload('docs/example.md'));
 
     expect(result.status).toBe(0);
@@ -224,7 +237,7 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records[0].label).toBe('covenant-check');
   });
 
   it('an Edit on a protected gate file is blocked by self-mod (exit 2) with run-all rows', () => {
@@ -293,14 +306,14 @@ describe('dogfooding assembly E2E — real hook, real dispatcher, real bodies', 
     expect(records.length).toBe(2);
   });
 
-  it('malformed hook stdin fails closed (exit 2) with one adapter blocked row', () => {
+  it('malformed hook stdin fails closed (exit 2) with one judge blocked row', () => {
     const result = runHook('this is not json {');
 
     expect(result.status).toBe(2);
     const { records } = readRecords(telemetryPath);
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('blocked');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records[0].label).toBe('covenant-check');
   });
 });
 
@@ -469,7 +482,7 @@ describe('assembly E2E — config discovery is fail-closed and self-protecting',
       // the assembly loaded and then refused.
       expect(
         readRecords(telemetryPath).records.map((record) => [record.event, record.label]),
-      ).toEqual([['blocked', 'hook']]);
+      ).toEqual([['blocked', 'covenant-check']]);
     } finally {
       rmSync(configlessRoot, { recursive: true, force: true });
     }
@@ -678,6 +691,7 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
     // A quoted delimiter makes the heredoc body literal, so the delivered text is computable.
     const result = runHook(
       bashPayload([`cat > ${SCOPED_SOURCE} <<'EOF'`, BANNED_LINE, 'EOF'].join('\n')),
+      { transcriptPath: quietTranscript() },
     );
 
     expect(result.status).toBe(0);
@@ -686,7 +700,9 @@ describe('dogfooding assembly E2E — shell-delivered mutations and NotebookEdit
 
   it('an append redirect delivering a banned word into the same scope is judged (exit 0, advised)', () => {
     // Append composes pre at judgment time (absence = create), so the echoed line IS the added text.
-    const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${SCOPED_SOURCE}`));
+    const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${SCOPED_SOURCE}`), {
+      transcriptPath: quietTranscript(),
+    });
 
     expect(result.status).toBe(0);
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
@@ -871,19 +887,20 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
 
   it('a clean computable write into scope is passed and never also skipped (exit 0)', () => {
     // One derivation, one answer: a judged write that ALSO drops a skipped row would
-    // double-record every computable call and drown the skip lane it feeds.
-    const result = runHook(bashPayload(`echo 'const ok = 1;' >> ${SCOPED_SOURCE}`));
+    // double-record every computable call and drown the skip lane it feeds. The transcript
+    // is what makes the write judgeable at all — without a session the surface has no
+    // pre-state channel, so the derivation never completes into a file world and the entries
+    // land in the skip lane this test is about.
+    const result = runHook(bashPayload(`echo 'const ok = 1;' >> ${SCOPED_SOURCE}`), {
+      transcriptPath: quietTranscript(),
+    });
 
     expect(result.status).toBe(0);
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['passed']);
     // Every entry that JUDGED this write is absent from the skip lane, and a computable
-    // derivation forbids the common shell-unjudgeable row. The one row left belongs to a
-    // context-family entry, which judged nothing: this run injects no transcript, so its
-    // question was unaskable rather than answered a second time.
-    expect(skippedRows().map((r) => r.label)).toEqual([
-      'core-needs-knowledge-read',
-      'tests-before-implementation',
-    ]);
+    // derivation forbids the common shell-unjudgeable row. With a session supplying the
+    // history channel too, the lane is empty: nothing this call routed was left unanswered.
+    expect(skippedRows().map((r) => r.label)).toEqual([]);
   });
 
   it('an append composing a real on-disk pre still judges the banned addition (exit 0, advised)', () => {
@@ -894,7 +911,9 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
     const realTargetAbs = join(repoRoot, realTarget);
     writeFileSync(realTargetAbs, 'export const cleanBase = 1;\n');
     try {
-      const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${realTarget}`));
+      const result = runHook(bashPayload(`echo '${BANNED_LINE}' >> ${realTarget}`), {
+        transcriptPath: quietTranscript(),
+      });
 
       expect(result.status).toBe(0);
       expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
@@ -907,7 +926,7 @@ describe('dogfooding assembly E2E — evidence set gaps', () => {
     // Two writes, two targets, the banned one second: an implementation keeping a single
     // evidence per call would let chain position launder the violation.
     const chained = `echo probe > /tmp/pdks-chain.ts && echo '${BANNED_LINE}' > ${SCOPED_SOURCE}`;
-    const result = runHook(bashPayload(chained));
+    const result = runHook(bashPayload(chained), { transcriptPath: quietTranscript() });
 
     expect(result.status).toBe(0);
     expect(rowsFor('covenant-vocabulary').map((r) => r.event)).toEqual(['advised']);
@@ -975,7 +994,7 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
     );
     expect(records.length).toBe(1);
     expect(records[0].event).toBe('passed');
-    expect(records[0].label).toBe('adapter-claude-code');
+    expect(records[0].label).toBe('covenant-check');
   });
 
   it('a Write into .git/hooks is blocked by self-mod on the session surface (exit 2)', () => {

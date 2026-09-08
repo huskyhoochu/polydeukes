@@ -20,7 +20,6 @@ npx pdks-claude-code init
 공개 계약 심볼은 다음과 같습니다.
 
 - `runHook`
-- `runAdapterPath`
 - `sessionSourceReader`
 - `sessionChannelReader`
 - `sessionEvidenceFromPayload`
@@ -41,20 +40,10 @@ import { runHook } from '@polydeukes/adapter-claude-code';
 const { exitCode } = runHook({ repoRoot: process.cwd() });
 ```
 
-```ts
-import { runAdapterPath } from '@polydeukes/adapter-claude-code';
-
-const outcome = await runAdapterPath({
-  rawPayload: '{}',
-  telemetryPath: '.polydeukes/roi.log',
-  dispatch: async () => ({ exitCode: 0, results: [] }),
-});
-```
-
 <a id="see-also"></a>
 ## 같이 보기
 
 - [`@polydeukes/adapter-claude-code` 패키지
 레퍼런스](../../docs/reference/packages/adapter-claude-code.ko.md)
-- [`polydeukes/claude-code`](../../docs/reference/packages/polydeukes.ko.md#polydeukes-entry-points)
+- [우산의 진입점](../../docs/reference/packages/polydeukes.ko.md#polydeukes-entry-points)
 - [판정기(`covenant` 모듈)](../../docs/reference/packages/polydeukes.ko.md#covenant-module)

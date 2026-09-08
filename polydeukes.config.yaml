@@ -19,6 +19,7 @@ protectedPaths:
   - "packages/core/dist"
   - "packages/polydeukes/dist"
   - "packages/adapter-claude-code/dist"
+  - "packages/adapter-grok/dist"
 
 # The valve: this token alone on a message's first line opens a blocked judgment for
 # ttlMinutes. Provenance is the defence — no agent can forge a human turn.

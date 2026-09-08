@@ -29,10 +29,6 @@
     "polydeukes": "./dist/bin.js"
   },
   "exports": {
-    "./claude-code": {
-      "types": "./dist/claude-code.d.ts",
-      "import": "./dist/claude-code.js"
-    },
     "./schema.json": "./dist/schema/polydeukes.schema.json"
   },
   "files": [
@@ -52,7 +48,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@polydeukes/adapter-claude-code": "workspace:^",
     "@polydeukes/core": "workspace:^",
     "yaml": "2.9.0"
   },

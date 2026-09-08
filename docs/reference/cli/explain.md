@@ -62,7 +62,7 @@ input: call IR (one call, stdin) · disciplines: advise unless enforce: block ·
   registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
   meta     self-mod        paths N (common; includes the config file itself)
   meta     shell-mod       paths N (common)
-  meta     transcript-mod  content predicate · conditional: transcript_path
+  meta     transcript-mod  content predicate · conditional: session.evidencePath
 
 input: --diff (change set, stdin) · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 0 · meta 2 · draft 0

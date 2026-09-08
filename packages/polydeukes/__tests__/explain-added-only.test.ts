@@ -85,14 +85,15 @@ describe('explain renders an added-only declaration', () => {
     }
   });
 
-  it('keeps one skip row under the entry id on the session surface for the uncomputable-write arm', async () => {
-    // The skip arm survives beside the judging row: dropping it leaves an in-scope
-    // `sed -i` silent, doubling it gives one call two rows.
+  it('renders the entry once on the session surface, with no shell arm beside it', async () => {
+    // The shell arm belongs to a shell roster, and a roster is what an adapter loads onto
+    // each call; a renderer reading the config alone has none, so the entry appears as its
+    // judging row and nothing else.
     writeFixtureConfig([addedOnlyEntry]);
 
     const session = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
 
     expect(linesOf(session, 'declare', ID)).toHaveLength(1);
-    expect(linesOf(session, 'skip', ID)).toHaveLength(1);
+    expect(linesOf(session, 'skip', ID)).toHaveLength(0);
   });
 });

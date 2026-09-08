@@ -12,11 +12,12 @@ schema artifact.
 | Specifier | What it is |
 |---|---|
 | `pdks` / `polydeukes` | The executable. One CLI under two names in `bin` |
-| `polydeukes/claude-code` | `runClaudeCodeHook` and its spec/outcome types |
 | `polydeukes/schema.json` | The bundled config JSON Schema |
 
 There is no `.` entry point. `import 'polydeukes'` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`;
-what a consumer reaches is the bin, the session subpath, and the schema file.
+what a consumer reaches is the bin and the schema file. A session surface reaches this
+package the same way a shell does — by spawning `pdks covenant check` — so an agent adapter
+takes it as a peer dependency rather than importing it.
 
 <a id="polydeukes-bin"></a>
 ## CLI surface
@@ -37,25 +38,6 @@ exit codes are in [`pdks docs`](../cli/docs.md).
 
 <a id="polydeukes-export-map"></a>
 ## Export map
-
-<a id="session-export"></a>
-### `./claude-code`
-
-| Symbol | Kind | Notes |
-|---|---|---|
-| `runClaudeCodeHook` | function | Runs the session-surface runner and resolves to `{ exitCode: 0 \| 2 }`. |
-| `ClaudeCodeHookSpec` | type | Input for the session runner. |
-| `ClaudeCodeHookOutcome` | type | Session runner result. |
-
-```ts
-import { runClaudeCodeHook } from 'polydeukes/claude-code';
-
-const hook = await runClaudeCodeHook({ repoRoot: process.cwd(), rawPayload: '{}' });
-```
-
-`ClaudeCodeHookSpec` carries `repoRoot` (the repository the config is discovered under),
-`rawPayload` (the hook payload as text; absent means the hook reads fd 0), and
-`telemetryPath` (where the judgment row is appended).
 
 <a id="schema-export"></a>
 ### `./schema.json`
@@ -182,7 +164,7 @@ No import. The umbrella assembles the module for both surfaces.
 <a id="polydeukes-failure-boundaries"></a>
 ## Failure boundaries
 
-- `runClaudeCodeHook()` never throws; it resolves to `{ exitCode: 0 \| 2 }`.
+- `runCovenantCheck()` never throws; it resolves to `{ exitCode: 0 \| 2 }`.
 - The numeric codes are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`), and
   `EXIT_BREAK_BLOCKING` (`2`) from `@polydeukes/core`. The umbrella runners expose only `0` or
   `2`; they never return `1`.
