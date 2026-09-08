@@ -8,15 +8,15 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** Three packages ship — `@polydeukes/core` (the covenant protocol), the
-session adapter (`adapter-claude-code`), and the `polydeukes` umbrella, which carries the judge
-and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
+**Status: alpha.** Four packages ship — `@polydeukes/core` (the covenant protocol), the
+session adapters (`adapter-claude-code`, `adapter-grok`), and the `polydeukes` umbrella,
+which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
 memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line
 pdks-claude-code init    # wire the Claude Code session surface (ships with @polydeukes/adapter-claude-code)
-pdks init grok           # wire the Grok session surface into a project
+pdks-grok init           # wire the Grok session surface (ships with @polydeukes/adapter-grok)
 git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
 git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree
 git diff main...HEAD | pdks covenant check --diff   # ... or over a ref range (a PR's scope)
@@ -89,6 +89,7 @@ knows nothing of any specific product or AI runtime.
         │ depends on (one direction)
 @polydeukes/adapter-*        hides runtime/infra coupling behind the core
         │                   · adapter-claude-code  (PreToolUse payload ↔ canonical)
+        │                   · adapter-grok         (PreToolUse payload ↔ canonical)
         │                   · adapter-pi, etc.
         │                   · sync (optional): local by default; s3/git/gcs/nfs as adapters
         △
@@ -132,7 +133,7 @@ layer you need.
 | Document | Contents |
 |----------|----------|
 | [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
-| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the three packages owns |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the four packages owns |
 
 <a id="why-and-the-journal"></a>
 ### Why, and the journal

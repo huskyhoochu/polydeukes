@@ -12,7 +12,7 @@
 프로젝트 루트 바로 아래에 `polydeukes.config.yaml`, `polydeukes.config.yml`,
 `polydeukes.config.json` 중 하나도 없으면 설정이 필요한 명령은 종료 코드 2를 반환합니다.
 Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks-claude-code init`,
-`pdks init grok`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다. 설정이 없다고
+`pdks-grok init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다. 설정이 없다고
 기본 정책으로 대신 실행하지는 않습니다.
 
 <a id="multiple-config"></a>
@@ -39,7 +39,7 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 
 훅을 아직 읽지 않은 문제와 증인(witness) 밸브를 사용할 수 없는 문제는 구별해야 합니다.
 
-- `pdks init grok` 실행 뒤 Hooks 탭을 다시 불러오거나 새 세션을 시작하세요. 실제 도구를
+- `pdks-grok init` 실행 뒤 Hooks 탭을 다시 불러오거나 새 세션을 시작하세요. 실제 도구를
   호출하고 텔레메트리를 확인합니다. 설치기가 성공했다고 해서 열린 세션에 훅이 적용됐다는
   뜻은 아닙니다.
 - Grok의 ACP 대화 기록에는 현재 세션 증인 밸브가 요구하는 Claude 형식의 인간 메시지가

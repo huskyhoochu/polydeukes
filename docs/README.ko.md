@@ -27,7 +27,8 @@
 | [설정 레퍼런스](./reference/configuration/index.ko.md) | `polydeukes.config.yaml`에 무엇을 넣을 수 있고 각 키가 무엇을 하는지 |
 | [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md) | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
 | [`@polydeukes/core`](./reference/packages/core.ko.md) | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리 |
-| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
+| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
+| [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.ko.md) | Grok 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
 
 <a id="shape-of-the-thing"></a>
 ## 한 페이지로 보는 구조
@@ -51,7 +52,7 @@
 
 | 표면 | 판정 대상 | 배선 방법 | 대상 |
 |---|---|---|---|
-| **세션** | 도구 호출, 실행되기 전에 | `pdks-claude-code init` 또는 `pdks init grok` | AI 파트너와 함께 개발하는 프로젝트 |
+| **세션** | 도구 호출, 실행되기 전에 | `pdks-claude-code init` 또는 `pdks-grok init` | AI 파트너와 함께 개발하는 프로젝트 |
 | **커밋** | stdin의 unified diff — 스테이징 영역, 작업 트리, ref 범위 | `git diff --cached`를 파이프로 넘기는 pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI |
 
 커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는 `git diff HEAD | pdks covenant check --diff`,

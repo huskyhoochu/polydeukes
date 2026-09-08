@@ -18,7 +18,7 @@ CLI 명령은 다음과 같습니다.
 
 - `pdks covenant check`
 - `pdks init`
-- `pdks init grok`
+- `pdks-grok init` (`@polydeukes/adapter-grok`가 제공)
 - `pdks explain`
 - `pdks docs [topic]`
 

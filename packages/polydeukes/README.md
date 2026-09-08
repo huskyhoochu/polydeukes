@@ -19,7 +19,7 @@ CLI commands:
 
 - `pdks covenant check`
 - `pdks init`
-- `pdks init grok`
+- `pdks-grok init` (ships with `@polydeukes/adapter-grok`)
 - `pdks explain`
 - `pdks docs [topic]`
 

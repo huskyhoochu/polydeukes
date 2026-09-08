@@ -244,6 +244,22 @@
       }
     },
     {
+      "id": "package-adapter-grok",
+      "category": "reference",
+      "order": 16,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/adapter-grok.md",
+        "title": "`@polydeukes/adapter-grok`",
+        "summary": "Install the Grok session surface, and consult the adapter package contract and its limits."
+      },
+      "ko": {
+        "path": "reference/packages/adapter-grok.ko.md",
+        "title": "`@polydeukes/adapter-grok`",
+        "summary": "Grok 세션 표면을 설치하고, 어댑터 패키지의 계약과 한계를 확인합니다."
+      }
+    },
+    {
       "id": "why-polydeukes",
       "category": "explanation",
       "order": 17,

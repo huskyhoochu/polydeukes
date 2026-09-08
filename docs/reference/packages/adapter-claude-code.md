@@ -108,7 +108,5 @@ No configuration namespace of its own.
   project there is no process to spawn and no log path to write to, so the hook exits `2` with
   one line on stderr and the telemetry log gains nothing. Every other pre-spawn failure does
   reach `pdks` and does leave a row.
-- **A Grok tree that reuses this delegator sends Grok tool names here.** `pdks init grok` points
-  the Grok registration at an existing Claude delegator rather than creating a second one, so
-  Grok payloads arrive at this adapter. Their tool names are not Claude's, so the meta-covenants
-  do not route them until a Grok adapter ships.
+- **Grok installs through `@polydeukes/adapter-grok`.** That package writes its own delegator
+  and roster. Installing both session adapters in one project can run the judge twice per call.

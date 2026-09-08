@@ -21,8 +21,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `pdks` CLI entry point — since ADAPTER-git the bin is real. Subcommands:
   `covenant check` (the judgment runner over an input IR or a unified diff on stdin),
   `init` (the agent-neutral project scaffold — config file and telemetry ignore line — since
-  SURFACE-03b; the Claude Code registration moved to the adapter's own `pdks-claude-code init`),
-  `init grok` (the Grok session-surface installer, since DIST-06), `docs [topic]`
+  SURFACE-03b; the Claude Code registration moved to the adapter's own `pdks-claude-code init`;
+  the Grok registration is `pdks-grok init` on `@polydeukes/adapter-grok`, since SURFACE-03c),
+  `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), and `explain` (the assembled-registration renderer, since CLI-01).
   Since CONFIG-03 it owns the config discovery loader
@@ -50,13 +51,17 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
+- **`packages/adapter-grok`** (`@polydeukes/adapter-grok`) is the Grok session-surface install
+  unit: bin `pdks-grok init`, `runHook` (Grok roster as IR `tools` values, camelCase envelope),
+  no judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it.
 - **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`)
   depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
-  `pdks` bin and ships its own bin (`pdks-claude-code`) — and never as a devDependency: while the
-  umbrella still depends on the adapter for its old in-process path, a devDependency would
-  close a cycle in turbo's task graph and the build refuses to run. That umbrella dependency
-  goes with SURFACE-04. Enforce this when adding packages.
+  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`) — and never as a
+  devDependency: while the umbrella still depends on `adapter-claude-code` for its old
+  in-process path, a devDependency would close a cycle in turbo's task graph and the build
+  refuses to run. That umbrella dependency goes with SURFACE-04. Enforce this when adding
+  packages.
 - **The kind of the core dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,
   paired with a `devDependencies` entry so each package still builds and tests alone.
   The umbrella takes core as an ordinary dependency, and that is what satisfies the peer in a

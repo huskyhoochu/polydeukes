@@ -53,10 +53,11 @@ const BUNDLED_DOCS = [
   'reference/packages/polydeukes.md',
   'reference/packages/core.md',
   'reference/packages/adapter-claude-code.md',
+  'reference/packages/adapter-grok.md',
 ];
 
-/** The npm packages after the fold: the umbrella, the vocabulary package, the session adapter. */
-const PUBLISHED_PACKAGE_COUNT = 3;
+/** The npm packages after the fold: the umbrella, the vocabulary package, two session adapters. */
+const PUBLISHED_PACKAGE_COUNT = 4;
 /** The tarball name prefix the retired judge package would pack under. */
 const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
 /** Where the folded judge's modules sit inside the umbrella tarball. */
@@ -201,7 +202,7 @@ describe('the umbrella tarball carries the docs bundle', () => {
 describe('the judge ships inside the umbrella tarball', () => {
   // The retired judge directory left publishable packs a fourth tarball that publishes
   // a judge nobody depends on; a private-flag mistake on a sibling packs two.
-  it('packs exactly three tarballs and none for the retired judge package', () => {
+  it('packs exactly four tarballs and none for the retired judge package', () => {
     expect(PACKAGE_DIRS).toHaveLength(PUBLISHED_PACKAGE_COUNT);
     const names = PACKAGE_DIRS.map((dir) => basename(tarballOf(dir)));
     expect(names.filter((name) => name.startsWith(RETIRED_TARBALL_PREFIX))).toEqual([]);

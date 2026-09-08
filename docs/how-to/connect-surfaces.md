@@ -34,21 +34,14 @@ described problem into either a judged entry or a draft entry.
 
 Use this when the project is developed in Grok.
 
-1. Install both packages as project dependencies: `pnpm add -D polydeukes @polydeukes/adapter-claude-code`.
-   The Grok registration reuses the Claude delegator when one exists, and that delegator loads
-   the adapter.
-2. Wire the project: `pnpm exec pdks init grok`.
+1. Install both packages as project dependencies: `pnpm add -D polydeukes @polydeukes/adapter-grok`.
+2. Wire the project from its root: `pnpm exec pdks-grok init`. The adapter ships this bin; it
+   runs `pdks init` for the scaffold, then writes the Grok registration artifacts.
 3. Reload the Hooks tab or open a new session after the installer finishes.
 
-A Grok tree gets its own hook JSON under `.grok/hooks/`. When a Claude delegator already exists,
-the Grok command points at that file so the host does not spawn two judges. If the tree also has
-`.claude/settings.json`, the Grok matcher follows the Claude registration that names the same
-command, because Grok collapses the two registrations only when command and matcher match. Run
-`pdks init grok` after `pdks-claude-code init`: in the other order the Grok registration keeps
-its own delegator, and a tree carrying both registrations spawns two judges per call until a
-Grok adapter ships.
-Generated registrations use a timeout of 60 seconds. The Grok host default is 5 seconds, and a
-timed-out hook fails open.
+A Grok tree gets its own hook JSON and delegator under `.grok/hooks/`. Generated registrations
+use a timeout of 60 seconds. The Grok host default is 5 seconds, and a timed-out hook fails
+open. Installing both session adapters in one project can run the judge twice per call.
 
 Grok does not supply the Claude-format human message needed by the session witness valve. The
 session log is ACP `updates.jsonl`, not Claude's JSONL.

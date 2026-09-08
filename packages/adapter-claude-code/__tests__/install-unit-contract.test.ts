@@ -15,12 +15,11 @@ const umbrellaSrc = resolve(import.meta.dirname, '../../polydeukes/src');
 /** The Claude Code directory literal — the string the umbrella's sources must not carry. */
 const CLAUDE_DIR_LITERAL = '.claude/';
 /**
- * Umbrella files that still carry the literal after this ticket, each for a stated reason:
- * the generated config template protects `.claude/hooks` and `.claude/settings.json` as its
- * minimum (the scaffold stays in the umbrella), and the Grok installer retargets the Claude
- * registration until it moves to its own adapter. Anything outside this set is a regression.
+ * Umbrella files that still carry the literal after this ticket: the generated config
+ * template protects `.claude/hooks` and `.claude/settings.json` as its minimum (the
+ * scaffold stays in the umbrella). Anything outside this set is a regression.
  */
-const UMBRELLA_DECLARED_CARRIERS = ['init-grok.ts', 'scaffold-project.ts'];
+const UMBRELLA_DECLARED_CARRIERS = ['scaffold-project.ts'];
 /**
  * The one adapter file still writing rows: the in-process session path the umbrella's
  * `runClaudeCodeHook` calls until this repository's own hook is rewired to `runHook`. It is
@@ -100,7 +99,7 @@ describe('the adapter manifest', () => {
 });
 
 describe('the umbrella knows no Claude Code directory', () => {
-  it('carries the `.claude/` literal in code only where the scaffold template and the Grok installer still need it', () => {
+  it('carries the `.claude/` literal in code only where the scaffold template still needs it', () => {
     // Comment-stripped: a comment naming the directory teaches nothing at run time. The set
     // is closed, so a new umbrella file learning a Claude Code path fails here by name.
     const found = carriers(umbrellaSrc, CLAUDE_DIR_LITERAL).map((entry) => entry.split(':')[0]);

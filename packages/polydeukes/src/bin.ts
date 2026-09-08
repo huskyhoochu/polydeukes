@@ -82,25 +82,6 @@ if (args.length === 1 && args[0] === 'init') {
   }
 }
 
-if (args.length === 2 && args[0] === 'init' && args[1] === 'grok') {
-  try {
-    const { initGrok } = await import('./init-grok.ts');
-    const { created, skipped } = initGrok({ projectRoot: process.cwd() });
-    for (const path of created) {
-      process.stdout.write(`created ${path}\n`);
-    }
-    for (const path of skipped) {
-      process.stdout.write(`skipped ${path} (already present)\n`);
-    }
-    process.exit(0);
-  } catch (error) {
-    process.stderr.write(
-      `pdks init grok failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exit(2);
-  }
-}
-
 if (args[0] === 'docs') {
   try {
     // Imported inside the try for the same reason `init` is: the query core and the
@@ -170,7 +151,7 @@ const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(ar
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks init grok | pdks docs [topic | search <query> | show <document-id>]\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>]\n',
   );
   process.exit(2);
 }

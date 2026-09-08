@@ -3,20 +3,21 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is alpha.** Three packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is alpha.** Four packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
-schema), `adapter-claude-code` (the session payload onto the input IR; the commit surface is a
-unified diff on stdin that the umbrella translates itself), and the `polydeukes`
-umbrella (the `pdks` bin, `loadConfig`, both surfaces' composition roots, the disk they
-need — and the judge itself as its `src/covenant/`
+schema), `adapter-claude-code` and `adapter-grok` (each one agent's session payload onto the
+input IR and its own `init` bin; the commit surface is a unified diff on stdin that the
+umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
+surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`
 module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
-library, and the declaration engine — extract steps, seven relations, witness lists). The
-adapter is the Claude Code install unit: its bin `pdks-claude-code init` registers the hook,
-and its `runHook` builds the IR and spawns `pdks covenant check`. It takes `core` as a
+library, and the declaration engine — extract steps, seven relations, witness lists). An
+adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` registers the
+hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
-`polydeukes` as a `peerDependency` for the bin it spawns; the umbrella still depends on the
-adapter for its old in-process session path until `SURFACE-04` removes it. The judge module opens no
-file at all, and core's only file I/O is the telemetry log it appends every judgment to.
+`polydeukes` as a `peerDependency` for the bin it spawns; the umbrella still depends on
+`adapter-claude-code` for its old in-process session path until `SURFACE-04` removes it. The
+judge module opens no file at all, and core's only file I/O is the telemetry log it appends
+every judgment to.
 Details live in the code and the archived PRDs (the merged contracts).
 The design docs own everything not yet implemented; when a design doc and shipped code disagree,
 neither side wins by default — triage against the archived PRD: it may be a stale doc, or a code
@@ -61,11 +62,11 @@ subpath (the umbrella has no `.` entry point; the session subpath and the judge 
 loads keep the commit surface's translator and reader off the session load path), so what we
 are judged by every day is the shipped artifact itself. A consumer project gets its delegator
 from the adapter's `pdks-claude-code init` (it imports the adapter's `runHook`, which spawns
-`pdks covenant check`; `SURFACE-04` moves this repository onto that delegator), and `pdks init
-grok` reuses that file when it already exists.
+`pdks covenant check`; `SURFACE-04` moves this repository onto that delegator). Grok
+consumers run `pdks-grok init`, which writes its own delegator.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.git/hooks`), the three packages' gitignored `dist`, and the root config. The
+`biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. The
 commit surface has no list of its own and no prompt: it judges the piped diff and lands every
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
 line does not — a staged gate-file change has already passed the session surface). The

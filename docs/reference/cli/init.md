@@ -4,19 +4,17 @@
 
 `pdks init` creates the agent-neutral project scaffold: the config file and the telemetry ignore
 line. It knows no agent. Registering a session surface is a separate command owned by that
-agent's adapter — `pdks-claude-code init` for Claude Code, and `pdks init grok` for Grok.
+agent's adapter — `pdks-claude-code init` for Claude Code, and `pdks-grok init` for Grok.
 
 <a id="init-syntax"></a>
 ## Syntax
 
 ```sh
 pdks init
-pdks init grok
 ```
 
-Those are the two forms the command accepts. Any other argument prints usage and exits `2`.
-Both forms are idempotent: existing artifacts are left in place and reported as skipped, and a
-preflight failure writes nothing and exits `2`.
+Any other argument prints usage and exits `2`. The command is idempotent: existing artifacts are
+left in place and reported as skipped, and a preflight failure writes nothing and exits `2`.
 
 <a id="init-common"></a>
 ## `pdks init` — the scaffold
@@ -57,34 +55,29 @@ Details and the per-artifact behaviour are in
 [Connect the surfaces](../../how-to/connect-surfaces.md#claude-code).
 
 <a id="init-grok"></a>
-## `pdks init grok`
+## Grok — `pdks-grok init`
 
-This form installs the Grok session surface.
+The Grok session surface is installed by
+[`@polydeukes/adapter-grok`](../packages/adapter-grok.md), which ships its own bin:
 
-Created artifacts:
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-grok
+npx pdks-grok init
+```
+
+That command runs `pdks init` for the scaffold, then writes the Grok registration artifacts:
 
 - `.grok/hooks/covenant-pretooluse.mjs`
 - `.grok/hooks/covenant-pretooluse.json`
-- `polydeukes.config.yaml`
-- `.gitignore`
 
-What differs from the Claude Code installer:
-
-- It does not create `.claude/` files.
-- It writes a Grok hook JSON registration instead of `.claude/settings.json`.
-- If a Claude delegator already exists, the Grok JSON names it instead of creating another
-  delegator. Run this form after `pdks-claude-code init`; in the other order each surface keeps
-  its own delegator and a tree carrying both spawns two judges per call.
-- Generated registrations use a timeout of 60 seconds. The Grok host default is 5 seconds, and a
-  timed-out hook fails open. When Claude settings register the same command, the Grok matcher
-  follows that registration so command and matcher agree.
-- A custom command is left alone; an existing timeout stays.
-- If you later remove Claude settings, regenerate the Grok JSON to restore the Grok-native matcher.
-  Back up custom settings first. Reload Grok's Hooks tab or start a new session after changes.
+It does not create or rewrite `.claude/` files. Generated registrations use a timeout of 60
+seconds. The Grok host default is 5 seconds, and a timed-out hook fails open. Installing both
+session adapters in one project can run the judge twice per call.
 
 Grok does not supply the human-message evidence required by the Claude session witness valve.
 The session log is ACP `updates.jsonl`, not Claude's JSONL.
-See [Grok recovery](../../troubleshooting.md#grok-witness).
+See [Grok recovery](../../troubleshooting.md#grok-witness). Details are in
+[Connect the surfaces](../../how-to/connect-surfaces.md#grok).
 
 <a id="init-results"></a>
 ## Results and failure conditions
@@ -107,8 +100,8 @@ filesystem problem, and rerun rather than assuming every failed installation lef
 
 ```sh
 pdks init
-pdks init grok
 npx pdks-claude-code init
+npx pdks-grok init
 ```
 
 The installers are CLI commands. They are not symbols on the `polydeukes` contract.
@@ -118,6 +111,7 @@ The installers are CLI commands. They are not symbols on the `polydeukes` contra
 
 - [`@polydeukes/adapter-claude-code`](../packages/adapter-claude-code.md) — the Claude Code
 install unit and its bin.
+- [`@polydeukes/adapter-grok`](../packages/adapter-grok.md) — the Grok install unit and its bin.
 - [`pdks docs`](../packages/polydeukes.md#polydeukes-bin) — the installed documentation reader lives
 in the same package.
 - [`pdks explain`](./explain.md)

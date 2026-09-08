@@ -29,7 +29,8 @@ is aspirational.
 | [Configuration reference](./reference/configuration/index.md) | What may go in `polydeukes.config.yaml`, and what each key does |
 | [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
-| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Session surface — hook payloads become the input IR |
+| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR |
+| [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.md) | Grok session surface — hook payloads become the input IR |
 
 <a id="shape-of-the-thing"></a>
 ## The shape of the thing, in one page
@@ -55,7 +56,7 @@ in the whitepaper, which were all found by counting rows rather than by reading 
 
 | Surface | Judges | Wired by | For |
 |---|---|---|---|
-| **Session** | A tool call, before it runs | `pdks-claude-code init` or `pdks init grok` | A project developed with an AI partner |
+| **Session** | A tool call, before it runs | `pdks-claude-code init` or `pdks-grok init` | A project developed with an AI partner |
 | **Commit** | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand | A human developing alone, and CI |
 
 The commit judge also answers on demand: `git diff HEAD | pdks covenant check --diff` after a task,

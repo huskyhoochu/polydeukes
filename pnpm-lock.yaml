@@ -32,6 +32,9 @@ importers:
       '@polydeukes/adapter-claude-code':
         specifier: workspace:*
         version: link:packages/adapter-claude-code
+      '@polydeukes/adapter-grok':
+        specifier: workspace:*
+        version: link:packages/adapter-grok
       lefthook:
         specifier: ^2.1.12
         version: 2.1.12
@@ -46,6 +49,25 @@ importers:
         version: 2.10.12
 
   packages/adapter-claude-code:
+    dependencies:
+      polydeukes:
+        specifier: workspace:^
+        version: link:../polydeukes
+    devDependencies:
+      '@polydeukes/core':
+        specifier: workspace:^
+        version: link:../core
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))
+
+  packages/adapter-grok:
     dependencies:
       polydeukes:
         specifier: workspace:^

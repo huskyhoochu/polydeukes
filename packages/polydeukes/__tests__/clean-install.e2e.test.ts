@@ -132,12 +132,17 @@ beforeAll(() => {
   // registry answers every `^0.3.0` range, and each spawned case then judges through a
   // year of missing exports with failures that name the wrong culprit. Refuse the tree
   // here, naming the package, instead of letting six cases fail on the symptom.
+  // Only packages that actually landed in the consumer graph are checked: a packed
+  // sibling this consumer does not depend on (a second session adapter) is absent from
+  // the store by design, not because the override failed.
   const virtualStore = readdirSync(join(consumerRoot, 'node_modules', '.pnpm'));
   for (const dir of PACKAGE_DIRS.filter((entry) => entry !== UMBRELLA_DIR)) {
-    const storePrefix = `${packageNameOf(dir).replace('/', '+')}@file+`;
+    const name = packageNameOf(dir);
+    if (!existsSync(join(consumerRoot, 'node_modules', name))) continue;
+    const storePrefix = `${name.replace('/', '+')}@file+`;
     if (!virtualStore.some((entry) => entry.startsWith(storePrefix))) {
       throw new Error(
-        `consumer resolved ${packageNameOf(dir)} from the registry, not its packed tarball — pnpm.overrides did not apply`,
+        `consumer resolved ${name} from the registry, not its packed tarball — pnpm.overrides did not apply`,
       );
     }
   }

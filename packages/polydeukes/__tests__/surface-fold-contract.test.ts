@@ -17,7 +17,7 @@ const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
 const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
 /** The package directories left after the fold. */
-const PACKAGE_DIRS = ['adapter-claude-code', 'core', 'polydeukes'];
+const PACKAGE_DIRS = ['adapter-claude-code', 'adapter-grok', 'core', 'polydeukes'];
 /**
  * The name and the path the fold retires, assembled so this file is not its own
  * counterexample.
@@ -32,11 +32,9 @@ const RETIRED_PACKAGE_PATH = ['packages', 'covenant'].join('/');
 const EXCLUDED_DIRS = new Set(['_docs', 'node_modules', 'dist', '.git', '.polydeukes', '.turbo']);
 const EXCLUDED_FILES = new Set(['CHANGELOG.md']);
 /**
- * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies;
- * the Grok installer carries it inside the hook-file template it writes for a consumer,
- * which is text emitted to disk, not a load path of this package.
+ * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies.
  */
-const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'init-grok.ts']);
+const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts']);
 /** The words the `explain` module may no longer spell: host, VCS, and hook names. */
 const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook', 'grok'];
 /** The seven verbs the composition roots call on the judge module. */
@@ -87,10 +85,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds three packages', () => {
-  // The retired package directory left behind (or a fourth package added) keeps a second
-  // copy of the judge that no manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the three package directories', () => {
+describe('the workspace holds four packages', () => {
+  // The retired package directory left behind keeps a second copy of the judge that no
+  // manifest depends on and every path glob still matches.
+  it('packages/ lists exactly the four package directories', () => {
     expect(readdirSync(join(repoRoot, 'packages')).sort()).toEqual(PACKAGE_DIRS);
   });
 });
@@ -134,7 +132,7 @@ describe('the judge is a static module of the umbrella', () => {
 
   // A dynamic `import(` anywhere but the listed modules is a judge loaded by path at run
   // time — the shape whose failure lands as a fail-closed exit instead of a build-time error.
-  it('no umbrella module outside bin.ts and the installers contains a dynamic import', () => {
+  it('no umbrella module outside bin.ts contains a dynamic import', () => {
     const offenders = umbrellaSources().filter(
       (rel) =>
         !DYNAMIC_IMPORT_MODULES.has(rel) &&

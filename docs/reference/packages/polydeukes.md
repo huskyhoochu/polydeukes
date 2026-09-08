@@ -25,11 +25,12 @@ what a consumer reaches is the bin, the session subpath, and the schema file.
 |---|---|
 | `pdks covenant check` | Judge an input IR (default) or a unified diff (`--diff`) from stdin |
 | `pdks init` | Create the project scaffold: config file and telemetry ignore line |
-| `pdks init grok` | Install the Grok session surface |
 | `pdks explain` | Render the assembled registration table without judging |
 | `pdks docs [topic]` | Read a bundled topic |
 | `pdks docs search <query>` | Search the bundled docs |
 | `pdks docs show <document-id>` | Show one bundled document or section |
+
+Session-surface installers live on the adapters: `pdks-claude-code init` and `pdks-grok init`.
 
 `pdks docs` is offline. It reads the installed package, not the network. Flags, JSON, and
 exit codes are in [`pdks docs`](../cli/docs.md).

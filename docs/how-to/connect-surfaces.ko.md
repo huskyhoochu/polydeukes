@@ -31,22 +31,18 @@ Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
 Grok에서 개발할 때 씁니다.
 
-1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/adapter-claude-code`.
-   Grok 등록은 Claude 위임자가 있으면 그 파일을 재사용하고, 그 위임자가 어댑터를 불러오기 때문입니다.
-2. 프로젝트를 배선합니다. `pnpm exec pdks init grok`.
+1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/adapter-grok`.
+2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-grok init`. 어댑터가 이 실행 파일을
+   제공합니다. 먼저 `pdks init`으로 초기 파일을 만든 뒤 Grok 등록 산출물을 씁니다.
 3. 설치가 끝나면 Hooks 탭을 다시 불러오거나 새 세션을 엽니다.
 
-Grok 프로젝트에는 `.grok/hooks/` 아래에 훅 JSON 파일이 생깁니다. Claude 훅이 이미 있으면
-Grok의 `command`도 그 파일을 가리킵니다. `.claude/settings.json`도 있다면 같은 `command`를
-등록한 Claude 항목에 맞춰 Grok의 `matcher`를 설정합니다. 두 값이 모두 같아야 Grok가 중복 등록을
-하나로 처리해 판정기를 두 번 실행하지 않기 때문입니다. `pdks init grok`은 `pdks-claude-code init`
-뒤에 실행합니다. 순서가 반대이면 Grok 등록이 자기 위임자를 따로 갖게 되고, 두 등록을 모두 가진
-프로젝트는 Grok 어댑터가 나오기 전까지 호출마다 판정기를 두 번 실행합니다.
-새 등록의 제한 시간은 60초입니다. Grok 호스트의 기본값은 5초이며, 훅 실행이 시간 초과로
-끝나면 해당 호출을 차단하지 않습니다(fail-open).
+Grok 프로젝트에는 `.grok/hooks/` 아래에 훅 JSON과 위임자가 생깁니다. 새 등록의 제한 시간은
+60초입니다. Grok 호스트의 기본값은 5초이며, 훅 실행이 시간 초과로 끝나면 해당 호출을
+차단하지 않습니다(fail-open). 두 세션 어댑터를 한 프로젝트에 함께 설치하면 호출마다
+판정기가 두 번 실행될 수 있습니다.
 
-Grok는 세션 증인 밸브에 필요한 Claude 형식의 인간 메시지를 공급하지 않습니다. 대화 기록은
-Claude JSONL이 아니라 ACP `updates.jsonl`입니다.
+Grok는 세션 증인(witness) 밸브에 필요한 Claude 형식의 인간 메시지를 공급하지 않습니다. 대화
+기록은 Claude JSONL이 아니라 ACP `updates.jsonl`입니다.
 의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 커밋 표면에는 증인 프롬프트가 없으므로
 차단된 Grok 도구 호출을 커밋 쪽에서 허용할 방법도 없습니다.
 

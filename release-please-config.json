@@ -14,6 +14,11 @@
           "path": "packages/adapter-claude-code/package.json",
           "jsonpath": "$.version"
         },
+        {
+          "type": "json",
+          "path": "packages/adapter-grok/package.json",
+          "jsonpath": "$.version"
+        },
         { "type": "json", "path": "packages/polydeukes/package.json", "jsonpath": "$.version" }
       ]
     }

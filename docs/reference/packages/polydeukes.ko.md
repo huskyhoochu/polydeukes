@@ -25,11 +25,12 @@
 |---|---|
 | `pdks covenant check` | 표준 입력의 입력 IR(기본) 또는 통합 diff(`--diff`)를 판정 |
 | `pdks init` | 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목 |
-| `pdks init grok` | Grok 세션 표면 설치 |
 | `pdks explain` | 조립된 등록표를 판정 없이 표시 |
 | `pdks docs [topic]` | 동봉된 주제를 읽음 |
 | `pdks docs search <query>` | 동봉된 문서를 검색 |
 | `pdks docs show <document-id>` | 동봉된 문서 또는 절을 표시 |
+
+세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`과 `pdks-grok init`입니다.
 
 `pdks docs`는 오프라인입니다. 네트워크가 아니라 설치된 패키지를 읽습니다. 플래그, JSON,
 종료 코드는 [`pdks docs`](../cli/docs.ko.md)에 있습니다.

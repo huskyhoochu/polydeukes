@@ -12,7 +12,7 @@ or the judging packages, provided its own installed documentation bundle is inta
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root.
 Restore the intended file from Git, or use `pdks init` / `pdks-claude-code init` /
-`pdks init grok` for a new project. Then run `pdks explain`. No configuration means no silent
+`pdks-grok init` for a new project. Then run `pdks explain`. No configuration means no silent
 default policy.
 
 <a id="multiple-config"></a>
@@ -37,7 +37,7 @@ run `pdks explain` and check the assembled registrations.
 
 A hook not yet loaded and an unavailable witness valve are different problems:
 
-- After `pdks init grok`, reload the Hooks tab or start a new session. Verify an actual call and
+- After `pdks-grok init`, reload the Hooks tab or start a new session. Verify an actual call and
   its telemetry; a successful installer run does not prove the open host loaded the hook.
 - Grok's ACP history does not supply the Claude-format human message required by the current
   session witness valve. Reloading does not add that capability. Perform a necessary repair
