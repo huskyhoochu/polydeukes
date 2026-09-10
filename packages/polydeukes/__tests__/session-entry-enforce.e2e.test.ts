@@ -181,3 +181,21 @@ describe('real hook spawn: the session surface honours an entry at advise', () =
     expect(judgedRows()).not.toContainEqual([expect.anything(), SOFT_ID]);
   });
 });
+
+describe('real hook spawn: a banned token quoted in stdin data is not a command line', () => {
+  // The control — the same token at the head of the line against the same `enforce: 'block'`
+  // entry exiting 2 with one blocked row — is the third test of the block above.
+
+  it("the token only inside a heredoc body against an enforce: 'block' entry exits 0 · ONE passed row under the entry", () => {
+    // The live friction: a script body quoting the banned token blocked the call. The row
+    // must be `passed` under the entry id — exit 0 with no row is a call that never routed,
+    // and a `blocked` row is the body still on the command line.
+    const result = runHookWithDisciplines(
+      [hardEntry],
+      bashPayload(`cat <<EOF\nrun("${FORBIDDEN_COMMAND} --run")\nEOF\n`),
+    );
+
+    expect(result.status).toBe(0);
+    expect(judgedRows()).toEqual([['passed', HARD_ID]]);
+  });
+});

@@ -55,13 +55,29 @@ export type UnreadSpan = {
 };
 
 /**
+ * A half-open span `[start, end)` of the line bash hands to a command as stdin data instead
+ * of executing: a heredoc body, or a herestring's target word.
+ */
+export type DataSpan = {
+  start: number;
+  end: number;
+};
+
+/**
  * The tokenizer's result: the commands it read, plus one span per failure it hit. A failure
  * does not discard the line — the read commands reach precise judgment and only the spans
  * fall to a consumer's conservative treatment. An empty `unread` is the "fully read" signal.
+ *
+ * `data` lists the stdin-data spans in source order, non-overlapping: heredoc bodies and
+ * herestring words bash hands over without expanding them. A body under an unquoted
+ * delimiter that carries `$` or a backtick, and an opaque herestring word, are text bash
+ * runs first and are not data. A span the scanner could not finish reading is never among
+ * them either, so unread bytes stay on the command line.
  */
 export type TokenizeResult = {
   commands: SimpleCommand[];
   unread: UnreadSpan[];
+  data: DataSpan[];
 };
 
 /** A detected mutation target (path) with the name of the rule that found it. */
@@ -466,23 +482,42 @@ type PendingHeredoc = {
  * queue order. Body lines are data — never parsed as commands — until a line equals the
  * delimiter (`<<-` allows leading tabs), or end of input (bash ends at EOF too). Each body
  * is recorded on the command that declared it, in the bytes bash would write (tabs
- * stripped under `<<-`, the `\r` of CRLF dropped). Returns the index just past the last
- * consumed body.
+ * stripped under `<<-`, the `\r` of CRLF dropped), and its span in the original line is
+ * appended to `data`. Returns the index just past the last consumed body.
  */
-function consumeHeredocBodies(line: string, start: number, pending: PendingHeredoc[]): number {
+function consumeHeredocBodies(
+  line: string,
+  start: number,
+  pending: PendingHeredoc[],
+  data: DataSpan[],
+): number {
   let i = start;
   for (const heredoc of pending) {
     let body = '';
+    const bodyStart = i;
+    // Where the body ends in the ORIGINAL line: the start of the delimiter line, or end of
+    // input when the delimiter never arrives. The delimiter line itself is not data.
+    let bodyEnd = i;
     while (i < line.length) {
       let end = line.indexOf('\n', i);
       if (end === -1) end = line.length;
       let bodyLine = line.slice(i, end);
       if (bodyLine.endsWith('\r')) bodyLine = bodyLine.slice(0, -1);
+      const lineStart = i;
       i = end + 1;
       const stripped = heredoc.stripTabs ? bodyLine.replace(/^\t+/, '') : bodyLine;
-      if (stripped === heredoc.delimiter) break;
+      if (stripped === heredoc.delimiter) {
+        bodyEnd = lineStart;
+        break;
+      }
       body += `${stripped}\n`;
+      bodyEnd = Math.min(i, line.length);
     }
+    // An unquoted delimiter leaves the body subject to expansion, so a `$(…)` or backtick
+    // in it is text bash executes — that body stays on the command line. An empty body
+    // has no bytes to delete and reports no span.
+    const expands = !heredoc.literal && /[$`]/.test(body);
+    if (bodyEnd > bodyStart && !expands) data.push({ start: bodyStart, end: bodyEnd });
     heredoc.owner.heredocs = [
       ...(heredoc.owner.heredocs ?? []),
       { body, literal: heredoc.literal },
@@ -499,6 +534,7 @@ function consumeHeredocBodies(line: string, start: number, pending: PendingHered
 export function tokenizeCommandLine(line: string): TokenizeResult {
   const commands: SimpleCommand[] = [];
   const unread: UnreadSpan[] = [];
+  const data: DataSpan[] = [];
   let current: SimpleCommand = { words: [], redirects: [] };
   // Heredoc delimiters queued on the current line, consumed in order at the next newline.
   let pendingHeredocs: PendingHeredoc[] = [];
@@ -519,7 +555,7 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       commands.push(current);
       current = { words: [], redirects: [] };
       i += ch === '\r' && line[i + 1] === '\n' ? 2 : 1;
-      i = consumeHeredocBodies(line, i, pendingHeredocs);
+      i = consumeHeredocBodies(line, i, pendingHeredocs, data);
       pendingHeredocs = [];
       continue;
     }
@@ -594,6 +630,12 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
       const target = scanned.word.text.startsWith('(')
         ? { ...scanned.word, opaque: true }
         : scanned.word;
+      // A herestring's target word is stdin data, not a command: bash passes it as written,
+      // quotes included, so the span covers the raw word. An opaque word (`$(…)`, a
+      // backtick, a bare `(`) is text bash expands first, so it stays on the command line.
+      if (redirect.operator === '<<<' && !target.opaque) {
+        data.push({ start: j, end: scanned.next });
+      }
       current.redirects.push({ operator: redirect.operator, target });
       i = scanned.next;
       continue;
@@ -617,7 +659,23 @@ export function tokenizeCommandLine(line: string): TokenizeResult {
 
   // Drop empty commands produced by leading/trailing/adjacent operators (e.g. ";;").
   const nonEmpty = commands.filter((c) => c.words.length > 0 || c.redirects.length > 0);
-  return { commands: nonEmpty, unread };
+  return { commands: nonEmpty, unread, data };
+}
+
+/**
+ * The executed text of a command line: the line with every `data` span deleted and nothing
+ * put in its place, so the words bash runs keep their spelling and line structure. Bytes
+ * the scanner could not finish reading are not data spans and stay as written.
+ */
+export function executedText(line: string): string {
+  const { data } = tokenizeCommandLine(line);
+  let text = '';
+  let cut = 0;
+  for (const span of data) {
+    text += line.slice(cut, span.start);
+    cut = span.end;
+  }
+  return text + line.slice(cut);
 }
 
 /**

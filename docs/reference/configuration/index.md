@@ -287,7 +287,14 @@ declaration reads that source, cuts it into lines, keeps the lines a pattern mat
 requires the result to be `empty`. It scopes on `command` so that only shell calls are
 admitted: an Edit carries no command line, and a declaration reading a source its world
 lacks is unjudgeable. A multi-line command is judged line by line, so `^` means the start
-of a line; a pattern that would span a line boundary does not match.
+of a line; a pattern that would span a line boundary does not match. Heredoc bodies and
+herestring words are not part of the source: bash passes them to the command as stdin
+data rather than executing them, so a banned token quoted inside one is not a match, and
+whether that data becomes a file write is judged by the shell-evidence path instead. Text
+bash expands first stays in the source — a body under an unquoted delimiter that carries
+`$` or a backtick, and a herestring word holding a substitution — as does a line the
+tokenizer could not finish reading. What the receiving command does with its stdin is not
+judged: a script fed to an interpreter is data to bash and a program to the interpreter.
 
 ```yaml
   - id: 'hooks-stay-armed'

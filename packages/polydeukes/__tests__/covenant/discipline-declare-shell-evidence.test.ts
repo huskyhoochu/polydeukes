@@ -17,6 +17,7 @@ import type { CovenantRegistration } from '../../src/covenant/dispatch.ts';
 const SHELL_TOOL = 'Bash';
 const COMMAND_ARG = 'command';
 const PATH_SOURCE = 'target.path';
+const COMMAND_SOURCE = 'command';
 const ID = 'no-lantern';
 const ENTRY = 'nothing-added';
 // The banned word is a fixture value with no relation to this repo's vocabulary.
@@ -216,6 +217,53 @@ describe('declare body — shell evidence enrichment', () => {
     });
 
     expect(outcome.exitCode).toBe(2);
+  });
+});
+
+describe('declare shell axis — the file write survives the heredoc body leaving the command line', () => {
+  const BAN_ID = 'no-lantern-on-the-line';
+  /** The ban over the command line: a line matching the pattern breaks the call. */
+  const COMMAND_BAN = {
+    mechanism: 'forbidden-command',
+    scope: { source: COMMAND_SOURCE },
+    extract: {
+      hits: [{ op: 'source', of: COMMAND_SOURCE }, { op: 'lines' }, { op: 'matches', re: PATTERN }],
+    },
+    relate: [{ id: 'clean-line', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
+  };
+  const banEntry = { id: BAN_ID, declare: COMMAND_BAN } as unknown as DisciplineEntry;
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'pdks-declare-heredoc-'));
+    mkdirSync(join(dir, SCOPE_DIR));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('a heredoc write whose body carries the banned word passes the command ban and still breaks the file judgment', async () => {
+    // Bash hands the body to stdin, so the ban over the command line does not see it; the
+    // same bytes are the file's `post`, which the shell-evidence axis derives from the
+    // command as written. Deleting the body from the shell-evidence input as well leaves
+    // the create with empty content and the added match uncaught; leaving the body on the
+    // command line breaks the ban on a token that is never executed.
+    const fresh = join(dir, SCOPE_DIR, 'fresh.txt');
+    const bodyLine = `${BANNED} rides in the body`;
+    const input = bashInput(lines(`cat > ${fresh} <<'EOF'`, bodyLine, 'EOF'));
+    const regs = compileDisciplineRegistrations(specWith(dir, { disciplines: [entry, banEntry] }));
+    const ban = regs.find((r) => r.label === BAN_ID && r.skip === undefined);
+    if (ban === undefined) throw new Error(`no body registration compiled for ${BAN_ID}`);
+
+    expect(ban.matches?.(input)).not.toBeNull();
+    const banOutcome = (await ban.body?.(input)) as BodyOutcome;
+    expect(banOutcome.exitCode).toBe(0);
+
+    expect(bodyRegOf(regs).matches?.(input)).toBe(`${SCOPE_DIR}/fresh.txt`);
+    const fileOutcome = (await bodyRegOf(regs).body?.(input)) as BodyOutcome;
+    expect(fileOutcome.exitCode).toBe(1);
+    expect(fileOutcome.witnesses?.[0]?.witnesses).toEqual([{ key: BANNED, value: bodyLine }]);
   });
 });
 

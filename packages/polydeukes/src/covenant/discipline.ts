@@ -16,6 +16,7 @@ import {
   type DisciplineEntry,
   type FileChange,
 } from '@polydeukes/core';
+import { executedText } from './bash-line.ts';
 import {
   type Break,
   type CompiledDeclaration,
@@ -131,7 +132,11 @@ export type WorldsFromInputSpec = {
  * worlds and the call world alike. An input without one leaves the key absent, since `{}`
  * is the positive value saying the host observed an actor that is not a subagent.
  *
- * `command` is the first shell call's command string, carried by every world of the input.
+ * `command` is the first shell call's command line with its heredoc bodies and herestring
+ * words deleted, carried by every world of the input. bash hands those bytes to the command
+ * as stdin data instead of executing them — except a body or word bash expands first, which
+ * stays — and whether they become a file write is the shell-evidence path's judgment, which
+ * reads the command as written.
  * A shell call changing no in-scope file is still one observation, so it yields the single
  * CALL WORLD — subject `'-'`, no `target.path`, so a path-scoped declaration finds no string
  * and refuses it. A surface whose shell tools are empty observes no shell call, hence no
@@ -139,7 +144,8 @@ export type WorldsFromInputSpec = {
  */
 export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
   const { input, rootDir } = spec;
-  const command = filterShellCommands(input.toolCalls, spec.shellTools, spec.commandArgs)[0];
+  const rawCommand = filterShellCommands(input.toolCalls, spec.shellTools, spec.commandArgs)[0];
+  const command = rawCommand === undefined ? undefined : executedText(rawCommand);
   const scoped: { path: string; change: FileChange }[] = [];
   for (const change of allFileChanges(input)) {
     const path = relativizeForScope(change.path, rootDir);

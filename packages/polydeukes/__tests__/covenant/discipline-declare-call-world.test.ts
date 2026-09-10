@@ -29,6 +29,12 @@ const ENTRY = 'no-npm-mutation';
 const BANNED_COMMAND = 'npm link --help';
 const ALLOWED_COMMAND = 'pnpm add left-pad';
 const SECOND_COMMAND = 'ls -la';
+/** The banned command quoted inside a heredoc body: bash hands the body to stdin. */
+const HEREDOC_QUOTED_COMMAND = `python - <<EOF\nrun("${BANNED_COMMAND}")\nEOF\n`;
+/** The same call with the body deleted — what the `command` source carries. */
+const HEREDOC_STRIPPED_COMMAND = 'python - <<EOF\nEOF\n';
+/** The banned command quoted as a herestring word. */
+const HERESTRING_QUOTED_COMMAND = `cat <<< '${BANNED_COMMAND}'`;
 const FILE_A: FileChange = { kind: 'create', path: 'lib/a.txt', post: 'a' };
 const FILE_B: FileChange = { kind: 'create', path: 'lib/b.txt', post: 'b' };
 
@@ -191,6 +197,41 @@ describe('worldsFromInput — the call world', () => {
     expect(beside.map((entry) => entry.path)).toEqual([FILE_A.path]);
     expect(beside[0]?.world).not.toHaveProperty(COMMAND_SOURCE);
   });
+
+  it('the call world carries the command with its heredoc body deleted', () => {
+    // A builder that ships `args.command` verbatim hands the ban bytes bash never executes.
+    // The exact string also pins the deletion: no padding where the body was, and the
+    // delimiter line kept.
+    const worlds = worldsFromInput({
+      input: inputOf(shellCall(HEREDOC_QUOTED_COMMAND)),
+      rootDir: ROOT,
+      ...SHELL_SURFACE,
+    });
+
+    expect(worlds).toEqual([
+      { path: CALL_SUBJECT, world: { changes: [], [COMMAND_SOURCE]: HEREDOC_STRIPPED_COMMAND } },
+    ]);
+  });
+
+  it('a file world beside a file change carries the same stripped command', () => {
+    // The deletion belongs to the command source, not to the call world alone: a builder
+    // that strips on the `-` path and copies the raw string onto file worlds blocks the
+    // heredoc call the moment it also writes a file.
+    const worlds = worldsFromInput({
+      input: inputOf(shellCall(HEREDOC_QUOTED_COMMAND, FILE_A)),
+      rootDir: ROOT,
+      ...SHELL_SURFACE,
+    });
+
+    expect(worlds.map((entry) => entry.world)).toEqual([
+      {
+        [PATH_SOURCE]: FILE_A.path,
+        post: FILE_A.post,
+        changes: [FILE_A.path],
+        [COMMAND_SOURCE]: HEREDOC_STRIPPED_COMMAND,
+      },
+    ]);
+  });
 });
 
 describe('compileDisciplineRegistrations — the call world through a declaration', () => {
@@ -268,5 +309,28 @@ describe('compileDisciplineRegistrations — the call world through a declaratio
     );
 
     expect(reg.matches?.(inputOf(shellCall(BANNED_COMMAND)))).toBeNull();
+  });
+
+  it('a command-scoped declaration passes a shell call whose pattern sits only in a heredoc body', async () => {
+    // The whole path with the body deleted: the call still routes to `-` (the stripped
+    // command is a command), and the ban finds no line. The break on the same pattern on
+    // the command line itself is the first test of this block.
+    const reg = bodyRegOf(compileDisciplineRegistrations(specWith(FORBIDDEN_COMMAND)));
+    const input = inputOf(shellCall(HEREDOC_QUOTED_COMMAND));
+
+    expect(reg.matches?.(input)).toBe(CALL_SUBJECT);
+    const outcome = (await reg.body?.(input)) as BodyOutcome;
+    expect(outcome.exitCode).toBe(0);
+  });
+
+  it('a command-scoped declaration passes a shell call whose pattern sits only in a herestring word', async () => {
+    // The second data kind: a deletion that covers heredoc bodies alone still hands the
+    // ban the `<<<` word.
+    const reg = bodyRegOf(compileDisciplineRegistrations(specWith(FORBIDDEN_COMMAND)));
+    const input = inputOf(shellCall(HERESTRING_QUOTED_COMMAND));
+
+    expect(reg.matches?.(input)).toBe(CALL_SUBJECT);
+    const outcome = (await reg.body?.(input)) as BodyOutcome;
+    expect(outcome.exitCode).toBe(0);
   });
 });
