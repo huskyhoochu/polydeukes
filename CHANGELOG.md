@@ -11,6 +11,27 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.7.0](https://github.com/b95labs/polydeukes/compare/v0.6.1...v0.7.0) (2026-09-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **polydeukes:** this repository is judged by the install units it ships (SURFACE-04) ([#108](https://github.com/b95labs/polydeukes/issues/108))
+* **adapter-grok:** add Grok session-surface install unit (SURFACE-03c) ([#107](https://github.com/b95labs/polydeukes/issues/107))
+* **adapter-claude-code:** install unit — pdks-claude-code init and runHook spawn (SURFACE-03b) ([#106](https://github.com/b95labs/polydeukes/issues/106))
+* **polydeukes:** fold covenant into the umbrella, drop the barrel, static judge (SURFACE-02) ([#104](https://github.com/b95labs/polydeukes/issues/104))
+
+### Features
+
+* **adapter-claude-code:** install unit — pdks-claude-code init and runHook spawn (SURFACE-03b) ([#106](https://github.com/b95labs/polydeukes/issues/106)) ([6e6e897](https://github.com/b95labs/polydeukes/commit/6e6e89708f0f08e65fde13056151d249722398c7))
+* **adapter-grok:** add Grok session-surface install unit (SURFACE-03c) ([#107](https://github.com/b95labs/polydeukes/issues/107)) ([4d0370a](https://github.com/b95labs/polydeukes/commit/4d0370aaa6b3354ed4f23634f24c50a81ad5efac))
+* **config:** a PRD edit needs its writing method read first ([a52605d](https://github.com/b95labs/polydeukes/commit/a52605d01b2f0f7dc3b19083fedc47b31347c348))
+* **polydeukes:** a banned token quoted in stdin data is not a command line (COVENANT-22) ([#109](https://github.com/b95labs/polydeukes/issues/109)) ([a1410a5](https://github.com/b95labs/polydeukes/commit/a1410a5e9ba4cb345c51a1d630bbb4d05c827bff))
+* **polydeukes:** fold covenant into the umbrella, drop the barrel, static judge (SURFACE-02) ([#104](https://github.com/b95labs/polydeukes/issues/104)) ([4188ca3](https://github.com/b95labs/polydeukes/commit/4188ca369a029a9bb0af374754152b9efa858bf1))
+* **polydeukes:** IR session evidence contract — tools and session keys, CLI session assembly (SURFACE-03a) ([#105](https://github.com/b95labs/polydeukes/issues/105)) ([7022ff3](https://github.com/b95labs/polydeukes/commit/7022ff31ae09de85c20fb8647a613a432bb2be23))
+* **polydeukes:** stdin IR and --diff input contract, adapter-git deleted (SURFACE-01) ([#102](https://github.com/b95labs/polydeukes/issues/102)) ([0fd5fdf](https://github.com/b95labs/polydeukes/commit/0fd5fdfc024c99f0bcc4bce975da43a2a7eed7b7))
+* **polydeukes:** this repository is judged by the install units it ships (SURFACE-04) ([#108](https://github.com/b95labs/polydeukes/issues/108)) ([012e92c](https://github.com/b95labs/polydeukes/commit/012e92c15a405ebf5b04c4b3c45b46bddcbfb9f1))
+
 ## [0.6.1](https://github.com/huskyhoochu/polydeukes/compare/v0.6.0...v0.6.1) (2026-09-05)
 
 
