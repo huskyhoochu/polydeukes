@@ -55,10 +55,10 @@ invents risks that do not exist. Report per-unit, then aggregate — never the r
 `CovenantInput.world` is the third axis beside the changes and the transcript: `files` are
 texts the supply layer read for the declarations that named them, `channels` are the
 surface-resolved evidence channels (`sidecar` — the spawn records this host keeps beside the
-transcript, as JSON text; the commit surface has no session, so it injects no channel reader
+transcript, as JSON text; the change-set surface has no session, so it injects no channel reader
 and every channel is absent there by design), `changes` is the
 observation unit's change set when the surface dispatches narrower than it observes (the
-commit surface judges one staged change per dispatch). An absent file or channel is an absent
+change-set surface judges one staged change per dispatch). An absent file or channel is an absent
 key — `null` is `FileChange.pre`'s creation marker and means something else, and `'[]'` under
 `sidecar` is a present channel that observed nothing, a different fact from no channel. A
 root supplies what its **supply body** read and nothing more — the readers live in the
@@ -68,7 +68,7 @@ root only injects them; which text a judged change sees is the judge's rule (the
 that never reaches a channel, which has no path to overlap). A `transcript` binding is
 neither a file nor a channel: it is the session the root already injects for the context
 family, flattened into a plain snapshot at supply time, and its absence is the absence of
-that session — the commit surface has none, so `supply: pass` is how a history declaration
+that session — the change-set surface has none, so `supply: pass` is how a history declaration
 lands there.
 
 ## The actor comes from the host envelope only
@@ -77,5 +77,5 @@ lands there.
 top-level `agent_type` (present when the hook fires inside a subagent) and supplies `{}` for
 the main session. `tool_input`, user text, the transcript body, and the sidecar are never
 read for it — those are surfaces the agent writes, and an actor read from them is an actor
-the call chose for itself. A surface that cannot prove an actor (the commit surface) omits
+the call chose for itself. A surface that cannot prove an actor (the change-set surface) omits
 the key; a declaration's `supply` policy says what the absence means.

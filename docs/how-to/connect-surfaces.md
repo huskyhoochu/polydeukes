@@ -3,11 +3,11 @@
 **English** · [한국어](../how-to/connect-surfaces.ko.md)
 
 > Pick the surface that matches the job. Claude Code and Grok wire the session surface; git wires
-the commit surface.
+the change-set surface.
 
 The two surfaces share the same config vocabulary, but they answer different moments. Use the
-session surface when an AI partner is making edits, and use the commit surface when history is about
-to be written.
+session surface when an AI partner is making edits, and use the change-set surface when history
+is about to be written.
 
 <a id="claude-code"></a>
 ## Claude Code session surface
@@ -45,11 +45,11 @@ open. Installing both session adapters in one project can run the judge twice pe
 
 Grok does not supply the Claude-format human message needed by the session witness valve. The
 session log is ACP `updates.jsonl`, not Claude's JSONL.
-For an intentional blocked edit, use your own terminal. The commit surface has no prompt, so there
-is no way to authorize a blocked Grok tool call from the commit side either.
+For an intentional blocked edit, use your own terminal. The change-set surface has no prompt, so
+there is no way to authorize a blocked Grok tool call from that side either.
 
-<a id="commit-surface"></a>
-## Commit surface
+<a id="change-set-surface"></a>
+## Change-set surface
 
 Use this when you want git to judge staged changes before they become history.
 
@@ -102,7 +102,7 @@ stops is your hook wiring: the entries above honour the exit code. Assembly erro
 The witness token is the same idea on both surfaces, but the delivery is different.
 
 - On the session surface, type the token on its own first line in a conversation message.
-- The commit surface has no prompt. Its judgment reaches you as an exit code, and your hook
+- The change-set surface has no prompt. Its judgment reaches you as an exit code, and your hook
   wiring decides what to do with it.
 
 The valve is consulted after the judgment returns a block. You can supply the token before an

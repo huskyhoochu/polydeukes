@@ -278,7 +278,7 @@ languages:
   placeholder:
     productionGlob: 'src/**'
     testCmd: 'echo "set a verification command for {scope}"'
-disciplines:
+sessionDisciplines:
   - id: 'no-force-push'
     why: 'a force push rewrites history nobody reviewed'
     declare:
@@ -357,7 +357,7 @@ languages:
   typescript:
     productionGlob: 'src/**'
     testCmd: 'pnpm test'
-disciplines:
+sessionDisciplines:
   - id: 'manifest-needs-npm-view'
     why: 'a successful package lookup must precede a manifest edit'
     declare:
@@ -380,7 +380,7 @@ disciplines:
 \`\`\`
 
 The precedent example proves only that an observed successful Bash call starts with npm view;
-it does not prove that the lookup concerns the dependency being edited. The commit surface has
+it does not prove that the lookup concerns the dependency being edited. The change-set surface has
 no transcript and therefore skips this example by its explicit supply policy.
 
 **Write the regex yourself — the user states the promise, you author the pattern.** The
@@ -434,7 +434,7 @@ own mechanism can actually reach:
 | --- | --- | --- |
 | a file-reading one (\`added-only\`, \`naming\`, …) | one scratch edit matching the must-match direction | \`pdks covenant check --diff\` output over \`git diff HEAD\` on stdin — the exit stays 0 at advise, the id is the proof |
 | \`forbidden-command\` | run one harmless command matching the pattern | the telemetry log tail — at advise the call proceeds and its row records the id |
-| \`precedent\` | one in-scope edit made without the required precedent | the telemetry log tail — a declaration reading the session judges on the session surface only (the commit surface has none, so its \`supply\` policy records it \`skipped\`) |
+| \`precedent\` | one in-scope edit made without the required precedent | the telemetry log tail — a declaration reading the session judges on the session surface only (the change-set surface has none, so its \`supply\` policy records it \`skipped\`) |
 
 Then undo the scratch break, repeat the same observation, and confirm a passing row for the
 must-NOT-match case. Silence alone may mean a scope miss, unchanged files, or unavailable evidence;

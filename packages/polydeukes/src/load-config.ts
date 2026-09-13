@@ -4,7 +4,7 @@
  *
  * This lives in its own module rather than in the package barrel because ESM re-exports are
  * eager: importing `loadConfig` from the barrel would instantiate both composition roots,
- * putting the session adapter on the commit surface's load path where it is never used. A
+ * putting the session adapter on the change-set surface's load path where it is never used. A
  * workspace missing only that dist would then kill `pdks covenant check` before its
  * fail-closed handler could record a row. Both composition roots import this module directly
  * for the same reason.

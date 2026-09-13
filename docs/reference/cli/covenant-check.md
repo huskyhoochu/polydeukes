@@ -2,7 +2,7 @@
 
 **English** · [한국어](./covenant-check.ko.md)
 
-`pdks covenant check` runs the commit-surface judgment against the installed package. It reads the
+`pdks covenant check` runs the change-set-surface judgment against the installed package. It reads the
 config from the working directory, takes one observation from **stdin**, and dispatches the same
 judge bodies that the session hook uses. It never opens a repository and never calls `git`: the
 caller produces the observation, the command judges it and answers with an exit code.

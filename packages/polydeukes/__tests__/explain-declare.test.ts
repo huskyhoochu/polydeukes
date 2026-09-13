@@ -8,6 +8,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type AlgebraDeclarationBody, declarationChannels } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { explain } from '../src/explain.ts';
 import { writeConfigAt } from './helpers.ts';
@@ -64,8 +65,18 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-function writeFixtureConfig(disciplines: unknown[]): void {
-  writeConfigAt(repoRoot, telemetryPath, { disciplines });
+/** Write the fixture config, routing each entry to the list its channels belong in. */
+function writeFixtureConfig(entries: unknown[]): void {
+  const typed = entries as { declare: AlgebraDeclarationBody }[];
+  const channelsOf = (entry: { declare: AlgebraDeclarationBody }) =>
+    declarationChannels(entry.declare);
+  writeConfigAt(repoRoot, telemetryPath, {
+    disciplines: typed.filter((entry) => channelsOf(entry).length === 0),
+    sessionDisciplines: typed.filter(
+      (entry) => channelsOf(entry).length > 0 && !channelsOf(entry).includes('changes'),
+    ),
+    changeSetDisciplines: typed.filter((entry) => channelsOf(entry).includes('changes')),
+  });
 }
 
 function surfaceSection(text: string, header: string): string {
@@ -192,7 +203,7 @@ describe('the tally counts declare in its own bucket', () => {
 });
 
 describe('a declaration reading the change set renders per surface capability', () => {
-  // The bilingual declaration reads `changes`, which only the commit surface observes.
+  // The bilingual declaration reads `changes`, which only the change-set surface observes.
   // Ids, patterns, and the reason fragment are fixture values the live config carries.
   const BILINGUAL_ID = 'docs-stay-bilingual';
   const KO_FOLLOWS = 'ko-follows';
@@ -244,26 +255,21 @@ describe('a declaration reading the change set renders per surface capability', 
     },
   };
 
-  it('the session surface renders a `skip` row naming the change set and no `declare` row for the id', async () => {
-    // The session surface observes one call, so the assembly it renders must be the one
-    // the hook runs: a `declare` row here promises a judgment the surface records as
-    // `skipped`, and a skip reason that does not name the change set reads as a config
-    // fault the author is expected to fix.
+  it('the session surface renders no row at all for the id', async () => {
+    // A change-set entry stands only where the change set is observed; a row on the
+    // session surface promises a judgment the hook never makes.
     writeFixtureConfig([bilingualEntry]);
 
     const { text } = await explain({ repoRoot });
 
-    // The id already owns a shell-arm skip row on every surface, so the change-set skip is
-    // found among the id's skip lines rather than asserted as the only one.
     const section = surfaceSection(text, SESSION_HEADER);
-    const skipLines = linesOf(section, 'skip', BILINGUAL_ID);
-    expect(skipLines.some((line) => line.includes('change set'))).toBe(true);
+    expect(linesOf(section, 'skip', BILINGUAL_ID)).toHaveLength(0);
     expect(linesOf(section, 'declare', BILINGUAL_ID)).toHaveLength(0);
     expect(tallyOf(section).declare).toBe(0);
   });
 
-  it('the commit surface renders a `declare` row with exclude 2 and both relate ids, and tallies declare 1', async () => {
-    // The commit surface observes the staged set and judges; the same entry must not be
+  it('the change-set surface renders a `declare` row with exclude 2 and both relate ids, and tallies declare 1', async () => {
+    // The change-set surface observes the staged set and judges; the same entry must not be
     // rendered as a skip there, or the batch display shows a declaration no surface runs.
     // The description is pinned whole so `exclude 2` and the two-id spelling cannot drift.
     writeFixtureConfig([bilingualEntry]);
@@ -335,20 +341,17 @@ describe('a declaration reading the actor renders the actor axis', () => {
     },
   };
 
-  it('the producer-owned entry renders `producer-owned · actor · empty not-the-implementer` on both surfaces', async () => {
+  it('the producer-owned entry renders `producer-owned · actor · empty not-the-implementer` on the session surface', async () => {
     // The config loads through the real validator, so the row's presence is the load-time
     // acceptance of the live entry; the axis word pins that `actor` derived `actor` and
-    // not `change`, and the row is `declare` on the commit surface too — the entry is
-    // judged there and lands `skipped supply-pass`, which is not a skip registration.
+    // not `change`. The actor is a session channel, so the entry stands on that surface.
     writeFixtureConfig([testsAreTheWriters]);
 
     const { text } = await explain({ repoRoot });
 
-    for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'declare', TESTS_ID)).toMatch(
-        /\s+producer-owned · actor · empty not-the-implementer · scope target\.path · include 1 · exclude 0 · sources 0 · valve — · why ✓$/,
-      );
-    }
+    expect(rowOf(text, SESSION_HEADER, 'declare', TESTS_ID)).toMatch(
+      /\s+producer-owned · actor · empty not-the-implementer · scope target\.path · include 1 · exclude 0 · sources 0 · valve — · why ✓$/,
+    );
   });
 
   it('the actor-scope entry renders `actor-scope · actor · empty main-session-only · scope command` on the session surface', async () => {
@@ -393,17 +396,15 @@ describe('the sources count and the valve mark', () => {
 
     const { text } = await explain({ repoRoot });
 
-    for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'declare', VOCAB_ID)).toMatch(
-        /\s+controlled-vocabulary · change,world · subset listed · scope target\.path · include 1 · exclude 0 · sources 1 \(sidecar 1\) · valve — · why ✓$/,
-      );
-    }
+    expect(rowOf(text, SESSION_HEADER, 'declare', VOCAB_ID)).toMatch(
+      /\s+controlled-vocabulary · change,world · subset listed · scope target\.path · include 1 · exclude 0 · sources 1 \(sidecar 1\) · valve — · why ✓$/,
+    );
   });
 
   it('a declaration reading a transcript beside a sidecar renders `world,history` and `sources 2 (sidecar 1, transcript 1)`', async () => {
     // The history axis is derived from the transcript binding; a renderer that counts
     // channel kinds by `'sidecar' in binding` alone prints `sources 2 (sidecar 1)` and
-    // hides the one source the commit surface can never supply.
+    // hides the one source the change-set surface can never supply.
     const CHANNEL = 'spawns';
     const SESSION = 'session';
     const PRECEDENT_ID = 'writer-came-first';
@@ -432,11 +433,9 @@ describe('the sources count and the valve mark', () => {
 
     const { text } = await explain({ repoRoot });
 
-    for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'declare', PRECEDENT_ID)).toMatch(
-        /\s+precedent · world,history · nonEmpty seen · scope target\.path · include 1 · exclude 0 · sources 2 \(sidecar 1, transcript 1\) · valve — · why ✓$/,
-      );
-    }
+    expect(rowOf(text, SESSION_HEADER, 'declare', PRECEDENT_ID)).toMatch(
+      /\s+precedent · world,history · nonEmpty seen · scope target\.path · include 1 · exclude 0 · sources 2 \(sidecar 1, transcript 1\) · valve — · why ✓$/,
+    );
   });
 
   it('a declaration reading a transcript alone renders `history` and `sources 1 (transcript 1)`', async () => {
@@ -465,11 +464,9 @@ describe('the sources count and the valve mark', () => {
 
     const { text } = await explain({ repoRoot });
 
-    for (const header of SURFACE_HEADERS) {
-      expect(rowOf(text, header, 'declare', GROUND_ID)).toMatch(
-        /\s+stated-ground · history · nonEmpty stated · scope every world · include 0 · exclude 0 · sources 1 \(transcript 1\) · valve — · why ✓$/,
-      );
-    }
+    expect(rowOf(text, SESSION_HEADER, 'declare', GROUND_ID)).toMatch(
+      /\s+stated-ground · history · nonEmpty stated · scope every world · include 0 · exclude 0 · sources 1 \(transcript 1\) · valve — · why ✓$/,
+    );
   });
 
   it('a declaration with a witness block renders `valve ✓`', async () => {

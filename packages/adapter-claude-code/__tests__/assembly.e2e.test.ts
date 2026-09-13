@@ -138,7 +138,7 @@ function bashPayload(command: string) {
 
 describe('context family across the session boundary', () => {
   // Package manifests are not protected at the session surface this suite drives (they sit
-  // on the commit surface's additive list), so these payloads reach the history declarations
+  // on the change-set surface's additive list), so these payloads reach the history declarations
   // alone, with no meta-covenant verdict mixed in. The manifest declaration has no scope
   // beyond the path: the content below is irrelevant — touching a manifest is what it reads.
   const manifest = 'packages/scratch/package.json';
@@ -998,7 +998,7 @@ describe('dogfooding assembly E2E — session surface ignores the git-additive l
   });
 
   it('a Write into .git/hooks is blocked by self-mod on the session surface (exit 2)', () => {
-    // .git/hooks is git-untracked, so the commit surface can never observe it — the common
+    // .git/hooks is git-untracked, so the change-set surface can never observe it — the common
     // list is the one layer that can watch the generated hook, and the session must own
     // that block. The self-mod label is asserted because a fail-closed collapse carries the
     // same exit code and only the label separates the two.

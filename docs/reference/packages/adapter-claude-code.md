@@ -94,7 +94,7 @@ No configuration namespace of its own.
 
 - **A child process's writes are outside observation.** This surface judges *declared tool
   calls*. A command that spawns a process which then writes files — a test runner, a build
-  — is judged on the command, not on what the child did. The commit surface is the second
+  — is judged on the command, not on what the child did. The change-set surface is the second
   observation that covers the same ground for tracked files.
 - **Evidence exists only where a post-state can be computed.** All four mutating tools
   contribute one, notebooks included — a `NotebookEdit` yields cell-level `modify` evidence.

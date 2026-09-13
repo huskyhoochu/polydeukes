@@ -173,6 +173,9 @@ try {
     // translation or parse failure lands as the same one blocked row every other
     // fail-closed branch leaves.
     input: () => (diffMode ? covenantInputFromUnifiedDiff({ text }) : (JSON.parse(text) as never)),
+    // The input mode is the surface: a diff is a finished change set, anything else is one
+    // call the caller observed.
+    surface: diffMode ? 'changeSet' : 'session',
     ...(enforce !== undefined && { enforce }),
   });
   process.exit(exitCode);

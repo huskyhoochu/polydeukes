@@ -1,5 +1,5 @@
 /**
- * `pdks covenant check` — the commit surface's composition root.
+ * `pdks covenant check` — the composition root both surfaces' callers reach through the bin.
  *
  * The judged unit is the input IR the caller hands in; this root opens no repository. Assembly
  * mirrors the session hook — loadConfig → normalizeProtectedPaths → dispatchCovenants — and
@@ -34,6 +34,15 @@ import { worktreeReader } from './worktree-reader.ts';
 /** {@link runCovenantCheck} result — the exit code the check process leaves with. */
 export type CovenantCheckOutcome = { exitCode: 0 | 2 };
 
+/**
+ * `CovenantSurface` — which observation unit the input is, and so which discipline list
+ * stands beside the shared one.
+ *
+ * `session` is one call the host observed before it ran; `changeSet` is a finished change
+ * set. The caller's input mode is the whole answer — the IR's own keys never choose.
+ */
+export type CovenantSurface = 'session' | 'changeSet';
+
 /** `runCovenantCheck` input. */
 export type CovenantCheckSpec = {
   /** Repository root — config discovery and the world axis's disk reads both anchor here. */
@@ -44,6 +53,8 @@ export type CovenantCheckSpec = {
    * the same one blocked row a missing config would.
    */
   input: CovenantInput | (() => CovenantInput);
+  /** Which surface this input is an observation of — the caller's input mode says so. */
+  surface: CovenantSurface;
   /**
    * Overrides where telemetry is written (tests and assembly injection) — the first term
    * of the precedence, ahead of the config's `telemetry.logPath` and of the default this
@@ -54,7 +65,7 @@ export type CovenantCheckSpec = {
   covenant?: CovenantModule;
   /**
    * The observer's posture for the whole run. ABSENT means `advise`: every break, a
-   * protected path included, lands as a row and exit 0 — the commit surface's default, since
+   * protected path included, lands as a row and exit 0 — the change-set surface's default, since
    * a staged gate-file change has already passed the session surface or was made by a human,
    * and this surface has no valve a human could answer. `block` is the caller's opt-in
    * (`--enforce block` on the bin); an entry's own level composes lenient-wins as always.
@@ -86,6 +97,11 @@ export type CheckAssemblySpec = {
    * `explain` renders come from one surface.
    */
   covenant: CovenantModule;
+  /**
+   * Which surface these registrations judge for: `disciplines` plus `sessionDisciplines`
+   * on `session`, `disciplines` plus `changeSetDisciplines` on `changeSet`.
+   */
+  surface: CovenantSurface;
   /** The host's tool roster. ABSENT leaves the staged names as the mutating roster. */
   tools?: CovenantInput['tools'];
   /** The host's session evidence. ABSENT is the absence of a session. */
@@ -99,15 +115,18 @@ export type CheckAssemblySpec = {
  * This runner's registration set — one assembly that the runner dispatches and `explain`
  * renders.
  *
- * The two IR keys shape it and nothing else: the roster says which names route to which
- * meta-covenant, and the session says whether there is history to protect, to bind, and to
- * read pre-state from disk for. An input carrying neither assembles what a staged change set
- * is judged by.
+ * The surface picks the discipline lists; the two IR keys shape the meta-covenants and
+ * nothing else — the roster says which names route to which meta-covenant, and the session
+ * says whether there is history to protect, to bind, and to read pre-state from disk for.
  */
 export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantRegistration[] {
-  const { config, rootDir, covenant, tools, session, transcript, witness } = spec;
+  const { config, rootDir, covenant, surface, tools, session, transcript, witness } = spec;
   const protectedPaths = normalizeProtectedPaths({ protectedPaths: config.protectedPaths ?? [] });
-  const disciplines = config.disciplines ?? [];
+  // The shared list first, so both surfaces read the same prefix in the rows and in
+  // `pdks explain`.
+  const surfaceDisciplines =
+    surface === 'session' ? config.sessionDisciplines : config.changeSetDisciplines;
+  const disciplines = [...(config.disciplines ?? []), ...(surfaceDisciplines ?? [])];
   const shellTools = tools?.shell ?? [];
   const commandArgs = tools?.commandArgs ?? [];
   const evidencePath = session?.evidencePath;
@@ -158,10 +177,10 @@ export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantReg
       // reader that answers `undefined` per location means that location failed, which
       // blocks, and a shell call would then decide entries that never read its evidence.
       observesPreState: session !== undefined,
-      // One session call is one of a wider change set this runner cannot see, so a
-      // change-set declaration records `skipped`; a session-free input is its own whole
-      // change set.
-      observesChangeSet: session === undefined,
+      // A diff-translated change carries the hunk's added lines as `post`, never the whole
+      // file, so a `file` binding on a staged path reads the tree — the state the change
+      // set left. A session call's `post` is the whole text it is about to write.
+      postIsWholeFile: surface === 'session',
       witness,
       // The session itself, injected rather than its path: a declaration reading a
       // `transcript` binding sees it flattened, and its absence is the absence of a session.
@@ -173,10 +192,10 @@ export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantReg
 }
 
 /**
- * The name `explain` renders the commit surface from — the same assembly, called with
- * neither IR key.
+ * The name `explain` renders the change-set surface from — the same assembly, called with
+ * `surface: 'changeSet'` and neither IR key.
  */
-export const assembleCommitRegistrations = assembleCheckRegistrations;
+export const assembleChangeSetRegistrations = assembleCheckRegistrations;
 
 /** One stage's failure disposition: the stderr line, the recorded row, and exit 2. */
 function failClosed(telemetryPath: string | undefined, error: unknown): { exitCode: 2 } {
@@ -245,7 +264,7 @@ async function judgeInput(
   input: CovenantInput,
 ): Promise<CovenantCheckOutcome> {
   try {
-    // The umbrella's own judge module, so the commit surface runs the judges the session
+    // The umbrella's own judge module, so this runner runs the judges the session
     // hook does; a test injects a module with one member replaced.
     const covenant = spec.covenant ?? covenantModule;
 
@@ -273,6 +292,7 @@ async function judgeInput(
       config,
       rootDir: spec.repoRoot,
       covenant,
+      surface: spec.surface,
       tools,
       session,
       transcript,

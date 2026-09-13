@@ -105,7 +105,7 @@ covenant check failed closed: the covenant judges could not be loaded from … �
 <a id="blocked-commit"></a>
 ## 커밋이 차단됐을 때
 
-커밋 표면은 사람에게 묻지 않습니다. 기본값에서는 모든 판정에 종료 코드 0을 내고 위반을
+변경 집합 표면은 사람에게 묻지 않습니다. 기본값에서는 모든 판정에 종료 코드 0을 내고 위반을
 `advised`로 기록합니다. 종료 코드 2는 검사를 `--enforce block`으로 실행했을 때(보호 경로나
 `enforce: block` 항목의 위반) 또는 판정 자체가 불가능할 때만 냅니다. 커밋을 멈출지는 훅
 배선이 정합니다. 종료 코드를 따르는 훅은 커밋을 멈추고, 무시하는 훅은 멈추지 않습니다. Git은
@@ -116,10 +116,10 @@ covenant check failed closed: the covenant judges could not be loaded from … �
 정책을 바꾸는 결정이지 필수 복구 절차가 아닙니다. 판정된 위반을 통과시키려면 설정이 아니라
 훅 명령에서 `--enforce block`을 빼세요. 행은 그대로 남습니다.
 
-<a id="skipped-rows-on-the-commit-surface"></a>
-## 커밋 표면의 미판정 기록
+<a id="skipped-rows-on-the-change-set-surface"></a>
+## 변경 집합 표면의 미판정 기록
 
-대화 기록을 읽는 선언에 `supply: { session: 'pass' }`가 있으면 세션이 없는 커밋 표면에서는
+대화 기록을 읽는 선언에 `supply: { session: 'pass' }`가 있으면 세션이 없는 변경 집합 표면에서는
 `supply-pass`를 기록합니다. 이 약속은 세션 표면에서 확인하세요. 미판정은 과거 작업을
 검증했다는 뜻이 아닙니다. 다른 채널을 공급할 수 없으면 `no-observation`이 나올 수도
 있습니다. 모든 자료 부재를 같은 실패로 취급하지 말고 등록 내용과 사유를 확인하세요.

@@ -149,7 +149,7 @@ describe('supplySources — read once per planned path, keep what came back', ()
 describe('the supply module is kernel — no effects of its own', () => {
   // The kernel plans and assembles; the file system and the process table are the
   // composition root's, injected through `read`. A convenience `readFileSync` fallback in
-  // the module would be a second, unmeasured read path the commit surface never sees.
+  // the module would be a second, unmeasured read path the change-set surface never sees.
   it('imports neither node:fs nor node:child_process', () => {
     const text = readFileSync(join(srcDir, 'supply.ts'), 'utf-8')
       .replace(/\/\*[\s\S]*?\*\//g, '')

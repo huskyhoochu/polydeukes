@@ -17,12 +17,15 @@ function withDisciplines(disciplines: unknown): unknown {
 
 /** The declaration every entry below carries; only the level under test varies. */
 const ban = {
-  mechanism: 'forbidden-command',
-  scope: { source: 'command' },
+  mechanism: 'naming',
+  scope: { source: 'target.path', include: ['\\.db$'] },
   extract: {
-    hits: [{ op: 'source', of: 'command' }, { op: 'lines' }, { op: 'matches', re: 'zzz_banned' }],
+    outside: [
+      { op: 'source', of: 'target.path' },
+      { op: 'matches', re: '^(?!store/)' },
+    ],
   },
-  relate: [{ id: 'no-hit', relation: { op: 'empty', of: 'hits' }, message: '{value}' }],
+  relate: [{ id: 'placed', relation: { op: 'empty', of: 'outside' }, message: '{value}' }],
 };
 
 const VALID_CONFIGS: readonly unknown[] = [

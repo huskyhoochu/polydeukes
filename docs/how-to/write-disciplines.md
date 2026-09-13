@@ -50,7 +50,7 @@ disciplines:
 
 `flattenKeys` extracts keys, not translation values. `equal` compares both directions and
 `messageBySide` reports which file has an unmatched key. The default enforcement is `advise`.
-Both source files must exist and contain valid JSON. The commit surface reads them from the
+Both source files must exist and contain valid JSON. The change-set surface reads them from the
 chosen observation; a session edit uses that edit's proposed new contents for the file it changes.
 
 From the example project's root, prepare matching tracked files. The commit below requires your
@@ -85,6 +85,61 @@ git restore -- locales/en.json locales/ko.json
 before it appears in the diff. This example commits a baseline to exercise modifications and make
 cleanup predictable. A declaration does not run
 merely because its source exists: at least one observed change must match its scope.
+
+<a id="which-list"></a>
+## Which list does it go in
+
+There are three discipline lists, and the source axis decides which one an entry belongs to.
+The mechanism does not decide it and the relation does not decide it: the same `companion`
+mechanism sits in `disciplines` when it stands over `file` sources, and in
+`changeSetDisciplines` when it stands over `changes`. Read the declaration's sources and the
+list follows.
+
+| The declaration reads | List | Examples |
+|---|---|---|
+| the changed file and `file` sources only | `disciplines` | the file-shaped types — added-only, one-way markers, self-absolution bans, controlled vocabulary, naming, companion over a `file` source, fingerprint sync, monotonic order |
+| the transcript | `sessionDisciplines` | the four history types — precedent, phase order, turn locality, stated ground |
+| the actor | `sessionDisciplines` | producer-owned, actor scope |
+| the command line | `sessionDisciplines` | forbidden command |
+| the spawn-record channel (`sidecar`) | `sessionDisciplines` | any declaration binding `{ sidecar: true }` |
+| `changes` | `changeSetDisciplines` | pairing over a change set — `implies` between two paths that must move together |
+
+Write the entry in the list its sources point at. A misplaced entry is a load-time error that
+names the entry, the channels it reads, and the list it belongs in, so the fix is to move the
+body unchanged. The rule itself and the error shapes are in [the configuration
+reference](../reference/configuration/index.md#placement-rule).
+
+An entry can also read nothing a surface has to supply and still be surface-bound in practice:
+a valve (`witness`) that reads the transcript makes its entry a session entry, because the
+valve's own `extract` binds the transcript.
+
+<a id="posture"></a>
+## Posture on an unattended real-time surface
+
+An unattended real-time surface is an adapter hook or an SDK caller with no human at the
+terminal. Two rules apply there that do not apply where a person is watching.
+
+**Promote an entry to `enforce: block` when the loop cannot fix it inside the turn.** The
+criterion is not "is this irreversible". A real-time block costs seconds: the model reads the
+reason on stderr and retries, so the violation is corrected within the turn. Left at `advise`,
+the same violation travels to a later check — a test run, CI, a reviewer — and costs a whole
+turn, up to 45 minutes. This is not "block everything because nobody is watching": blocking
+produces avoidance, and avoidance leaves no telemetry row, so an entry the loop cannot act on
+belongs at `advise` where its break is at least recorded. The criterion is the config author's.
+
+**The reason comes back as a value, because there is no valve.** A real-time unattended
+surface has no witness valve: there is no TTY and no human turn, and the SDK takes no witness
+argument and invents no session. What stands in its place is the reason travelling as data.
+`checkCovenant` returns `{ verdict: 'blocked', reason }` where `reason` is the judge's own
+stderr, and `{ verdict: 'upheld', advisories }` carries the advisory lines of an exit-0 run.
+The consumer writes that text where a person reads it later — an issue, a log — and stops.
+Whether the model sees the advisory text is the consumer's decision too: an unattended loop has
+no reader for a stderr line, so advise is only consumed if the caller passes it on. The
+[`@polydeukes/sdk-ts` reference](../reference/packages/sdk-ts.md) has the verdict shapes.
+
+The SDK's own default is `enforce: 'block'` for the run, which is the surface's level, not an
+entry's: protected paths and `enforce: block` entries stop the call, and every other break is
+recorded as `advised`. Both adapters spawn the judge the same way.
 
 <a id="when-to-draft"></a>
 ## When to draft instead of declaring

@@ -1,5 +1,5 @@
 /**
- * The commit surface's supply body for named file sources — one repo-relative path read from
+ * The change-set surface's supply body for named file sources — one repo-relative path read from
  * the working tree.
  */
 

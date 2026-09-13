@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // a plain snapshot `{ observedAtMs, userMessages: [{ index, text, timestampMs? }], toolCalls:
 // [{ index, name, args, succeeded? }] }`. Nothing is read from `world.channels` or
 // `world.files`: the history is not a channel and not a path, so the change-set overlap rule
-// never touches it. Absence is `spec.transcript` being absent (the commit surface), and the
+// never touches it. Absence is `spec.transcript` being absent (the change-set surface), and the
 // declaration's own `supply` policy disposes of it; an EMPTY transcript is a session that
 // has said nothing yet and is judged as such.
 import {
@@ -253,7 +253,7 @@ describe('the declare body — the transcript source reads spec.transcript as a 
   });
 
   it('with no transcript injected, supply: error exits 2 and names the source on stderr', async () => {
-    // The commit surface injects no session, so this is every commit's disposition of the
+    // The change-set surface injects no session, so this is every commit's disposition of the
     // entry: `2` is the unjudgeable row, never a fabricated empty snapshot that would break.
     const reg = compileBody(declareEntry(READS_SESSION));
     const stderr = spyStderr();
@@ -310,7 +310,7 @@ describe('the declare body — the transcript source reads spec.transcript as a 
 
 describe('dispatchCovenants — the transcript-bound entry records its disposition per world', () => {
   it('with no transcript injected and supply: pass, the row is skipped with reason supply-pass', async () => {
-    // End to end on the commit surface's shape: the token the body answers is the reason the
+    // End to end on the change-set surface's shape: the token the body answers is the reason the
     // row carries, under the entry id and the routed path.
     const regs = compileDisciplineRegistrations(
       specWith([declareEntry({ ...READS_SESSION, supply: { [SESSION]: 'pass' } })]),

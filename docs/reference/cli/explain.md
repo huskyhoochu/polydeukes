@@ -53,22 +53,28 @@ pdks explain
 ```
 
 The output starts with the config file path, then one block for the session surface and one for the
-commit surface. A starter config with no extra disciplines looks like this:
+change-set surface. A starter config with no extra disciplines looks like this:
 
 ```text
 pdks explain — polydeukes.config.yaml
 
-input: call IR (one call, stdin) · disciplines: advise unless enforce: block · meta: block
+input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
   registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
   meta     self-mod        paths N (common; includes the config file itself)
   meta     shell-mod       paths N (common)
   meta     transcript-mod  content predicate · conditional: session.evidencePath
 
-input: --diff (change set, stdin) · disciplines: advise unless enforce: block
+input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
   meta     self-mod   paths N (common; includes the config file itself)
   meta     shell-mod  paths N (common)
 ```
+
+**The surface header names the lists that surface compiles and how many entries each holds.**
+The session header prints `disciplines <n> · sessionDisciplines <n>` and the change-set header
+prints `disciplines <n> · changeSetDisciplines <n>`, both counted from the config as written,
+before assembly. Reading the two headers is how the placement of every entry is checked without
+running a judgment: an entry that moved between lists moves one count in each header.
 
 `N` is the assembled path count. A `declare` row uses the entry `id` as its label and a
 catalogue coordinate as its description. A `skip` row names a skip reason. A `draft` row is

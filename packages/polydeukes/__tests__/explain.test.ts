@@ -2,10 +2,14 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { type AlgebraDeclarationBody, declarationChannels } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
 import { covenantModule } from '../src/covenant/module.ts';
-import { assembleCheckRegistrations, assembleCommitRegistrations } from '../src/covenant-check.ts';
+import {
+  assembleChangeSetRegistrations,
+  assembleCheckRegistrations,
+} from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { writeConfigAt } from './helpers.ts';
@@ -125,11 +129,18 @@ afterEach(() => {
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-function writeFixtureConfig(disciplines: unknown[]): void {
+/**
+ * Write the fixture config, routing each entry to the list its declaration's channels
+ * belong in — every fixture here is either file-shaped or session-only, so the split is
+ * `disciplines` against `sessionDisciplines`.
+ */
+function writeFixtureConfig(entries: unknown[]): void {
+  const typed = entries as { declare: AlgebraDeclarationBody }[];
   writeConfigAt(repoRoot, telemetryPath, {
     protectedPaths: COMMON_PATHS,
     adapters: { git: { protectedPaths: GIT_ONLY_PATHS } },
-    disciplines,
+    disciplines: typed.filter((entry) => declarationChannels(entry.declare).length === 0),
+    sessionDisciplines: typed.filter((entry) => declarationChannels(entry.declare).length > 0),
   });
 }
 
@@ -173,11 +184,12 @@ function lineOf(text: string, header: string, kind: Kind, label: string): string
 }
 
 describe("explain renders the roots' own assembly", () => {
-  it('renders the commit surface in the exact label order assembleCommitRegistrations returns', async () => {
+  it('renders the change-set surface in the exact label order assembleChangeSetRegistrations returns', async () => {
     writeFixtureConfig(LIVE_LIKE_DISCIPLINES);
     const { config } = loadConfig({ rootDir: repoRoot });
 
-    const expected = assembleCommitRegistrations({
+    const expected = assembleChangeSetRegistrations({
+      surface: 'changeSet',
       config,
       rootDir: repoRoot,
       covenant: realCovenant,
@@ -193,6 +205,7 @@ describe("explain renders the roots' own assembly", () => {
     const { config } = loadConfig({ rootDir: repoRoot });
 
     const expected = assembleCheckRegistrations({
+      surface: 'session',
       config,
       rootDir: repoRoot,
       covenant: realCovenant,
@@ -248,21 +261,8 @@ describe('the skip reasons surface with their entry', () => {
 });
 
 describe('surface placement', () => {
-  it('renders a command-reading declaration on both surfaces', async () => {
-    // The commit surface observes no shell call, so the declaration lands no row there at
-    // judgment time — but the entry is still assembled, and explain renders the table that
-    // would judge rather than the rows a run produced.
-    writeFixtureConfig([hooksEntry]);
-
-    const { text } = await explain({ repoRoot });
-
-    for (const header of [SESSION_HEADER, COMMIT_HEADER]) {
-      expect(linesOf(surfaceSection(text, header), 'declare', HOOKS_ID)).toHaveLength(1);
-    }
-  });
-
   it('self-mod counts the common list (+config) on both surfaces — one list, one count', async () => {
-    // The commit surface reads the same protected list the session one does; a second,
+    // The change-set surface reads the same protected list the session one does; a second,
     // commit-only list would make the two counts disagree.
     writeFixtureConfig([]);
 
@@ -351,9 +351,11 @@ describe('the tallies are the rendered lines', () => {
       skip: 1,
       meta: 2,
     });
+    // The change-set surface compiles the shared list alone: the three session-only
+    // entries stand only where their channels exist.
     expect(summary(surfaceSection(text, COMMIT_HEADER))).toEqual({
-      registrations: 6,
-      declare: 4,
+      registrations: 3,
+      declare: 1,
       skip: 1,
       meta: 1,
     });
@@ -429,5 +431,80 @@ describe('explain stays off the covenant check load path', () => {
 
     expect(source).toContain("import('./explain.ts')");
     expect(source).not.toMatch(/^import\s[^;]*['"]\.\/explain(\.js)?['"]/m);
+  });
+});
+
+describe('each surface header names the two lists it compiles, with their counts', () => {
+  // Two shared entries against one entry per surface list, so the two counts differ and a
+  // header printing one number for both, or the other surface's list name, lands here.
+  const SECOND_SHARED_ID = 'comments-state-facts';
+  const secondSharedEntry = { ...vocabEntry, id: SECOND_SHARED_ID };
+  const CHANGE_SET_ID = 'docs-stay-bilingual';
+  const changeSetEntry = {
+    id: CHANGE_SET_ID,
+    declare: {
+      mechanism: 'companion',
+      scope: { source: 'target.path', include: ['\\.md$'] },
+      extract: {
+        en: [
+          { op: 'source', of: 'target.path' },
+          { op: 'keyByPattern', re: '^(.+?)(?<!\\.ko)\\.md$' },
+        ],
+        koChanged: [
+          { op: 'source', of: 'changes' },
+          { op: 'items' },
+          { op: 'keyByPattern', re: '^(.+)\\.ko\\.md$' },
+        ],
+      },
+      relate: [
+        {
+          id: 'ko-follows',
+          relation: { op: 'implies', of: 'en', requires: 'koChanged' },
+          message: 'm',
+        },
+      ],
+    },
+  };
+
+  function writeThreeLists(): void {
+    writeConfigAt(repoRoot, telemetryPath, {
+      protectedPaths: COMMON_PATHS,
+      disciplines: [vocabEntry, secondSharedEntry],
+      sessionDisciplines: [hooksEntry],
+      changeSetDisciplines: [changeSetEntry],
+    });
+  }
+
+  it('the session header says `disciplines 2 · sessionDisciplines 1` and never the change-set list', async () => {
+    writeThreeLists();
+
+    const section = surfaceSection((await explain({ repoRoot })).text, SESSION_HEADER);
+
+    expect(section).toMatch(/disciplines 2 · sessionDisciplines 1/);
+    expect(section).not.toContain('changeSetDisciplines');
+    expect(linesOf(section, 'declare', HOOKS_ID)).toHaveLength(1);
+    expect(kindLabelRows(section).map(([, label]) => label)).not.toContain(CHANGE_SET_ID);
+  });
+
+  it('the change-set header says `disciplines 2 · changeSetDisciplines 1` and never the session list', async () => {
+    writeThreeLists();
+
+    const section = surfaceSection((await explain({ repoRoot })).text, COMMIT_HEADER);
+
+    expect(section).toMatch(/disciplines 2 · changeSetDisciplines 1/);
+    expect(section).not.toContain('sessionDisciplines');
+    expect(linesOf(section, 'declare', CHANGE_SET_ID)).toHaveLength(1);
+    expect(kindLabelRows(section).map(([, label]) => label)).not.toContain(HOOKS_ID);
+  });
+
+  it('an absent surface list prints as 0, not as a missing name', async () => {
+    // The header is where a reader learns the list exists; dropping the name when the
+    // list is absent hides the grammar from exactly the config that has not adopted it.
+    writeFixtureConfig([vocabEntry]);
+
+    const { text } = await explain({ repoRoot });
+
+    expect(surfaceSection(text, SESSION_HEADER)).toMatch(/disciplines 1 · sessionDisciplines 0/);
+    expect(surfaceSection(text, COMMIT_HEADER)).toMatch(/disciplines 1 · changeSetDisciplines 0/);
   });
 });

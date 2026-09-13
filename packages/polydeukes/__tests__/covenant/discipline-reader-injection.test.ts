@@ -228,7 +228,7 @@ describe('compiled discipline thunk — no shell evidence, no read', () => {
   it('never consults the reader for a payload carrying its own file evidence', async () => {
     // Pre-state completion belongs to shell-derived evidence alone: a call that already
     // carries a fileChange has its pre from the surface that observed it. A body that reads
-    // unconditionally overwrites a commit surface's observed pre with the working tree's
+    // unconditionally overwrites a change-set surface's observed pre with the working tree's
     // current content, judging the diff against the wrong baseline.
     const reader = spyReader();
     const [registration] = compileDisciplineRegistrations({

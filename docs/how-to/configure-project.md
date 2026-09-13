@@ -78,12 +78,12 @@ Loading this setting does not itself run the command.
 
 **Absent means `advise`.** There is no surface-level enforcement key in the config: each entry
 carries its own level and nothing promotes an absent one. Protection of configured paths is
-separate from that per-entry default — it blocks on the session surface, and on the commit
+separate from that per-entry default — it blocks on the session surface, and on the change-set
 surface it lands `advised` unless the command is run with `--enforce block`. Assembly errors
 still exit 2.
 
-`protectedPaths` is a single top-level list that applies to both surfaces. On the commit surface
-the judge only emits the exit code; whether the commit stops is your hook wiring.
+`protectedPaths` is a single top-level list that applies to both surfaces. On the change-set
+surface the judge only emits the exit code; whether the commit stops is your hook wiring.
 See [surface connection and witnesses](./connect-surfaces.md#witness-and-recovery).
 
 <a id="confirm-the-project"></a>

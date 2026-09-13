@@ -3,7 +3,7 @@
  * object. A test replaces one member of it; the roots default to the real seven.
  *
  * A leaf module on purpose — it imports the judge and nothing else, so the session subpath
- * that loads it does not also load the commit surface's translator and reader.
+ * that loads it does not also load the change-set surface's translator and reader.
  */
 
 import { compileDisciplineRegistrations } from './discipline.ts';

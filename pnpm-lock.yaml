@@ -35,6 +35,9 @@ importers:
       '@polydeukes/adapter-grok':
         specifier: workspace:*
         version: link:packages/adapter-grok
+      '@polydeukes/sdk-ts':
+        specifier: workspace:*
+        version: link:packages/sdk-ts
       lefthook:
         specifier: ^2.1.12
         version: 2.1.12
@@ -113,6 +116,25 @@ importers:
         specifier: 2.9.0
         version: 2.9.0
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))
+
+  packages/sdk-ts:
+    dependencies:
+      polydeukes:
+        specifier: workspace:^
+        version: link:../polydeukes
+    devDependencies:
+      '@polydeukes/core':
+        specifier: workspace:^
+        version: link:../core
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2

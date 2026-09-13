@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { readRecords } from '@polydeukes/core';
+import { type AlgebraDeclarationBody, declarationChannels, readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse, stringify } from 'yaml';
 // The live root config's pre/post-reading disciplines, judged from `git diff --cached`
@@ -21,14 +21,30 @@ type Discipline = {
   declare: { extract: Record<string, { op: string; re?: string }[]> };
 };
 
-/** The live declaration with the given id, exactly as the root config carries it. */
+type RootLists = {
+  disciplines?: Discipline[];
+  sessionDisciplines?: Discipline[];
+  changeSetDisciplines?: Discipline[];
+};
+
+/** The live declaration with the given id, from whichever list the root config carries it in. */
 function liveDiscipline(id: string): Discipline {
-  const { disciplines } = parse(readFileSync(ROOT_CONFIG, 'utf-8')) as {
-    disciplines: Discipline[];
-  };
-  const entry = disciplines.find((discipline) => discipline.id === id);
+  const lists = parse(readFileSync(ROOT_CONFIG, 'utf-8')) as RootLists;
+  const entry = [
+    ...(lists.disciplines ?? []),
+    ...(lists.sessionDisciplines ?? []),
+    ...(lists.changeSetDisciplines ?? []),
+  ].find((discipline) => discipline.id === id);
   if (entry === undefined) throw new Error(`root config has no discipline '${id}'`);
   return entry;
+}
+
+/** The one-entry list keyed by the list name the entry's channels place it in. */
+function listFor(discipline: Discipline): Record<string, Discipline[]> {
+  const channels = declarationChannels(discipline.declare as AlgebraDeclarationBody);
+  if (channels.includes('changes')) return { changeSetDisciplines: [discipline] };
+  if (channels.length > 0) return { sessionDisciplines: [discipline] };
+  return { disciplines: [discipline] };
 }
 
 /** The first alternative of the capture group in an extract pipeline's `keyByPattern` step. */
@@ -81,6 +97,7 @@ afterEach(() => {
 /** Judge the staged diff through the translator, with the real judges. */
 async function checkStaged(): Promise<{ exitCode: number }> {
   return runCovenantCheck({
+    surface: 'changeSet',
     repoRoot,
     input: covenantInputFromUnifiedDiff({ text: git('diff', '--cached') }),
     telemetryPath,
@@ -89,7 +106,7 @@ async function checkStaged(): Promise<{ exitCode: number }> {
 
 /** Write the JSON config with exactly one live discipline and commit it as the baseline. */
 function commitConfigWith(discipline: Discipline, files: [string, string][]): void {
-  repo.writeConfig({ disciplines: [discipline] });
+  repo.writeConfig(listFor(discipline));
   for (const [path, content] of files) write(path, content);
   git('add', '-A');
   git('commit', '--quiet', '-m', 'baseline');
@@ -189,7 +206,7 @@ describe('valve-is-not-the-agents (self-absolution-ban) from a diff', () => {
       languages: { typescript: { productionGlob: 'lib/**/*.ts', testCmd } },
       telemetry: { logPath: telemetryPath },
       witness: { token: 'agreed-token', ttlMinutes },
-      disciplines: [discipline],
+      ...listFor(discipline),
     });
   }
 

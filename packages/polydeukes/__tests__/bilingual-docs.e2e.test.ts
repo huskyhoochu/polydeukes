@@ -7,9 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // declaration reads the antecedent from `target.path` and the consequent from `changes`
 // (`Implies` over `keyByPattern` stems): a commit that stages one side of an `X.md` /
 // `X.ko.md` pair lands `advised` naming the missing side, a commit staging both leaves no
-// break, and the excluded internal docs never route. The session surface observes one call
-// at a time, so it cannot see the pair — the same edit lands `skipped` there, and the
-// asymmetry is the contract this file pins.
+// break, and the excluded internal docs never route. The declaration reads `changes`, so the
+// config writes it in `changeSetDisciplines` and the session surface, which observes one
+// call at a time, never compiles it — the same edit leaves no row under its label there,
+// and the asymmetry is the contract this file pins.
 //
 // These cases run the judge out of the covenant package's BUILT output, not the working
 // tree: the composition root resolves the module through the package's `exports` map, which
@@ -126,7 +127,7 @@ let commitLog: string;
 beforeEach(() => {
   sessionRoot = mkdtempSync(join(tmpdir(), 'pdks-bilingual-session-'));
   sessionLog = join(sessionRoot, 'roi.log');
-  writeConfigAt(sessionRoot, sessionLog, { disciplines: [declareEntry] });
+  writeConfigAt(sessionRoot, sessionLog, { changeSetDisciplines: [declareEntry] });
   for (const [file, content] of [
     [EN_DOC, EN_BASE],
     [KO_DOC, KO_BASE],
@@ -139,7 +140,7 @@ beforeEach(() => {
   commitRepo = createCheckRepo('pdks-bilingual-commit-');
   commitLogDir = mkdtempSync(join(tmpdir(), 'pdks-bilingual-commit-log-'));
   commitLog = join(commitLogDir, 'roi.log');
-  commitRepo.writeConfig({ disciplines: [declareEntry] });
+  commitRepo.writeConfig({ changeSetDisciplines: [declareEntry] });
   commitRepo.write(EN_DOC, EN_BASE);
   commitRepo.write(KO_DOC, KO_BASE);
   commitRepo.git('add', 'polydeukes.config.json', EN_DOC, KO_DOC);
@@ -157,13 +158,14 @@ async function checkStaged(files: [string, string][]) {
   for (const [file, content] of files) commitRepo.write(file, content);
   commitRepo.git('add', ...files.map(([file]) => file));
   return runCovenantCheck({
+    surface: 'changeSet',
     repoRoot: commitRepo.repoRoot,
     telemetryPath: commitLog,
     input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
   });
 }
 
-describe('the commit surface judges presence in the staged change set', () => {
+describe('the change-set surface judges presence in the staged change set', () => {
   it('README.md staged alone lands one advised row: ko-follows, witness { key: stem, value: path }', async () => {
     // The whole discipline: the antecedent is the dispatched path, the consequent the staged
     // set. A consequent read from a derived `[own path]` set instead of `world.changes`
@@ -237,15 +239,16 @@ describe('the commit surface judges presence in the staged change set', () => {
 });
 
 describe('the two surfaces answer the same edit differently, by declaration', () => {
-  it('session Edit of README.md lands skipped; commit over git diff HEAD of the same edit lands advised ko-follows', async () => {
-    // The session surface observes one call and cannot see the pair, so it records the
-    // absence of a judgment; the commit surface observes the worktree and judges. An
-    // `advised` row from the session is the structural false positive the skip prevents;
-    // a session with no row at all is a declaration that went inert; and a commit that
-    // also skips has lost the only surface that can judge this declaration.
+  it('session Edit of README.md leaves no row under the label; the change set of the same edit lands advised ko-follows', async () => {
+    // The entry lives in `changeSetDisciplines`, so the session surface never compiles
+    // it: no row under its label, and the call itself is recorded under the runner's own
+    // label. An `advised` row from the session would be the structural false positive the
+    // placement prevents; a change set that leaves no advised row has lost the only surface
+    // that can judge this declaration.
     expect(readFileSync(join(sessionRoot, EN_DOC), 'utf-8')).toBe(EN_BASE);
     const path = join(sessionRoot, EN_DOC);
     const session = await runCovenantCheck({
+      surface: 'session',
       repoRoot: sessionRoot,
       telemetryPath: sessionLog,
       // The IR an adapter hands in for one live edit, session key included: this surface
@@ -268,6 +271,7 @@ describe('the two surfaces answer the same edit differently, by declaration', ()
     commitRepo.write(EN_DOC, EN_EDITED);
     commitRepo.git('add', EN_DOC);
     const commit = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot: commitRepo.repoRoot,
       telemetryPath: commitLog,
       input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
@@ -277,12 +281,12 @@ describe('the two surfaces answer the same edit differently, by declaration', ()
     expect(commit.exitCode).toBe(0);
     const fromSession = bilingualRows(sessionLog);
     const fromCommit = bilingualRows(commitLog);
-    expect(fromSession.map((row) => [row.event, row.subject, row.relateIds])).toEqual([
-      ['skipped', EN_DOC, []],
-    ]);
+    expect(fromSession).toEqual([]);
+    expect(
+      readRecords(sessionLog).records.map((row) => [row.event, row.label, row.subject]),
+    ).toContainEqual(['passed', 'covenant-check', path]);
     expect(fromCommit.map((row) => [row.event, row.subject, row.relateIds])).toEqual([
       ['advised', EN_DOC, [KO_FOLLOWS]],
     ]);
-    expect(fromSession[0]?.event).not.toBe(fromCommit[0]?.event);
   });
 });

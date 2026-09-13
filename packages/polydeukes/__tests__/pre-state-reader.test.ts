@@ -70,7 +70,7 @@ describe('sessionPreStateReader — the session surface reads the working tree',
   });
 });
 
-describe('unobservedPreStateReader — the commit surface cannot answer', () => {
+describe('unobservedPreStateReader — the change-set surface cannot answer', () => {
   it('answers undefined for any location, including one that exists', () => {
     // That surface judges a staged diff, whose payloads carry the `pre` their own
     // observation saw. Answering from the working tree would compare the diff against the

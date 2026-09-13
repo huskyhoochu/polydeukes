@@ -48,23 +48,29 @@ pdks explain
 pdks explain
 ```
 
-출력은 설정 파일 경로로 시작하고, 그다음 세션 표면 블록 하나와 커밋 표면 블록 하나가 나옵니다.
+출력은 설정 파일 경로로 시작하고, 그다음 세션 표면 블록 하나와 변경 집합 표면 블록 하나가 나옵니다.
 추가 규율이 없는 시작 설정은 이런 모양입니다.
 
 ```text
 pdks explain — polydeukes.config.yaml
 
-input: call IR (one call, stdin) · disciplines: advise unless enforce: block · meta: block
+input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
   registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
   meta     self-mod        paths N (common; includes the config file itself)
   meta     shell-mod       paths N (common)
   meta     transcript-mod  content predicate · conditional: session.evidencePath
 
-input: --diff (change set, stdin) · disciplines: advise unless enforce: block
+input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
   meta     self-mod   paths N (common; includes the config file itself)
   meta     shell-mod  paths N (common)
 ```
+
+**표면 머리줄은 그 표면이 컴파일하는 목록의 이름과 각 목록의 항목 수를 적습니다.** 세션
+머리줄은 `disciplines <n> · sessionDisciplines <n>`을, 변경 집합 머리줄은
+`disciplines <n> · changeSetDisciplines <n>`을 출력하며, 두 수 모두 조립 전에 설정에 적힌
+그대로 셉니다. 판정을 돌리지 않고 모든 항목의 배치를 확인하는 방법이 이 머리줄 둘을 읽는
+것입니다. 목록을 옮긴 항목은 두 머리줄에서 각각 수 하나를 움직입니다.
 
 `N`은 조립된 경로 개수입니다. `declare` 행의 라벨은 항목 `id`이고 설명은 카탈로그 좌표입니다.
 `skip` 행은 건너뛴 이유를 적습니다. `draft` 행은 `unpromoted — no judgment`입니다.

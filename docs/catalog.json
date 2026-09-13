@@ -260,6 +260,22 @@
       }
     },
     {
+      "id": "package-sdk-ts",
+      "category": "reference",
+      "order": 25,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/sdk-ts.md",
+        "title": "`@polydeukes/sdk-ts`",
+        "summary": "Call the judge from TypeScript with one verb, and read the three verdicts it returns."
+      },
+      "ko": {
+        "path": "reference/packages/sdk-ts.ko.md",
+        "title": "`@polydeukes/sdk-ts`",
+        "summary": "TypeScript에서 동사 하나로 판정기를 부르고, 돌아오는 판정 결과 셋을 읽습니다."
+      }
+    },
+    {
       "id": "why-polydeukes",
       "category": "explanation",
       "order": 17,

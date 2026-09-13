@@ -68,6 +68,7 @@ describe('session surface judgment parity', () => {
     const path = join(repo.repoRoot, 'lib/a.ts');
 
     const { exitCode } = await runCovenantCheck({
+      surface: 'session',
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
       // The IR an adapter hands in for one live call: the roster it declared, and the
@@ -110,7 +111,7 @@ describe('session surface judgment parity', () => {
   );
 });
 
-describe('commit surface judgment parity', () => {
+describe('change-set surface judgment parity', () => {
   let repos: CheckRepo[];
 
   beforeEach(() => {
@@ -135,6 +136,7 @@ describe('commit surface judgment parity', () => {
     repo.git('add', 'lib/a.ts');
 
     const { exitCode } = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,
       input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),

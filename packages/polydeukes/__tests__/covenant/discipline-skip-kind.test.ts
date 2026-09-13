@@ -27,7 +27,6 @@ const PATH_SOURCE = 'target.path';
 const CHANGES = 'changes';
 // Ids, paths, and patterns are fixture values the live config carries.
 const BILINGUAL_ID = 'docs-stay-bilingual';
-const EN_DOC = 'docs/a.md';
 const EN_PATTERN = '^(.+?)(?<!\\.ko)\\.md$';
 const KO_PATTERN = '^(.+)\\.ko\\.md$';
 const FAULTY_ID = 'dep-needs-view';
@@ -110,15 +109,6 @@ function skipsOf(regs: CovenantRegistration[], label: string): CovenantRegistrat
   return regs.filter((reg) => reg.label === label && reg.skip !== undefined);
 }
 
-/** The skip registration under `label` that routes a file create at `path`. */
-function fileSkipOf(
-  regs: CovenantRegistration[],
-  label: string,
-  path: string,
-): CovenantRegistration | undefined {
-  return skipsOf(regs, label).find((reg) => reg.matches?.(createsAt([path])) !== null);
-}
-
 /** Every telemetry row under `label` as `{ event, subject, reason }`. */
 function rowsOf(telemetryPath: string, label: string) {
   return readRecords(telemetryPath)
@@ -141,16 +131,6 @@ afterEach(() => {
 });
 
 describe('compileDisciplineRegistrations — each skip site names its kind', () => {
-  it('the change-set surface skip is no-observation', () => {
-    // An environment fact, not the author's mistake: filed as `config-fault` it would send
-    // the author to fix a declaration the commit surface judges correctly.
-    const regs = compileDisciplineRegistrations(
-      specWith([declareEntry(BILINGUAL_DECLARE, BILINGUAL_ID)], { observesChangeSet: false }),
-    );
-
-    expect(fileSkipOf(regs, BILINGUAL_ID, EN_DOC)?.skip?.kind).toBe('no-observation');
-  });
-
   it('a declaration with an unregistered step is config-fault', () => {
     // The compile-fault skip routes nothing, so its kind is asserted on the registration.
     const faulty = {
@@ -202,25 +182,6 @@ describe('dispatchCovenants — the skipped row carries the registration’s kin
     expect(results).toEqual([{ label: FAULTY_ID, exitCode: 0, event: 'skipped' }]);
     expect(rowsOf(telemetryPath, FAULTY_ID)).toEqual([
       { event: 'skipped', subject: PKG_FILE, reason: 'config-fault' },
-    ]);
-  });
-
-  it('a change-set declaration on the one-call surface records skipped with reason no-observation', async () => {
-    // End to end: the kind the compiler chose is the token the row carries, under the
-    // entry id and the routed path. A dispatcher that hard-codes one token, or the compiler
-    // and dispatcher disagreeing on the field name, both fail the equality.
-    const regs = compileDisciplineRegistrations(
-      specWith([declareEntry(BILINGUAL_DECLARE, BILINGUAL_ID)], { observesChangeSet: false }),
-    );
-
-    await dispatchCovenants({
-      stdinPayload: JSON.stringify(createsAt([EN_DOC])),
-      registrations: regs,
-      telemetryPath,
-    });
-
-    expect(rowsOf(telemetryPath, BILINGUAL_ID)).toEqual([
-      { event: 'skipped', subject: EN_DOC, reason: 'no-observation' },
     ]);
   });
 });

@@ -43,11 +43,14 @@ stale-but-present body carries no such signal.
 - **Disciplines** in the config judge beyond path mention — every entry is one declaration.
   A break lands `advised` on both surfaces — exit 0, the `why` on
   stderr — unless the entry says `enforce: block` (POSTURE-01); the three meta-covenants
-  above are what blocks unasked. A declaration that binds the transcript needs a session, so
-  the commit surface always lands it `skipped` — a permanent condition of that surface; one
-  scoped on `command` observes nothing there. A declaration
-  reading the `changes` world needs the whole change set, so the session surface lands it
-  `skipped` the same way — one call is its whole observation (`docs-stay-bilingual`).
+  above are what blocks unasked. The config places each declaration in the list of the surface
+  that observes its channels — `disciplines` for one reading only the changed file and `file`
+  sources, `sessionDisciplines` for one reading `command` · `transcript` · the `sidecar`
+  channel · `actor`, `changeSetDisciplines` for one reading `changes` — and the loader refuses a
+  misplaced entry rather than compiling it somewhere it cannot be judged. Each surface compiles
+  the shared list plus its own, so neither surface carries the other's entries at all. A
+  session-only declaration on a host that proves no session (Grok) still lands `skipped` by its
+  own `supply` policy.
 
 ## What a host proves, and what follows from it
 

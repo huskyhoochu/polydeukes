@@ -156,6 +156,7 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     // each be a judgment that never compared the edited key set.
     expect(readFileSync(join(sessionRoot, EN_FILE), 'utf-8')).toBe(BASE_CONTENT);
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot: sessionRoot,
       telemetryPath: sessionLog,
       input: sessionEdit(join(sessionRoot, EN_FILE), BASE_CONTENT, EDITED_CONTENT),
@@ -179,6 +180,7 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     // derivation) the rows part here, and the fifth field is compared as the string the
     // log carries so a witness list serialised in another order cannot pass as equal.
     await runCovenantCheck({
+      surface: 'session',
       repoRoot: sessionRoot,
       telemetryPath: sessionLog,
       input: sessionEdit(join(sessionRoot, EN_FILE), BASE_CONTENT, EDITED_CONTENT),
@@ -187,6 +189,7 @@ describe('the parity declaration lands one verdict on both surfaces', () => {
     commitRepo.write(EN_FILE, EDITED_CONTENT);
     commitRepo.git('add', EN_FILE);
     const commit = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot: commitRepo.repoRoot,
       telemetryPath: commitLog,
       input: covenantInputFromUnifiedDiff({ text: commitRepo.git('diff', '--cached') }),
@@ -212,6 +215,7 @@ describe('the parity declaration over the shapes a locale pair actually takes', 
   async function editThroughSession(file: string, content: string): Promise<ParityRow[]> {
     const path = join(sessionRoot, file);
     await runCovenantCheck({
+      surface: 'session',
       repoRoot: sessionRoot,
       telemetryPath: sessionLog,
       input: sessionEdit(path, readFileSync(path, 'utf-8'), content),

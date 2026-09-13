@@ -102,7 +102,7 @@ A witness cannot repair missing modules or other failures that prevent judgment 
 <a id="blocked-commit"></a>
 ## A blocked commit
 
-The commit surface does not prompt. By default it exits 0 on every verdict and records the
+The change-set surface does not prompt. By default it exits 0 on every verdict and records the
 break as `advised`; it exits 2 only when the check runs with `--enforce block` (a protected
 path or an entry set to `enforce: block` broke) or when it could not judge at all. Whether the
 commit stops is your hook wiring — a hook that honours the exit code stops it, one that ignores
@@ -113,11 +113,11 @@ A normal entry blocks only when it declares `enforce: block` and the check runs 
 a policy decision, not a required repair. To let a judged break through, drop `--enforce block`
 from the hook command rather than editing the config — the row is still written.
 
-<a id="skipped-rows-on-the-commit-surface"></a>
-## `skipped` rows on the commit surface
+<a id="skipped-rows-on-the-change-set-surface"></a>
+## `skipped` rows on the change-set surface
 
 A transcript-reading declaration with `supply: { session: 'pass' }` records `supply-pass` when the
-commit surface has no session. Use the session surface for that promise; a skip does not verify
+change-set surface has no session. Use the session surface for that promise; a skip does not verify
 history. Other unavailable channels can produce `no-observation`. Inspect the registration and
 reason instead of treating every missing source as the same failure.
 

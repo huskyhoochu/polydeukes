@@ -95,6 +95,7 @@ describe('the session root supplies the channel it read', () => {
   it('the dispatch world carries the sidecar records the session carried', async () => {
     const path = join(repoRoot, TARGET_FILE);
     await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       covenant,
       telemetryPath: join(repoRoot, 'roi.log'),

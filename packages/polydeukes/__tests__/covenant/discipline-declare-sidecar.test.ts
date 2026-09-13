@@ -169,7 +169,7 @@ describe('the declare body — the sidecar source reads world.channels.sidecar',
   });
 
   it('with no channel supplied, supply: error exits 2 and names the source on stderr', async () => {
-    // The commit surface injects no channel reader, so this is every commit's disposition
+    // The change-set surface injects no channel reader, so this is every commit's disposition
     // of the entry: `2` is the unjudgeable row, never a fabricated `'[]'` that would break
     // (or a fabricated match that would pass) a session nobody observed.
     const reg = compileBody(declareEntry(READS_SPAWNS));

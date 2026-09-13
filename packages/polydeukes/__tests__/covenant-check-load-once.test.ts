@@ -44,6 +44,7 @@ describe('loadConfig is read once per runCovenantCheck call', () => {
     // A second read of a file that changed between stages would judge with one config
     // and record under another; zero reads would mean the run never settled a config.
     await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath: join(logDir, 'run.log'),
       input: covenantInputFromUnifiedDiff({ text: repo.git('diff', '--cached') }),

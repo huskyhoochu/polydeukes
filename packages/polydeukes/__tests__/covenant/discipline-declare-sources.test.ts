@@ -274,7 +274,7 @@ describe('the declare body — the changes source', () => {
     ]);
   });
 
-  it('reads input.world.changes when the root supplied one, in the commit surface shape', async () => {
+  it('reads input.world.changes when the root supplied one, in the change-set surface shape', async () => {
     // One dispatched change, three staged: the declaration must see the three.
     const reg = compileBody(declareEntry(DUMPS_CHANGES));
     const staged = ['docs/a.md', 'docs/a.ko.md', 'docs/b.md'];

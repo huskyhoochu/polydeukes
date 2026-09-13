@@ -561,8 +561,17 @@ describe('discipline classification skill — the embedded config examples are l
 
 describe('discipline classification skill — current declaration capabilities', () => {
   function judgeExample(skill: string, id: string, world: World) {
+    // Every list, because which one an example lives in is a function of the channels its
+    // declaration binds, and this lookup is about the declaration rather than the surface.
     const entry = yamlFences(skill)
-      .flatMap((fence) => loadFenceAsConfig(fence).config.disciplines ?? [])
+      .flatMap((fence) => {
+        const { config } = loadFenceAsConfig(fence);
+        return [
+          ...(config.disciplines ?? []),
+          ...(config.sessionDisciplines ?? []),
+          ...(config.changeSetDisciplines ?? []),
+        ];
+      })
       .find((candidate) => candidate.id === id);
     if (!entry) throw new Error(`missing judged example: ${id}`);
     const compiled = compileDeclaration({

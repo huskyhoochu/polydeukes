@@ -3,10 +3,10 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is alpha.** Four packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is alpha.** Five packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
 schema), `adapter-claude-code` and `adapter-grok` (each one agent's session payload onto the
-input IR and its own `init` bin; the commit surface is a unified diff on stdin that the
+input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the
 umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
 surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`
 module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
@@ -14,7 +14,10 @@ library, and the declaration engine — extract steps, seven relations, witness 
 adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` registers the
 hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
-`polydeukes` as a `peerDependency` for the bin it spawns. Nothing depends the other way:
+`polydeukes` as a `peerDependency` for the bin it spawns. `sdk-ts` (`@polydeukes/sdk-ts`) is
+the fifth: one verb, `checkCovenant`, that spawns `pdks covenant check` with a caller-built IR
+and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
+`polydeukes`. Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
 its agents need. The judge module opens no file at all, and core's only file I/O is the
 telemetry log it appends every judgment to.
@@ -34,7 +37,7 @@ it is a discoverability index; the `description` field is NOT exempt.
 ## Conventions
 
 - **Docs are bilingual:** English is the default; Korean mirrors live in `*.ko.md`. Keep them in
-  sync when editing either — the commit surface judges the pair (`docs-stay-bilingual`, advised
+  sync when editing either — the change-set surface judges the pair (`docs-stay-bilingual`, advised
   when one side is staged without the other). In Korean docs, use translation + English gloss
   for the vocabulary (`약속(covenant)`), never transliteration.
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
@@ -69,11 +72,14 @@ stands between a Grok call and its judgment.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
 `biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. The
-commit surface has no list of its own and no prompt: it judges the piped diff and lands every
+change-set surface has no list of its own and no prompt: it judges the piped diff and lands every
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
-line does not — a staged gate-file change has already passed the session surface). The
-`disciplines:` entries land `advised` on both surfaces (exit 0, the `why`
-on stderr) unless an entry says `enforce: block`. The session-protected list is a separate
+line does not — a staged gate-file change has already passed the session surface). Disciplines
+sit in three lists — `disciplines:` (both surfaces), `sessionDisciplines:` (one live call),
+`changeSetDisciplines:` (a finished change set) — and the loader refuses an entry written in a
+list whose surface cannot observe its channels; each surface compiles the shared list plus its
+own. A break lands `advised` (exit 0, the `why` on stderr) unless the entry says
+`enforce: block`. The session-protected list is a separate
 list, not an override applied to those entries: nothing promotes a discipline's own `advise`
 to a block, and since POSTURE-01 the protected list above is the only thing that blocks
 unasked — on the session surface. Every judgment appends one row to `.polydeukes/roi.log`

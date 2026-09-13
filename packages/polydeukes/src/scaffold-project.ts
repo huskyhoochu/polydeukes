@@ -82,6 +82,12 @@ witness:
 # The disciplines you judge by, and the three rungs one climbs — shown as three entries so
 # each rung is a line you can copy. Uncomment to start; ids must stay distinct.
 #
+# Three lists, chosen by what a declaration reads. \`disciplines:\` is judged on both
+# surfaces (the changed file's own pre/post and file sources). \`sessionDisciplines:\` is
+# judged only where a live call is observed before it runs (command line, transcript,
+# actor). \`changeSetDisciplines:\` is judged only over a finished change set
+# (\`--diff\`). The loader refuses an entry written in a list its channels do not fit.
+#
 # disciplines:
 #   # A draft: prose only, no predicate. Registered and read, never judged.
 #   - id: 'no-todo-in-shipped-code-draft'

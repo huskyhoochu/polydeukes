@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { CovenantInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// `runCovenantCheck({ repoRoot, input })`: the commit surface judges an IR it is handed,
+// `runCovenantCheck({ repoRoot, input })`: the change-set surface judges an IR it is handed,
 // never one it collects. Nothing here initialises git unless the case is about the
 // difference between the index and the disk — the runner must judge a plain directory,
 // because a runner that still spawns git would fail closed in one. One dispatch per
@@ -93,6 +93,7 @@ describe("a protected path in the input — advised by default, blocked on the c
     });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
@@ -108,6 +109,7 @@ describe("a protected path in the input — advised by default, blocked on the c
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
@@ -127,6 +129,7 @@ describe("a protected path in the input — advised by default, blocked on the c
     });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(PROTECTED_ENTRY)]),
       telemetryPath,
@@ -151,6 +154,7 @@ describe("a protected path in the input — advised by default, blocked on the c
       adapters: { git: { protectedPaths: [additive] } },
     });
     const fromAdditive = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(additive)]),
       telemetryPath,
@@ -160,6 +164,7 @@ describe("a protected path in the input — advised by default, blocked on the c
 
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY, additive] });
     const fromCommon = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(additive)]),
       telemetryPath,
@@ -177,6 +182,7 @@ describe("a protected path in the input — advised by default, blocked on the c
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(ORDINARY_A), writeCall(PROTECTED_ENTRY), writeCall(ORDINARY_B)]),
       telemetryPath,
@@ -197,6 +203,7 @@ describe("a protected path in the input — advised by default, blocked on the c
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([
         {
@@ -220,6 +227,7 @@ describe('ordinary input passes, one row per toolCall', () => {
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(ORDINARY_A), writeCall(ORDINARY_B)]),
       telemetryPath,
@@ -237,6 +245,7 @@ describe('ordinary input passes, one row per toolCall', () => {
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([]),
       telemetryPath,
@@ -256,6 +265,7 @@ describe('an input carrying a world key fails closed', () => {
     const { covenant, calls } = recordingCovenant([]);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: { ...ir([writeCall(ORDINARY_A)]), world: { files: {} } },
       telemetryPath,
@@ -287,6 +297,7 @@ describe('the world every dispatch receives', () => {
     ]);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input,
       telemetryPath,
@@ -311,6 +322,7 @@ describe('the world every dispatch receives', () => {
     const { covenant, calls } = recordingCovenant([PLANNED_PRESENT, PLANNED_MISSING, BINARY_FILE]);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(ORDINARY_A)]),
       telemetryPath,
@@ -332,6 +344,7 @@ describe('the world every dispatch receives', () => {
     const { covenant, calls } = recordingCovenant([PLANNED_LINK]);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(ORDINARY_A)]),
       telemetryPath,
@@ -356,6 +369,7 @@ describe('the world every dispatch receives', () => {
       const { covenant, calls } = recordingCovenant([PLANNED_PRESENT]);
 
       const result = await runCovenantCheck({
+        surface: 'changeSet',
         repoRoot: repo.repoRoot,
         input: ir([writeCall(ORDINARY_A)]),
         telemetryPath,

@@ -108,6 +108,42 @@ function allFileChanges(input: CovenantInput): FileChange[];
 `allFileChanges`는 귀속이 필요 없는 소비자를 위해 모든 호출의 증거를 호출 순서대로
 평탄화합니다. 증거 없는 호출은 건너뛰고 무엇으로도 대체하지 않습니다.
 
+<a id="discipline-lists"></a>
+## 규율 목록 셋과 통로 유도
+
+`defineConfig()`는 규율 목록 셋을 받고, 항목마다 그것이 맞는 목록에 적혔는지 판정합니다.
+
+| 키 | 타입 | 판정하는 표면 |
+|---|---|---|
+| `disciplines` | `(DisciplineEntry \| DisciplineDraft)[]` | 두 표면 모두 |
+| `sessionDisciplines` | `DisciplineEntry[]` | 세션 표면(session surface)만 |
+| `changeSetDisciplines` | `DisciplineEntry[]` | 변경 집합 표면(change-set surface)만 |
+
+`ResolvedConfig`도 같은 이름으로 셋을 싣되 판정 항목만 담고, 초안(draft)은 `drafts`로 갈라
+둡니다. 입력이 선언하지 않은 목록은 빈 배열이 되지 않고 없는 채로 남습니다.
+
+검증기와 우산 패키지가 함께 쓰는 유도는 내보내는 함수 하나입니다.
+
+```ts
+type DeclarationChannel = 'transcript' | 'channel' | 'command' | 'actor' | 'changes';
+
+function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): DeclarationChannel[];
+```
+
+순수하고 구문적인 함수라서 선언을 실행하지 않습니다. `transcript`는 `{ transcript: true }`
+바인딩에서, `channel`은 `{ sidecar: true }` 바인딩에서, `command`는
+`scope.source === 'command'`나 `{ op: 'source', of: 'command' }` 단계에서, `actor`는
+`{ op: 'source', of: 'actor' }` 단계에서, `changes`는
+`{ op: 'source', of: 'changes' }` 단계에서 나옵니다. `witness` 블록 자신의 `extract`도 본체와
+함께 훑습니다. 반환 목록은 위 표의 고정 순서를 따르므로, 통로 집합을 비교하는 두 호출자가 같은
+목록을 비교합니다.
+
+다섯 가운데 하나도 이름 짓지 않는 본체는 변경된 파일과 저장소 파일만 읽고 그 둘은 두 표면이
+모두 공급하므로 `disciplines`에 속합니다. 그 밖은 항목과 통로와 가야 할 목록을 대는
+`ConfigValidationError`이며, 메시지는
+[설정 참조](../configuration/index.ko.md#placement-rule)에 있습니다. 우산 패키지는 같은 질문을
+따로 답하지 않고 이 함수를 불러 씁니다.
+
 <a id="consumer-contract"></a>
 ## 사용자와의 접점
 

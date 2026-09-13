@@ -15,7 +15,7 @@ in the project's configuration. The **judge** evaluates evidence; a **verdict** 
 A **surface** determines when evidence is gathered:
 
 - The session surface observes a supported host's tool call before it runs.
-- The commit surface observes staged changes, working-tree changes, or a revision range.
+- The change-set surface observes staged changes, working-tree changes, or a revision range.
 
 Installing the package is not the same as connecting a surface. Instructions an agent reads are
 not automatic interception of its tools. Use a supported integration and verify an actual call.
@@ -102,7 +102,7 @@ that the practice was followed. An empty observation set establishes nothing abo
 ## Enforcement and witness
 
 Discipline entries default to `advise`. Promote an entry with `enforce: block` only after checking
-both its violating and valid cases. The commit surface's level and an entry's level compose:
+both its violating and valid cases. The change-set surface's level and an entry's level compose:
 **the lenient side wins**. Setting only the surface to `block` does not promote every entry.
 Protection of the judging chain is separate from ordinary discipline entries.
 

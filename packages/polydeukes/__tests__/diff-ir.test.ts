@@ -4,7 +4,7 @@ import type { CovenantInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The unified-diff translator: one pure function from `git diff` text (or any producer's
 // unified diff) to the covenant input IR. One toolCall per file block in input order; the
-// tool names are the two the commit surface has always dispatched under. `modify` carries
+// tool names are the two the change-set surface has always dispatched under. `modify` carries
 // hunk lines, never the whole file: `pre` is every `-` line, `post` every `+` line, context
 // and the no-newline marker are dropped. Anything outside the accepted grammar throws.
 import { covenantInputFromUnifiedDiff, STAGED_DELETE, STAGED_WRITE } from '../src/diff-ir.ts';

@@ -86,7 +86,8 @@ beforeEach(() => {
   repoRoot = mkdtempSync(join(tmpdir(), 'pdks-session-free-shell-'));
   telemetryPath = join(repoRoot, 'roi.log');
   writeConfigAt(repoRoot, telemetryPath, {
-    disciplines: [COMMAND_SCOPED_ENTRY, FILE_SCOPED_ENTRY],
+    disciplines: [FILE_SCOPED_ENTRY],
+    sessionDisciplines: [COMMAND_SCOPED_ENTRY],
   });
 });
 
@@ -109,6 +110,7 @@ describe('a shell write does not change what a session-free surface judges', () 
     const input = ir(`echo x > ${outside}`);
 
     const sessionFree = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input,
       telemetryPath,
@@ -118,6 +120,7 @@ describe('a shell write does not change what a session-free surface judges', () 
     rmSync(telemetryPath, { force: true });
 
     const sessioned = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: withSession(input),
       telemetryPath,
@@ -144,6 +147,7 @@ describe('a shell write does not change what a session-free surface judges', () 
     let outcome: { exitCode: number };
     try {
       outcome = await runCovenantCheck({
+        surface: 'session',
         repoRoot,
         input: ir(`git reset --hard > ${outside}`),
         telemetryPath,
@@ -165,6 +169,7 @@ describe('a shell write does not change what a session-free surface judges', () 
     write(target, 'clean\n');
 
     const outcome = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: withSession(ir(`echo forbidden > ${join(repoRoot, target)}`)),
       telemetryPath,
@@ -186,6 +191,7 @@ describe('a session-free surface records the shell write it cannot judge', () =>
     write(target, 'clean\n');
 
     const outcome = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir(`echo forbidden > ${join(repoRoot, target)}`),
       telemetryPath,
@@ -203,6 +209,7 @@ describe('a session-free surface records the shell write it cannot judge', () =>
     write(target, 'clean\n');
 
     await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir(`echo forbidden > ${join(repoRoot, target)}`),
       telemetryPath,

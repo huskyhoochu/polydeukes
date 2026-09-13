@@ -23,7 +23,7 @@ export function sessionPreStateReader(location: string): string | null | undefin
 }
 
 /**
- * The commit surface's reader: it observes a staged diff, whose payloads already carry the
+ * The change-set surface's reader: it observes a staged diff, whose payloads already carry the
  * pre their own observation saw, and it registers no shell axis — so no derivation ever asks
  * for a pre-state here. Should one arrive, the working tree is not what this surface judges,
  * and answering from it would compare the diff against the wrong baseline; `undefined` says

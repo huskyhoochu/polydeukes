@@ -8,8 +8,9 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** Four packages ship — `@polydeukes/core` (the covenant protocol), the
-session adapters (`adapter-claude-code`, `adapter-grok`), and the `polydeukes` umbrella,
+**Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol), the
+session adapters (`adapter-claude-code`, `adapter-grok`), `@polydeukes/sdk-ts` (the TypeScript
+client that hands an input IR to the judge from a program), and the `polydeukes` umbrella,
 which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
 memory, and verify packages are still blueprint. The CLI today:
 
@@ -122,7 +123,7 @@ layer you need.
 | Document | Contents |
 |----------|----------|
 | [`docs/tutorials/first-judgment.md`](./docs/tutorials/first-judgment.md) | First visible judgment — install, wire Claude Code, and watch a protected edit get judged |
-| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md) | Connect the session and commit surfaces, including Grok |
+| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md) | Connect the session and change-set surfaces, including Grok |
 | [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block |
 | [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing |
 | [`docs/troubleshooting.md`](./docs/troubleshooting.md) | Fail-closed states, the witness valve, and the telemetry log |
@@ -133,7 +134,7 @@ layer you need.
 | Document | Contents |
 |----------|----------|
 | [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
-| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the four packages owns |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the five packages owns |
 
 <a id="why-and-the-journal"></a>
 ### Why, and the journal

@@ -26,7 +26,11 @@ const { config } = loadConfig({ rootDir: REPO_ROOT });
 
 /** The live entry under test — throws loud if the config no longer carries it. */
 function recoveryEntry(): DisciplineEntry {
-  const entry = config.disciplines?.find((d) => d.id === 'work-stays-recoverable');
+  const entry = [
+    ...(config.disciplines ?? []),
+    ...(config.sessionDisciplines ?? []),
+    ...(config.changeSetDisciplines ?? []),
+  ].find((d) => d.id === 'work-stays-recoverable');
   if (entry === undefined) {
     throw new Error('work-stays-recoverable is missing from the live root config');
   }

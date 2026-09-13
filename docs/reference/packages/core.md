@@ -112,6 +112,44 @@ The exported constants are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`),
 `allFileChanges` flattens every call's evidence in call order for consumers that need no
 attribution. Calls without evidence are skipped, never substituted for.
 
+<a id="discipline-lists"></a>
+## The three discipline lists and the channel derivation
+
+`defineConfig()` accepts three discipline lists and decides, for each entry, whether it is
+written in the right one.
+
+| Key | Type | Judged on |
+|---|---|---|
+| `disciplines` | `(DisciplineEntry \| DisciplineDraft)[]` | both surfaces |
+| `sessionDisciplines` | `DisciplineEntry[]` | the session surface only |
+| `changeSetDisciplines` | `DisciplineEntry[]` | the change-set surface only |
+
+`ResolvedConfig` carries the three under the same names, holding judged entries only, with the
+drafts split out into `drafts`. A list the input did not declare stays absent rather than
+becoming an empty array.
+
+The derivation both the validator and the umbrella use is one exported function:
+
+```ts
+type DeclarationChannel = 'transcript' | 'channel' | 'command' | 'actor' | 'changes';
+
+function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): DeclarationChannel[];
+```
+
+It is pure and syntactic — the declaration is never run. `transcript` comes from a
+`{ transcript: true }` binding, `channel` from a `{ sidecar: true }` binding, `command` from
+`scope.source === 'command'` or a `{ op: 'source', of: 'command' }` step, `actor` from a
+`{ op: 'source', of: 'actor' }` step, and `changes` from a
+`{ op: 'source', of: 'changes' }` step. A `witness` block's own `extract` is walked with the
+body's. The returned list is in the fixed order above, so two callers comparing channel sets
+compare the same list.
+
+A body naming none of the five reads the changed file and repository files alone, which both
+surfaces supply, so it belongs in `disciplines`. Anything else is a `ConfigValidationError`
+naming the entry, its channels, and the list it belongs in; the messages are in [the
+configuration reference](../configuration/index.md#placement-rule). The umbrella imports this
+function rather than answering the same question a second time.
+
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
 

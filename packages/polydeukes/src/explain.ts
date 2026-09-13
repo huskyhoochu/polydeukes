@@ -14,7 +14,7 @@ import type { DisciplineDraft, DisciplineEntry } from '@polydeukes/core';
 import { AXIS_NAMES, deriveShape, noopTranscript, RELATION_NAMES } from '@polydeukes/core';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
 import { covenantModule } from './covenant/module.ts';
-import { assembleCheckRegistrations, assembleCommitRegistrations } from './covenant-check.ts';
+import { assembleChangeSetRegistrations, assembleCheckRegistrations } from './covenant-check.ts';
 import { loadConfig } from './load-config.ts';
 
 /** `explain` input — the repository whose config is read. */
@@ -146,13 +146,16 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
   // The judge module the two runners assemble against, so what this renders is the table
   // that would judge.
   const covenant = covenantModule;
-  const disciplines: DisciplineEntry[] = config.disciplines ?? [];
+  const shared: DisciplineEntry[] = config.disciplines ?? [];
+  const sessionOnly: DisciplineEntry[] = config.sessionDisciplines ?? [];
+  const changeSetOnly: DisciplineEntry[] = config.changeSetDisciplines ?? [];
   const drafts: DisciplineDraft[] = config.drafts ?? [];
 
   const session = assembleCheckRegistrations({
     config,
     rootDir: spec.repoRoot,
     covenant,
+    surface: 'session',
     // The session key alone, and no roster: a roster is what an adapter loads onto each
     // call, so a reader of the config would be shown one agent's names chosen by this
     // renderer. The evidence path is the same kind of per-call value and is named by the
@@ -162,10 +165,11 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     session: { evidencePath: SESSION_EVIDENCE_PATH_KEY, userMessages: [], toolCalls: [] },
     transcript: noopTranscript,
   });
-  const commit = assembleCommitRegistrations({
+  const changeSet = assembleChangeSetRegistrations({
     config,
     rootDir: spec.repoRoot,
     covenant,
+    surface: 'changeSet',
   });
 
   const text = [
@@ -173,18 +177,23 @@ export async function explain(spec: ExplainSpec): Promise<{ text: string }> {
     '',
     renderSurface({
       header:
-        'input: call IR (one call, stdin) · disciplines: advise unless enforce: block · meta: block',
+        'input: call IR (one call, stdin) · ' +
+        `disciplines ${shared.length} · sessionDisciplines ${sessionOnly.length} · ` +
+        'disciplines: advise unless enforce: block · meta: block',
       registrations: session,
       drafts,
-      disciplines,
+      disciplines: [...shared, ...sessionOnly],
       selfModScope: 'common; includes the config file itself',
     }),
     '',
     renderSurface({
-      header: 'input: --diff (change set, stdin) · disciplines: advise unless enforce: block',
-      registrations: commit,
+      header:
+        'input: --diff (change set, stdin) · ' +
+        `disciplines ${shared.length} · changeSetDisciplines ${changeSetOnly.length} · ` +
+        'disciplines: advise unless enforce: block',
+      registrations: changeSet,
       drafts,
-      disciplines,
+      disciplines: [...shared, ...changeSetOnly],
       selfModScope: 'common; includes the config file itself',
     }),
     '',

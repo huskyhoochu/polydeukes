@@ -26,7 +26,7 @@ export type SourcePlan = { files: readonly string[]; channels: readonly string[]
  * Both readers answer `undefined` for something that is not there and throw for every other
  * failure, so a permission error reaches the root's fail-closed path instead of passing
  * for an absence the declaration's `supply` policy would wave through. An ABSENT
- * `readChannel` is the commit surface, which has no session: every channel is absent.
+ * `readChannel` is the change-set surface, which has no session: every channel is absent.
  */
 export type SupplySourcesSpec = {
   plan: SourcePlan;

@@ -225,6 +225,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)], { tools: TOOLS }),
       telemetryPath,
@@ -245,6 +246,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)]),
       telemetryPath,
@@ -262,6 +264,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)], { tools: undefined }),
       telemetryPath,
@@ -278,6 +281,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([{ ...writeCall(PROTECTED_FILE), name: OTHER_MUTATING_TOOL }], {
         tools: { ...TOOLS, mutating: [MUTATING_TOOL, OTHER_MUTATING_TOOL] },
@@ -300,6 +304,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([{ ...writeCall(PROTECTED_FILE), name: STAGED_WRITE }], {
         tools: { mutating: [], shell: [], commandArgs: [] },
@@ -315,11 +320,12 @@ describe('tools — the host roster routes the two meta-covenants', () => {
   it('a shell mutation of a protected path by a tool in tools.shell blocks under shell-mod, self-mod passing the mention', async () => {
     // The shell axis exists only through the roster: `tools.shell` names the tool and
     // `tools.commandArgs` names where the command line is. A runner registering shell-mod
-    // with the commit surface's empty list leaves an `echo >>` into a protected file with
+    // with the change-set surface's empty list leaves an `echo >>` into a protected file with
     // nothing but a passed self-mod row.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([shellCall(`echo x >> ${PROTECTED_FILE}`)], { tools: TOOLS }),
       telemetryPath,
@@ -340,6 +346,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([shellCall(`echo x >> ${PROTECTED_FILE}`)], {
         tools: { ...TOOLS, shell: [] },
@@ -358,6 +365,7 @@ describe('tools — the host roster routes the two meta-covenants', () => {
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([shellCall(`cat ${PROTECTED_FILE}`)], { tools: TOOLS }),
       telemetryPath,
@@ -385,6 +393,7 @@ describe('session.userMessages — the TTL witness opens on a fresh, timestamped
     // A runner that binds the witness to the top-level `userMessages` (no timestamps) can
     // never open it, and a session-carrying call has no valve at all.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)], {
         tools: TOOLS,
@@ -407,6 +416,7 @@ describe('session.userMessages — the TTL witness opens on a fresh, timestamped
     // own clock lets any transcript line that carries the token — pasted, replayed,
     // forged — open the valve forever.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)], {
         tools: TOOLS,
@@ -429,6 +439,7 @@ describe('session.userMessages — the TTL witness opens on a fresh, timestamped
     // milliseconds closes the valve on every real utterance; one reading them as seconds
     // or hours holds it open past the window the human agreed to.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(PROTECTED_FILE)], {
         tools: TOOLS,
@@ -460,6 +471,7 @@ describe('session.evidencePath — transcript-mod protects exactly that file', (
     // transcript-mod from `session.evidencePath` lets a Write append a forged human
     // utterance and then witness itself with it.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([{ name: MUTATING_TOOL, args: { file_path: evidencePath, content: 'forged' } }], {
         tools: TOOLS,
@@ -478,9 +490,10 @@ describe('session.evidencePath — transcript-mod protects exactly that file', (
 
   it('a shell append onto the evidence path blocks under transcript-mod — the roster reaches this registration too', async () => {
     // transcript-mod takes the shell tool and command-arg names from the same roster. A
-    // runner that registers it with the commit surface's empty shell list judges the tool
+    // runner that registers it with the change-set surface's empty shell list judges the tool
     // axis only, and `echo >> <transcript>` passes.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([shellCall(`echo forged >> ${evidencePath}`)], {
         tools: TOOLS,
@@ -502,6 +515,7 @@ describe('session.evidencePath — transcript-mod protects exactly that file', (
     // that condition (registering over `undefined`, or over a default path) turns every
     // session call into either a fail-closed block or a judgment about a file nobody named.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([{ name: MUTATING_TOOL, args: { file_path: evidencePath, content: 'forged' } }], {
         tools: TOOLS,
@@ -519,7 +533,7 @@ describe('session.evidencePath — transcript-mod protects exactly that file', (
 
 describe('session — the discipline transcript binding reads session.toolCalls', () => {
   beforeEach(() => {
-    writeConfig({ protectedPaths: [PROTECTED_ENTRY], disciplines: [precedentEntry] });
+    writeConfig({ protectedPaths: [PROTECTED_ENTRY], sessionDisciplines: [precedentEntry] });
   });
 
   it('a successful precedent call in session.toolCalls satisfies the declaration — passed', async () => {
@@ -527,6 +541,7 @@ describe('session — the discipline transcript binding reads session.toolCalls'
     // judged call: the judged call is never its own precedent, so a runner binding
     // `transcriptFromInput` reports "no probe" on every session and the gate never opens.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], {
         tools: TOOLS,
@@ -545,6 +560,7 @@ describe('session — the discipline transcript binding reads session.toolCalls'
     // `succeeded` must reach the snapshot: a binding that projects `{ name, args }` alone
     // makes a refused probe count as a probe that ran.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], {
         tools: TOOLS,
@@ -564,6 +580,7 @@ describe('session — the discipline transcript binding reads session.toolCalls'
     // of by `supply: pass` as a skip; a runner that binds an empty transcript when the IR
     // has no session judges "nothing happened" and breaks every session-free run.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], { tools: TOOLS }),
       telemetryPath,
@@ -576,7 +593,7 @@ describe('session — the discipline transcript binding reads session.toolCalls'
 
 describe('session.channels — the sidecar rides into the dispatched world', () => {
   beforeEach(() => {
-    writeConfig({ protectedPaths: [PROTECTED_ENTRY], disciplines: [sidecarEntry] });
+    writeConfig({ protectedPaths: [PROTECTED_ENTRY], sessionDisciplines: [sidecarEntry] });
   });
 
   it('a sidecar text carrying the writer record satisfies the sidecar declaration — passed', async () => {
@@ -584,6 +601,7 @@ describe('session.channels — the sidecar rides into the dispatched world', () 
     // surface's channel-less world in place hands the declaration an absent source on a
     // session that provably spawned the writer.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], {
         tools: TOOLS,
@@ -603,6 +621,7 @@ describe('session.channels — the sidecar rides into the dispatched world', () 
     // fabricates `'[]'` for a session without channels judges a spawn-less session and
     // breaks the declaration instead of skipping it.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -616,6 +635,7 @@ describe('session.channels — the sidecar rides into the dispatched world', () 
     // `'[]'` and absence are two facts: the channel was there and saw nothing. A runner
     // that folds the empty list into absence skips a declaration that should break.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], {
         tools: TOOLS,
@@ -629,30 +649,29 @@ describe('session.channels — the sidecar rides into the dispatched world', () 
   });
 });
 
-describe('session — one call is not the whole change set', () => {
+describe('session — a change-set declaration stands on the other surface', () => {
   beforeEach(() => {
-    writeConfig({ protectedPaths: [PROTECTED_ENTRY], disciplines: [changeSetEntry] });
+    writeConfig({ protectedPaths: [PROTECTED_ENTRY], changeSetDisciplines: [changeSetEntry] });
   });
 
-  it('with a session the change-set declaration records skipped', async () => {
-    // A session call is one of a wider change set the runner cannot see, so a declaration
-    // reading `changes` cannot be judged. A runner that keeps `observesChangeSet` on for
-    // session inputs judges a one-element change set and lands a verdict on a vacuity.
+  it('the session surface registers it at all, so the call leaves the run-level pass alone', async () => {
+    // A session call is one of a wider change set the runner cannot see. The entry lives
+    // in the change-set list, so nothing here routes it and no row carries its id — a
+    // registration would judge a one-element change set and land a verdict on a vacuity.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
     });
 
     expect(result.exitCode).toBe(0);
-    expect(rows()).toEqual([BASELINE_FIRST_RUN_ROW, ['skipped', CHANGE_SET_ID, SCOPED_TARGET]]);
+    expect(rows().filter(([, label]) => label === CHANGE_SET_ID)).toEqual([]);
   });
 
-  it('without a session the same declaration is judged over the input change set — passed', async () => {
-    // The other end: a session-free IR is its own whole change set, as `--diff` is today.
-    // A runner that skips change-set declarations whenever `tools` is present would
-    // silence them on every input a host roster reaches.
+  it('the change-set surface judges the same declaration over the input change set — passed', async () => {
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       input: ir([writeCall(SCOPED_TARGET)], { tools: TOOLS }),
       telemetryPath,
@@ -666,13 +685,14 @@ describe('session — one call is not the whole change set', () => {
 describe('session — discipline pre-state is read from disk under repoRoot', () => {
   it('a shell append of a word the disk pre already carries passes the added-only declaration', async () => {
     // The shell-derived write needs the disk pre to judge its added set. A runner that
-    // keeps the commit surface's unobserved reader answers "cannot read" and the call
+    // keeps the change-set surface's unobserved reader answers "cannot read" and the call
     // fails closed; one that answers `null` reads the append as a create and the word
     // already on disk breaks the declaration again.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY], disciplines: [addedOnlyEntry] });
     writeOnDisk(SHELL_TARGET, `${BANNED_WORD} already lives here\n`);
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([shellCall(`echo '${BANNED_WORD}' >> ${join(repoRoot, SHELL_TARGET)}`)], {
         tools: TOOLS,
@@ -697,6 +717,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
     // session entry point leaves every consumer that spawns the CLI with no out-of-band
     // detection and no row saying so.
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -711,6 +732,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
     // call's re-establishment. A runner that compares but never re-establishes at call
     // end alarms on every call; one that re-establishes but never compares alarms on none.
     await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -718,6 +740,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
     writeOnDisk(PROTECTED_FILE, 'locked: tampered out of band\n');
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -740,6 +763,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
 
     await expect(
       runCovenantCheck({
+        surface: 'session',
         repoRoot,
         input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS, session: sessionOf() }),
         telemetryPath,
@@ -752,6 +776,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
     // comparison reads the window the previous call left, and re-establishing keeps the
     // next window honest. Skipping both would leave a tamper between two such calls unseen.
     const first = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -761,6 +786,7 @@ describe('session — the baseline comparison runs around the judgment', () => {
 
     writeOnDisk(PROTECTED_FILE, 'locked: tampered out of band\n');
     const second = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([], { tools: TOOLS, session: sessionOf() }),
       telemetryPath,
@@ -777,12 +803,14 @@ describe('session — the baseline comparison runs around the judgment', () => {
     // would write baseline rows into every session-free run of a host roster, and one
     // keyed on nothing would write them into `--diff`.
     await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS }),
       telemetryPath,
     });
     writeOnDisk(PROTECTED_FILE, 'locked: tampered out of band\n');
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], { tools: TOOLS }),
       telemetryPath,
@@ -841,6 +869,7 @@ describe('a malformed tools or session fails closed before any dispatch', () => 
     const { covenant, calls } = recordingCovenant([]);
 
     const result = await runCovenantCheck({
+      surface: 'session',
       repoRoot,
       input: ir([writeCall(ORDINARY_FILE)], extra),
       telemetryPath,

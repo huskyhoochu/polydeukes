@@ -26,14 +26,24 @@ better verification.
 
 ## What exists now
 
-Three packages provide a shared input vocabulary, a Claude Code adapter, and the `polydeukes`
-umbrella, which carries the judge and the `pdks` command. Two observation surfaces serve different purposes:
+Five packages provide a shared input vocabulary, two session adapters, a TypeScript client
+for programs, and the `polydeukes` umbrella, which carries the judge and the `pdks` command.
+Two observation surfaces serve different purposes:
 
-- The **session surface** judges supported tool calls before execution. Claude Code and Grok have
-  installers, but their available history and witness capabilities differ.
-- The **commit surface** judges a unified diff or an input IR read from stdin — a staged diff
-  piped by a pre-commit hook, or any diff a tool produces. It works without an AI agent. A
-  project may connect either or both surfaces according to its needs.
+- The **session surface** judges one call before it runs — an input IR on stdin. Claude Code
+  and Grok have installers, and a program reaches the same surface through `@polydeukes/sdk-ts`;
+  what history and witness each host can prove differs.
+- The **change-set surface** judges a unified diff read from stdin — a staged diff piped by a
+  pre-commit hook, or any diff a tool produces. It works without an AI agent. A project may
+  connect either or both surfaces according to its needs.
+
+A discipline is written in one of three config lists, and the list follows from what its
+declaration reads. `disciplines` holds what both surfaces can judge — declarations reading only
+the changed file. `sessionDisciplines` holds what only a live call carries — the command line,
+the conversation history, the actor. `changeSetDisciplines` holds what only a finished change set
+carries. The loader refuses an entry written in a list whose surface cannot observe its
+channels, so the config file itself says where each discipline stands, and `pdks explain`
+prints the same placement per surface.
 
 A discipline is configuration data with extraction steps and relations. Seven relations and
 eighteen mechanism names form the current vocabulary; `delegated-scope` is reserved rather than
@@ -56,8 +66,8 @@ a built-in behavior; protecting other source files depends on the configured pat
 
 A human witness can allow a blocking judgment without rewriting the policy. In a supported session,
 the token must stand alone on the first line of a human message and remain within its TTL. The
-commit surface has no prompt: the valve is the session surface's TTL witness, and the commit
-surface only emits an exit code that the user's hook consumes. The valve is consulted after
+change-set surface has no prompt: the valve is the session surface's TTL witness, and the
+change-set surface only emits an exit code that the user's hook consumes. The valve is consulted after
 judgment and does not repair a broken assembly.
 
 ### Deterministic judgment, explicit enforcement

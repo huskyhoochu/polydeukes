@@ -46,6 +46,7 @@ describe('same-judge blocking on a protected path', () => {
     git('add', 'secret.txt', 'polydeukes.config.json');
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       input: stagedInput(),
@@ -66,7 +67,12 @@ describe('same-judge blocking on a protected path', () => {
     write('ordinary.txt', 'nothing special\n');
     git('add', 'ordinary.txt');
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(0);
   });
@@ -114,6 +120,7 @@ describe('discipline delta family — new violation vs pre-existing debt', () =>
     git('add', 'lib/a.ts');
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       input: stagedInput(),
@@ -135,7 +142,12 @@ describe('discipline delta family — new violation vs pre-existing debt', () =>
     write('lib/b.ts', '// TODO ancient debt\nexport const y = 2;\n');
     git('add', 'lib/b.ts');
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(0);
   });
@@ -149,7 +161,12 @@ describe('telemetry — every judged call is recorded', () => {
     write('guarded.txt', 'b\n');
     git('add', 'secret.txt', 'guarded.txt', 'polydeukes.config.json');
 
-    await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    await runCovenantCheck({
+      repoRoot,
+      surface: 'changeSet',
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     const { records } = readRecords(telemetryPath);
     expect(records.length).toBeGreaterThanOrEqual(2);
@@ -163,7 +180,12 @@ describe('fail-closed and empty-staging boundaries', () => {
     write('anything.txt', 'x\n');
     git('add', 'anything.txt');
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(2);
   });
@@ -173,13 +195,18 @@ describe('fail-closed and empty-staging boundaries', () => {
     writeConfig({ protectedPaths: ['secret.txt'] });
     // Nothing staged (config file left unstaged in the worktree).
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(0);
   });
 });
 
-// The commit surface reads the common protectedPaths list. Every blocked case below
+// The change-set surface reads the common protectedPaths list. Every blocked case below
 // pins the self-mod row — label plus matched-entry subject — rather than the exit code
 // alone: an assembly that fails closed lands at the SAME exit 2, and an exit-code-only
 // assertion would go green for
@@ -202,7 +229,7 @@ describe('telemetry path precedence — spec, then config, then default', () => 
     write('polydeukes.config.json', JSON.stringify({ languages: 'not-an-object' }));
 
     await expect(
-      runCovenantCheck({ repoRoot, input: stagedInput(), enforce: 'block' }),
+      runCovenantCheck({ surface: 'changeSet', repoRoot, input: stagedInput(), enforce: 'block' }),
     ).resolves.toEqual({
       exitCode: 2,
     });
@@ -221,7 +248,7 @@ describe('telemetry path precedence — spec, then config, then default', () => 
     git('add', 'secret.txt');
 
     await expect(
-      runCovenantCheck({ repoRoot, input: stagedInput(), enforce: 'block' }),
+      runCovenantCheck({ surface: 'changeSet', repoRoot, input: stagedInput(), enforce: 'block' }),
     ).resolves.toEqual({
       exitCode: 2,
     });
@@ -237,7 +264,7 @@ describe('telemetry path precedence — spec, then config, then default', () => 
     write('polydeukes.config.json', JSON.stringify({ languages: 'not-an-object' }));
 
     await expect(
-      runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() }),
+      runCovenantCheck({ surface: 'changeSet', repoRoot, telemetryPath, input: stagedInput() }),
     ).resolves.toEqual({ exitCode: 2 });
 
     expect(telemetryRows(telemetryPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
@@ -267,7 +294,7 @@ describe('telemetry path precedence — spec, then config, then default', () => 
     git('add', 'secret.txt');
 
     await expect(
-      runCovenantCheck({ repoRoot, input: stagedInput(), enforce: 'block' }),
+      runCovenantCheck({ surface: 'changeSet', repoRoot, input: stagedInput(), enforce: 'block' }),
     ).resolves.toEqual({
       exitCode: 2,
     });
@@ -288,6 +315,7 @@ describe('telemetry path precedence — spec, then config, then default', () => 
 
     await expect(
       runCovenantCheck({
+        surface: 'changeSet',
         repoRoot,
         telemetryPath: injectedPath,
         input: stagedInput(),

@@ -475,7 +475,7 @@ describe('tdd-agent-required · judge', () => {
   });
 
   it('the transcript absent → not-applicable by supply-pass, naming the source', () => {
-    // `supply.transcript: pass` — the commit surface has no session. The verdict must say
+    // `supply.transcript: pass` — the change-set surface has no session. The verdict must say
     // WHY it did not judge; a `pass` here would record the edit as upheld.
     expect(judge(decl, tddWorld(PRODUCTION_FILE, undefined))).toEqual({
       kind: 'not-applicable',

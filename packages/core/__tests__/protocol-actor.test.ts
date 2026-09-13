@@ -38,7 +38,7 @@ describe('parseInput — the actor is carried verbatim', () => {
 
   it('an input without actor parses with no actor key — absence is not turned into {}', () => {
     // `{}` says "the host saw the actor"; a parser defaulting an absent field to `{}`
-    // makes the commit surface claim a main-session actor it never observed, and the
+    // makes the change-set surface claim a main-session actor it never observed, and the
     // `supply: pass` row that should say skipped says passed instead.
     const result = parseInput(
       JSON.stringify({ toolCalls: [], subagentSpawns: [], userMessages: [] }),

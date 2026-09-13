@@ -52,7 +52,7 @@ describe('declaration engine — purity of the module set', () => {
 // spawns a process. Effects belong to the surface that observes, and the judge receives
 // what it needs as values.
 //
-// Without this, re-adding `readFileSync` to a judge is silently green: the commit surface
+// Without this, re-adding `readFileSync` to a judge is silently green: the change-set surface
 // would judge a staged diff against the working tree's current bytes, reporting a file that
 // was staged clean but dirtied afterwards as broken, with no test failing.
 

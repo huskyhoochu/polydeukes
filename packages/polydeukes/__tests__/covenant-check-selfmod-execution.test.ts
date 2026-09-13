@@ -33,6 +33,7 @@ describe('the commit self-mod judge observably executes in-process', () => {
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       enforce: 'block',
       repoRoot: repo.repoRoot,
       telemetryPath: repo.telemetryPath,

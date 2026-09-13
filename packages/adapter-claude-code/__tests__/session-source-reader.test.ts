@@ -9,7 +9,7 @@ import { sessionSourceReader } from '../src/session-source-reader.ts';
 // shape the disk can hold under a planned path that is not readable text — no entry, a
 // directory, a path whose parent is a file, bytes carrying a NUL. Everything else throws:
 // a permission refusal must reach the root's fail-closed path instead of passing for a
-// file that is not there. The commit surface's worktree reader asserts the same absence
+// file that is not there. The change-set surface's worktree reader asserts the same absence
 // table in its own suite — the two readers live in packages that cannot depend on each
 // other, so the shared table is pinned twice.
 

@@ -109,7 +109,14 @@ const declareEntry = {
     ],
   },
 };
-const WITH_DECLARE = [...DISCIPLINES, declareEntry];
+// The delta entry reads the changed file alone and the precedent entry binds the transcript,
+// so the config writes them in the two lists the grammar assigns them.
+const [DELTA_ENTRY, CONTEXT_ENTRY] = DISCIPLINES;
+const PARITY_LISTS = { disciplines: [DELTA_ENTRY], sessionDisciplines: [CONTEXT_ENTRY] };
+const WITH_DECLARE = {
+  disciplines: [DELTA_ENTRY, declareEntry],
+  sessionDisciplines: [CONTEXT_ENTRY],
+};
 /** The break the declare entry records for `DB_OUTSIDE`: one relate id, one witness, keyed `'0'`. */
 const EXPECTED_WITNESSES = [
   { id: DECLARE_RELATE_ID, witnesses: [{ key: '0', value: DB_OUTSIDE }], total: 1 },
@@ -165,7 +172,7 @@ function transcriptWithPrecedent(): string {
 }
 
 /** Copy the real hook into a fixture tree carrying the parity config, spawn it on `payload`. */
-function runHook(payload: Record<string, unknown>, disciplines: unknown[] = DISCIPLINES) {
+function runHook(payload: Record<string, unknown>, lists: Record<string, unknown> = PARITY_LISTS) {
   const fixtureRoot = join(tmpRoot, 'fixture-tree');
   mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
   cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
@@ -178,7 +185,7 @@ function runHook(payload: Record<string, unknown>, disciplines: unknown[] = DISC
         languages: { typescript: { productionGlob: DISCIPLINE_SCOPE, testCmd: 'echo {scope}' } },
         telemetry: { logPath: telemetryPath },
         protectedPaths: [PROTECTED_ENTRY],
-        disciplines,
+        ...lists,
       },
       null,
       2,
@@ -309,7 +316,7 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
   });
 }
 
-describe('③ commit surface advise translation (the domain W1 never measured)', () => {
+describe('③ change-set surface advise translation (the domain W1 never measured)', () => {
   it('a staged delta violation lands advised: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
     // Advise is not mute: the reason line, the entry's `why`, and one advisory summary
     // all reach stderr.
@@ -358,12 +365,13 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
     expect(rows()).toEqual([['advised', DELTA_ID, SCOPED_TARGET]]);
   });
 
-  it('a session-reading discipline on a matched staged change records ONE skipped row (exit 0, silent)', () => {
-    // The commit surface's permanent no-session condition must stay a recorded skip:
-    // neither a block, nor a pass with NO row.
+  it('a session-reading discipline is not compiled for a change set: exit 0, silent, the call recorded under the runner alone', () => {
+    // The entry lives in `sessionDisciplines`, so this surface never registers it; the
+    // staged change still leaves a row — under the runner's own label, never under the
+    // entry's — so no call passes unrecorded.
     const result = runCommitCheck(
       {
-        disciplines: [
+        sessionDisciplines: [
           {
             id: CONTEXT_ID,
             declare: {
@@ -394,13 +402,13 @@ describe('③ commit surface advise translation (the domain W1 never measured)',
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
-    expect(rows()).toEqual([['skipped', CONTEXT_ID, SCOPED_TARGET]]);
+    expect(rows()).toEqual([['passed', 'covenant-check', SCOPED_TARGET]]);
   });
 });
 
 /** Commit the config alone, then stage `relPath` as a NEW file and run the bin on it. */
 function runCommitCheckCreating(name: string, relPath: string, content: string) {
-  const { projectRoot, git } = initCommitRepo(name, { disciplines: WITH_DECLARE });
+  const { projectRoot, git } = initCommitRepo(name, WITH_DECLARE);
   git('add', 'polydeukes.config.json');
   git('commit', '--quiet', '-m', 'initial');
   const target = join(projectRoot, relPath);
@@ -481,8 +489,8 @@ describe('④ two surfaces, one declare verdict', () => {
     ]);
   });
 
-  it('commit: the same staged .db lands the same advised row with the byte-identical witnesses string; inside lands passed', () => {
-    // Two observers, one verdict: the commit surface must serialise the same witness list
+  it('change set: the same staged .db lands the same advised row with the byte-identical witnesses string; inside lands passed', () => {
+    // Two observers, one verdict: the change-set surface must serialise the same witness list
     // the session surface did — same order, same keys — so the fifth field is compared
     // as the string the log carries, not as a parsed shape.
     expect(writeViaHook(DB_OUTSIDE, 'x').status).toBe(0);

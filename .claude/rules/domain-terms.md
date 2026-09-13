@@ -57,8 +57,9 @@ binding reads the session history; without a transcript channel such an entry re
 
 Naming only; how each one judges is in `dogfooding-axes.md`.
 
-- **Surfaces** — **session** (PreToolUse hook) and **commit** (`pdks covenant check` under
-  lefthook). A surface's `enforce` belongs to the observer; an entry's `enforce` is the
+- **Surfaces** — **session** (one call observed before it runs — an adapter hook or the SDK,
+  IR on stdin) and **change-set** (`pdks covenant check --diff` over a finished change set from
+  any producer). A surface's `enforce` belongs to the observer; an entry's `enforce` is the
   author's rung on the promotion ladder — absent means `advise`, `block` is the promotion —
   and the lenient side wins. Meta-covenants carry no entry rung, so they alone block on the
   session surface. Neither setting is a verdict word.
@@ -177,7 +178,8 @@ here and the docs follow it.
 | judgment (the act) | 판정 | The act of deciding. |
 | verdict (the result) | 판정 결과 | Never bare 판정 — that is the act. |
 | gate | 관문 | Never 게이트, never bare 문. |
-| surface | 표면 | Reserved for the session/commit surfaces. Never for "the public API of a document" — write 진입점 or 공개 면 there. |
+| surface | 표면 | Reserved for the session/change-set surfaces. Never for "the public API of a document" — write 진입점 or 공개 면 there. |
+| change-set surface | 변경 집합 표면 | `pdks covenant check --diff` judging a finished change set from any producer — a git pre-commit hook via lefthook is one such producer in this repository, CI or a hand-made diff are others. |
 | transcript | 대화 기록 | Never 전사, never 트랜스크립트. |
 | family (discipline) | 계열 | Never 족 — a biological classifier that reads as jargon. |
 | enforce level | 강제 수준 | Never 수위 — reads as a water level. |

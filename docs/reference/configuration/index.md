@@ -60,10 +60,10 @@ adapters:
     someKey: 'a value the example adapter defines'
 ```
 
-**`protectedPaths` is one list for both surfaces.** There is no additive commit-only scope
-and no surface-level enforcement key in the config. The commit surface judges the same
+**`protectedPaths` is one list for both surfaces.** There is no additive change-set-only scope
+and no surface-level enforcement key in the config. The change-set surface judges the same
 normalized list the session surface does. A violation exits 2 on the session surface; on the
-commit surface it lands `advised` at exit 0 unless the check runs with `--enforce block`. The
+change-set surface it lands `advised` at exit 0 unless the check runs with `--enforce block`. The
 judge emits only that exit code: whether a commit stops is the user's hook wiring, so a
 telemetry row records the verdict, not the commit's fate — a `blocked` row can sit beside a
 commit that proceeded because the wiring ignored the exit code.
@@ -74,21 +74,17 @@ shell axes, the session transcript, an assembly that cannot judge (missing or in
 config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
 entry promoted with `enforce: block`. Every other discipline entry lands `advised` there.
 
-**Declarations that read the session skip on the commit surface when their supply policy is `pass`.**
-A commit has no session to look at, so a declaration whose `sources` bind the transcript — a `precedent`,
-`phase-order`, `turn-locality` or `stated-ground` entry — cannot be judged there; demanding
-evidence a commit cannot carry would block every matching commit with no legitimate way
-through. The declaration's own `supply: { session: 'pass' }` disposes of the absence: when
-its scope matches a staged change it records a `skipped` telemetry event carrying the reason
-token `supply-pass` and lets the commit proceed. The record carries the entry's `id` and the
-change it would have judged, so a gate that did nothing says so in the data — and it appears
-**only when the entry's scope actually matched**. A declaration scoped on the `command`
-source records nothing at all there: a staged diff carries no command line, so no world it
-observes is ever admitted.
+**A declaration reaches only the surface that observes its channels.** A transcript reader is
+written in `sessionDisciplines` and is never compiled for a change set; a `changes` reader is
+written in `changeSetDisciplines` and is never compiled for one call. The three lists and the
+rule that places an entry in one of them are in [the three discipline
+lists](#three-lists).
 
-This is the same disposition the session surface uses whenever it has no transcript to
-read **and** the declaration's `supply` is `pass`. Without that policy a missing source is
-unjudgeable (exit 2), not an automatic skip.
+A declaration's `supply` policy still governs a channel the surface registers but the host
+does not prove. A host that carries no session (the Grok adapter) leaves a
+`sources: { session: { transcript: true } }` entry's source absent, and `supply: { session: 'pass' }`
+records a `skipped` telemetry event carrying the reason token `supply-pass` and lets the call
+proceed. Without that policy a missing source is unjudgeable (exit 2), not an automatic skip.
 
 <a id="telemetry"></a>
 ## `telemetry`
@@ -158,12 +154,141 @@ when the token arrives in a message positively identified as human-typed in the 
 transcript, so an AI that knows the token still cannot forge one. Witnessed judgments are
 recorded as `witnessed`, never silent.
 
+<a id="three-lists"></a>
+## The three discipline lists
+
+A discipline is written in one of three lists, and which one is a fact about the declaration
+rather than a choice the author makes. A declaration names the evidence channels it reads in
+its own syntax, and a surface observes some channels and not others, so the list follows from
+the channels.
+
+| List | Judged on | What its declarations read |
+|---|---|---|
+| `disciplines` | both surfaces | the changed file itself (`target.path` · `pre` · `post` · `state`) and `file` sources — nothing else. Drafts live here too |
+| `sessionDisciplines` | the session surface only | at least one of `command` · `transcript` · the `sidecar` channel · `actor`, and never `changes` |
+| `changeSetDisciplines` | the change-set surface only | `changes`, and no session channel |
+
+The session surface is one call a host observed before it ran — an adapter hook, or a program
+calling the SDK with an input IR. It carries the command line, the conversation history, the
+spawn-record channel, and the actor, and it does not carry the finished change set. The
+change-set surface is `pdks covenant check --diff` over a change set some producer finished.
+It carries `changes`, and it carries no command line, no history, and no actor.
+
+<a id="channel-to-list"></a>
+### Channel to list
+
+Each channel appears in a declaration in a fixed syntactic position, and the loader reads
+those positions to derive the list.
+
+| Channel | How it appears in a declaration | List |
+|---|---|---|
+| `transcript` | `sources: { session: { transcript: true } }` | `sessionDisciplines` |
+| `channel` | `sources: { spawns: { sidecar: true } }` | `sessionDisciplines` |
+| `command` | `scope: { source: 'command' }`, or `{ op: 'source', of: 'command' }` in any pipeline | `sessionDisciplines` |
+| `actor` | `{ op: 'source', of: 'actor' }` in any pipeline | `sessionDisciplines` |
+| `changes` | `{ op: 'source', of: 'changes' }` in any pipeline | `changeSetDisciplines` |
+| none of the five | the declaration reads the changed file and `file` sources alone | `disciplines` |
+
+A `witness` block's own `extract` is walked with the body's, so a valve reading the transcript
+puts its entry in `sessionDisciplines` like any other transcript reader.
+
+<a id="placement-rule"></a>
+### The placement rule
+
+`disciplines` takes an entry binding none of the five channels, plus every draft.
+`sessionDisciplines` takes an entry binding at least one session channel and not `changes`.
+`changeSetDisciplines` takes an entry binding `changes` and no session channel. Anything else
+is a `ConfigValidationError` at load time, on both surfaces, and the message names the entry,
+the channels it reads, and the list it belongs in:
+
+```text
+disciplines[7] ('merge-is-the-users-call') reads transcript, command: it belongs in sessionDisciplines
+```
+
+Two shapes have no destination to name. A declaration binding both `changes` and a session
+channel is refused outright, because no surface observes both at once:
+
+```text
+sessionDisciplines[2] ('pairs-across-a-session') reads transcript, changes: no surface observes both changes and a session channel
+```
+
+A draft binds nothing — it carries no declaration — so it belongs in `disciplines`, and a
+draft written in either surface list is refused with `a draft belongs in disciplines`.
+
+Ids are unique across all three lists and the three meta-covenant labels (`self-mod` ·
+`shell-mod` · `transcript-mod`): the telemetry label space is one space, and `pdks explain`
+and every label-keyed reader index by the label alone.
+
+<a id="lists-in-practice"></a>
+### What each surface compiles
+
+`pdks covenant check` reading an input IR on stdin compiles `disciplines` followed by
+`sessionDisciplines`; the same command with `--diff` compiles `disciplines` followed by
+`changeSetDisciplines`. `pdks explain` prints both surfaces with each list's name and count in
+the surface header, so the placement of every entry is readable without running a judgment.
+This repository's live config places 11 judged entries and 1 draft in `disciplines`, 13 in
+`sessionDisciplines`, and 1 (`docs-stay-bilingual`) in `changeSetDisciplines` — 24
+registrations on the session surface and 12 on the change-set surface.
+
+```yaml
+disciplines:            # both surfaces
+  - id: 'covenant-vocabulary'
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['^packages/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before: [{ op: 'source', of: 'pre' }, { op: 'lines' }]
+        after: [{ op: 'source', of: 'post' }, { op: 'lines' }]
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }]
+      relate:
+        - { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {value}' }
+
+sessionDisciplines:     # the session surface only — reads command
+  - id: 'pnpm-only'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: '\bnpm install\b' }
+      relate:
+        - { id: 'no-npm', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+
+changeSetDisciplines:   # the change-set surface only — reads changes
+  - id: 'docs-stay-bilingual'
+    declare:
+      mechanism: 'companion'
+      scope: { source: 'target.path', include: ['\.md$'] }
+      extract:
+        en:
+          - { op: 'source', of: 'target.path' }
+          - { op: 'keyByPattern', re: '^(.+?)(?<!\.ko)\.md$' }
+        koChanged:
+          - { op: 'source', of: 'changes' }
+          - { op: 'items' }
+          - { op: 'keyByPattern', re: '^(.+)\.ko\.md$' }
+      relate:
+        - id: 'ko-follows'
+          relation: { op: 'implies', of: 'en', requires: 'koChanged' }
+          message: '{value} changed without {key}.ko.md'
+```
+
+Moving an entry between lists is the whole edit: the entry's body is unchanged by the move,
+and the loader is what says whether the new place is the right one.
+
 <a id="disciplines"></a>
 ## `disciplines`
 
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
-data. A judged entry carries a `declare` block — the one judged form, a declaration whose
-`scope` lives inside the block — an `id` (the telemetry label), and optionally a `why` (the
+data. Everything in this section applies to an entry in any of the three lists; which list an
+entry is written in is decided by [the placement rule](#placement-rule), and
+`sessionDisciplines` and `changeSetDisciplines` take the same entry shape as `disciplines`
+minus the draft form. A judged entry carries a `declare` block — the one judged form, a
+declaration whose `scope` lives inside the block — an `id` (the telemetry label), and
+optionally a `why` (the
 reason, which travels with the block message the agent reads) and an `enforce` level. The
 closed key set is `id` · `why` · `enforce` · `declare`; any other key is refused.
 
@@ -196,8 +321,8 @@ is one line.
 event and the call proceeds (exit 0), with the break message still written to stderr;
 `block` is the promotion — it pins the entry at block. The config carries no surface-level
 enforcement key: absent or `advise` means `advised` on both surfaces, `block` means exit 2 on
-the session surface and on a commit check run with `--enforce block` (the commit surface's
-default posture is advise for every verdict). An unjudgeable body (never
+the session surface and on a change-set check run with `--enforce block` (the change-set
+surface's default posture is advise for every verdict). An unjudgeable body (never
 built, or one that cannot be loaded) still blocks whatever the level. A draft carries no
 `enforce`; any
 other value is rejected at load time. `pdks explain` prints the level an entry declares
@@ -320,8 +445,9 @@ declaration the user turns and tool calls as one snapshot, `toolUses` picks the 
 `matches` finds the required one; `nonEmpty` is the verdict. A call the covenant blocked,
 one a human refused, and one that simply failed are not precedent. The pattern is matched
 anywhere in a command line — a line that merely mentions the command counts, a declared
-limit. `supply: { session: 'pass' }` is what makes the commit surface record `skipped`
-instead of blocking every matching commit.
+limit. `supply: { session: 'pass' }` is what disposes of an absent session on a host that proves
+none; an entry reading the transcript is written in `sessionDisciplines`, so a change set never
+compiles it at all.
 
 ```yaml
   - id: 'dependency-needs-npm-view'
@@ -393,16 +519,15 @@ Each observation is judged as one **world** with seven source names: `target.pat
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —
 a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
 on a modification), and `changes` (every path the observation changes — the one call on the
-session surface, the whole staged set on the commit surface), and `command` (the shell
+session surface, the whole staged set on the change-set surface), and `command` (the shell
 call's command line — present on a shell call only, and a shell call that changes no file
 is one world of its own, so a declaration scoped on `command` sees it while one scoped on
 `target.path` does not), and `actor` (the observation's actor — described below). A
-declaration that reads `changes` is judged only where the whole change set is observed: the
-session surface records it `skipped`, the same disposition the commit surface gives a
-declaration that reads the session, because one call can never carry the other half of a
-pair. This repository's live config
-carries one — `docs-stay-bilingual`, an `implies` over the `.md`/`.ko.md` pair, advised
-on the commit surface when one side is staged without the other. A declaration that needs a
+declaration that reads `changes` is written in `changeSetDisciplines` and compiled only where
+the whole change set is observed, because one call never carries the other half of a pair.
+This repository's live config carries one — `docs-stay-bilingual`, an `implies` over the
+`.md`/`.ko.md` pair, advised on the change-set surface when one side is staged without the
+other. A declaration that needs a
 file outside the target names it in a `sources` block, `sources: { en: { file:
 'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
 repo-relative (no leading `/`, no `..` segment) and the name may not be one of the seven. The
@@ -412,16 +537,16 @@ touches is read from the change's `post`, so both surfaces judge the same text. 
 kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record channel
 instead of a path — the subagent records the host keeps beside the transcript, supplied as
 one JSON array; where the channel lives is the surface's fact, so the value is the marker
-`true`, and on the commit surface (which has no session) the channel is always absent. A
+`true`, and on the change-set surface (which has no session) the channel is always absent. A
 third kind, `sources: { session: { transcript: true } }`, names the session's own
 conversation history — the user turns and tool calls the surface reads, handed to the
 declaration as one snapshot whose entries carry their
 observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
 `agentType` reads the parsed sidecar. This repository's live config carries one —
-`tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, which
-the commit surface (no session) records `skipped`. The seventh fixed name, `actor`, is the
+`tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, written
+in `sessionDisciplines`. The seventh fixed name, `actor`, is the
 observation's actor — `{ agentType }` inside a subagent, `{}` in the main session, absent
-where the surface proves none (the commit surface) — read as `{ op: 'source', of: 'actor' }`
+where the surface proves none (the change-set surface) — read as `{ op: 'source', of: 'actor' }`
 followed by `select` on `agentType`; it derives the `actor` axis the `producer-owned` and
 `actor-scope` mechanisms require, and this repository's live config carries one of each
 (`tests-are-the-writers`, `commits-come-from-the-main-session`). A `supply` key must name

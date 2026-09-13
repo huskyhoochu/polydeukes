@@ -7,7 +7,10 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CovenantRegistration } from '../src/covenant/dispatch.ts';
 import { covenantModule } from '../src/covenant/module.ts';
-import { assembleCheckRegistrations, assembleCommitRegistrations } from '../src/covenant-check.ts';
+import {
+  assembleChangeSetRegistrations,
+  assembleCheckRegistrations,
+} from '../src/covenant-check.ts';
 import { explain } from '../src/explain.ts';
 import { loadConfig } from '../src/load-config.ts';
 import { writeConfigAt } from './helpers.ts';
@@ -159,6 +162,7 @@ describe('judgment invariance: assembly never sees the draft', () => {
     const sessionOf = (config: typeof judgedOnlyConfig) =>
       labels(
         assembleCheckRegistrations({
+          surface: 'session',
           config,
           rootDir: repoRoot,
           covenant: realCovenant,
@@ -171,7 +175,8 @@ describe('judgment invariance: assembly never sees the draft', () => {
       );
     const commitOf = (config: typeof judgedOnlyConfig) =>
       labels(
-        assembleCommitRegistrations({
+        assembleChangeSetRegistrations({
+          surface: 'changeSet',
           config,
           rootDir: repoRoot,
           covenant: realCovenant,

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The actor in the worlds. `worldsFromInput` puts the input's `actor` object under the key
 // `actor` in every world it builds — the file worlds and the call world — and leaves the
 // key absent when the input carries none. The same actor value then reaches the same
-// verdict through both surfaces' compile paths (`observesChangeSet` true and false): an
+// verdict on both surfaces: an
 // actor declaration reads no change set, so neither flag skips it.
 //
 // Tool names, argument names, agent names, paths, and command lines are fixture values.
@@ -203,7 +203,7 @@ describe('worldsFromInput — the actor key', () => {
 
   it('an input without actor yields worlds without the key — file world and call world alike', () => {
     // Absence is the supply policy's to dispose of. A builder defaulting to `{}` makes the
-    // commit surface, which proves no actor, pass every commit as the main session's.
+    // change-set surface, which proves no actor, pass every commit as the main session's.
     const fileWorlds = worldsFromInput({
       input: inputOf([editCall(CREATE_TEST)]),
       rootDir: ROOT,
@@ -220,17 +220,10 @@ describe('worldsFromInput — the actor key', () => {
   });
 });
 
-describe('two surfaces, one verdict — the actor declarations under observesChangeSet true and false', () => {
-  const FLAGS = [true, false] as const;
-
-  /** Dispatch `input` through `entry` under the flag; the events and rows under its id. */
-  async function dispatchUnder(
-    observesChangeSet: boolean,
-    entry: DisciplineEntry,
-    input: CovenantInput,
-    telemetry: string,
-  ) {
-    const regs = compileDisciplineRegistrations(specWith([entry], { observesChangeSet }));
+describe('the actor declarations reach the same verdict on both surfaces', () => {
+  /** Dispatch `input` through `entry`; the events and rows under its id. */
+  async function dispatchUnder(entry: DisciplineEntry, input: CovenantInput, telemetry: string) {
+    const regs = compileDisciplineRegistrations(specWith([entry]));
     const { exitCode, results } = await dispatchCovenants({
       stdinPayload: JSON.stringify(input),
       registrations: regs,
@@ -243,101 +236,79 @@ describe('two surfaces, one verdict — the actor declarations under observesCha
     };
   }
 
-  it.each(FLAGS)(
-    'observesChangeSet %s: the implementer creating a test file lands advised with the agent type as witness',
-    async (flag) => {
-      // Who answered, not only what: an `advised` row under the id with the agent type as
-      // the witness. A compiler that skips every declaration on the flag's false end, or
-      // a merge that drops the actor on the true end, leaves this row `skipped` or
-      // `passed` on one surface and the exit criterion fails.
-      const outcome = await dispatchUnder(
-        flag,
-        declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
-        inputOf([editCall(CREATE_TEST)], { agentType: IMPLEMENTER }),
-        join(dir, `tests-${flag}.log`),
-      );
+  it('the implementer creating a test file lands advised with the agent type as witness', async () => {
+    // Who answered, not only what: an `advised` row under the id with the agent type as
+    // the witness. A merge that drops the actor leaves this row `passed`.
+    const outcome = await dispatchUnder(
+      declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
+      inputOf([editCall(CREATE_TEST)], { agentType: IMPLEMENTER }),
+      join(dir, `tests.log`),
+    );
 
-      expect(outcome.exitCode).toBe(0);
-      expect(outcome.events).toEqual(['advised']);
-      expect(outcome.rows).toEqual([
-        { event: 'advised', subject: TEST_FILE, reason: undefined, values: [[IMPLEMENTER]] },
-      ]);
-    },
-  );
+    expect(outcome.exitCode).toBe(0);
+    expect(outcome.events).toEqual(['advised']);
+    expect(outcome.rows).toEqual([
+      { event: 'advised', subject: TEST_FILE, reason: undefined, values: [[IMPLEMENTER]] },
+    ]);
+  });
 
-  it.each(FLAGS)(
-    'observesChangeSet %s: the main session ({}) creating a test file lands passed',
-    async (flag) => {
-      // The other end: a body that breaks whenever an actor is present, rather than when
-      // the actor is the implementer, pushes every main-session test edit to advised.
-      const outcome = await dispatchUnder(
-        flag,
-        declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
-        inputOf([editCall(CREATE_TEST)], {}),
-        join(dir, `main-${flag}.log`),
-      );
+  it('the main session ({}) creating a test file lands passed', async () => {
+    // The other end: a body that breaks whenever an actor is present, rather than when
+    // the actor is the implementer, pushes every main-session test edit to advised.
+    const outcome = await dispatchUnder(
+      declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
+      inputOf([editCall(CREATE_TEST)], {}),
+      join(dir, `main.log`),
+    );
 
-      expect(outcome.events).toEqual(['passed']);
-      expect(outcome.rows).toEqual([
-        { event: 'passed', subject: TEST_FILE, reason: undefined, values: undefined },
-      ]);
-    },
-  );
+    expect(outcome.events).toEqual(['passed']);
+    expect(outcome.rows).toEqual([
+      { event: 'passed', subject: TEST_FILE, reason: undefined, values: undefined },
+    ]);
+  });
 
-  it.each(FLAGS)(
-    'observesChangeSet %s: no actor on the input lands skipped with reason supply-pass',
-    async (flag) => {
-      // The commit surface's shape on both compile paths: `skipped supply-pass`, never
-      // `passed` (a judgment nobody made) and never no row (a declaration gone inert).
-      const outcome = await dispatchUnder(
-        flag,
-        declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
-        inputOf([editCall(CREATE_TEST)]),
-        join(dir, `absent-${flag}.log`),
-      );
+  it('no actor on the input lands skipped with reason supply-pass', async () => {
+    // The change-set surface's shape: `skipped supply-pass`, never `passed` (a judgment
+    // nobody made) and never no row (a declaration gone inert).
+    const outcome = await dispatchUnder(
+      declareEntry(TESTS_ARE_THE_WRITERS, TESTS_ID),
+      inputOf([editCall(CREATE_TEST)]),
+      join(dir, `absent.log`),
+    );
 
-      expect(outcome.events).toEqual(['skipped']);
-      expect(outcome.rows).toEqual([
-        { event: 'skipped', subject: TEST_FILE, reason: 'supply-pass', values: undefined },
-      ]);
-    },
-  );
+    expect(outcome.events).toEqual(['skipped']);
+    expect(outcome.rows).toEqual([
+      { event: 'skipped', subject: TEST_FILE, reason: 'supply-pass', values: undefined },
+    ]);
+  });
 
-  it.each(FLAGS)(
-    'observesChangeSet %s: a subagent running git commit lands advised at subject `-` with its name as witness',
-    async (flag) => {
-      // The call world through the whole path: routed at `-`, the actor merged into it,
-      // the scope admitting the command, `empty` breaking on the agent type.
-      const outcome = await dispatchUnder(
-        flag,
-        declareEntry(COMMITS_FROM_MAIN, COMMITS_ID),
-        inputOf([shellCall(COMMIT)], { agentType: IMPLEMENTER }),
-        join(dir, `commit-${flag}.log`),
-      );
+  it('a subagent running git commit lands advised at subject `-` with its name as witness', async () => {
+    // The call world through the whole path: routed at `-`, the actor merged into it,
+    // the scope admitting the command, `empty` breaking on the agent type.
+    const outcome = await dispatchUnder(
+      declareEntry(COMMITS_FROM_MAIN, COMMITS_ID),
+      inputOf([shellCall(COMMIT)], { agentType: IMPLEMENTER }),
+      join(dir, `commit.log`),
+    );
 
-      expect(outcome.events).toEqual(['advised']);
-      expect(outcome.rows).toEqual([
-        { event: 'advised', subject: CALL_SUBJECT, reason: undefined, values: [[IMPLEMENTER]] },
-      ]);
-    },
-  );
+    expect(outcome.events).toEqual(['advised']);
+    expect(outcome.rows).toEqual([
+      { event: 'advised', subject: CALL_SUBJECT, reason: undefined, values: [[IMPLEMENTER]] },
+    ]);
+  });
 
-  it.each(FLAGS)(
-    'observesChangeSet %s: a file change and a commit command in one input land the command break at the file subject',
-    async (flag) => {
-      // With a file world present there is no call world: the command rides every file
-      // world, so the scope admits it there and the row's subject is the path, not `-`.
-      const outcome = await dispatchUnder(
-        flag,
-        declareEntry(COMMITS_FROM_MAIN, COMMITS_ID),
-        inputOf([editCall(CREATE_TEST), shellCall(COMMIT)], { agentType: IMPLEMENTER }),
-        join(dir, `commit-with-file-${flag}.log`),
-      );
+  it('a file change and a commit command in one input land the command break at the file subject', async () => {
+    // With a file world present there is no call world: the command rides every file
+    // world, so the scope admits it there and the row's subject is the path, not `-`.
+    const outcome = await dispatchUnder(
+      declareEntry(COMMITS_FROM_MAIN, COMMITS_ID),
+      inputOf([editCall(CREATE_TEST), shellCall(COMMIT)], { agentType: IMPLEMENTER }),
+      join(dir, `commit-with-file.log`),
+    );
 
-      expect(outcome.events).toEqual(['advised']);
-      expect(outcome.rows).toEqual([
-        { event: 'advised', subject: TEST_FILE, reason: undefined, values: [[IMPLEMENTER]] },
-      ]);
-    },
-  );
+    expect(outcome.events).toEqual(['advised']);
+    expect(outcome.rows).toEqual([
+      { event: 'advised', subject: TEST_FILE, reason: undefined, values: [[IMPLEMENTER]] },
+    ]);
+  });
 });

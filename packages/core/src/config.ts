@@ -7,7 +7,12 @@
  * hand-rolled, and the published JSON Schema is a sibling artifact this source never reads.
  */
 
-import { type AlgebraDeclaration, validateAlgebraDeclaration } from './algebra.ts';
+import {
+  type AlgebraDeclaration,
+  type DeclarationChannel,
+  declarationChannels,
+  validateAlgebraDeclaration,
+} from './algebra.ts';
 import { isPlainObject } from './is-plain-object.ts';
 import {
   ConfigValidationError,
@@ -111,8 +116,18 @@ export type PolydeukesConfig = {
     /** conventional default applies when omitted */
     logPath?: string;
   };
-  /** user-declared disciplines — validated here, compiled by the covenant package */
+  /**
+   * user-declared disciplines both surfaces observe — every entry whose declaration binds
+   * no evidence channel, plus the drafts. Validated here, compiled by the covenant package
+   */
   disciplines?: (DisciplineEntry | DisciplineDraft)[];
+  /**
+   * disciplines only the session surface observes — every entry binding at least one of
+   * `transcript` · `channel` · `command` · `actor` and never `changes`
+   */
+  sessionDisciplines?: DisciplineEntry[];
+  /** disciplines only the change-set surface observes — every entry binding `changes` */
+  changeSetDisciplines?: DisciplineEntry[];
   /**
    * TTL witness values for the covenant valve seam — consumed at assembly time,
    * validated here
@@ -159,6 +174,10 @@ export type ResolvedConfig = {
    * declared a `disciplines` array, holding exactly its judged entries in order.
    */
   disciplines?: DisciplineEntry[];
+  /** validated session-surface entries, present whenever the input declared the list */
+  sessionDisciplines?: DisciplineEntry[];
+  /** validated change-set-surface entries, present whenever the input declared the list */
+  changeSetDisciplines?: DisciplineEntry[];
   /** validated drafts in declaration order (absent when the input carries none) */
   drafts?: DisciplineDraft[];
   /** validated witness data, passed through verbatim (absent stays absent) */
@@ -178,6 +197,8 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   'adapters',
   'telemetry',
   'disciplines',
+  'sessionDisciplines',
+  'changeSetDisciplines',
   'witness',
 ]);
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
@@ -266,30 +287,78 @@ function validateDeclareEntry(entry: RawEntry, location: string): void {
   validateAlgebraDeclaration({ discipline: entry.id, ...block }, `${location} declare`);
 }
 
+/** The three list names an entry can be written in — also the destinations of a misplacement. */
+const DISCIPLINE_LISTS = ['disciplines', 'sessionDisciplines', 'changeSetDisciplines'] as const;
+type DisciplineList = (typeof DISCIPLINE_LISTS)[number];
+
+/** The channels only a live call carries; `changes` is the one only a change set carries. */
+const SESSION_CHANNELS: readonly DeclarationChannel[] = [
+  'transcript',
+  'channel',
+  'command',
+  'actor',
+];
+
 /**
- * Validate the `disciplines` array and split judged entries from drafts. Throws
- * {@link ConfigValidationError} naming the offending entry/key; the validated data passes
- * through verbatim, in declaration order.
+ * The list an entry's declaration belongs in, from the channels it binds — or `undefined`
+ * when it binds both a session channel and `changes`, which no surface observes at once.
  */
-function validateDisciplines(disciplines: unknown): {
+function listFor(channels: readonly DeclarationChannel[]): DisciplineList | undefined {
+  const readsSession = channels.some((channel) => SESSION_CHANNELS.includes(channel));
+  const readsChanges = channels.includes('changes');
+  if (readsSession && readsChanges) return undefined;
+  if (readsSession) return 'sessionDisciplines';
+  if (readsChanges) return 'changeSetDisciplines';
+  return 'disciplines';
+}
+
+/**
+ * Refuse a judged entry written in a list the surface it needs does not read. The channels
+ * its declaration binds are the whole answer, so the message names them and the destination:
+ * an author who is told only that the placement is wrong meets the same error again.
+ */
+function checkPlacement(entry: DisciplineEntry, list: DisciplineList, location: string): void {
+  const channels = declarationChannels(entry.declare);
+  const destination = listFor(channels);
+  if (destination === undefined) {
+    throw new ConfigValidationError(
+      `${location} reads ${channels.join(', ')}: no surface observes both changes and a session channel`,
+    );
+  }
+  if (destination !== list) {
+    const reads = channels.length === 0 ? 'no evidence channel' : channels.join(', ');
+    throw new ConfigValidationError(`${location} reads ${reads}: it belongs in ${destination}`);
+  }
+}
+
+/**
+ * Validate one discipline list and split judged entries from drafts. Throws
+ * {@link ConfigValidationError} naming the offending entry/key; the validated data passes
+ * through verbatim, in declaration order. `seenIds` spans the three lists and the meta
+ * labels, so a label the telemetry space already carries is refused wherever it is written.
+ */
+function validateDisciplines(
+  disciplines: unknown,
+  list: DisciplineList,
+  seenIds: Set<string>,
+): {
   judged: DisciplineEntry[];
   drafts: DisciplineDraft[];
 } {
   if (!Array.isArray(disciplines)) {
-    throw new ConfigValidationError('disciplines must be an array');
+    throw new ConfigValidationError(`${list} must be an array`);
   }
 
   const judged: DisciplineEntry[] = [];
   const drafts: DisciplineDraft[] = [];
-  const seenIds = new Set<string>();
   disciplines.forEach((entry, index) => {
     if (!isPlainObject(entry)) {
-      throw new ConfigValidationError(`disciplines[${index}] must be an object`);
+      throw new ConfigValidationError(`${list}[${index}] must be an object`);
     }
     if (typeof entry.id !== 'string' || entry.id.length === 0) {
-      throw new ConfigValidationError(`disciplines[${index}].id must be a non-empty string`);
+      throw new ConfigValidationError(`${list}[${index}].id must be a non-empty string`);
     }
-    const location = `disciplines[${index}] ('${entry.id}')`;
+    const location = `${list}[${index}] ('${entry.id}')`;
     if (seenIds.has(entry.id)) {
       throw new ConfigValidationError(`${location} duplicates the id of an earlier entry`);
     }
@@ -304,11 +373,21 @@ function validateDisciplines(disciplines: unknown): {
     // Selected by the marker's value, so an explicit `draft: undefined` is absence,
     // like every other optional key in this validator.
     if (entry.draft !== undefined) {
+      // A draft carries no declaration, so it binds no channel and there is nothing for a
+      // surface list to observe.
+      if (list !== 'disciplines') {
+        throw new ConfigValidationError(`${location} a draft belongs in disciplines`);
+      }
       drafts.push(validateDraft(entry, entry.id, location));
       return;
     }
 
     validateEntryHead(entry, location);
+    // Placement first: the derivation is syntactic, so an entry in the wrong list is told
+    // where it belongs rather than meeting a grammar error the move would not fix.
+    if (isPlainObject(entry.declare)) {
+      checkPlacement(entry as DisciplineEntry, list, location);
+    }
     validateDeclareEntry(entry, location);
     judged.push(entry as DisciplineEntry);
   });
@@ -447,8 +526,21 @@ export function defineConfig(config: unknown): ResolvedConfig {
   const protectedPaths =
     config.protectedPaths !== undefined ? validateProtectedPaths(config.protectedPaths) : undefined;
   const adapters = config.adapters !== undefined ? validateAdapters(config.adapters) : undefined;
+  // One id space across the three lists and the meta labels: `explain` and every
+  // label-keyed telemetry reader index by the label alone.
+  const seenIds = new Set<string>();
   const split =
-    config.disciplines !== undefined ? validateDisciplines(config.disciplines) : undefined;
+    config.disciplines !== undefined
+      ? validateDisciplines(config.disciplines, 'disciplines', seenIds)
+      : undefined;
+  const sessionDisciplines =
+    config.sessionDisciplines !== undefined
+      ? validateDisciplines(config.sessionDisciplines, 'sessionDisciplines', seenIds).judged
+      : undefined;
+  const changeSetDisciplines =
+    config.changeSetDisciplines !== undefined
+      ? validateDisciplines(config.changeSetDisciplines, 'changeSetDisciplines', seenIds).judged
+      : undefined;
   const disciplines = split?.judged;
   const drafts = split !== undefined && split.drafts.length > 0 ? split.drafts : undefined;
   const logPath = config.telemetry !== undefined ? validateTelemetry(config.telemetry) : undefined;
@@ -462,6 +554,8 @@ export function defineConfig(config: unknown): ResolvedConfig {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },
     ...(disciplines !== undefined && { disciplines }),
+    ...(sessionDisciplines !== undefined && { sessionDisciplines }),
+    ...(changeSetDisciplines !== undefined && { changeSetDisciplines }),
     ...(drafts !== undefined && { drafts }),
     ...(witness !== undefined && { witness }),
   };

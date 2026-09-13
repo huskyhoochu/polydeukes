@@ -17,7 +17,7 @@ const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
 const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
 /** The package directories left after the fold. */
-const PACKAGE_DIRS = ['adapter-claude-code', 'adapter-grok', 'core', 'polydeukes'];
+const PACKAGE_DIRS = ['adapter-claude-code', 'adapter-grok', 'core', 'polydeukes', 'sdk-ts'];
 /**
  * The name and the path the fold retires, assembled so this file is not its own
  * counterexample.
@@ -85,10 +85,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds four packages', () => {
+describe('the workspace holds five packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the four package directories', () => {
+  it('packages/ lists exactly the five package directories', () => {
     expect(readdirSync(join(repoRoot, 'packages')).sort()).toEqual(PACKAGE_DIRS);
   });
 });
@@ -124,7 +124,7 @@ describe('the judge is a static module of the umbrella', () => {
     expect(existsSync(join(umbrellaSrc, 'covenant-module.ts'))).toBe(false);
   });
 
-  // The umbrella barrel had zero consumers; kept, it re-exports the commit surface for
+  // The umbrella barrel had zero consumers; kept, it re-exports the change-set surface for
   // every `import 'polydeukes'` and re-widens the contract ① no longer allows.
   it('src/index.ts is gone from the umbrella', () => {
     expect(existsSync(join(umbrellaSrc, 'index.ts'))).toBe(false);

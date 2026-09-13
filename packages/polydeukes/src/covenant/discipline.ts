@@ -57,9 +57,11 @@ type ShellSurface = {
  * `transcript` is the session history a `transcript` binding reads. Absent means no session
  * CHANNEL, not an empty one — the declaration's own `supply` policy disposes of it.
  *
- * `observesChangeSet` says whether this surface's input carries the observation unit's whole
- * change set. Absent means true — the declaration judges the change set derived from the
- * input, which is what every surface did before the flag existed.
+ * `postIsWholeFile` says whether a change's `post` is the file the call leaves behind.
+ * Absent means true — a session call carries the whole text it is about to write, so a
+ * `file` binding naming the changed path reads that text. A diff-translated change carries
+ * only the hunk's added lines as `post`; on that surface the binding reads the tree instead,
+ * which holds the state the change set left.
  *
  * `observesPreState` says whether this surface has a pre-state channel at all. Absent means
  * true — the reader answers per location, and its `undefined` is that one location failing.
@@ -74,7 +76,7 @@ export type CompileDisciplinesSpec = {
   shellTools: string[];
   commandArgs: string[];
   readPreState: (location: string) => string | null | undefined;
-  observesChangeSet?: boolean;
+  postIsWholeFile?: boolean;
   observesPreState?: boolean;
   witness?: CovenantRegistration['witness'];
   transcript?: CanonicalTranscript;
@@ -529,6 +531,7 @@ function sourceValues(
   worlds: readonly SuppliedWorld[],
   world: CovenantInput['world'],
   transcript: CanonicalTranscript | undefined,
+  postIsWholeFile: boolean,
 ): Record<string, unknown> {
   const values: Record<string, unknown> = {};
   for (const binding of bindings) {
@@ -553,9 +556,14 @@ function sourceValues(
     }
     const { name, file } = binding;
     // Same-path shell writes chain in command order and each carries its own world, so the
-    // last one at the path is the state the call leaves.
+    // last one at the path is the state the call leaves. A hunk-only `post` is not that
+    // state, so a surface whose changes carry fragments reads the tree below instead — except
+    // for a create, whose added lines are the whole file on every surface.
     let changed: SuppliedWorld | undefined;
-    for (const supplied of worlds) if (supplied.path === file) changed = supplied;
+    for (const supplied of worlds) {
+      if (supplied.path !== file) continue;
+      if (postIsWholeFile || !('pre' in supplied.world)) changed = supplied;
+    }
     if (changed !== undefined) {
       if ('post' in changed.world) values[name] = changed.world.post;
       continue;
@@ -564,21 +572,6 @@ function sourceValues(
     if (supplied !== undefined) values[name] = supplied;
   }
   return values;
-}
-
-/**
- * Whether any pipeline of a compiled declaration — body or witness — reads `changes`.
- *
- * A combinator-headed pipeline names the extractions it combines, and those are pipelines of
- * the same map, so reading each pipeline's own head answers for all of them.
- */
-function readsChangeSet(compiled: CompiledDeclaration): boolean {
-  const heads = [...compiled.pipelines.values(), ...(compiled.witness?.pipelines.values() ?? [])];
-  return heads.some(
-    (pipeline) =>
-      pipeline.steps[0]?.op === 'source' &&
-      (pipeline.steps[0] as { of?: unknown }).of === 'changes',
-  );
 }
 
 /** The first non-pass world of one input, or pass — what the body reports and the valve reads. */
@@ -685,7 +678,13 @@ function declareRegistration(
       shellTools: spec.shellTools,
       commandArgs: spec.commandArgs,
     }).filter((supplied) => !owned.has(supplied.path));
-    const values = sourceValues(bindings, fixed, input.world, spec.transcript);
+    const values = sourceValues(
+      bindings,
+      fixed,
+      input.world,
+      spec.transcript,
+      spec.postIsWholeFile ?? true,
+    );
     const worlds = fixed
       .map((supplied) => ({ path: supplied.path, world: { ...supplied.world, ...values } }))
       .filter((supplied) => scopeAdmits(compiled, supplied.world));
@@ -708,30 +707,19 @@ function declareRegistration(
       shellTools: spec.shellTools,
       commandArgs: spec.commandArgs,
     });
-    const values = sourceValues(bindings, fixed, input.world, spec.transcript);
+    const values = sourceValues(
+      bindings,
+      fixed,
+      input.world,
+      spec.transcript,
+      spec.postIsWholeFile ?? true,
+    );
     const matched = fixed.find((supplied) =>
       scopeAdmits(compiled, { ...supplied.world, ...values }),
     )?.path;
     if (matched !== undefined) return matched;
     return completes ? firstAdmittedShellWrite(compiled, input, opts, spec.rootDir) : null;
   };
-
-  // A surface that dispatches its whole observation at once derives a one-element change
-  // set, and a judgment over it reports every scoped change as unpaired. Routing is kept so
-  // the limit is recorded per change; it is an environment fact, so no fault is named.
-  if (spec.observesChangeSet === false && readsChangeSet(compiled)) {
-    return {
-      label: entry.id,
-      protectedPaths: [],
-      ...(entry.declare?.sources !== undefined && { sources: bindings }),
-      matches: route,
-      ...witness,
-      skip: {
-        reason: 'a change set needs a surface that observes more than one change',
-        kind: 'no-observation',
-      },
-    };
-  }
 
   const judgedOf = new WeakMap<CovenantInput, DeclareJudgment>();
   const judged = (input: CovenantInput): DeclareJudgment => {

@@ -82,7 +82,7 @@ describe('worldsFromInput — the changes key, derived from the input', () => {
 
 describe('worldsFromInput — the changes key, supplied by the root', () => {
   it('a present input.world.changes stands as given, replacing the derivation rather than joining it', () => {
-    // The commit surface dispatches one staged change at a time and hands the whole staged
+    // The change-set surface dispatches one staged change at a time and hands the whole staged
     // set here; a derivation that ignores the list sees a one-element set, a union adds
     // the dispatched change to a list the root already assembled.
     const supplied = ['docs/a.md', 'docs/a.ko.md', 'docs/b.md'];

@@ -289,7 +289,7 @@ describe('compileDisciplineRegistrations — common shell-unjudgeable registrati
 
     expect(commonRegOf(regs)?.matches?.(commitInput)).toBeNull();
     expect(skipArmsOf(regs, deltaEntry.id)[0]?.matches?.(commitInput)).toBeNull();
-    // The commit surface's own evidence channel keeps routing exactly as before.
+    // The change-set surface's own evidence channel keeps routing exactly as before.
     expect(bodyRegOf(regs, deltaEntry.id)?.matches?.(commitInput)).toBe('packages/core/src/x.ts');
   });
 });

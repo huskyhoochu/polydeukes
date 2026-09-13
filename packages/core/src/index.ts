@@ -11,6 +11,8 @@ export {
   type AlgebraDeclaration,
   BINARY_COMBINATOR_NAMES,
   type BinaryStep,
+  type DeclarationChannel,
+  declarationChannels,
   type ExtractBlock,
   type ExtractStep,
   RELATION_NAMES,

@@ -33,6 +33,18 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/discipline" }
     },
+    "sessionDisciplines": {
+      "description": "Disciplines only the session surface observes — every entry whose declaration binds a transcript, channel, command, or actor evidence channel. Fully identical entries are copy-paste duplicates (by-id uniqueness and the placement rule are enforced by the runtime validator).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/discipline" }
+    },
+    "changeSetDisciplines": {
+      "description": "Disciplines only the change-set surface observes — every entry whose declaration binds the changes source. Fully identical entries are copy-paste duplicates (by-id uniqueness and the placement rule are enforced by the runtime validator).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/discipline" }
+    },
     "witness": { "$ref": "#/$defs/witness" }
   },
   "$defs": {

@@ -124,7 +124,7 @@ describe('supplySources — readChannel fills the channel side under the read di
   });
 
   it('with no readChannel injected, every planned channel is absent', () => {
-    // The commit surface injects none — it has no session. Defaulting the reader (to `''`
+    // The change-set surface injects none — it has no session. Defaulting the reader (to `''`
     // or `'[]'`) fabricates an observation that never happened; crashing on the missing
     // reader takes the whole commit down for a declaration `supply: pass` meant to skip.
     const supplied = supplySources({

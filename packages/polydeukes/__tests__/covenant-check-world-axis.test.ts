@@ -131,6 +131,7 @@ describe('covenant check — the read is the working tree', () => {
     git('add', EN_FILE);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,
@@ -160,6 +161,7 @@ describe('covenant check — the change set is the whole observation, on every d
     expect(changed).toHaveLength(3);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,
@@ -183,6 +185,7 @@ describe('covenant check — the plan is made from the assembled registrations',
     git('add', EN_FILE);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,
@@ -225,6 +228,7 @@ describe('covenant check — a planned path the tree cannot give as text is an a
     ({ covenant, calls } = recordingCovenant([DIR_PATH, EN_FILE]));
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,
@@ -248,6 +252,7 @@ describe('covenant check — a planned path the tree cannot give as text is an a
     ({ covenant, calls } = recordingCovenant([BINARY_FILE, EN_FILE]));
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,
@@ -275,6 +280,7 @@ describe('covenant check — the change set lists the changes that produce a wor
     expect(observed.toolCalls).toHaveLength(2);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       covenant,

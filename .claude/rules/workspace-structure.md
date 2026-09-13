@@ -37,13 +37,14 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   (`telemetry.ts`), which every surface appends a row to. Since DIST-01 it also owns **both
   surfaces' composition root** — `runCovenantCheck`, the CLI over a staged diff or a host's
   IR carrying its tool roster and session evidence (SURFACE-03a). One assembly serves both:
-  `assembleCheckRegistrations` reads the surface off the IR keys it was given, and an input
-  carrying neither assembles what a staged change set is judged by. Only
+  `assembleCheckRegistrations` takes the surface as a required field, which `bin.ts` sets from
+  the input mode (`--diff` is `changeSet`, anything else is `session`), and compiles
+  `disciplines` plus that surface's own list. Only
   umbrella-role logic (discovery, assembly, the CLI) belongs here; area logic still goes in
   scoped `@polydeukes/*` packages. The loader feeds the
   judges, so its `dist` is on the protected list (a gitignored judge executable no commit can
   show); its `src` and `package.json` are not — editing them in a session is the work itself,
-  and the commit that stages them is what the commit surface judges (advise by default since
+  and the commit that stages them is what the change-set surface judges (advise by default since
   SURFACE-01). The unscoped name was verified free on npm and is a
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
@@ -51,10 +52,16 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/adapter-grok`** (`@polydeukes/adapter-grok`) is the Grok session-surface install
   unit: bin `pdks-grok init`, `runHook` (Grok roster as IR `tools` values, camelCase envelope),
   no judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it.
-- **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`)
-  depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
+- **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) is the TypeScript consumer entry to the session
+  surface: one verb `checkCovenant`, which resolves `polydeukes` in the judged project's install
+  graph and spawns `pdks covenant check` with a caller-built IR on stdin. No bin, no judgment
+  logic, no telemetry row of its own. Peer on `core` (the `CovenantInput` type) and on
+  `polydeukes` (the bin it spawns). The umbrella does not depend on it.
+- **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
+  `sdk-ts`) depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
-  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`). The umbrella names no
+  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`); `sdk-ts` takes the same
+  peer for the same spawn and ships no bin. The umbrella names no
   adapter, so the graph runs one way and a consumer installs the umbrella plus whichever
   adapters its agents need. Enforce this when adding packages.
 - **The kind of the core dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,

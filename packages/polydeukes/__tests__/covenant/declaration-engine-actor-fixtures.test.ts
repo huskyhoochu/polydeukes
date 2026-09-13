@@ -59,7 +59,7 @@ describe('producer-owned-tests-by-writer · judge', () => {
   });
 
   it('no actor in the world → not-applicable/supply-pass naming actor', () => {
-    // The commit surface's disposition: absence under `supply: pass` is a recorded skip,
+    // The change-set surface's disposition: absence under `supply: pass` is a recorded skip,
     // never a fabricated `{}` that would pass a judgment nobody made.
     expect(judge(decl, { [PATH_SOURCE]: TEST_FILE })).toEqual({
       kind: 'not-applicable',

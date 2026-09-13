@@ -24,7 +24,7 @@ takes it as a peer dependency rather than importing it.
 
 | Command | Purpose |
 |---|---|
-| `pdks covenant check` | Judge an input IR (default) or a unified diff (`--diff`) from stdin |
+| `pdks covenant check` | Judge an input IR (default, the session surface) or a unified diff (`--diff`, the change-set surface) from stdin |
 | `pdks init` | Create the project scaffold: config file and telemetry ignore line |
 | `pdks explain` | Render the assembled registration table without judging |
 | `pdks docs [topic]` | Read a bundled topic |
@@ -32,6 +32,25 @@ takes it as a peer dependency rather than importing it.
 | `pdks docs show <document-id>` | Show one bundled document or section |
 
 Session-surface installers live on the adapters: `pdks-claude-code init` and `pdks-grok init`.
+
+<a id="surface-from-input-mode"></a>
+### The input mode is the surface
+
+`covenant check` reads its surface off how the input arrived, never off the input's own keys.
+An IR on stdin is one call a host observed before it ran, so the run is the **session surface**;
+`--diff` is a finished change set from some producer, so the run is the **change-set surface**.
+Each surface compiles the shared list plus its own:
+
+| Input | Surface | Lists compiled |
+|---|---|---|
+| an input IR on stdin | `session` | `disciplines`, then `sessionDisciplines` |
+| a unified diff on stdin under `--diff` | `changeSet` | `disciplines`, then `changeSetDisciplines` |
+
+The IR's `session` key says something else: what the host proved about the call — the witness
+valve's human turns, the transcript axis, and the pre-state channel shell-write evidence needs.
+A host that carries no session (the Grok adapter) is still judged on the session surface, and
+what it lacks is the evidence those three read, not the surface. `pdks explain` prints each
+surface with its two list names and counts.
 
 `pdks docs` is offline. It reads the installed package, not the network. Flags, JSON, and
 exit codes are in [`pdks docs`](../cli/docs.md).
@@ -74,12 +93,15 @@ behaviour, through the `disciplines:` block in your config and the rows it write
 observation as a world. What the declaration's sources bind decides what evidence the
 judgment needs, which is also what decides whether it can be judged on a given surface.
 
-| Sources | Judges | Evidence needed |
-|---|---|---|
-| the fixed names `target.path` · `pre` · `post` · `state` · `changes` | The change itself | A file change |
-| the fixed name `command` | The shell call's command line | A shell call — an Edit carries none |
-| `{ transcript: true }` | Session history — was a qualifying call actually executed *before* this one | A session |
-| `{ file: … }` · `{ sidecar: true }` | Another file, or the spawn-record channel | The surface's reader for it |
+| Sources | Judges | Evidence needed | List |
+|---|---|---|---|
+| the fixed names `target.path` · `pre` · `post` · `state` | The change itself | A file change | `disciplines` |
+| the fixed name `changes` | The observation's whole change set | A finished change set | `changeSetDisciplines` |
+| the fixed name `command` | The shell call's command line | A shell call — an Edit carries none | `sessionDisciplines` |
+| the fixed name `actor` | Who made the observation | An actor the host proved | `sessionDisciplines` |
+| `{ transcript: true }` | Session history — was a qualifying call actually executed *before* this one | A session | `sessionDisciplines` |
+| `{ file: … }` | Another file | The surface's reader for it | `disciplines` |
+| `{ sidecar: true }` | The spawn-record channel | The surface's channel reader | `sessionDisciplines` |
 
 The writing guide for these entries is [the configuration reference's `disciplines`
 section](../configuration/index.md#disciplines); the declaration grammar is the core's
@@ -134,15 +156,16 @@ No import. The umbrella assembles the module for both surfaces.
   not "nothing gets through" — it is that **no call passes unrecorded**. A new spelling
   landing in `skipped` is the declared limit showing itself. A pass with no row at all, or
   one recorded `passed` without a judgment, is the defect class.
-- **A declaration that reads the session cannot be judged without one.** On the commit
-  surface there is none. A matching `precedent` (or any other transcript-reading)
-  declaration records `skipped` with the reason `supply-pass` only when that declaration's
-  own `supply` is `pass`. With no policy the missing session is unjudgeable (exit 2), not
-  an automatic skip. That skip-with-pass is a permanent condition of that surface.
-- **A declaration scoped on `command` is absent from the commit surface, and absent without
-  a row.** A diff carries no command line, so no world such a declaration observes is
-  admitted there. This leaves nothing in `.polydeukes/roi.log`, so the log cannot separate a
-  command discipline that never triggered from one whose surface never observed a command.
+- **A session-only declaration on a host that proves no session records `skipped`.** The
+  entry is compiled — it is on the session surface — but the transcript the declaration binds
+  is absent, and the entry's own `supply: pass` disposes of that with a `skipped` row carrying
+  the reason `supply-pass`. With no policy the missing session is unjudgeable (exit 2), not an
+  automatic skip.
+- **A surface never registers the other surface's list.** A `command` or transcript
+  declaration is not compiled for a change set, and a `changes` declaration is not compiled for
+  one call, so neither leaves a row on the surface that does not observe it. Which entries a
+  surface carries is read from `pdks explain` and from the config's own list names, not from
+  the telemetry log.
 - **A declaration the compiler cannot resolve compiles to a skip registration** — routing
   intact, no body: a step outside the registry, an argument outside a step's keys, a pattern
   that does not compile, a paired/single mismatch. Assembly therefore never throws: one

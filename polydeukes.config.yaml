@@ -27,6 +27,8 @@ witness:
   token: "pdks witness"
   ttlMinutes: 10
 
+# Judged on every surface: these declarations read only the changed file itself (pre · post)
+# and file sources, which a live call and a finished change set both carry.
 disciplines:
   # ---- the change axis: what an edit adds, keeps, or moves
   - id: "covenant-vocabulary"
@@ -257,6 +259,63 @@ disciplines:
           relation: { op: "unchanged", of: "valve" }
           message: "the witness block changed at {key}"
 
+  # ---- the world axis: what other files say
+  - id: "schema-enums-agree"
+    why: "the mechanism catalogue is mirrored into two JSON schemas; a name added to one and not the other validates in the editor and fails at load."
+    declare:
+      mechanism: "pairing"
+      scope: { source: "target.path", include: ["^packages/core/schema/"] }
+      sources:
+        entry: { file: "packages/core/schema/polydeukes.schema.json" }
+        grammar:
+          { file: "packages/core/schema/algebra-declaration.schema.json" }
+      extract:
+        entryNames:
+          - { op: "source", of: "entry" }
+          - { op: "json" }
+          - {
+              op: "select",
+              path: "$defs.declarationBody.properties.mechanism.enum",
+            }
+        grammarNames:
+          - { op: "source", of: "grammar" }
+          - { op: "json" }
+          - { op: "select", path: "properties.mechanism.enum" }
+      relate:
+        - id: "same-names"
+          relation: { op: "equal", of: ["entryNames", "grammarNames"] }
+          message: "mechanism enum differs: {value}"
+  - id: "agent-models-in-tiers"
+    why: "an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees."
+    declare:
+      mechanism: "companion"
+      scope: { source: "target.path", include: ['^\.claude/agents/[^/]+\.md$'] }
+      sources:
+        tiers: { file: ".claude/rules/model-tiers.md" }
+      supply: { post: "empty" }
+      extract:
+        named:
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^model: (\w+)$' }
+        allowed:
+          - { op: "source", of: "tiers" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '^\| `(\w+)` \|' }
+      relate:
+        - id: "tier-listed"
+          relation: { op: "implies", of: "named", requires: "allowed" }
+          message: "model {key} is not a tier model-tiers.md lists"
+
+  # ---- drafts: registered, read, not yet judged
+  - id: "verbs-take-one-spec"
+    why: "an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does."
+    draft: true
+
+# Judged on the session surface only — an adapter hook or the SDK, one call observed before
+# it runs. These declarations read the command line, the transcript, or the actor, which no
+# change set carries. Misplacing one under `disciplines` is a config error.
+sessionDisciplines:
   # ---- the command line: what a shell call runs
   - id: "hooks-stay-armed"
     why: "a command that disarms, reroutes, or skips the commit gates is a gate bypass in itself; the gate definitions it neutralizes are on the protected list, so this entry blocks too."
@@ -311,90 +370,6 @@ disciplines:
         - id: "no-npm-mutation"
           relation: { op: "empty", of: "hits" }
           message: "command line mutates dependencies outside pnpm: {value}"
-
-  # ---- the world axis: what other files say
-  - id: "schema-enums-agree"
-    why: "the mechanism catalogue is mirrored into two JSON schemas; a name added to one and not the other validates in the editor and fails at load."
-    declare:
-      mechanism: "pairing"
-      scope: { source: "target.path", include: ["^packages/core/schema/"] }
-      sources:
-        entry: { file: "packages/core/schema/polydeukes.schema.json" }
-        grammar:
-          { file: "packages/core/schema/algebra-declaration.schema.json" }
-      extract:
-        entryNames:
-          - { op: "source", of: "entry" }
-          - { op: "json" }
-          - {
-              op: "select",
-              path: "$defs.declarationBody.properties.mechanism.enum",
-            }
-        grammarNames:
-          - { op: "source", of: "grammar" }
-          - { op: "json" }
-          - { op: "select", path: "properties.mechanism.enum" }
-      relate:
-        - id: "same-names"
-          relation: { op: "equal", of: ["entryNames", "grammarNames"] }
-          message: "mechanism enum differs: {value}"
-  - id: "agent-models-in-tiers"
-    why: "an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees."
-    declare:
-      mechanism: "companion"
-      scope: { source: "target.path", include: ['^\.claude/agents/[^/]+\.md$'] }
-      sources:
-        tiers: { file: ".claude/rules/model-tiers.md" }
-      supply: { post: "empty" }
-      extract:
-        named:
-          - { op: "source", of: "post" }
-          - { op: "lines" }
-          - { op: "keyByPattern", re: '^model: (\w+)$' }
-        allowed:
-          - { op: "source", of: "tiers" }
-          - { op: "lines" }
-          - { op: "keyByPattern", re: '^\| `(\w+)` \|' }
-      relate:
-        - id: "tier-listed"
-          relation: { op: "implies", of: "named", requires: "allowed" }
-          message: "model {key} is not a tier model-tiers.md lists"
-  - id: "docs-stay-bilingual"
-    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
-    declare:
-      mechanism: "companion"
-      scope:
-        source: "target.path"
-        include: ['\.md$']
-        exclude:
-          [
-            '^\.claude/',
-            '^CLAUDE(\.ko)?\.md$',
-            '^CHANGELOG\.md$',
-            '^CONTEXT\.md$',
-          ]
-      extract:
-        en:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        ko:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-        enChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        koChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-      relate:
-        - id: "ko-follows"
-          relation: { op: "implies", of: "en", requires: "koChanged" }
-          message: "{value} changed without {key}.ko.md"
-        - id: "en-follows"
-          relation: { op: "implies", of: "ko", requires: "enChanged" }
-          message: "{value} changed without {key}.md"
 
   # ---- the history axis: what the session did before this call
   - id: "manifest-needs-evidence"
@@ -630,7 +605,43 @@ disciplines:
           relation: { op: "empty", of: "subagent" }
           message: "subagent {value} ran a commit command"
 
-  # ---- drafts: registered, read, not yet judged
-  - id: "verbs-take-one-spec"
-    why: "an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does."
-    draft: true
+# Judged on the change-set surface only — `pdks covenant check --diff`, a finished change
+# set from any producer. These declarations read `changes`, which one live call never has.
+changeSetDisciplines:
+  # ---- the change set: what a set of changes must carry together
+  - id: "docs-stay-bilingual"
+    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
+    declare:
+      mechanism: "companion"
+      scope:
+        source: "target.path"
+        include: ['\.md$']
+        exclude:
+          [
+            '^\.claude/',
+            '^CLAUDE(\.ko)?\.md$',
+            '^CHANGELOG\.md$',
+            '^CONTEXT\.md$',
+          ]
+      extract:
+        en:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        ko:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+        enChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        koChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+      relate:
+        - id: "ko-follows"
+          relation: { op: "implies", of: "en", requires: "koChanged" }
+          message: "{value} changed without {key}.ko.md"
+        - id: "en-follows"
+          relation: { op: "implies", of: "ko", requires: "enChanged" }
+          message: "{value} changed without {key}.md"

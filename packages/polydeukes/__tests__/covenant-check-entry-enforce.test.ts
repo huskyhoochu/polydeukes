@@ -1,6 +1,6 @@
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// The commit surface honours an entry's own enforce level. The surface has no level of
+// The change-set surface honours an entry's own enforce level. The surface has no level of
 // its own, so the only advise in play is the entry's: a staged
 // delta breaking it passes (exit 0), records `advised` under the entry's id, and emits
 // one advisory line. Without that line an item-level advise would pass silently.
@@ -77,7 +77,12 @@ describe('covenant check — an advise entry under a block surface', () => {
     // The advised row must carry the entry's own id, not the dispatcher label.
     stageSoftBreak();
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(0);
     const advised = readRecords(telemetryPath).records.filter((r) => r.event === 'advised');
@@ -90,7 +95,12 @@ describe('covenant check — an advise entry under a block surface', () => {
     stageSoftBreak();
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-    await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    await runCovenantCheck({
+      repoRoot,
+      surface: 'changeSet',
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     const advisoryLines = stderrWrite.mock.calls
       .map((call) => String(call[0]))
@@ -173,6 +183,7 @@ describe('covenant check — an advise entry under a block surface', () => {
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     const result = await runCovenantCheck({
+      surface: 'changeSet',
       repoRoot,
       telemetryPath,
       input: stagedInput(),
@@ -244,7 +255,12 @@ describe('covenant check — the entry default is advise, explicit block is the 
     // the entry axis, not the observer's.
     stageBreakUnder({ id: PLAIN_ID });
 
-    const result = await runCovenantCheck({ repoRoot, telemetryPath, input: stagedInput() });
+    const result = await runCovenantCheck({
+      surface: 'changeSet',
+      repoRoot,
+      telemetryPath,
+      input: stagedInput(),
+    });
 
     expect(result.exitCode).toBe(0);
     expect(entryRows(PLAIN_ID)).toEqual([['advised', PLAIN_ID]]);

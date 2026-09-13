@@ -8,7 +8,7 @@
  * spec of the name it carries. Nothing here runs an extraction or opens a world.
  */
 
-import type { AlgebraDeclaration, ExtractBlock, RelationName } from './algebra.ts';
+import type { AlgebraDeclaration, RelationName } from './algebra.ts';
 import { isPlainObject } from './is-plain-object.ts';
 import { FIXED_SOURCE_NAMES } from './source-names.ts';
 import { ConfigValidationError } from './validation.ts';
@@ -150,11 +150,17 @@ function isTranscriptSource(binding: unknown): boolean {
   return isPlainObject(binding) && binding.transcript === true;
 }
 
-/** The source names one extract block's `source` steps name, in declaration order. */
-function sourceNamesOf(extract: ExtractBlock | undefined): string[] {
-  if (extract === undefined) return [];
+/**
+ * The source names one extract block's `source` steps name, in declaration order.
+ *
+ * Tolerant of an unvalidated block: a pipeline that is not a list, or a step that is not an
+ * object, names nothing here and is refused by the grammar validator with its location.
+ */
+function sourceNamesOf(extract: unknown): string[] {
+  if (!isPlainObject(extract)) return [];
   const names: string[] = [];
   for (const steps of Object.values(extract)) {
+    if (!Array.isArray(steps)) continue;
     for (const step of steps) {
       if (isPlainObject(step) && step.op === 'source' && typeof step.of === 'string') {
         names.push(step.of);
@@ -165,8 +171,12 @@ function sourceNamesOf(extract: ExtractBlock | undefined): string[] {
 }
 
 /** Every source name the body and the valve read, in declaration order. */
-function sourceNames(declaration: DerivableDeclaration): string[] {
-  return [...sourceNamesOf(declaration.extract), ...sourceNamesOf(declaration.witness?.extract)];
+export function sourceNames(declaration: {
+  extract?: unknown;
+  witness?: { extract?: unknown } | undefined;
+}): string[] {
+  const witness = isPlainObject(declaration.witness) ? declaration.witness : undefined;
+  return [...sourceNamesOf(declaration.extract), ...sourceNamesOf(witness?.extract)];
 }
 
 /**

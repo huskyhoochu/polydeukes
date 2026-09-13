@@ -46,7 +46,7 @@ afterEach(() => {
   rmSync(tmpRoot, { recursive: true, force: true });
 });
 
-/** Copy the real hook into a fixture tree carrying `disciplines`, then spawn it on `payload`. */
+/** Copy the real hook into a fixture tree carrying `sessionDisciplines`, then spawn it on `payload`. */
 function runHookWithDisciplines(disciplines: unknown[], payload: unknown) {
   const fixtureRoot = join(tmpRoot, 'fixture-tree');
   mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
@@ -60,7 +60,8 @@ function runHookWithDisciplines(disciplines: unknown[], payload: unknown) {
         languages: { typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' } },
         telemetry: { logPath: telemetryPath },
         protectedPaths: [PROTECTED_ENTRY],
-        disciplines,
+        // Every entry here is scoped on `command`, which only the session surface carries.
+        sessionDisciplines: disciplines,
       },
       null,
       2,

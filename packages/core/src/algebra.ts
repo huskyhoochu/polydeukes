@@ -6,7 +6,7 @@
  * kernel expansion laws quoted on each relation branch below are comments, never code.
  */
 
-import { validateMechanism } from './catalogue.ts';
+import { sourceNames, validateMechanism } from './catalogue.ts';
 import { isPlainObject } from './is-plain-object.ts';
 import { FIXED_SOURCE_NAMES } from './source-names.ts';
 import {
@@ -650,4 +650,44 @@ export function validateAlgebraDeclaration(
   const declaration = input as AlgebraDeclaration;
   validateMechanism(declaration, location);
   return declaration;
+}
+
+/**
+ * `DeclarationChannel` — one evidence channel a declaration binds.
+ *
+ * `transcript` · `channel` · `command` · `actor` are what a live call carries and `changes`
+ * is what a finished change set carries, so the set a declaration reads decides which
+ * surfaces can observe it at all.
+ */
+export type DeclarationChannel = 'transcript' | 'channel' | 'command' | 'actor' | 'changes';
+
+/** The fixed order of a derived channel list. */
+const DECLARATION_CHANNELS = [
+  'transcript',
+  'channel',
+  'command',
+  'actor',
+  'changes',
+] as const satisfies readonly DeclarationChannel[];
+
+export function declarationChannels(
+  body: Omit<AlgebraDeclaration, 'discipline'>,
+): DeclarationChannel[] {
+  const found = new Set<DeclarationChannel>();
+
+  const sources = isPlainObject(body.sources) ? body.sources : {};
+  for (const binding of Object.values(sources)) {
+    if (!isPlainObject(binding)) continue;
+    if ('transcript' in binding) found.add('transcript');
+    if ('sidecar' in binding) found.add('channel');
+  }
+  if (isPlainObject(body.scope) && body.scope.source === 'command') found.add('command');
+
+  for (const name of sourceNames(body)) {
+    if (name === 'command') found.add('command');
+    if (name === 'actor') found.add('actor');
+    if (name === 'changes') found.add('changes');
+  }
+
+  return DECLARATION_CHANNELS.filter((channel) => found.has(channel));
 }

@@ -178,7 +178,7 @@ describe('worldsFromInput — the call world', () => {
 
   it('an empty shell surface yields no call world and no command on a file world', () => {
     // The commit root injects no shell tools. A builder that recognises a shell call by the
-    // tool name it knows (rather than the surface it was given) hands the commit surface a
+    // tool name it knows (rather than the surface it was given) hands the change-set surface a
     // `command` it never observed, and a `-` world for a staged change it never dispatched.
     const bare = worldsFromInput({
       input: inputOf(shellCall(BANNED_COMMAND)),
@@ -300,7 +300,7 @@ describe('compileDisciplineRegistrations — the call world through a declaratio
 
   it('under an empty shell surface a command-reading declaration does not route a shell call', () => {
     // The commit root's assembly: no shell tools, so the call is not a shell call and there
-    // is no call world. A route that still answers `-` here leaves the commit surface a row
+    // is no call world. A route that still answers `-` here leaves the change-set surface a row
     // for a command it cannot observe.
     const reg = bodyRegOf(
       compileDisciplineRegistrations(
