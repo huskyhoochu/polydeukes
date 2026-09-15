@@ -15,6 +15,10 @@ function filesUnder(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    // `packages/documentation/src/content/` is generated from `docs/` at build time and
+    // is gitignored; the records it copies name the terminal device as history, not as
+    // something a bin opens.
+    if (entry.name === 'content' && dir.endsWith(join('documentation', 'src'))) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) out.push(...filesUnder(path));
     else if (entry.isFile()) out.push(path);

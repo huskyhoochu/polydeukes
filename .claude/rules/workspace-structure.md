@@ -57,6 +57,16 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   graph and spawns `pdks covenant check` with a caller-built IR on stdin. No bin, no judgment
   logic, no telemetry row of its own. Peer on `core` (the `CovenantInput` type) and on
   `polydeukes` (the bin it spawns). The umbrella does not depend on it.
+- **`packages/documentation`** (`@polydeukes/documentation`) is **`private`** and publishes
+  nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/`. It carries
+  no judgment logic and no internal dependency, so `workspace:^` and the catalog do not apply,
+  and the publish e2e suites skip it because they take only non-private manifests. Two
+  consequences bind anything that touches it. It **reads `docs/` and never writes there**: the
+  same files `pdks docs` bundles, generated into `src/content/docs/` at build time by
+  `scripts/sync-docs.mjs`, which is gitignored. And because that generated tree is a copy of
+  every development record, an oracle that greps `packages/*/src` for a forbidden string will
+  match the record that discusses it — `surface-contract.test.ts` skips the directory for
+  exactly that reason.
 - **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
   `sdk-ts`) depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the

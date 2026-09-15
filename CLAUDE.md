@@ -17,7 +17,9 @@ hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `
 `polydeukes` as a `peerDependency` for the bin it spawns. `sdk-ts` (`@polydeukes/sdk-ts`) is
 the fifth: one verb, `checkCovenant`, that spawns `pdks covenant check` with a caller-built IR
 and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
-`polydeukes`. Nothing depends the other way:
+`polydeukes`. A sixth directory, `packages/documentation`, is `private` and publishes
+nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/` at build
+time and carries no judgment logic. Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
 its agents need. The judge module opens no file at all, and core's only file I/O is the
 telemetry log it appends every judgment to.

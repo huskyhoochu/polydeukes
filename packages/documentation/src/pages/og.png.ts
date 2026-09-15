@@ -46,6 +46,11 @@ function card() {
 </svg>`;
 }
 
+/**
+ * Serves the social card as a PNG at `/og.png`.
+ *
+ * @returns A 1200x630 image response, cached for an hour.
+ */
 export const GET: APIRoute = async () => {
   const png = await sharp(Buffer.from(card())).png().toBuffer();
   return new Response(new Uint8Array(png), {

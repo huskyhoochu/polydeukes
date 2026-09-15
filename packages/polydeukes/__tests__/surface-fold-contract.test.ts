@@ -16,8 +16,10 @@ const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
 const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
-/** The package directories left after the fold. */
+/** The package directories that ship, left after the fold. */
 const PACKAGE_DIRS = ['adapter-claude-code', 'adapter-grok', 'core', 'polydeukes', 'sdk-ts'];
+/** Workspace members that are not published; they carry no copy of the judge. */
+const PRIVATE_PACKAGE_DIRS = ['documentation'];
 /**
  * The name and the path the fold retires, assembled so this file is not its own
  * counterexample.
@@ -89,7 +91,8 @@ describe('the workspace holds five packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
   it('packages/ lists exactly the five package directories', () => {
-    expect(readdirSync(join(repoRoot, 'packages')).sort()).toEqual(PACKAGE_DIRS);
+    const present = readdirSync(join(repoRoot, 'packages')).sort();
+    expect(present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir))).toEqual(PACKAGE_DIRS);
   });
 });
 
