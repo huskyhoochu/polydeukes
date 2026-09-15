@@ -11,6 +11,18 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.8.0](https://github.com/b95labs/polydeukes/compare/v0.7.1...v0.8.0) (2026-09-15)
+
+
+### Features
+
+* **documentation:** publish the docs and landing site ([#119](https://github.com/b95labs/polydeukes/issues/119)) ([683e932](https://github.com/b95labs/polydeukes/commit/683e932de53e461b9a1827515191e145f7e791aa))
+
+
+### Bug Fixes
+
+* **polydeukes:** let the repository oracles see past a generated documentation copy ([e9ee149](https://github.com/b95labs/polydeukes/commit/e9ee14940fd15f1c7a9975927fb273df5b8d7bdb))
+
 ## [0.7.1](https://github.com/huskyhoochu/polydeukes/compare/v0.7.0...v0.7.1) (2026-09-15)
 
 
