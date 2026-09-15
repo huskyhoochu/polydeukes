@@ -35,18 +35,18 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The full history so the tag-integrity check below can see the release tags.
           fetch-depth: 0
 
       # No version input: pnpm/action-setup reads the root manifest's pinned packageManager.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       # No registry-url: that option writes an .npmrc referencing NODE_AUTH_TOKEN, which
       # crashes npm when the env is absent. Auth is OIDC trusted publishing — each of the
       # three packages names this repo + workflow file on its npmjs.com access page.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
