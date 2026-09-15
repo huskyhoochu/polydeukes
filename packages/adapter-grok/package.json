@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/adapter-grok",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Polydeukes adapter for Grok — up-translates PreToolUse hook payloads into the agent-neutral covenant input IR and registers the session surface. Alpha.",
   "license": "MIT",
   "repository": {

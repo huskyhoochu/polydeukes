@@ -11,6 +11,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.7.1](https://github.com/huskyhoochu/polydeukes/compare/v0.7.0...v0.7.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **polydeukes:** the clean-install e2e resolves core from its tarball, not the registry ([#114](https://github.com/huskyhoochu/polydeukes/issues/114)) ([7a0dd8f](https://github.com/huskyhoochu/polydeukes/commit/7a0dd8fd7dab9cb235e291be23e078f0f97b1211))
+
 ## [0.7.0](https://github.com/huskyhoochu/polydeukes/compare/v0.6.1...v0.7.0) (2026-09-15)
 
 
