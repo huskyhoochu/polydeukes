@@ -5,6 +5,7 @@
   "buildCommand": "pnpm -F @polydeukes/documentation build",
   "outputDirectory": "packages/documentation/dist",
   "github": {
+    "enabled": false,
     "silent": true
   }
 }
