@@ -69,6 +69,9 @@ const TELEMETRY_REL = '.polydeukes/roi.log';
 const RUNNER_LABEL = 'covenant-check';
 /** The adapter's package directory — the install unit the consumer wires the hook through. */
 const ADAPTER_DIR = 'adapter-claude-code';
+
+/** The vocabulary package — the umbrella's one workspace dependency, which the consumer must name directly (below). */
+const CORE_DIR = 'core';
 /** The consumer-side subpath an editor's `$schema` line is measured against. */
 const CORE_SCHEMA_SPECIFIER = '@polydeukes/core/schema.json';
 /** The umbrella subpath, for runtime code that reads the schema. */
@@ -92,12 +95,14 @@ beforeAll(() => {
     tarballs.set(dir, packOne(dir));
   }
 
-  // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella and the
-  // adapter arrive as direct file: dependencies — the two packages a Claude Code project
-  // installs; the remaining scoped packages arrive through pnpm.overrides pointing at
-  // their tarballs — the rewritten `^` ranges in the packed manifests would otherwise
-  // resolve from the registry, where an older release answers them with a judge that
-  // predates the exports this build's hook imports.
+  // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella, the
+  // adapter, and core arrive as direct file: dependencies, and every scoped package is also
+  // pinned through pnpm.overrides to its tarball. Both are needed: measured on pnpm 10.32,
+  // an override alone (file:, link:, or range-keyed) does not catch the umbrella's rewritten
+  // `^` range on core — pnpm still resolves that edge from the registry, where the current
+  // version is absent between a release merge and its publish, and where an older release
+  // would otherwise answer with a judge that predates the exports this build's hook imports.
+  // With core also a direct file: dependency the edge resolves to the tarball.
   consumerRoot = mkdtempSync(join(tmpdir(), 'pdks-clean-install-consumer-'));
   const overrides = Object.fromEntries(
     PACKAGE_DIRS.filter((dir) => dir !== UMBRELLA_DIR).map((dir) => [
@@ -115,6 +120,7 @@ beforeAll(() => {
         dependencies: {
           [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}`,
           [packageNameOf(ADAPTER_DIR)]: `file:${tarballOf(ADAPTER_DIR)}`,
+          [packageNameOf(CORE_DIR)]: `file:${tarballOf(CORE_DIR)}`,
         },
         pnpm: { overrides },
       },
