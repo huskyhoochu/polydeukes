@@ -38,13 +38,14 @@ function filesContaining(paths: string[], needle: string): string[] {
 }
 
 describe('the CLI asks nobody', () => {
-  it('no package source, package test, hook, or lefthook.yml names the terminal device', () => {
+  it('no package source, package test, either hook directory, or lefthook.yml names the terminal device', () => {
     // The string is assembled so this file does not name it either. A bin that opens the
     // controlling terminal is a bin with a policy of its own.
     const device = `/dev/${'tty'}`;
     const candidates = [
       ...packageDirs('src', '__tests__').flatMap(filesUnder),
       ...filesUnder(join(REPO_ROOT, '.claude', 'hooks')),
+      ...filesUnder(join(REPO_ROOT, '.grok', 'hooks')),
       join(REPO_ROOT, 'lefthook.yml'),
     ];
 

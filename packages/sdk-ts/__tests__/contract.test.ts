@@ -81,6 +81,7 @@ type Manifest = {
   description?: string;
   bin?: Record<string, string>;
   exports?: Record<string, unknown>;
+  dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
@@ -149,10 +150,11 @@ describe('the SDK manifest', () => {
     expect(manifest.bin).toBeUndefined();
   });
 
-  it('takes the umbrella and core as peers, and the umbrella never as a devDependency', () => {
+  it('takes the umbrella and core as peers only — no dependencies, and the umbrella never as a devDependency', () => {
     expect(Object.keys(manifest.peerDependencies ?? {}).sort()).toEqual(
       ['@polydeukes/core', 'polydeukes'].sort(),
     );
+    expect(manifest.dependencies ?? {}).toEqual({});
     expect(manifest.devDependencies ?? {}).not.toHaveProperty('polydeukes');
   });
 });

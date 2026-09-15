@@ -39,6 +39,7 @@ type Manifest = {
   name?: string;
   bin?: Record<string, string>;
   exports?: Record<string, unknown>;
+  dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
@@ -74,13 +75,14 @@ describe('the adapter manifest', () => {
     expect(manifest.bin).toEqual({ 'pdks-grok': './dist/bin.js' });
   });
 
-  it('takes the umbrella and core as peers, and the umbrella never as a devDependency', () => {
+  it('takes the umbrella and core as peers only — no dependencies, and the umbrella never as a devDependency', () => {
     // The spawn finds `pdks` in the consumer's install graph; the peer is that fact stated
     // at install time. This package is not a dependency of the umbrella, so a
     // devDependency on the umbrella is unused rather than cyclic — and still not declared.
     expect(Object.keys(manifest.peerDependencies ?? {}).sort()).toEqual(
       ['@polydeukes/core', 'polydeukes'].sort(),
     );
+    expect(manifest.dependencies ?? {}).toEqual({});
     expect(manifest.devDependencies ?? {}).not.toHaveProperty('polydeukes');
   });
 });

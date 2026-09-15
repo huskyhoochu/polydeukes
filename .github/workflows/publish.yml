@@ -73,6 +73,6 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
-      # The root package is private and skips itself; the three workspace packages publish
+      # The root package is private and skips itself; the five workspace packages publish
       # in dependency order with workspace:/catalog: specifiers rewritten to real versions.
       - run: pnpm -r publish --provenance --access public --no-git-checks
