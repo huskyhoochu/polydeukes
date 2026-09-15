@@ -53,21 +53,23 @@ pdks explain
 ```
 
 The output starts with the config file path, then one block for the session surface and one for the
-change-set surface. A starter config with no extra disciplines looks like this:
+change-set surface. A starter config with no extra disciplines looks like this (`N` stands for
+the number of protected paths the assembly counted; the one `skip` row is normal — it is where a
+shell command whose write target cannot be determined lands):
 
 ```text
 pdks explain — polydeukes.config.yaml
 
 input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
-  registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
-  meta     self-mod        paths N (common; includes the config file itself)
-  meta     shell-mod       paths N (common)
-  meta     transcript-mod  content predicate · conditional: session.evidencePath
+  registrations 3 · declare 0 · skip 1 · meta 2 · draft 0
+  meta     self-mod          paths N (common; includes the config file itself)
+  meta     transcript-mod    content predicate · conditional: session.evidencePath
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 
 input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
-  registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
-  meta     self-mod   paths N (common; includes the config file itself)
-  meta     shell-mod  paths N (common)
+  registrations 2 · declare 0 · skip 1 · meta 1 · draft 0
+  meta     self-mod          paths N (common; includes the config file itself)
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 ```
 
 **The surface header names the lists that surface compiles and how many entries each holds.**

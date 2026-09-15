@@ -9,7 +9,7 @@ IR로 변환하고, 판정기를 스폰하며, 프로젝트에 세션 표면을 
 `polydeukes`와 함께 설치합니다. `polydeukes`는 이 패키지의 `peerDependency`입니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

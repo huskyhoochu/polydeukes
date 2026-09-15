@@ -103,7 +103,7 @@ fail-open입니다. 기록 실패가 판정을 바꾸는 일은 없습니다. �
 
 ```yaml
 witness:
-  token: 'covenant witness'   # 사람이 대화에 직접 입력하는 합의 문구
+  token: 'pdks witness'   # 사람이 대화에 직접 입력하는 합의 문구
   ttlMinutes: 10              # 그 메시지 시점부터의 유효 시간(분)
 ```
 
@@ -128,7 +128,7 @@ witness:
 발동하는 메시지입니다. 첫 줄에 토큰만 두고 나머지 줄은 자유롭게 씁니다.
 
 ```text
-covenant witness
+pdks witness
 
 이제 훅 파일을 고쳐줘
 ```
@@ -136,7 +136,7 @@ covenant witness
 언급일 뿐인 메시지입니다. 밸브는 닫힌 채입니다.
 
 ```text
-그런데 `covenant witness` 는 언제 만료되나요?
+그런데 `pdks witness` 는 언제 만료되나요?
 ```
 
 토큰 값 자체는 자유입니다. 어떤 문구든 쓸 수 있고, 접두사나 명령 형태를 검사하지 않습니다.

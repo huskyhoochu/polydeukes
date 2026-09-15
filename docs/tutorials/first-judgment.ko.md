@@ -17,12 +17,13 @@ mkdir pdks-example
 cd pdks-example
 git init
 printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes @polydeukes/adapter-claude-code   # 프로젝트 의존성. 일회성 npx 실행이 아님
+pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-claude-code   # 프로젝트 의존성. 일회성 npx 실행이 아님
 pnpm exec pdks-claude-code init
 ```
 
 설치기는 각 파일을 만들었으면 `created`, 이미 있어서 보존했으면 `skipped`로 보고합니다.
-초기 설정, 훅 위임 파일, Claude Code 등록 설정, 문서 조회 안내, `discipline-draft` 스킬과
+초기 설정, 훅 위임 파일(`.claude/hooks/covenant-pretooluse.mjs`), Claude Code 등록 설정
+(`.claude/settings.json`), 문서 조회 안내(`.claude/rules/polydeukes.md`), `discipline-draft` 스킬과
 텔레메트리 제외 항목을 만듭니다. 기존 사용자 파일은 보존하고, 설정은 통째로 덮지 않고
 병합합니다.
 

@@ -12,8 +12,8 @@
 
 Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
-1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes
-   @polydeukes/adapter-claude-code`. 일회성 `npx` 실행만으로는 부족합니다. 두 표면 모두
+1. 세 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes
+   @polydeukes/core @polydeukes/adapter-claude-code`. 일회성 `npx` 실행만으로는 부족합니다. 두 표면 모두
    프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
 2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-claude-code init`. 이 실행 파일은 어댑터가
    제공하며, 먼저 `pdks init`으로 초기 파일을 만든 뒤 Claude Code 등록 산출물을 씁니다.
@@ -31,7 +31,7 @@ Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
 
 Grok에서 개발할 때 씁니다.
 
-1. 두 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/adapter-grok`.
+1. 세 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-grok`.
 2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-grok init`. 어댑터가 이 실행 파일을
    제공합니다. 먼저 `pdks init`으로 초기 파일을 만든 뒤 Grok 등록 산출물을 씁니다.
 3. 설치가 끝나면 Hooks 탭을 다시 불러오거나 새 세션을 엽니다.

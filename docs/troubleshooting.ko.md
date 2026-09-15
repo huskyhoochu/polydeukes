@@ -64,8 +64,11 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 판정기를 별도로 복사해 가지고 있지 않습니다. 복구 뒤 실제 호출로 다시 확인합니다.
 텔레메트리를 불러오기 전에 실패했다면 기록이 전혀 남지 않을 수도 있습니다.
 
-세션 훅은 메시지 앞에 `covenant hook failed closed:`를, 커밋 검사는
-`covenant check failed closed:`를 붙입니다. 실제로 보게 되는 두 형태는 다음과 같습니다.
+판정기 자신이 거부하는 실패(설정 없음 · 잘못된 설정 · 빌드되지 않은 판정기)는 두 표면 모두
+`covenant check failed closed:`를 붙입니다. 훅이 `pdks covenant check`에 판정을 맡기고 그 메시지를
+그대로 전달하기 때문입니다. 판정기를 스폰하기 *전에* 실패한 경우 — 어댑터가 `polydeukes`를
+찾지 못하거나 자식이 판정 없이 종료한 경우 — 만 `covenant hook failed closed:`를 붙입니다.
+실제로 보게 되는 두 형태는 다음과 같습니다.
 
 ```text
 covenant hook failed closed: Cannot find package 'polydeukes' imported from …

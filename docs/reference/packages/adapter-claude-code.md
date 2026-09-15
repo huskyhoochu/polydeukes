@@ -75,7 +75,7 @@ there is no separate precedent evaluator in this package. The grammar is in
 Two lines install the Claude Code session surface, run from the project root:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 

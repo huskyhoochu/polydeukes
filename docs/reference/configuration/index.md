@@ -108,7 +108,7 @@ Optional.
 
 ```yaml
 witness:
-  token: 'covenant witness'   # the phrase a human types in the conversation
+  token: 'pdks witness'   # the phrase a human types in the conversation
   ttlMinutes: 10              # validity window, in minutes, from that message
 ```
 
@@ -135,7 +135,7 @@ carrying the token alone does, with any following lines free for the work itself
 A message that invokes — the token alone on the first line, the rest free:
 
 ```text
-covenant witness
+pdks witness
 
 now fix the hook file
 ```
@@ -143,7 +143,7 @@ now fix the hook file
 A message that merely mentions — the valve stays shut:
 
 ```text
-so when does `covenant witness` expire?
+so when does `pdks witness` expire?
 ```
 
 The token's value is free — any phrase works, and it is never checked for a prefix or a

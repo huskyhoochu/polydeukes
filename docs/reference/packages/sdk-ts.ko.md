@@ -37,6 +37,9 @@ pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
 <a id="verb"></a>
 ## 동사
 
+이 패키지는 ESM 전용입니다(`"type": "module"`, `import` 조건만 있고 `require`는 없음).
+호출하는 파일이 `.mjs`이거나 그 `package.json`이 `"type": "module"`을 선언해야 합니다.
+
 ```ts
 import { checkCovenant } from '@polydeukes/sdk-ts';
 

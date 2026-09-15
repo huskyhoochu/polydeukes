@@ -39,7 +39,7 @@ The Claude Code session surface is installed by
 [`@polydeukes/adapter-claude-code`](../packages/adapter-claude-code.md), which ships its own bin:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 
@@ -61,7 +61,7 @@ The Grok session surface is installed by
 [`@polydeukes/adapter-grok`](../packages/adapter-grok.md), which ships its own bin:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

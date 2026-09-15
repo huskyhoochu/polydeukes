@@ -49,21 +49,21 @@ pdks explain
 ```
 
 출력은 설정 파일 경로로 시작하고, 그다음 세션 표면 블록 하나와 변경 집합 표면 블록 하나가 나옵니다.
-추가 규율이 없는 시작 설정은 이런 모양입니다.
+추가 규율이 없는 시작 설정은 이런 모양입니다(`N`은 조립이 센 보호 경로 개수이고, `skip` 행 하나는 정상입니다. 쓰기 대상을 판정할 수 없는 셸 명령이 착지하는 자리입니다).
 
 ```text
 pdks explain — polydeukes.config.yaml
 
 input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
-  registrations 3 · declare 0 · skip 0 · meta 3 · draft 0
-  meta     self-mod        paths N (common; includes the config file itself)
-  meta     shell-mod       paths N (common)
-  meta     transcript-mod  content predicate · conditional: session.evidencePath
+  registrations 3 · declare 0 · skip 1 · meta 2 · draft 0
+  meta     self-mod          paths N (common; includes the config file itself)
+  meta     transcript-mod    content predicate · conditional: session.evidencePath
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 
 input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
-  registrations 2 · declare 0 · skip 0 · meta 2 · draft 0
-  meta     self-mod   paths N (common; includes the config file itself)
-  meta     shell-mod  paths N (common)
+  registrations 2 · declare 0 · skip 1 · meta 1 · draft 0
+  meta     self-mod          paths N (common; includes the config file itself)
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 ```
 
 **표면 머리줄은 그 표면이 컴파일하는 목록의 이름과 각 목록의 항목 수를 적습니다.** 세션

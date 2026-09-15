@@ -418,6 +418,22 @@
         "title": "<!--",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
+    },
+    {
+      "id": "post-8",
+      "category": "history",
+      "order": 25,
+      "bundled": false,
+      "en": {
+        "path": "build-in-public/2026-09-v0.7-entrypoint-reshape.md",
+        "title": "<!--",
+        "summary": "Historical development account; not a current usage reference."
+      },
+      "ko": {
+        "path": "build-in-public/2026-09-v0.7-entrypoint-reshape.ko.md",
+        "title": "<!--",
+        "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
+      }
     }
   ],
   "topics": {

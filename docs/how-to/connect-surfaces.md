@@ -14,9 +14,9 @@ is about to be written.
 
 Use this when the project is developed alongside an AI partner in Claude Code.
 
-1. Install both packages as project dependencies: `pnpm add -D polydeukes
-   @polydeukes/adapter-claude-code`. A one-off `npx` run is not enough — both surfaces load the
-   judge from the project's own installed package.
+1. Install the three packages as project dependencies: `pnpm add -D polydeukes
+   @polydeukes/core @polydeukes/adapter-claude-code`. A one-off `npx` run is not enough —
+   both surfaces load the judge from the project's own installed package.
 2. Wire the project from its root: `pnpm exec pdks-claude-code init`. The adapter ships this bin;
    it runs `pdks init` for the scaffold, then writes the Claude Code registration artifacts.
 3. Keep the generated hook file, settings merge, starter config, discovery rule, and
@@ -34,7 +34,7 @@ described problem into either a judged entry or a draft entry.
 
 Use this when the project is developed in Grok.
 
-1. Install both packages as project dependencies: `pnpm add -D polydeukes @polydeukes/adapter-grok`.
+1. Install the three packages as project dependencies: `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-grok`.
 2. Wire the project from its root: `pnpm exec pdks-grok init`. The adapter ships this bin; it
    runs `pdks init` for the scaffold, then writes the Grok registration artifacts.
 3. Reload the Hooks tab or open a new session after the installer finishes.

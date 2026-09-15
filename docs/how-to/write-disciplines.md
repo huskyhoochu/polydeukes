@@ -11,7 +11,9 @@ at `advise` until you decide that the observed results justify blocking.
 
 This declaration compares the key sets of two JSON translation files, including nested keys.
 Save the complete YAML below as `polydeukes.config.yaml` in an **example project**, not over an
-existing project's configuration. In an existing project, copy only the discipline entry.
+existing project's configuration. In an existing project, copy only the discipline entry — the
+YAML below carries no `protectedPaths` and no `witness` block, so saving it over a generated
+config removes the witness valve.
 The [first-judgment tutorial](../tutorials/first-judgment.md) supplies installation steps.
 
 ```yaml

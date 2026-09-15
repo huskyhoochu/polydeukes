@@ -17,12 +17,13 @@ mkdir pdks-example
 cd pdks-example
 git init
 printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes @polydeukes/adapter-claude-code   # project dependencies, not a one-off npx run
+pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-claude-code   # project dependencies, not a one-off npx run
 pnpm exec pdks-claude-code init
 ```
 
 The installer reports `created` or `skipped` for each artifact. It creates a starter config,
-the hook delegator, the Claude Code registration, a documentation discovery file, the
+the hook delegator (`.claude/hooks/covenant-pretooluse.mjs`), the Claude Code registration
+(`.claude/settings.json`), a documentation discovery file (`.claude/rules/polydeukes.md`), the
 `discipline-draft` skill, and a telemetry ignore entry. Existing user files are preserved;
 settings are merged rather than replaced.
 

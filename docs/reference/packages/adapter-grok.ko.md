@@ -41,7 +41,7 @@ Grok의 입력을 공통 형식으로 번역합니다. 에이전트와 도구의
 프로젝트 루트에서 두 줄이면 Grok 세션 표면이 설치됩니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

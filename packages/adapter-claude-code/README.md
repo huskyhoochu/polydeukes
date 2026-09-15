@@ -10,7 +10,7 @@ the umbrella injects.
 Install it next to `polydeukes`, which it names as a `peerDependency`:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 

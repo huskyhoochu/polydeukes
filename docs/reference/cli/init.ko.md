@@ -40,7 +40,7 @@ Claude Code 세션 표면은
 어댑터에는 자체 실행 파일이 있습니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 
@@ -61,7 +61,7 @@ Grok 세션 표면은
 어댑터에는 자체 실행 파일이 있습니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

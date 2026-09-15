@@ -10,7 +10,7 @@
 `polydeukes`와 함께 설치합니다. `polydeukes`는 이 패키지의 `peerDependency`입니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 

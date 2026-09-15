@@ -9,7 +9,7 @@ the surface in a project.
 Install it next to `polydeukes`, which it names as a `peerDependency`:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

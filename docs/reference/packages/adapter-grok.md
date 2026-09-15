@@ -42,7 +42,7 @@ file; `run_terminal_command` carries a shell line.
 Two lines install the Grok session surface, run from the project root:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-grok
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
 npx pdks-grok init
 ```
 

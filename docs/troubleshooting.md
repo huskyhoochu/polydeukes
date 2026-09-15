@@ -61,8 +61,11 @@ workspace build from your own terminal. The generated hook delegates to the inst
 it is not an independent copy of the judge. Verify another real call after repair. A failure
 before telemetry can load may leave no row at all.
 
-The session hook prefixes the message with `covenant hook failed closed:` and the commit check
-with `covenant check failed closed:`. The two shapes you will see:
+A failure the judge itself refuses — a missing or invalid config, an unbuilt judge — carries
+`covenant check failed closed:` on both surfaces, because the hook delegates to
+`pdks covenant check` and passes its message through. Only a failure *before* the judge could be
+spawned — the adapter cannot find `polydeukes`, or the child exited without a verdict — carries
+`covenant hook failed closed:`. The two shapes you will see:
 
 ```text
 covenant hook failed closed: Cannot find package 'polydeukes' imported from …

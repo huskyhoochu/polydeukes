@@ -72,7 +72,7 @@ Claude Code의 입력을 공통 형식으로 번역합니다. 에이전트와 �
 프로젝트 루트에서 두 줄이면 Claude Code 세션 표면이 섭니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
 npx pdks-claude-code init
 ```
 

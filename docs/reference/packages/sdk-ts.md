@@ -38,6 +38,9 @@ core supplies the `CovenantInput` type the caller fills in.
 <a id="verb"></a>
 ## The verb
 
+The package is ESM only (`"type": "module"`, an `import` condition and no `require`): the calling
+file is a `.mjs`, or its `package.json` declares `"type": "module"`.
+
 ```ts
 import { checkCovenant } from '@polydeukes/sdk-ts';
 
