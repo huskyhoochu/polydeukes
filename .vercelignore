@@ -1,0 +1,18 @@
+# Vercel builds from source; everything below is either rebuilt there, private to this
+# machine, or irrelevant to the documentation site.
+node_modules
+**/node_modules
+**/dist
+.turbo
+**/.turbo
+.astro
+**/.astro
+
+# The wiki clone and the local telemetry log are not part of the deployment.
+_docs
+.polydeukes
+
+# Local tooling state.
+.claude
+.vscode
+*.log

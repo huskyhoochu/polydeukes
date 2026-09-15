@@ -147,3 +147,5 @@ CLAUDE.local.md
 # Public-facing docs go in docs/ instead.
 # ─────────────────────────────────────────────────────────────
 _docs/
+.vercel
+.env*

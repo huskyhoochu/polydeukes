@@ -1,0 +1,916 @@
+---
+import { Font } from 'astro:assets';
+import evidence from '../data/evidence.json';
+import telemetry from '../data/telemetry.json';
+
+/**
+ * Landing page. Starlight owns `/docs`; this page owns `/`.
+ *
+ * Every claim and every code sample here is taken from the repository README and the
+ * pages under `docs/`, the site states what the tool does today, nothing aspirational.
+ */
+/** The one command a reader runs first; the hero copies it and the closing section repeats it. */
+const INSTALL = 'pnpm add -D polydeukes @polydeukes/adapter-claude-code';
+
+const title = 'Polydeukes, a development discipline framework';
+const description =
+  'Polydeukes judges what a developer or an AI coding agent is about to do, records the ' +
+  'verdict, and by default lets the work proceed. Judging and stopping are separate decisions.';
+const ogAlt =
+  `The headline "Judge the work, then decide whether to stop it", above four real verdict ` +
+  `rows from this repository's own telemetry log.`;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const repository = 'https://github.com/huskyhoochu/polydeukes';
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareSourceCode',
+      name: 'Polydeukes',
+      description,
+      codeRepository: repository,
+      programmingLanguage: 'TypeScript',
+      license: 'https://opensource.org/licenses/MIT',
+      url: canonical,
+      runtimePlatform: 'Node.js',
+      author: { '@type': 'Person', name: 'huskyhoochu', url: 'https://github.com/huskyhoochu' },
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Polydeukes',
+      url: new URL('/', Astro.site).href,
+      inLanguage: ['en', 'ko'],
+      description,
+    },
+  ],
+};
+
+const verdicts = [
+  { name: 'passed', text: 'judged and upheld the covenant' },
+  { name: 'advised', text: 'recorded without stopping the operation' },
+  { name: 'blocked', text: 'a violation stopped the operation' },
+  { name: 'witnessed', text: 'a blocking result allowed through its valve' },
+];
+
+const capabilities = [
+  {
+    cmd: 'pdks-claude-code init',
+    title: 'Judge a session call',
+    body: 'A PreToolUse hook hands each edit to the judge before it runs. The adapter builds the input IR, and the umbrella returns a verdict.',
+  },
+  {
+    cmd: 'pdks covenant check --diff',
+    title: 'Judge a finished change set',
+    body: 'The same promises, observed a second way. Every verdict lands advised at exit 0 unless the command carries --enforce block.',
+  },
+  {
+    cmd: 'pdks docs search',
+    title: 'Read the docs offline',
+    body: 'The documentation ships inside the package, so the answer comes from the same version that does the judging. No network, and no drift.',
+  },
+  {
+    cmd: 'pdks explain',
+    title: 'See what each surface judges',
+    body: 'Print the live assembly: what each surface observes, skips, and excludes, without judging anything at all.',
+  },
+];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <Font cssVariable="--font-display" preload />
+    <Font cssVariable="--font-text" preload />
+    <Font cssVariable="--font-mono" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Polydeukes, a development discipline framework</title>
+    <meta
+      name="description"
+      content="Deterministic covenants and a verifiable ledger for building alongside an AI coding partner. Every judgment leaves a row; blocking is a separate decision."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Polydeukes" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/og.png', Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogAlt} />
+    <meta property="og:locale" content="en" />
+    <meta property="og:locale:alternate" content="ko" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL('/og.png', Astro.site)} />
+
+    <link rel="alternate" hreflang="en" href={new URL('/docs/', Astro.site)} />
+    <link rel="alternate" hreflang="ko" href={new URL('/ko/docs/', Astro.site)} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} is:inline />
+  </head>
+  <script is:inline>
+  const stored = (() => {
+    try {
+      return localStorage.getItem('pdks-theme');
+    } catch {
+      return null;
+    }
+  })();
+  if (stored === 'light' || stored === 'dark') {
+    document.documentElement.dataset.theme = stored;
+  }
+</script>
+  <body>
+    <header class="bar">
+      <a class="wordmark" href="/">Polydeukes</a>
+      <nav>
+        <a href="/docs/">Docs</a>
+        <a href="/docs/why-polydeukes/">Why</a>
+        <button type="button" class="icon-btn" id="theme" aria-label="Switch theme">
+          <svg class="i-sun" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="10" cy="10" r="3.6" />
+            <path d="M10 2.4v1.8M10 15.8v1.8M17.6 10h-1.8M4.2 10H2.4M15.4 4.6l-1.3 1.3M5.9 14.1l-1.3 1.3M15.4 15.4l-1.3-1.3M5.9 5.9L4.6 4.6" />
+          </svg>
+          <svg class="i-moon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16.3 11.9A6.9 6.9 0 0 1 8.1 3.7a6.9 6.9 0 1 0 8.2 8.2Z" />
+          </svg>
+        </button>
+        <a class="icon-btn" href="https://github.com/huskyhoochu/polydeukes" rel="noopener" aria-label="Polydeukes on GitHub">
+          <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+          </svg>
+        </a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="stream" aria-hidden="true">
+          {[0, 1].map((side) => (
+            <div class="stream-side" data-side={side}>
+              <div class="stream-col">
+                {[...telemetry.sample, ...telemetry.sample].map((r) => (
+                  <div class="stream-row">
+                    <span>{r.t}</span>
+                    <i data-verdict={r.v}>{r.v}</i>
+                    <span class="stream-path">{r.d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div class="hero-inner">
+          <h1>Judge the work,<br />then decide whether to stop it.</h1>
+          <p class="lede">
+            A development discipline framework for building alongside an AI coding partner.
+            Polydeukes judges what a developer or an agent is about to do, records the verdict,
+            and by default lets the work proceed.
+          </p>
+
+          <div class="actions">
+            <button type="button" class="copy" data-install={INSTALL}>
+              <code><span class="full">{INSTALL}</span><span class="short">pnpm add -D polydeukes</span></code>
+              <span class="copy-state" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" />
+                  <path d="M10.5 5.5v-2a1.6 1.6 0 0 0-1.6-1.6H3.6A1.6 1.6 0 0 0 2 3.5v5.3a1.6 1.6 0 0 0 1.6 1.6h2" />
+                </svg>
+              </span>
+              <span class="sr">Copy the install command</span>
+            </button>
+            <a class="btn" href="/docs/">Read the docs</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="band flush">
+        <div class="terminal" role="img" aria-label="Terminal showing pdks init followed by an advised verdict">
+          <div class="chrome"><span></span><span></span><span></span></div>
+          <pre><code><span class="c">$</span> pdks init && pdks-claude-code init
+scaffold   polydeukes.config.yaml
+hook       PreToolUse -> covenant check
+
+<span class="c">$</span> <span class="dim"># the agent proposes a write to a protected path</span>
+<span class="warn">blocked</span>  shell-mod  packages/core/dist
+         read-only proof missing; witness with <span class="ok">pdks witness</span>
+<span class="dim">exit 2, and one row in .polydeukes/roi.log</span></code></pre>
+        </div>
+      </section>
+
+      <section class="band evidence">
+        <h2>Asking the model nicely has a measured failure rate</h2>
+        <p class="sub">
+          These are other people's numbers, from the papers and system cards that published them.
+          Each one is measured under conditions worth reading, so the conditions are stated with it.
+        </p>
+
+        <ol class="findings">
+          {evidence.findings.map((f) => (
+            <li>
+              <p class="figure">{f.figure}</p>
+              <h3>{f.claim}</h3>
+              <p class="detail">{f.detail}</p>
+              <p class="condition">{f.condition}</p>
+              <a href={f.url} rel="noopener nofollow">{f.source}</a>
+            </li>
+          ))}
+        </ol>
+
+        <p class="foot">
+          None of this measures Polydeukes. It measures the gap a covenant is meant to sit in: an
+          instruction is a request, and a request has a failure rate. What a framework can add is
+          not a stronger request but a record of what was actually about to happen.
+        </p>
+      </section>
+
+      <section class="band ledger">
+        <h2>So we are judged by it too, on every call</h2>
+        <p class="sub">
+          This repository runs the framework against itself. Every Edit, Write, and Bash call is
+          judged before it runs, and every commit is judged again as a diff. Of{' '}
+          {telemetry.total.toLocaleString('en-US')} judgments over {telemetry.days} days, it
+          refused {telemetry.stoppedShare}% and reopened {telemetry.witnessedShare}% of those
+          through a witness. That is one project's record, not a benchmark.
+        </p>
+
+        <ul class="tally">
+          <li>
+            <b>{telemetry.stoppedShare}%</b>
+            <span>of calls refused</span>
+          </li>
+          <li data-verdict="advised">
+            <b>{telemetry.advised.toLocaleString('en-US')}</b>
+            <span>recorded, not refused</span>
+          </li>
+          <li data-verdict="witnessed">
+            <b>{telemetry.witnessedShare}%</b>
+            <span>of refusals reopened</span>
+          </li>
+          <li>
+            <b>{telemetry.disciplines}</b>
+            <span>disciplines in force</span>
+          </li>
+        </ul>
+
+        <div class="log" role="table" aria-label="The most recent verdicts that were not a pass">
+          <div class="log-head" role="row">
+            <span role="columnheader">when</span>
+            <span role="columnheader">verdict</span>
+            <span role="columnheader">discipline</span>
+            <span role="columnheader">path</span>
+          </div>
+          {telemetry.recent.map((r) => (
+            <div class="log-row" role="row">
+              <span role="cell">{r.at.slice(11, 19)}</span>
+              <span role="cell"><i data-verdict={r.verdict}>{r.verdict}</i></span>
+              <span role="cell">{r.discipline}</span>
+              <span role="cell">{r.path ?? '\u2014'}</span>
+            </div>
+          ))}
+        </div>
+
+        <p class="foot">
+          These rows are this repository's own, copied from <code>.polydeukes/roi.log</code> on{' '}
+          {telemetry.capturedAt}. The framework's authors are judged by the disciplines they
+          publish, on every call, and the record is the same one a reader gets.
+        </p>
+      </section>
+
+      <section class="band">
+        <h2>Three ideas carry the rest</h2>
+        <div class="ideas">
+          <article>
+            <h3>A covenant is a promise, not a fence</h3>
+            <p>
+              The disciplines it enforces are the ones a good developer already imposes on
+              themselves. They bind the human exactly as much as the AI, and the framework's
+              own authors get judged by them daily.
+            </p>
+          </article>
+          <article>
+            <h3>Judging and stopping are separate decisions</h3>
+            <p>
+              Every declared discipline is judged on every matching call. What a break then does
+              is a second question. By default it is recorded with its reason and the call
+              continues. <code>enforce: block</code> is a promotion the author chooses.
+            </p>
+          </article>
+          <article>
+            <h3>Every judgment leaves a row</h3>
+            <p>
+              <code>.polydeukes/roi.log</code> holds one line per verdict, in a vocabulary that
+              says what was observed rather than how it felt.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <div class="bleed">
+      <section class="band">
+        <h2>What it does today</h2>
+        <dl class="does">
+          {capabilities.map((item) => (
+            <>
+              <dt>
+                <code>{item.cmd}</code>
+                <span>{item.title}</span>
+              </dt>
+              <dd>{item.body}</dd>
+            </>
+          ))}
+        </dl>
+      </section>
+      </div>
+
+      <section class="band">
+        <h2>The verdict vocabulary</h2>
+        <p class="sub">
+          An exit code alone does not describe all observations. Exit 0 means the operation may
+          continue, not that every discipline passed.
+        </p>
+        <dl class="verdicts">
+          {verdicts.map((v) => (
+            <div>
+              <dt><code>{v.name}</code></dt>
+              <dd>{v.text}</dd>
+            </div>
+          ))}
+        </dl>
+        <p class="more">
+          <a href="/docs/troubleshooting/#reading-verdict">Read the full vocabulary →</a>
+        </p>
+      </section>
+
+      <section class="cta">
+        <h2>Watch one call get judged</h2>
+        <p class="sub">
+          Install it, wire one surface, and send the hook a proposed write. The tutorial ends
+          with a verdict on your screen and a row in your own log.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="/docs/tutorials/first-judgment/">Start the tutorial</a>
+          <a class="btn" href="https://github.com/huskyhoochu/polydeukes" rel="noopener">
+            View the source
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>MIT licensed. Built in the open.</p>
+      <nav>
+        <a href="/docs/">Documentation</a>
+        <a href="/ko/docs/">한국어</a>
+        <a href="https://github.com/huskyhoochu/polydeukes" rel="noopener">GitHub</a>
+      </nav>
+    </footer>
+  </body>
+</html>
+
+<script>
+  const toggle = document.getElementById('theme');
+
+  if (toggle) {
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    toggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const current = root.dataset.theme ?? (systemDark.matches ? 'dark' : 'light');
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem('pdks-theme', next);
+      } catch {
+        // A blocked store still leaves the theme applied for this page view.
+      }
+      window.dispatchEvent(new Event('pdks:theme'));
+    });
+  }
+</script>
+
+<script>
+  const button = document.querySelector('.copy');
+
+  if (button) {
+    let revert = null;
+
+    button.addEventListener('click', async () => {
+      const command = button.dataset.install ?? '';
+      let copied = false;
+
+      try {
+        await navigator.clipboard.writeText(command);
+        copied = true;
+      } catch {
+        // Clipboard access is refused in some contexts; selecting the text lets the
+        // reader copy it themselves rather than leaving the click with no result.
+        const range = document.createRange();
+        const code = button.querySelector('code');
+        if (code) {
+          range.selectNodeContents(code);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      }
+
+      button.dataset.copied = copied ? 'yes' : 'select';
+      button.setAttribute('aria-live', 'polite');
+      clearTimeout(revert);
+      revert = setTimeout(() => delete button.dataset.copied, 2000);
+    });
+  }
+</script>
+
+
+<style>
+  :root {
+    --ink: #131a21;
+    --ink-2: #4c5764;
+    --line: #dfe4ea;
+    --bg: #f6f7f4;
+    --bg-2: #eef0ec;
+    --accent: #2a5c92;
+    --on-accent: #ffffff;
+    --term-bg: #0f151d;
+    --term-ink: #ccd6e0;
+    --ok: #7fb069;
+    --warn: #d08770;
+    --measure: 68ch;
+    --max: 1120px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --ink: #e6ecf2;
+      --ink-2: #9aa7b4;
+      --line: #232c36;
+      --bg: #0c1117;
+      --bg-2: #10161e;
+      --accent: #7fa8d4;
+      --on-accent: #0b1017;
+      --ok: #8fbf79;
+      --warn: #e0937a;
+      --term-bg: #070b10;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--ink); }
+  html { scrollbar-color: var(--line) transparent; caret-color: var(--accent); }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; border: 3px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  a { text-underline-offset: 0.18em; }
+  .terminal pre, .install, .does dt code { font-variant-numeric: tabular-nums; }
+
+
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 1rem/1.65 var(--font-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, .ideas h3, .does dt span, .wordmark { font-family: var(--font-display); }
+  code, pre, .does dt code { font-family: var(--font-mono); }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 20px 24px;
+  }
+  .wordmark { font-weight: 650; letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
+  .bar nav { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: none;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+  .icon-btn:hover { color: var(--ink); border-color: var(--line); background: var(--bg-2); }
+  .icon-btn svg { display: block; }
+
+  /* The toggle shows the theme it switches to, not the one in effect. */
+  .i-moon { display: none; }
+  :root[data-theme='dark'] .i-sun { display: none; }
+  :root[data-theme='dark'] .i-moon { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .i-sun { display: none; }
+    :root:not([data-theme='light']) .i-moon { display: block; }
+  }
+  :root[data-theme='light'] .i-sun { display: block; }
+  :root[data-theme='light'] .i-moon { display: none; }
+
+  .bar nav a { color: var(--ink-2); text-decoration: none; font-size: 15px; }
+  .bar nav a:hover { color: var(--ink); }
+
+  main { width: 100%; }
+  .band, .cta { max-width: var(--max); margin-inline: auto; padding-inline: 24px; }
+  .hero { max-width: none; }
+
+  .hero {
+    position: relative;
+    min-height: min(74vh, 620px);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 64px 24px;
+    overflow: hidden;
+  }
+
+  .stream {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    justify-content: space-between;
+    overflow: hidden;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 2.2;
+    color: var(--ink-2);
+  }
+  .stream-side {
+    width: clamp(13rem, 19%, 17rem);
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  }
+  .stream-side[data-side='1'] { direction: rtl; }
+  .stream-side[data-side='1'] .stream-row { direction: ltr; }
+  .stream-col { animation: drift 150s linear infinite; opacity: 0.5; }
+  .stream-side[data-side='1'] .stream-col { animation-duration: 190s; }
+  .stream-row {
+    display: grid;
+    grid-template-columns: 4.6rem 4.8rem 1fr;
+    gap: 14px;
+    padding-inline: 20px;
+    white-space: nowrap;
+  }
+  .stream-row i { font-style: normal; }
+  .stream-row i[data-verdict='blocked'] { color: var(--warn); }
+  .stream-row i[data-verdict='advised'] { color: var(--ok); }
+  .stream-row i[data-verdict='witnessed'] { color: var(--accent); }
+  .stream-path { overflow: hidden; text-overflow: ellipsis; }
+
+  @keyframes drift {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stream-col { animation: none; }
+  }
+
+  .hero-inner { position: relative; z-index: 1; width: 100%; max-width: var(--max); margin-inline: auto; }
+  .hero h1 {
+    margin: 0 0 26px;
+    font-size: clamp(2.35rem, 5.6vw, 4.25rem);
+    line-height: 1.07;
+    letter-spacing: -0.026em;
+    font-weight: 400;
+    text-wrap: balance;
+  }
+  .lede { margin: 0 auto 36px; max-width: 56ch; font-size: 1.0625rem; line-height: 1.68; color: var(--ink-2); text-wrap: pretty; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 40px; }
+  .btn {
+    display: inline-block;
+    padding: 11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 550; }
+  .btn.primary:hover { filter: brightness(1.08); }
+
+  .works { margin: 0; font-size: 13px; color: var(--ink-2); letter-spacing: 0.01em; }
+  .works span { margin-right: 8px; opacity: 0.75; }
+  .works i { opacity: 0.4; font-style: normal; margin: 0 6px; }
+
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    max-width: 100%;
+    padding: 11px 16px 11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg-2);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .copy code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .copy .short { display: none; }
+  .copy:hover { border-color: var(--accent); background: var(--bg); }
+  .copy:active { transform: translateY(0.5px); }
+
+  .copy-state {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border-radius: 50%;
+    color: var(--ink-2);
+    transition: color 160ms ease, background-color 160ms ease;
+  }
+  .copy:hover .copy-state { color: var(--ink); }
+  .copy[data-copied] .copy-state { color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
+  .copy[data-copied] { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
+
+  .cta .actions { margin-bottom: 0; }
+  .cta .sub { margin-inline: auto; margin-bottom: 30px; text-align: center; }
+
+  .terminal { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--term-bg); }
+  .chrome { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .chrome span { width: 11px; height: 11px; border-radius: 50%; background: #2c3742; }
+  .terminal pre { margin: 0; padding: 20px; overflow-x: auto; color: var(--term-ink); font-size: 13.5px; line-height: 1.75; }
+  .terminal .c { color: #5f7488; }
+  .terminal .ok { color: var(--ok); }
+  .terminal .warn { color: var(--warn); }
+  .terminal .dim { color: #5f7488; }
+
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-inner > * {
+      animation: rise 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    .hero h1 { animation-delay: 60ms; }
+    .lede { animation-delay: 140ms; }
+    .actions { animation-delay: 210ms; }
+    .works { animation-delay: 280ms; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+
+  .band { padding-block: 72px; border-top: 1px solid var(--line); }
+  .band.flush { border-top: 0; padding-block: 0 72px; }
+  .bleed { background: var(--bg-2); border-top: 1px solid var(--line); }
+  .bleed .band { border-top: 0; }
+  .band h2 { margin: 0 0 12px; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -0.018em; font-weight: 550; text-wrap: balance; }
+  .sub { margin: 0 0 32px; max-width: 68ch; color: var(--ink-2); }
+
+
+
+  .findings {
+    list-style: none;
+    margin: 40px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1px;
+    grid-template-columns: repeat(2, 1fr);
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .findings li {
+    background: var(--bg);
+    padding: 26px 24px 22px;
+    display: flex;
+    flex-direction: column;
+  }
+  .figure {
+    margin: 0 0 12px;
+    font-family: var(--font-mono);
+    font-size: clamp(1.25rem, 2.6vw, 1.6rem);
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    overflow-wrap: anywhere;
+  }
+  .findings h3 {
+    margin: 0 0 10px;
+    font-size: 1.0625rem;
+    line-height: 1.35;
+    font-weight: 550;
+    letter-spacing: -0.012em;
+  }
+  .detail { margin: 0 0 14px; font-size: 0.9375rem; line-height: 1.62; color: var(--ink-2); }
+  .condition {
+    margin: 0 0 18px;
+    padding-left: 13px;
+    border-left: 1px solid var(--line);
+    font-size: 0.8125rem;
+    line-height: 1.62;
+    color: var(--ink-2);
+    flex: 1;
+  }
+  .findings a {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 2px;
+    align-self: flex-start;
+  }
+  .findings a:hover { color: var(--accent); border-color: var(--accent); }
+
+  .ledger { padding-block: 72px; }
+  .ledger h2 { max-width: 22ch; }
+
+  .tally {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 34px 0 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tally li {
+    flex: 1 1 8rem;
+    padding: 20px 22px;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tally li:last-child { border-right: 0; }
+  .tally b {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3.4vw, 2.125rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tally span {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .tally li[data-verdict='blocked'] b { color: var(--warn); }
+  .tally li[data-verdict='advised'] b { color: var(--ok); }
+
+  .log {
+    margin-top: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .log-head, .log-row {
+    display: grid;
+    grid-template-columns: 5.5rem 6rem minmax(11rem, 1fr) minmax(12rem, 1.4fr);
+    gap: 18px;
+    padding: 11px 20px;
+    min-width: 38rem;
+  }
+  .log-head {
+    color: var(--ink-2);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  .log-row { border-bottom: 1px solid var(--line); color: var(--ink-2); }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row span:first-child { font-variant-numeric: tabular-nums; }
+  .log-row span:last-child { color: var(--ink); overflow-wrap: anywhere; }
+  .log i[data-verdict] { font-style: normal; }
+  .log i[data-verdict='blocked'] { color: var(--warn); }
+  .log i[data-verdict='advised'] { color: var(--ok); }
+  .log i[data-verdict='witnessed'] { color: var(--accent); }
+
+  .foot { margin: 18px 0 0; max-width: 68ch; font-size: 14px; color: var(--ink-2); }
+  .foot code { font-size: 0.92em; }
+
+  @media (max-width: 560px) {
+    .copy .full { display: none; }
+    .copy .short { display: inline; }
+  }
+
+  @media (max-width: 760px) {
+    .findings { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 640px) {
+    .tally li { flex-basis: 50%; border-bottom: 1px solid var(--line); }
+    .tally li:nth-child(2n) { border-right: 0; }
+  }
+
+  .ideas { display: grid; gap: 28px 40px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 36px; align-items: start; }
+  .ideas h3 { margin: 0 0 10px; font-size: 1.1875rem; line-height: 1.3; font-weight: 550; letter-spacing: -0.012em; text-wrap: balance; }
+  .ideas p { margin: 0; color: var(--ink-2); font-size: 0.9375rem; line-height: 1.66; max-width: 46ch; }
+
+
+
+  .does { margin: 40px 0 0; display: grid; grid-template-columns: minmax(0, 21rem) minmax(0, 1fr); column-gap: 56px; align-items: start; }
+  .does dt {
+    grid-column: 1;
+    padding: 24px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .does dt code { font-size: 0.8125rem; font-weight: 500; color: var(--accent); overflow-wrap: anywhere; }
+  .does dt span { font-size: 1.0625rem; font-weight: 550; letter-spacing: -0.012em; }
+  .does dd {
+    grid-column: 2;
+    margin: 0;
+    padding: 24px 0;
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.66;
+    max-width: 62ch;
+  }
+
+  .verdicts { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 32px 0 20px; }
+  .verdicts > div { background: var(--bg); padding: 20px 22px; }
+  .verdicts dt { margin-bottom: 6px; }
+  .verdicts dt code { font-size: 13px; color: var(--accent); }
+  .verdicts dd { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+  .more a { color: var(--accent); text-decoration: none; font-size: 15px; }
+  .more a:hover { text-decoration: underline; }
+
+  .cta { padding-block: 76px; border-top: 1px solid var(--line); text-align: center; }
+  .cta h2 { margin: 0 0 24px; font-size: clamp(1.4rem, 3vw, 1.9rem); letter-spacing: -0.02em; font-weight: 620; }
+  .install { display: block; width: fit-content; max-width: 100%; margin: 0 auto 26px; padding: 14px 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
+
+  footer { border-top: 1px solid var(--line); }
+  footer p, footer nav { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  footer p { padding-top: 28px; color: var(--ink-2); font-size: 14px; }
+  footer nav { display: flex; gap: 20px; flex-wrap: wrap; padding-bottom: 32px; padding-top: 10px; }
+  footer nav a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+  footer nav a:hover { color: var(--ink); }
+
+  /* The records only show where they fit beside the text, never over it. */
+  @media (max-width: 1400px) {
+    .stream { display: none; }
+  }
+
+  @media (max-width: 760px) {
+    .does { grid-template-columns: 1fr; column-gap: 0; }
+    .does dt { padding-bottom: 8px; }
+    .does dd { grid-column: 1; border-top: 0; padding-top: 0; padding-bottom: 24px; }
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding-block-start: 44px; }
+    .band { padding-block: 52px; }
+    }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>

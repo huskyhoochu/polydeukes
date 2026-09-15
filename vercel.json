@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm -F @polydeukes/documentation build",
+  "outputDirectory": "packages/documentation/dist",
+  "github": {
+    "silent": true
+  }
+}

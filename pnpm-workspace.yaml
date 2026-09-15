@@ -11,4 +11,6 @@ catalog:
   vitest: ^5.0.0
 
 onlyBuiltDependencies:
+  - esbuild
   - lefthook
+  - sharp

@@ -1,0 +1,17 @@
+---
+/**
+ * Starlight's head, plus the font faces.
+ *
+ * Starlight renders its own `<head>`, so `<Font>` cannot be placed there through the
+ * `head` config option, which takes plain tag descriptors. Overriding the component is
+ * the supported seam: it renders the default head and appends Astro's font links, so the
+ * documentation pages get the same preloads and fallback metrics as the landing page.
+ */
+import Default from '@astrojs/starlight/components/Head.astro';
+import { Font } from 'astro:assets';
+---
+
+<Default><slot /></Default>
+<Font cssVariable="--font-text" preload />
+<Font cssVariable="--font-display" />
+<Font cssVariable="--font-mono" />

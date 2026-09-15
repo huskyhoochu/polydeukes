@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!.claude/workflows"]
+    "includes": ["**", "!.claude/workflows", "!**/*.astro"]
   },
   "formatter": {
     "enabled": true,

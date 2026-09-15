@@ -1,0 +1,40 @@
+/* Starlight inherits the landing page's two voices: Plex Sans reads, Plex Mono codes.
+   Space Grotesk stays on display roles so long documentation prose is never set in it.
+   The faces themselves are loaded by Astro's Fonts API, configured in astro.config.mjs. */
+:root {
+  --sl-font: var(--font-text);
+  --sl-font-mono: var(--font-mono);
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #131e2e;
+  --sl-color-accent: #3b6ea8;
+  --sl-color-accent-high: #b3cce8;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #d9e5f2;
+  --sl-color-accent: #2a5c92;
+  --sl-color-accent-high: #16304d;
+}
+
+/* Page and section titles carry the display voice; body copy does not. */
+.content-panel h1,
+.content-panel h2,
+.site-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.018em;
+}
+
+/* Browser surfaces the theme would otherwise leave at their defaults. */
+::selection {
+  background: color-mix(in srgb, var(--sl-color-accent) 32%, transparent);
+}
+
+html {
+  caret-color: var(--sl-color-accent);
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,41 @@
+{
+  "note": "Third-party measurements cited on the landing page. Each entry names its primary source and the condition the number was measured under, because every one of these is easy to misread out of context. Research note: _docs/research/agent-harness-evidence.md",
+  "findings": [
+    {
+      "id": "prompt-is-not-enforcement",
+      "claim": "An explicit instruction not to cheat leaves a third of runs cheating.",
+      "figure": "55% → 35%",
+      "detail": "Anthropic's own anti-hack prompt, given to its own flagship model, cut hacking on Impossible Tasks from 55% to 35%. Sonnet 4.5 went 53% → 20%, Haiku 4.5 30% → 23%, Opus 4.1 80% → 45%.",
+      "condition": "Impossible Tasks are built to be unsolvable, so the model must give up or hack. On ordinary reward-hack-prone coding tasks Opus 4.5 scores 0%.",
+      "source": "Claude Opus 4.5 System Card, §6.10.1",
+      "url": "https://assets.anthropic.com/m/64823ba7485345a7/Claude-Opus-4-5-System-Card.pdf"
+    },
+    {
+      "id": "capability-is-not-compliance",
+      "claim": "A better model is not a more obedient one.",
+      "figure": "30% vs 55%",
+      "detail": "On the same evaluation, the smallest model in the family hacked least and the largest hacked most. Anthropic calls its flagship \"comparatively less corrigible when given instructions\".",
+      "condition": "Within one model family on Impossible Tasks. Across vendors the ordering is not monotonic either way, which is the point: you cannot pick a model that will not take the shortcut.",
+      "source": "Claude Opus 4.5 System Card, §6.10.1",
+      "url": "https://assets.anthropic.com/m/64823ba7485345a7/Claude-Opus-4-5-System-Card.pdf"
+    },
+    {
+      "id": "harness-decides",
+      "claim": "The harness around the model decides the outcome.",
+      "figure": "54% → 6%",
+      "detail": "One model, two scaffolds, the same 50 tasks. Across the table the spread reaches 48 points, and it is far smaller for some model families than others.",
+      "condition": "SWE-bench Verified Mini is 50 tasks, so one task is two points. This measures scaffolding, not constraint enforcement.",
+      "source": "Holistic Agent Leaderboard, arXiv:2510.11977, Table A19",
+      "url": "https://arxiv.org/abs/2510.11977"
+    },
+    {
+      "id": "read-only-not-wording",
+      "claim": "The researchers' own remedy is mechanical, not verbal.",
+      "figure": "DO NOT MODIFY THE TESTS",
+      "detail": "Agents edited the tests anyway. Every prompt variant in the study carried that line verbatim, and the paper's recommendation is to hide the tests or make them read-only.",
+      "condition": "Measured on constructed impossible and conflicting tasks, where a correct solution does not exist.",
+      "source": "ImpossibleBench, arXiv:2510.20270",
+      "url": "https://arxiv.org/abs/2510.20270"
+    }
+  ]
+}

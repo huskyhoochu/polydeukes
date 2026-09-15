@@ -1,0 +1,291 @@
+{
+  "capturedAt": "2026-09-15",
+  "total": 81939,
+  "days": 20,
+  "disciplines": 37,
+  "stopped": 1282,
+  "stoppedShare": 1.56,
+  "witnessed": 162,
+  "witnessedShare": 12.6,
+  "advised": 1205,
+  "recent": [
+    {
+      "at": "2026-09-15T16:43:33.953Z",
+      "verdict": "blocked",
+      "discipline": "shell-mod",
+      "path": "packages/core/dist"
+    },
+    {
+      "at": "2026-09-15T16:36:57.783Z",
+      "verdict": "blocked",
+      "discipline": "shell-mod",
+      "path": ".git/hooks"
+    },
+    {
+      "at": "2026-09-15T16:36:52.876Z",
+      "verdict": "blocked",
+      "discipline": "shell-mod",
+      "path": ".git/hooks"
+    },
+    {
+      "at": "2026-09-15T16:33:46.414Z",
+      "verdict": "advised",
+      "discipline": "english-only-sources",
+      "path": "packages/documentation/src/pages/index.astro"
+    },
+    {
+      "at": "2026-09-15T16:33:46.394Z",
+      "verdict": "advised",
+      "discipline": "self-mod",
+      "path": "biome.json"
+    },
+    {
+      "at": "2026-09-15T16:32:11.801Z",
+      "verdict": "advised",
+      "discipline": "branches-come-from-a-ticket",
+      "path": null
+    }
+  ],
+  "sample": [
+    {
+      "t": "16:43:33",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "packages/core/dist"
+    },
+    {
+      "t": "16:36:57",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".git/hooks"
+    },
+    {
+      "t": "16:36:52",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".git/hooks"
+    },
+    {
+      "t": "16:33:46",
+      "v": "advised",
+      "d": "english-only-sources",
+      "p": "packages/documentation/src/pages/index.astro"
+    },
+    {
+      "t": "16:33:46",
+      "v": "advised",
+      "d": "self-mod",
+      "p": "biome.json"
+    },
+    {
+      "t": "16:32:11",
+      "v": "advised",
+      "d": "branches-come-from-a-ticket",
+      "p": null
+    },
+    {
+      "t": "15:46:05",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "packages/polydeukes/dist"
+    },
+    {
+      "t": "15:42:30",
+      "v": "advised",
+      "d": "manifest-needs-evidence",
+      "p": "packages/documentation/package.json"
+    },
+    {
+      "t": "15:32:16",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "15:28:13",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "15:25:35",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "15:16:34",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "packages/core/dist"
+    },
+    {
+      "t": "15:15:15",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "15:09:03",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "15:08:03",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "14:50:05",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:49:49",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:49:41",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:49:02",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:48:39",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:48:14",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:48:03",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:47:18",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "polydeukes.config.yaml"
+    },
+    {
+      "t": "14:46:42",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".claude/hooks"
+    },
+    {
+      "t": "14:46:42",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "polydeukes.config.yaml"
+    },
+    {
+      "t": "14:46:29",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:46:18",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:46:14",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".claude/hooks"
+    },
+    {
+      "t": "14:45:59",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".git/hooks"
+    },
+    {
+      "t": "14:45:52",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:45:44",
+      "v": "advised",
+      "d": "pnpm-only",
+      "p": null
+    },
+    {
+      "t": "14:43:12",
+      "v": "blocked",
+      "d": "work-stays-recoverable",
+      "p": null
+    },
+    {
+      "t": "14:41:52",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "14:40:33",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "14:27:53",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "polydeukes.config.yaml"
+    },
+    {
+      "t": "14:25:43",
+      "v": "advised",
+      "d": "merge-is-the-users-call",
+      "p": null
+    },
+    {
+      "t": "14:22:24",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": ".claude/hooks"
+    },
+    {
+      "t": "14:21:59",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "packages/polydeukes/dist"
+    },
+    {
+      "t": "14:15:41",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "polydeukes.config.yaml"
+    },
+    {
+      "t": "14:15:38",
+      "v": "blocked",
+      "d": "shell-mod",
+      "p": "polydeukes.config.yaml"
+    }
+  ]
+}
