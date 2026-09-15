@@ -1,6 +1,7 @@
 {
   "name": "polydeukes-monorepo",
   "version": "0.7.1",
+  "author": "huskyhoochu <dfg1499@gmail.com>",
   "private": true,
   "scripts": {
     "build": "turbo run build",

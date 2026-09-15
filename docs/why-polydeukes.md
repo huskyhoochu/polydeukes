@@ -159,5 +159,5 @@ benchmark during judgment or prove that a natural-language explanation is true.
 
 The name's story is in [STORY.md](../STORY.md). To try the implemented system, follow
 [the first-judgment tutorial](./tutorials/first-judgment.md). For current limits and recovery, see
-[troubleshooting](./troubleshooting.md). The project remains alpha; its claims should be read with
+[troubleshooting](./troubleshooting.md). The project is in beta; its claims should be read with
 those limits, not as a promise of complete supervision-free development.

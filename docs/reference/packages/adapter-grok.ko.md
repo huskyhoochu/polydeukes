@@ -6,7 +6,7 @@
 > 판정기가 읽는 파일 변경 증거가 함께 실립니다. 세션 표면을 프로젝트에 설치하는 것도 이
 > 패키지가 합니다.
 >
-> 알파입니다. `polydeukes`와 함께 설치하며, `polydeukes`는 이 패키지의 `peerDependency`입니다.
+> 베타입니다. `polydeukes`와 함께 설치하며, `polydeukes`는 이 패키지의 `peerDependency`입니다.
 
 <a id="ownership"></a>
 ## 담당하는 기능

@@ -6,7 +6,7 @@
 > file-change evidence the judge reads, and the package installs the session surface into a
 > project.
 >
-> Alpha. Install it next to `polydeukes`, which it names as a `peerDependency`.
+> Beta. Install it next to `polydeukes`, which it names as a `peerDependency`.
 
 <a id="ownership"></a>
 ## What this package owns

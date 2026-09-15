@@ -5,7 +5,7 @@
 > **One verb from TypeScript to the judge** — hand a covenant input IR to
 > `pdks covenant check` and read the verdict back as a value.
 >
-> Alpha. Install it next to `polydeukes` and `@polydeukes/core`, which it names as
+> Beta. Install it next to `polydeukes` and `@polydeukes/core`, which it names as
 > `peerDependencies`.
 
 <a id="ownership"></a>

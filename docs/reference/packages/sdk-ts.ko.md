@@ -5,7 +5,7 @@
 > **TypeScript에서 판정기로 가는 동사 하나**입니다. 약속(covenant) 입력 IR을
 > `pdks covenant check`에 건네고 판정 결과를 값으로 돌려받습니다.
 >
-> 알파입니다. `polydeukes` · `@polydeukes/core`와 함께 설치하며, 둘 다 이 패키지의
+> 베타입니다. `polydeukes` · `@polydeukes/core`와 함께 설치하며, 둘 다 이 패키지의
 > `peerDependencies`입니다.
 
 <a id="ownership"></a>

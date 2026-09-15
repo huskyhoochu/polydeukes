@@ -5,7 +5,7 @@
 > **The protocol every covenant speaks** — the input IR, the verdict shape, the config
 > schema, and the telemetry collector.
 >
-> Alpha. A transitive dependency of the umbrella: you do not install it and you do not import
+> Beta. A transitive dependency of the umbrella: you do not install it and you do not import
 > it. The consumer entry point is [`polydeukes`](polydeukes.md).
 
 <a id="ownership"></a>

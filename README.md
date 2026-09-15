@@ -8,11 +8,11 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
-**Status: alpha.** Five packages ship — `@polydeukes/core` (the covenant protocol), the
-session adapters (`adapter-claude-code`, `adapter-grok`), `@polydeukes/sdk-ts` (the TypeScript
-client that hands an input IR to the judge from a program), and the `polydeukes` umbrella,
-which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The ledger,
-memory, and verify packages are still blueprint. The CLI today:
+**Status: beta** (since v0.7.0, 2026-09-16). Five packages ship — `@polydeukes/core` (the covenant
+protocol), the session adapters (`adapter-claude-code`, `adapter-grok`), `@polydeukes/sdk-ts` (the
+TypeScript client that hands an input IR to the judge from a program), and the `polydeukes`
+umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The
+ledger, memory, and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line

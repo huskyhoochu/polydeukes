@@ -3,7 +3,7 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is alpha.** Five packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is beta** (since v0.7.0). Five packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
 schema), `adapter-claude-code` and `adapter-grok` (each one agent's session payload onto the
 input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the

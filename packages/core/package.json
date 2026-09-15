@@ -1,7 +1,8 @@
 {
   "name": "@polydeukes/core",
   "version": "0.7.1",
-  "description": "Polydeukes core — covenant protocol, config loader, and transcript interface. Domain- and agent-agnostic. Alpha.",
+  "description": "Polydeukes core — covenant protocol, config loader, and transcript interface. Domain- and agent-agnostic. Beta.",
+  "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",

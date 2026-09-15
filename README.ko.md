@@ -7,7 +7,7 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
-**상태: 알파(alpha).** 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`), 프로그램에서 입력 IR을 판정기에
 넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 그리고 판정기를 포함하며 `pdks`
 bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지 `polydeukes`입니다.
