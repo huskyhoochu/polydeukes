@@ -1,0 +1,43 @@
+name: Docs gap or mismatch
+description: The docs, `pdks docs`, or the schema say one thing and the judge does another — or leave out something that works.
+title: "[docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Korean is welcome in every field. Quote the passage; a page name alone is not enough to find the sentence that misled you.
+  - type: input
+    id: where
+    attributes:
+      label: Where the passage lives
+      description: The `pdks docs <topic>` command, the site URL, or the `docs/…` path — plus the `polydeukes` version that shipped it.
+      placeholder: "pdks docs discipline · polydeukes 0.7.1"
+    validations:
+      required: true
+  - type: textarea
+    id: passage
+    attributes:
+      label: The passage, quoted
+      description: Verbatim. If the problem is an omission, quote the nearest sentence and say what is missing after it.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the judge or CLI actually does
+      description: The behaviour you observed — the config you wrote following the docs, and the output it produced (`pdks explain`, a stderr line, a verdict).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: detour
+    attributes:
+      label: What you tried first because of the gap
+      description: The workaround the docs led you to, if any. This is how we judge how much the omission cost.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested wording
+      description: Optional. One or two sentences you would have wanted to read there.

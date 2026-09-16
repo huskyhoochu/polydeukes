@@ -1,0 +1,37 @@
+name: Design proposal
+description: A change to how a surface, the loader, the declaration language, or a CLI verb should behave.
+title: "[proposal] "
+labels: ["proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Korean is welcome in every field. A proposal that names the situation it comes from is judged faster than one stated in the abstract.
+  - type: textarea
+    id: situation
+    attributes:
+      label: The situation that raised it
+      description: What you were doing, on which surface, and what happened. Link the verdict or docs issue if one exists.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behaviour and why it falls short
+      description: What the judge, loader, or CLI does today, and the cost it imposed on you — time, a locked session, a discipline that silently stopped judging.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: What should happen instead. If there is more than one way, list each; say which you would take and what it gives up.
+    validations:
+      required: true
+  - type: textarea
+    id: failclosed
+    attributes:
+      label: Does it move anything from fail-closed to fail-open?
+      description: Both surfaces fail closed on an unjudgeable run, and a discipline that goes inert while its verdict still reads `passed` is the defect class the design refuses. Say how the proposal keeps that, or why it is worth loosening here.
+    validations:
+      required: true

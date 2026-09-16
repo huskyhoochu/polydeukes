@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation site
+    url: https://polydeukes.vercel.app
+    about: The reference for the config schema, the declaration language, and each package. Check it before filing a docs gap.

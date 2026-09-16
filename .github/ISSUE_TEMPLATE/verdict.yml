@@ -1,0 +1,91 @@
+name: Wrong or surprising verdict
+description: A call was blocked, advised, passed, or skipped when it should not have been — or a session locked and could not recover.
+title: "[verdict] "
+labels: ["verdict"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Korean is welcome in every field. Paste output verbatim — a paraphrased error line is the single most common reason a report cannot be reproduced.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface judged it?
+      description: The session surface is the PreToolUse hook. The change-set surface is `pdks covenant check --diff` (lefthook, pre-commit). `pdks explain` renders both without judging.
+      options:
+        - session surface (PreToolUse hook)
+        - change-set surface (`--diff`, pre-commit)
+        - pdks explain
+        - not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host adapter
+      options:
+        - Claude Code (`pdks-claude-code`)
+        - Grok (`pdks-grok`)
+        - sdk-ts (`checkCovenant`)
+        - none — ran `pdks` directly
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Paste the output of the command below, plus `node --version`.
+      render: shell
+      placeholder: |
+        $ npm ls polydeukes @polydeukes/core @polydeukes/adapter-claude-code @polydeukes/adapter-grok
+        $ node --version
+    validations:
+      required: true
+  - type: textarea
+    id: stderr
+    attributes:
+      label: The exact stderr line
+      description: "The full line the hook or bin printed, unedited. For a hook it starts with `PreToolUse:` or `covenant hook failed closed:`. For the bin, `covenant check failed closed:` or `discipline '<id>': …`."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: call
+    attributes:
+      label: The call that was judged
+      description: The tool and its target — an Edit/Write path, or the Bash command line as typed. For a pre-commit run, the staged paths.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: declaration
+    attributes:
+      label: The config entry involved
+      description: The smallest excerpt of `polydeukes.config.yaml` that still reproduces it — usually one `disciplines` / `sessionDisciplines` / `changeSetDisciplines` entry, or the `protectedPaths` list. Leave empty if no entry is involved.
+      render: yaml
+  - type: textarea
+    id: explain
+    attributes:
+      label: "`pdks explain` summary"
+      description: The two `registrations … · declare … · skip … · meta …` lines, and every `skip` row. If `explain` itself refused the config, paste its one line instead.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: roi
+    attributes:
+      label: Telemetry rows
+      description: The rows `.polydeukes/roi.log` appended for this call (`tail -5 .polydeukes/roi.log`). A verdict with no row is itself a defect worth reporting.
+      render: text
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: Which verdict word (passed / advised / blocked / skipped / witnessed) and why.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Recovery
+      description: If the session locked — every mutating call refused — say what unlocked it (`git checkout -- <file>`, `pnpm build`, the witness token, a shell script). This tells us whether the valve was reachable at all.
