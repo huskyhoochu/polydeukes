@@ -27,6 +27,14 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `_docs/roadmap.issues.md` — is unchecked, and **all its dependencies are checked ✅**. A
   ticket with unmet dependencies does not start — say so and stop.
 - Re-read the ticket's row (검증기준 = acceptance criteria) and its `why` bullet.
+- **If the ticket creates a package, read the new-package scaffold checklist in
+  `.claude/rules/workspace-structure.md` NOW and put each of its registrations into the PRD
+  as an acceptance criterion.** The rule auto-loads for the files it names, but the files a
+  new package is made of are written by subagents in WORK — so the main session, which owns
+  the PRD and the release, never triggers it. `ISSUE-63` shipped a sixth package with the
+  `release-please-config.json` entry missing; the release PR then had to be closed, its
+  branch deleted, and the workflow re-run before the package could publish at all. The
+  checklist is the contract; this bullet is what makes the main session open it in time.
 - Scan `_docs/knowledge/` for entries relevant to the ticket's area before writing the PRD —
   the PRD must build on recorded decisions, not re-derive them.
 - **Carry-over sweep (separate from the keyword scan):** carried-over items live in the *body*

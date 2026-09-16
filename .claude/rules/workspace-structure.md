@@ -8,6 +8,7 @@ paths:
   - "vitest.config.ts"
   - "packages/*/tsconfig*.json"
   - "release-please-config.json"
+  - "_docs/prd/**"
 ---
 
 # Workspace structure — non-obvious constraints
@@ -111,7 +112,12 @@ later as a confusing failure rather than an obvious one:
    list it would write, so it logs `PR #N remained the same` and leaves the stale branch in
    place while the workflow still reports success. Close the PR (`tea pr close <N>`), delete
    its head branch (`git push origin --delete <branch>`), and rerun the workflow so it
-   recomputes from the current config.
+   recomputes from the current config. **Do not rerun in the same minute**: the forge is
+   still detaching the closed PR's head ref, and the branch-creation call answers 500 for
+   every retry the action makes (five, over five minutes, measured 2026-09-16). Probe with
+   one `POST /repos/{owner}/{repo}/branches` by hand; a 201 says the forge has settled, and
+   the next `main` push then succeeds. Every push to `main` triggers the workflow, so an
+   empty `chore:` commit is the rerun — there is no `workflow_dispatch` on it.
 3. **`workspace:^` for internal dependencies** — never a version range.
 
 The publish e2e suites (`packages/polydeukes/__tests__/publish-pack.e2e.test.ts`,
