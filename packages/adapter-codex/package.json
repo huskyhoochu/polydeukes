@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/adapter-codex",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Polydeukes adapter for Codex — up-translates PreToolUse hook payloads, including apply_patch text, into the agent-neutral covenant input IR and registers the session surface. Beta.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",

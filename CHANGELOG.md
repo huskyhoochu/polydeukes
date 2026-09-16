@@ -11,6 +11,21 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.8.0](https://github.com/huskyhoochu/polydeukes/compare/v0.7.1...v0.8.0) (2026-09-16)
+
+
+### Features
+
+* **adapter-codex:** translate Codex PreToolUse payloads into the input IR (ISSUE-63) ([#122](https://github.com/huskyhoochu/polydeukes/issues/122)) ([ddd9b80](https://github.com/huskyhoochu/polydeukes/commit/ddd9b800a350a68c7f549ec92ad177f159416e2e))
+* **documentation:** publish the docs and landing site ([#119](https://github.com/huskyhoochu/polydeukes/issues/119)) ([683e932](https://github.com/huskyhoochu/polydeukes/commit/683e932de53e461b9a1827515191e145f7e791aa))
+* **polydeukes:** let one call repair a config that does not load (ISSUE-59) ([#121](https://github.com/huskyhoochu/polydeukes/issues/121)) ([fb49277](https://github.com/huskyhoochu/polydeukes/commit/fb4927710035ac17c3b3c620ff5cab0f359fb330))
+
+
+### Bug Fixes
+
+* **documentation:** route every page at the path the sidebar links ([66da012](https://github.com/huskyhoochu/polydeukes/commit/66da012d508a7558252d011b38f3e2b717aed1db))
+* **polydeukes:** let the repository oracles see past a generated documentation copy ([e9ee149](https://github.com/huskyhoochu/polydeukes/commit/e9ee14940fd15f1c7a9975927fb273df5b8d7bdb))
+
 ## [0.7.1](https://github.com/huskyhoochu/polydeukes/compare/v0.7.0...v0.7.1) (2026-09-15)
 
 
