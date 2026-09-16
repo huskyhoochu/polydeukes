@@ -30,6 +30,17 @@ export const CONFIG_FILENAMES = [
 /** {@link loadConfig} input — the directory the config is discovered in. */
 export type LoadConfigSpec = { rootDir: string };
 
+/** {@link discoverConfigPath} input — the directory the candidates are looked for in. */
+export type DiscoverConfigPathSpec = { rootDir: string };
+
+/** {@link parseConfigSource} input — the config text and the path it was discovered at. */
+export type ParseConfigSourceSpec = {
+  /** The config file's whole text. */
+  source: string;
+  /** rootDir-relative path the source came from — the self-protection entry and error context. */
+  configPath: string;
+};
+
 /** `LoadedConfig` — the loader's return value. */
 export type LoadedConfig = {
   /** defineConfig() resolution — protectedPaths already includes configPath */
@@ -54,6 +65,18 @@ export type LoadedConfig = {
  * protection surface, guaranteed here so no assembler has to remember.
  */
 export function loadConfig(spec: LoadConfigSpec): LoadedConfig {
+  const configPath = discoverConfigPath({ rootDir: spec.rootDir });
+  const source = readFileSync(join(spec.rootDir, configPath), 'utf-8');
+  return parseConfigSource({ source, configPath });
+}
+
+/**
+ * The discovery half: the rootDir-relative filename of the one candidate present, or the
+ * throw that names the zero or the collision. Exported so a caller that has to know WHICH
+ * file failed to load — the runner's config-repair branch — asks the same question the
+ * loader does rather than a second spelling of it.
+ */
+export function discoverConfigPath(spec: DiscoverConfigPathSpec): string {
   const { rootDir } = spec;
   const found = CONFIG_FILENAMES.filter((name) => existsSync(join(rootDir, name)));
   if (found.length === 0) {
@@ -66,9 +89,16 @@ export function loadConfig(spec: LoadConfigSpec): LoadedConfig {
       `ambiguous Polydeukes config in ${rootDir} — found ${found.join(' and ')}; keep exactly one`,
     );
   }
+  return found[0];
+}
 
-  const configPath = found[0];
-  const source = readFileSync(join(rootDir, configPath), 'utf-8');
+/**
+ * The parse-and-validate half, over a text rather than a file: parse, `$schema` strip,
+ * `defineConfig`, self-protection attach. Exported so the runner can ask whether a text a
+ * call is about to write would load, without opening any file.
+ */
+export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
+  const { source, configPath } = spec;
 
   // Default core schema — custom tags stay unresolved and surface as errors or
   // warnings depending on version; both escalate to a throw (config-as-data:

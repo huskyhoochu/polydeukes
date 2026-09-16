@@ -87,7 +87,7 @@ export type CompileDisciplinesSpec = {
  * through; an absolute path outside `rootDir` yields null (never matches — discipline scope
  * is declared repo-relative).
  */
-function relativizeForScope(filePath: string, rootDir: string): string | null {
+export function relativizeForScope(filePath: string, rootDir: string): string | null {
   if (!isAbsolute(filePath)) {
     // A relative spelling normalizes before matching — `./x` and `a/../x` name x, and a
     // spelling that resolves out of the root matches nothing. Matching verbatim instead

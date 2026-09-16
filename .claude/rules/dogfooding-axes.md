@@ -18,7 +18,13 @@ is in `domain-terms.md`; the recovery procedures for a locked session are in `CL
 All protection-policy data lives in `polydeukes.config.yaml`, which documents each entry's why
 inline — read it for the live protected paths and disciplines. Both surfaces fail **closed** on
 an unjudgeable run (missing/invalid config, or a judge body that was never built); a
-stale-but-present body carries no such signal.
+stale-but-present body carries no such signal. One call is judged while the config does not
+load: on the session surface, a single Edit or Write whose only target is the config file,
+whose `pre` is the text the loader read, and whose result loads lands `advised` under the
+`covenant-check` label and exits 0 whatever `--enforce` says, so a typo in the config can be
+repaired from inside the session. A rewrite that still does not load, evidence that does not
+start from the bytes on disk, a call that touches anything else, and every change-set run
+stay closed.
 
 ## What blocks and why
 

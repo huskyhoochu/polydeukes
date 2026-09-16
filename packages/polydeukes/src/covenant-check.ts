@@ -11,8 +11,9 @@
  * with no records.
  */
 
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   appendRecordFailOpen,
   type CanonicalTranscript,
@@ -23,11 +24,12 @@ import {
   transcriptFromSession,
 } from '@polydeukes/core';
 import { compareBaseline, updateBaseline } from './baseline.ts';
+import { relativizeForScope } from './covenant/discipline.ts';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
 import { type CovenantModule, covenantModule } from './covenant/module.ts';
 import { ttlWitness } from './covenant/ttl-witness.ts';
 import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
-import { loadConfig } from './load-config.ts';
+import { discoverConfigPath, type LoadedConfig, parseConfigSource } from './load-config.ts';
 import { sessionPreStateReader, unobservedPreStateReader } from './pre-state-reader.ts';
 import { worktreeReader } from './worktree-reader.ts';
 
@@ -90,7 +92,7 @@ function recordFailClosed(telemetryPath: string | undefined): void {
 
 /** {@link assembleCheckRegistrations} input — what this runner's assembly needs. */
 export type CheckAssemblySpec = {
-  config: ReturnType<typeof loadConfig>['config'];
+  config: LoadedConfig['config'];
   rootDir: string;
   /**
    * The judge module the registrations are built from, so what judges a change and what
@@ -197,13 +199,29 @@ export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantReg
  */
 export const assembleChangeSetRegistrations = assembleCheckRegistrations;
 
-/** One stage's failure disposition: the stderr line, the recorded row, and exit 2. */
-function failClosed(telemetryPath: string | undefined, error: unknown): { exitCode: 2 } {
-  process.stderr.write(
-    `covenant check failed closed: ${error instanceof Error ? error.message : String(error)}\n`,
-  );
+/** The message a thrown value carries, for a stderr line. */
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * One stage's failure disposition: the stderr line, the recorded row, and exit 2. `suffix`
+ * is appended to the message, for a caller that can name the one call which would clear the
+ * failure.
+ */
+function failClosed(
+  telemetryPath: string | undefined,
+  error: unknown,
+  suffix?: string,
+): { exitCode: 2 } {
+  process.stderr.write(`covenant check failed closed: ${messageOf(error)}${suffix ?? ''}\n`);
   recordFailClosed(telemetryPath);
   return { exitCode: 2 };
+}
+
+/** The observation, from the caller's value or from the thunk that produces it. */
+function readInput(spec: CovenantCheckSpec): CovenantInput {
+  return typeof spec.input === 'function' ? spec.input() : spec.input;
 }
 
 /**
@@ -212,13 +230,24 @@ function failClosed(telemetryPath: string | undefined, error: unknown): { exitCo
  * write its blocked row; both terms use `resolve` so a relative `repoRoot` cannot send
  * them to different files. The provisional term sits inside the try because `resolve`
  * throws on a non-string `repoRoot`.
+ *
+ * The load runs as its three steps rather than through `loadConfig`, so a failure carries
+ * how far it got: which file was discovered, and the bytes that file held.
  */
-function settleConfig(
-  spec: CovenantCheckSpec,
-):
-  | { settled: true; telemetryPath: string; config: ReturnType<typeof loadConfig>['config'] }
-  | { settled: false; exitCode: 2 } {
+function settleConfig(spec: CovenantCheckSpec):
+  | { settled: true; telemetryPath: string; config: LoadedConfig['config'] }
+  | {
+      settled: false;
+      telemetryPath: string | undefined;
+      error: unknown;
+      /** The one discovered file, when discovery succeeded and the failure was its load. */
+      configPath?: string;
+      /** The text that file held, when it was read and the failure was its parse. */
+      source?: string;
+    } {
   let telemetryPath: string | undefined;
+  let configPath: string | undefined;
+  let source: string | undefined;
   try {
     // The environment variable sits between the caller's path and the config's, matching
     // what the baseline comparison in this same process already resolves — the two write
@@ -227,12 +256,20 @@ function settleConfig(
     const envPath = process.env.POLYDEUKES_TELEMETRY_PATH;
     telemetryPath =
       spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
-    const { config } = loadConfig({ rootDir: spec.repoRoot });
+    configPath = discoverConfigPath({ rootDir: spec.repoRoot });
+    source = readFileSync(join(spec.repoRoot, configPath), 'utf-8');
+    const { config } = parseConfigSource({ source, configPath });
     telemetryPath =
       spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
     return { settled: true, telemetryPath, config };
   } catch (error) {
-    return { settled: false, ...failClosed(telemetryPath, error) };
+    return {
+      settled: false,
+      telemetryPath,
+      error,
+      ...(configPath === undefined ? {} : { configPath }),
+      ...(source === undefined ? {} : { source }),
+    };
   }
 }
 
@@ -260,7 +297,7 @@ function changedPaths(input: CovenantInput): string[] {
 async function judgeInput(
   spec: CovenantCheckSpec,
   telemetryPath: string,
-  config: ReturnType<typeof loadConfig>['config'],
+  config: LoadedConfig['config'],
   input: CovenantInput,
 ): Promise<CovenantCheckOutcome> {
   try {
@@ -409,6 +446,98 @@ function assertJudgeableShape(input: CovenantInput): void {
 }
 
 /**
+ * The disposition of a run whose config never loaded.
+ *
+ * While the one discovered file does not load there is no assembly to judge against, so the
+ * session surface admits exactly one shape: a single tool call whose file-change evidence
+ * modifies that file, starting from the bytes the loader read, and whose `post` is a text the
+ * loader accepts. That call is judged — its result loads — and lands as one `advised` row
+ * naming the config path, so the next call's baseline comparison reads the change as
+ * explained. Everything else fails closed, and where a single file was discovered the line
+ * says which call would repair it.
+ *
+ * This branch reads no posture: the session hook always spawns with `--enforce block`, so a
+ * repair that blocked under that posture would never run anywhere.
+ */
+function settleLoadFailure(
+  spec: CovenantCheckSpec,
+  failure: {
+    telemetryPath: string | undefined;
+    error: unknown;
+    configPath?: string;
+    source?: string;
+  },
+): CovenantCheckOutcome {
+  const { telemetryPath, error, configPath } = failure;
+  if (configPath === undefined || spec.surface !== 'session') {
+    return failClosed(telemetryPath, error);
+  }
+
+  let input: CovenantInput;
+  try {
+    input = readInput(spec);
+  } catch (inputError) {
+    return failClosed(telemetryPath, inputError);
+  }
+
+  const loaded = repairs(input, failure, spec.repoRoot);
+  if (loaded !== null) {
+    // The repaired config's own log path, under the precedence `settleConfig` uses, so the
+    // next call's baseline comparison reads this row where it looks for it.
+    const rowPath =
+      spec.telemetryPath ??
+      process.env.POLYDEUKES_TELEMETRY_PATH ??
+      resolve(spec.repoRoot, loaded.config.telemetry.logPath);
+    appendRecordFailOpen(rowPath, {
+      event: 'advised',
+      label: 'covenant-check',
+      subject: configPath,
+    });
+    process.stderr.write(
+      `covenant check: ${configPath} does not load (${messageOf(error)}) — this call rewrites it into one that does; advised, not judged\n`,
+    );
+    return { exitCode: 0 };
+  }
+
+  return failClosed(
+    telemetryPath,
+    error,
+    ` — fix ${configPath} in one Edit or Write whose result loads; every other call stays blocked until it does`,
+  );
+}
+
+/**
+ * The loaded config a single call would leave behind, or null when this observation is not
+ * that call: exactly one call carrying a plain object, its evidence a modification of the
+ * discovered config file (relativized against the root, since a host names its paths
+ * absolutely), starting from the bytes the loader read, and leaving a `post` the loader
+ * accepts. Requiring the pre to be those bytes keeps a partial view of the file — one
+ * notebook cell, or evidence a caller composed — out of the branch.
+ */
+function repairs(
+  input: CovenantInput,
+  failure: { configPath?: string; source?: string },
+  repoRoot: string,
+): LoadedConfig | null {
+  const { configPath, source } = failure;
+  if (configPath === undefined || source === undefined) return null;
+  if (!Array.isArray(input.toolCalls) || input.toolCalls.length !== 1) return null;
+  const call = input.toolCalls[0];
+  if (!isPlainObject(call)) return null;
+  const { fileChange } = call;
+  if (fileChange === undefined || fileChange.kind !== 'modify') return null;
+  if (relativizeForScope(fileChange.path, repoRoot) !== configPath) return null;
+  if (fileChange.pre !== source) return null;
+  const post = fileChange.post;
+  if (typeof post !== 'string') return null;
+  try {
+    return parseConfigSource({ source: post, configPath });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Judge one observation of `repoRoot` exactly as the session surface would, from the IR the
  * caller hands in. Async because the dispatcher spawns covenant bodies. An input with no
  * toolCalls is an explicit pass: nothing to judge, no records.
@@ -421,12 +550,12 @@ function assertJudgeableShape(input: CovenantInput): void {
  */
 export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome> {
   const settlement = settleConfig(spec);
-  if (!settlement.settled) return { exitCode: settlement.exitCode };
+  if (!settlement.settled) return settleLoadFailure(spec, settlement);
   const { telemetryPath, config } = settlement;
 
   let input: CovenantInput;
   try {
-    input = typeof spec.input === 'function' ? spec.input() : spec.input;
+    input = readInput(spec);
     // The world axis is this root's to fill. An input that supplies its own would let a
     // caller choose the files the judge reads.
     if ('world' in input) {

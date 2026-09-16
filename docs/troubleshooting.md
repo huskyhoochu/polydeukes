@@ -32,6 +32,18 @@ Typos such as `protectedPath:` or `adaptors:` are refused. Adapter namespace nam
 open, however: a namespace nobody implements loads without being read by anything. After repair,
 run `pdks explain` and check the assembled registrations.
 
+Inside a session the repair itself is not locked out. While the config does not load, every
+call fails closed except one: an Edit or Write whose only target is the config file, whose
+starting text is the file as it is on disk, and whose result loads. That call passes with exit
+0 and one `advised` row under the `covenant-check` label, written to the repaired config's own
+`telemetry.logPath`, and the stderr line names the fault it repaired. The pass does not read
+the `--enforce` posture: the session hook always runs with `--enforce block`, and a repair that
+blocked under it would never run anywhere. A rewrite that still does not load is blocked like
+any other call, and so is a call that touches the config together with another file, or one
+whose evidence does not start from the bytes on disk. The change-set surface has no such path:
+a commit that repairs the config is a human's commit, made from a terminal that can see the
+error.
+
 <a id="grok-witness"></a>
 ## Grok witness
 
@@ -70,10 +82,12 @@ spawned — the adapter cannot find `polydeukes`, or the child exited without a 
 ```text
 covenant hook failed closed: Cannot find package 'polydeukes' imported from …
 covenant check failed closed: the covenant judges could not be loaded from … — run 'pnpm build' to rebuild them: Cannot find module './self-mod.js' …
+covenant check failed closed: invalid config in polydeukes.config.yaml: … — fix polydeukes.config.yaml in one Edit or Write whose result loads; every other call stays blocked until it does
 ```
 
 The first is the installed package missing; the second is a source checkout whose judge
-build output is missing or partial.
+build output is missing or partial; the third is a config that does not load, on the session
+surface, where the line names the one call that would repair it.
 
 <a id="reading-verdict"></a>
 ## Reading a verdict

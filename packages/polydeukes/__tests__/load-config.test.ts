@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigValidationError } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadConfig } from '../src/load-config.ts';
+import { discoverConfigPath, loadConfig, parseConfigSource } from '../src/load-config.ts';
 
 // The umbrella `loadConfig({ rootDir: rootDir })` loader: discovery + parse + delegation +
 // self-protection attach.
@@ -225,5 +225,50 @@ describe('self-protection — configPath auto-attached to protectedPaths', () =>
 
     const occurrences = (config.protectedPaths ?? []).filter((p) => p === 'polydeukes.config.yaml');
     expect(occurrences.length).toBe(1);
+  });
+});
+
+describe('discovery and parsing as two exported steps — loadConfig is their composition', () => {
+  it('discoverConfigPath returns the rootDir-relative filename when exactly one candidate exists', () => {
+    // A discovery that returns the absolute path, or the rootDir, gives the runner a
+    // string the input IR's `fileChange.path` (repo-relative) can never equal.
+    writeInRoot('polydeukes.config.json', VALID_JSON);
+
+    expect(discoverConfigPath({ rootDir })).toBe('polydeukes.config.json');
+  });
+
+  it('parseConfigSource over the discovered file equals loadConfig on the same tree', () => {
+    // The two halves must add up to the loader byte for byte — a parse step that skips
+    // the self-protection attach or the `$schema` strip would make the runner's repair
+    // check accept a text the loader rejects, or the reverse.
+    writeInRoot(
+      'polydeukes.config.json',
+      JSON.stringify({ $schema: './schema.json', ...JSON.parse(VALID_JSON) }),
+    );
+
+    const configPath = discoverConfigPath({ rootDir });
+    const split = parseConfigSource({
+      source: readFileSync(join(rootDir, configPath), 'utf-8'),
+      configPath,
+    });
+    const whole = loadConfig({ rootDir });
+
+    expect(split.configPath).toBe(whole.configPath);
+    expect(split.config.protectedPaths).toEqual(whole.config.protectedPaths);
+    expect(split.config.protectedPaths).toContain('polydeukes.config.json');
+    expect(split.config.languages.typescript.testCmd('pkg-a')).toBe(
+      whole.config.languages.typescript.testCmd('pkg-a'),
+    );
+  });
+
+  it('parseConfigSource throws ConfigValidationError on a source that parses but does not validate', () => {
+    // The runner's condition four rests on this throw: a parse step that returns the raw
+    // object without `defineConfig` lets a repair whose result is invalid through.
+    expect(() =>
+      parseConfigSource({
+        source: JSON.stringify({ languages: { typescript: { productionGlob: 'x' } } }),
+        configPath: 'polydeukes.config.json',
+      }),
+    ).toThrow(ConfigValidationError);
   });
 });

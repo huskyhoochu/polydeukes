@@ -34,6 +34,16 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 남겨 두었습니다. 아무도 구현하지 않은 네임스페이스도 설정으로 읽히지만 읽는 쪽이 없습니다.
 수정한 뒤 `pdks explain`에서 실제 등록 내용을 확인하세요.
 
+세션 안에서는 수정 자체가 막히지 않습니다. 설정이 로드되지 않는 동안 모든 호출은 차단되지만
+하나는 예외입니다. 대상이 설정 파일 하나뿐이고, 시작 텍스트가 디스크에 있는 파일 그대로이며,
+그 결과가 로드되는 Edit 또는 Write는 종료 코드 0으로 통과하며, `covenant-check` 라벨의
+`advised` 행 하나를 고쳐진 설정 자신의 `telemetry.logPath`에 남기고 stderr에 고친 오류를
+알립니다. 이 통과는 `--enforce` 기본 자세를 읽지 않습니다. 세션 훅은 항상 `--enforce block`으로
+실행되므로, 그 아래에서 차단되는 수정은 어디에서도 실행되지 못하기 때문입니다. 결과가 여전히
+로드되지 않는 수정은 다른 호출처럼 차단되고, 설정 파일과 다른 파일을 함께 건드리는 호출이나
+디스크의 바이트에서 시작하지 않는 증거를 실은 호출도 차단됩니다. 변경 집합 표면에는 이런 경로가
+없습니다. 설정을 고치는 커밋은 오류를 볼 수 있는 터미널에서 사람이 만드는 커밋이기 때문입니다.
+
 <a id="grok-witness"></a>
 ## Grok 증인
 
@@ -73,10 +83,12 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 ```text
 covenant hook failed closed: Cannot find package 'polydeukes' imported from …
 covenant check failed closed: the covenant judges could not be loaded from … — run 'pnpm build' to rebuild them: Cannot find module './self-mod.js' …
+covenant check failed closed: invalid config in polydeukes.config.yaml: … — fix polydeukes.config.yaml in one Edit or Write whose result loads; every other call stays blocked until it does
 ```
 
 첫째는 설치된 패키지가 없는 경우이고, 둘째는 소스 체크아웃에서 판정기 빌드 산출물이 없거나
-일부만 있는 경우입니다.
+일부만 있는 경우이며, 셋째는 세션 표면에서 설정이 로드되지 않는 경우로 그 줄이 설정을 고칠
+호출 하나를 알려 줍니다.
 
 <a id="reading-verdict"></a>
 ## 판정 결과 읽기
