@@ -58,6 +58,11 @@ commit. Unit tasks must be small enough to fit one PRD and verifiable by a comma
 the retrofit records the correction and the archived PRDs get a footnote pointing at it. This
 keeps the roadmap a plan rather than a defect list.
 
+Work that starts from an outside issue report takes its ID from the GitHub number instead
+(`ISSUE-59`, split as `ISSUE-62a`), whether or not it closes a finished ticket's gap — the
+report number is the stronger identifier, and the archived-PRD footnote still applies. The
+sub-roadmap in `_docs/roadmap.issues.md` owns those tickets and the rules around them.
+
 ## Self-dogfooding (ON since 2026-07-14)
 
 A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
