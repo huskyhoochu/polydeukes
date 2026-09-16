@@ -352,7 +352,10 @@ banned word, a stray `.only`, a citation that resolves nowhere — is written as
 verdict. Existing occurrences are forgiven, so adopting the discipline never blocks a legacy
 codebase. `supply: empty` is what lets a file creation (no `pre`) count as all-added and a
 deletion (no `post`) as adding nothing; the `scope` block replaces `in`/`except` with
-regular expressions over the path.
+regular expressions over the path. It takes two lists, `include` and `exclude`: a path is
+in scope when it matches at least one `include` pattern (an absent `include` admits every
+path) and matches no `exclude` pattern. `excludeIgnoreCase: true` makes the `exclude`
+patterns case-insensitive; `include` is always case-sensitive.
 
 ```yaml
 disciplines:
@@ -542,7 +545,9 @@ third kind, `sources: { session: { transcript: true } }`, names the session's ow
 conversation history — the user turns and tool calls the surface reads, handed to the
 declaration as one snapshot whose entries carry their
 observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
-`agentType` reads the parsed sidecar. This repository's live config carries one —
+`agentType` reads the parsed sidecar and requires `is`, the agent type to keep
+(`{ op: 'agentType', is: 'tdd-test-writer' }`); without it the step does not compile and
+the entry lands as a skip registration. This repository's live config carries one —
 `tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, written
 in `sessionDisciplines`. The seventh fixed name, `actor`, is the
 observation's actor — `{ agentType }` inside a subagent, `{}` in the main session, absent

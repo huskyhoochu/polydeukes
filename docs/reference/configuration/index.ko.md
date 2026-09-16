@@ -338,7 +338,11 @@ stderr에 쓰입니다. `block`을 지정하면 항목의 강제 수준을 차�
 그 차이가 비어 있는지 판정합니다. 기존 일치 항목은 위반으로 세지 않으므로 선언을 도입해도
 기존 코드 전체를 차단하지 않습니다. `supply: empty`를 지정하면 파일 생성(`pre` 없음)은
 전체 내용을 추가한 것으로, 삭제(`post` 없음)는 아무것도 추가하지 않은 것으로 처리합니다.
-`scope` 블록에서는 `in`/`except` 대신 경로에 적용할 정규식을 사용합니다.
+`scope` 블록에서는 `in`/`except` 대신 경로에 적용할 정규식을 사용합니다. 목록은
+`include`와 `exclude` 둘입니다. 경로가 `include` 패턴 중 하나 이상에 일치하고(`include`가
+없으면 모든 경로가 대상입니다) `exclude` 패턴 중 어느 것에도 일치하지 않을 때 범위 안에
+듭니다. `excludeIgnoreCase: true`는 `exclude` 패턴의 대소문자 구분을 없애며, `include`는
+항상 대소문자를 구분합니다.
 
 ```yaml
 disciplines:
@@ -517,7 +521,9 @@ stdin으로 무엇을 하는지는 판정하지 않습니다. 해석기에 넘�
 `sources: { session: { transcript: true } }`는 세션 자신의 대화 기록(transcript)을 이름
 붙입니다 — 표면이 읽는 사용자 턴과 도구 호출을, 항목마다 관측
 순번을 실은 스냅샷 하나로 선언에 건넵니다. 이력 단계(`toolUses` · `userTexts` · `first` ·
-`ageMs`)가 그것을 읽고, `agentType`은 파싱된 사이드카를 읽습니다. 이 저장소의 라이브
+`ageMs`)가 그것을 읽고, `agentType`은 파싱된 사이드카를 읽습니다. `agentType`은 남길
+에이전트 종류를 `is` 인자로 요구합니다(`{ op: 'agentType', is: 'tdd-test-writer' }`).
+`is`가 없으면 그 단계는 컴파일되지 않고 해당 항목은 skip 등록으로 남습니다. 이 저장소의 라이브
 설정은 그런 선언 하나를 싣습니다. `tests-before-implementation`은 서브에이전트 스폰 둘의 순번
 위의 `ordered`이고 `sessionDisciplines`에 적혀 있습니다. 일곱째 고정 이름
 `actor`는 관측의 주체(actor)입니다. 서브에이전트 안에서는 `{ agentType }`, 주 세션에서는
