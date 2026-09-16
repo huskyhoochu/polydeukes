@@ -22,7 +22,8 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 ### 1. PRE — roadmap check + PRD (blocks everything)
 
-- Confirm the ticket exists in `_docs/roadmap.md`, is unchecked, and **all its dependencies are
+- Confirm the ticket exists in `_docs/roadmap.md` — or, for an `ISSUE-<n>` ticket, in the
+  tracking table of `_docs/roadmap.issues.md` — is unchecked, and **all its dependencies are
   checked ✅**. A ticket with unmet dependencies does not start — say so and stop.
 - Re-read the ticket's row (검증기준 = acceptance criteria) and its `why` bullet.
 - Scan `_docs/knowledge/` for entries relevant to the ticket's area before writing the PRD —
