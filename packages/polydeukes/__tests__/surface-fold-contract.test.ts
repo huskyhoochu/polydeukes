@@ -17,7 +17,14 @@ const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
 const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
 /** The package directories that ship, left after the fold. */
-const PACKAGE_DIRS = ['adapter-claude-code', 'adapter-grok', 'core', 'polydeukes', 'sdk-ts'];
+const PACKAGE_DIRS = [
+  'adapter-claude-code',
+  'adapter-codex',
+  'adapter-grok',
+  'core',
+  'polydeukes',
+  'sdk-ts',
+];
 /** Workspace members that are not published; they carry no copy of the judge. */
 const PRIVATE_PACKAGE_DIRS = ['documentation'];
 /**
@@ -87,10 +94,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds five packages', () => {
+describe('the workspace holds six packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the five package directories', () => {
+  it('packages/ lists exactly the six package directories', () => {
     const present = readdirSync(join(repoRoot, 'packages')).sort();
     expect(present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir))).toEqual(PACKAGE_DIRS);
   });

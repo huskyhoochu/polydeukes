@@ -17,6 +17,7 @@
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@polydeukes/adapter-claude-code": "workspace:*",
+    "@polydeukes/adapter-codex": "workspace:*",
     "@polydeukes/adapter-grok": "workspace:*",
     "@polydeukes/sdk-ts": "workspace:*",
     "lefthook": "^2.1.12",

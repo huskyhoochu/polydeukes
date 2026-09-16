@@ -12,8 +12,8 @@ or the judging packages, provided its own installed documentation bundle is inta
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root.
 Restore the intended file from Git, or use `pdks init` / `pdks-claude-code init` /
-`pdks-grok init` for a new project. Then run `pdks explain`. No configuration means no silent
-default policy.
+`pdks-grok init` / `pdks-codex init` for a new project. Then run `pdks explain`. No
+configuration means no silent default policy.
 
 <a id="multiple-config"></a>
 ## More than one config file
@@ -56,6 +56,21 @@ A hook not yet loaded and an unavailable witness valve are different problems:
   from your own terminal rather than trying to send a Claude witness token through Grok.
 
 A commit witness authorizes its staged check only. It cannot release a blocked Grok tool call.
+
+<a id="codex-witness"></a>
+## Codex witness
+
+The same two problems are distinct here, and the first has its own cause:
+
+- After `pdks-codex init`, hook trust is bound to the hash of the hook definition. A changed
+  `.codex/hooks.json` is not trusted until you approve it through `/hooks`, so an installer that
+  succeeded can still leave no hook running. Verify an actual call and its telemetry.
+- Codex names a transcript path but documents the format as unstable, so no judgment reads it
+  and the IR omits `session` and `actor`. The session witness valve therefore has no
+  human-message evidence to work from, and approving the hook again does not add that
+  capability. Perform a necessary repair from your own terminal.
+
+A commit witness cannot release a blocked Codex tool call either.
 
 <a id="config-fault"></a>
 ## Config-fault

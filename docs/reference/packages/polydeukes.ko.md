@@ -31,7 +31,8 @@ import하지 않고 peer 의존으로 선언합니다.
 | `pdks docs search <query>` | 동봉된 문서를 검색 |
 | `pdks docs show <document-id>` | 동봉된 문서 또는 절을 표시 |
 
-세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`과 `pdks-grok init`입니다.
+세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`, `pdks-grok init`,
+`pdks-codex init`입니다.
 
 <a id="surface-from-input-mode"></a>
 ### 입력 방식이 곧 표면이다

@@ -22,7 +22,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `covenant check` (the judgment runner over an input IR or a unified diff on stdin),
   `init` (the agent-neutral project scaffold — config file and telemetry ignore line — since
   SURFACE-03b; the Claude Code registration moved to the adapter's own `pdks-claude-code init`;
-  the Grok registration is `pdks-grok init` on `@polydeukes/adapter-grok`, since SURFACE-03c),
+  the Grok registration is `pdks-grok init` on `@polydeukes/adapter-grok`, since SURFACE-03c;
+  the Codex registration is `pdks-codex init` on `@polydeukes/adapter-codex`),
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), and `explain` (the assembled-registration renderer, since CLI-01).
@@ -52,6 +53,16 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/adapter-grok`** (`@polydeukes/adapter-grok`) is the Grok session-surface install
   unit: bin `pdks-grok init`, `runHook` (Grok roster as IR `tools` values, camelCase envelope),
   no judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it.
+- **`packages/adapter-codex`** (`@polydeukes/adapter-codex`) is the Codex session-surface
+  install unit: bin `pdks-codex init`, `runHook` (Codex roster as IR `tools` values), no
+  judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it. Two
+  facts separate it from the other two adapters: every file edit arrives normalized as one
+  `apply_patch` call whose input is patch text (`Edit` and `Write` are matcher aliases only
+  and never arrive as tool names), and the IR omits `session` and `actor` because the host
+  documents its transcript format as unstable — so the session witness valve is unavailable.
+  It writes `.codex/hooks/covenant-pretooluse.mjs` and merges into `.codex/hooks.json`, and
+  hook trust is bound to the definition hash, so a changed definition needs `/hooks` approval
+  before it runs.
 - **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) is the TypeScript consumer entry to the session
   surface: one verb `checkCovenant`, which resolves `polydeukes` in the judged project's install
   graph and spawns `pdks covenant check` with a caller-built IR on stdin. No bin, no judgment
@@ -70,8 +81,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
   `sdk-ts`) depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
-  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`); `sdk-ts` takes the same
-  peer for the same spawn and ships no bin. The umbrella names no
+  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`, `pdks-codex`); `sdk-ts`
+  takes the same peer for the same spawn and ships no bin. The umbrella names no
   adapter, so the graph runs one way and a consumer installs the umbrella plus whichever
   adapters its agents need. Enforce this when adding packages.
 - **The kind of the core dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,

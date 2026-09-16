@@ -96,8 +96,8 @@ type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; st
 **`enforce` defaults to `block`.** That is the surface's level, not an entry's: protected paths
 and entries carrying `enforce: block` stop the call, and every other break is recorded
 `advised` at exit 0. An entry's own level composes with it lenient-side-wins, as on every other
-surface. `@polydeukes/adapter-claude-code` and `@polydeukes/adapter-grok` spawn the judge at
-the same level.
+surface. `@polydeukes/adapter-claude-code`, `@polydeukes/adapter-grok`, and
+`@polydeukes/adapter-codex` spawn the judge at the same level.
 
 The default spawn inherits no file descriptor. A caller may hold none of its own, and an
 inherited stdout that is closed would kill the child with EPIPE before it answered. stderr is

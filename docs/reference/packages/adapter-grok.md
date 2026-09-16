@@ -77,3 +77,7 @@ No configuration namespace of its own.
   project there is no process to spawn and no log path to write to, so the hook exits `2` with
   one line on stderr and the telemetry log gains nothing. Every other pre-spawn failure does
   reach `pdks` and does leave a row.
+- **Other hosts install through their own adapters.** Claude Code through
+  `@polydeukes/adapter-claude-code`, Codex through `@polydeukes/adapter-codex`. Each package
+  writes its own delegator and roster. Installing more than one session adapter in a project
+  can run the judge more than once per call.

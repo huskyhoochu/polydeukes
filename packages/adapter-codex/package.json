@@ -1,0 +1,50 @@
+{
+  "name": "@polydeukes/adapter-codex",
+  "version": "0.7.1",
+  "description": "Polydeukes adapter for Codex — up-translates PreToolUse hook payloads, including apply_patch text, into the agent-neutral covenant input IR and registers the session surface. Beta.",
+  "author": "huskyhoochu <dfg1499@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huskyhoochu/polydeukes.git",
+    "directory": "packages/adapter-codex"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pdks-codex": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@polydeukes/core": "workspace:^",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@polydeukes/core": "workspace:^",
+    "polydeukes": "workspace:^"
+  }
+}

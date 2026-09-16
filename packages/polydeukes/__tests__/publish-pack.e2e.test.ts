@@ -54,11 +54,12 @@ const BUNDLED_DOCS = [
   'reference/packages/core.md',
   'reference/packages/adapter-claude-code.md',
   'reference/packages/adapter-grok.md',
+  'reference/packages/adapter-codex.md',
   'reference/packages/sdk-ts.md',
 ];
 
-/** The npm packages: the umbrella, the vocabulary package, two session adapters, the TypeScript SDK. */
-const PUBLISHED_PACKAGE_COUNT = 5;
+/** The npm packages: the umbrella, the vocabulary package, three session adapters, the TypeScript SDK. */
+const PUBLISHED_PACKAGE_COUNT = 6;
 /** The tarball name prefix the retired judge package would pack under. */
 const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
 /** Where the folded judge's modules sit inside the umbrella tarball. */
@@ -201,9 +202,9 @@ describe('the umbrella tarball carries the docs bundle', () => {
 });
 
 describe('the judge ships inside the umbrella tarball', () => {
-  // The retired judge directory left publishable packs a sixth tarball that publishes
+  // The retired judge directory left publishable packs an extra tarball that publishes
   // a judge nobody depends on; a private-flag mistake on a sibling packs two.
-  it('packs exactly five tarballs and none for the retired judge package', () => {
+  it('packs exactly the published tarballs and none for the retired judge package', () => {
     expect(PACKAGE_DIRS).toHaveLength(PUBLISHED_PACKAGE_COUNT);
     const names = PACKAGE_DIRS.map((dir) => basename(tarballOf(dir)));
     expect(names.filter((name) => name.startsWith(RETIRED_TARBALL_PREFIX))).toEqual([]);

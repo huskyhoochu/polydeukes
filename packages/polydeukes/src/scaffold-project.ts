@@ -53,7 +53,8 @@ languages:
 # The protection list. A tool call whose proven target is one of these paths is blocked, and
 # so is a shell command that mentions one without a read-only head.
 #
-#   .claude/hooks, .claude/settings.json, .grok/hooks — the gate definitions themselves.
+#   .claude/hooks, .claude/settings.json, .grok/hooks, .codex/hooks — the gate definitions
+#     themselves.
 #     Editing them does not evade a judgment, it removes the judgment; the session surface
 #     is the only layer that can watch it happen.
 #
@@ -65,6 +66,7 @@ protectedPaths:
   - '.claude/hooks'
   - '.claude/settings.json'
   - '.grok/hooks'
+  - '.codex/hooks'
 
 # The time-boxed witness — the human valve on a blocked verdict. A human types this token so
 # it stands alone on a message's FIRST line, the window holds for ttlMinutes, then blocking

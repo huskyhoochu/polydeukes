@@ -3,21 +3,26 @@
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is beta** (since v0.7.0). Five packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is beta** (since v0.7.0). Six packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
-schema), `adapter-claude-code` and `adapter-grok` (each one agent's session payload onto the
+schema), the three adapters `adapter-claude-code`, `adapter-grok` and `adapter-codex` (each one
+agent's session payload onto the
 input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the
 umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
 surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`
 module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
 library, and the declaration engine — extract steps, seven relations, witness lists). An
-adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` registers the
+adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` /
+`pdks-codex init` registers the
 hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
-`polydeukes` as a `peerDependency` for the bin it spawns. `sdk-ts` (`@polydeukes/sdk-ts`) is
-the fifth: one verb, `checkCovenant`, that spawns `pdks covenant check` with a caller-built IR
+`polydeukes` as a `peerDependency` for the bin it spawns. `adapter-codex` carries one thing the
+others do not: that host normalises every file edit into `apply_patch`, whose input is the patch
+text rather than a path, so the adapter parses it into one IR element per file. `sdk-ts`
+(`@polydeukes/sdk-ts`) is the remaining published one: one verb, `checkCovenant`, that spawns
+`pdks covenant check` with a caller-built IR
 and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
-`polydeukes`. A sixth directory, `packages/documentation`, is `private` and publishes
+`polydeukes`. One more directory, `packages/documentation`, is `private` and publishes
 nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/` at build
 time and carries no judgment logic. Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
@@ -69,7 +74,9 @@ A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and 
 pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of
 the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
 builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
-so the delegator never needs regenerating. The two files here are byte-identical to what
+so the delegator never needs regenerating. This repository is developed from Claude Code and
+Grok, so it carries those two delegators; the third adapter's installer is exercised by its own
+package's e2e instead. The two files here are byte-identical to what
 `pdks-claude-code init` and `pdks-grok init` write into a consumer's tree, which is what makes
 the verdicts we meet every day a measurement of the shipped install units rather than a private
 arrangement; `delegators-are-generated.test.ts` runs both installers and diffs the result

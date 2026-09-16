@@ -7,8 +7,8 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
-**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 다섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
-프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`), 프로그램에서 입력 IR을 판정기에
+**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 여섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR을 판정기에
 넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 그리고 판정기를 포함하며 `pdks`
 bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지 `polydeukes`입니다.
 ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
@@ -17,6 +17,7 @@ ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 
 pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
 pdks-claude-code init    # Claude Code 세션 표면을 배선 (@polydeukes/adapter-claude-code가 제공)
 pdks-grok init           # Grok 세션 표면을 배선 (@polydeukes/adapter-grok가 제공)
+pdks-codex init          # Codex 세션 표면을 배선 (@polydeukes/adapter-codex가 제공)
 git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
 git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에
 git diff main...HEAD | pdks covenant check --diff   # ... 또는 ref 범위(PR의 범위)에
@@ -86,6 +87,7 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 @polydeukes/adapter-*        런타임/인프라 결합을 코어 뒤로 숨김
         │                   · adapter-claude-code  (PreToolUse 페이로드 ↔ canonical)
         │                   · adapter-grok         (PreToolUse 페이로드 ↔ canonical)
+        │                   · adapter-codex        (PreToolUse 페이로드 ↔ canonical)
         │                   · adapter-pi 등
         │                   · sync(선택): 로컬 기본, s3/git/gcs/nfs는 어댑터
         △
@@ -114,7 +116,7 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 | 문서 | 내용 |
 |------|------|
 | [`docs/tutorials/first-judgment.ko.md`](./docs/tutorials/first-judgment.ko.md) | 첫 눈에 보이는 판정 — 설치하고 Claude Code를 배선한 뒤 보호된 편집이 판정되는 모습 |
-| [`docs/how-to/connect-surfaces.ko.md`](./docs/how-to/connect-surfaces.ko.md) | 세션과 변경 집합 표면 연결, Grok 포함 |
+| [`docs/how-to/connect-surfaces.ko.md`](./docs/how-to/connect-surfaces.ko.md) | 세션과 변경 집합 표면 연결, Grok와 Codex 포함 |
 | [`docs/how-to/configure-project.ko.md`](./docs/how-to/configure-project.ko.md) | 프로젝트 파일, IDE 지원, advise와 block |
 | [`docs/how-to/write-disciplines.ko.md`](./docs/how-to/write-disciplines.ko.md) | 실전 선언 예제, 특히 locale key pairing |
 | [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md) | fail-closed 상태, 증인 밸브, 텔레메트리 로그 |

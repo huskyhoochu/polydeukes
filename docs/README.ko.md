@@ -10,7 +10,7 @@
 | 하려는 것 | 읽을 문서 |
 |---|---|
 | 첫 눈에 보이는 판정을 보고 싶다 | [첫 판정](./tutorials/first-judgment.ko.md) — 설치하고 Claude Code를 배선한 뒤 보호된 편집이 판정되는 모습을 봅니다 |
-| Claude Code, Grok, git을 연결하고 싶다 | [표면 연결하기](./how-to/connect-surfaces.ko.md) — 세션과 커밋 배선, Grok 포함 |
+| Claude Code, Grok, Codex, git을 연결하고 싶다 | [표면 연결하기](./how-to/connect-surfaces.ko.md) — 세션과 커밋 배선, Grok와 Codex 포함 |
 | 프로젝트 설정을 다듬고 싶다 | [프로젝트 설정하기](./how-to/configure-project.ko.md) — 발견, IDE 지원, advise와 block의 선택 |
 | 실제 규율을 쓰고 싶다 | [규율 작성하기](./how-to/write-disciplines.ko.md) — 실전 선언 예제, 특히 locale key pairing |
 | 차단이나 건너뜀에서 회복하고 싶다 | [문제 해결](./troubleshooting.ko.md) — fail-closed 상태, 증인 밸브, 로그 |
@@ -29,6 +29,7 @@
 | [`@polydeukes/core`](./reference/packages/core.ko.md) | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리 |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
 | [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.ko.md) | Grok 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
+| [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.ko.md) | Codex 세션 표면입니다. 훅 페이로드에서 입력 IR로, 패치가 건드리는 파일마다 원소 하나 |
 
 <a id="shape-of-the-thing"></a>
 ## 한 페이지로 보는 구조
@@ -52,7 +53,7 @@
 
 | 표면 | 판정 대상 | 배선 방법 | 대상 |
 |---|---|---|---|
-| **세션** | 도구 호출, 실행되기 전에 | `pdks-claude-code init` 또는 `pdks-grok init` | AI 파트너와 함께 개발하는 프로젝트 |
+| **세션** | 도구 호출, 실행되기 전에 | `pdks-claude-code init`, `pdks-grok init`, 또는 `pdks-codex init` | AI 파트너와 함께 개발하는 프로젝트 |
 | **커밋** | stdin의 unified diff — 스테이징 영역, 작업 트리, ref 범위 | `git diff --cached`를 파이프로 넘기는 pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI |
 
 커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는 `git diff HEAD | pdks covenant check --diff`,

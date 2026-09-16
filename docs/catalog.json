@@ -260,6 +260,22 @@
       }
     },
     {
+      "id": "package-adapter-codex",
+      "category": "reference",
+      "order": 17,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/adapter-codex.md",
+        "title": "`@polydeukes/adapter-codex`",
+        "summary": "Install the Codex session surface, and consult how patch text becomes file-change evidence."
+      },
+      "ko": {
+        "path": "reference/packages/adapter-codex.ko.md",
+        "title": "`@polydeukes/adapter-codex`",
+        "summary": "Codex 세션 표면을 설치하고, 패치 텍스트가 파일 변경 증거가 되는 방식을 확인합니다."
+      }
+    },
+    {
       "id": "package-sdk-ts",
       "category": "reference",
       "order": 25,

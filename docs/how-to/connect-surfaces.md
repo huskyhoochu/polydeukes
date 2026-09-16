@@ -2,8 +2,8 @@
 
 **English** · [한국어](../how-to/connect-surfaces.ko.md)
 
-> Pick the surface that matches the job. Claude Code and Grok wire the session surface; git wires
-the change-set surface.
+> Pick the surface that matches the job. Claude Code, Grok, and Codex wire the session surface;
+git wires the change-set surface.
 
 The two surfaces share the same config vocabulary, but they answer different moments. Use the
 session surface when an AI partner is making edits, and use the change-set surface when history
@@ -41,12 +41,42 @@ Use this when the project is developed in Grok.
 
 A Grok tree gets its own hook JSON and delegator under `.grok/hooks/`. Generated registrations
 use a timeout of 60 seconds. The Grok host default is 5 seconds, and a timed-out hook fails
-open. Installing both session adapters in one project can run the judge twice per call.
+open. Installing more than one session adapter in one project can run the judge twice per call.
 
 Grok does not supply the Claude-format human message needed by the session witness valve. The
 session log is ACP `updates.jsonl`, not Claude's JSONL.
 For an intentional blocked edit, use your own terminal. The change-set surface has no prompt, so
 there is no way to authorize a blocked Grok tool call from that side either.
+
+<a id="codex"></a>
+## Codex session surface
+
+Use this when the project is developed in Codex.
+
+1. Install the three packages as project dependencies: `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-codex`.
+2. Wire the project from its root: `pnpm exec pdks-codex init`. The adapter ships this bin; it
+   runs `pdks init` for the scaffold, then writes the Codex registration artifacts.
+3. Approve the generated hook with `/hooks` in Codex. Until you do, it is skipped.
+
+A Codex tree gets a delegator at `.codex/hooks/covenant-pretooluse.mjs` and an entry in
+`.codex/hooks.json`. That JSON is merged, not overwritten: other events, other matchers, and
+keys the installer does not know stay where they are. The scaffold config protects
+`.codex/hooks` by default.
+
+**Approval is not optional.** Codex records trust against the hash of a hook's definition, so a
+newly written hook is listed for review and skipped until someone approves it — until then
+nothing is judged. `init` writes a byte-identical command string on every run, so a re-install
+does not invalidate an approval you already gave.
+
+Codex normalises every file edit into one tool, `apply_patch`, and sends the patch text rather
+than a path argument. `Edit` and `Write` are matcher aliases you may write in the hooks file;
+they never arrive as the tool name. One patch that touches several files carries one IR element
+per file, and any one of them blocking blocks the whole call.
+
+Codex supplies no transcript channel, so the session witness valve has no human message to read.
+For an intentional blocked edit, use your own terminal. Installing more than one session adapter
+in one project can run the judge twice per call.
+
 
 <a id="change-set-surface"></a>
 ## Change-set surface

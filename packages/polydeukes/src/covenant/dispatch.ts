@@ -21,7 +21,7 @@ import {
   type SkipReason,
 } from '@polydeukes/core';
 import { tokenizeCommandLine } from './bash-line.ts';
-import { pathCandidates, pathMatchesProtected } from './mention.ts';
+import { pathCandidates, pathMatchesProtected, provenChangePath } from './mention.ts';
 import { type JudgeOutcome, runCovenant } from './run-covenant.ts';
 
 /**
@@ -129,13 +129,16 @@ function collectPathCandidates(value: unknown): { candidates: string[]; failed: 
  * Match registrations against a {@link CovenantInput} by path mention (pure).
  *
  * A registration matches when any of its `protectedPaths` is an ancestor/descendant/equal of
- * a path candidate extracted from any string value reachable at any depth inside
- * `input.toolCalls[].args`; candidates are quote-aware tokenizer words, so a quote-split
- * write still routes. An unread span with a non-empty `protectedPaths` routes fail-closed
- * (the registration matches on its first protected path) rather than silently miss.
- * `subagentSpawns` and `userMessages` never participate. `mentionedPath` is the first
- * protected path (in array order) that mentions. Result preserves registration order, at most
- * one entry per registration.
+ * a path candidate. Candidates come from two places: every string value reachable at any
+ * depth inside `input.toolCalls[].args`, read as quote-aware tokenizer words so a
+ * quote-split write still routes, and each call's proven `fileChange` path, taken whole
+ * because an adapter already resolved it. A call carrying only the latter is the ordinary
+ * shape where a host names its target in a form the adapter must parse — the patch text of
+ * one edit rather than a path argument. An unread span with a non-empty `protectedPaths`
+ * routes fail-closed (the registration matches on its first protected path) rather than
+ * silently miss. `subagentSpawns` and `userMessages` never participate. `mentionedPath` is
+ * the first protected path (in array order) that mentions. Result preserves registration
+ * order, at most one entry per registration.
  *
  * A registration carrying a `matches` predicate routes on it exclusively, path mention
  * skipped for it: non-null return → included with that string as `mentionedPath`; null →
@@ -147,6 +150,15 @@ export function matchRegistrations(
   registrations: CovenantRegistration[],
 ): { registration: CovenantRegistration; mentionedPath: string; routingFailed?: boolean }[] {
   const { candidates, failed } = collectPathCandidates(input.toolCalls.map((call) => call.args));
+  // A proven change path joins the candidates directly, untokenized: it is a path the
+  // adapter already resolved, not a line to be read for one, and tokenizing it would split
+  // a path containing a space into words that name nothing. Without this a call whose only
+  // evidence is its `fileChange` routes nowhere — the judge bodies read that evidence, so
+  // the input would be refused before the layer that can settle it.
+  for (const call of input.toolCalls) {
+    const proven = provenChangePath(call);
+    if (proven !== null) candidates.push(proven);
+  }
   const matches: {
     registration: CovenantRegistration;
     mentionedPath: string;

@@ -11,7 +11,7 @@ question is.
 | If you want to | Read |
 |---|---|
 | Get to a first visible judgment | [First judgment](./tutorials/first-judgment.md) — install, wire Claude Code, and watch one protected edit get judged |
-| Connect Claude Code, Grok, or git | [Connect the surfaces](./how-to/connect-surfaces.md) — session and commit setup, including Grok |
+| Connect Claude Code, Grok, Codex, or git | [Connect the surfaces](./how-to/connect-surfaces.md) — session and commit setup, including Grok and Codex |
 | Shape the project config | [Configure the project](./how-to/configure-project.md) — discovery, IDE support, and advise versus block |
 | Write a real discipline | [Write disciplines](./how-to/write-disciplines.md) — worked declarations, especially locale key pairing |
 | Recover from a block or skip | [Troubleshooting](./troubleshooting.md) — the fail-closed states, the witness valve, and the log |
@@ -31,6 +31,7 @@ is aspirational.
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR |
 | [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.md) | Grok session surface — hook payloads become the input IR |
+| [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.md) | Codex session surface — hook payloads become the input IR, one element per file the patch touches |
 
 <a id="shape-of-the-thing"></a>
 ## The shape of the thing, in one page
@@ -56,7 +57,7 @@ in the whitepaper, which were all found by counting rows rather than by reading 
 
 | Surface | Judges | Wired by | For |
 |---|---|---|---|
-| **Session** | A tool call, before it runs | `pdks-claude-code init` or `pdks-grok init` | A project developed with an AI partner |
+| **Session** | A tool call, before it runs | `pdks-claude-code init`, `pdks-grok init`, or `pdks-codex init` | A project developed with an AI partner |
 | **Commit** | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand | A human developing alone, and CI |
 
 The commit judge also answers on demand: `git diff HEAD | pdks covenant check --diff` after a task,

@@ -95,8 +95,8 @@ type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; st
 **`enforce`의 기본값은 `block`입니다.** 이것은 표면의 강제 수준이지 항목의 것이 아닙니다.
 보호 경로와 `enforce: block`을 단 항목이 호출을 멈추고, 나머지 위반은 종료 코드 0에
 `advised`로 기록됩니다. 항목 자신의 강제 수준은 다른 표면에서와 같이 느슨한 쪽이 이기도록
-조합됩니다. `@polydeukes/adapter-claude-code`와 `@polydeukes/adapter-grok`도 같은 수준으로
-판정기를 스폰합니다.
+조합됩니다. `@polydeukes/adapter-claude-code`, `@polydeukes/adapter-grok`,
+`@polydeukes/adapter-codex`도 같은 수준으로 판정기를 스폰합니다.
 
 기본 스폰은 파일 서술자를 하나도 상속하지 않습니다. 호출자가 자기 서술자를 갖지 않을 수 있고,
 상속한 stdout이 닫혀 있으면 자식이 답하기 전에 EPIPE로 죽기 때문입니다. stderr는 모아서

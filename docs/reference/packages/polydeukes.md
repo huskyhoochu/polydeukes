@@ -31,7 +31,8 @@ takes it as a peer dependency rather than importing it.
 | `pdks docs search <query>` | Search the bundled docs |
 | `pdks docs show <document-id>` | Show one bundled document or section |
 
-Session-surface installers live on the adapters: `pdks-claude-code init` and `pdks-grok init`.
+Session-surface installers live on the adapters: `pdks-claude-code init`, `pdks-grok init`, and
+`pdks-codex init`.
 
 <a id="surface-from-input-mode"></a>
 ### The input mode is the surface

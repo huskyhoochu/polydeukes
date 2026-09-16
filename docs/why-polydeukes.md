@@ -26,12 +26,13 @@ better verification.
 
 ## What exists now
 
-Five packages provide a shared input vocabulary, two session adapters, a TypeScript client
+Six packages provide a shared input vocabulary, three session adapters, a TypeScript client
 for programs, and the `polydeukes` umbrella, which carries the judge and the `pdks` command.
 Two observation surfaces serve different purposes:
 
-- The **session surface** judges one call before it runs — an input IR on stdin. Claude Code
-  and Grok have installers, and a program reaches the same surface through `@polydeukes/sdk-ts`;
+- The **session surface** judges one call before it runs — an input IR on stdin. Claude Code,
+  Grok, and Codex have installers, and a program reaches the same surface through
+  `@polydeukes/sdk-ts`;
   what history and witness each host can prove differs.
 - The **change-set surface** judges a unified diff read from stdin — a staged diff piped by a
   pre-commit hook, or any diff a tool produces. It works without an AI agent. A project may
@@ -129,7 +130,7 @@ read telemetry at task boundaries. Host behavior must be checked rather than ass
 <a id="decisions-the-measurements-forced"></a>
 ### Decisions the measurements forced
 
-Four incidents changed a mechanism rather than a number. They are listed here because the
+Five incidents changed a mechanism rather than a number. They are listed here because the
 current design is hard to explain without them.
 
 - **A banned word that edits respected and a shell heredoc did not.** The tool axis refused
@@ -146,6 +147,12 @@ current design is hard to explain without them.
   whole home directory protected; `cd` into it was refused for two weeks before anyone
   noticed. That path is now judged by full-path equality, and anything above the project
   root is out of scope.
+- **Two hosts that agreed, and a third that did not.** Routing a call to the covenants that
+  might judge it read the tool's arguments, while the judgment itself read the proven file
+  change. Two hosts name their target in both places, so the disagreement stayed invisible
+  until a third arrived whose edits carry a patch text and no path argument: its calls were
+  routed nowhere and recorded as passed. Routing now reads the proven change as well. Passing
+  on two hosts said they spell a path twice, not that the layer beneath them was right.
 
 ## What remains a plan
 

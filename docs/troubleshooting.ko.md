@@ -12,8 +12,8 @@
 프로젝트 루트 바로 아래에 `polydeukes.config.yaml`, `polydeukes.config.yml`,
 `polydeukes.config.json` 중 하나도 없으면 설정이 필요한 명령은 종료 코드 2를 반환합니다.
 Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks-claude-code init`,
-`pdks-grok init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다. 설정이 없다고
-기본 정책으로 대신 실행하지는 않습니다.
+`pdks-grok init`, `pdks-codex init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다.
+설정이 없다고 기본 정책으로 대신 실행하지는 않습니다.
 
 <a id="multiple-config"></a>
 ## 설정 파일이 여러 개일 때
@@ -57,6 +57,21 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
   증인 토큰을 보내려 하지 말고 본인의 터미널에서 작업하세요.
 
 커밋 증인은 해당 스테이징 검사만 허용합니다. 차단된 Grok 도구 호출까지 허용하지 않습니다.
+
+<a id="codex-witness"></a>
+## Codex 증인
+
+여기서도 두 문제는 구별해야 하며, 첫 번째는 원인이 다릅니다.
+
+- `pdks-codex init` 실행 뒤 훅 신뢰는 훅 정의의 해시에 묶입니다. `.codex/hooks.json`이
+  바뀌면 `/hooks`에서 승인하기 전까지 신뢰하지 않으므로, 설치기가 성공해도 실행되는 훅이
+  없을 수 있습니다. 실제 도구를 호출하고 텔레메트리를 확인하세요.
+- Codex는 대화 기록 경로를 알려 주지만 그 형식을 안정된 것으로 문서화하지 않으므로 어떤
+  판정도 읽지 않고, IR은 `session`과 `actor`를 생략합니다. 따라서 세션 증인(witness)
+  밸브가 쓸 인간 메시지 증거가 없으며, 훅을 다시 승인해도 이 기능이 생기지는 않습니다.
+  복구가 필요하면 본인의 터미널에서 작업하세요.
+
+커밋 증인은 차단된 Codex 도구 호출도 허용하지 않습니다.
 
 <a id="config-fault"></a>
 ## 선언을 판정으로 구성하지 못할 때

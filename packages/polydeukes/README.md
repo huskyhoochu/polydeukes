@@ -18,7 +18,9 @@ CLI commands:
 
 - `pdks covenant check`
 - `pdks init`
+- `pdks-claude-code init` (ships with `@polydeukes/adapter-claude-code`)
 - `pdks-grok init` (ships with `@polydeukes/adapter-grok`)
+- `pdks-codex init` (ships with `@polydeukes/adapter-codex`)
 - `pdks explain`
 - `pdks docs [topic]`
 
