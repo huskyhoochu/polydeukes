@@ -15,7 +15,7 @@
 # invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
 # tarball that ships broken contents or fails a real install never reaches the registry.
 #
-# Provenance lives HERE, not in the three manifests: every package.json sits on the commit
+# Provenance lives HERE, not in each manifest: every package.json sits on the commit
 # surface's protected list, so a manifest edit costs a witness prompt while a workflow flag
 # costs nothing. `--no-git-checks` because a release event checks out the tag (detached
 # HEAD), which pnpm publish otherwise refuses.
@@ -44,8 +44,9 @@ jobs:
       - uses: pnpm/action-setup@v6
 
       # No registry-url: that option writes an .npmrc referencing NODE_AUTH_TOKEN, which
-      # crashes npm when the env is absent. Auth is OIDC trusted publishing — each of the
-      # three packages names this repo + workflow file on its npmjs.com access page.
+      # crashes npm when the env is absent. Auth is OIDC trusted publishing — each published
+      # package names this repo + workflow file on its npmjs.com access page, so a NEW
+      # package publishes only once that page has been set up for it.
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -73,6 +74,7 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
-      # The root package is private and skips itself; the five workspace packages publish
-      # in dependency order with workspace:/catalog: specifiers rewritten to real versions.
+      # The root package and the documentation site are private and skip themselves; the
+      # six publishable workspace packages go in dependency order with workspace:/catalog:
+      # specifiers rewritten to real versions.
       - run: pnpm -r publish --provenance --access public --no-git-checks
