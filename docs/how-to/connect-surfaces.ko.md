@@ -65,10 +65,17 @@ Codex 프로젝트에는 `.codex/hooks/covenant-pretooluse.mjs` 위임자와 `.c
 않습니다. `init`은 실행할 때마다 바이트가 같은 명령 문자열을 쓰므로, 다시 설치해도 이미 받은
 승인이 무효가 되지 않습니다.
 
-Codex는 모든 파일 편집을 `apply_patch` 하나로 정규화하고, 경로 인자가 아니라 패치 텍스트를
+Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch` 하나로 정규화하고, 경로 인자가 아니라 패치 텍스트를
 보냅니다. `Edit`과 `Write`는 훅 파일에 적을 수 있는 matcher 별칭이며 도구 이름으로 도착하지
 않습니다. 패치 하나가 여러 파일을 건드리면 파일마다 IR 원소 하나가 실리고, 그중 하나라도
 차단되면 호출 전체가 차단됩니다.
+
+**승인된 훅도 Code Mode는 덮지 못합니다.** codex-cli 0.154에서 Code Mode `exec` 호출과 그
+JavaScript 안에 중첩된 도구 호출은 `PreToolUse`에 도달하지 않으므로
+([openai/codex#23411](https://github.com/openai/codex/issues/23411)), 그 경로로 이루어진 편집은
+`/hooks`에 훅이 Active로 표시되는 동안에도 판정되지도 기록되지도 않습니다. `init`이 이 사실을
+`note:` 줄로 출력하고, [패키지 레퍼런스](../reference/packages/adapter-codex.ko.md#limits)가
+다른 선언된 한계와 함께 나열합니다.
 
 Codex에는 대화 기록 채널이 없어서 세션 증인(witness) 밸브가 읽을 사람 메시지가 없습니다.
 의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 세션 어댑터를 한 프로젝트에 둘 이상

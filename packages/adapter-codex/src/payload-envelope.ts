@@ -38,7 +38,7 @@ export type PayloadEnvelope =
  * that a wrong type leaves as a reason rather than as a throw deeper in — a crash exits 1,
  * which the host reads as NOT blocked.
  */
-export function parsePayloadEnvelope(payload: unknown): PayloadEnvelope {
+export function parsePayloadEnvelope(payload: unknown, roster: readonly string[]): PayloadEnvelope {
   if (!isPlainObject(payload)) {
     return { ok: false, reason: 'the payload is not a non-null object' };
   }
@@ -60,6 +60,18 @@ export function parsePayloadEnvelope(payload: unknown): PayloadEnvelope {
   }
   if (typeof payload.tool_name !== 'string') {
     return { ok: false, reason: 'the payload tool_name is not a string' };
+  }
+  // Judged before the input shape: a name this adapter does not translate is refused on the
+  // name alone, so the reason names it whatever `tool_input` carries. The roster is what
+  // reaches the judge; a name outside it is not a mutating tool left unlisted but a call the
+  // matcher was widened to — the same layer as a missing required key.
+  if (!roster.includes(payload.tool_name)) {
+    return {
+      ok: false,
+      reason:
+        `this adapter does not translate tool '${payload.tool_name}'; the roster is ` +
+        `${roster.join(', ')} — see the package README, What this surface does not observe`,
+    };
   }
   if (!isPlainObject(payload.tool_input)) {
     return { ok: false, reason: 'the payload tool_input is not a non-null object' };

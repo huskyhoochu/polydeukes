@@ -17,8 +17,9 @@ adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` 
 hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
 `peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
 `polydeukes` as a `peerDependency` for the bin it spawns. `adapter-codex` carries one thing the
-others do not: that host normalises every file edit into `apply_patch`, whose input is the patch
-text rather than a path, so the adapter parses it into one IR element per file. `sdk-ts`
+others do not: that host normalises every file edit that reaches the hook into `apply_patch`,
+whose input is the patch text rather than a path, so the adapter parses it into one IR element
+per file. `sdk-ts`
 (`@polydeukes/sdk-ts`) is the remaining published one: one verb, `checkCovenant`, that spawns
 `pdks covenant check` with a caller-built IR
 and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and

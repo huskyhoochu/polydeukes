@@ -24,11 +24,11 @@ Installing this adapter beside `@polydeukes/adapter-claude-code` or
 <a id="overview"></a>
 ## Overview
 
-Codex normalises every file edit into one tool name, `apply_patch`, whose input is the patch
-text itself rather than a file argument. This adapter parses that text and carries one IR
-element per file the patch touches, so a patch spanning several files is judged file by file
-and blocks as a whole. `Edit` and `Write` are matcher aliases the host never sends as a tool
-name; the roster names `apply_patch` and `Bash`.
+Codex normalises every file edit that reaches the hook into one tool name, `apply_patch`, whose
+input is the patch text itself rather than a file argument. This adapter parses that text and
+carries one IR element per file the patch touches, so a patch spanning several files is judged
+file by file and blocks as a whole. `Edit` and `Write` are matcher aliases the host never sends
+as a tool name; the roster names `apply_patch` and `Bash`.
 
 Public contract symbols include:
 
@@ -51,8 +51,18 @@ const { exitCode } = runHook({ repoRoot: process.cwd() });
 <a id="limits"></a>
 ## What this surface does not observe
 
-The host documents these, and no adapter can narrow them:
+The first is measured, the rest the host documents, and no adapter can narrow them:
 
+- A Code Mode `exec` dispatch, and every `tools.apply_patch` / `tools.exec_command` call nested
+  in its JavaScript, does not reach `PreToolUse` in codex-cli 0.154
+  ([openai/codex#23411](https://github.com/openai/codex/issues/23411),
+  [#38850](https://github.com/openai/codex/issues/38850)). An approved hook — `/hooks` showing
+  it Active — does not observe that surface.
+- The roster, not the matcher, decides what is judged. This adapter translates `apply_patch`
+  and `Bash` and refuses every other name with exit 2 before the judge runs — a Code Mode
+  name, an MCP tool, `write_stdin`. Widening the matcher in `.codex/hooks.json` to such a name
+  therefore blocks every call under it rather than judging it, and the edit changes the trust
+  hash, so the hook is skipped until `/hooks` approves it again.
 - `write_stdin` sends input to a unified-exec session that already passed `PreToolUse`, and
   does not run it again.
 - Hosted tools such as web search do not take the local function-tool hook path.

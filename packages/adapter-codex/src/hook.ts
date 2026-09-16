@@ -31,6 +31,8 @@ import { COMMAND_ARG, COMMAND_ARGS, MUTATING_TOOLS, SHELL_TOOLS } from './sessio
 const CHECK_ARGS = ['covenant', 'check', '--enforce', 'block'];
 /** The prefix a pre-spawn failure travels under, so an operator can find it in the log. */
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
+/** Every name this adapter translates, mutating first — the order the refusal lists them in. */
+const ROSTER: readonly string[] = [...MUTATING_TOOLS, ...SHELL_TOOLS];
 /**
  * The child's three streams. `ignore` on stdout rather than `inherit`: the host parses
  * whatever lands on the hook's stdout as a decision document, so anything the judge prints
@@ -174,7 +176,9 @@ function buildStdin(rawPayload: string, repoRoot: string): string {
     );
   }
 
-  const envelope = parsePayloadEnvelope(payload);
+  // The roster is the one list the envelope admits and the router reads, so a third
+  // category added to the vocabulary is refused here until the router learns it.
+  const envelope = parsePayloadEnvelope(payload, ROSTER);
   if (envelope.ok !== true) {
     throw new PreSpawnFailure(envelope.reason);
   }

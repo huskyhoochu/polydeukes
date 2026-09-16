@@ -46,6 +46,11 @@ const RUNNER_LABEL = 'covenant-check';
 const APPLY_PATCH = 'apply_patch';
 const BASH = 'Bash';
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
+/** The Code Mode dispatch name — a tool the host never routes through PreToolUse. */
+const EXEC = 'exec';
+/** The fixed notice the installer prints after the /hooks line. */
+const UNOBSERVED_SURFACE_NOTE =
+  'note: Code Mode exec dispatches, and the tool calls nested in them, do not reach PreToolUse in codex-cli 0.154 (openai/codex#23411); an approved hook does not observe that surface';
 
 let projectRoot: string;
 
@@ -152,6 +157,23 @@ describe('pdks-codex init on a real install graph', () => {
     expect(second.status).toBe(0);
     expect(second.stdout).not.toMatch(/^created /m);
     expect(readFileSync(join(projectRoot, JSON_REL), 'utf-8')).toBe(registration);
+  });
+
+  it('tells the user, after the /hooks line, that Code Mode exec dispatches do not reach PreToolUse', () => {
+    // An approved hook shows "Active" in /hooks, and the user reads that as coverage of
+    // every edit the agent makes. On codex-cli 0.154 a Code Mode `exec` dispatch, and the
+    // `tools.apply_patch` nested in it, fire no PreToolUse event, so the session surface
+    // never sees them. The line must be the fixed sentence (a paraphrase drifts from the
+    // README's declared limit) and must follow the `next:` line, so the approval step is
+    // read first and the notice is not mistaken for a step to perform.
+    const first = installIntoFixture();
+
+    expect(first.status, first.stderr).toBe(0);
+    const lines = first.stdout.split('\n');
+    const nextIndex = lines.findIndex((line) => line.startsWith('next: run /hooks'));
+    const noteIndex = lines.indexOf(UNOBSERVED_SURFACE_NOTE);
+    expect(nextIndex).toBeGreaterThanOrEqual(0);
+    expect(noteIndex).toBeGreaterThan(nextIndex);
   });
 
   it('refuses any argv but `init` with usage on stderr and exit 2', () => {
@@ -286,6 +308,34 @@ describe('the generated delegator judges real payloads', () => {
     expect(result.stderr).toContain(FAILURE_PREFIX);
     expect(rows().filter(([event]) => event === 'passed')).toHaveLength(0);
     expect(rows()).toContainEqual(['blocked', RUNNER_LABEL, expect.any(String)]);
+  });
+
+  it('fails closed on a Code Mode exec payload nesting apply_patch on a protected entry: exit 2, no passed row, blocked runner row', () => {
+    // The issue's own payload: a valid envelope under `exec`, whose JavaScript rewrites a
+    // file under the gate directory through `tools.apply_patch`. The adapter parses no
+    // JavaScript, so it cannot judge the nested write — and an adapter that builds an IR
+    // element under `exec` anyway lands `passed covenant-check -` at exit 0 while the gate
+    // file changes. The runner label separates the fail-closed refusal from a self-mod
+    // verdict the adapter could not have reached.
+    expect(installIntoFixture().status).toBe(0);
+    const patch = [
+      '*** Begin Patch',
+      ...addHunk(`${PROTECTED_ENTRY}/extra.mjs`, '{}'),
+      '*** End Patch',
+      '',
+    ].join('\n');
+
+    const result = spawnGeneratedHook(
+      envelope(EXEC, { command: `await tools.apply_patch(${JSON.stringify(patch)});` }),
+    );
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain(FAILURE_PREFIX);
+    expect(result.stderr).toContain(`'${EXEC}'`);
+    const recorded = rows();
+    expect(recorded.filter(([event]) => event === 'passed')).toHaveLength(0);
+    expect(recorded.at(-1)?.slice(0, 2)).toEqual(['blocked', RUNNER_LABEL]);
   });
 
   it('fails closed on an envelope missing a required key: exit 2, no passed row', () => {

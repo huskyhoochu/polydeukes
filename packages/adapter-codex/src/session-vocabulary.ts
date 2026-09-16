@@ -8,9 +8,9 @@
 /**
  * Tool names whose calls mutate a file and carry `fileChange` evidence.
  *
- * This host normalises every file edit into one name, so the list is closed at one entry.
- * Removing it silently stops judging every file edit, and no test in this repository
- * catches that.
+ * This host normalises every file edit that reaches the hook into one name, so the list is
+ * closed at one entry. Removing it makes the hook refuse every `apply_patch` call with exit
+ * 2, which `hook.test.ts` and `init.e2e.test.ts` catch.
  */
 export const MUTATING_TOOLS = ['apply_patch'];
 

@@ -105,10 +105,11 @@ definition, so the generated hook is listed for review and skipped until you app
 `/hooks`. Until someone does, nothing is judged. This is why `init` writes a byte-identical
 command string on every run — a changed string needs approving again.
 
-Codex normalises every file edit into one tool, `apply_patch`, and delivers the patch text
-rather than a path argument. `Edit` and `Write` are matcher aliases you may write in
-`.codex/hooks.json`; they never arrive as the tool name. One patch that touches several files
-carries one IR element per file, and any one of them blocking blocks the whole call.
+Codex normalises every file edit that reaches the hook into one tool, `apply_patch`, and
+delivers the patch text rather than a path argument. `Edit` and `Write` are matcher aliases
+you may write in `.codex/hooks.json`; they never arrive as the tool name. One patch that
+touches several files carries one IR element per file, and any one of them blocking blocks
+the whole call.
 
 Codex supplies no transcript channel, so the session witness valve has no human-message
 evidence to read. For an intentional blocked edit, use your own terminal. Details are in

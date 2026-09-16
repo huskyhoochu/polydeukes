@@ -33,11 +33,11 @@ stdin, so the row that call earns is written by the one writer.
 <a id="apply-patch"></a>
 ## Why this adapter parses text where its siblings read arguments
 
-Codex normalises every file edit into a single tool name, `apply_patch`, and puts the patch
-itself in `tool_input.command` — the same field a shell call uses for its command line. There
-is no path argument to read. `Edit` and `Write` exist as matcher aliases you may write in
-`.codex/hooks.json`, but the payload always names the tool `apply_patch`, so a roster or a
-branch keyed on the aliases matches nothing that ever arrives.
+Codex normalises every file edit that reaches the hook into a single tool name, `apply_patch`,
+and puts the patch itself in `tool_input.command` — the same field a shell call uses for its
+command line. There is no path argument to read. `Edit` and `Write` exist as matcher aliases
+you may write in `.codex/hooks.json`, but the payload always names the tool `apply_patch`, so
+a roster or a branch keyed on the aliases matches nothing that ever arrives.
 
 One patch can create, update, delete and rename files in one call. The adapter carries each as
 its own element of one IR, on one spawn: every file is judged, and any one of them blocking
@@ -77,9 +77,22 @@ by default, so the registration this installer creates is covered by the config 
 <a id="limits"></a>
 ## Declared limits
 
-The first three are the host's own, stated in its hook documentation, and no adapter can
-narrow them.
+The first four are the host's own, and no adapter can narrow them. The first is measured
+rather than documented; the next three are stated in the host's hook documentation.
 
+- **A Code Mode `exec` dispatch is not observed.** In codex-cli 0.154 the host does not emit
+  `PreToolUse` for a Code Mode `exec` call, nor for the `tools.apply_patch` and
+  `tools.exec_command` calls nested in its JavaScript
+  ([openai/codex#23411](https://github.com/openai/codex/issues/23411),
+  [#38850](https://github.com/openai/codex/issues/38850)). A hook that `/hooks` lists as
+  Active still sees nothing on that surface, and a protected path edited there leaves no
+  telemetry row. `pdks-codex init` prints this as a `note:` line.
+- **The roster, not the matcher, decides what is judged.** The adapter translates
+  `apply_patch` and `Bash`; every other name — a Code Mode name, an MCP tool, `write_stdin` —
+  is refused with exit 2 and a `blocked` runner row before the judge runs. Widening the
+  matcher in `.codex/hooks.json` to such a name blocks every call under it rather than
+  judging it, and the edit changes the trust hash, so the hook is skipped until `/hooks`
+  approves it again.
 - **`write_stdin` is not judged again.** It delivers input to a unified-exec session that
   already passed `PreToolUse`. A shell left open for input is judged once, at the call that
   opened it.

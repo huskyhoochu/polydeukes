@@ -68,10 +68,17 @@ newly written hook is listed for review and skipped until someone approves it â€
 nothing is judged. `init` writes a byte-identical command string on every run, so a re-install
 does not invalidate an approval you already gave.
 
-Codex normalises every file edit into one tool, `apply_patch`, and sends the patch text rather
-than a path argument. `Edit` and `Write` are matcher aliases you may write in the hooks file;
-they never arrive as the tool name. One patch that touches several files carries one IR element
-per file, and any one of them blocking blocks the whole call.
+Codex normalises every file edit that reaches the hook into one tool, `apply_patch`, and sends
+the patch text rather than a path argument. `Edit` and `Write` are matcher aliases you may
+write in the hooks file; they never arrive as the tool name. One patch that touches several
+files carries one IR element per file, and any one of them blocking blocks the whole call.
+
+**An approved hook does not cover Code Mode.** In codex-cli 0.154 a Code Mode `exec` dispatch,
+and the tool calls nested in its JavaScript, do not reach `PreToolUse`
+([openai/codex#23411](https://github.com/openai/codex/issues/23411)), so an edit made that way
+is neither judged nor logged even while `/hooks` shows the hook Active. `init` prints this as a
+`note:` line; the [package reference](../reference/packages/adapter-codex.md#limits)
+lists it with the other declared limits.
 
 Codex supplies no transcript channel, so the session witness valve has no human message to read.
 For an intentional blocked edit, use your own terminal. Installing more than one session adapter

@@ -517,6 +517,85 @@ describe('runHook — a failure before the spawn still spawns', () => {
   });
 });
 
+describe('runHook — a tool name outside the roster is refused before the spawn', () => {
+  // Codex normalises every file edit that reaches the hook into `apply_patch`, so a name
+  // outside `apply_patch` · `Bash` is not "a mutating tool not yet listed" — it is an
+  // envelope from a host build this package was not written against. A Code Mode `exec`
+  // carries JavaScript whose nested `tools.apply_patch` rewrites a protected file; an
+  // adapter that builds a `toolCalls` element under that name hands the judge a call no
+  // discipline is assigned to, and the runner's backstop records it `passed`.
+
+  /** Injected fixture names — none of them is on this adapter's roster. */
+  const EXEC = 'exec';
+  const CODE_MODE_EXEC = 'code_mode_exec';
+  const ARBITRARY = 'web_search';
+  /** The roster is matched exactly: a case variant of a roster name is outside it. */
+  const NEAR_MISS = 'bash';
+
+  /** JavaScript text as Code Mode ships it: a nested apply_patch over the fixture file. */
+  function codeModeScript(): string {
+    const patch = patchText([
+      `*** Update File: ${TARGET_FILE}`,
+      '@@',
+      '-locked: yes',
+      '+locked: no',
+    ]);
+    return `await tools.apply_patch(${JSON.stringify(patch)});`;
+  }
+
+  function unknownNamePayload(toolName: string): string {
+    return JSON.stringify(envelope(toolName, { command: codeModeScript() }));
+  }
+
+  it.each([EXEC, CODE_MODE_EXEC, ARBITRARY, NEAR_MISS])(
+    'tool_name `%s` — one spawn, a failure line naming the received name and the roster, exit 2',
+    (toolName) => {
+      // Exactly one spawn, so the judge writes the fail-closed row; the received name in
+      // quotes, so the operator reads WHICH name arrived; both roster words, so a message
+      // that names only one of them (or the roster of another adapter) is caught. An
+      // adapter that returns 2 without spawning leaves no row; one that spawns an IR lands
+      // a `passed` row under the runner's label.
+      installStubPolydeukes();
+      writeFixture(TARGET_FILE);
+      const { calls, spawn } = recordingSpawn(2);
+
+      const outcome = runHook({ repoRoot, rawPayload: unknownNamePayload(toolName), spawn });
+
+      expect(outcome).toEqual({ exitCode: 2 });
+      expect(calls).toHaveLength(1);
+      const stdin = calls[0]?.stdin ?? '';
+      expect(stdin.startsWith(FAILURE_PREFIX)).toBe(true);
+      // The whole sentence: the received name, the roster in vocabulary order, and the one
+      // pointer to the README's declared-limits section. The message says only what the
+      // adapter knows — which name arrived and which it translates — and leaves the cause
+      // (Code Mode, a hosted tool, a widened matcher) to the README, per name.
+      expect(stdin).toContain(
+        `this adapter does not translate tool '${toolName}'; the roster is ${APPLY_PATCH}, ${BASH} — see the package README, What this surface does not observe`,
+      );
+      expect(calls[0]?.args).toEqual([expect.stringMatching(/bin\.js$/), ...CHECK_ARGS]);
+      expect(calls[0]?.cwd).toBe(repoRoot);
+      expect(stderr.join('')).toContain(stdin);
+      expect(stdoutWrites).toBe(0);
+    },
+  );
+
+  it('hands the judge no IR at all for such a name — the stdin is not JSON', () => {
+    // The fail-closed path works because the judge cannot parse the line. An adapter that
+    // prefixes a valid IR with the failure text, or that spawns an IR whose single element
+    // carries the unknown name on no axis, gives the judge something to route — and a call
+    // routed to no discipline is recorded `passed`, not `blocked`.
+    installStubPolydeukes();
+    writeFixture(TARGET_FILE);
+    const { calls, spawn } = recordingSpawn(2);
+
+    runHook({ repoRoot, rawPayload: unknownNamePayload(EXEC), spawn });
+
+    expect(calls).toHaveLength(1);
+    expect(() => JSON.parse(calls[0]?.stdin ?? '')).toThrow();
+    expect(parseInput(calls[0]?.stdin ?? '').ok).toBe(false);
+  });
+});
+
 describe('runHook — nothing reaches stdout', () => {
   it('writes zero bytes to stdout across a pass, a block, and a pre-spawn failure', () => {
     // Codex parses the hook's stdout as a JSON decision. Any byte here — a verdict echo, a

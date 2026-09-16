@@ -57,10 +57,14 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/adapter-codex`** (`@polydeukes/adapter-codex`) is the Codex session-surface
   install unit: bin `pdks-codex init`, `runHook` (Codex roster as IR `tools` values), no
   judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it. Two
-  facts separate it from the other two adapters: every file edit arrives normalized as one
-  `apply_patch` call whose input is patch text (`Edit` and `Write` are matcher aliases only
-  and never arrive as tool names), and the IR omits `session` and `actor` because the host
+  facts separate it from the other two adapters: every file edit that reaches the hook arrives
+  normalized as one `apply_patch` call whose input is patch text (`Edit` and `Write` are
+  matcher aliases only and never arrive as tool names; a name outside the roster is refused
+  with exit 2 rather than judged), and the IR omits `session` and `actor` because the host
   documents its transcript format as unstable — so the session witness valve is unavailable.
+  A Code Mode `exec` dispatch, and the tool calls nested in its JavaScript, fire no
+  `PreToolUse` at all in codex-cli 0.154 (openai/codex#23411), so that surface is unobserved
+  and `pdks-codex init` says so in a `note:` line.
   It writes `.codex/hooks/covenant-pretooluse.mjs` and merges into `.codex/hooks.json`, and
   hook trust is bound to the definition hash, so a changed definition needs `/hooks` approval
   before it runs.

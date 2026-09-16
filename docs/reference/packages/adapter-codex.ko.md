@@ -33,7 +33,7 @@ Codex의 입력을 공통 형식으로 번역합니다. 에이전트와 도구�
 <a id="apply-patch"></a>
 ## 형제 어댑터는 인자를 읽는데 이 어댑터가 텍스트를 해석하는 이유
 
-Codex는 모든 파일 편집을 `apply_patch`라는 이름 하나로 정규화하고, 패치 자체를
+Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch`라는 이름 하나로 정규화하고, 패치 자체를
 `tool_input.command`에 담습니다. 셸 호출이 명령줄을 싣는 것과 같은 자리입니다. 읽을 경로
 인자가 없습니다. `Edit`과 `Write`는 `.codex/hooks.json`에 적을 수 있는 matcher 별칭이지만,
 페이로드는 언제나 도구 이름을 `apply_patch`로 보냅니다. 그래서 별칭을 기준으로 삼은 명부나
@@ -77,9 +77,20 @@ npx pdks-codex init
 <a id="limits"></a>
 ## 선언된 한계
 
-앞의 셋은 호스트 자신의 한계이고 호스트 훅 문서가 밝힌 사항입니다. 어떤 어댑터도 이 범위를
-좁힐 수 없습니다.
+앞의 넷은 호스트 자신의 한계이고 어떤 어댑터도 이 범위를 좁힐 수 없습니다. 첫째는 문서가
+아니라 실제 측정으로 확인한 사항이고, 다음 셋은 호스트 훅 문서가 밝힌 사항입니다.
 
+- **Code Mode의 `exec` 호출은 관측되지 않습니다.** codex-cli 0.154는 Code Mode `exec` 호출에도,
+  그 JavaScript 안에 중첩된 `tools.apply_patch` · `tools.exec_command` 호출에도 `PreToolUse`를
+  발화하지 않습니다([openai/codex#23411](https://github.com/openai/codex/issues/23411),
+  [#38850](https://github.com/openai/codex/issues/38850)). `/hooks`에 Active로 표시된 훅도 그
+  표면에서는 아무것도 보지 못하고, 거기서 편집된 보호 경로는 telemetry 행을 남기지 않습니다.
+  `pdks-codex init`이 이 사실을 `note:` 줄로 출력합니다.
+- **무엇을 판정하는지는 matcher가 아니라 명부가 정합니다.** 어댑터는 `apply_patch`와 `Bash`만
+  번역하고, 그 밖의 이름(Code Mode 이름, MCP 도구, `write_stdin`)은 판정기를 띄우기 전에
+  exit 2와 `blocked` 러너 행으로 거부합니다. `.codex/hooks.json`의 matcher를 그런 이름까지
+  넓히면 그 아래의 모든 호출이 판정 대신 차단되고, 그 편집은 신뢰 해시를 바꾸므로 `/hooks`에서
+  다시 승인하기 전까지 훅이 건너뛰어집니다.
 - **`write_stdin`은 다시 판정되지 않습니다.** 이미 `PreToolUse`를 통과한 unified-exec 세션에
   입력을 전달합니다. 입력을 받으려고 열어 둔 셸은 그것을 연 호출에서 한 번 판정됩니다.
 - **호스트가 제공하는 도구는 이 경로를 지나지 않습니다.** 웹 검색 같은 도구는 로컬 함수 도구

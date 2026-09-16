@@ -25,6 +25,14 @@ if (args.length === 1 && args[0] === 'init') {
     process.stdout.write(
       'next: run /hooks in Codex and approve the covenant PreToolUse hook — until then it is skipped\n',
     );
+    // Measured 2026-09-17 on codex-cli 0.154.0, not documented by the host: an approved hook
+    // shows Active while that surface fires no event. Only this bin's stdout changes —
+    // `hooks.json` and the delegator keep their bytes, so the host's trust hash holds.
+    process.stdout.write(
+      'note: Code Mode exec dispatches, and the tool calls nested in them, do not reach ' +
+        'PreToolUse in codex-cli 0.154 (openai/codex#23411); an approved hook does not ' +
+        'observe that surface\n',
+    );
     process.exit(0);
   } catch (error) {
     // A precondition failure leaves zero files; the message names what the user has to do
