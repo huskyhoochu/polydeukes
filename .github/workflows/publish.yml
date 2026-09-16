@@ -15,10 +15,13 @@
 # invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
 # tarball that ships broken contents or fails a real install never reaches the registry.
 #
-# Provenance lives HERE, not in each manifest: every package.json sits on the commit
-# surface's protected list, so a manifest edit costs a witness prompt while a workflow flag
-# costs nothing. `--no-git-checks` because a release event checks out the tag (detached
-# HEAD), which pnpm publish otherwise refuses.
+# Provenance lives HERE, not in each manifest: the flag is one line in one file rather than
+# a field repeated across every package.json. `--no-git-checks` because a release event
+# checks out the tag (detached HEAD), which pnpm publish otherwise refuses.
+#
+# Trusted publishing is registered per package on npmjs.com, and a package that does not
+# exist yet has no page to register on — so a NEW package's first version is published by
+# hand (see the new-package checklist), and this workflow takes over from its second.
 name: publish
 
 on:

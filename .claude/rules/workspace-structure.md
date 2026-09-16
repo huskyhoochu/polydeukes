@@ -112,13 +112,32 @@ later as a confusing failure rather than an obvious one:
    list it would write, so it logs `PR #N remained the same` and leaves the stale branch in
    place while the workflow still reports success. Close the PR (`tea pr close <N>`), delete
    its head branch (`git push origin --delete <branch>`), and rerun the workflow so it
-   recomputes from the current config. **Do not rerun in the same minute**: the forge is
-   still detaching the closed PR's head ref, and the branch-creation call answers 500 for
-   every retry the action makes (five, over five minutes, measured 2026-09-16). Probe with
-   one `POST /repos/{owner}/{repo}/branches` by hand; a 201 says the forge has settled, and
-   the next `main` push then succeeds. Every push to `main` triggers the workflow, so an
-   empty `chore:` commit is the rerun — there is no `workflow_dispatch` on it.
+   recomputes from the current config. **The rerun may not recover.** Measured 2026-09-16:
+   after the close-and-delete, the action's branch-creation call answered 500 on every retry
+   across two reruns 35 minutes apart, while the same call with an owner token answered 201
+   at once — so it is the actions token against that branch name, not a settling delay, and
+   the closed PR's `refs/pull/N/head` cannot be removed over the API (405). When that
+   happens, write the release commit by hand: every manifest and
+   `.release-please-manifest.json` to the new version, the CHANGELOG section the bot had
+   already composed on the closed PR, committed as `chore(main): release X.Y.Z`. That is
+   what the bot would have written, so the next release-please run reads the version as
+   released. An empty `chore:` commit is the only rerun — the workflow has no
+   `workflow_dispatch`.
 3. **`workspace:^` for internal dependencies** — never a version range.
+4. **npm trusted publishing is registered per package, and only after the package
+   exists.** A new name has no access page to register on, so the workflow's OIDC token
+   answers `ENEEDAUTH` for it and stops the whole `pnpm -r publish` walk there. The first
+   version goes up by hand from the tagged tree — `pnpm publish --access public
+   --no-git-checks --otp=<authenticator code>`, over the same pnpm path the workflow uses
+   (`npm publish` rejects the bin for a missing exec bit that pnpm does not check; the
+   browser-auth EOTP path prints a masked URL and never opens it, so `--otp` is the one that
+   completes). Then register `huskyhoochu` / `polydeukes` / `publish.yml` on the new access
+   page and rerun the workflow for whatever the stop left unpublished. **Which packages the
+   workflow actually publishes is read off the registry, not the settings**:
+   `dist.attestations` on the latest version is present only when the workflow uploaded it.
+   On 2026-09-16 that read showed three of five existing packages registered — `adapter-grok`
+   and `sdk-ts` had gone up by hand on every release since the bootstrap, and the
+   bootstrap-day `ENEEDAUTH` had stopped on `adapter-grok` for exactly this reason.
 
 The publish e2e suites (`packages/polydeukes/__tests__/publish-pack.e2e.test.ts`,
 `clean-install.e2e.test.ts`) need no registration: they derive their package set from the
