@@ -134,9 +134,13 @@ async function emit(doc, locale, translation, titles) {
   const outPath =
     locale === 'en' ? join(OUT_ROOT, 'docs', slug) : join(OUT_ROOT, locale, 'docs', slug);
   const updated = await lastCommitDate(translation.path);
+  // Astro derives a route from the file path with github-slugger, which drops the dots in
+  // names like `v0.7`; the sidebar and rewritten links keep them, so the route is set here.
+  const route = toSitePath(translation.path, locale).replace(/^\/|\/$/g, '');
   const frontmatter = [
     '---',
     `title: ${yamlString(title)}`,
+    `slug: ${yamlString(route)}`,
     `description: ${yamlString(translation.summary)}`,
     ...(updated ? [`lastUpdated: ${updated}`] : []),
     `editUrl: ${yamlString(`${EDIT_BASE}/${translation.path}`)}`,
