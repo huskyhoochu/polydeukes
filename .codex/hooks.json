@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/covenant-pretooluse.mjs",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

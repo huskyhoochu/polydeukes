@@ -75,18 +75,20 @@ A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and 
 pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of
 the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
 builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
-so the delegator never needs regenerating. This repository is developed from Claude Code and
-Grok, so it carries those two delegators; the third adapter's installer is exercised by its own
-package's e2e instead. The two files here are byte-identical to what
-`pdks-claude-code init` and `pdks-grok init` write into a consumer's tree, which is what makes
-the verdicts we meet every day a measurement of the shipped install units rather than a private
-arrangement; `delegators-are-generated.test.ts` runs both installers and diffs the result
-against these files. The Grok registration matches on that host's own names (`write` ·
-`search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
-stands between a Grok call and its judgment.
+so the delegator never needs regenerating. This repository is developed from Claude Code, Grok,
+and Codex, so it carries all three delegators. The three files here are byte-identical to what
+`pdks-claude-code init`, `pdks-grok init`, and `pdks-codex init` write into a consumer's tree,
+which makes the verdicts we meet every day a measurement of the shipped install units rather
+than a private arrangement; `delegators-are-generated.test.ts` runs all three installers and
+diffs the result against these files. The Grok registration matches on that host's own names
+(`write` · `search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
+stands between a Grok call and its judgment. Codex Code Mode `exec` and its nested calls remain an
+explicitly unobserved host surface until openai/codex#23411 is resolved; installing and approving
+the hook does not turn that gap into coverage.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. The
+`biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. This includes
+the Codex hook directory and adapter dist alongside the other two adapters. The
 change-set surface has no list of its own and no prompt: it judges the piped diff and lands every
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
 line does not — a staged gate-file change has already passed the session surface). Disciplines

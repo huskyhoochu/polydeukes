@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initClaudeCode } from '../../adapter-claude-code/src/init.ts';
+import { initCodex } from '../../adapter-codex/src/init.ts';
 import { initGrok } from '../../adapter-grok/src/init.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
@@ -31,10 +32,11 @@ let generated: string;
 beforeAll(() => {
   generated = mkdtempSync(join(tmpdir(), 'pdks-delegator-oracle-'));
   // The scaffold is the umbrella's, and this repository already carries what it writes.
-  // Stubbing it keeps the comparison on the two files these installers own.
+  // Stubbing it keeps the comparison on the files these installers own.
   const stub = { resolvePolydeukes: () => 'unused', spawnScaffold: () => ({ status: 0 }) };
   initClaudeCode({ projectRoot: generated, ...stub });
   initGrok({ projectRoot: generated, ...stub });
+  initCodex({ projectRoot: generated, ...stub });
 });
 
 afterAll(() => {
@@ -57,6 +59,16 @@ describe('the delegators this repository is judged by', () => {
 
   it('carries the Grok delegator its own installer writes', () => {
     const { here, installed } = bothSides('.grok/hooks/covenant-pretooluse.mjs');
+    expect(here).toBe(installed);
+  });
+
+  it('carries the Codex delegator its own installer writes', () => {
+    const { here, installed } = bothSides('.codex/hooks/covenant-pretooluse.mjs');
+    expect(here).toBe(installed);
+  });
+
+  it('carries the Codex registration its own installer writes', () => {
+    const { here, installed } = bothSides('.codex/hooks.json');
     expect(here).toBe(installed);
   });
 
