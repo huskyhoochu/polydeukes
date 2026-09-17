@@ -11,6 +11,18 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.9.0](https://github.com/b95labs/polydeukes/compare/v0.8.0...v0.9.0) (2026-09-17)
+
+
+### Features
+
+* **adapter-codex:** add lifecycle witness evidence ([#125](https://github.com/b95labs/polydeukes/issues/125)) ([23b6ce4](https://github.com/b95labs/polydeukes/commit/23b6ce4b6568dd4d4ca129b3a47a25302cf6ac6e))
+
+
+### Bug Fixes
+
+* **adapter-codex:** refuse roster-outside names, state the unobserved Code Mode surface (ISSUE-64) ([#123](https://github.com/b95labs/polydeukes/issues/123)) ([1285597](https://github.com/b95labs/polydeukes/commit/1285597f79e3981f3f8b984095016f8b0dea4c38))
+
 ## [0.8.0](https://github.com/huskyhoochu/polydeukes/compare/v0.7.1...v0.8.0) (2026-09-16)
 
 
