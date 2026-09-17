@@ -2,9 +2,9 @@
 
 [English](./README.md) · **한국어**
 
-이 어댑터는 Codex 세션 표면의 설치 단위입니다. Codex `PreToolUse` 페이로드를 약속(covenant)
-입력 IR로 변환하고, 판정기를 스폰하며, 프로젝트에 세션 표면을 등록하는 `pdks-codex` 실행
-파일을 제공합니다.
+이 어댑터는 Codex 세션 표면의 설치 단위입니다. 안정된 Codex 생명주기 증거를 기록하고,
+`PreToolUse` 페이로드를 약속(covenant) 입력 IR로 변환하고, 판정기를 스폰하며, 프로젝트에
+세션 표면을 등록하는 `pdks-codex` 실행 파일을 제공합니다.
 
 `polydeukes`와 함께 설치합니다. `polydeukes`는 이 패키지의 `peerDependency`입니다.
 
@@ -28,6 +28,11 @@ Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch`라는 이름 
 원소 하나를 싣습니다. 그래서 여러 파일에 걸친 패치는 파일별로 판정되고 전체가 함께
 차단됩니다. `Edit`과 `Write`는 matcher 별칭일 뿐 호스트가 도구 이름으로 보내지 않으므로,
 명부에는 `apply_patch`와 `Bash`가 들어갑니다.
+
+생성된 위임자 하나가 이벤트 넷을 받습니다. `UserPromptSubmit`은 시각을 붙인 사람 메시지를,
+`PostToolUse`는 도구 이름과 객체 모양 입력을 추가합니다. `PreToolUse`는 그 증거를 `session`에
+싣고, `SessionEnd`는 세션 파일을 지웁니다. 증거는 `.polydeukes/codex-sessions/` 아래에
+SHA-256 이름으로 저장되며, 원본 세션 ID는 경로가 되지 않습니다.
 
 공개 계약 심볼은 다음과 같습니다.
 
@@ -67,7 +72,9 @@ const { exitCode } = runHook({ repoRoot: process.cwd() });
   판정되지 않습니다.
 - 웹 검색 같은 호스트 제공 도구는 로컬 함수 도구 훅 경로를 지나지 않습니다.
 - 페이로드가 지목하는 대화 기록은 안정된 인터페이스가 아니므로, 어떤 판정도 그것을 읽지
-  않습니다.
+  않습니다. 세션 증거는 등록된 생명주기 이벤트에서만 옵니다. `UserPromptSubmit` 증거가
+  없거나 저장되지 못하면 증인 재시도로 차단을 풀 수 없으므로, 복구 메시지가 안내하는 사용자
+  터미널을 사용합니다.
 
 <a id="see-also"></a>
 ## 함께 보기

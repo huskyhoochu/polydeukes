@@ -65,12 +65,16 @@ The same two problems are distinct here, and the first has its own cause:
 - After `pdks-codex init`, hook trust is bound to the hash of the hook definition. A changed
   `.codex/hooks.json` is not trusted until you approve it through `/hooks`, so an installer that
   succeeded can still leave no hook running. Verify an actual call and its telemetry.
-- Codex names a transcript path but documents the format as unstable, so no judgment reads it
-  and the IR omits `session` and `actor`. The session witness valve therefore has no
-  human-message evidence to work from, and approving the hook again does not add that
-  capability. Perform a necessary repair from your own terminal.
+- Codex names a transcript path but documents the format as unstable, so no judgment reads it.
+  The adapter records `UserPromptSubmit` and `PostToolUse` into its own session evidence file
+  and removes it at `SessionEnd`; the IR carries that `session` without synthesizing `actor`.
+- After an intentional block, send the configured witness token alone on the first line and
+  retry. If stderr says no `UserPromptSubmit` evidence was recorded, confirm all four lifecycle
+  entries are approved. If evidence is still unavailable, perform the repair from your own
+  terminal; repeating the token cannot release an unobserved call.
 
-A commit witness cannot release a blocked Codex tool call either.
+A commit witness authorizes only its staged check; it does not substitute for the Codex session
+witness.
 
 <a id="config-fault"></a>
 ## Config-fault

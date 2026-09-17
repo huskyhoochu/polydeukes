@@ -58,10 +58,11 @@ Use this when the project is developed in Codex.
    runs `pdks init` for the scaffold, then writes the Codex registration artifacts.
 3. Approve the generated hook with `/hooks` in Codex. Until you do, it is skipped.
 
-A Codex tree gets a delegator at `.codex/hooks/covenant-pretooluse.mjs` and an entry in
-`.codex/hooks.json`. That JSON is merged, not overwritten: other events, other matchers, and
-keys the installer does not know stay where they are. The scaffold config protects
-`.codex/hooks` by default.
+A Codex tree gets a delegator at `.codex/hooks/covenant-pretooluse.mjs` and entries for
+`PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and `SessionEnd` in `.codex/hooks.json`.
+That JSON is merged, not overwritten: user entries, sibling handlers, other events, and keys
+the installer does not know stay where they are. The scaffold config protects `.codex/hooks`
+by default.
 
 **Approval is not optional.** Codex records trust against the hash of a hook's definition, so a
 newly written hook is listed for review and skipped until someone approves it — until then
@@ -80,9 +81,13 @@ is neither judged nor logged even while `/hooks` shows the hook Active. `init` p
 `note:` line; the [package reference](../reference/packages/adapter-codex.md#limits)
 lists it with the other declared limits.
 
-Codex supplies no transcript channel, so the session witness valve has no human message to read.
-For an intentional blocked edit, use your own terminal. Installing more than one session adapter
-in one project can run the judge twice per call.
+Codex's transcript format remains unstable and is never parsed. Instead, `UserPromptSubmit`
+records timestamped human messages and `PostToolUse` records completed tool calls in an
+adapter-owned file under `.polydeukes/codex-sessions/`; `SessionEnd` removes it. To release an
+intentional block, send the configured witness token alone on the first line, then retry the
+call. If the recovery message says no `UserPromptSubmit` evidence was recorded, use your own
+terminal because the retry cannot reach the witness valve. Installing more than one session
+adapter in one project can run the judge twice per call.
 
 
 <a id="change-set-surface"></a>

@@ -2,9 +2,9 @@
 
 **English** · [한국어](./README.ko.md)
 
-This adapter is the install unit for the Codex session surface. It translates Codex
-`PreToolUse` payloads into covenant input IR, spawns the judge, and ships the `pdks-codex` bin
-that registers the surface in a project.
+This adapter is the install unit for the Codex session surface. It records stable Codex
+lifecycle evidence, translates `PreToolUse` payloads into covenant input IR, spawns the judge,
+and ships the `pdks-codex` bin that registers the surface in a project.
 
 Install it next to `polydeukes`, which it names as a `peerDependency`:
 
@@ -29,6 +29,11 @@ input is the patch text itself rather than a file argument. This adapter parses 
 carries one IR element per file the patch touches, so a patch spanning several files is judged
 file by file and blocks as a whole. `Edit` and `Write` are matcher aliases the host never sends
 as a tool name; the roster names `apply_patch` and `Bash`.
+
+The same generated delegator receives four events. `UserPromptSubmit` appends timestamped human
+messages, `PostToolUse` appends the tool name and object-shaped input, `PreToolUse` reads that
+evidence into `session`, and `SessionEnd` removes the session file. Evidence lives under
+`.polydeukes/codex-sessions/` with a SHA-256 name; the raw session id never becomes a path.
 
 Public contract symbols include:
 
@@ -66,7 +71,10 @@ The first is measured, the rest the host documents, and no adapter can narrow th
 - `write_stdin` sends input to a unified-exec session that already passed `PreToolUse`, and
   does not run it again.
 - Hosted tools such as web search do not take the local function-tool hook path.
-- The transcript a payload names is not a stable interface, so no judgment reads it.
+- The transcript a payload names is not a stable interface, so no judgment reads it. Session
+  evidence comes only from the registered lifecycle events. If `UserPromptSubmit` evidence is
+  missing or cannot be stored, a witness retry cannot release a blocked call; use the user
+  terminal named by the recovery message.
 
 <a id="see-also"></a>
 ## See also

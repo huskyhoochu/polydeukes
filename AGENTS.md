@@ -12,8 +12,10 @@ English/Korean documentation pairs, and run verification appropriate to the chan
 This repository dogfoods `@polydeukes/adapter-codex` through `.codex/hooks.json`. The generated
 hook must remain byte-identical to `pdks-codex init` output. Hook approval is bound to its
 definition hash, and Code Mode `exec` plus nested tool calls are currently outside `PreToolUse`
-coverage; do not describe an Active hook as complete coverage. Codex also has no session witness
-evidence, so a blocked intentional edit must be recovered from the user's terminal.
+coverage; do not describe an Active hook as complete coverage. Codex session evidence comes only
+from the registered `UserPromptSubmit` and `PostToolUse` lifecycle events, is removed at
+`SessionEnd`, and never comes from the unstable transcript. If that evidence is absent, a blocked
+intentional edit must be recovered from the user's terminal.
 
 Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills,
 MCP tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage

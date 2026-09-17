@@ -56,9 +56,10 @@ Codex에서 개발할 때 씁니다.
    제공합니다. 먼저 `pdks init`으로 초기 파일을 만든 뒤 Codex 등록 산출물을 씁니다.
 3. Codex에서 `/hooks`로 생성된 훅을 승인합니다. 승인하기 전까지는 훅을 건너뜁니다.
 
-Codex 프로젝트에는 `.codex/hooks/covenant-pretooluse.mjs` 위임자와 `.codex/hooks.json`의 항목이
-생깁니다. 이 JSON은 덮어쓰지 않고 병합합니다. 다른 이벤트, 다른 matcher, 설치기가 모르는 키는
-그대로 둡니다. 초기 설정은 기본적으로 `.codex/hooks`를 보호합니다.
+Codex 프로젝트에는 `.codex/hooks/covenant-pretooluse.mjs` 위임자와 `.codex/hooks.json`의
+`PreToolUse`, `UserPromptSubmit`, `PostToolUse`, `SessionEnd` 항목이 생깁니다. 이 JSON은
+덮어쓰지 않고 병합합니다. 사용자 항목, 같은 항목의 다른 handler, 다른 이벤트, 설치기가 모르는
+키는 그대로 둡니다. 초기 설정은 기본적으로 `.codex/hooks`를 보호합니다.
 
 **승인은 선택이 아닙니다.** Codex는 훅 정의의 해시로 신뢰를 기록하므로, 새로 쓴 훅은 검토
 대상으로 표시되고 누군가 승인하기 전까지 건너뛰어집니다. 그때까지는 아무것도 판정되지
@@ -77,9 +78,13 @@ JavaScript 안에 중첩된 도구 호출은 `PreToolUse`에 도달하지 않으
 `note:` 줄로 출력하고, [패키지 레퍼런스](../reference/packages/adapter-codex.ko.md#limits)가
 다른 선언된 한계와 함께 나열합니다.
 
-Codex에는 대화 기록 채널이 없어서 세션 증인(witness) 밸브가 읽을 사람 메시지가 없습니다.
-의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 세션 어댑터를 한 프로젝트에 둘 이상
-설치하면 호출마다 판정기가 두 번 실행될 수 있습니다.
+Codex의 대화 기록 형식은 계속 불안정하므로 해석하지 않습니다. 대신 `UserPromptSubmit`이
+시각을 붙인 사람 메시지를, `PostToolUse`가 완료된 도구 호출을 `.polydeukes/codex-sessions/`
+아래의 어댑터 소유 파일에 기록하고 `SessionEnd`가 지웁니다. 의도한 차단을 풀려면 설정된 증인
+토큰을 첫 줄에 단독으로 보낸 뒤 호출을 다시 시도합니다. 복구 메시지가
+`UserPromptSubmit` 증거가 없다고 알리면 재시도가 증인 밸브에 닿지 못하므로 자신의 터미널을
+사용합니다. 세션 어댑터를 한 프로젝트에 둘 이상 설치하면 호출마다 판정기가 두 번 실행될 수
+있습니다.
 
 <a id="change-set-surface"></a>
 ## 변경 집합 표면

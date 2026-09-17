@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initCodex } from '../src/init.ts';
 
@@ -25,11 +25,15 @@ import { initCodex } from '../src/init.ts';
 const APPLY_PATCH = 'apply_patch';
 const BASH = 'Bash';
 const MATCHER = `${BASH}|${APPLY_PATCH}`;
+const LIFECYCLE_EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
 const HOOK_REL = '.codex/hooks/covenant-pretooluse.mjs';
 const JSON_REL = '.codex/hooks.json';
 const ARTIFACTS = [HOOK_REL, JSON_REL];
 const ADAPTER_SPECIFIER = '@polydeukes/adapter-codex';
 const VOUCHED_BIN = '/vouched/polydeukes/dist/bin.js';
+const CHECKOUT_ROOT = resolve(import.meta.dirname, '../../..');
+const USER_MATCHER = 'WebSearch';
+const USER_SIBLING_COMMAND = 'echo sibling';
 
 /** Preflight stub, success side — injected wherever the run must get past preflight. */
 const resolvesFine = (): string => VOUCHED_BIN;
@@ -77,9 +81,14 @@ function readHooksJson(root = projectRoot): HooksFile {
   return JSON.parse(read(JSON_REL, root)) as HooksFile;
 }
 
-/** Every PreToolUse entry whose matcher is this installer's. */
-function ownEntries(root = projectRoot): MatcherEntry[] {
-  return (readHooksJson(root).hooks?.PreToolUse ?? []).filter((entry) => entry.matcher === MATCHER);
+/** Every event entry carrying this installer's generated delegator command. */
+function ownEntries(
+  root = projectRoot,
+  event: (typeof LIFECYCLE_EVENTS)[number] = 'PreToolUse',
+): MatcherEntry[] {
+  return (readHooksJson(root).hooks?.[event] ?? []).filter((entry) =>
+    entry.hooks?.some((hook) => hook.command?.includes(HOOK_REL)),
+  );
 }
 
 function ownCommand(root = projectRoot): string | undefined {
@@ -120,21 +129,30 @@ describe('initCodex — absent-project creation', () => {
     expect(result.skipped).toEqual([]);
   });
 
-  it('registers one PreToolUse entry: matcher `Bash|apply_patch`, one command hook, timeout 60', () => {
-    // `Edit`/`Write` are matcher aliases that never arrive as `tool_name`; a matcher naming
-    // them instead of `apply_patch` matches no file edit. The host default timeout is
-    // short and a timed-out hook is fail-open, so 60 is the contract — a string `'60'` or
-    // an omitted key both miss it. A second event registered here is a hook this ticket
-    // does not own.
+  it('registers one generated-command entry for each of the four lifecycle events', () => {
+    // Missing UserPromptSubmit leaves no witness provenance, missing PostToolUse fabricates
+    // empty precedent, and missing SessionEnd retains prompts indefinitely. Matcherless
+    // lifecycle events must omit matcher rather than carrying a wildcard the host may not
+    // accept; SessionEnd has the host's three-second ceiling.
     init();
 
     const file = readHooksJson();
-    expect(Object.keys(file.hooks ?? {})).toEqual(['PreToolUse']);
-    expect(file.hooks?.PreToolUse).toHaveLength(1);
-    expect(file.hooks?.PreToolUse?.[0]?.matcher).toBe(MATCHER);
-    expect(file.hooks?.PreToolUse?.[0]?.hooks).toEqual([
+    expect(Object.keys(file.hooks ?? {})).toEqual(LIFECYCLE_EVENTS);
+    for (const event of LIFECYCLE_EVENTS) expect(ownEntries(projectRoot, event)).toHaveLength(1);
+    expect(ownEntries(projectRoot, 'PreToolUse')[0]?.matcher).toBe(MATCHER);
+    expect(ownEntries(projectRoot, 'PostToolUse')[0]?.matcher).toBe(MATCHER);
+    expect(ownEntries(projectRoot, 'UserPromptSubmit')[0]).not.toHaveProperty('matcher');
+    expect(ownEntries(projectRoot, 'SessionEnd')[0]).not.toHaveProperty('matcher');
+    expect(ownEntries(projectRoot, 'PreToolUse')[0]?.hooks).toEqual([
       { type: 'command', command: expect.any(String), timeout: 60 },
     ]);
+    expect(ownEntries(projectRoot, 'SessionEnd')[0]?.hooks).toEqual([
+      { type: 'command', command: ownCommand(), timeout: 3 },
+    ]);
+    const commands = LIFECYCLE_EVENTS.map(
+      (event) => ownEntries(projectRoot, event)[0]?.hooks?.[0]?.command,
+    );
+    expect(new Set(commands)).toEqual(new Set([ownCommand()]));
   });
 
   it('writes a command that names the delegator relative to the project, never by absolute path', () => {
@@ -180,13 +198,22 @@ describe('initCodex — the command string is stable across runs and trees', () 
       rmSync(otherRoot, { recursive: true, force: true });
     }
   });
+
+  it('matches this repository dogfooding hooks.json byte for byte', () => {
+    // A hand-maintained dogfood definition can look equivalent while carrying a different
+    // trust hash or missing a lifecycle event. The repository artifact must be init output,
+    // not a separately maintained approximation.
+    init();
+
+    expect(read(JSON_REL)).toBe(readFileSync(join(CHECKOUT_ROOT, JSON_REL), 'utf-8'));
+  });
 });
 
 describe('initCodex — merging into an existing hooks.json', () => {
-  it('keeps other events, other PreToolUse handlers, and unknown top-level keys, and adds its own entry once', () => {
-    // A user's own `PostToolUse` handler, a second PreToolUse matcher, a key this package
-    // does not know — each is theirs. A writer that replaces the file, or the `hooks`
-    // object, or the `PreToolUse` array, deletes one of them.
+  it('keeps matcherless user entries, sibling handlers, and unknown keys while adding each own entry once', () => {
+    // Identifying ownership by absent matcher deletes the user's lifecycle entries. Replacing
+    // an entry that merely contains another handler discards that handler, and replacing the
+    // hooks object or top level deletes unrelated host state.
     const existing = {
       hooks: {
         PreToolUse: [
@@ -195,6 +222,8 @@ describe('initCodex — merging into an existing hooks.json', () => {
         PostToolUse: [
           { matcher: BASH, hooks: [{ type: 'command', command: 'echo post', timeout: 5 }] },
         ],
+        UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'echo prompt', timeout: 5 }] }],
+        SessionEnd: [{ hooks: [{ type: 'command', command: 'echo end', timeout: 3 }] }],
       },
       note: 'user-owned',
     };
@@ -205,10 +234,12 @@ describe('initCodex — merging into an existing hooks.json', () => {
 
     const file = readHooksJson();
     expect(file.note).toBe('user-owned');
-    expect(file.hooks?.PostToolUse).toEqual(existing.hooks.PostToolUse);
     expect(file.hooks?.PreToolUse?.[0]).toEqual(existing.hooks.PreToolUse[0]);
     expect(file.hooks?.PreToolUse).toHaveLength(2);
-    expect(ownEntries()).toHaveLength(1);
+    expect(file.hooks?.PostToolUse?.[0]).toEqual(existing.hooks.PostToolUse[0]);
+    expect(file.hooks?.UserPromptSubmit?.[0]).toEqual(existing.hooks.UserPromptSubmit[0]);
+    expect(file.hooks?.SessionEnd?.[0]).toEqual(existing.hooks.SessionEnd[0]);
+    for (const event of LIFECYCLE_EVENTS) expect(ownEntries(projectRoot, event)).toHaveLength(1);
     expect(ownEntries()[0]?.hooks?.[0]).toMatchObject({ type: 'command', timeout: 60 });
     // A merge that appended this entry changed the file, and with it the trust hash the
     // host approved. Reported as skipped, it reads as "nothing to approve" while the hook
@@ -234,11 +265,64 @@ describe('initCodex — merging into an existing hooks.json', () => {
     const second = init();
 
     expect(read(JSON_REL)).toBe(merged);
-    expect(ownEntries()).toHaveLength(1);
-    expect(readHooksJson().hooks?.PostToolUse).toEqual(existing.hooks.PostToolUse);
+    for (const event of LIFECYCLE_EVENTS) expect(ownEntries(projectRoot, event)).toHaveLength(1);
+    expect(readHooksJson().hooks?.PostToolUse?.[0]).toEqual(existing.hooks.PostToolUse[0]);
     // Unchanged this time, so nothing needs approving again — the other side of the report.
     expect(second.skipped).toContain(JSON_REL);
     expect(second.created).not.toContain(JSON_REL);
+  });
+
+  it('recognizes its entry by generated command and preserves a sibling handler in that entry', () => {
+    // Matching only on matcher misses the matcherless events, while replacing an owned
+    // entry wholesale drops a user handler that happens to share the entry. Command-handler
+    // identity permits updating the owned definition without claiming its siblings.
+    init();
+    const file = readHooksJson();
+    const promptEntry = file.hooks?.UserPromptSubmit?.find((entry) =>
+      entry.hooks?.some((hook) => hook.command?.includes(HOOK_REL)),
+    );
+    promptEntry?.hooks?.push({ type: 'command', command: 'echo sibling', timeout: 7 });
+    writeFileSync(join(projectRoot, JSON_REL), `${JSON.stringify(file, null, 2)}\n`);
+
+    init();
+
+    const entries = readHooksJson().hooks?.UserPromptSubmit ?? [];
+    expect(ownEntries(projectRoot, 'UserPromptSubmit')).toHaveLength(1);
+    expect(entries.flatMap((entry) => entry.hooks ?? [])).toContainEqual({
+      type: 'command',
+      command: 'echo sibling',
+      timeout: 7,
+    });
+  });
+
+  it('splits a refreshed owned handler from a user sibling so the sibling keeps its matcher', () => {
+    // Replacing the matcher on a shared entry silently widens the sibling handler from the
+    // user's event subset to this adapter's mutation roster. The generated command may
+    // move to a fresh owned entry; the sibling must remain under its original matcher.
+    init();
+    const file = readHooksJson();
+    const sharedEntry = file.hooks?.PreToolUse?.find((entry) =>
+      entry.hooks?.some((hook) => hook.command?.includes(HOOK_REL)),
+    );
+    if (sharedEntry === undefined) throw new Error('fixture has no generated PreToolUse entry');
+    sharedEntry.matcher = USER_MATCHER;
+    sharedEntry.hooks?.push({ type: 'command', command: USER_SIBLING_COMMAND, timeout: 7 });
+    writeFileSync(join(projectRoot, JSON_REL), `${JSON.stringify(file, null, 2)}\n`);
+
+    init();
+
+    const entries = readHooksJson().hooks?.PreToolUse ?? [];
+    const owned = ownEntries();
+    expect(owned).toHaveLength(1);
+    expect(owned[0]?.matcher).toBe(MATCHER);
+    expect(owned[0]?.hooks).toEqual([{ type: 'command', command: ownCommand(), timeout: 60 }]);
+    const siblingEntry = entries.find((entry) =>
+      entry.hooks?.some((hook) => hook.command === USER_SIBLING_COMMAND),
+    );
+    expect(siblingEntry?.matcher).toBe(USER_MATCHER);
+    expect(siblingEntry?.hooks).toEqual([
+      { type: 'command', command: USER_SIBLING_COMMAND, timeout: 7 },
+    ]);
   });
 
   it('throws and leaves the file untouched when the existing hooks.json is not JSON', () => {

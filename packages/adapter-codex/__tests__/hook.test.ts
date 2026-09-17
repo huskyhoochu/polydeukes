@@ -165,7 +165,6 @@ function expectCodexRoster(ir: ParsedIr) {
     shell: [BASH],
     commandArgs: [COMMAND_ARG],
   });
-  expect('session' in ir).toBe(false);
   expect('actor' in ir).toBe(false);
 }
 
@@ -205,12 +204,12 @@ describe('runHook — the spawn it makes', () => {
     expect(calls[0]?.stdio).toEqual(['pipe', 'ignore', 'inherit']);
   });
 
-  it('hands the child a protocol-valid IR with the Codex roster, the apply_patch name, and no session or actor', () => {
+  it('hands the child a protocol-valid IR with the Codex roster, the apply_patch name, and an empty named session', () => {
     // Without `tools` the child judges on its own default roster and `apply_patch` is not a
-    // mutating tool. `transcript_path` is in the payload but the transcript is not a stable
-    // interface, so no `session` key — one would register history declarations over
-    // nothing. `Edit` and `Write` never arrive as `tool_name`, so a roster naming them
-    // matches no call.
+    // mutating tool. The unstable transcript is not parsed; instead the host session is
+    // named by its adapter-owned evidence path and empty lists when no lifecycle evidence
+    // exists. `Edit` and `Write` never arrive as `tool_name`, so a roster naming them
+    // matches no call, and actor provenance is never synthesized.
     installStubPolydeukes();
     const { calls, spawn } = recordingSpawn(0);
 
@@ -221,6 +220,11 @@ describe('runHook — the spawn it makes', () => {
     expectCodexRoster(ir);
     expect(ir.toolCalls).toHaveLength(1);
     expect(ir.toolCalls[0]?.name).toBe(APPLY_PATCH);
+    expect(ir.session).toEqual({
+      evidencePath: expect.stringMatching(/\.polydeukes\/codex-sessions\/[a-f0-9]{64}\.jsonl$/),
+      userMessages: [],
+      toolCalls: [],
+    });
   });
 });
 
@@ -421,12 +425,12 @@ describe('runHook — a failure before the spawn still spawns', () => {
     expectFailureSpawn(JSON.stringify(camel));
   });
 
-  it('an event other than PreToolUse', () => {
-    // A PostToolUse payload carries the same keys; judging it blocks a call that has already
-    // run and records a verdict about nothing.
+  it('an event outside the registered lifecycle', () => {
+    // An unregistered event carrying the same keys must not be guessed into PreToolUse.
+    // Doing so records a verdict about a call the adapter was never asked to judge.
     installStubPolydeukes();
     expectFailureSpawn(
-      patchPayload(patchText(addHunk(OTHER_FILE, 'x')), { hook_event_name: 'PostToolUse' }),
+      patchPayload(patchText(addHunk(OTHER_FILE, 'x')), { hook_event_name: 'Notification' }),
     );
   });
 

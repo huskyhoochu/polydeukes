@@ -1,11 +1,11 @@
 /**
- * `runHook` — the session surface's entry point: one PreToolUse payload in, one
- * `pdks covenant check` process out, its status back as the exit code.
+ * `runHook` — the Codex lifecycle entry point: evidence events stay local, while one
+ * PreToolUse payload becomes one `pdks covenant check` process and its exit status.
  *
- * This package judges nothing and writes no telemetry row. It builds the agent-neutral IR
- * — the translated payload, this host's tool roster, one element per file the patch touches
- * — and hands it to the umbrella's bin on stdin. Every verdict, and every row, is the
- * child's.
+ * This package judges nothing and writes no telemetry row. It records the stable lifecycle
+ * evidence the host supplies, builds the agent-neutral IR — translated payload, tool roster,
+ * and session history — and hands it to the umbrella's bin on stdin. Every verdict, and
+ * every row, is the child's.
  *
  * A failure before the spawn travels IN the spawn: the failure sentence replaces the IR on
  * stdin, the child fails closed on it as non-JSON, and the one row that call earns is
@@ -19,12 +19,20 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { CovenantInput, FileChange } from '@polydeukes/core';
-import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD } from '@polydeukes/core';
+import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD, isPlainObject } from '@polydeukes/core';
 import { parseApplyPatch } from './apply-patch.ts';
 import { parsePayloadEnvelope } from './payload-envelope.ts';
 import { findUmbrellaBin, UMBRELLA_PACKAGE } from './resolve-umbrella.ts';
+import {
+  appendSessionEvidence,
+  readSessionEvidence,
+  removeSessionEvidence,
+  sessionEvidencePath,
+} from './session-evidence.ts';
 import { COMMAND_ARG, COMMAND_ARGS, MUTATING_TOOLS, SHELL_TOOLS } from './session-vocabulary.ts';
 
 /** The subcommand and posture the session surface always spawns with. */
@@ -57,7 +65,7 @@ export type RunHookSpec = {
    * its own location, never from a cwd a host chose.
    */
   repoRoot: string;
-  /** Raw hook stdin — one PreToolUse payload as JSON. Absent reads fd 0. */
+  /** Raw hook stdin — one registered lifecycle payload as JSON. Absent reads fd 0. */
   rawPayload?: string;
   /**
    * Injected spawn seam. Absent spawns node on the located bin with the child's stdout
@@ -65,6 +73,8 @@ export type RunHookSpec = {
    * else does.
    */
   spawn?: (spec: RunHookSpawnSpec) => { status: number | null };
+  /** Receive clock for timestamping a human prompt. Absent uses the wall clock. */
+  now?: () => number;
 };
 
 /** {@link runHook} result — the exit code the hook process leaves with. */
@@ -162,25 +172,30 @@ function patchFileChanges(command: string, cwd: string, repoRoot: string): FileC
  * Throws {@link PreSpawnFailure} naming the step that failed. The steps fail for different
  * reasons and need different repairs, so each names itself rather than sharing one sentence.
  *
- * No `session` key: the payload names a transcript path, but the host documents it as not a
- * stable interface, so registering history declarations over it would judge on nothing. No
- * `actor` either — the envelope proves none.
+ * The session comes only from adapter-owned lifecycle records; the unstable host transcript
+ * path is never opened. No `actor` or `channels` are synthesized because the events prove
+ * neither.
  */
-function buildStdin(rawPayload: string, repoRoot: string): string {
-  let payload: unknown;
-  try {
-    payload = JSON.parse(rawPayload);
-  } catch (error) {
-    throw new PreSpawnFailure(
-      `the payload is not JSON (${error instanceof Error ? error.message : String(error)})`,
-    );
-  }
-
+function buildStdin(
+  payload: unknown,
+  repoRoot: string,
+): { stdin: string; hasUserEvidence: boolean } {
   // The roster is the one list the envelope admits and the router reads, so a third
   // category added to the vocabulary is refused here until the router learns it.
   const envelope = parsePayloadEnvelope(payload, ROSTER);
   if (envelope.ok !== true) {
     throw new PreSpawnFailure(envelope.reason);
+  }
+
+  const sessionId = isPlainObject(payload) ? payload.session_id : undefined;
+  if (typeof sessionId !== 'string') {
+    throw new PreSpawnFailure('the payload session_id is not a string');
+  }
+  let session: NonNullable<CovenantInput['session']>;
+  try {
+    session = readSessionEvidence(sessionEvidencePath(repoRoot, sessionId));
+  } catch (error) {
+    throw new PreSpawnFailure(error instanceof Error ? error.message : String(error));
   }
 
   // One element per file, in patch order, on one spawn: the judge sees every file only if
@@ -193,12 +208,100 @@ function buildStdin(rawPayload: string, repoRoot: string): string {
       }))
     : [{ name: envelope.toolName, args: { [COMMAND_ARG]: envelope.command } }];
 
-  return JSON.stringify({
-    toolCalls,
-    subagentSpawns: [],
-    userMessages: [],
-    tools: { mutating: MUTATING_TOOLS, shell: SHELL_TOOLS, commandArgs: COMMAND_ARGS },
-  } satisfies CovenantInput);
+  return {
+    stdin: JSON.stringify({
+      toolCalls,
+      subagentSpawns: [],
+      userMessages: [],
+      session,
+      tools: { mutating: MUTATING_TOOLS, shell: SHELL_TOOLS, commandArgs: COMMAND_ARGS },
+    } satisfies CovenantInput),
+    hasUserEvidence: session.userMessages.length > 0,
+  };
+}
+
+type LifecycleEvent = 'UserPromptSubmit' | 'PostToolUse' | 'SessionEnd';
+
+function lifecycleEvent(payload: unknown): LifecycleEvent | undefined {
+  if (!isPlainObject(payload)) return undefined;
+  const event = payload.hook_event_name;
+  return event === 'UserPromptSubmit' || event === 'PostToolUse' || event === 'SessionEnd'
+    ? event
+    : undefined;
+}
+
+function handleLifecycle(
+  payload: unknown,
+  event: LifecycleEvent,
+  repoRoot: string,
+  now: () => number,
+): RunHookOutcome {
+  try {
+    if (!isPlainObject(payload) || typeof payload.session_id !== 'string') {
+      throw new Error('lifecycle payload session_id is not a string');
+    }
+    const path = sessionEvidencePath(repoRoot, payload.session_id);
+    if (event === 'SessionEnd') {
+      removeSessionEvidence(path);
+    } else if (event === 'UserPromptSubmit') {
+      if (typeof payload.prompt !== 'string') {
+        throw new Error('UserPromptSubmit payload prompt is not a string');
+      }
+      appendSessionEvidence(path, { kind: 'user', text: payload.prompt, timestampMs: now() });
+    } else {
+      if (typeof payload.tool_name !== 'string' || !('tool_input' in payload)) {
+        throw new Error('PostToolUse payload tool_name or tool_input is invalid');
+      }
+      appendSessionEvidence(
+        path,
+        isPlainObject(payload.tool_input)
+          ? { kind: 'tool', name: payload.tool_name, args: payload.tool_input }
+          : { kind: 'tool', name: payload.tool_name },
+      );
+    }
+  } catch (error) {
+    process.stderr.write(
+      `adapter-codex session evidence ${event} failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  }
+  return { exitCode: EXIT_UPHOLD };
+}
+
+function configuredWitnessToken(repoRoot: string): string | undefined {
+  try {
+    // The schema is the umbrella's public data entry point. Its sibling loader is the
+    // canonical discovery, YAML decoding, and validation path the spawned judge uses.
+    // Node 24 can synchronously require this ESM module, which keeps `runHook` synchronous.
+    const schemaPath = fileURLToPath(import.meta.resolve('polydeukes/schema.json'));
+    const loaderPath = join(dirname(schemaPath), '..', 'load-config.js');
+    const loader = createRequire(import.meta.url)(loaderPath) as {
+      loadConfig(spec: { rootDir: string }): {
+        config: { witness?: { token: string; ttlMinutes: number } };
+      };
+    };
+    return loader.loadConfig({ rootDir: repoRoot }).config.witness?.token;
+  } catch {
+    // Recovery text is advisory. The child already emitted the authoritative config or
+    // verdict diagnostic, so failure to load a token degrades to the terminal fallback.
+    return undefined;
+  }
+}
+
+function writeBlockedRecovery(repoRoot: string, hasUserEvidence: boolean): void {
+  if (!hasUserEvidence) {
+    process.stderr.write(
+      'recovery: no UserPromptSubmit evidence was recorded, so witness cannot release this call; use the user terminal\n',
+    );
+    return;
+  }
+  const token = configuredWitnessToken(repoRoot);
+  if (token === undefined) {
+    process.stderr.write('recovery: no witness is configured; use the user terminal\n');
+    return;
+  }
+  process.stderr.write(
+    `recovery: enter '${token}' alone on the first line and retry within its configured window; if it remains blocked, use the user terminal\n`,
+  );
 }
 
 /**
@@ -221,6 +324,20 @@ function spawnCovenantCheck(spec: RunHookSpawnSpec): { status: number | null } {
  * "not blocked".
  */
 export function runHook(spec: RunHookSpec): RunHookOutcome {
+  const rawPayload = spec.rawPayload ?? readFileSync(0, 'utf-8');
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawPayload);
+  } catch (error) {
+    payload = new PreSpawnFailure(
+      `the payload is not JSON (${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
+  const event = lifecycleEvent(payload);
+  if (event !== undefined) {
+    return handleLifecycle(payload, event, spec.repoRoot, spec.now ?? Date.now);
+  }
+
   const bin = findUmbrellaBin(spec.repoRoot);
   if (bin === undefined) {
     // The one outcome with no row anywhere: nothing to spawn means no writer exists. The
@@ -232,10 +349,15 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     return { exitCode: EXIT_BREAK_BLOCKING };
   }
 
-  const rawPayload = spec.rawPayload ?? readFileSync(0, 'utf-8');
   let stdin: string;
+  let validIr = false;
+  let hasUserEvidence = false;
   try {
-    stdin = buildStdin(rawPayload, spec.repoRoot);
+    if (payload instanceof PreSpawnFailure) throw payload;
+    const built = buildStdin(payload, spec.repoRoot);
+    stdin = built.stdin;
+    validIr = true;
+    hasUserEvidence = built.hasUserEvidence;
   } catch (error) {
     stdin = `${FAILURE_PREFIX} ${error instanceof Error ? error.message : String(error)}\n`;
     // The child fails closed on this line as non-JSON, but its own stderr names only the
@@ -257,6 +379,9 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     process.stderr.write(
       `covenant hook failed closed: the judge exited with status ${String(status)} before a verdict\n`,
     );
+  }
+  if (status === EXIT_BREAK_BLOCKING && validIr) {
+    writeBlockedRecovery(spec.repoRoot, hasUserEvidence);
   }
   return { exitCode: status === EXIT_UPHOLD ? EXIT_UPHOLD : EXIT_BREAK_BLOCKING };
 }

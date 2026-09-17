@@ -2,9 +2,8 @@
 
 **English** · [한국어](adapter-codex.ko.md)
 
-> **The Codex install unit** — `PreToolUse` payloads become the covenant input IR, with one
-> element per file the patch touches, and the package installs the session surface into a
-> project.
+> **The Codex install unit** — lifecycle events become adapter-owned session evidence, and
+> `PreToolUse` payloads become covenant input IR with one element per file the patch touches.
 >
 > Beta. Install it next to `polydeukes`, which it names as a `peerDependency`.
 
@@ -17,13 +16,16 @@ by design, so that they never reach the core.
 | Unit | What it does |
 |---|---|
 | `pdks-codex` bin | One subcommand, `pdks-codex init`, which registers the session surface in a project |
-| `runHook` | Translates one `PreToolUse` payload into the input IR and spawns the judge |
+| `runHook` | Records lifecycle evidence, or translates one `PreToolUse` payload into the input IR and spawns the judge |
+| Session evidence | Stores timestamped human messages and completed tool calls under a SHA-256 session filename, then removes it at `SessionEnd` |
 | Payload validation | Demands every key the host's generated schema marks required, in the one spelling that host sends |
 | Patch parsing | Turns the raw patch text of an `apply_patch` call into one file change per file it touches |
 | Path rebasing | Resolves a patch path against the call's working directory and carries it relative to the project root |
 
-`runHook({ repoRoot })` is what the generated hook delegator imports. It builds the IR — the
-`tools` roster included, with no `session` or `actor` key — then spawns
+`runHook({ repoRoot })` is what the generated hook delegator imports. `UserPromptSubmit` and
+`PostToolUse` append strict JSONL records under `.polydeukes/codex-sessions/`; `SessionEnd`
+removes only that session's file. `PreToolUse` builds the IR with the `tools` roster and a
+`session` sourced from those records, but no synthesized `actor` or `channels`, then spawns
 `pdks covenant check --enforce block` in `repoRoot` and returns the child's exit code. The
 judging happens in that child process; this package carries no judgment logic.
 
@@ -55,7 +57,8 @@ npx pdks-codex init
 ```
 
 `pdks-codex init` resolves `polydeukes` from the project, spawns `pdks init` for the
-agent-neutral scaffold, then writes the delegator and merges its entry into
+agent-neutral scaffold, then writes the delegator and merges its entries for `PreToolUse`,
+`UserPromptSubmit`, `PostToolUse`, and `SessionEnd` into
 `.codex/hooks.json` non-destructively — other events, other matchers and keys it does not know
 are left alone. A re-run reports each existing artifact as skipped and overwrites nothing. The
 full artifact list is in [`pdks init`](../cli/init.md#init-codex).
@@ -100,10 +103,12 @@ rather than documented; the next three are stated in the host's hook documentati
   function-tool hooks, so they reach no covenant.
 - **The host calls its tool hooks a guardrail rather than a complete enforcement boundary.**
   Some specialized tool paths can opt out of the default hook path.
-- **There is no transcript channel.** The IR omits `session` and `actor`. The payload names a
-  transcript path, but the host documents that format as unstable, so no judgment reads it —
-  which leaves the session witness valve without the human-message evidence it needs. For an
-  intentional blocked edit, use your own terminal.
+- **The unstable transcript is not a channel.** The payload names a transcript path, but the
+  host documents that format as unstable, so no judgment reads it. The adapter instead builds
+  `session` from `UserPromptSubmit` and `PostToolUse`. A fresh configured token, alone on the
+  first line of a human message, can release the retried protected call. If no human evidence
+  was recorded, or evidence storage failed, the recovery message directs the repair to the user
+  terminal. `actor`, `channels`, and tool success are never synthesized.
 - **A patch resolving outside the project is refused rather than judged.** Such a path has no
   project-relative form, and an element carrying one would land in no scope — judged over
   nothing, and passed.

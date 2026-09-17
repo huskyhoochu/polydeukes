@@ -60,14 +60,15 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   facts separate it from the other two adapters: every file edit that reaches the hook arrives
   normalized as one `apply_patch` call whose input is patch text (`Edit` and `Write` are
   matcher aliases only and never arrive as tool names; a name outside the roster is refused
-  with exit 2 rather than judged), and the IR omits `session` and `actor` because the host
-  documents its transcript format as unstable — so the session witness valve is unavailable.
+  with exit 2 rather than judged), and the IR carries adapter-owned `session` evidence from
+  `UserPromptSubmit` and `PostToolUse` while omitting `actor` and `channels`. The host transcript
+  stays unread because its format is unstable; `SessionEnd` removes the hashed evidence file.
   A Code Mode `exec` dispatch, and the tool calls nested in its JavaScript, fire no
   `PreToolUse` at all in codex-cli 0.154 (openai/codex#23411), so that surface is unobserved
   and `pdks-codex init` says so in a `note:` line.
-  It writes `.codex/hooks/covenant-pretooluse.mjs` and merges into `.codex/hooks.json`, and
-  hook trust is bound to the definition hash, so a changed definition needs `/hooks` approval
-  before it runs.
+  It writes `.codex/hooks/covenant-pretooluse.mjs` and merges four lifecycle entries into
+  `.codex/hooks.json`. Hook trust is bound to the definition hash, so a changed definition
+  needs `/hooks` approval before it runs.
 - **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) is the TypeScript consumer entry to the session
   surface: one verb `checkCovenant`, which resolves `polydeukes` in the judged project's install
   graph and spawns `pdks covenant check` with a caller-built IR on stdin. No bin, no judgment

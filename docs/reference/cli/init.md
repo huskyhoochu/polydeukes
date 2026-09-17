@@ -96,9 +96,11 @@ That command runs `pdks init` for the scaffold, then writes the Codex registrati
 - `.codex/hooks/covenant-pretooluse.mjs`
 - `.codex/hooks.json`
 
-`hooks.json` is merged rather than overwritten: other events, other matchers, and keys the
-installer does not know are left in place. The scaffold config protects `.codex/hooks` by
-default, so the registration this installer writes is covered by the config it writes.
+`hooks.json` receives entries for `PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and
+`SessionEnd`. It is merged rather than overwritten: user entries, sibling handlers, other
+events, and keys the installer does not know are left in place. The scaffold config protects
+`.codex/hooks` by default, so the registration this installer writes is covered by the config
+it writes.
 
 **Approving the hook is part of the install.** Codex records trust against the hash of a hook's
 definition, so the generated hook is listed for review and skipped until you approve it with
@@ -111,9 +113,11 @@ you may write in `.codex/hooks.json`; they never arrive as the tool name. One pa
 touches several files carries one IR element per file, and any one of them blocking blocks
 the whole call.
 
-Codex supplies no transcript channel, so the session witness valve has no human-message
-evidence to read. For an intentional blocked edit, use your own terminal. Details are in
-[Connect the surfaces](../../how-to/connect-surfaces.md#codex).
+The unstable Codex transcript is never parsed. `UserPromptSubmit` supplies timestamped human
+messages, `PostToolUse` supplies completed tool calls, and `SessionEnd` cleans up the
+adapter-owned evidence file. A configured witness token can therefore release a retried
+protected call. If no prompt evidence was recorded, use the user terminal named by the recovery
+message. Details are in [Connect the surfaces](../../how-to/connect-surfaces.md#codex).
 
 <a id="init-results"></a>
 ## Results and failure conditions

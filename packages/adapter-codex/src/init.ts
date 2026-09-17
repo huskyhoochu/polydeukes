@@ -43,8 +43,9 @@ const HOOK_MATCHER = [...SHELL_TOOLS, ...MUTATING_TOOLS].join('|');
  * call proceeds, and the default window is shorter than a cold judge process needs.
  */
 const HOOK_TIMEOUT = 60;
-/** The one event this adapter registers: the only one observed before the call runs. */
-const HOOK_EVENT = 'PreToolUse';
+/** Lifecycle events routed through the same generated delegator, in generated-file order. */
+const HOOK_EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
+type HookEvent = (typeof HOOK_EVENTS)[number];
 
 /**
  * The generated hook. It carries no assembly at all, so upgrading the package upgrades the
@@ -91,11 +92,22 @@ try {
 }
 `;
 
-/** This installer's registration entry — the exact object the trust hash is taken over. */
-const OWN_ENTRY = {
-  matcher: HOOK_MATCHER,
-  hooks: [{ type: 'command', command: HOOK_COMMAND, timeout: HOOK_TIMEOUT }],
-};
+type CommandHook = { type?: string; command?: string; timeout?: number };
+type HookEntry = { matcher?: string; hooks?: CommandHook[] };
+
+/** This installer's registration entry for one lifecycle event. */
+function ownEntry(event: HookEvent): HookEntry {
+  const hooks = [
+    {
+      type: 'command',
+      command: HOOK_COMMAND,
+      timeout: event === 'SessionEnd' ? 3 : HOOK_TIMEOUT,
+    },
+  ];
+  return event === 'PreToolUse' || event === 'PostToolUse'
+    ? { matcher: HOOK_MATCHER, hooks }
+    : { hooks };
+}
 
 /** What one install left behind, per artifact. */
 export type InitCodexReport = { created: string[]; skipped: string[] };
@@ -151,17 +163,23 @@ function writeIfAbsent(
  * Add this installer's entry to the host's hook registration, keeping everything else.
  *
  * The file may already carry the user's own events, matchers, and keys, so it is merged
- * rather than written. Its own entry is found by matcher: found by identity, a re-run would
- * append a second one, and re-serialising a user's entry changes the hash of a definition
- * they already approved. An unreadable file throws — a file that cannot be merged into
- * cannot be overwritten either, and skipping it would leave the host unregistered with a
- * report saying otherwise.
+ * rather than written. Its own handler is found by the generated command, including on
+ * matcherless events; sibling handlers in the same entry stay in place. A re-run produces
+ * the same bytes, while an unreadable file throws rather than being overwritten or silently
+ * skipped.
  */
 function mergeRegistration(projectRoot: string, report: InitCodexReport): void {
   const path = join(projectRoot, JSON_RELATIVE);
   if (!existsSync(path)) {
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify({ hooks: { [HOOK_EVENT]: [OWN_ENTRY] } }, null, 2)}\n`);
+    writeFileSync(
+      path,
+      `${JSON.stringify(
+        { hooks: Object.fromEntries(HOOK_EVENTS.map((event) => [event, [ownEntry(event)]])) },
+        null,
+        2,
+      )}\n`,
+    );
     report.created.push(JSON_RELATIVE);
     return;
   }
@@ -170,14 +188,64 @@ function mergeRegistration(projectRoot: string, report: InitCodexReport): void {
   if (!isPlainObject(existing)) {
     throw new Error(`${JSON_RELATIVE} is not a JSON object — repair it, then run this again`);
   }
-  const hooks = isPlainObject(existing.hooks) ? existing.hooks : {};
-  const event = Array.isArray(hooks[HOOK_EVENT]) ? (hooks[HOOK_EVENT] as unknown[]) : [];
-  const isOwn = (entry: unknown) => isPlainObject(entry) && entry.matcher === HOOK_MATCHER;
-  const others = event.filter((entry) => !isOwn(entry));
+  const hooks: Record<string, unknown> = isPlainObject(existing.hooks) ? existing.hooks : {};
+  const mergedHooks: Record<string, unknown> = { ...hooks };
+
+  for (const eventName of HOOK_EVENTS) {
+    const entries = Array.isArray(hooks[eventName]) ? (hooks[eventName] as unknown[]) : [];
+    const desired = ownEntry(eventName);
+    let installed = false;
+    const mergedEntries: unknown[] = [];
+
+    for (const candidate of entries) {
+      if (!isPlainObject(candidate) || !Array.isArray(candidate.hooks)) {
+        mergedEntries.push(candidate);
+        continue;
+      }
+      const handlers = candidate.hooks as unknown[];
+      const ownsHandler = handlers.some(
+        (handler) => isPlainObject(handler) && handler.command === HOOK_COMMAND,
+      );
+      if (!ownsHandler) {
+        mergedEntries.push(candidate);
+        continue;
+      }
+
+      const siblingHandlers = handlers.filter(
+        (handler) => !(isPlainObject(handler) && handler.command === HOOK_COMMAND),
+      );
+      if (installed) {
+        if (siblingHandlers.length > 0)
+          mergedEntries.push({ ...candidate, hooks: siblingHandlers });
+        continue;
+      }
+
+      if (siblingHandlers.length > 0 && candidate.matcher !== desired.matcher) {
+        // A matcher belongs to the whole entry. Refreshing it in place would silently
+        // widen or narrow the user's sibling handlers along with this generated command.
+        mergedEntries.push({ ...candidate, hooks: siblingHandlers });
+        mergedEntries.push(desired);
+        installed = true;
+        continue;
+      }
+
+      const updated: HookEntry = {
+        ...candidate,
+        hooks: [...(desired.hooks ?? []), ...siblingHandlers] as CommandHook[],
+      };
+      if (desired.matcher === undefined) delete updated.matcher;
+      else updated.matcher = desired.matcher;
+      mergedEntries.push(updated);
+      installed = true;
+    }
+
+    if (!installed) mergedEntries.push(desired);
+    mergedHooks[eventName] = mergedEntries;
+  }
 
   const merged = {
     ...existing,
-    hooks: { ...hooks, [HOOK_EVENT]: [...others, OWN_ENTRY] },
+    hooks: mergedHooks,
   };
   // Written or not written, reported as such: a merge that appends this entry to a file the
   // user already had changes its trust hash, so calling it skipped would tell them nothing

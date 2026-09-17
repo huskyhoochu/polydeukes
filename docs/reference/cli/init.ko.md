@@ -97,9 +97,10 @@ npx pdks-codex init
 - `.codex/hooks/covenant-pretooluse.mjs`
 - `.codex/hooks.json`
 
-`hooks.json`은 덮어쓰지 않고 병합합니다. 다른 이벤트, 다른 matcher, 설치기가 모르는 키는
-그대로 둡니다. 초기 설정은 기본적으로 `.codex/hooks`를 보호하므로, 이 설치기가 만드는 등록
-파일은 같은 설치가 만든 설정이 지킵니다.
+`hooks.json`에는 `PreToolUse`, `UserPromptSubmit`, `PostToolUse`, `SessionEnd` 항목이
+생깁니다. 파일은 덮어쓰지 않고 병합합니다. 사용자 항목, 같은 항목의 다른 handler, 다른
+이벤트, 설치기가 모르는 키는 그대로 둡니다. 초기 설정은 기본적으로 `.codex/hooks`를
+보호하므로, 이 설치기가 만드는 등록 파일은 같은 설치가 만든 설정이 지킵니다.
 
 **훅 승인까지가 설치입니다.** Codex는 훅 정의의 해시로 신뢰를 기록하므로, 생성된 훅은 검토
 대상으로 표시되고 `/hooks`에서 승인하기 전까지 건너뛰어집니다. 누군가 승인하기 전까지는
@@ -111,9 +112,11 @@ Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch` 하나로 정
 도착하지 않습니다. 패치 하나가 여러 파일을 건드리면 파일마다 IR 원소 하나가 실리고, 그중
 하나라도 차단되면 호출 전체가 차단됩니다.
 
-Codex에는 대화 기록 채널이 없어서 세션 증인(witness) 밸브가 읽을 사람 메시지 증거가
-없습니다. 의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 산출물별 동작은
-[표면 연결하기](../../how-to/connect-surfaces.ko.md#codex)에 있습니다.
+불안정한 Codex 대화 기록은 해석하지 않습니다. `UserPromptSubmit`은 시각을 붙인 사람
+메시지를, `PostToolUse`는 완료된 도구 호출을 공급하고, `SessionEnd`는 어댑터 소유 증거
+파일을 정리합니다. 따라서 설정된 증인 토큰으로 다시 시도한 보호 호출을 허용할 수 있습니다.
+프롬프트 증거가 기록되지 않았다면 복구 메시지가 안내하는 사용자 터미널을 사용합니다.
+산출물별 동작은 [표면 연결하기](../../how-to/connect-surfaces.ko.md#codex)에 있습니다.
 
 <a id="init-results"></a>
 ## 결과와 실패 조건

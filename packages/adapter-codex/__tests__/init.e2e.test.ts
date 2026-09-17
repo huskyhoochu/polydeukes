@@ -46,6 +46,7 @@ const RUNNER_LABEL = 'covenant-check';
 const APPLY_PATCH = 'apply_patch';
 const BASH = 'Bash';
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
+const DEFAULT_WITNESS_TOKEN = 'pdks witness';
 /** The Code Mode dispatch name — a tool the host never routes through PreToolUse. */
 const EXEC = 'exec';
 /** The fixed notice the installer prints after the /hooks line. */
@@ -124,6 +125,14 @@ function patchPayload(...hunks: string[][]) {
   });
 }
 
+function userPromptPayload(prompt: string) {
+  return {
+    hook_event_name: 'UserPromptSubmit',
+    session_id: 'sess-e2e',
+    prompt,
+  };
+}
+
 function addHunk(path: string, ...lines: string[]): string[] {
   return [`*** Add File: ${path}`, ...lines.map((line) => `+${line}`)];
 }
@@ -190,7 +199,7 @@ describe('pdks-codex init on a real install graph', () => {
 });
 
 describe('the generated delegator judges real payloads', () => {
-  it('passes a single-file patch only the dogfooding config would block: exit 0, one runner row, empty stdout', () => {
+  it('passes a single-file patch only the dogfooding config would block: exit 0, one verdict row, empty stdout', () => {
     // A repoRoot anchored near the runner's cwd reads THIS checkout's config, which
     // protects this target — exit 2 instead of 0. The row pin separates a pass from the
     // defect class: a pass with NO row is a hook that never reached the judge. Empty
@@ -203,9 +212,9 @@ describe('the generated delegator judges real payloads', () => {
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toBe('');
-    const recorded = rows();
-    expect(recorded).toHaveLength(1);
-    expect(recorded[0]?.slice(0, 2)).toEqual(['passed', RUNNER_LABEL]);
+    const verdictRows = rows().filter(([, label]) => label === RUNNER_LABEL);
+    expect(verdictRows).toHaveLength(1);
+    expect(verdictRows[0]?.slice(0, 2)).toEqual(['passed', RUNNER_LABEL]);
   });
 
   it('blocks a patch adding a file under a protected entry: exit 2, reason on stderr, self-mod row, empty stdout', () => {
@@ -220,8 +229,33 @@ describe('the generated delegator judges real payloads', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain(PROTECTED_ENTRY);
+    expect(result.stderr).toMatch(/UserPromptSubmit/i);
+    expect(result.stderr).toMatch(/witness/i);
+    expect(result.stderr).toMatch(/terminal/i);
     expect(rows()).toContainEqual(['blocked', 'self-mod', PROTECTED_ENTRY]);
     expect(rows().filter(([event]) => event === 'blocked')).toHaveLength(1);
+  });
+
+  it('releases the next protected patch after a human witness arrives through UserPromptSubmit', () => {
+    // This is the assembled valve: recording without reading leaves the patch blocked;
+    // reading without the receive timestamp makes it stale; and a generated hooks file
+    // that registered only PreToolUse never delivers the human message at all. The row
+    // distinguishes a witnessed verdict from a crash or an unrouted pass at the same exit 0.
+    expect(installIntoFixture().status).toBe(0);
+
+    const prompt = spawnGeneratedHook(userPromptPayload(DEFAULT_WITNESS_TOKEN));
+    const retried = spawnGeneratedHook(
+      patchPayload(addHunk(`${PROTECTED_ENTRY}/witnessed.mjs`, 'export {};')),
+    );
+
+    expect(prompt.status, prompt.stderr).toBe(0);
+    expect(prompt.stdout).toBe('');
+    expect(retried.status, retried.stderr).toBe(0);
+    expect(retried.stdout).toBe('');
+    expect(rows()).toContainEqual(['witnessed', 'self-mod', PROTECTED_ENTRY]);
+    expect(
+      rows().filter(([event, label]) => event === 'witnessed' && label === 'self-mod'),
+    ).toHaveLength(1);
   });
 
   it('blocks a patch mixing a protected and an unprotected file, on the protected one', () => {
