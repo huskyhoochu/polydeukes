@@ -12,7 +12,7 @@ final commit, for non-ticket chores). It is the manual precursor of the guidance
 `finish` gate will print after self-dogfooding (roadmap LEDGER-06); until then, this checklist
 is upheld by hand, exactly like the TDD skill's pre-flight.
 
-Four checks, then one mandatory block. Every item must be grounded in tool output from **this
+Five checks, then one mandatory block. Every item must be grounded in tool output from **this
 session** — an unverified "looks fine" is not an answer. Skipping the block is not an option;
 "nothing to do" is recorded, not implied.
 
@@ -79,6 +79,19 @@ the ticket that makes it true promotes it. Nothing is parked in the public files
 `TODO`, no parked-candidates comment, no marker of any kind (`.claude/rules/current-state-only.md`);
 a public file is either changed or left alone. If no, record `public docs: none` explicitly.
 
+## 5. Release-impact check (ticket work)
+
+For a `/ticket` run, read the approved PRD release impact and compare it with the actual diff.
+The largest shipped effect wins: `patch` repairs behavior users could already expect, `minor`
+adds a user-visible capability, `breaking` changes a compatibility promise, and `none` changes
+only non-release surfaces. Record the matching Conventional Commit type (`fix`, `feat`, an
+accurate type with `!`, or an accurate non-release type). Never use `feat` merely because the
+work has a ticket ID. This check chooses the type that the PR title and squash commit must both
+carry; commitlint checks syntax, not semantic truth.
+
+For standalone non-ticket work, record `release impact: not a ticket` unless the user explicitly
+asked for release classification.
+
 ## The mandatory block
 
 Emit this before proceeding to the PR (or the final commit):
@@ -89,6 +102,7 @@ Emit this before proceeding to the PR (or the final commit):
 - Docs drift: <stale sentence found + fix applied | "no drift" (checked: <files>)>
 - Dev-log: <_docs/knowledge/<scope>.dev-log.<name>.md — one-line conclusion | "none">
 - Public docs: <section filled / sentence added: <what> | "none" (candidate, if any, recorded in <PRD §8 | dev-log>)>
+- Release impact: <patch → fix | minor → feat | breaking → <type>! | none → <type> | "not a ticket">
 ```
 
 The user may exempt a run via the literal phrase `skip post-task` in their **most recent**

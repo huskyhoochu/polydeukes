@@ -68,6 +68,12 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): same 4-key frontmatter (`scope`/`type`/`tags`/`created_at`), status line
   `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
+- Record one **release impact** in the PRD status block before approval. Classify the ticket's
+  largest shipped effect, never the fact that it is a ticket: `patch` repairs behavior users
+  could already expect, `minor` adds a user-visible capability, `breaking` removes or changes a
+  compatibility promise, and `none` changes only non-release surfaces such as docs, tests, CI,
+  or repository administration. Name the reason in one sentence. Do not default to `minor` or
+  infer `feat` from the ticket workflow itself.
 - **Present the PRD to the user for approval before any code work.** The user may amend scope
   here; the approved PRD is the cycle's contract.
 
@@ -99,8 +105,13 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 ### 5. PR — create, review, fix
 
-- Commit with a Conventional Commit message (`feat(<pkg>): … (<ID>)`), push the branch, and
-  open a PR against `main` with `tea pr create`.
+- Derive the Conventional Commit type from the PRD's approved release impact: `patch` → `fix`,
+  `minor` → `feat`, `breaking` → the accurate type with `!` (and a `BREAKING CHANGE:` body when
+  the migration needs explanation), `none` → the accurate non-release type such as `docs`,
+  `test`, `ci`, `build`, or `chore`. Use that type in both the branch commit and the PR title;
+  push the branch and open a PR against `main` with `tea pr create`. A ticket ID does not imply
+  `feat`, and commitlint proving that a title is well-formed does not prove its release impact is
+  truthful.
 - **Every commit that stages a protected path stops at a TTY witness prompt**, and an
   agent-spawned commit has no TTY and cannot answer — so a human runs it in their own
   terminal. Say how many prompts are coming before starting, never one at a time.
@@ -158,8 +169,10 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - **Merging is always the user's decision.** Report the PR state and wait; never merge
   unprompted.
-- On approval: squash merge, delete the remote and local branch, then
-  `git checkout main && git pull --ff-only`.
+- On approval: before merging, compare the PRD release impact, PR title, and proposed squash
+  title. They must carry the same semantic type because release-please reads the commit that
+  lands on `main`, not the branch's internal history. Squash merge with that verified title,
+  delete the remote and local branch, then `git checkout main && git pull --ff-only`.
 
 ### 7. ARCHIVE — at merge time, not before
 
