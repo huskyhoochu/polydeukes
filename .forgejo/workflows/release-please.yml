@@ -32,11 +32,28 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   release-please:
     runs-on: node-24
     steps:
+      # Forgejo 16 currently returns HTTP 500 when the port creates this branch
+      # through POST /api/v1/repos/{owner}/{repo}/branches. Seed the branch over
+      # git instead; the release action can update an existing branch normally.
+      - name: Check out main for release-branch recovery
+        uses: actions/checkout@v4
+
+      - name: Seed the release branch when Forgejo has deleted it
+        env:
+          RELEASE_BRANCH: release-please--branches--main--components--polydeukes-monorepo
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "refs/heads/$RELEASE_BRANCH" >/dev/null 2>&1; then
+            exit 0
+          fi
+          git push origin "HEAD:refs/heads/$RELEASE_BRANCH"
+
       # Pinned to a full commit SHA, not the mutable v4 tag: a third-party fork
       # holding this run's repo-write token is a supply-chain surface, so upgrades
       # are a deliberate SHA bump. The token itself is the per-run actions token
