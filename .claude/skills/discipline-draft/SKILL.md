@@ -1,9 +1,10 @@
 ---
 name: discipline-draft
-description: Turn a described discipline problem into a registered entry in polydeukes.config — a
-judged entry when the declaration grammar can express it, a draft entry otherwise. Use when the user
-describes a recurring problem they want promised away ("I keep...", "stop X from happening", "we
-should never...", "how do I enforce Y").
+description: >-
+  Turn a described discipline problem into a registered entry in polydeukes.config — a judged entry
+  when the declaration grammar can express it, a draft entry otherwise. Use when the user describes a
+  recurring problem they want promised away ("I keep...", "stop X from happening", "we should
+  never...", "how do I enforce Y").
 ---
 
 # discipline-draft — from a problem description to a registered discipline
