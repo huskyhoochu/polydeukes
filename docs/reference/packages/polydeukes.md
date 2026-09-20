@@ -114,7 +114,7 @@ vocabulary below applies to them unchanged.
 | Registration | Axis | Judges |
 |---|---|---|
 | self-mod | Tool | Mutations to protected paths through editing tools. Only the call's proven mutation target is compared — a protected path inside an edit's *content* is a mention and passes |
-| shell-mod | Shell | The same, through a command line. A command mentioning a protected path passes only with read-only proof: an allowlisted leading word, or a supported argument-sensitive reader such as `git ls-files`, safe `find`, or numeric-range `sed -n …p` |
+| shell-mod | Shell | The same, through a command line. A command mentioning a protected path passes only with read-only proof: an allowlisted leading word, or a supported argument-sensitive reader such as `git ls-files`, `find` without mutation, execution, prompting, or file-output actions, or numeric-range `sed -n …p` |
 | transcript-mod | Transcript | Writes to the live session transcript, judged by whole-path **equality** — never as a protected ancestor |
 
 **Six words** are the telemetry contract — five verdicts and one observation. A row in

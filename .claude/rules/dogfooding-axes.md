@@ -37,8 +37,8 @@ stay closed.
   a `Write` before the allowlist is even consulted. A line the scanner cannot finish reading
   keeps an `unread` span and loses read-only absolution while the span is open. Proof is either
   an allowlisted head whose argv cannot write, or one of the finite argument-sensitive readers:
-  `git ls-files`, `find` without mutation/execution/file-output actions, and numeric-range
-  `sed -n …p`. Everything
+  `git ls-files`, `find` without mutation, execution, prompting, or file-output actions, and
+  numeric-range `sed -n …p`. Everything
   the text leaves undecidable lands as a `skipped` telemetry row, and **that row is the
   contract**: predicting a shell target from text is undecidable, so the invariant this axis
   holds is that no call passes unrecorded. A new spelling landing in `skipped` is the declared

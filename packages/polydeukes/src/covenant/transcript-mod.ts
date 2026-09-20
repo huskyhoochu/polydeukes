@@ -149,7 +149,7 @@ function argsNameTranscript(value: unknown, transcript: ResolvedTranscript): boo
  * it has to break before the allowlist gets a chance to absolve it. The letters skip `(c)`
  * because this ladder has no opaque-mention clause, matching the shell ladder's numbering
  * rather than closing the gap. `lineFullyRead` is false when the line carried a span the
- * tokenizer could not read, which withholds the allowlist clause.
+ * tokenizer could not read, which withholds read-only proof.
  */
 function judgeCommand(
   command: SimpleCommand,
@@ -178,8 +178,8 @@ function judgeCommand(
   }
 
   // (e) Read-only proof: the allowlist or a finite argument-sensitive reader absolves the
-  // mention, in every spelling — but a
-  // nested shell (`eval`/`sh -c …`) re-parses its string args, so it is never provably a read.
+  // mention in every spelling. A nested shell (`eval`/`sh -c …`) re-parses its string args,
+  // so it is never provably a read.
   // A line carrying an unread span is refused the same way: reading the session is free, but
   // only on a line we finished reading.
   const first = command.words[0];

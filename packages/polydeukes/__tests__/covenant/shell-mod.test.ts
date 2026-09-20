@@ -52,7 +52,7 @@ describe('judgeShellModification — break direction', () => {
       `git add ${PROTECTED}`,
       `/usr/bin/git add ${PROTECTED}`,
     ]) {
-      expect(judgeShellModification(shellCall(command), baseSpec()).upheld).toBe(false);
+      expect(judgeShellModification(shellCall(command), baseSpec()).upheld, command).toBe(false);
     }
   });
 
@@ -64,6 +64,7 @@ describe('judgeShellModification — break direction', () => {
       String.raw`-ok printf x {} \;`,
       String.raw`-okdir printf x {} \;`,
       '-fprint /tmp/find.out',
+      '-fprint0 /tmp/find.out',
       "-fprintf /tmp/find.out '%p\\n'",
       '-fls /tmp/find.out',
     ]) {
@@ -84,8 +85,10 @@ describe('judgeShellModification — break direction', () => {
       `sed -ni '1,120p' ${PROTECTED}`,
       `sed -n '1,120w /tmp/sed.out' ${PROTECTED}`,
       `sed -n '1e id' ${PROTECTED}`,
+      `sed -n '1,120p;w ${PROTECTED}' /tmp/source`,
+      `sed -n '1,120p' /tmp/source -e 'w ${PROTECTED}'`,
     ]) {
-      expect(judgeShellModification(shellCall(command), baseSpec()).upheld).toBe(false);
+      expect(judgeShellModification(shellCall(command), baseSpec()).upheld, command).toBe(false);
     }
   });
 
@@ -318,6 +321,7 @@ describe('judgeShellModification — uphold direction', () => {
   it('conditional readers retain opaque, redirect, nested-shell, and custom-allowlist boundaries', () => {
     for (const command of [
       `find $(printf ${PROTECTED}) -type f -print`,
+      `find ${PROTECTED} $ACTION -print`,
       `find ${PROTECTED} -type f -print > $OUT`,
       `sh -c 'find ${PROTECTED} -type f -print'`,
     ]) {
@@ -332,6 +336,13 @@ describe('judgeShellModification — uphold direction', () => {
     ]) {
       expect(judgeShellModification(shellCall(command), customSpec).upheld).toBe(false);
     }
+
+    const extendedSpec = baseSpec({
+      readOnlyCommands: [...DEFAULT_READ_ONLY_COMMANDS, 'jq'],
+    });
+    expect(
+      judgeShellModification(shellCall(`find ${PROTECTED} -type f -print`), extendedSpec).upheld,
+    ).toBe(false);
   });
 
   it('sed -i, tee, and printf redirect on an UNPROTECTED path all uphold (roadmap AC "non-protected same command")', () => {

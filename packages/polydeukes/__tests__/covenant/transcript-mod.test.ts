@@ -55,7 +55,9 @@ describe('judgeTranscriptModification — Bash axis break direction', () => {
       `git add ${TRANSCRIPT}`,
       `/usr/bin/git add ${TRANSCRIPT}`,
     ]) {
-      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld, command).toBe(
+        false,
+      );
     }
   });
 
@@ -67,6 +69,7 @@ describe('judgeTranscriptModification — Bash axis break direction', () => {
       String.raw`-ok printf x {} \;`,
       String.raw`-okdir printf x {} \;`,
       '-fprint /tmp/find.out',
+      '-fprint0 /tmp/find.out',
       "-fprintf /tmp/find.out '%p\\n'",
       '-fls /tmp/find.out',
     ]) {
@@ -88,8 +91,12 @@ describe('judgeTranscriptModification — Bash axis break direction', () => {
       `sed -ni '1,120p' ${TRANSCRIPT}`,
       `sed -n '1,120w /tmp/sed.out' ${TRANSCRIPT}`,
       `sed -n '1e id' ${TRANSCRIPT}`,
+      `sed -n '1,120p;w ${TRANSCRIPT}' /tmp/source`,
+      `sed -n '1,120p' /tmp/source -e 'w ${TRANSCRIPT}'`,
     ]) {
-      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld, command).toBe(
+        false,
+      );
     }
   });
 
@@ -271,6 +278,7 @@ describe('judgeTranscriptModification — Bash axis uphold direction', () => {
   it('conditional readers retain opaque, redirect, nested-shell, and custom-allowlist boundaries', () => {
     for (const command of [
       `find $(printf ${TRANSCRIPT}) -type f -print`,
+      `find ${TRANSCRIPT} $ACTION -print`,
       `find ${TRANSCRIPT} -type f -print > $OUT`,
       `sh -c 'find ${TRANSCRIPT} -type f -print'`,
     ]) {
@@ -285,6 +293,14 @@ describe('judgeTranscriptModification — Bash axis uphold direction', () => {
     ]) {
       expect(judgeTranscriptModification(shellCall(command), customSpec).upheld).toBe(false);
     }
+
+    const extendedSpec = baseSpec({
+      readOnlyCommands: [...DEFAULT_READ_ONLY_COMMANDS, 'jq'],
+    });
+    expect(
+      judgeTranscriptModification(shellCall(`find ${TRANSCRIPT} -type f -print`), extendedSpec)
+        .upheld,
+    ).toBe(false);
   });
 
   it('cd ~, cd $HOME, and mv x ~ uphold (non-allowlisted heads with a bare home argument)', () => {

@@ -23,7 +23,7 @@ import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
  * `protectedPaths` are literal path strings; `shellToolNames` are the tool names whose
  * calls carry shell lines; `commandArgNames` are the `args` keys those lines live under;
  * `readOnlyCommands` are allowlist entries — space-separated word sequences (`'cat'`,
- * `'git diff'`). Empty-string entries in every list are ignored (an unguarded `''` would
+ * `'git status'`). Empty-string entries in every list are ignored (an unguarded `''` would
  * match every path / tool / arg / command).
  */
 export type ShellModificationSpec = {
@@ -149,7 +149,7 @@ export function matchesReadOnlyEntry(command: SimpleCommand, entry: string[]): b
  * Judge one simple command. Returns the break reason, or null when the command contributes
  * to uphold. The clause order below is normative: each clause exists to be reached before
  * the next one can absolve. `lineFullyRead` is false when the line carried a span the
- * tokenizer could not read, which withholds the allowlist clause.
+ * tokenizer could not read, which withholds read-only proof.
  */
 function judgeCommand(
   command: SimpleCommand,
@@ -190,9 +190,9 @@ function judgeCommand(
   }
 
   // (e) Read-only proof: the allowlist or a finite argument-sensitive reader absolves the
-  // mention — but a nested shell
-  // (`eval`/`sh -c …`) re-parses its string args, so it can never be proven read-only even
-  // if it was injected into the allowlist. Its mention falls through to the backstop. A line
+  // mention. A nested shell (`eval`/`sh -c …`) re-parses its string args, so it can never be
+  // proven read-only even if it was injected into the allowlist. Its mention falls through
+  // to the backstop. A line
   // carrying an unread span is refused the same way: what the scanner never read could be
   // anything, so no head vouches for it.
   const first = command.words[0];
@@ -287,8 +287,9 @@ export function judgeShellModification(
 /**
  * `ShellModRegistrationSpec` — the assembly values baked into the registration. The call
  * set is not among them: the dispatcher supplies it to the judge at call time.
- * `readOnlyCommands` REPLACES {@link DEFAULT_READ_ONLY_COMMANDS} when given — no merge,
- * since an assembly wanting to extend the default spreads the constant.
+ * `readOnlyCommands` REPLACES {@link DEFAULT_READ_ONLY_COMMANDS} when given — no merge.
+ * Any replacement, including a superset made by spreading the default, disables the finite
+ * argument-sensitive readers because their proof belongs to the exact shipped default.
  */
 export type ShellModRegistrationSpec = {
   protectedPaths: string[];
