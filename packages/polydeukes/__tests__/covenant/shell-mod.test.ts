@@ -46,6 +46,49 @@ function baseSpec(overrides: Partial<ShellModificationSpec> = {}): ShellModifica
 }
 
 describe('judgeShellModification — break direction', () => {
+  it('git is absolved only for the ls-files subcommand', () => {
+    for (const command of [
+      `git ${PROTECTED}`,
+      `git add ${PROTECTED}`,
+      `/usr/bin/git add ${PROTECTED}`,
+    ]) {
+      expect(judgeShellModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
+
+  it('find actions that mutate, execute, or write files are not absolved', () => {
+    for (const action of [
+      '-delete',
+      String.raw`-exec printf x {} \;`,
+      String.raw`-execdir printf x {} \;`,
+      String.raw`-ok printf x {} \;`,
+      String.raw`-okdir printf x {} \;`,
+      '-fprint /tmp/find.out',
+      "-fprintf /tmp/find.out '%p\\n'",
+      '-fls /tmp/find.out',
+    ]) {
+      expect(
+        judgeShellModification(shellCall(`find ${PROTECTED} ${action}`), baseSpec()).upheld,
+      ).toBe(false);
+    }
+    expect(
+      judgeShellModification(shellCall(`/usr/bin/find ${PROTECTED} -delete`), baseSpec()).upheld,
+    ).toBe(false);
+  });
+
+  it('sed in-place options and scripts that write or execute are not absolved', () => {
+    for (const command of [
+      `sed -i 's/a/b/' ${PROTECTED}`,
+      `/usr/bin/sed -i 's/a/b/' ${PROTECTED}`,
+      `sed --in-place 's/a/b/' ${PROTECTED}`,
+      `sed -ni '1,120p' ${PROTECTED}`,
+      `sed -n '1,120w /tmp/sed.out' ${PROTECTED}`,
+      `sed -n '1e id' ${PROTECTED}`,
+    ]) {
+      expect(judgeShellModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
+
   it('sed -i on the protected path breaks, with reason carrying the rule name and path', () => {
     // The rule set must carry sedInPlaceRule and its detected target must be matched against
     // protectedPaths, or `sed -i 's/exit 2/exit 0/' <judge>` rewrites the judge and passes.
@@ -252,6 +295,45 @@ describe('judgeShellModification — break direction', () => {
 });
 
 describe('judgeShellModification — uphold direction', () => {
+  it.each([
+    `git ls-files ${PROTECTED}`,
+    `/usr/bin/git ls-files ${PROTECTED}`,
+    `find ${PROTECTED} -maxdepth 3 -type f -print`,
+    `/usr/bin/find ${PROTECTED} -maxdepth 3 -type f -print`,
+    `sed -n '1,120p' ${PROTECTED}`,
+    `/usr/bin/sed -n '1,120p' ${PROTECTED}`,
+  ])('conditionally proves a read-only command: %s', (command) => {
+    expect(judgeShellModification(shellCall(command), baseSpec())).toEqual({ upheld: true });
+  });
+
+  it('a conditional protected read redirected to a transparent unprotected target upholds', () => {
+    expect(
+      judgeShellModification(
+        shellCall(`find ${PROTECTED} -maxdepth 3 -type f -print > /tmp/out`),
+        baseSpec(),
+      ),
+    ).toEqual({ upheld: true });
+  });
+
+  it('conditional readers retain opaque, redirect, nested-shell, and custom-allowlist boundaries', () => {
+    for (const command of [
+      `find $(printf ${PROTECTED}) -type f -print`,
+      `find ${PROTECTED} -type f -print > $OUT`,
+      `sh -c 'find ${PROTECTED} -type f -print'`,
+    ]) {
+      expect(judgeShellModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+
+    const customSpec = baseSpec({ readOnlyCommands: ['cat'] });
+    for (const command of [
+      `git ls-files ${PROTECTED}`,
+      `find ${PROTECTED} -type f -print`,
+      `sed -n '1,120p' ${PROTECTED}`,
+    ]) {
+      expect(judgeShellModification(shellCall(command), customSpec).upheld).toBe(false);
+    }
+  });
+
   it('sed -i, tee, and printf redirect on an UNPROTECTED path all uphold (roadmap AC "non-protected same command")', () => {
     // Matching on "is a write" alone, rather than against the protected-path list,
     // over-blocks every write regardless of destination.

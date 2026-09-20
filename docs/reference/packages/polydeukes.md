@@ -114,7 +114,7 @@ vocabulary below applies to them unchanged.
 | Registration | Axis | Judges |
 |---|---|---|
 | self-mod | Tool | Mutations to protected paths through editing tools. Only the call's proven mutation target is compared — a protected path inside an edit's *content* is a mention and passes |
-| shell-mod | Shell | The same, through a command line. A command mentioning a protected path passes only if its leading word proves it read-only |
+| shell-mod | Shell | The same, through a command line. A command mentioning a protected path passes only with read-only proof: an allowlisted leading word, or a supported argument-sensitive reader such as `git ls-files`, safe `find`, or numeric-range `sed -n …p` |
 | transcript-mod | Transcript | Writes to the live session transcript, judged by whole-path **equality** — never as a protected ancestor |
 
 **Six words** are the telemetry contract — five verdicts and one observation. A row in
@@ -179,8 +179,8 @@ No import. The umbrella assembles the module for both surfaces.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected
   path blocks unless proven safe. Residual vectors such as indirect path computation are
-  telemetry targets, not block targets. The two friction valves — the read-only allowlist
-  and the TTL witness — both leave a measurable trace.
+  telemetry targets, not block targets. The two friction valves — read-only proof and the TTL
+  witness — both leave a measurable trace.
 - **The valve stands after the verdict.** Only a judgment that actually blocked can be
   witnessed open, a mid-sentence mention of the token does not arm it, and an AI can never
   open the valve for itself.

@@ -4,7 +4,7 @@
  * Analyzes the command-line strings of *shell* tool calls (names and arg keys are injected
  * values, never source literals) per simple command: the fixed detection rules catch writes
  * to a protected path, undecidable structures (opaque mentions, opaque write targets) fail
- * closed, the read-only allowlist absolves proven reads, and every other protected-path
+ * closed, read-only proof absolves safe reads, and every other protected-path
  * mention breaks — "mention + unproven = block". It judges only its own axis: a non-shell
  * tool call is upheld, since the tool axis belongs to the self-mod meta-covenant and
  * run-all co-existence depends on that boundary.
@@ -60,6 +60,69 @@ export const DEFAULT_READ_ONLY_COMMANDS: string[] = [
   'git grep',
 ];
 
+const FIND_WRITE_OR_EXECUTE_ACTIONS = new Set([
+  '-delete',
+  '-exec',
+  '-execdir',
+  '-ok',
+  '-okdir',
+  '-fprint',
+  '-fprint0',
+  '-fprintf',
+  '-fls',
+]);
+
+function normalizedReadOnlyCommands(commands: string[]): string[] {
+  return [
+    ...new Set(
+      commands
+        .map((entry) =>
+          entry
+            .split(/\s+/)
+            .filter((word) => word !== '')
+            .join(' '),
+        )
+        .filter((entry) => entry !== ''),
+    ),
+  ].sort();
+}
+
+/**
+ * True when a configured allowlist has the same effective entries as the shipped default.
+ * Conditional readers belong to that default contract and stay disabled for replacements.
+ */
+export function usesDefaultReadOnlyCommands(commands: string[]): boolean {
+  const configured = normalizedReadOnlyCommands(commands);
+  const shipped = normalizedReadOnlyCommands(DEFAULT_READ_ONLY_COMMANDS);
+  return (
+    configured.length === shipped.length && configured.every((entry, i) => entry === shipped[i])
+  );
+}
+
+/**
+ * Prove the finite argument-sensitive readers that cannot be represented by a leading-word
+ * allowlist. Every word must be transparent because these readers inspect their later words.
+ */
+export function matchesConditionalReadOnlyCommand(command: SimpleCommand): boolean {
+  if (command.words.length === 0 || command.words.some((word) => word.opaque)) return false;
+
+  const name = commandBasename(command.words[0]);
+  if (name === 'git') return command.words[1]?.text === 'ls-files';
+  if (name === 'find') {
+    return !command.words.some((word) => FIND_WRITE_OR_EXECUTE_ACTIONS.has(word.text));
+  }
+  if (name !== 'sed') return false;
+
+  const script = command.words[2]?.text;
+  return (
+    command.words[1]?.text === '-n' &&
+    script !== undefined &&
+    /^\d+(?:,\d+)?p$/.test(script) &&
+    command.words.length > 3 &&
+    command.words.slice(3).every((word) => !word.text.startsWith('-'))
+  );
+}
+
 // The rule set is fixed, not injectable: dropping a rule from an assembly would be a
 // detection hole, and no consumer needs a subset.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
@@ -92,6 +155,7 @@ function judgeCommand(
   command: SimpleCommand,
   protectedPaths: string[],
   readOnlyEntries: string[][],
+  conditionalReadersEnabled: boolean,
   lineFullyRead: boolean,
 ): string | null {
   // (a) Precise rules: a detected mutation whose target carries a protected path breaks.
@@ -125,7 +189,8 @@ function judgeCommand(
     return `opaque redirect target alongside protected path ${mentioned}`;
   }
 
-  // (e) Read-only allowlist: a proven read absolves the mention — but a nested shell
+  // (e) Read-only proof: the allowlist or a finite argument-sensitive reader absolves the
+  // mention — but a nested shell
   // (`eval`/`sh -c …`) re-parses its string args, so it can never be proven read-only even
   // if it was injected into the allowlist. Its mention falls through to the backstop. A line
   // carrying an unread span is refused the same way: what the scanner never read could be
@@ -135,7 +200,8 @@ function judgeCommand(
   if (
     lineFullyRead &&
     !isNestedShellCommand(firstBasename) &&
-    readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))
+    (readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry)) ||
+      (conditionalReadersEnabled && matchesConditionalReadOnlyCommand(command)))
   ) {
     return null;
   }
@@ -165,6 +231,7 @@ export function judgeShellModification(
   const readOnlyEntries = spec.readOnlyCommands
     .map((entry) => entry.split(/\s+/).filter((word) => word !== ''))
     .filter((entry) => entry.length > 0);
+  const conditionalReadersEnabled = usesDefaultReadOnlyCommands(spec.readOnlyCommands);
 
   for (const call of input.toolCalls) {
     if (!shellToolNames.includes(call.name)) {
@@ -202,7 +269,13 @@ export function judgeShellModification(
         }
       }
       for (const command of commands) {
-        const reason = judgeCommand(command, protectedPaths, readOnlyEntries, unread.length === 0);
+        const reason = judgeCommand(
+          command,
+          protectedPaths,
+          readOnlyEntries,
+          conditionalReadersEnabled,
+          unread.length === 0,
+        );
         if (reason !== null) return { upheld: false, reason };
       }
     }

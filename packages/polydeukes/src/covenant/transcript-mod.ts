@@ -23,7 +23,12 @@ import {
 } from './mention.ts';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.ts';
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
-import { DEFAULT_READ_ONLY_COMMANDS, matchesReadOnlyEntry } from './shell-mod.ts';
+import {
+  DEFAULT_READ_ONLY_COMMANDS,
+  matchesConditionalReadOnlyCommand,
+  matchesReadOnlyEntry,
+  usesDefaultReadOnlyCommands,
+} from './shell-mod.ts';
 
 /**
  * `TranscriptModificationSpec` — the injected axes of the judge. Empty-string entries in
@@ -45,7 +50,7 @@ export type TranscriptModificationSpec = {
 // a detection hole, and the two judges must not diverge on what counts as a write.
 const MUTATION_RULES = [redirectWriteRule, teeRule, sedInPlaceRule];
 
-/** The transcript's axes once resolved: the canonical target, the home forms, the allowlist. */
+/** The transcript's axes once resolved: the canonical target, home forms, and read proof. */
 type ResolvedTranscript = {
   /** The one segment run every spelling must resolve to: absolute, dot-resolved, canonical. */
   target: string[];
@@ -56,6 +61,7 @@ type ResolvedTranscript = {
   /** The canonical absolute path: the only spelling a break reason or a match ever reports. */
   path: string;
   readOnlyEntries: string[][];
+  conditionalReadersEnabled: boolean;
 };
 
 /** True iff two segment runs are the same path — length and every segment's text. */
@@ -96,6 +102,7 @@ function resolveTranscript(spec: TranscriptModificationSpec): ResolvedTranscript
     readOnlyEntries: spec.readOnlyCommands
       .map((entry) => entry.split(/\s+/).filter((word) => word !== ''))
       .filter((entry) => entry.length > 0),
+    conditionalReadersEnabled: usesDefaultReadOnlyCommands(spec.readOnlyCommands),
   };
 }
 
@@ -170,7 +177,8 @@ function judgeCommand(
     return `opaque redirect target alongside the session transcript ${transcript.path}`;
   }
 
-  // (e) Read-only allowlist: a proven read absolves the mention, in every spelling — but a
+  // (e) Read-only proof: the allowlist or a finite argument-sensitive reader absolves the
+  // mention, in every spelling — but a
   // nested shell (`eval`/`sh -c …`) re-parses its string args, so it is never provably a read.
   // A line carrying an unread span is refused the same way: reading the session is free, but
   // only on a line we finished reading.
@@ -179,7 +187,8 @@ function judgeCommand(
   if (
     lineFullyRead &&
     !isNestedShellCommand(firstBasename) &&
-    transcript.readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry))
+    (transcript.readOnlyEntries.some((entry) => matchesReadOnlyEntry(command, entry)) ||
+      (transcript.conditionalReadersEnabled && matchesConditionalReadOnlyCommand(command)))
   ) {
     return null;
   }

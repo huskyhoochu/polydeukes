@@ -49,6 +49,50 @@ function baseSpec(overrides: Partial<TranscriptModificationSpec> = {}): Transcri
 }
 
 describe('judgeTranscriptModification — Bash axis break direction', () => {
+  it('git is absolved only for the ls-files subcommand', () => {
+    for (const command of [
+      `git ${TRANSCRIPT}`,
+      `git add ${TRANSCRIPT}`,
+      `/usr/bin/git add ${TRANSCRIPT}`,
+    ]) {
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
+
+  it('find actions that mutate, execute, or write files are not absolved', () => {
+    for (const action of [
+      '-delete',
+      String.raw`-exec printf x {} \;`,
+      String.raw`-execdir printf x {} \;`,
+      String.raw`-ok printf x {} \;`,
+      String.raw`-okdir printf x {} \;`,
+      '-fprint /tmp/find.out',
+      "-fprintf /tmp/find.out '%p\\n'",
+      '-fls /tmp/find.out',
+    ]) {
+      expect(
+        judgeTranscriptModification(shellCall(`find ${TRANSCRIPT} ${action}`), baseSpec()).upheld,
+      ).toBe(false);
+    }
+    expect(
+      judgeTranscriptModification(shellCall(`/usr/bin/find ${TRANSCRIPT} -delete`), baseSpec())
+        .upheld,
+    ).toBe(false);
+  });
+
+  it('sed in-place options and scripts that write or execute are not absolved', () => {
+    for (const command of [
+      `sed -i 's/a/b/' ${TRANSCRIPT}`,
+      `/usr/bin/sed -i 's/a/b/' ${TRANSCRIPT}`,
+      `sed --in-place 's/a/b/' ${TRANSCRIPT}`,
+      `sed -ni '1,120p' ${TRANSCRIPT}`,
+      `sed -n '1,120w /tmp/sed.out' ${TRANSCRIPT}`,
+      `sed -n '1e id' ${TRANSCRIPT}`,
+    ]) {
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+  });
+
   it('an append redirect through the "~" spelling breaks', () => {
     // Without home-spelling normalization the raw segments ['~', ...] never equal
     // ['home', 'u', ...], so a forgery appending a fake human utterance — which the TTL witness
@@ -204,6 +248,45 @@ describe('judgeTranscriptModification — Bash axis break direction', () => {
 });
 
 describe('judgeTranscriptModification — Bash axis uphold direction', () => {
+  it.each([
+    `git ls-files ${TRANSCRIPT}`,
+    `/usr/bin/git ls-files ${TRANSCRIPT}`,
+    `find ${TRANSCRIPT} -maxdepth 3 -type f -print`,
+    `/usr/bin/find ${TRANSCRIPT} -maxdepth 3 -type f -print`,
+    `sed -n '1,120p' ${TRANSCRIPT}`,
+    `/usr/bin/sed -n '1,120p' ${TRANSCRIPT}`,
+  ])('conditionally proves a read-only command: %s', (command) => {
+    expect(judgeTranscriptModification(shellCall(command), baseSpec())).toEqual({ upheld: true });
+  });
+
+  it('a conditional protected read redirected to a transparent unprotected target upholds', () => {
+    expect(
+      judgeTranscriptModification(
+        shellCall(`find ${TRANSCRIPT} -maxdepth 3 -type f -print > /tmp/out`),
+        baseSpec(),
+      ),
+    ).toEqual({ upheld: true });
+  });
+
+  it('conditional readers retain opaque, redirect, nested-shell, and custom-allowlist boundaries', () => {
+    for (const command of [
+      `find $(printf ${TRANSCRIPT}) -type f -print`,
+      `find ${TRANSCRIPT} -type f -print > $OUT`,
+      `sh -c 'find ${TRANSCRIPT} -type f -print'`,
+    ]) {
+      expect(judgeTranscriptModification(shellCall(command), baseSpec()).upheld).toBe(false);
+    }
+
+    const customSpec = baseSpec({ readOnlyCommands: ['cat'] });
+    for (const command of [
+      `git ls-files ${TRANSCRIPT}`,
+      `find ${TRANSCRIPT} -type f -print`,
+      `sed -n '1,120p' ${TRANSCRIPT}`,
+    ]) {
+      expect(judgeTranscriptModification(shellCall(command), customSpec).upheld).toBe(false);
+    }
+  });
+
   it('cd ~, cd $HOME, and mv x ~ uphold (non-allowlisted heads with a bare home argument)', () => {
     // cd and mv are NOT read-only entries, so no absolution can rescue a false mention here:
     // an ancestor-matching predicate blocks all three at the backstop, with no valve but the

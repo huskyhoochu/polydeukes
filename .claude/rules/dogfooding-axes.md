@@ -31,21 +31,24 @@ stay closed.
 - **Tool axis** (Edit/Write/…): only the call's proven mutation target is compared — a protected
   path inside an edit's *content* is a mention and passes. An evidence-free call falls back to
   the conservative args-mention judgment.
-- **Bash axis**: a command *mentioning* a protected path without a read-only first token blocks
+- **Bash axis**: a command *mentioning* a protected path without read-only proof blocks
   (mentions compare raw AND dot-resolved segments as a union; globs and `$VAR` are never
   expanded). Computable shell writes (literal redirects, clean heredocs/herestrings) block like
   a `Write` before the allowlist is even consulted. A line the scanner cannot finish reading
-  keeps an `unread` span and loses its allowlist absolution while the span is open. Everything
+  keeps an `unread` span and loses read-only absolution while the span is open. Proof is either
+  an allowlisted head whose argv cannot write, or one of the finite argument-sensitive readers:
+  `git ls-files`, `find` without mutation/execution/file-output actions, and numeric-range
+  `sed -n …p`. Everything
   the text leaves undecidable lands as a `skipped` telemetry row, and **that row is the
   contract**: predicting a shell target from text is undecidable, so the invariant this axis
   holds is that no call passes unrecorded. A new spelling landing in `skipped` is the declared
   limit showing itself; a pass with NO row (or `passed` without judgment) is the defect class.
   Never read a scan that stopped early as the safe direction.
 - **The transcript** is judged by whole-path *equality*, never as an ancestor: forged writes
-  block in every spelling, an allowlisted read head (`cat`, `tail`, `grep`, …) passes in every
-  spelling, and a reader outside the allowlist (`jq`, `bat`) breaks — the allowlist vouches for
-  the command, not the intent. Out-of-repo ancestors stay out of observation scope; the agent's
-  own deny policy owns that ground.
+  block in every spelling, a proven reader passes, and an unproven reader (`jq`, `bat`) breaks.
+  An allowlisted head (`cat`, `tail`, `grep`, …) vouches for its command; the finite
+  argument-sensitive readers prove their inspected argv instead. Out-of-repo ancestors stay out
+  of observation scope; the agent's own deny policy owns that ground.
 - **Disciplines** in the config judge beyond path mention — every entry is one declaration.
   A break lands `advised` on both surfaces — exit 0, the `why` on
   stderr — unless the entry says `enforce: block` (POSTURE-01); the three meta-covenants
