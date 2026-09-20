@@ -16,7 +16,7 @@ Read the test file to understand the expected behavior, then implement.
 - Write the simplest code that makes all surviving tests pass.
 - Do NOT modify test files.
 - Do NOT add functionality beyond what the tests require — no speculative branches, no
-  configurability the tests do not demand. (Global CLAUDE.md §2 Simplicity First, §3 Surgical Changes.)
+  configurability the tests do not demand. (Global AGENTS.md §2 Simplicity First, §3 Surgical Changes.)
 - "Minimum" means no speculative features, not special-casing the test's inputs. Implement the
   actual logic so it holds for every valid input; a branch that exists only to return the value a
   fixture expects is a hard-coded answer, not an implementation.

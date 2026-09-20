@@ -1,22 +1,156 @@
 # Polydeukes
 
-Read `CLAUDE.md` before working in this repository. It is the project-wide source of truth for
-architecture, vocabulary, development workflow, and dogfooding recovery. Then read every
-applicable file in `.claude/rules/` for the paths you will touch; those path-scoped rules apply to
-Codex as well as Claude Code.
+`AGENTS.md` is the project-wide source of truth for every supported coding agent.
+Before touching a path, read every applicable file in `.claude/rules/`; those path-scoped rules
+apply to every coding agent working in this repository.
+If `AGENTS.local.md` exists, read it after this file as additive machine-local context; it never
+replaces the shared instructions here.
 
-Work from `_docs/roadmap.md` for planned product work and `_docs/roadmap.issues.md` for external
-issue work. Start ticket implementation through the repository's ticket workflow, preserve the
-English/Korean documentation pairs, and run verification appropriate to the changed package.
+A development *discipline* framework for building alongside an AI coding partner — deterministic
+covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-This repository dogfoods `@polydeukes/adapter-codex` through `.codex/hooks.json`. The generated
-hook must remain byte-identical to `pdks-codex init` output. Hook approval is bound to its
-definition hash, and Code Mode `exec` plus nested tool calls are currently outside `PreToolUse`
-coverage; do not describe an Active hook as complete coverage. Codex session evidence comes only
-from the registered `UserPromptSubmit` and `PostToolUse` lifecycle events, is removed at
-`SessionEnd`, and never comes from the unstable transcript. If that evidence is absent, a blocked
-intentional edit must be recovered from the user's terminal.
+**This repo is beta** (since v0.7.0). Six packages ship today: `core` (the covenant protocol — stdin-JSON
+in, exit code out — with file-change evidence, the config schema, and the algebra declaration
+schema), the three adapters `adapter-claude-code`, `adapter-grok` and `adapter-codex` (each one
+agent's session payload onto the
+input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the
+umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
+surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`
+module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
+library, and the declaration engine — extract steps, seven relations, witness lists). An
+adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` /
+`pdks-codex init` registers the
+hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
+`peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
+`polydeukes` as a `peerDependency` for the bin it spawns. `adapter-codex` carries one thing the
+others do not: that host normalises every file edit that reaches the hook into `apply_patch`,
+whose input is the patch text rather than a path, so the adapter parses it into one IR element
+per file. `sdk-ts`
+(`@polydeukes/sdk-ts`) is the remaining published one: one verb, `checkCovenant`, that spawns
+`pdks covenant check` with a caller-built IR
+and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
+`polydeukes`. One more directory, `packages/documentation`, is `private` and publishes
+nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/` at build
+time and carries no judgment logic. Nothing depends the other way:
+the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
+its agents need. The judge module opens no file at all, and core's only file I/O is the
+telemetry log it appends every judgment to.
+Details live in the code and the archived PRDs (the merged contracts).
+The design docs own everything not yet implemented; when a design doc and shipped code disagree,
+neither side wins by default — triage against the archived PRD: it may be a stale doc, or a code
+bug to fix.
 
-Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills,
-MCP tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage
-Codex project instructions directly in this `AGENTS.md` and the repository-owned rule files.
+## Vocabulary is binding
+
+This project deliberately renames control-framing terms. **Never use `guard`, `harness`, or `kb`**
+in code, packages, CLI, or docs — use `covenant`, `discipline framework`, and `memory`. The full
+glossary is in `.claude/rules/domain-terms.md` (scoped to `packages/**`); read it before
+naming anything. One deliberate exception: the npm `keywords` array keeps the industry terms —
+it is a discoverability index; the `description` field is NOT exempt.
+
+## Conventions
+
+- **Docs are bilingual:** English is the default; Korean mirrors live in `*.ko.md`. Keep them in
+  sync when editing either — the change-set surface judges the pair (`docs-stay-bilingual`, advised
+  when one side is staged without the other). In Korean docs, use translation + English gloss
+  for the vocabulary (`약속(covenant)`), never transliteration. The repository instruction files
+  `AGENTS.md` and `AGENTS.local.md` are exceptions and have no Korean mirrors.
+- `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
+- Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills,
+  MCP tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage
+  agent instructions directly in this `AGENTS.md` and the repository-owned rule files.
+
+**Path-scoped rules carry the rest.** Each file in `.claude/rules/` states the constraints a
+file's own source does not explain. Before touching files, determine the intended paths, inspect
+the `paths:` frontmatter of every rule, and read every matching rule in full. Repeat this check if
+the change scope expands. Hosts that support `.claude/rules/` may load them automatically; all
+other agents, including Codex, must perform this routing explicitly.
+
+## How this project is developed
+
+Development follows a roadmap → PRD → TDD loop, codified as skills: `/ticket <ID>` runs the full
+unit-task loop and `/post-task` alone closes out substantial non-ticket chores before they
+commit. Unit tasks must be small enough to fit one PRD and verifiable by a command or test.
+
+**A gap left by a finished ticket is closed by a retrofit ticket, not a new roadmap ID**
+(`COVENANT-01b` is the precedent): its own suffix, branch, and PR. Archived PRDs stay immutable;
+the retrofit records the correction and the archived PRDs get a footnote pointing at it. This
+keeps the roadmap a plan rather than a defect list.
+
+Work that starts from an outside issue report takes its ID from the GitHub number instead
+(`ISSUE-59`, split as `ISSUE-62a`), whether or not it closes a finished ticket's gap — the
+report number is the stronger identifier, and the archived-PRD footnote still applies. The
+sub-roadmap in `_docs/roadmap.issues.md` owns those tickets and the rules around them.
+
+## Self-dogfooding (ON since 2026-07-14)
+
+A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
+pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of
+the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
+builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
+so the delegator never needs regenerating. This repository is developed from Claude Code, Grok,
+and Codex, so it carries all three delegators. The three files here are byte-identical to what
+`pdks-claude-code init`, `pdks-grok init`, and `pdks-codex init` write into a consumer's tree,
+which makes the verdicts we meet every day a measurement of the shipped install units rather
+than a private arrangement; `delegators-are-generated.test.ts` runs all three installers and
+diffs the result against these files. The Grok registration matches on that host's own names
+(`write` · `search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
+stands between a Grok call and its judgment. Codex Code Mode `exec` and its nested calls remain an
+explicitly unobserved host surface until openai/codex#23411 is resolved; installing and approving
+the hook does not turn that gap into coverage.
+Codex session evidence comes only from the registered `UserPromptSubmit` and `PostToolUse`
+lifecycle events, is removed at `SessionEnd`, and never comes from the unstable transcript. If
+that evidence is absent, a blocked intentional edit must be recovered from the user's terminal.
+
+Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
+`biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. This includes
+the Codex hook directory and adapter dist alongside the other two adapters. The
+change-set surface has no list of its own and no prompt: it judges the piped diff and lands every
+verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
+line does not — a staged gate-file change has already passed the session surface). Disciplines
+sit in three lists — `disciplines:` (both surfaces), `sessionDisciplines:` (one live call),
+`changeSetDisciplines:` (a finished change set) — and the loader refuses an entry written in a
+list whose surface cannot observe its channels; each surface compiles the shared list plus its
+own. A break lands `advised` (exit 0, the `why` on stderr) unless the entry says
+`enforce: block`. The session-protected list is a separate
+list, not an override applied to those entries: nothing promotes a discipline's own `advise`
+to a block, and since POSTURE-01 the protected list above is the only thing that blocks
+unasked — on the session surface. Every judgment appends one row to `.polydeukes/roi.log`
+(local, gitignored).
+
+**What each axis compares, and the witness valve, are in
+`.claude/rules/dogfooding-axes.md`** — read it for the hook, the config, and the judge packages.
+The recovery procedures below stay here because no `paths` glob can predict when a session locks.
+
+### Recovery and rewiring
+
+- Fail-closed means an unbuilt `dist` blocks edits too; recovery is `pnpm build` (never itself
+  blocked). When the hook gains a reference to a NEW dist symbol: build first, rewire second —
+  the reverse order crashes assembly and blocks every call, including the recovery build.
+- **A RENAME of anything the hook or config names has no safe build order** — dist, hook, and
+  config must land together: package sources first (session-free), then swap the hook and root
+  config in one witness window, then build. Beware test suites whose `beforeAll` rebuilds dist
+  (the set moves with the tests — enumerate it with
+  `rg -l 'turbo run build|pnpm build' packages/*/__tests__` before relying on it): run one
+  while the source tree is mid-change — a rename, or any cross-package contract change — and
+  the session locks, every mutating call refused, until a human runs the recovery in their own
+  terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one package's dist
+  rebuilt against sources the sibling dist has not seen crashes assembly on every call, and
+  `pnpm build` (run by a human — the locked session cannot) clears it only if the whole tree
+  already typechecks, so gate any dist-touching command on `tsc --noEmit` first. A third shape
+  leaves a COMPLETE dist behind: a source edit that makes one member of the judge object
+  (`src/covenant/module.ts`) undefined, then a rebuild — the hook fails with
+  `covenant.<verb> is not a function` on every call. A review agent probing the seam did
+  exactly this (2026-09-07). Recovery is `git checkout -- <file> && pnpm build` in a human
+  terminal; the built module is asserted by `surface-fold-contract.test.ts` when dist exists.
+- **Rewiring the hook cuts your own valve** — the delegator and the dist it loads are two links
+  of one protected chain. Verify a rewired hook against real payloads *before* relying on it,
+  and never remove the current valve until the replacement is proven; otherwise recovery is a
+  human `git checkout`.
+- **A dist SYMBOL rename has a window-free path — take it**: export the new name AND keep the
+  old as an alias, build, swap the hook, drop the alias, build again. Any other order leaves an
+  interval where the hook names something dist does not carry, and the witness valve cannot
+  rescue it — an assembly crash lands before any verdict, so the valve is never consulted.
+
+The measured history behind these rules — narrowing decisions, bypass profiles, per-ticket
+evolution — lives in the local knowledge store.

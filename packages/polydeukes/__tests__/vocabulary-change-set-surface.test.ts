@@ -52,7 +52,7 @@ function livingFiles(): string[] {
     ...filesUnder(join(REPO_ROOT, 'docs'), isMarkdown),
     join(REPO_ROOT, 'README.md'),
     join(REPO_ROOT, 'README.ko.md'),
-    join(REPO_ROOT, 'CLAUDE.md'),
+    join(REPO_ROOT, 'AGENTS.md'),
     ...filesUnder(join(REPO_ROOT, '.claude/rules'), isMarkdown),
     ...packageDirs().flatMap((dir) =>
       readdirSync(dir)

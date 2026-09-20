@@ -108,7 +108,7 @@ scope_prompt += "If uncommitted files are named, include `git diff HEAD`.\n";
 scope_prompt += "1. Run the diff command and confirm it is non-empty.\n";
 scope_prompt += "2. List changed files as repo-relative paths.\n";
 scope_prompt += "3. Summarize the change in one paragraph.\n";
-scope_prompt += "4. Read CLAUDE.md, CLAUDE.local.md if present, and `.claude/rules/` files ";
+scope_prompt += "4. Read AGENTS.md, AGENTS.local.md if present, and `.claude/rules/` files ";
 scope_prompt += "that apply to the changed paths; put the conventions a reviewer must know in `docs`.\n";
 scope_prompt += "Return structured output only. Empty files means no changes to review.\n";
 let scope_r = agent(scope_prompt, #{
@@ -150,7 +150,7 @@ cleanup_text += "Reuse — new code that re-implements a helper already in the t
 cleanup_text += "Simplification — redundant state, copy-paste, deep nesting, dead code.\n";
 cleanup_text += "Efficiency — redundant I/O, sequential independent work, closures capturing large scopes.\n";
 cleanup_text += "Altitude — special cases layered on shared infrastructure instead of generalizing it.\n";
-cleanup_text += "Conventions — quote the exact CLAUDE.md or .claude/rules line and the exact breaking line. No vibe.\n";
+cleanup_text += "Conventions — quote the exact AGENTS.md or .claude/rules line and the exact breaking line. No vibe.\n";
 cleanup_text += "Correctness outranks cleanup when a cap forces a cut. In failure_scenario, state the concrete cost, not a crash.\n";
 
 phase("Find");

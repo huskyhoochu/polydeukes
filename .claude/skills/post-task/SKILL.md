@@ -1,6 +1,6 @@
 ---
 name: post-task
-description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make CLAUDE.md / .claude/rules / README stale?), the dev-log self-question (was there a non-obvious learning worth recording?), and the public-language promotion question (is there a decision worth promoting into docs/why-polydeukes.md or build-in-public?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
+description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make AGENTS.md / .claude/rules / README stale?), the dev-log self-question (was there a non-obvious learning worth recording?), and the public-language promotion question (is there a decision worth promoting into docs/why-polydeukes.md or build-in-public?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
 user_invocable: true
 argument: "(none — operates on the current session's uncommitted changes)"
 ---
@@ -26,7 +26,7 @@ Record what it did (files touched, or "no exported symbols changed").
 
 Ask: **did this change make any written description stale?** Check the changed files against:
 
-- `CLAUDE.md` — commands, structure, conventions it states (e.g. a renamed script or tsconfig
+- `AGENTS.md` — commands, structure, conventions it states (e.g. a renamed script or tsconfig
   invalidates its Commands section);
 - `.claude/rules/*.md` — workspace structure, domain terms;
 - `README.md` / `STORY.md` and their `*.ko.md` mirrors — **bilingual docs must move together**;

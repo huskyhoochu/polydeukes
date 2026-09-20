@@ -621,7 +621,8 @@ changeSetDisciplines:
         exclude:
           [
             '^\.claude/',
-            '^CLAUDE(\.ko)?\.md$',
+            '^AGENTS(?:\.(?:ko|local))?\.md$',
+            '^CLAUDE(?:\.local)?\.md$',
             '^CHANGELOG\.md$',
             '^CONTEXT\.md$',
           ]

@@ -32,7 +32,8 @@ const EDIT_TOOL = 'edit-tool';
 const EN_DOC = 'README.md';
 const KO_DOC = 'README.ko.md';
 const STEM = 'README';
-const INTERNAL_DOC = 'CLAUDE.md';
+const INTERNAL_DOC = 'AGENTS.md';
+const LOCAL_INTERNAL_DOC = 'AGENTS.local.md';
 const INTERNAL_RULE_DOC = '.claude/rules/x.md';
 const EN_BASE = '# Title\n';
 const KO_BASE = '# Title (ko)\n';
@@ -49,7 +50,7 @@ const declareEntry = {
     scope: {
       source: 'target.path',
       include: ['\\.md$'],
-      exclude: ['^\\.claude/', '^CLAUDE\\.md$'],
+      exclude: ['^\\.claude/', '^AGENTS(?:\\.(?:ko|local))?\\.md$', '^CLAUDE(?:\\.local)?\\.md$'],
     },
     extract: {
       en: [
@@ -221,7 +222,7 @@ describe('the change-set surface judges presence in the staged change set', () =
     ]);
   });
 
-  it('CLAUDE.md staged alone leaves no row under the label', async () => {
+  it('AGENTS.md staged alone leaves no row under the label', async () => {
     // The exclude list: a scope that compiles `exclude` and never subtracts it reports the
     // one internal document that has no mirror, on every commit that touches it.
     await checkStaged([[INTERNAL_DOC, '# guidance\n']]);
@@ -229,9 +230,15 @@ describe('the change-set surface judges presence in the staged change set', () =
     expect(bilingualRows(commitLog)).toEqual([]);
   });
 
+  it('AGENTS.local.md staged alone leaves no row under the label', async () => {
+    await checkStaged([[LOCAL_INTERNAL_DOC, '# local guidance\n']]);
+
+    expect(bilingualRows(commitLog)).toEqual([]);
+  });
+
   it('a markdown file under .claude/ staged alone leaves no row under the label', async () => {
-    // The second exclude pattern; an anchor written `^CLAUDE\.md$` alone lets every rule
-    // and skill file under `.claude/` route.
+    // The second exclude pattern; an AGENTS-only anchor lets every rule and skill file under
+    // `.claude/` route.
     await checkStaged([[INTERNAL_RULE_DOC, '# a rule\n']]);
 
     expect(bilingualRows(commitLog)).toEqual([]);

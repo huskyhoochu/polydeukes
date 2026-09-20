@@ -122,11 +122,11 @@ Temporary Items
 .nfs*
 
 # ─────────────────────────────────────────────────────────────
-# Claude Code  (.claude/)
-# Commit: CLAUDE.md, settings.json, rules/, skills/, agents/  (team-shared)
+# Agent configuration
+# Commit: AGENTS.md, settings.json, rules/, skills/, agents/  (team-shared)
 # Ignore: local/personal config, personal context, ephemeral artifacts
 # ─────────────────────────────────────────────────────────────
-CLAUDE.local.md
+AGENTS.local.md
 .claude/settings.local.json
 .claude/*.local.json
 

@@ -37,7 +37,7 @@ looking twenty lines up. Keep those. `§2-a A6` looked identical and pointed off
 machine.
 
 Two near-misses that read as reachable and are not. A repo file that no package ships —
-`CLAUDE.md`, `.claude/rules/`, this file — is unreachable from an installed `dist`; state
+`AGENTS.md`, `.claude/rules/`, this file — is unreachable from an installed `dist`; state
 the fact instead. And `telemetry.ts:136` rots the moment a line is inserted above it: name
 the function, never the line.
 

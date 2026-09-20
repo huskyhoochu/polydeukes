@@ -523,7 +523,7 @@ describe('invariant-comment-marker · scope', () => {
   it('isInvariantCheckedPath: document files excluded (md, mdx, txt, case-folded)', () => {
     for (const path of [
       '/r/docs/prd/mq-263.md',
-      '/r/CLAUDE.md',
+      '/r/AGENTS.md',
       '/r/.claude/rules/lambda.mdx',
       '/r/notes.txt',
     ]) {
