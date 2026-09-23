@@ -30,12 +30,18 @@ const ADAPTER_SPECIFIER = '@polydeukes/adapter-codex';
 /** The registration artifacts, as `projectRoot`-relative paths (the report vocabulary). */
 const HOOK_RELATIVE = '.codex/hooks/covenant-pretooluse.mjs';
 const JSON_RELATIVE = '.codex/hooks.json';
+/** The command previously registered by this installer, retained for in-place upgrades. */
+const LEGACY_HOOK_COMMAND = `node ${HOOK_RELATIVE}`;
 /**
- * The command the host spawns, project-relative. An absolute path would bake one checkout's
- * location into the string the trust hash covers, so the same package version would present
- * a different definition in every clone.
+ * Codex starts commands from the session cwd. Walk to the installed delegator without baking
+ * a checkout path into the definition the host trusts, then load it as an ES module.
  */
-const HOOK_COMMAND = `node ${HOOK_RELATIVE}`;
+const HOOK_COMMAND = `node --input-type=module -e "import { existsSync } from 'node:fs'; import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; let dir = process.cwd(); while (!existsSync(join(dir, '${HOOK_RELATIVE}'))) { const parent = dirname(dir); if (parent === dir) throw new Error('Codex covenant hook not found'); dir = parent; } await import(pathToFileURL(join(dir, '${HOOK_RELATIVE}')).href);"`;
+const OWN_COMMANDS = new Set([HOOK_COMMAND, LEGACY_HOOK_COMMAND]);
+const isOwnHandler = (handler: unknown): boolean =>
+  isPlainObject(handler) &&
+  typeof handler.command === 'string' &&
+  OWN_COMMANDS.has(handler.command);
 /** Which calls reach the judge — this package's own vocabulary, never a copy of it. */
 const HOOK_MATCHER = [...SHELL_TOOLS, ...MUTATING_TOOLS].join('|');
 /**
@@ -203,17 +209,13 @@ function mergeRegistration(projectRoot: string, report: InitCodexReport): void {
         continue;
       }
       const handlers = candidate.hooks as unknown[];
-      const ownsHandler = handlers.some(
-        (handler) => isPlainObject(handler) && handler.command === HOOK_COMMAND,
-      );
+      const ownsHandler = handlers.some(isOwnHandler);
       if (!ownsHandler) {
         mergedEntries.push(candidate);
         continue;
       }
 
-      const siblingHandlers = handlers.filter(
-        (handler) => !(isPlainObject(handler) && handler.command === HOOK_COMMAND),
-      );
+      const siblingHandlers = handlers.filter((handler) => !isOwnHandler(handler));
       if (installed) {
         if (siblingHandlers.length > 0)
           mergedEntries.push({ ...candidate, hooks: siblingHandlers });

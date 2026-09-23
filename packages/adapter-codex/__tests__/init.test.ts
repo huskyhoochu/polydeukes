@@ -28,6 +28,7 @@ const MATCHER = `${BASH}|${APPLY_PATCH}`;
 const LIFECYCLE_EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
 const HOOK_REL = '.codex/hooks/covenant-pretooluse.mjs';
 const JSON_REL = '.codex/hooks.json';
+const LEGACY_COMMAND = `node ${HOOK_REL}`;
 const ARTIFACTS = [HOOK_REL, JSON_REL];
 const ADAPTER_SPECIFIER = '@polydeukes/adapter-codex';
 const VOUCHED_BIN = '/vouched/polydeukes/dist/bin.js';
@@ -210,6 +211,69 @@ describe('initCodex — the command string is stable across runs and trees', () 
 });
 
 describe('initCodex — merging into an existing hooks.json', () => {
+  it('replaces the previous relative command in all four events without claiming sibling handlers', () => {
+    const userEntries = Object.fromEntries(
+      LIFECYCLE_EVENTS.map((event) => [
+        event,
+        { hooks: [{ type: 'command', command: `echo user-${event}`, timeout: 5 }] },
+      ]),
+    );
+    const existing = {
+      note: 'user-owned',
+      hooks: Object.fromEntries(
+        LIFECYCLE_EVENTS.map((event) => [
+          event,
+          [
+            {
+              ...(event === 'PreToolUse' ? { matcher: USER_MATCHER } : {}),
+              hooks: [
+                { type: 'command', command: LEGACY_COMMAND, timeout: 60 },
+                ...(event === 'PreToolUse'
+                  ? [{ type: 'command', command: USER_SIBLING_COMMAND, timeout: 7 }]
+                  : []),
+              ],
+            },
+            userEntries[event],
+          ],
+        ]),
+      ),
+    };
+    mkdirSync(join(projectRoot, dirname(JSON_REL)), { recursive: true });
+    writeFileSync(join(projectRoot, JSON_REL), `${JSON.stringify(existing, null, 2)}\n`);
+
+    const first = init();
+    const updated = readHooksJson();
+    const installedCommands: string[] = [];
+    for (const event of LIFECYCLE_EVENTS) {
+      const entries = updated.hooks?.[event] ?? [];
+      const commands = entries.flatMap((entry) => entry.hooks?.map((hook) => hook.command) ?? []);
+      expect(commands).not.toContain(LEGACY_COMMAND);
+      const owned = commands.filter(
+        (command) => command !== USER_SIBLING_COMMAND && !command?.startsWith('echo user-'),
+      );
+      expect(owned).toHaveLength(1);
+      installedCommands.push(owned[0] as string);
+      expect(entries).toContainEqual(userEntries[event]);
+    }
+    expect(new Set(installedCommands).size).toBe(1);
+    expect(installedCommands[0]).not.toBe(LEGACY_COMMAND);
+    const sibling = updated.hooks?.PreToolUse?.find((entry) =>
+      entry.hooks?.some((hook) => hook.command === USER_SIBLING_COMMAND),
+    );
+    expect(sibling?.matcher).toBe(USER_MATCHER);
+    expect(sibling?.hooks).toEqual([
+      { type: 'command', command: USER_SIBLING_COMMAND, timeout: 7 },
+    ]);
+    expect(updated.note).toBe('user-owned');
+    expect(first.created).toContain(JSON_REL);
+
+    const firstBytes = read(JSON_REL);
+    const second = init();
+    expect(read(JSON_REL)).toBe(firstBytes);
+    expect(second.skipped).toContain(JSON_REL);
+    expect(second.created).not.toContain(JSON_REL);
+  });
+
   it('keeps matcherless user entries, sibling handlers, and unknown keys while adding each own entry once', () => {
     // Identifying ownership by absent matcher deletes the user's lifecycle entries. Replacing
     // an entry that merely contains another handler discards that handler, and replacing the

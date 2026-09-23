@@ -26,6 +26,7 @@ const ADAPTER_BIN = resolve(import.meta.dirname, '../dist/bin.js');
 /** The registration artifacts init generates — the delegator is the file every case spawns. */
 const HOOK_REL = '.codex/hooks/covenant-pretooluse.mjs';
 const JSON_REL = '.codex/hooks.json';
+const LIFECYCLE_EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
 /**
  * The protected entry the generated config names for THIS host's gate definitions; a write
  * under it is self-mod. The scaffold protects it because this installer wrote it.
@@ -76,10 +77,10 @@ afterEach(() => {
  * The whole real install graph, one symlink, then the built installer. `polydeukes` and
  * this package then resolve from the fixture to their real builds.
  */
-function installIntoFixture() {
-  symlinkSync(join(checkoutRoot, 'node_modules'), join(projectRoot, 'node_modules'), 'dir');
+function installIntoFixture(root = projectRoot) {
+  symlinkSync(join(checkoutRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
   return spawnSync(process.execPath, [ADAPTER_BIN, 'init'], {
-    cwd: projectRoot,
+    cwd: root,
     encoding: 'utf-8',
   });
 }
@@ -97,16 +98,16 @@ function spawnGeneratedHook(payload: unknown) {
 }
 
 /** Every telemetry row under the fixture as [event, label, subject]. */
-function rows(): [string, string, string][] {
-  const path = join(projectRoot, TELEMETRY_REL);
+function rows(root = projectRoot): [string, string, string][] {
+  const path = join(root, TELEMETRY_REL);
   if (!existsSync(path)) return [];
   return readRecords(path).records.map((record) => [record.event, record.label, record.subject]);
 }
 
 /** One schema-valid snake_case envelope with the fixture as cwd. */
-function envelope(toolName: string, toolInput: Record<string, unknown>) {
+function envelope(toolName: string, toolInput: Record<string, unknown>, cwd = projectRoot) {
   return {
-    cwd: projectRoot,
+    cwd,
     hook_event_name: 'PreToolUse',
     model: 'gpt-5.3-codex',
     permission_mode: 'default',
@@ -114,7 +115,7 @@ function envelope(toolName: string, toolInput: Record<string, unknown>) {
     tool_input: toolInput,
     tool_name: toolName,
     tool_use_id: 'call-e2e',
-    transcript_path: join(projectRoot, 'transcript.jsonl'),
+    transcript_path: join(cwd, 'transcript.jsonl'),
     turn_id: 'turn-e2e',
   };
 }
@@ -145,6 +146,63 @@ function writeFixture(relative: string, content: string): string {
 }
 
 describe('pdks-codex init on a real install graph', () => {
+  it('runs the registered command from the root and a subdirectory of two Git-less projects, including a path with spaces', () => {
+    const otherRoot = realpathSync(mkdtempSync(join(tmpdir(), 'pdks codex spaced-')));
+    let firstCommand: string | undefined;
+    try {
+      for (const root of [projectRoot, otherRoot]) {
+        expect(existsSync(join(root, '.git'))).toBe(false);
+        const install = installIntoFixture(root);
+        expect(install.status, install.stderr).toBe(0);
+
+        const registration = JSON.parse(readFileSync(join(root, JSON_REL), 'utf-8')) as {
+          hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
+        };
+        const commands = LIFECYCLE_EVENTS.map(
+          (event) => registration.hooks[event]?.[0]?.hooks[0]?.command,
+        );
+        expect(new Set(commands).size).toBe(1);
+        const command = commands[0];
+        if (command === undefined) throw new Error('installer registered no command');
+        if (firstCommand === undefined) firstCommand = command;
+        else expect(command).toBe(firstCommand);
+
+        const nested = join(root, 'nested');
+        mkdirSync(nested);
+        for (const [cwd, target] of [
+          [root, `${PROTECTED_ENTRY}/root-probe.mjs`],
+          [nested, `../${PROTECTED_ENTRY}/nested-probe.mjs`],
+        ] as const) {
+          const payload = envelope(
+            APPLY_PATCH,
+            {
+              command: ['*** Begin Patch', ...addHunk(target, '{}'), '*** End Patch', ''].join(
+                '\n',
+              ),
+            },
+            cwd,
+          );
+          const verdict = spawnSync(command, {
+            cwd,
+            shell: true,
+            input: JSON.stringify(payload),
+            encoding: 'utf-8',
+          });
+          expect(verdict.status, verdict.stderr).toBe(2);
+          expect(verdict.stdout).toBe('');
+          expect(rows(root)).toContainEqual(['blocked', 'self-mod', PROTECTED_ENTRY]);
+        }
+        expect(
+          rows(root).filter(([event, label]) => event === 'blocked' && label === 'self-mod'),
+        ).toHaveLength(2);
+        expect(existsSync(join(root, PROTECTED_ENTRY, 'root-probe.mjs'))).toBe(false);
+        expect(existsSync(join(root, PROTECTED_ENTRY, 'nested-probe.mjs'))).toBe(false);
+      }
+    } finally {
+      rmSync(otherRoot, { recursive: true, force: true });
+    }
+  });
+
   it('exits 0, leaves the four artifacts, tells the user to approve in /hooks, and rewrites nothing on a re-run', () => {
     // The installer's end-to-end contract: preflight passes through the symlinked graph,
     // the umbrella scaffold runs in the fixture, the two registration artifacts follow, and
