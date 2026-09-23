@@ -43,12 +43,12 @@
       "en": {
         "path": "how-to/connect-surfaces.md",
         "title": "Connect the surfaces",
-        "summary": "Connect Claude Code, Grok, and git; distinguish their witness paths."
+        "summary": "Connect Claude Code, Grok, Codex, and git; distinguish their witness paths."
       },
       "ko": {
         "path": "how-to/connect-surfaces.ko.md",
         "title": "표면 연결하기",
-        "summary": "Claude Code, Grok, git을 연결하고 표면별 증인 사용법을 구별합니다."
+        "summary": "Claude Code, Grok, Codex, git을 연결하고 표면별 증인 사용법을 구별합니다."
       }
     },
     {
@@ -139,12 +139,12 @@
       "en": {
         "path": "reference/cli/init.md",
         "title": "`pdks init`",
-        "summary": "Create the project scaffold, and find the Claude Code and Grok installers."
+        "summary": "Create the project scaffold, and find the Claude Code, Grok, and Codex installers."
       },
       "ko": {
         "path": "reference/cli/init.ko.md",
         "title": "`pdks init`",
-        "summary": "프로젝트 초기 파일을 만들고, Claude Code와 Grok 설치기를 찾습니다."
+        "summary": "프로젝트 초기 파일을 만들고, Claude Code, Grok, Codex 설치기를 찾습니다."
       }
     },
     {
@@ -196,9 +196,25 @@
       }
     },
     {
-      "id": "package-polydeukes",
+      "id": "declaration-language",
       "category": "reference",
       "order": 12,
+      "bundled": true,
+      "en": {
+        "path": "reference/declaration-language/index.md",
+        "title": "Declaration language reference",
+        "summary": "Look up every source, extraction step, combinator, relation, and mechanism."
+      },
+      "ko": {
+        "path": "reference/declaration-language/index.ko.md",
+        "title": "선언 언어 참조",
+        "summary": "모든 소스, 추출 단계, 조합 연산, 관계, 기전의 문법과 제약을 조회합니다."
+      }
+    },
+    {
+      "id": "package-polydeukes",
+      "category": "reference",
+      "order": 13,
       "bundled": true,
       "en": {
         "path": "reference/packages/polydeukes.md",
@@ -214,7 +230,7 @@
     {
       "id": "package-core",
       "category": "reference",
-      "order": 13,
+      "order": 14,
       "bundled": true,
       "en": {
         "path": "reference/packages/core.md",
@@ -230,7 +246,7 @@
     {
       "id": "package-adapter-claude-code",
       "category": "reference",
-      "order": 15,
+      "order": 16,
       "bundled": true,
       "en": {
         "path": "reference/packages/adapter-claude-code.md",
@@ -246,7 +262,7 @@
     {
       "id": "package-adapter-grok",
       "category": "reference",
-      "order": 16,
+      "order": 17,
       "bundled": true,
       "en": {
         "path": "reference/packages/adapter-grok.md",
@@ -262,7 +278,7 @@
     {
       "id": "package-adapter-codex",
       "category": "reference",
-      "order": 17,
+      "order": 18,
       "bundled": true,
       "en": {
         "path": "reference/packages/adapter-codex.md",
@@ -278,23 +294,23 @@
     {
       "id": "package-sdk-ts",
       "category": "reference",
-      "order": 25,
+      "order": 26,
       "bundled": true,
       "en": {
         "path": "reference/packages/sdk-ts.md",
         "title": "`@polydeukes/sdk-ts`",
-        "summary": "Call the judge from TypeScript with one verb, and read the three verdicts it returns."
+        "summary": "Call checkCovenant from TypeScript and handle its three verdicts."
       },
       "ko": {
         "path": "reference/packages/sdk-ts.ko.md",
         "title": "`@polydeukes/sdk-ts`",
-        "summary": "TypeScript에서 동사 하나로 판정기를 부르고, 돌아오는 판정 결과 셋을 읽습니다."
+        "summary": "TypeScript에서 checkCovenant를 호출하고 세 가지 판정 결과를 처리합니다."
       }
     },
     {
       "id": "why-polydeukes",
       "category": "explanation",
-      "order": 17,
+      "order": 18,
       "bundled": false,
       "en": {
         "path": "why-polydeukes.md",
@@ -310,7 +326,7 @@
     {
       "id": "contributing-docs",
       "category": "how-to",
-      "order": 24,
+      "order": 25,
       "bundled": false,
       "en": {
         "path": "contributing.md",
@@ -326,128 +342,128 @@
     {
       "id": "post-1",
       "category": "history",
-      "order": 18,
+      "order": 19,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-07-v0.1-covenant-core.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #1 — A covenant a coding agent can't quietly disable",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-07-v0.1-covenant-core.ko.md",
-        "title": "<!--",
+        "title": "폴리데우케스를 공개적으로 만들기 #1, 코딩 에이전트가 조용히 끌 수 없는 약속(covenant)",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-2",
       "category": "history",
-      "order": 19,
+      "order": 20,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-08-v0.2-user-disciplines.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #2 — The number we promised to report was measuring the wrong thing",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-08-v0.2-user-disciplines.ko.md",
-        "title": "<!--",
+        "title": "폴리데우케스를 공개적으로 만들기 #2, 보고하기로 약속했던 숫자는 엉뚱한 것을 재고 있었다",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-3",
       "category": "history",
-      "order": 20,
+      "order": 21,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-08-v0.3-installable-release.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #3 — The release stopped exactly where the plan said it could not be tested",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-08-v0.3-installable-release.ko.md",
-        "title": "<!--",
+        "title": "폴리데우케스를 공개적으로 만들기 #3, 출시는 계획이 검증할 수 없다고 적어 둔 바로 그 자리에서 멈췄다",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-4",
       "category": "history",
-      "order": 21,
+      "order": 22,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-08-v0.4-gate-closing.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #4 — Tokenless publishing and the deferred install check",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-08-v0.4-gate-closing.ko.md",
-        "title": "<!--",
+        "title": "폴리데우케스를 공개적으로 만들기 #4, 토큰 없는 배포 완료와 외부 설치 검증 연기",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-5",
       "category": "history",
-      "order": 22,
+      "order": 23,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-08-v0.5-diagnostic-pivot.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #5 — The pivot ships, and its first measurement says we ignore our own advice",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-08-v0.5-diagnostic-pivot.ko.md",
-        "title": "<!--",
+        "title": "Polydeukes를 공개적으로 만들기 #5 — 피벗은 출시됐고, 첫 측정은 우리가 우리 조언을 무시한다고 말한다",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-6",
       "category": "history",
-      "order": 23,
+      "order": 24,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-09-v0.6-algebra-refoundation.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #6 — One engine, seven relations, and the promise we could not keep as written",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-09-v0.6-algebra-refoundation.ko.md",
-        "title": "<!--",
+        "title": "Polydeukes를 공개적으로 만들기 #6 — 엔진 하나, 관계 일곱, 그리고 적힌 대로는 지키지 못한 약속",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-7",
       "category": "history",
-      "order": 24,
+      "order": 25,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-09-v0.6.1-docs-and-search.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #7 — Twenty-five documents, one offline index, and the reader we have not met yet",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-09-v0.6.1-docs-and-search.ko.md",
-        "title": "<!--",
+        "title": "Polydeukes를 공개적으로 만들기 #7 — 문서 스물다섯, 오프라인 색인 하나, 그리고 아직 만나지 못한 독자",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     },
     {
       "id": "post-8",
       "category": "history",
-      "order": 25,
+      "order": 26,
       "bundled": false,
       "en": {
         "path": "build-in-public/2026-09-v0.7-entrypoint-reshape.md",
-        "title": "<!--",
+        "title": "Building Polydeukes in Public #8 — One CLI that knows no agent, and the tag that would not stay annotated",
         "summary": "Historical development account; not a current usage reference."
       },
       "ko": {
         "path": "build-in-public/2026-09-v0.7-entrypoint-reshape.ko.md",
-        "title": "<!--",
+        "title": "Polydeukes를 공개적으로 만들기 #8 — 에이전트를 모르는 CLI 하나, 그리고 주석으로 남지 않는 태그",
         "summary": "당시의 개발 기록이며 현재 사용법을 설명하는 참조 문서는 아닙니다."
       }
     }

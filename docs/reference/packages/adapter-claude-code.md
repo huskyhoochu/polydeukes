@@ -72,7 +72,7 @@ there is no separate precedent evaluator in this package. The grammar is in
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
 
-Two lines install the Claude Code session surface, run from the project root:
+Run these commands from the project root to install and connect the Claude Code session surface:
 
 ```sh
 npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code

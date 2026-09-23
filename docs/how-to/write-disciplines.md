@@ -6,6 +6,8 @@ A discipline describes a practice you want checked. Choose the observed files or
 write an extraction and relation, then exercise both a violation and a valid case. Leave enforcement
 at `advise` until you decide that the observed results justify blocking.
 
+For the complete syntax of relations and extraction steps, see the [Declaration language reference](../reference/declaration-language/index.md).
+
 <a id="locale-key-pairing"></a>
 ## Locale key pairing
 
@@ -91,11 +93,9 @@ merely because its source exists: at least one observed change must match its sc
 <a id="which-list"></a>
 ## Which list does it go in
 
-There are three discipline lists, and the source axis decides which one an entry belongs to.
-The mechanism does not decide it and the relation does not decide it: the same `companion`
-mechanism sits in `disciplines` when it stands over `file` sources, and in
-`changeSetDisciplines` when it stands over `changes`. Read the declaration's sources and the
-list follows.
+Choose a discipline list by the sources the declaration reads. For example, a `companion`
+declaration reading only `file` sources belongs in `disciplines`; one reading `changes`
+belongs in `changeSetDisciplines`.
 
 | The declaration reads | List | Examples |
 |---|---|---|
@@ -111,37 +111,30 @@ names the entry, the channels it reads, and the list it belongs in, so the fix i
 body unchanged. The rule itself and the error shapes are in [the configuration
 reference](../reference/configuration/index.md#placement-rule).
 
-An entry can also read nothing a surface has to supply and still be surface-bound in practice:
-a valve (`witness`) that reads the transcript makes its entry a session entry, because the
-valve's own `extract` binds the transcript.
+Include the `witness` block's sources when choosing a list. If its `extract` reads the
+transcript, the whole entry belongs in `sessionDisciplines`.
 
 <a id="posture"></a>
 ## Posture on an unattended real-time surface
 
-An unattended real-time surface is an adapter hook or an SDK caller with no human at the
-terminal. Two rules apply there that do not apply where a person is watching.
+An unattended adapter hook or SDK caller needs an explicit response to blocked and advised
+judgments.
 
-**Promote an entry to `enforce: block` when the loop cannot fix it inside the turn.** The
-criterion is not "is this irreversible". A real-time block costs seconds: the model reads the
-reason on stderr and retries, so the violation is corrected within the turn. Left at `advise`,
-the same violation travels to a later check — a test run, CI, a reviewer — and costs a whole
-turn, up to 45 minutes. This is not "block everything because nobody is watching": blocking
-produces avoidance, and avoidance leaves no telemetry row, so an entry the loop cannot act on
-belongs at `advise` where its break is at least recorded. The criterion is the config author's.
+**Use `enforce: block` when an advisory alone will not lead the loop to correct a violation.**
+The caller must give the model the reason and a way to retry. Keep an entry at `advise` if the
+loop cannot act on its diagnostic, and arrange for someone to review the recorded violations.
+Choose the level based on observations from that loop.
 
-**The reason comes back as a value, because there is no valve.** A real-time unattended
-surface has no witness valve: there is no TTY and no human turn, and the SDK takes no witness
-argument and invents no session. What stands in its place is the reason travelling as data.
-`checkCovenant` returns `{ verdict: 'blocked', reason }` where `reason` is the judge's own
-stderr, and `{ verdict: 'upheld', advisories }` carries the advisory lines of an exit-0 run.
-The consumer writes that text where a person reads it later — an issue, a log — and stops.
-Whether the model sees the advisory text is the consumer's decision too: an unattended loop has
-no reader for a stderr line, so advise is only consumed if the caller passes it on. The
-[`@polydeukes/sdk-ts` reference](../reference/packages/sdk-ts.md) has the verdict shapes.
+**Return diagnostics to the caller.** `checkCovenant` returns
+`{ verdict: 'blocked', reason }` with the judge's stderr, or `{ verdict: 'upheld', advisories }`
+with the advisory output of an exit-0 run. The SDK accepts no separate witness argument.
+The caller decides whether to send diagnostics to the model, record them in an issue or log,
+and retry or stop. An advisory reaches the model only if the caller forwards it.
+See the [SDK reference](../reference/packages/sdk-ts.md#verdicts) for the return types.
 
-The SDK's own default is `enforce: 'block'` for the run, which is the surface's level, not an
-entry's: protected paths and `enforce: block` entries stop the call, and every other break is
-recorded as `advised`. Both adapters spawn the judge the same way.
+The SDK defaults to `enforce: 'block'` for the whole run. At that level, protected paths and
+entries with `enforce: block` can stop the call; other discipline violations remain `advised`.
+The three agent adapters use the same setting.
 
 <a id="when-to-draft"></a>
 ## When to draft instead of declaring

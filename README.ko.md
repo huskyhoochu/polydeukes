@@ -222,7 +222,8 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 | 문서 | 내용 |
 |------|------|
 | [`docs/reference/configuration/index.ko.md`](./docs/reference/configuration/index.ko.md) | 설정 레퍼런스 — 모든 키와 각 키의 규칙·함정 |
-| [`docs/reference/packages/polydeukes.ko.md`](./docs/reference/packages/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 셋이 각각 소유하는 것 |
+| [`docs/reference/declaration-language/index.ko.md`](./docs/reference/declaration-language/index.ko.md) | 선언 언어 참조 — 모든 소스, 추출 단계, 관계, 기전의 문법과 제약 |
+| [`docs/reference/packages/polydeukes.ko.md`](./docs/reference/packages/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 여섯 개가 각각 담당하는 것 |
 
 <a id="why-and-the-journal"></a>
 ### 철학과 저널

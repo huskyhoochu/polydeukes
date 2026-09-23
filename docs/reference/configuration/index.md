@@ -9,6 +9,8 @@ discipline fires is its
 [What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block)
 section.
 
+For the complete syntax of relations and extraction steps, see the [Declaration language reference](../declaration-language/index.md).
+
 <a id="languages"></a>
 ## `languages`
 
@@ -112,20 +114,13 @@ witness:
   ttlMinutes: 10              # validity window, in minutes, from that message
 ```
 
-The values of the time-boxed human valve, consumed where the covenants are assembled.
-The valve is sudo, not an exemption: the one property a deterministic gate can compute
-about a judgment chain is "is an accountable human present, right now", and the witness
-is that human supplying the pass condition in person. When a covenant blocks a
-legitimate edit, a human types the agreed token into the conversation; blocked judgments
-can be witnessed open for `ttlMinutes` from that message's timestamp, then blocking
-resumes automatically. Both keys are required when the section is present: the token
-must be non-empty after trimming, the window a finite number greater than zero.
+A human can open the witness valve by typing the configured token in the conversation.
+Blocked judgments may then proceed for `ttlMinutes` from that message's timestamp. After the
+window expires, blocking resumes. Both keys are required when this section is present:
+`token` must be non-empty after trimming, and `ttlMinutes` must be finite and greater than zero.
 
-**The valve stands after the verdict, never instead of it.** The judge body always runs.
-A call that would have passed anyway never consults the valve, so an open window changes
-nothing about clean work — and a `witnessed` telemetry row therefore always names a real
-block a human answered for, never a ritual. Only a judgment that actually blocked can be
-witnessed open.
+The judge runs before checking the valve. Only a blocked judgment can become `witnessed`;
+passed and advised judgments keep their original result.
 
 **The token must stand alone on the message's first line.** Invoking the witness is
 distinct from talking about it: a message that quotes, questions, or explains the token
@@ -149,18 +144,15 @@ so when does `pdks witness` expire?
 The token's value is free — any phrase works, and it is never checked for a prefix or a
 command shape. Only its placement is constrained.
 
-The token is not a secret — the defense is provenance, not secrecy. A witness counts only
-when the token arrives in a message positively identified as human-typed in the session
-transcript, so an AI that knows the token still cannot forge one. Witnessed judgments are
-recorded as `witnessed`, never silent.
+The adapter must identify the token's message as human input before it can open the valve.
+Knowing the token alone is insufficient. Every judgment allowed through the valve is recorded
+as `witnessed`.
 
 <a id="three-lists"></a>
 ## The three discipline lists
 
-A discipline is written in one of three lists, and which one is a fact about the declaration
-rather than a choice the author makes. A declaration names the evidence channels it reads in
-its own syntax, and a surface observes some channels and not others, so the list follows from
-the channels.
+Choose the list according to the evidence channels the declaration reads. Each surface supplies
+different channels; the loader rejects an entry in a list whose surface cannot supply them.
 
 | List | Judged on | What its declarations read |
 |---|---|---|
@@ -205,8 +197,8 @@ the channels it reads, and the list it belongs in:
 disciplines[7] ('merge-is-the-users-call') reads transcript, command: it belongs in sessionDisciplines
 ```
 
-Two shapes have no destination to name. A declaration binding both `changes` and a session
-channel is refused outright, because no surface observes both at once:
+A declaration reading both `changes` and a session channel is invalid in every list,
+because no surface observes both at once:
 
 ```text
 sessionDisciplines[2] ('pairs-across-a-session') reads transcript, changes: no surface observes both changes and a session channel

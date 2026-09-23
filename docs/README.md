@@ -2,8 +2,8 @@
 
 **English** · [한국어](./README.ko.md)
 
-> A development discipline framework for building alongside an AI coding partner. Start where your
-question is.
+Polydeukes is a development discipline framework for building alongside an AI coding partner.
+Choose a guide for your task below.
 
 <a id="start-here"></a>
 ## Start here
@@ -21,36 +21,37 @@ question is.
 <a id="reference"></a>
 ## Reference
 
-Every key, every subcommand, every exit code. These describe the present state only — nothing here
-is aspirational.
+Look up configuration keys, declaration syntax, CLI commands, and package contracts.
 
 | Document | Answers |
 |---|---|
 | [Configuration reference](./reference/configuration/index.md) | What may go in `polydeukes.config.yaml`, and what each key does |
+| [Declaration language reference](./reference/declaration-language/index.md) | Every source, extraction step, combinator, relation, and mechanism |
 | [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR |
 | [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.md) | Grok session surface — hook payloads become the input IR |
 | [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.md) | Codex session surface — hook payloads become the input IR, one element per file the patch touches |
+| [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md) | Call the judge from TypeScript and handle its result |
 
+<a id="the-shape-of-the-thing-in-one-page"></a>
 <a id="shape-of-the-thing"></a>
-## The shape of the thing, in one page
+## How it works
 
 Polydeukes judges what a developer or an AI agent is about to do, records the verdict, and by
 default lets the work proceed. Three ideas carry the rest.
 
-**A covenant is a promise, not a fence.** The disciplines it enforces are the ones a good developer
-already imposes on themselves. They bind the human exactly as much as the AI, and the framework's
-own authors get judged by them daily.
+**Covenants check agreed development practices.** The same disciplines apply to human and AI
+work. This project's authors use them in daily development.
 
-**Judging and stopping are separate decisions.** Every declared discipline is judged on every
-matching call. What a break then does is a second question: by default it is recorded with its
-reason and the call continues. `enforce: block` is a promotion the author chooses. The only things
-that stop a call unasked are the framework's own protections.
+**Judging and stopping are separate decisions.** Every declared discipline is judged on matching
+calls. By default, a violation is recorded with its reason and the call continues. Set
+`enforce: block` on an entry to stop violations. The framework's own protections block session
+calls by default.
 
-**Every judgment leaves a row.** `.polydeukes/roi.log` holds one line per verdict, in a vocabulary
-of six words. That record is how this project finds its own defects — including the ones described
-in the whitepaper, which were all found by counting rows rather than by reading code.
+**Judgments are recorded.** `.polydeukes/roi.log` stores verdicts and their context. Use the log
+to investigate violations, skipped checks, and unexpected results. The
+[design explanation](./why-polydeukes.md) describes how these records informed the project.
 
 <a id="two-surfaces"></a>
 ## Two surfaces

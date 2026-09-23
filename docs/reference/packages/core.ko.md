@@ -141,8 +141,8 @@ function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): Decl
 다섯 가운데 하나도 이름 짓지 않는 본체는 변경된 파일과 저장소 파일만 읽고 그 둘은 두 표면이
 모두 공급하므로 `disciplines`에 속합니다. 그 밖은 항목과 통로와 가야 할 목록을 대는
 `ConfigValidationError`이며, 메시지는
-[설정 참조](../configuration/index.ko.md#placement-rule)에 있습니다. 우산 패키지는 같은 질문을
-따로 답하지 않고 이 함수를 불러 씁니다.
+[설정 참조](../configuration/index.ko.md#placement-rule)에 있습니다. 우산 패키지는 이 함수를
+사용해 적용할 규율 목록을 정합니다.
 
 <a id="consumer-contract"></a>
 ## 사용자와의 접점

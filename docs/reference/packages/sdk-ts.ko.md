@@ -2,8 +2,8 @@
 
 [English](sdk-ts.md) · **한국어**
 
-> **TypeScript에서 판정기로 가는 동사 하나**입니다. 약속(covenant) 입력 IR을
-> `pdks covenant check`에 건네고 판정 결과를 값으로 돌려받습니다.
+> **TypeScript에서 판정기를 호출합니다.** `checkCovenant`에 약속(covenant) 입력 IR을
+> 전달하면 `pdks covenant check`의 판정 결과를 값으로 반환합니다.
 >
 > 베타입니다. `polydeukes` · `@polydeukes/core`와 함께 설치하며, 둘 다 이 패키지의
 > `peerDependencies`입니다.
@@ -11,18 +11,16 @@
 <a id="ownership"></a>
 ## 담당하는 기능
 
-스폰과, 종료 상태를 값으로 옮기는 일이 전부입니다. 판정받는 프로젝트의 `polydeukes` 설치를
-찾고, 그 실행 파일에 입력을 표준 입력으로 넣어 돌린 뒤, 자식이 답한 것을 돌려줍니다. 판정
-코드는 여기에 없습니다. 분기는 우산 패키지를 찾았는지와 자식이 어떤 상태로 끝났는지뿐입니다.
+판정받는 프로젝트에서 `polydeukes`를 찾고, 실행 파일의 표준 입력으로 IR을 전달한 뒤
+자식 프로세스의 종료 코드를 판정 결과로 변환합니다. 실제 판정은 자식 프로세스가 수행합니다.
 
 | 단위 | 하는 일 |
 |---|---|
 | `checkCovenant` | 판정받는 프로젝트에서 `pdks covenant check`를 스폰하고 판정 결과를 돌려줍니다 |
-| 우산 해소 | `repoRoot`의 설치 그래프에서 `polydeukes`를 찾아 `pdks` 실행 파일을 읽습니다 |
+| 우산 패키지 찾기 | `repoRoot`의 설치 그래프에서 `polydeukes`를 찾아 `pdks` 실행 파일을 읽습니다 |
 | 판정 결과 변환 | 종료 코드 `0`은 `upheld`, `2`는 `blocked`, 그 밖은 모두 `unjudged`입니다 |
 
-이 패키지는 텔레메트리 행을 쓰지 않습니다. 실행이 남기는 행은 모두 판정이 일어난 자식
-프로세스가 쓰므로, 호출 하나에 행 하나는 그대로입니다.
+텔레메트리는 자식 프로세스가 판정 중에 기록합니다. SDK는 중복 행을 추가하지 않습니다.
 
 <a id="install"></a>
 ## 설치
@@ -31,11 +29,12 @@
 pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
 ```
 
-실행 파일도 설치 단계도 없습니다. 우산 패키지가 SDK가 스폰할 판정기를 공급하고, 코어가
+별도의 초기화 명령은 필요하지 않습니다. 우산 패키지가 SDK가 스폰할 판정기를 공급하고, 코어가
 호출자가 채우는 `CovenantInput` 타입을 공급합니다.
 
+<a id="동사"></a>
 <a id="verb"></a>
-## 동사
+## `checkCovenant`
 
 이 패키지는 ESM 전용입니다(`"type": "module"`, `import` 조건만 있고 `require`는 없음).
 호출하는 파일이 `.mjs`이거나 그 `package.json`이 `"type": "module"`을 선언해야 합니다.
@@ -90,7 +89,7 @@ type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; st
 | `repoRoot` | 판정받는 프로젝트입니다. 설정 발견, 세계 축, 자식의 cwd, 우산 패키지를 찾는 설치 그래프가 모두 여기 걸립니다 |
 | `input` | 호출자 자신의 IR이며 자식의 표준 입력으로 원문 그대로 갑니다 |
 | `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
-| `spawn` | 주입하는 스폰 이음매입니다. 없으면 이 프로세스의 node 실행 파일로 자식을 띄웁니다 |
+| `spawn` | 자식 프로세스 실행 함수를 지정합니다. 생략하면 현재 프로세스의 Node.js 실행 파일을 사용합니다 |
 
 **`enforce`의 기본값은 `block`입니다.** 이것은 표면의 강제 수준이지 항목의 것이 아닙니다.
 보호 경로와 `enforce: block`을 단 항목이 호출을 멈추고, 나머지 위반은 종료 코드 0에
@@ -118,17 +117,15 @@ type CheckCovenantVerdict =
 | `blocked` | `2` | 호출이 판정을 받았고 무언가 막았습니다. `reason`은 자식의 stderr 원문입니다. 진행하지 않습니다 |
 | `unjudged` | 그 밖의 상태이거나 우산 패키지가 없음 | 판정이 일어나지 않았습니다. `reason`이 어느 쪽인지 말합니다. 이것을 통과로 읽으면 판정기가 설치되지 않은 프로젝트에서 모든 호출이 지나갑니다 |
 
-**밸브가 없고 그 자리를 사유가 대신합니다.** 무인 실시간 호출자에게는 TTY도 사람의 턴도
-없으므로, 이 패키지는 증인 인자를 받지 않고 세션을 지어내지도 않습니다. 대신
-`blocked.reason`과 `upheld.advisories`가 데이터로 돌아오고, 그 텍스트를 이슈나 로그에 적을지
-모델에게 돌려줄지는 소비자가 정합니다. 설정 저자와 소비자를 위한 기본 자세 규칙은
-[규율 작성하기](../../how-to/write-disciplines.ko.md#posture)에 있습니다.
+SDK는 `blocked.reason`과 `upheld.advisories`를 데이터로 반환합니다. 소비자는 이 내용을
+모델에게 전달하거나 이슈 또는 로그에 기록할 수 있습니다. SDK는 별도의 증인 인자를 받지 않습니다.
+무인 루프에서 결과를 처리하는 방법은
+[규율 작성하기](../../how-to/write-disciplines.ko.md#posture)를 참고하세요.
 
 <a id="failure"></a>
 ## 실패 예제
 
-프로젝트에 `polydeukes`가 설치돼 있지 않으면 스폰할 것이 없고, 동사는 `upheld`로 답하는 대신
-그 사실을 말합니다.
+프로젝트에 `polydeukes`가 설치돼 있지 않으면 `checkCovenant`는 `unjudged`를 반환합니다.
 
 ```ts
 const verdict = await checkCovenant({ repoRoot: '/tmp/project-without-polydeukes', input });

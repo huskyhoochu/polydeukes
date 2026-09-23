@@ -56,12 +56,12 @@ function toSitePath(docPath, locale) {
 /**
  * Rewrites one Markdown link target found in a document at `fromPath`.
  *
- * Internal `docs/` targets become site paths in the same locale; targets outside
+ * Internal `docs/` targets become site paths in the target file's locale; targets outside
  * `docs/` become repository URLs, since the site publishes no page for them.
  * Fragments are preserved verbatim — section IDs are explicit anchors identical
  * across languages.
  */
-function rewriteLink(target, fromPath, locale) {
+function rewriteLink(target, fromPath) {
   if (/^(https?:|mailto:|#)/.test(target)) return target;
 
   const [path, fragment] = target.split('#');
@@ -74,14 +74,13 @@ function rewriteLink(target, fromPath, locale) {
     return `${REPO_BLOB}/${fromRepo}${suffix}`;
   }
   if (!insideDocs.endsWith('.md')) return `${REPO_BLOB}/docs/${insideDocs}${suffix}`;
+  const locale = insideDocs.endsWith('.ko.md') ? 'ko' : 'en';
   return `${toSitePath(insideDocs, locale)}${suffix}`;
 }
 
 /**
  * Returns the catalog title, or the document's own H1 when the catalog entry holds the
- * file's leading HTML comment instead. The build-in-public entries carry that comment
- * rather than a title; recovering the H1 keeps the site correct without editing
- * `docs/catalog.json`, which `pdks docs` also reads.
+ * file's leading HTML comment instead.
  */
 function resolveTitle(translation, markdown) {
   if (!translation.title.trimStart().startsWith('<!--')) return translation.title;
@@ -115,11 +114,18 @@ function yamlString(value) {
  * Starlight renders the title from frontmatter and supplies its own locale picker,
  * so both would otherwise appear twice.
  */
-function transform(markdown, docPath, locale) {
-  let body = markdown.replace(/^#[^\n]*\n/, '');
-  body = body.replace(/^\s*(\*\*English\*\*|\[English\])[^\n]*\n/m, '');
+function transform(markdown, docPath) {
+  const prefix = markdown.match(/^\s*(?:<!--[\s\S]*?-->\s*)*/)[0];
+  let body = prefix + markdown.slice(prefix.length).replace(/^#[ \t]+[^\n]*(?:\n|$)/, '');
+  for (const switchLine of [
+    /^[ \t]*\*\*English\*\* · \[한국어\]\([^\s)]+\.ko\.md\)[ \t]*\r?$(?:\n)?/m,
+    /^[ \t]*\[English\]\([^\s)]+\.md\) · \*\*한국어\*\*[ \t]*\r?$(?:\n)?/m,
+    /^[ \t]*\*\*한국어\*\* · \[English\]\([^\s)]+\.md\)[ \t]*\r?$(?:\n)?/m,
+  ]) {
+    body = body.replace(switchLine, '');
+  }
   body = body.replace(/\]\(([^)\s]+)\)/g, (_match, target) => {
-    return `](${rewriteLink(target, docPath, locale)})`;
+    return `](${rewriteLink(target, docPath)})`;
   });
   return body.trimStart();
 }
@@ -129,7 +135,7 @@ async function emit(doc, locale, translation, titles) {
   const source = await readFile(join(DOCS_ROOT, translation.path), 'utf8');
   const title = resolveTitle(translation, source);
   titles.set(`${doc.id}:${locale}`, title);
-  const body = transform(source, translation.path, locale);
+  const body = transform(source, translation.path);
   const slug = translation.path.replace(/\.ko\.md$/, '.md').replace(/^README\.md$/, 'index.md');
   const outPath =
     locale === 'en' ? join(OUT_ROOT, 'docs', slug) : join(OUT_ROOT, locale, 'docs', slug);

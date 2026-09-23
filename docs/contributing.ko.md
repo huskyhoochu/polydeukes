@@ -37,10 +37,26 @@ ID는 소문자 ASCII kebab-case입니다. `<a id>`는 제목 바로 앞 줄에 
   `{path,title,summary}`를 가집니다. 제목과 요약은 카탈로그에 두어 마크다운은 본문만
   남깁니다.
 - `bundled: true` 파일은 설치된 `pdks docs` 라이브러리로 복사됩니다. `bundled: false`
-  파일은 저장소와 GitHub에 남고 `pdks docs` 검색·조회 대상이 아닙니다. 이 페이지와
+  파일은 저장소와 문서 웹사이트에 표시되며 `pdks docs` 검색·조회 대상에서는 제외됩니다. 이 페이지와
   날짜별 개발 기록이 `bundled: false`입니다.
 
 `docs/*.md` 파일을 추가할 때는 카탈로그에도 등록하세요.
+
+<a id="website"></a>
+## 문서 웹사이트
+
+`packages/documentation`은 `bundled: false`를 포함한 모든 카탈로그 항목으로 웹사이트를 만듭니다.
+`sync-docs.mjs`가 gitignore 대상인 `src/content/docs/`와 `src/generated/sidebar.json`을 생성합니다.
+편집은 `docs/`의 원본에서 하세요. 생성 파일은 다음 빌드에서 교체됩니다.
+
+동기화 과정은 문서 제목과 언어 전환 줄을 제거하고 카탈로그 메타데이터를 frontmatter에 넣은 뒤,
+마크다운 링크를 사이트 경로로 바꿉니다. 영어 페이지는 `/docs/`, 한국어 페이지는 `/ko/docs/`를
+사용합니다. `.ko.md` 링크는 한국어로, `.md` 링크는 영어로 연결됩니다. `docs/` 밖을 가리키는
+링크는 GitHub으로 연결하며, 안정 절 ID와 버전 파일명의 점은 유지합니다.
+
+`pnpm -F @polydeukes/documentation build`는 동기화와 Astro 빌드를 실행합니다.
+Vercel도 이 명령으로 빌드한 `packages/documentation/dist`를 배포합니다.
+변환 코드를 바꾼 뒤에는 두 언어의 렌더된 페이지를 확인하세요.
 
 <a id="examples-and-checks"></a>
 ## 예제와 검사 명령
@@ -81,3 +97,5 @@ node scripts/check-docs.mjs
 | `node scripts/check-docs.mjs` | 쌍, 카탈로그, 로컬 링크와 앵커 |
 | `pnpm -F polydeukes exec vitest run __tests__/check-docs.test.ts` | 검사기 회귀 |
 | `pdks docs search <query>` / `pdks docs show <id>` | `docs/`를 복사하는 빌드 뒤의 설치 번들 |
+| `pnpm -F polydeukes exec vitest run __tests__/declaration-reference.test.ts __tests__/sync-docs.test.ts` | 전체 어휘 표와 웹사이트 변환 |
+| `pnpm -F @polydeukes/documentation build` | 생성 문서, 경로, 정적 웹사이트 빌드 |

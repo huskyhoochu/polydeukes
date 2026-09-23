@@ -29,8 +29,8 @@ removes only that session's file. `PreToolUse` builds the IR with the `tools` ro
 `pdks covenant check --enforce block` in `repoRoot` and returns the child's exit code. The
 judging happens in that child process; this package carries no judgment logic.
 
-**This package writes no telemetry rows.** A failure before the spawn is sent to `pdks` on
-stdin, so the row that call earns is written by the one writer.
+**`pdks` writes the telemetry.** The adapter sends failures that occur before spawning to
+`pdks` on stdin, so those failures are recorded through the same path.
 
 <a id="apply-patch"></a>
 ## Why this adapter parses text where its siblings read arguments

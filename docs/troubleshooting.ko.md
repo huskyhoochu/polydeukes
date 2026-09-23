@@ -153,13 +153,17 @@ covenant check failed closed: invalid config in polydeukes.config.yaml: … — 
 <a id="skipped-rows-on-the-change-set-surface"></a>
 ## 변경 집합 표면의 미판정 기록
 
-대화 기록을 읽는 선언에 `supply: { session: 'pass' }`가 있으면 세션이 없는 변경 집합 표면에서는
-`supply-pass`를 기록합니다. 이 약속은 세션 표면에서 확인하세요. 미판정은 과거 작업을
-검증했다는 뜻이 아닙니다. 다른 채널을 공급할 수 없으면 `no-observation`이 나올 수도
-있습니다. 모든 자료 부재를 같은 실패로 취급하지 말고 등록 내용과 사유를 확인하세요.
+변경 집합 표면은 `disciplines`와 `changeSetDisciplines`를 컴파일합니다.
+대화 기록이나 명령줄을 읽는 항목은 `sessionDisciplines`에 속하며 diff 판정에는 포함되지
+않습니다. 이런 항목을 공용 목록이나 변경 집합 목록에 넣으면 설정 오류가 발생합니다.
 
-스테이징한 변경에는 명령줄이 없으므로 명령 범위 선언은 적용되지 않으며 판정도 기록하지
-않습니다. 설정, 범위 일치, 자료 공급, 최종 비교는 각각 다른 단계입니다.
+변경 집합 항목이 읽는 소스가 없고 `supply` 정책이 `pass`이면 `supply-pass`를 기록합니다.
+선언을 컴파일할 수 없으면 `config-fault`를 기록합니다. `pdks explain`과 로그의 사유를
+확인하세요. 미판정은 규율을 지켰다는 증거가 아닙니다.
+
+세션 표면에서는 호스트가 대화 기록을 공급하지 않을 때
+`supply: { session: 'pass' }`로 건너뛸 수 있습니다.
+[규율 목록 셋](./reference/configuration/index.ko.md#three-lists)을 참고하세요.
 
 <a id="local-state"></a>
 ## 다른 컴퓨터로 프로젝트를 옮길 때

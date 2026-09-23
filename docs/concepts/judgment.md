@@ -6,6 +6,8 @@ Polydeukes checks a declared practice against evidence a connected surface suppl
 infer that a practice was followed merely because an agent says so. A passing result is bounded
 by the files, calls, and history actually observed.
 
+For the complete syntax of relations and extraction steps, see the [Declaration language reference](../reference/declaration-language/index.md).
+
 <a id="terms"></a>
 ## Covenant, discipline, and surface
 

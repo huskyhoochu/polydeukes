@@ -147,8 +147,8 @@ compare the same list.
 A body naming none of the five reads the changed file and repository files alone, which both
 surfaces supply, so it belongs in `disciplines`. Anything else is a `ConfigValidationError`
 naming the entry, its channels, and the list it belongs in; the messages are in [the
-configuration reference](../configuration/index.md#placement-rule). The umbrella imports this
-function rather than answering the same question a second time.
+configuration reference](../configuration/index.md#placement-rule). The umbrella uses this
+function to select the applicable discipline list.
 
 <a id="consumer-contract"></a>
 ## Where the consumer touches it

@@ -232,6 +232,7 @@ layer you need.
 | Document | Contents |
 |----------|----------|
 | [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
+| [`docs/reference/declaration-language/index.md`](./docs/reference/declaration-language/index.md) | Declaration language reference — every source, extraction step, relation, and mechanism |
 | [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the six packages owns |
 
 <a id="why-and-the-journal"></a>

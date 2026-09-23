@@ -152,13 +152,17 @@ from the hook command rather than editing the config — the row is still writte
 <a id="skipped-rows-on-the-change-set-surface"></a>
 ## `skipped` rows on the change-set surface
 
-A transcript-reading declaration with `supply: { session: 'pass' }` records `supply-pass` when the
-change-set surface has no session. Use the session surface for that promise; a skip does not verify
-history. Other unavailable channels can produce `no-observation`. Inspect the registration and
-reason instead of treating every missing source as the same failure.
+The change-set surface compiles `disciplines` and `changeSetDisciplines`.
+Transcript- and command-reading entries belong in `sessionDisciplines` and are not compiled
+for a diff. Putting either kind in a shared or change-set list causes a configuration error.
 
-A command-scoped declaration does not match a staged diff's absent command line and records no
-judgment there. Configuration, scope matching, supply, and the final comparison are separate steps.
+A change-set entry can record `supply-pass` when a source it reads is absent and its `supply`
+policy is `pass`, or `config-fault` when the declaration cannot compile. Check `pdks explain`
+and the log's reason field. A skip does not establish that the discipline was upheld.
+
+On the session surface, a transcript-reading entry can use `supply: { session: 'pass' }`
+when a host supplies no session history. See the [three discipline
+lists](./reference/configuration/index.md#three-lists).
 
 <a id="local-state"></a>
 ## Moving a project between machines

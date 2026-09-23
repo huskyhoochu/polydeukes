@@ -39,10 +39,25 @@ entry.
   `{path,title,summary}`. Titles and summaries live in the catalog so the Markdown stays
   plain.
 - `bundled: true` files are copied into the installed `pdks docs` library. `bundled: false`
-  files stay in the repository and on GitHub; they are not searched or shown by `pdks docs`.
+  files appear in the repository and on the documentation website; `pdks docs` excludes them.
   This page and the dated development records are `bundled: false`.
 
 Do not add a `docs/*.md` file that the catalog does not name.
+
+<a id="website"></a>
+## Documentation website
+
+`packages/documentation` builds the website from every catalog entry, including `bundled: false`.
+Its `sync-docs.mjs` script creates the ignored `src/content/docs/` tree and `src/generated/sidebar.json`.
+Edit the originals under `docs/`; the next build replaces generated files.
+
+The sync step removes the document title and language switch, writes catalog metadata as frontmatter,
+and converts Markdown links into site routes. English pages use `/docs/`, Korean pages `/ko/docs/`.
+A link to `.ko.md` selects Korean; a link to `.md` selects English. Links outside `docs/` point to
+GitHub. Stable section anchors and dots in version filenames are preserved.
+
+`pnpm -F @polydeukes/documentation build` runs sync and Astro. Vercel uses that command and publishes
+`packages/documentation/dist`. Check rendered pages in both languages after changing the transform.
 
 <a id="examples-and-checks"></a>
 ## Examples and check commands
@@ -85,3 +100,5 @@ rewrite a dated term that was correct on the day the post was published.
 | `node scripts/check-docs.mjs` | Pairs, catalog, local links and anchors |
 | `pnpm -F polydeukes exec vitest run __tests__/check-docs.test.ts` | Checker regressions |
 | `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after a build that copies `docs/` |
+| `pnpm -F polydeukes exec vitest run __tests__/declaration-reference.test.ts __tests__/sync-docs.test.ts` | Complete vocabulary tables and website transformations |
+| `pnpm -F @polydeukes/documentation build` | Generated content, routes, and static website build |

@@ -50,6 +50,7 @@ const BUNDLED_DOCS = [
   'reference/cli/explain.md',
   'reference/cli/docs.md',
   'reference/configuration/index.md',
+  'reference/declaration-language/index.md',
   'reference/packages/polydeukes.md',
   'reference/packages/core.md',
   'reference/packages/adapter-claude-code.md',

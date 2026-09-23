@@ -69,7 +69,7 @@ Claude Code의 입력을 공통 형식으로 번역합니다. 에이전트와 �
 <a id="consumer-contract"></a>
 ## 사용자와의 접점
 
-프로젝트 루트에서 두 줄이면 Claude Code 세션 표면이 섭니다.
+프로젝트 루트에서 다음 명령을 실행하면 Claude Code 세션 표면을 설치하고 연결합니다.
 
 ```sh
 npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
