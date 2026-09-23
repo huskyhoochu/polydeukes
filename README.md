@@ -240,6 +240,7 @@ layer you need.
 
 | Document | Contents |
 |----------|----------|
+| [Introducing Polydeukes (Korean)](https://funes-days.com/dev/polydeukes-open-source) | The author's introduction to the project on funes-days |
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
 | [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design whitepaper: the principles, the failure stories behind them, and the measurements that settled each one |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
