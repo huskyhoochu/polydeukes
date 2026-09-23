@@ -11,6 +11,21 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.9.0](https://github.com/huskyhoochu/polydeukes/compare/v0.8.0...v0.9.0) (2026-09-23)
+
+
+### Features
+
+* **adapter-codex:** add lifecycle witness evidence ([#125](https://github.com/huskyhoochu/polydeukes/issues/125)) ([23b6ce4](https://github.com/huskyhoochu/polydeukes/commit/23b6ce4b6568dd4d4ca129b3a47a25302cf6ac6e))
+
+
+### Bug Fixes
+
+* **adapter-codex:** refuse roster-outside names, state the unobserved Code Mode surface (ISSUE-64) ([#123](https://github.com/huskyhoochu/polydeukes/issues/123)) ([1285597](https://github.com/huskyhoochu/polydeukes/commit/1285597f79e3981f3f8b984095016f8b0dea4c38))
+* **polydeukes:** prove argument-sensitive shell reads ([d1275a3](https://github.com/huskyhoochu/polydeukes/commit/d1275a375c0c1f4dd317971e4fd36534e8ada3d4))
+* repair discipline draft skill metadata ([e1a7254](https://github.com/huskyhoochu/polydeukes/commit/e1a725433498aee000c6b5a2055d7e4e1074ca4e))
+* resolve Codex hook from session subdirectories ([dff1583](https://github.com/huskyhoochu/polydeukes/commit/dff1583f1a334f85a083b36d485a43c38773ac0f))
+
 ## [0.8.0](https://github.com/huskyhoochu/polydeukes/compare/v0.7.1...v0.8.0) (2026-09-16)
 
 
