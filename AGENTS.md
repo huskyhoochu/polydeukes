@@ -95,9 +95,12 @@ which makes the verdicts we meet every day a measurement of the shipped install 
 than a private arrangement; `delegators-are-generated.test.ts` runs all three installers and
 diffs the result against these files. The Grok registration matches on that host's own names
 (`write` · `search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
-stands between a Grok call and its judgment. Codex Code Mode `exec` and its nested calls remain an
-explicitly unobserved host surface until openai/codex#23411 is resolved; installing and approving
-the hook does not turn that gap into coverage.
+stands between a Grok call and its judgment. Codex Code Mode coverage is version-dependent:
+in codex-cli 0.154.0, `exec` and its nested calls left no hook event; in a local 0.156.1
+session, nested `exec_command` calls reached the hook and a nested `apply_patch` against the
+config was blocked as `self-mod`. The outer `exec` dispatch is not an adapter tool name.
+Do not infer host-wide coverage from `/hooks` showing Active; remeasure the released host
+version before claiming it.
 Codex session evidence comes only from the registered `UserPromptSubmit` and `PostToolUse`
 lifecycle events, is removed at `SessionEnd`, and never comes from the unstable transcript. If
 that evidence is absent, a blocked intentional edit must be recovered from the user's terminal.

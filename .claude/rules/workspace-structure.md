@@ -63,9 +63,11 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   with exit 2 rather than judged), and the IR carries adapter-owned `session` evidence from
   `UserPromptSubmit` and `PostToolUse` while omitting `actor` and `channels`. The host transcript
   stays unread because its format is unstable; `SessionEnd` removes the hashed evidence file.
-  A Code Mode `exec` dispatch, and the tool calls nested in its JavaScript, fire no
-  `PreToolUse` at all in codex-cli 0.154 (openai/codex#23411), so that surface is unobserved
-  and `pdks-codex init` says so in a `note:` line.
+  In codex-cli 0.154 the Code Mode `exec` dispatch and its nested calls fired no
+  `PreToolUse`; `pdks-codex init` names that version in its `note:` line. In a local
+  0.156.1 session, nested `exec_command` and `apply_patch` calls did reach the hook, and
+  a protected patch was blocked. The outer `exec` dispatch is outside the adapter roster.
+  A host version's behavior is established by an actual call, not by the hook's Active label.
   It writes `.codex/hooks/covenant-pretooluse.mjs` and merges four lifecycle entries into
   `.codex/hooks.json`. Hook trust is bound to the definition hash, so a changed definition
   needs `/hooks` approval before it runs.
