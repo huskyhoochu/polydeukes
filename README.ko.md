@@ -226,13 +226,12 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 | [`docs/reference/packages/polydeukes.ko.md`](./docs/reference/packages/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 여섯 개가 각각 담당하는 것 |
 
 <a id="why-and-the-journal"></a>
-### 철학과 저널
+### 배경과 릴리스
 
 | 문서 | 내용 |
 |------|------|
 | [`STORY.md`](./STORY.md) | 이름의 유래와 설계 철학 (창업자 서사) |
 | [`docs/why-polydeukes.ko.md`](./docs/why-polydeukes.ko.md) | 왜 폴리데우케스인가? — 설계 백서. 원칙과 그 원칙을 만든 실패담, 그리고 각각을 결론지은 측정 |
-| [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.ko.md) | 빌드 인 퍼블릭 시리즈 — 마일스톤마다 한 편, v0.1(약속(covenant) 코어 + 측정)부터 시작 |
 | [`CHANGELOG.md`](./CHANGELOG.md) | 마일스톤별 릴리스 노트 |
 
 <a id="license"></a>

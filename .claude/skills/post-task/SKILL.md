@@ -1,6 +1,6 @@
 ---
 name: post-task
-description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make AGENTS.md / .claude/rules / README stale?), the dev-log self-question (was there a non-obvious learning worth recording?), and the public-language promotion question (is there a decision worth promoting into docs/why-polydeukes.md or build-in-public?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
+description: "Pre-PR closing checks for any completed work session: TSDoc pass over the changed files, docs-drift check (did this change make AGENTS.md / .claude/rules / README stale?), the dev-log self-question (was there a non-obvious learning worth recording?), and the public-language promotion question (is there a decision worth promoting into docs/why-polydeukes.md?). Invoke after the TDD cycle's VALIDATE passes and immediately before creating a PR — or standalone after substantial non-ticket chores, right before committing to main. Also triggers on 'post-task', '작업 마무리 점검', 'PR 내기 전에 점검'."
 user_invocable: true
 argument: "(none — operates on the current session's uncommitted changes)"
 ---
@@ -66,8 +66,8 @@ dev-log. Background it; nothing waits on it.
 ## 4. Public-language promotion (always answer)
 
 Ask: **did this session produce a decision or narrative worth promoting into the public
-docs' shared language?** The public surface is `docs/why-polydeukes.md` (+ `.ko.md`) and
-`docs/build-in-public/` — decisions and their reasons only, never internal roadmap or
+docs' shared language?** The public surface is `docs/why-polydeukes.md` (+ `.ko.md`) —
+decisions and their reasons only, never internal roadmap or
 in-flight designs. This is the public counterpart of the dev-log question: dev-log feeds
 internal memory, this feeds the common language outsiders can understand.
 

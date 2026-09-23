@@ -21,12 +21,33 @@ Choose a guide for your task below.
 <a id="reference"></a>
 ## Reference
 
-Look up configuration keys, declaration syntax, CLI commands, and package contracts.
+<a id="reference-cli"></a>
+### CLI commands
 
-| Document | Answers |
+| Command | Purpose |
 |---|---|
-| [Configuration reference](./reference/configuration/index.md) | What may go in `polydeukes.config.yaml`, and what each key does |
-| [Declaration language reference](./reference/declaration-language/index.md) | Every source, extraction step, combinator, relation, and mechanism |
+| [`pdks covenant check`](./reference/cli/covenant-check.md) | Judge an input IR or unified diff; read verdicts and exit codes |
+| [`pdks init`](./reference/cli/init.md) | Create project configuration |
+| [`pdks explain`](./reference/cli/explain.md) | Inspect registered disciplines and enforcement |
+| [`pdks docs`](./reference/cli/docs.md) | Search and retrieve installed documentation |
+
+<a id="reference-configuration"></a>
+### Configuration
+
+[Configuration reference](./reference/configuration/index.md) covers `polydeukes.config.yaml`
+keys, enforcement levels, discipline lists, and witness settings.
+
+<a id="reference-declaration-language"></a>
+### Declaration language
+
+[Declaration language reference](./reference/declaration-language/index.md) lists every source,
+extraction step, combinator, relation, and mechanism with its syntax and constraints.
+
+<a id="reference-packages"></a>
+### Packages
+
+| Package | Responsibility |
+|---|---|
 | [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
 | [`@polydeukes/core`](./reference/packages/core.md) | The protocol, the input IR, the config schema, telemetry |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR |

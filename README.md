@@ -236,13 +236,12 @@ layer you need.
 | [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the six packages owns |
 
 <a id="why-and-the-journal"></a>
-### Why, and the journal
+### Background and releases
 
 | Document | Contents |
 |----------|----------|
 | [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
 | [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design whitepaper: the principles, the failure stories behind them, and the measurements that settled each one |
-| [`docs/build-in-public/`](./docs/build-in-public/2026-07-v0.1-covenant-core.md) | Build-in-public series — one post per milestone, starting with v0.1 (covenant core + measurement) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
 
 <a id="license"></a>

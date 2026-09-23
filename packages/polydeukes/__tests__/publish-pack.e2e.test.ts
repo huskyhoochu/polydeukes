@@ -190,7 +190,7 @@ describe('the umbrella tarball carries the docs bundle', () => {
     expect(entries).toContain(`${DOCS_PREFIX}index.json`);
   }, 30_000);
 
-  it('excludes move notices, historical posts, and the whitepaper from bundled Markdown', () => {
+  it('ships only the cataloged reader journeys as bundled Markdown', () => {
     const entries = tarEntries(UMBRELLA_DIR);
     const bundled = entries.filter(
       (entry) => entry.startsWith(DOCS_PREFIX) && entry.endsWith('.md'),

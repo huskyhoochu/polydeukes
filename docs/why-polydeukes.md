@@ -102,8 +102,7 @@ Instructions read by an agent are also not proof that a host invokes the install
 ## What the measurements say
 
 These are historical observations from this repository, not a benchmark of other projects or a
-measurement of the current release. The dated [development posts](./build-in-public/) retain the
-circumstances and terminology of their periods.
+measurement of the current release.
 
 | Period | Recorded observations |
 |---|---|
@@ -137,10 +136,10 @@ current design is hard to explain without them.
 - **A banned word that edits respected and a shell heredoc did not.** The tool axis refused
   an edit carrying a banned word. The same content inside a heredoc reached the repository
   without a row, because the call never reached judgment. The shell axis gained
-  heredoc-aware analysis and write detection for redirects (development post #1).
+  heredoc-aware analysis and write detection for redirects.
 - **A token that opened the valve from the middle of a sentence.** The witness token was
   matched anywhere in a human message, so asking when the witness would expire extended the
-  window. The rule became first line, alone (development post #2).
+  window. The rule became first line, alone.
 - **A request accepted as evidence.** The first `precedent` judgment counted a call that had
   merely been issued, so `echo "npm view yaml"` satisfied it more cheaply than running the
   check. Evidence now means a call that ran and reported success.

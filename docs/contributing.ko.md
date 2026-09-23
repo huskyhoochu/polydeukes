@@ -34,11 +34,11 @@ ID는 소문자 ASCII kebab-case입니다. `<a id>`는 제목 바로 앞 줄에 
 `docs/catalog.json`이 유일한 목록입니다. `docs/` 아래 마크다운은 `documents` 항목입니다.
 
 - `documents` 항목은 `id`, `category`, `order`, `bundled`, 그리고 `en`/`ko`의
-  `{path,title,summary}`를 가집니다. 제목과 요약은 카탈로그에 두어 마크다운은 본문만
-  남깁니다.
+  `{path,title,summary}`를 가집니다. 제목과 요약은 일반 텍스트로 작성합니다.
+  백틱 같은 마크다운 서식 문자는 웹사이트 제목과 탐색 메뉴에 그대로 표시됩니다.
 - `bundled: true` 파일은 설치된 `pdks docs` 라이브러리로 복사됩니다. `bundled: false`
   파일은 저장소와 문서 웹사이트에 표시되며 `pdks docs` 검색·조회 대상에서는 제외됩니다. 이 페이지와
-  날짜별 개발 기록이 `bundled: false`입니다.
+  설계 설명이 `bundled: false`입니다.
 
 `docs/*.md` 파일을 추가할 때는 카탈로그에도 등록하세요.
 
@@ -48,6 +48,9 @@ ID는 소문자 ASCII kebab-case입니다. `<a id>`는 제목 바로 앞 줄에 
 `packages/documentation`은 `bundled: false`를 포함한 모든 카탈로그 항목으로 웹사이트를 만듭니다.
 `sync-docs.mjs`가 gitignore 대상인 `src/content/docs/`와 `src/generated/sidebar.json`을 생성합니다.
 편집은 `docs/`의 원본에서 하세요. 생성 파일은 다음 빌드에서 교체됩니다.
+
+참조 사이드바에서는 `reference/cli/`와 `reference/packages/`를 각각 별도 그룹으로 묶습니다.
+설정과 선언 언어를 포함한 나머지 참조 문서는 직접 연결합니다.
 
 동기화 과정은 문서 제목과 언어 전환 줄을 제거하고 카탈로그 메타데이터를 frontmatter에 넣은 뒤,
 마크다운 링크를 사이트 경로로 바꿉니다. 영어 페이지는 `/docs/`, 한국어 페이지는 `/ko/docs/`를
@@ -81,13 +84,6 @@ node scripts/check-docs.mjs
 검사기는 영어와 한국어 파일이 쌍을 이루고 카탈로그에 등록돼 있는지 확인합니다.
 로컬 마크다운 링크는 실제 파일을 가리켜야 하며, 절을 지정한 링크라면 해당 제목의 슬러그나
 명시적 ID도 존재해야 합니다.
-
-<a id="historical-records"></a>
-## 개발 기록
-
-`docs/build-in-public/` 파일은 날짜가 있는 개발 기록입니다. 당시의 사건, 수치, 인용,
-어휘를 유지합니다. 이동 안내로 축약하지 않습니다. 게시 당시에 맞았던 용어를 고쳐 쓰지
-않습니다.
 
 <a id="check-commands"></a>
 ## 실행할 명령

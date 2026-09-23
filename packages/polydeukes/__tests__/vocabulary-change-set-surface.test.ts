@@ -5,8 +5,7 @@ import { describe, expect, it } from 'vitest';
 // The `--diff` surface observes a finished change set, and many tools produce one — this
 // repository's commit hook is one of them. The living documents name the surface after
 // what it observes, never after one producer: "change-set surface" in English, the
-// glossary's Korean term in the mirrors. Dated build-in-public posts keep the words they
-// shipped with and are outside the scan.
+// glossary's Korean term in the mirrors.
 
 const REPO_ROOT = resolve(import.meta.dirname, '../../..');
 const GLOSSARY = join(REPO_ROOT, '.claude/rules/domain-terms.md');
@@ -18,8 +17,6 @@ const OLD_TERM = /commit surface/i;
  * source — carries no Hangul literal of its own.
  */
 const OLD_TERM_KO = new RegExp(String.fromCodePoint(0xcee4, 0xbc0b, 0x20, 0xd45c, 0xba74));
-/** The directory of dated posts the scan never enters. */
-const DATED_POSTS = join(REPO_ROOT, 'docs/build-in-public');
 
 function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
   if (!existsSync(dir)) return [];
@@ -27,7 +24,7 @@ function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (path === DATED_POSTS || entry.name === 'node_modules' || entry.name === 'dist') continue;
+      if (entry.name === 'node_modules' || entry.name === 'dist') continue;
       out.push(...filesUnder(path, keep));
     } else if (entry.isFile() && keep(entry.name)) {
       out.push(path);

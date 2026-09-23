@@ -11,6 +11,8 @@ interface Page {
   path: string;
   en: string;
   ko: string;
+  category?: string;
+  order?: number;
 }
 
 function write(root: string, relativePath: string, content: string): void {
@@ -32,8 +34,8 @@ function fixture(pages: Page[]): string {
       schemaVersion: 1,
       documents: pages.map((page, index) => ({
         id: `page-${index}`,
-        category: 'reference',
-        order: index,
+        category: page.category ?? 'reference',
+        order: page.order ?? index,
         bundled: true,
         en: { path: page.path, title: `Page ${index}`, summary: 'English summary.' },
         ko: {
@@ -71,6 +73,12 @@ function generated(root: string, locale: 'en' | 'ko', relativePath: string): str
       relativePath,
     ),
     'utf8',
+  );
+}
+
+function sidebar(root: string): unknown {
+  return JSON.parse(
+    readFileSync(join(root, 'packages/documentation/src/generated/sidebar.json'), 'utf8'),
   );
 }
 
@@ -172,6 +180,103 @@ describe('documentation site sync', () => {
       expect(generated(root, locale, 'releases/v0.6.1.md')).toContain(
         `slug: "${locale === 'ko' ? 'ko/' : ''}docs/releases/v0.6.1"`,
       );
+    }
+  });
+
+  it('groups reference commands and packages at their first ordered member while retaining other links', () => {
+    // Interleaved members catch fixed group ordering, duplicate links, and lost direct reference pages.
+    const pages = [
+      { path: 'reference/packages/sdk-ts.md', order: 70 },
+      { path: 'reference/cli/explain.md', order: 40 },
+      { path: 'reference/configuration/index.md', order: 10 },
+      { path: 'reference/declaration-language/index.md', order: 35 },
+      { path: 'reference/cli/covenant-check.md', order: 30 },
+      { path: 'reference/packages/core.md', order: 20 },
+      { path: 'reference/other.md', order: 60 },
+      { path: 'how-to/configure-project.md', order: 80, category: 'how-to' },
+      { path: 'how-to/get-started.md', order: 5, category: 'how-to' },
+    ];
+    const root = fixture(
+      pages.map((page) => ({ ...page, en: '# Title\n\nBody.\n', ko: '# 제목\n\n본문.\n' })),
+    );
+    sync(root);
+    const item = (index: number, link: string) => ({
+      label: `Page ${index}`,
+      translations: { ko: `문서 ${index}` },
+      link,
+    });
+
+    expect.soft(sidebar(root)).toEqual([
+      {
+        label: 'How-to guides',
+        translations: { ko: '실행 안내' },
+        items: [item(8, '/docs/how-to/get-started/'), item(7, '/docs/how-to/configure-project/')],
+      },
+      {
+        label: 'Reference',
+        translations: { ko: '참조' },
+        items: [
+          item(2, '/docs/reference/configuration/'),
+          {
+            label: 'Packages',
+            translations: { ko: '패키지' },
+            items: [
+              item(5, '/docs/reference/packages/core/'),
+              item(0, '/docs/reference/packages/sdk-ts/'),
+            ],
+          },
+          {
+            label: 'CLI commands',
+            translations: { ko: 'CLI 명령어' },
+            items: [
+              item(4, '/docs/reference/cli/covenant-check/'),
+              item(1, '/docs/reference/cli/explain/'),
+            ],
+          },
+          item(3, '/docs/reference/declaration-language/'),
+          item(6, '/docs/reference/other/'),
+        ],
+      },
+    ]);
+
+    const singlePageCases = [
+      {
+        path: 'reference/cli/explain.md',
+        items: [
+          {
+            label: 'CLI commands',
+            translations: { ko: 'CLI 명령어' },
+            items: [item(0, '/docs/reference/cli/explain/')],
+          },
+        ],
+      },
+      {
+        path: 'reference/packages/core.md',
+        items: [
+          {
+            label: 'Packages',
+            translations: { ko: '패키지' },
+            items: [item(0, '/docs/reference/packages/core/')],
+          },
+        ],
+      },
+      {
+        path: 'reference/configuration/index.md',
+        items: [item(0, '/docs/reference/configuration/')],
+      },
+    ];
+    for (const singlePage of singlePageCases) {
+      const singleRoot = fixture([
+        { path: singlePage.path, en: '# Title\n\nBody.\n', ko: '# 제목\n\n본문.\n' },
+      ]);
+      sync(singleRoot);
+      expect.soft(sidebar(singleRoot), singlePage.path).toEqual([
+        {
+          label: 'Reference',
+          translations: { ko: '참조' },
+          items: singlePage.items,
+        },
+      ]);
     }
   });
 });

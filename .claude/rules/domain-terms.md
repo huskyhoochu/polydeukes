@@ -208,8 +208,7 @@ which contradicts the block counts in the same section.
 
 **No clipped Sino-Korean compounds.** Write `실제 측정`, never `실측`. The short form reads
 as jargon and its meaning has to be inferred; the long form says what happened. This
-applies to living documents. Archived PRDs, dated build-in-public posts, and measurement
-records keep the wording they shipped with.
+applies to living documents. Archived PRDs and measurement records keep the wording they shipped with.
 
 ## `rule` — where the jargon survives
 
@@ -219,12 +218,7 @@ records keep the wording they shipped with.
   user-facing name, folder, config key, or doc.
 - Surfaces owned by other tools (an agent's own rules directory) and the npm `keywords`
   array keep their native vocabulary — same exception axis as `keywords`.
-- **Dated posts keep the vocabulary they shipped with.** A rename sweeps every living
-  surface, but `docs/build-in-public/<date>-*` is a record of what we believed and measured
-  on that date, so a term that was correct when published stays (`waiver` throughout the
-  v0.1 post) and gains an editor's note instead. The line runs *through* a dated post, not
-  around it: a term already banned when the post was written is still a violation and gets
-  corrected. Reference docs are the opposite — they speak only the present.
+- **Reference docs describe current behavior and use the current vocabulary.**
 
 ## Package contract — where the shape is kept
 

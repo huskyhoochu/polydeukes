@@ -20,14 +20,35 @@
 | 이 문서에 기여하고 싶다 | [문서에 기여하기](./contributing.ko.md) — 영한 쌍, 안정 ID, 카탈로그, 검사 |
 
 <a id="reference"></a>
-## 레퍼런스
+## 참조
 
-설정 키, 선언 문법, CLI 명령, 패키지 계약을 조회합니다.
+<a id="reference-cli"></a>
+### CLI 명령어
 
-| 문서 | 답하는 것 |
+| 명령어 | 용도 |
 |---|---|
-| [설정 레퍼런스](./reference/configuration/index.ko.md) | `polydeukes.config.yaml`에 무엇을 넣을 수 있고 각 키가 무엇을 하는지 |
-| [선언 언어 참조](./reference/declaration-language/index.ko.md) | 소스, 추출 단계, 조합 연산, 관계, 기전의 전체 문법과 제약 |
+| [`pdks covenant check`](./reference/cli/covenant-check.ko.md) | 입력 IR이나 unified diff를 판정하고 결과와 종료 코드 확인 |
+| [`pdks init`](./reference/cli/init.ko.md) | 프로젝트 설정 생성 |
+| [`pdks explain`](./reference/cli/explain.ko.md) | 등록된 규율과 강제 수준 확인 |
+| [`pdks docs`](./reference/cli/docs.ko.md) | 설치된 문서 검색과 조회 |
+
+<a id="reference-configuration"></a>
+### 설정
+
+[설정 참조](./reference/configuration/index.ko.md)에서 `polydeukes.config.yaml`의 키와
+강제 수준, 규율 목록, 증인 설정을 확인합니다.
+
+<a id="reference-declaration-language"></a>
+### 선언 언어
+
+[선언 언어 참조](./reference/declaration-language/index.ko.md)에서 소스, 추출 단계,
+조합 연산, 관계, 기전의 전체 문법과 제약을 확인합니다.
+
+<a id="reference-packages"></a>
+### 패키지
+
+| 패키지 | 담당 기능 |
+|---|---|
 | [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md) | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
 | [`@polydeukes/core`](./reference/packages/core.ko.md) | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리 |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로 |

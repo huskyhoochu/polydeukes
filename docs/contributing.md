@@ -36,11 +36,11 @@ without keeping its previous slug or explicit id.
 entry.
 
 - `documents` entries carry `id`, `category`, `order`, `bundled`, and `en`/`ko`
-  `{path,title,summary}`. Titles and summaries live in the catalog so the Markdown stays
-  plain.
+  `{path,title,summary}`. Write titles and summaries as plain text. Markdown formatting such as
+  backticks is displayed literally in website titles and navigation.
 - `bundled: true` files are copied into the installed `pdks docs` library. `bundled: false`
   files appear in the repository and on the documentation website; `pdks docs` excludes them.
-  This page and the dated development records are `bundled: false`.
+  This page and the design explanation are `bundled: false`.
 
 Do not add a `docs/*.md` file that the catalog does not name.
 
@@ -50,6 +50,9 @@ Do not add a `docs/*.md` file that the catalog does not name.
 `packages/documentation` builds the website from every catalog entry, including `bundled: false`.
 Its `sync-docs.mjs` script creates the ignored `src/content/docs/` tree and `src/generated/sidebar.json`.
 Edit the originals under `docs/`; the next build replaces generated files.
+
+In the Reference sidebar, `reference/cli/` and `reference/packages/` form separate groups.
+Other reference pages, including configuration and declaration language, remain direct links.
 
 The sync step removes the document title and language switch, writes catalog metadata as frontmatter,
 and converts Markdown links into site routes. English pages use `/docs/`, Korean pages `/ko/docs/`.
@@ -84,13 +87,6 @@ node scripts/check-docs.mjs
 The checker requires bilingual pairs, catalog coverage, and that local Markdown links resolve
 to an existing file and, when they carry a fragment, to an existing heading slug or explicit
 id.
-
-<a id="historical-records"></a>
-## Historical records
-
-`docs/build-in-public/` files are dated development records. Keep the events, numbers,
-quotations, and vocabulary they shipped with. Do not shorten them into move notices. Do not
-rewrite a dated term that was correct on the day the post was published.
 
 <a id="check-commands"></a>
 ## What to run

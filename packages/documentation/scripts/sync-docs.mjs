@@ -32,9 +32,13 @@ const CATEGORY_LABELS = {
   concepts: { en: 'Concepts', ko: '개념' },
   reference: { en: 'Reference', ko: '참조' },
   explanation: { en: 'Explanation', ko: '설명' },
-  history: { en: 'Development log', ko: '개발 기록' },
 };
 const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
+
+const REFERENCE_LABELS = {
+  'reference/cli/': { en: 'CLI commands', ko: 'CLI 명령어' },
+  'reference/packages/': { en: 'Packages', ko: '패키지' },
+};
 
 /** The catalog entry rendered as the documentation index; it is not placed in the sidebar. */
 const HOME_ID = 'home';
@@ -76,16 +80,6 @@ function rewriteLink(target, fromPath) {
   if (!insideDocs.endsWith('.md')) return `${REPO_BLOB}/docs/${insideDocs}${suffix}`;
   const locale = insideDocs.endsWith('.ko.md') ? 'ko' : 'en';
   return `${toSitePath(insideDocs, locale)}${suffix}`;
-}
-
-/**
- * Returns the catalog title, or the document's own H1 when the catalog entry holds the
- * file's leading HTML comment instead.
- */
-function resolveTitle(translation, markdown) {
-  if (!translation.title.trimStart().startsWith('<!--')) return translation.title;
-  const h1 = markdown.match(/^#\s+(.+)$/m);
-  return h1 ? h1[1].trim() : translation.path;
 }
 
 /**
@@ -131,10 +125,8 @@ function transform(markdown, docPath) {
 }
 
 /** Writes one translated document with catalog-sourced frontmatter. */
-async function emit(doc, locale, translation, titles) {
+async function emit(doc, locale, translation) {
   const source = await readFile(join(DOCS_ROOT, translation.path), 'utf8');
-  const title = resolveTitle(translation, source);
-  titles.set(`${doc.id}:${locale}`, title);
   const body = transform(source, translation.path);
   const slug = translation.path.replace(/\.ko\.md$/, '.md').replace(/^README\.md$/, 'index.md');
   const outPath =
@@ -145,7 +137,7 @@ async function emit(doc, locale, translation, titles) {
   const route = toSitePath(translation.path, locale).replace(/^\/|\/$/g, '');
   const frontmatter = [
     '---',
-    `title: ${yamlString(title)}`,
+    `title: ${yamlString(translation.title)}`,
     `slug: ${yamlString(route)}`,
     `description: ${yamlString(translation.summary)}`,
     ...(updated ? [`lastUpdated: ${updated}`] : []),
@@ -160,49 +152,48 @@ async function emit(doc, locale, translation, titles) {
 }
 
 /**
- * Shortens a build-in-public title for the navigation column. The full title stays on the
- * page; only the sidebar label is trimmed to the post number and its subject.
+ * Builds one sidebar from documents in catalog order. Reference subgroups occupy their
+ * first member's position, and Starlight resolves Korean labels through `translations`.
  */
-function sidebarLabel(title) {
-  const post = title.match(/#(\d+)[\s,—-]+(.*)$/);
-  if (!post) return title;
-  const [, n, subject] = post;
-  const short = subject.length > 46 ? `${subject.slice(0, 45).trimEnd()}…` : subject;
-  return `#${n} ${short}`;
-}
-
-/**
- * Builds one sidebar from the catalog's `category` grouping and `order`, carrying the
- * Korean labels as Starlight `translations` rather than as a second sidebar. Starlight
- * resolves the locale itself; a per-locale sidebar would only ever render the default.
- */
-function buildSidebar(documents, titles) {
+function buildSidebar(documents) {
   const groups = new Map();
+  const referenceGroups = new Map();
   for (const doc of documents) {
     if (doc.id === HOME_ID) continue;
     if (!doc.en) continue;
     if (!groups.has(doc.category)) groups.set(doc.category, []);
-    groups.get(doc.category).push({
-      label: sidebarLabel(titles.get(`${doc.id}:en`) ?? doc.en.title),
+    const item = {
+      label: doc.en.title,
       ...(doc.ko
         ? {
             translations: {
-              ko: sidebarLabel(titles.get(`${doc.id}:ko`) ?? doc.ko.title),
+              ko: doc.ko.title,
             },
           }
         : {}),
       link: toSitePath(doc.en.path, 'en'),
-      order: doc.order,
-    });
+    };
+    const referencePath =
+      doc.category === 'reference'
+        ? Object.keys(REFERENCE_LABELS).find((path) => doc.en.path.startsWith(path))
+        : undefined;
+    if (referencePath) {
+      if (!referenceGroups.has(referencePath)) {
+        const labels = REFERENCE_LABELS[referencePath];
+        const group = { label: labels.en, translations: { ko: labels.ko }, items: [] };
+        referenceGroups.set(referencePath, group);
+        groups.get(doc.category).push(group);
+      }
+      referenceGroups.get(referencePath).items.push(item);
+    } else {
+      groups.get(doc.category).push(item);
+    }
   }
 
   return CATEGORY_ORDER.filter((category) => groups.has(category)).map((category) => ({
     label: CATEGORY_LABELS[category].en,
     translations: { ko: CATEGORY_LABELS[category].ko },
-    items: groups
-      .get(category)
-      .sort((a, b) => a.order - b.order)
-      .map(({ order, ...item }) => item),
+    items: groups.get(category),
   }));
 }
 
@@ -210,14 +201,13 @@ const catalog = JSON.parse(await readFile(join(DOCS_ROOT, 'catalog.json'), 'utf8
 const documents = [...catalog.documents].sort((a, b) => a.order - b.order);
 
 await rm(OUT_ROOT, { recursive: true, force: true });
-const titles = new Map();
 for (const doc of documents) {
   for (const locale of ['en', 'ko']) {
-    if (doc[locale]) await emit(doc, locale, doc[locale], titles);
+    if (doc[locale]) await emit(doc, locale, doc[locale]);
   }
 }
 
-const sidebar = buildSidebar(documents, titles);
+const sidebar = buildSidebar(documents);
 await mkdir(join(PACKAGE_ROOT, 'src/generated'), { recursive: true });
 await writeFile(
   join(PACKAGE_ROOT, 'src/generated/sidebar.json'),
