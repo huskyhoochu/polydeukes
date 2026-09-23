@@ -7,6 +7,101 @@
 > AI 코딩 파트너와 함께 개발하기 위한 규율(discipline) 프레임워크.
 > 결정론적 약속(covenant) · 검증 가능한 작업 기록 · 로컬 기억(memory) 그래프 · 적대적 검증을 얇은 코어 하나 위에 올립니다.
 
+<a id="quick-start"></a>
+## 빠른 시작 (Quick start)
+
+**Node.js 24 이상**, pnpm, `package.json`이 있는 Git 프로젝트가 필요합니다.
+아래 명령은 프로젝트 루트에서 직접 터미널로 실행하세요.
+
+### 1. 설치하고 에이전트 연결하기
+
+공통 패키지를 설치한 뒤, 사용하는 AI 코딩 파트너의 행을 골라 실행하세요.
+
+```sh
+pnpm add -D polydeukes @polydeukes/core
+```
+
+| 에이전트 | 어댑터 설치 | 초기화 |
+|---|---|---|
+| Claude Code | `pnpm add -D @polydeukes/adapter-claude-code` | `pnpm exec pdks-claude-code init` |
+| Codex | `pnpm add -D @polydeukes/adapter-codex` | `pnpm exec pdks-codex init` |
+| Grok | `pnpm add -D @polydeukes/adapter-grok` | `pnpm exec pdks-grok init` |
+
+각 어댑터의 `init`은 `polydeukes.config.yaml`을 만들고, `.gitignore`에 `.polydeukes/`를
+추가하며, 세션 훅을 등록합니다. Claude Code는 다시 열고, Codex는 `/hooks`에서 생성된 훅을
+승인하고, Grok는 Hooks 탭을 새로 고치세요. Git diff만 판정하려면 공통 패키지를 설치한 뒤
+`pnpm exec pdks init`을 실행하세요.
+
+### 2. 첫 규율 설정하기
+
+생성된 `polydeukes.config.yaml`을 편집기에서 여세요. `languages`의 임시 항목을 프로젝트의
+소스 경로와 테스트 명령으로 바꿉니다. 예를 들면 다음과 같습니다.
+
+```yaml
+languages:
+  typescript:
+    productionGlob: 'src/**'
+    testCmd: 'pnpm test'
+```
+
+생성된 `protectedPaths`와 `witness` 블록은 유지하세요. 아래 `disciplines` 목록을 추가하거나,
+이미 목록이 있다면 항목만 덧붙이세요. `src/`에 새로 추가되는 줄에 `TODO`가 있으면 알려 줍니다.
+
+```yaml
+disciplines:
+  - id: 'no-new-todo-lines'
+    why: '소스에 줄을 추가하기 전에 TODO를 해결합니다.'
+    enforce: advise
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['^src/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: '이 TODO를 해결하세요: {value}'
+```
+
+변경하지 않은 TODO 줄은 허용하며, 기존 줄을 똑같이 반복해도 이미 있는 줄로 취급합니다.
+`advise`는 위반을 알리고 작업을 계속 진행합니다. 해당 항목으로 세션 호출을 중단하려면
+`enforce: block`을 선택하세요. diff 판정에서 차단 항목으로 작업을 중단하려면 명령에도
+`--enforce block`이 필요합니다.
+
+설정 파일 자체도 에이전트 세션에서 보호됩니다. 직접 편집하거나, 에이전트에게 의도적인 편집을
+맡길 때는 [증인 절차](./docs/how-to/connect-surfaces.ko.md#witness-and-recovery)를 따르세요.
+Claude Code에서는 설치된 `discipline-draft` 스킬에 문제를 설명하면 규율 항목 작성을 도와줍니다.
+
+### 3. 결과 확인하기
+
+```sh
+pnpm exec pdks explain
+git diff HEAD | pnpm exec pdks covenant check --diff
+```
+
+`explain`은 두 표면 모두에서 `no-new-todo-lines`를 `declare`로 표시해야 합니다.
+위반을 확인하려면 `src/` 아래 Git이 추적 중인 파일에 `// TODO: quick-start check` 줄을
+새로 추가하고 diff 명령을 다시 실행하세요. 규율 이름이 담긴 진단 메시지,
+`.polydeukes/roi.log`의 `advised` 행, 종료 코드 0을 확인할 수 있습니다.
+추가한 줄을 지우고 다시 실행하면 해당 진단 메시지가 사라져야 합니다.
+
+이어서 [다른 규율 예제](./docs/how-to/write-disciplines.ko.md),
+[pre-commit 연결](./docs/how-to/connect-surfaces.ko.md#change-set-surface)을 읽거나,
+`pnpm exec pdks docs`로 설치된 판본의 문서를 확인하세요.
+
+<a id="status-and-cli"></a>
+## 현재 상태와 CLI
+
 **상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 여섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR을 판정기에
 넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 그리고 판정기를 포함하며 `pdks`

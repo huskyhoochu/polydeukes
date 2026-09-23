@@ -8,6 +8,101 @@
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
+<a id="quick-start"></a>
+## Quick start
+
+You need **Node.js 24+**, pnpm, and a Git project with a `package.json`. Run the commands below
+from the project root in your own terminal.
+
+### 1. Install and connect your agent
+
+Install the shared packages, then choose the row for your AI coding partner:
+
+```sh
+pnpm add -D polydeukes @polydeukes/core
+```
+
+| Agent | Install the adapter | Initialize |
+|---|---|---|
+| Claude Code | `pnpm add -D @polydeukes/adapter-claude-code` | `pnpm exec pdks-claude-code init` |
+| Codex | `pnpm add -D @polydeukes/adapter-codex` | `pnpm exec pdks-codex init` |
+| Grok | `pnpm add -D @polydeukes/adapter-grok` | `pnpm exec pdks-grok init` |
+
+Each adapter's `init` creates `polydeukes.config.yaml`, adds `.polydeukes/` to `.gitignore`, and
+registers the session hook. Reopen Claude Code, approve the generated hooks with `/hooks` in
+Codex, or reload Grok's Hooks tab. For checks over a Git diff alone, run `pnpm exec pdks init`
+after installing the shared packages.
+
+### 2. Configure your first discipline
+
+Open the generated `polydeukes.config.yaml` in your editor. Replace its `languages` placeholder
+with your source paths and test command, for example:
+
+```yaml
+languages:
+  typescript:
+    productionGlob: 'src/**'
+    testCmd: 'pnpm test'
+```
+
+Keep the generated `protectedPaths` and `witness` blocks. Add this `disciplines` list, or append
+the entry to your existing list. It reports newly added lines containing `TODO` in `src/`:
+
+```yaml
+disciplines:
+  - id: 'no-new-todo-lines'
+    why: 'Resolve TODOs before adding source lines.'
+    enforce: advise
+    declare:
+      mechanism: 'added-only'
+      scope: { source: 'target.path', include: ['^src/'] }
+      supply: { pre: 'empty', post: 'empty' }
+      extract:
+        before:
+          - { op: 'source', of: 'pre' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+        after:
+          - { op: 'source', of: 'post' }
+          - { op: 'lines' }
+          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+        added:
+          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+      relate:
+        - id: 'nothing-added'
+          relation: { op: 'empty', of: 'added' }
+          message: 'Resolve this TODO: {value}'
+```
+
+Unchanged TODO lines are allowed; repeating an identical existing line is also treated as
+already present. `advise` reports a violation and lets work continue. Choose `enforce: block`
+when you want the entry to stop a session call. Diff checks also need `--enforce block` to stop
+on a blocking entry.
+
+The config file itself is protected during agent sessions. Edit it yourself, or use the
+[witness procedure](./docs/how-to/connect-surfaces.md#witness-and-recovery) for an intentional
+agent edit. In Claude Code, the installed `discipline-draft` skill can help turn a problem you
+describe into an entry.
+
+### 3. Check the result
+
+```sh
+pnpm exec pdks explain
+git diff HEAD | pnpm exec pdks covenant check --diff
+```
+
+`explain` should list `no-new-todo-lines` as `declare` on both surfaces. To see a violation, add
+a new `// TODO: quick-start check` line to a tracked file under `src/`, then rerun the diff
+command. Expect a diagnostic naming the discipline, an `advised` row in `.polydeukes/roi.log`,
+and exit code 0. Remove the line and rerun; that diagnostic should disappear.
+
+Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
+[pre-commit integration](./docs/how-to/connect-surfaces.md#change-set-surface), or
+`pnpm exec pdks docs` for the installed documentation.
+
+<a id="status-and-cli"></a>
+## Status and CLI
+
 **Status: beta** (since v0.7.0, 2026-09-16). Six packages ship — `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
 `@polydeukes/sdk-ts` (the TypeScript client that hands an input IR to the judge from a program),
