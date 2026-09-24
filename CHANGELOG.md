@@ -11,6 +11,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.10.0](https://github.com/huskyhoochu/polydeukes/compare/v0.9.0...v0.10.0) (2026-09-24)
+
+
+### Features
+
+* **core:** pairing admits subset for n-bundle key parity (ALGEBRA-10) ([#127](https://github.com/huskyhoochu/polydeukes/issues/127)) ([472baed](https://github.com/huskyhoochu/polydeukes/commit/472baed491d1dff31fe1e513fef291bf73cddb4d))
+
 ## [0.9.0](https://github.com/huskyhoochu/polydeukes/compare/v0.8.0...v0.9.0) (2026-09-23)
 
 
