@@ -6,8 +6,13 @@ export type ParseDocumentSpec = { id: string; text: string };
 /** One row of a document: the preamble (anchor `''`) or one H2 section. */
 export type ParsedSection = { anchor: string; ord: number; title: string; body: string };
 
-/** A document split into its title and section rows. */
-export type ParsedDocument = { id: string; title: string; sections: ParsedSection[] };
+/** A document split into its title, section rows, and optional frontmatter mapping. */
+export type ParsedDocument = {
+  id: string;
+  title: string;
+  sections: ParsedSection[];
+  metadata?: Record<string, unknown>;
+};
 
 // A backtick fence's info string may not contain a backtick; a tilde fence's may.
 const FENCE = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/;
@@ -16,12 +21,11 @@ const H2 = /^ {0,3}##(?:[ \t](.*))?$/;
 const EXPLICIT_ANCHOR = /\s*\{#([^}]+)\}\s*$/;
 const CLOSING_HASHES = /(?:^|\s+)#+\s*$/;
 
-function frontmatterTitle(yamlText: string): string | undefined {
+function frontmatterMetadata(yamlText: string): Record<string, unknown> | undefined {
   try {
     const data: unknown = parse(yamlText);
-    if (typeof data !== 'object' || data === null) return undefined;
-    const title = (data as Record<string, unknown>).title;
-    return typeof title === 'string' && title.trim() !== '' ? title : undefined;
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) return undefined;
+    return data as Record<string, unknown>;
   } catch {
     return undefined;
   }
@@ -38,11 +42,11 @@ function slug(title: string): string {
 export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocument {
   const text = raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   let content = text;
-  let fmTitle: string | undefined;
+  let metadata: Record<string, unknown> | undefined;
   if (text.startsWith('---\n')) {
     const end = text.indexOf('\n---\n', 3);
     if (end !== -1) {
-      fmTitle = frontmatterTitle(text.slice(4, end));
+      metadata = frontmatterMetadata(text.slice(4, end));
       content = text.slice(end + 5);
     }
   }
@@ -106,5 +110,7 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
     });
   }
 
-  return { id, title: fmTitle ?? h1Title ?? id, sections };
+  const fmTitle = metadata?.title;
+  const title = typeof fmTitle === 'string' && fmTitle.trim() !== '' ? fmTitle : (h1Title ?? id);
+  return metadata ? { id, title, sections, metadata } : { id, title, sections };
 }

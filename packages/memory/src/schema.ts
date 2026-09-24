@@ -12,8 +12,11 @@ export type OptimizeMemoryDbSpec = { db: DatabaseSync };
 // would see the concept already removed by the cascade and hand FTS a NULL title.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS concept (
-  id    TEXT PRIMARY KEY,
-  title TEXT NOT NULL
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  metadata    TEXT NOT NULL DEFAULT '{}',
+  status      TEXT NOT NULL DEFAULT 'stable',
+  stale_after TEXT
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS section (
