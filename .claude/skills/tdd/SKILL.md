@@ -50,9 +50,8 @@ recorded in `_docs/knowledge/`.
 - Task area: <one line — e.g. "core covenant protocol: stdin-JSON parse + exit-code map">
 - knowledge scan (`ls _docs/knowledge/ | grep -iE '<keywords>'`):
   - <filename>: <one-line takeaway>   ← repeat per match, or "no matches" if zero
-- recall (cognee — one question the filename scan cannot answer):
-  - Q: <the question> → <one-line answer, or "not in context">
-  - Verdict: <accurate | partial | missed | wrong-neighbour> → logged
+- body grep (`grep -rn '<identifier or phrase>' _docs/knowledge/` — what the filename scan cannot reach):
+  - <file:line>: <one-line takeaway>   ← repeat per hit, or "no matches"
   - Skipped because: <reason>   ← only when the scan already answered the area
 - PRD consulted (`_docs/prd/<ID>.md`):
   - <acceptance criteria / invariants this cycle must satisfy>
@@ -61,23 +60,12 @@ recorded in `_docs/knowledge/`.
   - Skipped because: <reason>   ← only if no external library API is involved
 ```
 
-**The recall line is the second net, not a replacement.** The filename scan is the primary — it
-is instant and its domain is exactly "which document should I open". Recall exists because that
-scan is *structurally* blind to what lives in document bodies: a prescription whose keywords never
-reach the filename, a carry-over recorded in a prior PRD's follow-ups. Ask it the question the scan
-could not answer, in prose, not keywords.
-
-```sh
-ssh root@gem12 'incus exec apps -- sh -c "cd /opt/cognee && .venv/bin/python recall.py \"<질의>\""'
-```
-
-Measured 7~11s per query (2026-08-19, after the generation model moved off the local 30B).
-**Every attempt gets a verdict line and a row in
-`_docs/knowledge/memory.dev-log.cognee-recall-gaps.md`** — that log is v0.8.0 MEMORY's primary
-input, and an unrecorded miss teaches it nothing. A wrong answer is a finding, not a failure of
-the phase: record it and proceed on the filename scan. Two known weak axes — the index is a
-snapshot that lags its source until someone pulls and re-indexes, and a query whose subject is
-absent can come back as a confident *neighbouring* document rather than "not in context".
+**The body grep is the second net, not a replacement.** The filename scan is the primary — it
+is instant and its domain is exactly "which document should I open". The body grep exists because
+that scan is *structurally* blind to what lives in document bodies: a prescription whose keywords
+never reach the filename, a carry-over recorded in a prior PRD's follow-ups. Grep for the
+identifiers the cycle will touch (symbol, file, config key, ticket ID), not topic words — an
+identifier is exact where a topic word matches every neighbouring document.
 
 Every field must be grounded in tool output from this turn (not memory); empty results are valid
 ("no matches"), a missing block is not. The knowledge scan command runs *in this turn* — paste

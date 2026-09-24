@@ -43,19 +43,14 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`). Grep the archive body and
   the memory's progress log for the ticket's ID and carry-over markers, e.g.
   `grep -ln '이월\|carry-over' _docs/knowledge/*.prd.*.md` plus a `grep '<ID>'` over the memory
-  progress notes. Every hit must be dispositioned in the PRD's scope section — included or
-  explicitly excluded; silence is a miss.
-- **The three lookups above do not depend on each other — issue them in one response.** The
-  knowledge scan, the carry-over greps, and the recall query (next bullet) each read a different
-  store; start the recall `ssh` in the background first, read the grep output while it runs, and
-  collect the recall answer after. Running them one per turn spends a round trip on each and
-  leaves the 7~11s recall wait idle.
-- **Ask recall one question here too.** This sweep is the clearest case of what a filename scan
-  cannot reach, so put the question in prose — "what was carried over toward `<ID>`", "what did
-  earlier tickets defer in this area". The command and its two weak axes are in the `/tdd`
-  skill's PRE-FLIGHT section; the same rule applies — **every attempt gets a row in
-  `_docs/knowledge/memory.dev-log.cognee-recall-gaps.md`**, a wrong answer included. Recall
-  supplements the greps above and never replaces them: a hit it misses is still a miss.
+  progress notes. Obligations also live by *form*, not vocabulary: an unchecked `- [ ]` item in an
+  archived PRD's disposition list that names this ticket carries no carry-over word at all
+  (`foundation.dev-log.carryover-grep-misses-disposition-sections.md`), so add
+  `grep -n '^\s*- \[ \].*<ID>' _docs/knowledge/*.md`. Every hit must be dispositioned in the PRD's
+  scope section — included or explicitly excluded; silence is a miss.
+- **The lookups above do not depend on each other — issue them in one response.** The knowledge
+  scan and the carry-over greps read different parts of the archive; running them one per turn
+  spends a round trip on each.
 - **The PRD preserves no legacy.** The roadmap row and every carry-over hit above are
   *candidate* requirements, not requirements. For each one the PRD records (1) who asked for
   it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
@@ -66,8 +61,10 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   §2-a requirement table (requirement · who asked · verdict before the fundamental fact) the
   PRD opens its scope section with, kept separate from the carry-over disposition table.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
-  (`*.prd.*` files): same 4-key frontmatter (`scope`/`type`/`tags`/`created_at`), status line
-  `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
+  (`*.prd.*` files): the OKF frontmatter of `_docs/knowledge/foundation.adr.knowledge-format.md`
+  (`scope` · `type: prd` · `title` equal to the H1 · `tags` · `created_at` with UTC offset ·
+  `status: draft`), links as relative markdown links (`other.md#anchor`, never `[[x]]`), status
+  line `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
 - Record one **release impact** in the PRD status block before approval. Classify the ticket's
   largest shipped effect, never the fact that it is a ticket: `patch` repairs behavior users
   could already expect, `minor` adds a user-visible capability, `breaking` removes or changes a
@@ -193,22 +190,18 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   `- [ ]` items is how a carry-over goes missing, and closing that leak is the standing
   prescription in `_docs/knowledge/foundation.dev-log.carryover-grep-misses-disposition-sections.md`.
 - Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to
-  `done` (with merge date + PR number), keep the 4-key frontmatter. Archived PRDs are immutable.
-- **Commit and push the `_docs/` clone, then re-index.** Everything this loop wrote there —
-  the PRD, any dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local
-  edit until that push. Unpushed knowledge exists on one machine, which is exactly what the
-  telemetry loss demonstrated costs a project its record. The push is also what makes the
-  recall index stale, so the two belong in one step:
+  `done` (with merge date + PR number), delete the `status: draft` key (absent means `stable`),
+  keep the rest of the frontmatter, and add the new file's entry to `_docs/knowledge/index.md`
+  under its scope heading. Archived PRDs are immutable.
+- **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any
+  dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local edit until that
+  push. Unpushed knowledge exists on one machine, which is exactly what the telemetry loss
+  demonstrated costs a project its record:
 
   ```sh
   git -C _docs add -A && git -C _docs commit && git -C _docs push
-  ssh root@gem12 'incus exec apps -- /opt/cognee/sync.sh' &
   ```
 
-  `sync.sh` pulls the clone and re-indexes only what changed — background it, since a
-  ticket's 3~4 documents take a couple of minutes and nothing downstream waits on it. A
-  daily timer covers pushes made outside this loop; recall prints how far behind the index
-  is, so a skipped sync surfaces at the next question rather than silently aging.
 - Report which roadmap tickets the merge unlocked.
 
 ## Notes

@@ -46,8 +46,11 @@ only, not a diary):
 3. **Stale doc corrected by measurement**: did a document claim something reality contradicted?
 
 If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` following the
-`_docs/knowledge/README.md` contract: searchable one-line conclusion as the title, body as
-symptom → wrong hypothesis → real cause → prescription, one `## H2 {#anchor}` per atomic topic.
+OKF contract in `_docs/knowledge/foundation.adr.knowledge-format.md` (frontmatter `scope` ·
+`type: dev-log` · `title` equal to the H1 · `tags` · `created_at`; relative markdown links, never
+`[[x]]`): searchable one-line conclusion as the title, body as symptom → wrong hypothesis → real
+cause → prescription, one `## H2 {#anchor}` per atomic topic. Add its entry to
+`_docs/knowledge/index.md` under its scope heading.
 If all three are no, record `dev-log: none` explicitly.
 
 **Writing the file is not the durable step.** `_docs/` is a clone of the project's wiki, so
@@ -57,11 +60,7 @@ out. Inside the `/ticket` loop, ARCHIVE handles this for everything the loop wro
 
 ```sh
 git -C _docs add -A && git -C _docs commit && git -C _docs push
-ssh root@gem12 'incus exec apps -- /opt/cognee/sync.sh' &
 ```
-
-The second line re-indexes what the push changed, so the next session's recall can see this
-dev-log. Background it; nothing waits on it.
 
 ## 4. Public-language promotion (always answer)
 
