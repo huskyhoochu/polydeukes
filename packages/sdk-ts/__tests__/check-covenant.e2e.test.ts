@@ -1,9 +1,9 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { type CovenantInput, readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { checkCovenant } from '../src/check-covenant.ts';
 
 // `checkCovenant` against the BUILT `pdks`: a throwaway tree scaffolded by `pdks init`,
@@ -28,11 +28,6 @@ const TELEMETRY_REL = 'roi.log';
 const SELF_MOD_LABEL = 'self-mod';
 
 let projectRoot: string;
-
-beforeAll(() => {
-  // The umbrella bin the SDK spawns comes from dist; turbo caching makes repeat runs cheap.
-  execSync('pnpm turbo run build', { cwd: checkoutRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   projectRoot = realpathSync(mkdtempSync(join(tmpdir(), 'pdks-sdk-ts-e2e-')));

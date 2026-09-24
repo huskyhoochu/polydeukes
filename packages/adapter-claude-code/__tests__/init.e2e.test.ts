@@ -1,9 +1,9 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // The generated artifacts EXECUTE: the built `pdks-claude-code init` installs into a
 // throwaway tree wired to the real install graph by symlink, and the generated delegator
@@ -38,12 +38,6 @@ const TELEMETRY_REL = '.polydeukes/roi.log';
 const RUNNER_LABEL = 'covenant-check';
 
 let projectRoot: string;
-
-beforeAll(() => {
-  // The adapter bin and the umbrella bin it spawns both come from dist; turbo caching makes
-  // repeat runs cheap.
-  execSync('pnpm turbo run build', { cwd: checkoutRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   // Realpath'd so the delegator's own location, the child's cwd, and the paths this file

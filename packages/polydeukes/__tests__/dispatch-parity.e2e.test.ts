@@ -1,13 +1,13 @@
 // The parity net over both surfaces, each observed from OUTSIDE the process — a real
 // hook spawn and a real bin spawn — so the stderr expectations hold regardless of how
 // the judges write their reasons internally.
-import { execFileSync, execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import type { TelemetryRecord } from '@polydeukes/core';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
@@ -124,11 +124,6 @@ const EXPECTED_WITNESSES = [
 
 let tmpRoot: string;
 let telemetryPath: string;
-
-beforeAll(() => {
-  // The hook and the bin import built dist; turbo caching makes repeat runs fast.
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 240_000);
 
 beforeEach(() => {
   tmpRoot = mkdtempSync(join(tmpdir(), 'pdks-dispatch-parity-'));

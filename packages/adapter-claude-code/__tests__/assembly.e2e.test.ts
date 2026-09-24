@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   mkdirSync,
@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // Spawns the REAL PreToolUse hook as a black box, and the hook spawns the judge as a
 // second process: the delegator loads this package's dist, builds the IR, and hands it to
@@ -23,11 +23,6 @@ const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
 
 let tmpRoot: string;
 let telemetryPath: string;
-
-beforeAll(() => {
-  // The hook imports built dist; turbo caching makes repeat runs ~1s.
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   tmpRoot = mkdtempSync(join(tmpdir(), 'pdks-assembly-'));

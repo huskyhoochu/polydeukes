@@ -1,14 +1,13 @@
 // The shared emit-and-exit helper behind `docs` and `explain` on the built bin: a reader
 // that closes before the text is drained (`| head -c 1`) must land exit 2 with no stack
 // trace, for both subcommands alike.
-import { type ChildProcess, execSync, spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeConfigAt } from './helpers.ts';
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 /** A Node stack frame on stderr: `    at fn (file.js:12:3)`. */
@@ -16,10 +15,6 @@ const STACK_FRAME = /at .*\.js:\d+/;
 
 let projectRoot: string;
 let logDir: string;
-
-beforeAll(() => {
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   projectRoot = mkdtempSync(join(tmpdir(), 'pdks-bin-emit-e2e-'));

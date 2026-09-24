@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
@@ -80,8 +80,6 @@ let packRoot: string;
 const tarballs = new Map<string, string>();
 
 beforeAll(() => {
-  // Pack from built dist; turbo caching makes repeat builds ~1s.
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
   packRoot = mkdtempSync(join(tmpdir(), 'pdks-publish-pack-'));
   for (const dir of PACKAGE_DIRS) {
     tarballs.set(dir, packOne(dir));

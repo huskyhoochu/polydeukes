@@ -60,6 +60,10 @@ it is a discoverability index; the `description` field is NOT exempt.
   for the vocabulary (`약속(covenant)`), never transliteration. The repository instruction files
   `AGENTS.md` and `AGENTS.local.md` are exceptions and have no Korean mirrors.
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
+- Root `pnpm test` completes workspace builds using Turbo's cache, then runs every package's
+  test suite in parallel on each invocation. For a focused
+  e2e run, first run `pnpm build`, then `pnpm -F <package> exec vitest run <file>`; focused
+  tests consume the existing build artifacts. Typecheck before either build command.
 - Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills,
   MCP tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage
   agent instructions directly in this `AGENTS.md` and the repository-owned rule files.
@@ -138,12 +142,11 @@ The recovery procedures below stay here because no `paths` glob can predict when
   validate: typecheck sources, build core and umbrella dist, then edit the config.
 - **A RENAME of anything the hook or config names has no safe build order** — dist, hook, and
   config must land together: package sources first (session-free), then swap the hook and root
-  config in one witness window, then build. Beware test suites whose `beforeAll` rebuilds dist
-  (the set moves with the tests — enumerate it with
-  `rg -l 'turbo run build|pnpm build' packages/*/__tests__` before relying on it): run one
-  while the source tree is mid-change — a rename, or any cross-package contract change — and
-  the session locks, every mutating call refused, until a human runs the recovery in their own
-  terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one package's dist
+  config in one witness window, then build. Root `pnpm test` rebuilds dist before starting
+  tests: run it while the source tree is mid-change — a rename, or any cross-package contract
+  change — and the session locks, every mutating call refused, until a human runs the recovery
+  in their own terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one
+  package's dist
   rebuilt against sources the sibling dist has not seen crashes assembly on every call, and
   `pnpm build` (run by a human — the locked session cannot) clears it only if the whole tree
   already typechecks, so gate any dist-touching command on `tsc --noEmit` first. A third shape

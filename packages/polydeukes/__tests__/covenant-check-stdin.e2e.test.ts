@@ -1,9 +1,9 @@
-import { execFileSync, execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { CovenantInput } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The built bin under the two argv forms it accepts: `covenant check` reads an IR JSON from
 // stdin, `covenant check --diff` reads a unified diff from stdin. Every spawn pipes all
 // three stdio fds and passes its own `input` — the child never inherits the runner's stdin,
@@ -11,7 +11,6 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { STAGED_WRITE } from '../src/diff-ir.ts';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows, writeConfigAt } from './helpers.ts';
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 /** Injected fixture values. */
@@ -29,10 +28,6 @@ let projectRoot: string;
 let logDir: string;
 let logPath: string;
 let git: (...args: string[]) => string;
-
-beforeAll(() => {
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   projectRoot = mkdtempSync(join(tmpdir(), 'pdks-check-stdin-e2e-'));

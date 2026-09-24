@@ -14,10 +14,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 //
 // These cases run the judge out of the covenant package's BUILT output, not the working
 // tree: the composition root resolves the module through the package's `exports` map, which
-// the test runner's source alias does not reach. `turbo test` builds first, so the whole
-// suite is honest; invoking this file alone after editing a judge reports on the previous
-// build until `pnpm build` runs. This file deliberately carries no rebuild of its own —
-// a suite that rebuilds mid-edit is how a session locks itself out.
+// the test runner's source alias does not reach. Root `pnpm test` builds first; a focused
+// run consumes the existing artifacts, so run `pnpm build` after editing the judge.
 import { runCovenantCheck } from '../src/covenant-check.ts';
 import { covenantInputFromUnifiedDiff } from '../src/diff-ir.ts';
 import { type CheckRepo, createCheckRepo, writeConfigAt } from './helpers.ts';

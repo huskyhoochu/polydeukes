@@ -1,7 +1,7 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 // The witness predicate lives in the covenant package; the JSONL transcript provider lives
 // in this adapter package. Importing the covenant package directly would violate the one-way
@@ -18,11 +18,6 @@ const TOKEN = 'PDKS-WITNESS-42';
 // against these injected values only, so the verdict never depends on the wall clock.
 const SENT_AT = Date.parse('2026-07-21T04:00:00.000Z');
 const TTL_MS = 600_000;
-
-beforeAll(() => {
-  // The spawned script imports built dist.
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 /**
  * Spawn a node process that assembles ttlWitness (covenant dist) over

@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // The generated artifacts EXECUTE: the built `pdks-codex init` installs into a throwaway
 // tree wired to the real install graph by symlink, and the generated delegator is spawned
@@ -55,12 +55,6 @@ const UNOBSERVED_SURFACE_NOTE =
   'note: Code Mode exec dispatches, and the tool calls nested in them, do not reach PreToolUse in codex-cli 0.154 (openai/codex#23411); an approved hook does not observe that surface';
 
 let projectRoot: string;
-
-beforeAll(() => {
-  // The adapter bin and the umbrella bin it spawns both come from dist; turbo caching makes
-  // repeat runs cheap.
-  execSync('pnpm turbo run build', { cwd: checkoutRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   // Realpath'd so the delegator's own location, the child's cwd, and the paths this file

@@ -5,12 +5,12 @@
 // branch that was written, the spawn covers the branch that runs. The hook is copied into
 // a temp tree whose `packages` and `node_modules` link back to the real install graph, so
 // the delegator's bare-specifier imports resolve.
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
@@ -31,11 +31,6 @@ const META_LABEL = 'self-mod';
 
 let tmpRoot: string;
 let telemetryPath: string;
-
-beforeAll(() => {
-  // The hook imports built dist; turbo caching makes repeat runs ~1s.
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   tmpRoot = mkdtempSync(join(tmpdir(), 'pdks-session-enforce-'));

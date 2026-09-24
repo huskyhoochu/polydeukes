@@ -1,15 +1,14 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // `pdks init` on the built bin: the agent-neutral scaffold — the config file and the
 // telemetry ignore line — in the directory the command was invoked from, and nothing else.
 // The Claude Code registration is another package's installer, and the bin must refuse the
 // old spelling rather than install something.
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 const CONFIG_REL = 'polydeukes.config.yaml';
@@ -17,10 +16,6 @@ const GITIGNORE_REL = '.gitignore';
 const GITIGNORE_LINE = '.polydeukes/';
 
 let projectRoot: string;
-
-beforeAll(() => {
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   projectRoot = mkdtempSync(join(tmpdir(), 'pdks-init-scaffold-e2e-'));

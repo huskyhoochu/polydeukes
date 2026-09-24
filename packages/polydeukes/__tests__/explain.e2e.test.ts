@@ -1,12 +1,11 @@
 // `pdks explain` on the built bin.
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeConfigAt } from './helpers.ts';
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 const SESSION_HEADER = 'input: call IR (one call, stdin)';
@@ -38,10 +37,6 @@ const declareEntry = {
 };
 
 let projectRoot: string;
-
-beforeAll(() => {
-  execSync('pnpm turbo run build', { cwd: repoRoot, stdio: 'pipe' });
-}, 120_000);
 
 beforeEach(() => {
   projectRoot = mkdtempSync(join(tmpdir(), 'pdks-explain-e2e-'));
