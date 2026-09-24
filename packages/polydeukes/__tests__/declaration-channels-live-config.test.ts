@@ -30,7 +30,7 @@ const EXPECTED: Record<string, string[]> = {
   'barrels-only-reexport': [],
   'tests-import-modules': [],
   'core-stays-runner-agnostic': [],
-  'sqlite-only-under-knowledge': [],
+  'sqlite-only-under-polydeukes': [],
   'changelog-keeps-every-release': [],
   'valve-is-not-the-agents': [],
   'schema-enums-agree': [],

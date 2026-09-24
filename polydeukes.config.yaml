@@ -213,19 +213,19 @@ disciplines:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
           message: "adds {key}: {value}"
-  - id: "sqlite-only-under-knowledge"
-    why: "a *.db file may exist only under _docs/knowledge/, where gitignore-by-location keeps it out of history."
+  - id: "sqlite-only-under-polydeukes"
+    why: "a *.db file may exist only under .polydeukes/, the gitignored directory for state derived from the repository, which keeps it out of history."
     declare:
       mechanism: "naming"
       scope: { source: "target.path", include: ['\.db$'] }
       extract:
         outside:
           - { op: "source", of: "target.path" }
-          - { op: "matches", re: "^(?!_docs/knowledge/)" }
+          - { op: "matches", re: "^(?!\\.polydeukes/)" }
       relate:
         - id: "placed"
           relation: { op: "empty", of: "outside" }
-          message: "{value} is outside _docs/knowledge/"
+          message: "{value} is outside .polydeukes/"
   - id: "changelog-keeps-every-release"
     why: "a release heading is a record: once CHANGELOG carries a version it never loses it. release-please prepends, a hand edit may fix a line, and neither removes a heading."
     declare:

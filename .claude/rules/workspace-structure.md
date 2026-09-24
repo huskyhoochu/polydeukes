@@ -86,8 +86,17 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   every development record, an oracle that greps `packages/*/src` for a forbidden string will
   match the record that discusses it — `surface-contract.test.ts` skips the directory for
   exactly that reason.
-- **Dependency direction:** every scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
-  `sdk-ts`) depends on `core` for vocabulary and never on a sibling; core depends on nothing. An agent
+- **`packages/memory`** (`@polydeukes/memory`) is **`private`** and has no command:
+  `parseDocument` splits a markdown text into a preamble row and one row per H2, keyed
+  `<document id>#<anchor>`; `openMemoryDb` / `replaceDocument` / `optimizeMemoryDb` keep those
+  rows in a `node:sqlite` database with a trigram FTS5 external-content table synced by
+  triggers. It has no barrel, no build, and no core dependency, so it has no `vitest.config.ts`
+  alias and no release-please entry; `engines.node` is `>=24.15`, where `node:sqlite` stops
+  printing an experimental warning. The database is a derived index — any schema change is
+  absorbed by rebuilding it from the documents. The judgment chain never imports it.
+- **Dependency direction:** a scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
+  `sdk-ts`) takes vocabulary only from `core` — `memory` uses none and has no dependency — and
+  never depends on a sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
   `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`, `pdks-codex`); `sdk-ts`
   takes the same peer for the same spawn and ships no bin. The umbrella names no

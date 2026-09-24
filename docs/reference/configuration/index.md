@@ -507,8 +507,8 @@ block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate
           message: '{value} is outside data/'
 ```
 
-This repository's live config uses the same mechanism with `_docs/knowledge/` as
-`sqlite-only-under-knowledge`.
+This repository's live config uses the same mechanism with `.polydeukes/` as
+`sqlite-only-under-polydeukes`.
 
 Each observation is judged as one **world** with seven source names: `target.path` (the
 repo-relative path), `pre` and `post` (the file's text on the side the change carries —

@@ -490,8 +490,8 @@ stdin으로 무엇을 하는지는 판정하지 않습니다. 해석기에 넘�
           message: '{value} is outside data/'
 ```
 
-이 저장소의 실제 설정에서는 같은 기전에 `_docs/knowledge/` 경로를 사용하며,
-항목 ID는 `sqlite-only-under-knowledge`입니다.
+이 저장소의 실제 설정에서는 같은 기전에 `.polydeukes/` 경로를 사용하며,
+항목 ID는 `sqlite-only-under-polydeukes`입니다.
 
 관측 하나가 **세계(world)** 하나로 판정되며 소스 이름은 일곱입니다. `target.path`(저장소
 상대 경로), `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가

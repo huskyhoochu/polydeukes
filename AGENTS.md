@@ -31,7 +31,10 @@ per file. `sdk-ts`
 and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
 `polydeukes`. One more directory, `packages/documentation`, is `private` and publishes
 nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/` at build
-time and carries no judgment logic. Nothing depends the other way:
+time and carries no judgment logic. `packages/memory` (`@polydeukes/memory`) is `private` too:
+it splits markdown documents into section rows and keeps them in a
+`node:sqlite` index (FTS5, trigram) that can always be rebuilt from the documents, and no
+package imports it. Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
 its agents need. The judge module opens no file at all, and core's only file I/O is the
 telemetry log it appends every judgment to.

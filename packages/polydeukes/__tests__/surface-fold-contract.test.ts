@@ -26,7 +26,7 @@ const PACKAGE_DIRS = [
   'sdk-ts',
 ];
 /** Workspace members that are not published; they carry no copy of the judge. */
-const PRIVATE_PACKAGE_DIRS = ['documentation'];
+const PRIVATE_PACKAGE_DIRS = ['documentation', 'memory'];
 /**
  * The name and the path the fold retires, assembled so this file is not its own
  * counterexample.

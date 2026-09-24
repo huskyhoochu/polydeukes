@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@polydeukes/core": "workspace:^",
-    "yaml": "2.9.0"
+    "yaml": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

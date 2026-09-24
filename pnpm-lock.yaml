@@ -15,6 +15,9 @@ catalogs:
     vitest:
       specifier: ^5.0.0
       version: 5.0.0
+    yaml:
+      specifier: 2.9.0
+      version: 2.9.0
 
 importers:
 
@@ -150,13 +153,29 @@ importers:
         specifier: ^0.34.0
         version: 0.34.5
 
+  packages/memory:
+    dependencies:
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.0))
+
   packages/polydeukes:
     dependencies:
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core
       yaml:
-        specifier: 2.9.0
+        specifier: 'catalog:'
         version: 2.9.0
     devDependencies:
       '@types/node':
