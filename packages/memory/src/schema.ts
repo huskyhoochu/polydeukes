@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS concept (
   title       TEXT NOT NULL,
   metadata    TEXT NOT NULL DEFAULT '{}',
   status      TEXT NOT NULL DEFAULT 'stable',
-  stale_after TEXT
+  stale_after TEXT,
+  doc_type    TEXT,
+  ticket      TEXT
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS section (

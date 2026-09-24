@@ -90,8 +90,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `parseDocument` splits a markdown text into a preamble row and one row per H2, keyed
   `<document id>#<anchor>`; `openMemoryDb` / `replaceDocument` / `optimizeMemoryDb` keep those
   rows in a `node:sqlite` database with a trigram FTS5 external-content table synced by
-  triggers. `searchMemory` finds section rows and `showMemory` returns stored document or section
-  content. It has no barrel, no build, and no core dependency, so it has no `vitest.config.ts`
+  triggers. `replaceDocument` derives type and ticket columns from validated memory settings;
+  `searchMemory` finds section rows and applies configured type weights, while `showMemory`
+  returns stored document or section content. It has no barrel, no build, and no core dependency,
+  so it has no `vitest.config.ts`
   alias and no release-please entry; `engines.node` is `>=24.15`, where `node:sqlite` stops
   printing an experimental warning. The database is a derived index — any schema change is
   absorbed by rebuilding it from the documents. The judgment chain never imports it.

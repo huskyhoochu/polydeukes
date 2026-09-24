@@ -1,7 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { MemoryConfig } from './memory-config.ts';
 
-/** The index, literal query, optional result limit, and clock used for freshness. */
-export type SearchMemorySpec = { db: DatabaseSync; query: string; limit?: number; now?: Date };
+/** The index, literal query, result limit, freshness clock, and optional type weights. */
+export type SearchMemorySpec = {
+  db: DatabaseSync;
+  query: string;
+  limit?: number;
+  now?: Date;
+  config?: MemoryConfig;
+};
 
 /** One section found in the memory index. */
 export type MemorySearchResult = {
@@ -26,6 +33,7 @@ type ResultRow = {
   status: string;
   stale_after: string | null;
   metadata: string;
+  doc_type: string | null;
 };
 
 const escapeLike = (term: string): string =>
@@ -91,6 +99,7 @@ export function searchMemory({
   query,
   limit = 20,
   now = new Date(),
+  config,
 }: SearchMemorySpec): MemorySearchResult[] {
   const terms = query.trim().split(/\s+/u).filter(Boolean);
   if (terms.length === 0 || !Number.isInteger(limit) || limit <= 0) return [];
@@ -105,7 +114,7 @@ export function searchMemory({
   const rows = db
     .prepare(
       `SELECT s.rowid, s.id, s.concept_id, s.doc_title, s.title,
-              c.status, c.stale_after, c.metadata
+              c.status, c.stale_after, c.metadata, c.doc_type
        FROM section AS s JOIN concept AS c ON c.id = s.concept_id
        WHERE s.rowid IN (SELECT value FROM json_each(?))`,
     )
@@ -127,7 +136,14 @@ export function searchMemory({
         stale: Number.isFinite(staleTime) && staleTime <= now.getTime(),
         matchPath: fallback ? 'or' : hits.some((hit) => hit.like) ? 'like' : 'and',
       };
-      return { result, score };
+      return {
+        result,
+        score:
+          score -
+          (row.doc_type !== null && config?.weights && Object.hasOwn(config.weights, row.doc_type)
+            ? (config.weights[row.doc_type] ?? 0)
+            : 0),
+      };
     })
     .sort((a, b) => {
       const status =

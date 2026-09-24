@@ -5,6 +5,19 @@ languages:
     productionGlob: "packages/*/src/**/*.ts"
     testCmd: "pnpm --filter {scope} test"
 
+memory:
+  include: ["_docs/**/*.md"]
+  typeMap:
+    prd: prd
+    adr: adr
+    dev-log: dev-log
+  ticket:
+    - from: title
+      pattern: "[A-Z]+-[0-9]+[a-z]?"
+  weights:
+    prd: 1
+    adr: 1
+
 # Read by both surfaces. Two kinds: a gate definition (an edit disarms a check rather than
 # passing it) and what a commit can never show (the gitignored dist).
 protectedPaths:

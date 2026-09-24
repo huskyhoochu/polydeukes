@@ -1,7 +1,7 @@
 /**
  * @polydeukes/core — the thin, domain- and agent-agnostic core.
  *
- * Alpha. Carries the covenant protocol, the ROI telemetry collector, and the config
+ * Beta. Carries the covenant protocol, the ROI telemetry collector, and the config
  * schema. Pure types and functions, except telemetry's confined I/O functions
  * (appendRecord / readRecords / appendRecordFailOpen).
  * See https://github.com/huskyhoochu/polydeukes
@@ -47,6 +47,7 @@ export {
   defineConfig,
   type EnforceLevel,
   type LanguageProfile,
+  type MemoryConfig,
   type PolydeukesConfig,
   type ResolvedConfig,
   type ResolvedLanguageProfile,

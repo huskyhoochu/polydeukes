@@ -133,7 +133,9 @@ The recovery procedures below stay here because no `paths` glob can predict when
 
 - Fail-closed means an unbuilt `dist` blocks edits too; recovery is `pnpm build` (never itself
   blocked). When the hook gains a reference to a NEW dist symbol: build first, rewire second —
-  the reverse order crashes assembly and blocks every call, including the recovery build.
+  the reverse order crashes assembly and blocks every call, including the recovery build. The
+  same order applies when the root config introduces a key that current core dist does not
+  validate: typecheck sources, build core and umbrella dist, then edit the config.
 - **A RENAME of anything the hook or config names has no safe build order** — dist, hook, and
   config must land together: package sources first (session-free), then swap the hook and root
   config in one witness window, then build. Beware test suites whose `beforeAll` rebuilds dist

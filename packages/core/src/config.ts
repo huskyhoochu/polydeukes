@@ -93,6 +93,17 @@ export type DisciplineDraft = {
   draft: true;
 };
 
+/** Settings for deriving document columns and ordering memory search results. */
+export type MemoryConfig = {
+  include: string[];
+  typeMap?: Record<string, string>;
+  ticket?: (
+    | { type?: string; from: 'title'; pattern?: string }
+    | { type?: string; from: 'frontmatter'; key: string; pattern?: string }
+  )[];
+  weights?: Record<string, number>;
+};
+
 /**
  * `PolydeukesConfig` — the input shape a user writes. JSON-serializable data.
  *
@@ -112,6 +123,7 @@ export type PolydeukesConfig = {
    * adapter, whose own validator judges the contents)
    */
   adapters?: Record<string, Record<string, unknown>>;
+  memory?: MemoryConfig;
   telemetry?: {
     /** conventional default applies when omitted */
     logPath?: string;
@@ -165,6 +177,7 @@ export type ResolvedConfig = {
   protectedPaths?: string[];
   /** validated adapter namespaces, passed through verbatim (absent stays absent) */
   adapters?: Record<string, Record<string, unknown>>;
+  memory?: MemoryConfig;
   telemetry: {
     logPath: string;
   };
@@ -195,6 +208,7 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
   'languages',
   'protectedPaths',
   'adapters',
+  'memory',
   'telemetry',
   'disciplines',
   'sessionDisciplines',
@@ -204,6 +218,62 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
 const WITNESS_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
+const MEMORY_KEYS: ReadonlySet<string> = new Set(['include', 'typeMap', 'ticket', 'weights']);
+const TICKET_KEYS: ReadonlySet<string> = new Set(['type', 'from', 'key', 'pattern']);
+
+function validateMemory(value: unknown): MemoryConfig {
+  if (!isPlainObject(value)) throw new ConfigValidationError('memory must be an object');
+  rejectUnknownKeys(value, MEMORY_KEYS, 'memory');
+  if (
+    !Array.isArray(value.include) ||
+    value.include.length === 0 ||
+    !value.include.every(isNonEmptyString)
+  ) {
+    throw new ConfigValidationError(
+      'memory.include must be a non-empty array of non-empty strings',
+    );
+  }
+  for (const name of ['typeMap', 'weights'] as const) {
+    const mapping = value[name];
+    if (mapping === undefined) continue;
+    if (!isPlainObject(mapping))
+      throw new ConfigValidationError(`memory.${name} must be an object`);
+    for (const [key, item] of Object.entries(mapping)) {
+      if (
+        name === 'typeMap'
+          ? !isNonEmptyString(item)
+          : typeof item !== 'number' || !Number.isFinite(item) || item < 0
+      ) {
+        throw new ConfigValidationError(`memory.${name}.${key} has an invalid value`);
+      }
+    }
+  }
+  if (value.ticket !== undefined) {
+    if (!Array.isArray(value.ticket))
+      throw new ConfigValidationError('memory.ticket must be an array');
+    value.ticket.forEach((rule, index) => {
+      const location = `memory.ticket[${index}]`;
+      if (!isPlainObject(rule)) throw new ConfigValidationError(`${location} must be an object`);
+      rejectUnknownKeys(rule, TICKET_KEYS, location);
+      if (rule.from !== 'title' && rule.from !== 'frontmatter')
+        throw new ConfigValidationError(`${location}.from is invalid`);
+      if (rule.type !== undefined && !isNonEmptyString(rule.type))
+        throw new ConfigValidationError(`${location}.type is invalid`);
+      if (rule.from === 'frontmatter' ? !isNonEmptyString(rule.key) : rule.key !== undefined)
+        throw new ConfigValidationError(`${location}.key is invalid`);
+      if (rule.pattern !== undefined) {
+        if (typeof rule.pattern !== 'string')
+          throw new ConfigValidationError(`${location}.pattern must be a string`);
+        try {
+          new RegExp(rule.pattern);
+        } catch {
+          throw new ConfigValidationError(`${location}.pattern is invalid`);
+        }
+      }
+    });
+  }
+  return value as MemoryConfig;
+}
 const DISCIPLINE_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'enforce', 'declare']);
 const DRAFT_KEYS: ReadonlySet<string> = new Set(['id', 'why', 'draft']);
 const ENFORCE_LEVELS: ReadonlySet<string> = new Set(['block', 'advise']);
@@ -508,7 +578,8 @@ function validateWitness(witness: unknown): { token: string; ttlMinutes: number 
  * missing/empty, any language's `productionGlob` is missing/empty, any `testCmd` is not a
  * non-empty string template, `telemetry.logPath` is not a non-empty string after trimming,
  * `protectedPaths` carries a non-string or empty element, or `adapters` is not a map of
- * plain-object namespaces.
+ * plain-object namespaces. When present, `memory` must declare non-empty include globs and
+ * valid classification, ticket, and weight data.
  */
 export function defineConfig(config: unknown): ResolvedConfig {
   if (!isPlainObject(config)) {
@@ -526,6 +597,7 @@ export function defineConfig(config: unknown): ResolvedConfig {
   const protectedPaths =
     config.protectedPaths !== undefined ? validateProtectedPaths(config.protectedPaths) : undefined;
   const adapters = config.adapters !== undefined ? validateAdapters(config.adapters) : undefined;
+  const memory = config.memory !== undefined ? validateMemory(config.memory) : undefined;
   // One id space across the three lists and the meta labels: `explain` and every
   // label-keyed telemetry reader index by the label alone.
   const seenIds = new Set<string>();
@@ -550,6 +622,7 @@ export function defineConfig(config: unknown): ResolvedConfig {
     languages: resolvedLanguages,
     ...(protectedPaths !== undefined && { protectedPaths }),
     ...(adapters !== undefined && { adapters }),
+    ...(memory !== undefined && { memory }),
     telemetry: {
       logPath: logPath ?? DEFAULT_TELEMETRY_LOG_PATH,
     },

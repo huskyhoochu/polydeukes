@@ -26,6 +26,7 @@
       "type": "object",
       "additionalProperties": { "type": "object" }
     },
+    "memory": { "$ref": "#/$defs/memory" },
     "telemetry": { "$ref": "#/$defs/telemetry" },
     "disciplines": {
       "description": "User-declared disciplines — validated data the covenant package compiles. Fully identical entries are copy-paste duplicates (by-id uniqueness is enforced by the runtime validator).",
@@ -48,6 +49,49 @@
     "witness": { "$ref": "#/$defs/witness" }
   },
   "$defs": {
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["include"],
+      "properties": {
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "typeMap": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "ticket": { "type": "array", "items": { "$ref": "#/$defs/memoryTicket" } },
+        "weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } }
+      }
+    },
+    "memoryTicket": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "from": { "const": "title" },
+            "pattern": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "key"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "from": { "const": "frontmatter" },
+            "key": { "type": "string", "minLength": 1 },
+            "pattern": { "type": "string" }
+          }
+        }
+      ]
+    },
     "languageProfile": {
       "type": "object",
       "additionalProperties": false,
