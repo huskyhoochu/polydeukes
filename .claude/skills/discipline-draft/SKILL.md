@@ -31,7 +31,7 @@ walkthrough and `pdks docs show configuration --section disciplines` for the gra
 
 | Mechanism | Admitted axes | Body relations | Evidence or structural condition |
 | --- | --- | --- | --- |
-| `pairing` | `world` | `equal` | Supplied files or channels; extract keys when translations may differ. |
+| `pairing` | `world` | `equal`, `subset` | Supplied files or channels; extract keys when translations may differ. Three or more files: build their `flattenKeys` union with `onlyIn` and `union`, then one `subset` of it into each file. |
 | `companion` | `change`, `world` | `implies` | Presence by key; multi-file promises need the observed change set. |
 | `monotonic-order` | `change`, `world` | `ordered` | Extract the comparison sequence; ordering does not require presence. |
 | `fingerprint-sync` | `world` | `equal` | Compare supplied stamps, without running a generator during judgment. |

@@ -90,6 +90,50 @@ before it appears in the diff. This example commits a baseline to exercise modif
 cleanup predictable. A declaration does not run
 merely because its source exists: at least one observed change must match its scope.
 
+<a id="locale-key-pairing-many"></a>
+### Three or more locale files
+
+`equal` compares two extractions. For three or more files, build the union of every file's keys
+and require each file to contain it: one `subset` per file. `onlyIn` adds only the keys the union
+does not hold yet, so a key present in several files is still one witness per file that lacks it.
+The recipe relies on `flattenKeys` giving each item its dot path as both key and value: `onlyIn`
+compares keys and `subset` compares values. An extraction whose keys differ from its values, such
+as `lines` (keyed by line number), cannot use it.
+
+For `ko`, `en`, and `fr`, replace the `locale-key-parity` entry above with this one, and create
+`locales/fr.json` with the same keys (`printf '{"home":"Accueil"}\n' > locales/fr.json`) before
+running the walkthrough, since `supply: 'error'` refuses a missing file:
+
+```yaml
+  - id: 'locale-key-parity'
+    why: 'every locale file must carry the same keys'
+    declare:
+      mechanism: 'pairing'
+      sources:
+        ko: { file: 'locales/ko.json' }
+        en: { file: 'locales/en.json' }
+        fr: { file: 'locales/fr.json' }
+      supply: { ko: 'error', en: 'error', fr: 'error' }
+      scope: { source: 'target.path', include: ['^locales/(ko|en|fr)\.json$'] }
+      extract:
+        ko: [{ op: 'source', of: 'ko' }, { op: 'json' }, { op: 'flattenKeys' }]
+        en: [{ op: 'source', of: 'en' }, { op: 'json' }, { op: 'flattenKeys' }]
+        fr: [{ op: 'source', of: 'fr' }, { op: 'json' }, { op: 'flattenKeys' }]
+        enNew: [{ op: 'onlyIn', of: 'en', notIn: 'ko' }]
+        koEn: [{ op: 'union', of: ['ko', 'enNew'] }]
+        frNew: [{ op: 'onlyIn', of: 'fr', notIn: 'koEn' }]
+        all: [{ op: 'union', of: ['koEn', 'frNew'] }]
+      relate:
+        - { id: 'ko-full', relation: { op: 'subset', of: 'all', in: 'ko' }, message: '{value} is missing from ko' }
+        - { id: 'en-full', relation: { op: 'subset', of: 'all', in: 'en' }, message: '{value} is missing from en' }
+        - { id: 'fr-full', relation: { op: 'subset', of: 'all', in: 'fr' }, message: '{value} is missing from fr' }
+```
+
+No file is the reference: a key only in `ko` breaks `en-full` and `fr-full`, and a key in `en`
+and `fr` but not `ko` breaks `ko-full` alone. Each further file adds three extractions (its
+keys, its `onlyIn`, the next `union`) and one relate entry, and every relate entry's `of` moves
+to that last `union`.
+
 <a id="which-list"></a>
 ## Which list does it go in
 

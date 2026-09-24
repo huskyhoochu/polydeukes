@@ -92,6 +92,50 @@ git restore -- locales/en.json locales/ko.json
 소스 파일이 존재한다는 이유만으로 선언이 실행되지는 않습니다. 관측된 변경 중 하나
 이상이 해당 선언의 적용 범위와 일치해야 합니다.
 
+<a id="locale-key-pairing-many"></a>
+### 번역 파일이 셋 이상일 때
+
+`equal`은 추출 결과 두 개를 비교합니다. 파일이 셋 이상이면 모든 파일의 키를 모은 합집합을
+만들고, 파일마다 `subset` 하나로 그 합집합을 모두 가지고 있는지 확인합니다. `onlyIn`은
+합집합에 아직 없는 키만 더하므로, 여러 파일에 있는 키도 그 키가 빠진 파일마다 증인 1건으로
+나옵니다. 이 방법은 `flattenKeys`가 각 항목의 키와 값에 같은 점 경로를 싣는다는 점에 기댑니다.
+`onlyIn`은 키를 비교하고 `subset`은 값을 비교하기 때문입니다. 줄 번호를 키로 삼는 `lines`처럼
+키와 값이 다른 추출에는 이 방법을 쓸 수 없습니다.
+
+`ko`·`en`·`fr` 세 파일이라면 위 예제의 `locale-key-parity` 항목을 다음으로 바꿉니다. `supply:
+'error'`는 없는 파일을 거부하므로, 위 절차를 실행하기 전에 같은 키를 가진 `locales/fr.json`도
+만듭니다(`printf '{"home":"Accueil"}\n' > locales/fr.json`).
+
+```yaml
+  - id: 'locale-key-parity'
+    why: 'every locale file must carry the same keys'
+    declare:
+      mechanism: 'pairing'
+      sources:
+        ko: { file: 'locales/ko.json' }
+        en: { file: 'locales/en.json' }
+        fr: { file: 'locales/fr.json' }
+      supply: { ko: 'error', en: 'error', fr: 'error' }
+      scope: { source: 'target.path', include: ['^locales/(ko|en|fr)\.json$'] }
+      extract:
+        ko: [{ op: 'source', of: 'ko' }, { op: 'json' }, { op: 'flattenKeys' }]
+        en: [{ op: 'source', of: 'en' }, { op: 'json' }, { op: 'flattenKeys' }]
+        fr: [{ op: 'source', of: 'fr' }, { op: 'json' }, { op: 'flattenKeys' }]
+        enNew: [{ op: 'onlyIn', of: 'en', notIn: 'ko' }]
+        koEn: [{ op: 'union', of: ['ko', 'enNew'] }]
+        frNew: [{ op: 'onlyIn', of: 'fr', notIn: 'koEn' }]
+        all: [{ op: 'union', of: ['koEn', 'frNew'] }]
+      relate:
+        - { id: 'ko-full', relation: { op: 'subset', of: 'all', in: 'ko' }, message: '{value} is missing from ko' }
+        - { id: 'en-full', relation: { op: 'subset', of: 'all', in: 'en' }, message: '{value} is missing from en' }
+        - { id: 'fr-full', relation: { op: 'subset', of: 'all', in: 'fr' }, message: '{value} is missing from fr' }
+```
+
+기준이 되는 파일은 없습니다. `ko`에만 있는 키는 `en-full`과 `fr-full`을 위반하고, `en`과
+`fr`에만 있는 키는 `ko-full` 하나만 위반합니다. 파일이 하나 늘 때마다 추출 세 개(그 파일의 키,
+`onlyIn`, 다음 `union`)와 관계 항목 하나가 늘고, 모든 관계 항목의 `of`는 그 마지막 `union`으로
+옮깁니다.
+
 <a id="which-list"></a>
 ## 어느 목록에 적는가
 

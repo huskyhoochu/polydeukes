@@ -670,3 +670,59 @@ describe('deriveShape — the actor axis from the fixed source `actor`', () => {
     expect(error.message).toContain(`${LOCATION}.sources.${ACTOR_SOURCE}`);
   });
 });
+
+describe('validateMechanism — pairing admits subset on the world axis', () => {
+  // Key parity over n bundles is written as one `union` of the bundles' new keys and one
+  // `subset` per bundle; `pairing` admits that spelling, still on the world axis alone.
+  const FILE_FR = 'fr';
+  const FILE_FR_PATH = 'locales/fr.json';
+  const bundles = [FILE_KO, FILE_EN, FILE_FR] as const;
+
+  /** The three-bundle spelling: every bundle must contain the deduplicated union. */
+  const nAryParityDeclaration = {
+    discipline: 'probe',
+    mechanism: 'pairing',
+    sources: {
+      [FILE_KO]: { file: FILE_KO_PATH },
+      [FILE_EN]: { file: FILE_EN_PATH },
+      [FILE_FR]: { file: FILE_FR_PATH },
+    },
+    extract: {
+      ...Object.fromEntries(
+        bundles.map((l) => [l, [{ op: 'source', of: l }, { op: 'json' }, { op: 'flattenKeys' }]]),
+      ),
+      enNew: [{ op: 'onlyIn', of: FILE_EN, notIn: FILE_KO }],
+      koEn: [{ op: 'union', of: [FILE_KO, 'enNew'] }],
+      frNew: [{ op: 'onlyIn', of: FILE_FR, notIn: 'koEn' }],
+      all: [{ op: 'union', of: ['koEn', 'frNew'] }],
+    },
+    relate: bundles.map((l) => ({
+      id: `${l}-full`,
+      relation: { op: 'subset', of: 'all', in: l },
+      message: 'm',
+    })),
+  };
+
+  it('pairing relating subset over three file bindings is accepted', () => {
+    // A spec still reading `relations: {equal}` refuses this declaration and the n-bundle
+    // spelling can only load under `controlled-vocabulary`, a name for a different discipline.
+    expect(() => validateAlgebraDeclaration(nAryParityDeclaration, LOCATION)).not.toThrow();
+  });
+
+  it('pairing relating nonEmpty over file bindings is rejected — the relation set stays closed', () => {
+    // Every other `pairing` rejection is decided by the axis; this one is on the world axis,
+    // so only the relation set refuses it. A spec widened to all seven relations passes it.
+    const error = expectRejection({
+      ...pairingDeclaration,
+      relate: [{ id: 'present', relation: { op: 'nonEmpty', of: 'enKeys' }, message: 'm' }],
+    });
+
+    expect(error.message).toContain("'pairing'");
+    expect(error.message).toContain("'nonEmpty'");
+  });
+
+  it('pairing admits exactly equal and subset', () => {
+    // The rejection probe above samples one relation; the set itself is the contract.
+    expect([...MECHANISM_SHAPES.pairing.relations].sort()).toEqual(['equal', 'subset']);
+  });
+});

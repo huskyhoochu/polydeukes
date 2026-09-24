@@ -174,7 +174,7 @@ sets below. Scope filtering is separate from the extracted axes.
 
 | Mechanism | Admitted axes | Body relations | Evidence or structural condition |
 | --- | --- | --- | --- |
-| \`pairing\` | \`world\` | \`equal\` | Compare supplied files or channels; extract keys when values may differ. |
+| \`pairing\` | \`world\` | \`equal\`, \`subset\` | Compare supplied files or channels; extract keys when values may differ. Three or more files: build their \`flattenKeys\` union with \`onlyIn\` and \`union\`, then one \`subset\` of it into each file. |
 | \`companion\` | \`change\`, \`world\` | \`implies\` | Compare presence by key; a multi-file promise needs the observed change set. |
 | \`monotonic-order\` | \`change\`, \`world\` | \`ordered\` | Extract a sequence with an explicit comparison field; order is not presence. |
 | \`fingerprint-sync\` | \`world\` | \`equal\` | Compare supplied stamps; no generator or compiler runs during judgment. |

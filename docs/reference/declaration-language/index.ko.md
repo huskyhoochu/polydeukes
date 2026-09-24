@@ -246,7 +246,7 @@ disciplines:
 
 | 기전 | 허용하는 축 | 허용하는 본체 관계 | 용도 또는 필수 구조 |
 |---|---|---|---|
-| `pairing` | `world` | `equal` | 공급한 파일에서 대응하는 데이터를 비교합니다. |
+| `pairing` | `world` | `equal`, `subset` | 공급한 파일에서 대응하는 데이터를 비교합니다. |
 | `companion` | `change`, `world` | `implies` | 다른 추출에 대응하는 키가 있어야 합니다. |
 | `monotonic-order` | `change`, `world` | `ordered` | 나열된 값의 순서를 확인합니다. |
 | `fingerprint-sync` | `world` | `equal` | 추출한 지문 값을 비교합니다. |

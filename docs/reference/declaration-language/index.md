@@ -243,7 +243,7 @@ axes. The mechanism does not supply a predicate; write the extraction and compar
 
 | Mechanism | Allowed axes | Allowed body relations | Purpose or required structure |
 |---|---|---|---|
-| `pairing` | `world` | `equal` | Compare corresponding data from supplied files. |
+| `pairing` | `world` | `equal`, `subset` | Compare corresponding data from supplied files. |
 | `companion` | `change`, `world` | `implies` | Require matching keys in another extraction. |
 | `monotonic-order` | `change`, `world` | `ordered` | Check a sequence's order. |
 | `fingerprint-sync` | `world` | `equal` | Compare extracted fingerprint values. |

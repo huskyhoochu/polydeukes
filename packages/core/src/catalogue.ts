@@ -89,7 +89,7 @@ const ACTOR_SOURCE = 'actor';
 
 /** Every name's spec. The `Record` type pins the keys to {@link MECHANISM_NAMES}. */
 export const MECHANISM_SHAPES: Record<MechanismName, MechanismShape> = {
-  pairing: { axes: WORLD, relations: new Set<RelationName>(['equal']) },
+  pairing: { axes: WORLD, relations: new Set<RelationName>(['equal', 'subset']) },
   companion: { axes: CHANGE_WORLD, relations: new Set<RelationName>(['implies']) },
   'monotonic-order': { axes: CHANGE_WORLD, relations: new Set<RelationName>(['ordered']) },
   'fingerprint-sync': { axes: WORLD, relations: new Set<RelationName>(['equal']) },
