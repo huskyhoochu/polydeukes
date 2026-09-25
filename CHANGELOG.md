@@ -11,6 +11,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.10.1](https://github.com/b95labs/polydeukes/compare/v0.10.0...v0.10.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **polydeukes:** refuse a config whose declaration cannot compile (ISSUE-61) ([#133](https://github.com/b95labs/polydeukes/issues/133)) ([6f6abc8](https://github.com/b95labs/polydeukes/commit/6f6abc8940762543873c3c6a379789df07ac0c75))
+
 ## [0.10.0](https://github.com/huskyhoochu/polydeukes/compare/v0.9.0...v0.10.0) (2026-09-24)
 
 
