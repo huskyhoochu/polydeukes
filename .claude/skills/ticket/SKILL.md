@@ -56,10 +56,11 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
   does not need. No field, value, or option kept "for later": a later ticket reviving part of
   what was deleted is the normal case, and a ticket that revives nothing deleted too little.
-  A requirement nobody can be named for is a doc's residue, not a contract. The method and
-  its Falcon precedents are `foundation.research.first-principles-prd.md`; its §4 is the
-  §2-a requirement table (requirement · who asked · verdict before the fundamental fact) the
-  PRD opens its scope section with, kept separate from the carry-over disposition table.
+  A requirement nobody can be named for is a doc's residue, not a contract. **Read
+  `_docs/knowledge/foundation.research.first-principles-prd.md` in full before writing the
+  PRD** — it holds the method and its Falcon precedents, and its §4 is the §2-a requirement
+  table (requirement · who asked · verdict before the fundamental fact) the PRD opens its
+  scope section with, kept separate from the carry-over disposition table.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): the OKF frontmatter of `_docs/knowledge/foundation.adr.knowledge-format.md`
   (`scope` · `type: prd` · `title` equal to the H1 · `tags` · `created_at` with UTC offset ·

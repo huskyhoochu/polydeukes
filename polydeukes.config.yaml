@@ -430,7 +430,7 @@ sessionDisciplines:
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
-        reads:
+        shellReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
@@ -439,6 +439,14 @@ sessionDisciplines:
               op: "matches",
               re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.',
             }
+        fileReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Read"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.file_path" }
+          - { op: "matches", re: '\bcovenant\.(dev-log|research)\.' }
+        reads:
+          - { op: "union", of: ["shellReads", "fileReads"] }
       relate:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
@@ -452,7 +460,7 @@ sessionDisciplines:
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
-        reads:
+        shellReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
@@ -461,6 +469,14 @@ sessionDisciplines:
               op: "matches",
               re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.',
             }
+        fileReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Read"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.file_path" }
+          - { op: "matches", re: '\bcore\.(dev-log|research)\.' }
+        reads:
+          - { op: "union", of: ["shellReads", "fileReads"] }
       relate:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
@@ -477,7 +493,7 @@ sessionDisciplines:
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
-        reads:
+        shellReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
@@ -486,6 +502,14 @@ sessionDisciplines:
               op: "matches",
               re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.',
             }
+        fileReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Read"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.file_path" }
+          - { op: "matches", re: '\badapter\.(dev-log|research)\.' }
+        reads:
+          - { op: "union", of: ["shellReads", "fileReads"] }
       relate:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
@@ -498,7 +522,7 @@ sessionDisciplines:
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
-        reads:
+        shellReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
@@ -507,6 +531,14 @@ sessionDisciplines:
               op: "matches",
               re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bfirst-principles-prd\b',
             }
+        fileReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Read"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.file_path" }
+          - { op: "matches", re: '\bfirst-principles-prd\b' }
+        reads:
+          - { op: "union", of: ["shellReads", "fileReads"] }
       relate:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
