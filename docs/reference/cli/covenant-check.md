@@ -66,9 +66,13 @@ one `a/` or `b/` prefix stripped and quoted paths unescaped.
 
 **A modification's `pre` and `post` are the hunk lines, not the whole file.** Context lines and
 the `\ No newline at end of file` marker are dropped. Every shipped discipline that reads `pre`
-and `post` compares keyed lines, so the verdict is the one the whole file would give; a
-declaration that needs a file's full text names it as a `source`, and that is read from the
-world axis below. Creations and deletions carry the full text.
+and `post` compares keyed lines, so the verdict is the one the whole file would give. A
+relation that depends on lines outside the hunk, such as two markers that must appear together
+or one that must be present, is judged over the hunk alone: a diff that removes one marker
+passes, and a line added to a file that already holds the marker can break. The session surface
+judges the same declaration against the whole file. A file named as a `source` is read in full
+from the world axis below, but a `source` names a fixed path, not the file being changed.
+Creations and deletions carry the full text.
 
 **The world axis is the working tree.** A file a declaration names by `source` is read from disk
 under the working directory — not from the index, not from a ref. When the index and the disk

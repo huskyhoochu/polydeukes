@@ -48,8 +48,10 @@ The result of a judgment, always one of the six verdict words below.
 
 **Surface**:
 Where and when a judgment is invoked: the session surface judges a declared call before it
-runs, the commit surface re-observes the same change as a staged diff.
-*Avoid*: Using "surface" for a package's public API; that is an entry point
+runs, the change-set surface judges a finished change set handed over as a diff, whoever
+produced it.
+*Avoid*: Commit surface (a commit is one producer of a change set, not the surface); using
+"surface" for a package's public API, which is an entry point
 
 **Observation axis**:
 The kind of evidence a surface can see about one call: the tool call, the shell line, or the
@@ -112,8 +114,8 @@ changes nothing: the observation itself plus the values no payload carries that 
 supplies.
 
 **Source**:
-A named value inside a world that an extraction may start from. Six are fixed for every
-world; a declaration may bind more.
+A named value inside a world that an extraction may start from. A fixed set is present for
+every world; a declaration may bind more.
 
 **Supply**:
 The step, between planning and judging, that fills a world's sources by reading through the
