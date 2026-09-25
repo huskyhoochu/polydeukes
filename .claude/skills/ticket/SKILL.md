@@ -110,16 +110,12 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   push the branch and open a PR against `main` with `tea pr create`. A ticket ID does not imply
   `feat`, and commitlint proving that a title is well-formed does not prove its release impact is
   truthful.
-- **Every commit that stages a protected path stops at a TTY witness prompt**, and an
-  agent-spawned commit has no TTY and cannot answer — so a human runs it in their own
-  terminal. Say how many prompts are coming before starting, never one at a time.
 - **Splitting a branch by category is deferred, decided 2026-08-02.** It would cover ticket
   branches carrying more than one kind of change (a distribution-API decision, a new layer,
   a workflow fix that surfaced along the way), and would be done when each commit stands
   alone with tests passing at that point. It is deferred because MERGE squashes: the split
-  would reach the review but never `main`, while multiplying the witness prompts above by the
-  number of commits. **Opens when the merge strategy stops squashing** — until then the
-  benefit is review granularity alone, which does not pay for the prompts.
+  would reach the review but never `main`. **Opens when the merge strategy stops squashing** —
+  until then the benefit is review granularity alone.
 - Review with the built-in skill. On Claude Code:
   `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`.
   At `high` it fans out finder subagents by angle, verifies each candidate with an
