@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import type { ResolvedConfig } from '@polydeukes/core';
 import { ConfigValidationError, defineConfig, isPlainObject } from '@polydeukes/core';
 import { parseDocument } from 'yaml';
+import { compileDeclaration } from './covenant/declaration-engine.ts';
 
 /**
  * The three accepted config filenames, checked directly under the given rootDir. Exported
@@ -57,8 +58,9 @@ export type LoadedConfig = {
  * zero files found (message names all three candidates), two or more found (message
  * names the collisions), a parse error or unresolved custom tag (safe core schema —
  * config data is never executable; every problem the parser found is enumerated in the
- * one message), or a `ConfigValidationError` from core `defineConfig()` (re-thrown with
- * file-path context, keeping the error type).
+ * one message), a `ConfigValidationError` from core `defineConfig()` (re-thrown with
+ * file-path context, keeping the error type), or a `ConfigValidationError` naming every
+ * declaration the judge cannot compile.
  *
  * Before returning, the discovered `configPath` is appended to
  * `config.protectedPaths` unless already present — the config file itself joins the
@@ -94,8 +96,8 @@ export function discoverConfigPath(spec: DiscoverConfigPathSpec): string {
 
 /**
  * The parse-and-validate half, over a text rather than a file: parse, `$schema` strip,
- * `defineConfig`, self-protection attach. Exported so the runner can ask whether a text a
- * call is about to write would load, without opening any file.
+ * `defineConfig`, declaration compile, self-protection attach. Exported so the runner can ask
+ * whether a text a call is about to write would load, without opening any file.
  */
 export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
   const { source, configPath } = spec;
@@ -109,11 +111,9 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
     // Every problem in one message: reporting only the first costs one fix-rerun loop
     // per hidden problem. Each parser message already carries its own position; a lone
     // problem keeps the direct message shape.
-    const detail =
-      problems.length === 1
-        ? problems[0].message
-        : `${problems.length} problems\n${problems.map((problem) => `  - ${problem.message}`).join('\n')}`;
-    throw new Error(`failed to parse ${configPath}: ${detail}`);
+    throw new Error(
+      `failed to parse ${configPath}: ${listProblems(problems.map((problem) => problem.message))}`,
+    );
   }
   const parsed: unknown = document.toJS();
 
@@ -135,6 +135,23 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
     throw error;
   }
 
+  // Core validates a declaration's grammar only; the step vocabulary and the paired/single
+  // discipline are the compiler's. An entry it cannot compile would judge nothing, so the
+  // config does not load, every faulted entry named in the one message.
+  const faults = [
+    ...(config.disciplines ?? []),
+    ...(config.sessionDisciplines ?? []),
+    ...(config.changeSetDisciplines ?? []),
+  ].flatMap((entry) => {
+    const compiled = compileDeclaration({
+      declaration: { discipline: entry.id, ...entry.declare },
+    });
+    return 'kind' in compiled ? [`${compiled.location}: ${compiled.reason}`] : [];
+  });
+  if (faults.length > 0) {
+    throw new ConfigValidationError(`invalid config in ${configPath}: ${listProblems(faults)}`);
+  }
+
   // Self-protection attach (idempotent) — the discovered config file is part of
   // the protection surface.
   const protectedPaths = config.protectedPaths ?? [];
@@ -143,4 +160,14 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
   }
 
   return { config, configPath };
+}
+
+/**
+ * One problem as its own text; several as a count and one indented line each, so every hidden
+ * problem is reported by the same run.
+ */
+function listProblems(problems: readonly string[]): string {
+  return problems.length === 1
+    ? problems[0]
+    : `${problems.length} problems\n${problems.map((problem) => `  - ${problem}`).join('\n')}`;
 }

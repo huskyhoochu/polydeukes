@@ -79,10 +79,12 @@ witness.
 <a id="config-fault"></a>
 ## Config-fault
 
-The configuration loaded, but an entry could not compile into a judgment. A matching registration
-records `skipped` with `config-fault`; `pdks explain` shows the fault. Check extraction step names,
-arguments, regex syntax, and paired versus single extraction use. Fix the named declaration and
-repeat the same observation. A skipped entry is not a passing one.
+A declaration that cannot compile into a judgment makes the configuration invalid: an
+unregistered extraction step, a step argument the step does not take or of the wrong type, a
+pipeline that begins with neither `source` nor a combinator, or a before/after pair where a
+single extraction belongs. Loading fails as described in [Invalid config](#invalid-config), and
+the message names the entry, the pipeline or relate entry, and the reason. Fix the named
+declaration and run `pdks explain` again.
 
 <a id="judge-cannot-be-loaded"></a>
 ## The judge cannot be loaded
@@ -157,7 +159,7 @@ Transcript- and command-reading entries belong in `sessionDisciplines` and are n
 for a diff. Putting either kind in a shared or change-set list causes a configuration error.
 
 A change-set entry can record `supply-pass` when a source it reads is absent and its `supply`
-policy is `pass`, or `config-fault` when the declaration cannot compile. Check `pdks explain`
+policy is `pass`. Check `pdks explain`
 and the log's reason field. A skip does not establish that the discipline was upheld.
 
 On the session surface, a transcript-reading entry can use `supply: { session: 'pass' }`

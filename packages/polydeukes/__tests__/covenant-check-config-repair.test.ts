@@ -423,6 +423,69 @@ describe('config repair — the one call that passes while the config does not l
   });
 });
 
+describe('a declaration the engine cannot compile is a config that does not load', () => {
+  /** Injected fixture values for the compile-fault config. */
+  const FAULTED_ID = 'db-under-lib';
+  const UNREGISTERED_STEP = 'sha256';
+  const ANOTHER_UNREGISTERED_STEP = 'md5';
+  /** The compiler's own text for the step; the loader carries it unchanged. */
+  const COMPILE_LOCATION = `${FAULTED_ID} extract own`;
+  const COMPILE_REASON = `'${UNREGISTERED_STEP}' is not a registered extract step`;
+
+  /** A config core accepts whose one declaration ends in a step the registry does not carry. */
+  function compileFaultConfig(step: string): Record<string, unknown> {
+    return {
+      disciplines: [
+        {
+          id: FAULTED_ID,
+          why: 'fixture',
+          declare: {
+            mechanism: 'naming',
+            scope: { source: 'target.path', include: ['\\.db$'] },
+            extract: { own: [{ op: 'source', of: 'target.path' }, { op: step }] },
+            relate: [{ id: 'placed', relation: { op: 'empty', of: 'own' }, message: '{value}' }],
+          },
+        },
+      ],
+    };
+  }
+
+  function writeCompileFault(): void {
+    writeConfigAt(repoRoot, telemetryPath, compileFaultConfig(UNREGISTERED_STEP));
+  }
+
+  it('the session surface fails closed on a shell call: exit 2, one blocked row, the fault location and reason on stderr', async () => {
+    // The repair sentence is printed only when loading fails, so it separates a loader
+    // refusal from an assembly throw that would also exit 2 with one blocked row.
+    writeCompileFault();
+
+    const result = await runSession([{ name: SHELL_TOOL, args: { command: 'git status' } }]);
+
+    expect(result.exitCode).toBe(2);
+    expect(telemetryRows(telemetryPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
+    expect(stderrText()).toContain(`${COMPILE_LOCATION}: ${COMPILE_REASON}`);
+    expect(stderrText()).toContain(REPAIR_SENTENCE);
+  });
+
+  it('one Edit of the config whose post still carries a compile fault stays blocked', async () => {
+    // The post is checked by the whole loader: a repair check that ran core's grammar
+    // validation alone would let a config that swaps one unregistered step for another
+    // through as repaired.
+    writeCompileFault();
+    const stillFaulted = JSON.stringify({
+      languages: { typescript: { productionGlob: 'lib/**/*.ts', testCmd: 'echo {scope}' } },
+      telemetry: { logPath: telemetryPath },
+      ...compileFaultConfig(ANOTHER_UNREGISTERED_STEP),
+    });
+
+    const result = await runSession([editCall(CONFIG_FILE, stillFaulted)]);
+
+    expect(result.exitCode).toBe(2);
+    expect(telemetryRows(telemetryPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
+    expect(stderrText()).toContain(REPAIR_SENTENCE);
+  });
+});
+
 describe('baseline attribution — the repair row explains the config hash change', () => {
   const TIMESTAMP = '2026-09-16T12:00:00.000Z';
 

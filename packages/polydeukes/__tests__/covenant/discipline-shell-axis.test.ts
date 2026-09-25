@@ -620,18 +620,9 @@ describe('review-round regressions — thunk pre-read failure', () => {
 
 // Which registrations carry a body at all is the compiler's answer, not the assembly root's.
 // An assembly that guesses with `disciplines.length === 0 ? [] : compile(...)` deletes the
-// backstop in one direction, and in the other assumes a body for configs whose entries all
-// compile to body-less skips. Both halves are pinned here.
+// backstop.
 
 describe('compileDisciplineRegistrations — a body is composed only where one can judge', () => {
-  const faultyEntry = {
-    id: 'unregistered-step',
-    declare: {
-      ...(deltaEntry.declare as Record<string, unknown>),
-      extract: { added: [{ op: 'sha256', of: 'post' }] },
-    },
-  } as unknown as DisciplineEntry;
-
   it('composes no body when no discipline is declared, and the backstop is still emitted', () => {
     // An assembly root that answers the judgment question itself skips this call, and skipping
     // it drops the shell-unjudgeable backstop — an uncomputable shell write in a config with
@@ -641,17 +632,5 @@ describe('compileDisciplineRegistrations — a body is composed only where one c
     expect(regs.map((reg) => [reg.label, reg.body === undefined])).toEqual([
       ['shell-unjudgeable', true],
     ]);
-  });
-
-  it('composes no body for an entry that compiles to a body-less skip', () => {
-    // Entry count is not the question either: a declaration naming a step the registry does
-    // not carry compiles to a skip carrying no body. A body composed on the skip arm would
-    // judge an entry assembly could not compile and block every matched input with no
-    // legitimate pass path.
-    const regs = compileDisciplineRegistrations(specWith([faultyEntry]));
-    const reg = regs.find((r) => r.label === faultyEntry.id);
-
-    expect(reg?.skip).toBeDefined();
-    expect(reg?.body).toBeUndefined();
   });
 });

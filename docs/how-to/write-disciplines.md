@@ -212,7 +212,7 @@ example.
 If no judgment appears, first check the observation: is the file included rather than ignored,
 did it change in the selected comparison, does the scope match, and can the surface supply the
 evidence? Inspect
-`pdks explain` and the telemetry log for `config-fault`, `no-observation`, or `supply-pass`.
+`pdks explain` and the telemetry log for `no-observation` or `supply-pass`.
 Do not treat a missing diagnostic as proof that the declaration works.
 
 The draft above is deliberately different from key pairing. The current engine does not run a

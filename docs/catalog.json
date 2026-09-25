@@ -91,12 +91,12 @@
       "en": {
         "path": "troubleshooting.md",
         "title": "Troubleshooting Polydeukes",
-        "summary": "Diagnose invalid config, Grok witness limits, and config-fault skips."
+        "summary": "Diagnose invalid config, declarations that cannot compile, and Grok witness limits."
       },
       "ko": {
         "path": "troubleshooting.ko.md",
         "title": "폴리데우케스 문제 해결",
-        "summary": "설정 오류, Grok 증인 제한, 미판정 config-fault의 원인을 확인합니다."
+        "summary": "설정 오류, 컴파일할 수 없는 선언, Grok 증인 제한의 원인을 확인합니다."
       }
     },
     {

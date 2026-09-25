@@ -617,11 +617,10 @@ type DeclareJudgment =
 /**
  * Compile one declaration entry into its registration.
  *
- * An assembly fault is the author's mistake, so it becomes a skip that names its location
- * on stderr and routes nothing: a declaration that could never judge must not record a
- * `skipped` row per change as though the call were at fault. Otherwise routing and judging
- * share the declaration's own scope — the subject is the first world it admits, and the
- * body walks every admitted world in input order, reporting the first that breaks.
+ * A declaration that does not compile throws its location and reason: the loader refuses
+ * such a config, so reaching here means a caller bypassed it. Routing and judging share the
+ * declaration's own scope — the subject is the first world it admits, and the body walks
+ * every admitted world in input order, reporting the first that breaks.
  *
  * The declaration's `witness` block joins the injected valve with OR: either the human's
  * pass condition or the declaration's own opens a blocked verdict — the declaration's on
@@ -630,22 +629,10 @@ type DeclareJudgment =
 function declareRegistration(
   entry: DisciplineEntry,
   spec: CompileDisciplinesSpec,
-  witness: { witness?: CovenantRegistration['witness'] },
-  nameFault: (reason: string) => void,
   enrich: (input: CovenantInput) => CovenantInput,
 ): CovenantRegistration {
   const compiled = compileEntryDeclaration(entry);
-  if (isFault(compiled)) {
-    const reason = `${compiled.location}: ${compiled.reason}`;
-    nameFault(reason);
-    return {
-      label: entry.id,
-      protectedPaths: [],
-      matches: () => null,
-      ...witness,
-      skip: { reason, kind: 'config-fault' },
-    };
-  }
+  if (isFault(compiled)) throw new Error(`${compiled.location}: ${compiled.reason}`);
 
   const bindings = sourceBindings(entry);
   const opts: ShellSurface = {
@@ -783,10 +770,8 @@ function declareRegistration(
  * registration for its shell axis, and one common `shell-unjudgeable` registration is
  * appended last whatever the entry count.
  *
- * An entry whose declaration does not compile becomes a **skip registration** that routes
- * nothing and names its location on stderr. Assembly never throws — one bad entry taking
- * down its siblings, the meta-covenants, and the witness valve would leave no way to fix
- * the config that caused it.
+ * An entry whose declaration does not compile makes assembly throw, naming its location and
+ * reason; the loader refuses such a config before assembly sees it.
  */
 export function compileDisciplineRegistrations(
   spec: CompileDisciplinesSpec,
@@ -815,16 +800,9 @@ export function compileDisciplineRegistrations(
     return enriched;
   };
 
-  const judged = spec.disciplines.map((entry): CovenantRegistration => {
-    const witness = spec.witness !== undefined ? { witness: spec.witness } : {};
-
-    // A silent skip is how a discipline goes inert while its verdict still reads passed.
-    const nameFault = (reason: string): void => {
-      process.stderr.write(`discipline '${entry.id}': ${reason} — skipped, not judged\n`);
-    };
-
-    return declareRegistration(entry, spec, witness, nameFault, enrich);
-  });
+  const judged = spec.disciplines.map(
+    (entry): CovenantRegistration => declareRegistration(entry, spec, enrich),
+  );
 
   const skipArms = spec.disciplines
     .filter((entry) => hasShellSkipArm(entry, spec))

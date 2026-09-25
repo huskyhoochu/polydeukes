@@ -145,67 +145,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('compileDisciplineRegistrations — an assembly fault in a declaration skips', () => {
-  const unregisteredFirst = declareEntry({
-    ...PATH_ONLY_DECLARE,
-    extract: { outside: [{ op: 'toolUses' }] },
-  });
-  const unregisteredLater = declareEntry({
-    ...PATH_ONLY_DECLARE,
-    extract: { outside: [{ op: 'source', of: PATH_SOURCE }, { op: 'sha256' }] },
-  });
-
-  it('compiles an unregistered first step into a skip registration naming the op and the entry', () => {
-    // A throw here takes every sibling and the valve down; a silent body would judge with
-    // a pipeline that never ran and read `pass`.
-    spyStderr();
-    const [reg] = compileDisciplineRegistrations(specWith([unregisteredFirst]));
-
-    expect(reg?.label).toBe(ID);
-    expect(reg?.body).toBeUndefined();
-    expect(reg?.skip?.reason).toContain('toolUses');
-    expect(reg?.skip?.reason).toContain(ID);
-  });
-
-  it('compiles an unregistered later step the same way', () => {
-    // The fault check must walk the whole pipeline, not stop at the source step.
-    spyStderr();
-    const [reg] = compileDisciplineRegistrations(specWith([unregisteredLater]));
-
-    expect(reg?.body).toBeUndefined();
-    expect(reg?.skip?.reason).toContain('sha256');
-  });
-
-  it('a fault skip routes nothing — matches answers null for an in-scope change', () => {
-    // A skip that still matches would record a `skipped` row per in-scope change for a
-    // declaration that could never have judged; the fault belongs to the author, not the call.
-    spyStderr();
-    const [reg] = compileDisciplineRegistrations(specWith([unregisteredFirst]));
-
-    expect(reg?.matches?.(createsAt(['lib/x.db']))).toBeNull();
-    expect(reg?.matches?.(bashInput('echo x > lib/x.db'))).toBeNull();
-  });
-
-  it('names the discipline id on stderr exactly once at assembly', () => {
-    // A silent skip is how a discipline goes inert while its verdict still reads passed.
-    const stderr = spyStderr();
-
-    compileDisciplineRegistrations(specWith([unregisteredFirst]));
-
-    const lines = stderr.mock.calls.map((call) => String(call[0])).filter((s) => s.includes(ID));
-    expect(lines).toHaveLength(1);
-  });
-
-  it('leaves a sibling declare entry judged as usual', () => {
-    // Isolation in the direction that matters: one bad declaration costs only itself.
-    spyStderr();
-    const healthy = { ...declareEntry(), id: 'healthy' } as DisciplineEntry;
-    const regs = compileDisciplineRegistrations(specWith([unregisteredFirst, healthy]));
-
-    expect(bodyRegOf(regs, 'healthy')?.body).toBeTypeOf('function');
-  });
-});
-
 describe('compileDisciplineRegistrations — declare routing picks the first in-scope world', () => {
   it('returns the repo-relative path of the first world the scope admits', () => {
     // The subject is the first ADMITTED world, not the first change: routing on

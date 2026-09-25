@@ -42,17 +42,6 @@ const declareBody = {
 };
 const declareEntry = { id: DECLARE_ID, why: DECLARE_WHY, declare: declareBody };
 
-/** A step name outside the engine's registry — a config fault at compile time, not a throw. */
-const UNREGISTERED_OP = 'sha256';
-const faultEntry = {
-  id: DECLARE_ID,
-  why: DECLARE_WHY,
-  declare: {
-    ...declareBody,
-    extract: { outside: [{ op: 'source', of: SCOPE_SOURCE }, { op: UNREGISTERED_OP }] },
-  },
-};
-
 let repoRoot: string;
 let telemetryPath: string;
 
@@ -181,23 +170,6 @@ describe('the tally counts declare in its own bucket', () => {
       const tally = tallyOf(surfaceSection(text, header));
       expect(tally.declare).toBe(1);
       expect(tally.draft).toBe(0);
-    }
-  });
-
-  it('a declaration with an unregistered step renders as `skip` naming the step, and tallies declare 0', async () => {
-    // A config fault must become a skip row that tells the author where, not a declare row
-    // that claims a judgment, and not a thrown assembly that takes the sibling rows with it.
-    writeFixtureConfig([faultEntry]);
-
-    const { text } = await explain({ repoRoot });
-
-    for (const header of SURFACE_HEADERS) {
-      const section = surfaceSection(text, header);
-      expect(rowOf(text, header, 'skip', DECLARE_ID)).toContain(UNREGISTERED_OP);
-      expect(linesOf(section, 'declare', DECLARE_ID)).toHaveLength(0);
-      const tally = tallyOf(section);
-      expect(tally.declare).toBe(0);
-      expect(tally.skip).toBeGreaterThanOrEqual(1);
     }
   });
 });

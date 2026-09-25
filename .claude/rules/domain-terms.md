@@ -39,8 +39,9 @@ one-way. Never write `bypassed` in new code.
 A row has four fields (timestamp · event · label · subject) and an optional fifth whose
 meaning the event decides: on a break it is the witness list as a JSON array; on `skipped` it
 is a **skip reason** from the closed tuple `no-observation` (the surface has no channel for
-what the entry reads) · `config-fault` (assembly could not compile the entry) · `supply-pass`
-(the declaration's own `supply: pass` let an absent source through). A `skipped` row without
+what the entry reads) · `config-fault` (no assembled registration carries it: the loader refuses
+a config with an entry it cannot compile) · `supply-pass` (the declaration's own
+`supply: pass` let an absent source through). A `skipped` row without
 a fifth field is a family runtime skip and reads back with no reason.
 
 ## Discipline families — key → family
@@ -138,8 +139,9 @@ outside a closed list is rejected by validation, never coerced.
   any relation but `unchanged`, or a single extraction under `unchanged`, is a config fault.
 - **Config fault** — the value `compileDeclaration` returns instead of a compiled declaration
   (a step name outside the registry, an argument outside a step's closed key set, an
-  uncompilable regex, a paired/single mismatch). It names a `location`, is never a throw, and
-  the surface turns it into a skip registration that tells the author.
+  uncompilable regex, a paired/single mismatch). It names a `location` and is never a throw;
+  the loader collects every entry's fault into one invalid-config error, so assembly never
+  sees one.
 
 ## Term usage rules
 

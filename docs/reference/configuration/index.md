@@ -539,7 +539,7 @@ declaration as one snapshot whose entries carry their
 observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
 `agentType` reads the parsed sidecar and requires `is`, the agent type to keep
 (`{ op: 'agentType', is: 'tdd-test-writer' }`); without it the step does not compile and
-the entry lands as a skip registration. This repository's live config carries one —
+the config does not load. This repository's live config carries one —
 `tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, written
 in `sessionDisciplines`. The seventh fixed name, `actor`, is the
 observation's actor — `{ agentType }` inside a subagent, `{}` in the main session, absent
@@ -556,23 +556,22 @@ declaration see a creation as all-added and a deletion as adding nothing; it doe
 to `state`, the paired source. A declaration comparing before with after therefore needs
 `supply: { state: pass }` to let a file creation through.
 
-A break is recorded like any other family's, with one addition: the telemetry row carries a
-fifth field naming the elements the relation failed on (at most eight per relate entry, with
-the true count beside them). A `skipped` row uses the same field for a reason token instead —
-`no-observation` (the surface has no channel for what the entry reads), `config-fault` (the
-block could not be assembled), or `supply-pass` (the declaration's own `supply: pass` let an
-absent source through). Every declaration also names its `mechanism` — one of eighteen
-catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
-name whose shape the declaration does not match: the axes its sources derive (`change` for
-the fixed names other than `actor`, `actor` for `actor`, `world` for a `file` or `sidecar`
-source, `history` for a `transcript` source) and the relations it relates must fall inside
-what that name admits. A block the compiler cannot resolve — a step name outside the
-registry, an argument outside a step's keys — becomes a skip registration that names its
-location on stderr and routes nothing. A shell write into the declaration's scope whose
-result the judge can compute (a redirect, a heredoc, an append) is judged as the file change
-it makes; one it cannot compute (`sed -i`, an opaque command) records `skipped`. The
-declaration's own `witness` block joins the
-human's witness as a second way to open a blocked verdict.
+A break is recorded like any other family's, with one addition: the telemetry row carries a fifth
+field naming the elements the relation failed on (at most eight per relate entry, with the true
+count beside them). A `skipped` row uses the same field for a reason token instead —
+`no-observation` (the surface has no channel for what the entry reads) or `supply-pass` (the
+declaration's own `supply: pass` let an absent source through). A block that cannot compile makes
+the config invalid instead of recording a row. Every declaration also names its `mechanism` — one of
+eighteen catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
+name whose shape the declaration does not match: the axes its sources derive (`change` for the fixed
+names other than `actor`, `actor` for `actor`, `world` for a `file` or `sidecar` source, `history`
+for a `transcript` source) and the relations it relates must fall inside what that name admits. A
+block the compiler cannot resolve — a step name outside the registry, an argument outside a step's
+keys — makes the config invalid, and the error names its location. A shell write into the
+declaration's scope whose result the judge can compute (a redirect, a heredoc, an append) is judged
+as the file change it makes; one it cannot compute (`sed -i`, an opaque command) records `skipped`.
+The declaration's own `witness` block joins the human's witness as a second way to open a blocked
+verdict.
 
 Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the
 escape layer for the few rules data cannot express.

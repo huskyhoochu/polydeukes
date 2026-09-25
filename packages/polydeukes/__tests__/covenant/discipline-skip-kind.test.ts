@@ -7,10 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Every skip registration names WHY it cannot judge with a token from the closed
 // `SKIP_REASONS` vocabulary, beside the sentence it already carried: `no-observation` when
 // the surface has no channel for what the entry reads (the one-call session surface for a
-// change-set declaration, a shell line whose write this layer cannot compute),
-// `config-fault` when assembly could not compile the entry. The dispatcher writes the token into the `skipped` row's fifth field. A
-// declaration whose `supply: pass` waved an absent source through is the third token,
-// `supply-pass`, recorded as `skipped` rather than as a `passed` judgment.
+// change-set declaration, a shell line whose write this layer cannot compute). The dispatcher
+// writes the token into the `skipped` row's fifth field. A declaration whose `supply: pass`
+// waved an absent source through is the token `supply-pass`, recorded as `skipped` rather
+// than as a `passed` judgment. A declaration assembly cannot compile makes it throw, so no
+// assembled registration carries `config-fault`; the dispatcher still writes whatever kind a
+// registration names.
 import {
   type CompileDisciplinesSpec,
   compileDisciplineRegistrations,
@@ -131,8 +133,10 @@ afterEach(() => {
 });
 
 describe('compileDisciplineRegistrations — each skip site names its kind', () => {
-  it('a declaration with an unregistered step is config-fault', () => {
-    // The compile-fault skip routes nothing, so its kind is asserted on the registration.
+  it('a declaration with an unregistered step makes assembly throw, naming the fault location and reason', () => {
+    // The loader refuses such an entry before assembly sees it, so reaching here means a
+    // caller bypassed the loader; an assembly that answers a skip registration instead
+    // turns that into a session where the entry exists and judges nothing.
     const faulty = {
       ...BILINGUAL_DECLARE,
       extract: {
@@ -140,10 +144,10 @@ describe('compileDisciplineRegistrations — each skip site names its kind', () 
         en: [{ op: 'source', of: PATH_SOURCE }, { op: 'sha256' }],
       },
     };
-    const regs = compileDisciplineRegistrations(specWith([declareEntry(faulty, BILINGUAL_ID)]));
 
-    const kinds = skipsOf(regs, BILINGUAL_ID).map((reg) => reg.skip?.kind);
-    expect(kinds).toContain('config-fault');
+    expect(() =>
+      compileDisciplineRegistrations(specWith([declareEntry(faulty, BILINGUAL_ID)])),
+    ).toThrow(`${BILINGUAL_ID} extract en: 'sha256' is not a registered extract step`);
   });
 
   it('the per-entry shell arm and the common shell-unjudgeable registration are no-observation', () => {

@@ -322,9 +322,7 @@ async function judgeInput(
           });
     const transcript = session === undefined ? undefined : transcriptFromSession(session);
     // Assembled ONCE for the run, not per call: a judge takes its call set as an argument,
-    // so the table is payload-free. Recompiling per file would repeat every compile-time
-    // side effect — the stderr line a config-faulted discipline names itself with would
-    // print once per staged file rather than once.
+    // so the table is payload-free.
     const registrations = assembleCheckRegistrations({
       config,
       rootDir: spec.repoRoot,

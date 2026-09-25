@@ -438,7 +438,7 @@ own mechanism can actually reach:
 
 Then undo the scratch break, repeat the same observation, and confirm a passing row for the
 must-NOT-match case. Silence alone may mean a scope miss, unchanged files, or unavailable evidence;
-check \`pdks explain\` and telemetry for \`config-fault\`, \`no-observation\`, or \`supply-pass\`. Close by telling the user which rung the entry landed on and
+check \`pdks explain\` and telemetry for \`no-observation\` or \`supply-pass\`. Close by telling the user which rung the entry landed on and
 that \`enforce: block\` is theirs to add later if the advise record earns it.
 
 ## Updating this skill without losing local edits

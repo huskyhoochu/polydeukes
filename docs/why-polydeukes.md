@@ -81,7 +81,9 @@ The two surfaces need not produce the same result when their observations differ
 An ordinary discipline defaults to `advise`. Promotion to `block` is the author's decision after
 exercising both valid and violating cases. A surface's level and an entry's level compose with the
 lenient side winning. Assembly errors remain failures; telemetry write failures do not change a
-verdict. Missing evidence follows the declared supply policy rather than an invented empty source.
+verdict. A declaration that cannot compile makes the whole configuration invalid, because an
+entry that loads but can never judge reads as installed while it protects nothing. Missing
+evidence follows the declared supply policy rather than an invented empty source.
 
 One call leaves one row, and one component writes it. An agent adapter translates a host's
 payload into the judge's input and hands it over; it decides nothing and records nothing. That

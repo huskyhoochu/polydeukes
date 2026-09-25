@@ -29,7 +29,7 @@ const queries = [
   ['en', 'Grok witness', 'troubleshooting', 'grok-witness'],
   ['ko', 'Grok 증인', 'troubleshooting', 'grok-witness'],
   ['en', 'config-fault', 'troubleshooting', 'config-fault'],
-  ['ko', '미판정 config-fault', 'troubleshooting', 'config-fault'],
+  ['ko', '컴파일할 수 없는 선언', 'troubleshooting', 'config-fault'],
   ['en', 'hunk lines', 'cli-covenant-check', 'diff-translation'],
   ['ko', 'hunk 줄', 'cli-covenant-check', 'diff-translation'],
 ] as const;

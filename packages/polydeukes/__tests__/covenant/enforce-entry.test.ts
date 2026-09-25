@@ -294,25 +294,6 @@ describe('compileDisciplineRegistrations — entry enforce reaches the body-bear
     }
   });
 
-  it('fills nothing on the early-return skip arm — a declaration that does not compile', () => {
-    // This arm returns before the body composes, on a code path distinct from the appended
-    // shell skip arms above. A level on an unjudgeable arm would let the dispatcher relax a
-    // routing that could not answer.
-    const faulty = deltaEntry();
-    faulty.id = 'bad-declaration';
-    (faulty.declare as { extract: Record<string, unknown> }).extract.added = [
-      { op: 'sha256', of: 'after' },
-    ];
-    const regs = compileDisciplineRegistrations(specWith([faulty]));
-    const arms = levelsOf(regs).filter((r) => r.label === 'bad-declaration');
-
-    expect(arms.length).toBeGreaterThan(0);
-    for (const reg of arms) {
-      expect(reg.skip, reg.label).toBe(true);
-      expect(reg.enforce, reg.label).toBeUndefined();
-    }
-  });
-
   it('never copies the level onto the skip arms or the common shell-unjudgeable registration', () => {
     // Skip arms record the absence of a judgment, and the common backstop belongs to no
     // entry. Copying the level onto every registration an entry produces would let one

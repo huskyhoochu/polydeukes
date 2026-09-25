@@ -269,8 +269,9 @@ The 18 names include one reserved name, so 17 can be used. Mechanism constraints
 ## Validate a declaration
 
 Run `pnpm exec pdks explain` and confirm the entry is a `declare` registration on the intended
-surface. A `skip` registration with `config-fault` means compilation failed; read its location
-and reason. Unknown keys or invalid source/list combinations can instead fail configuration loading.
+surface. A declaration that cannot compile, such as an unregistered step, a wrong step argument,
+or a paired/single mismatch, fails configuration loading with its location and reason, as
+unknown keys and invalid source/list combinations do.
 
 Then exercise a violating input and a valid input through the matching surface. See
 [the worked locale example](../../how-to/write-disciplines.md#locale-key-pairing).

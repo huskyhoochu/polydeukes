@@ -221,7 +221,7 @@ actually reach:
 
 Then undo the scratch break, repeat the observation, and confirm a passing row for the valid
 case. Silence alone can mean a scope miss, unchanged files, or unavailable evidence. Inspect
-`pdks explain` and telemetry for `config-fault`, `no-observation`, and `supply-pass`. Close by
+`pdks explain` and telemetry for `no-observation` and `supply-pass`. Close by
 telling the user which rung the entry landed on and
 that `enforce: block` is theirs to add later if the advise record earns it.
 

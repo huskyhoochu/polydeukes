@@ -167,15 +167,13 @@ No import. The umbrella assembles the module for both surfaces.
   one call, so neither leaves a row on the surface that does not observe it. Which entries a
   surface carries is read from `pdks explain` and from the config's own list names, not from
   the telemetry log.
-- **A declaration the compiler cannot resolve compiles to a skip registration** — routing
-  intact, no body: a step outside the registry, an argument outside a step's keys, a pattern
-  that does not compile, a paired/single mismatch. Assembly therefore never throws: one
-  unresolvable entry cannot take down its siblings, the meta-covenants, and the valve, which
-  would leave no way to fix the config that caused it. A reserved mechanism, or one whose
-  axes and relations the catalogue refuses, is a different stage: config loading rejects the
-  file (exit 2), and no skip row is written. A source the world lacks at judgment time is a
-  third case — the declaration's own `supply` policy disposes of it, and with no policy the
-  body answers unjudgeable (exit 2), never upheld.
+- **A declaration the compiler cannot resolve does not load** — a step outside the registry,
+  an argument outside a step's keys, or a paired/single mismatch. Like a reserved mechanism, or
+  axes and relations the catalogue refuses, it makes config loading reject the file (exit 2)
+  with the entry named, and no skip row is written. Inside a session the config file stays
+  repairable: one Edit or Write whose result loads is let through. A source the world lacks at
+  judgment time is a different case — the declaration's own `supply` policy disposes of it,
+  and with no policy the body answers unjudgeable (exit 2), never upheld.
 - **Complete containment is a non-goal.** There are no blocklists here — enumerating bypass
   spellings is always one step behind, so the logic is inverted: a mention of a protected
   path blocks unless proven safe. Residual vectors such as indirect path computation are

@@ -131,7 +131,9 @@ function compilePipeline(
   const unarySteps = combinator === undefined ? steps : rest;
 
   for (const step of unarySteps) {
-    const entry = EXTRACT_STEPS[step.op];
+    // Own keys only: the registry is an object literal, and a step named after an inherited
+    // member (`toString`, `__proto__`) would otherwise resolve to it.
+    const entry = Object.hasOwn(EXTRACT_STEPS, step.op) ? EXTRACT_STEPS[step.op] : undefined;
     if (entry === undefined) {
       return fault(
         location,
