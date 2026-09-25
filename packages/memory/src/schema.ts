@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS concept (
   status      TEXT NOT NULL DEFAULT 'stable',
   stale_after TEXT,
   doc_type    TEXT,
-  ticket      TEXT
+  ticket      TEXT,
+  content_hash TEXT NOT NULL DEFAULT ''
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS section (
@@ -52,6 +53,7 @@ END;
 export function openMemoryDb({ path }: OpenMemoryDbSpec): DatabaseSync {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
+  db.exec('PRAGMA busy_timeout = 5000');
   // auto_vacuum changes the file header only while the database has no tables, and setting it
   // on an existing file takes the write lock an ingest may be holding.
   const { page_count } = db.prepare('PRAGMA page_count').get() as { page_count: number };

@@ -91,6 +91,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `<document id>#<anchor>`; `openMemoryDb` / `replaceDocument` / `optimizeMemoryDb` keep those
   rows in a `node:sqlite` database with a trigram FTS5 external-content table synced by
   triggers. `replaceDocument` derives type and ticket columns from validated memory settings;
+  `ingestMemory` compares the files the `include` globs reach with the stored documents in one
+  write transaction — it skips a document whose hash of text plus type and ticket settings is
+  unchanged, replaces a changed one, and deletes one whose file is gone;
   `searchMemory` finds section rows and applies configured type weights, while `showMemory`
   returns stored document or section content. It has no barrel, no build, and no core dependency,
   so it has no `vitest.config.ts`
