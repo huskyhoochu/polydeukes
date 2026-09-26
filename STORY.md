@@ -6,8 +6,9 @@
 > alongside.
 
 **Polydeukes** is a development *discipline framework* for working alongside an AI coding partner.
-Its starting point is deterministic covenants and recorded judgments. A verifiable work ledger,
-local memory, and adversarial verification belong to the larger design and remain on the roadmap.
+Its starting point is deterministic covenants and recorded judgments. Local memory has begun
+with search over the project's documents. A verifiable work ledger and adversarial verification
+belong to the larger design and remain on the roadmap.
 
 The name comes from a twin in Greek myth who shared his immortality with his dead brother.
 That story expresses why I want to build this tool, not just what I want it to do.
@@ -146,7 +147,9 @@ The philosophy sets a direction; implementation must still earn its claims.
   surfaces. Ordinary disciplines advise by default; blocking is an explicit promotion. Configured
   protection and human witness mechanisms make the agreement more than a prompt.
 - **Ledger, planned.** Completion should rest on verifiable checks rather than a worker's claim.
-- **Memory, planned.** Decisions and failed approaches should remain searchable beside the code.
+- **Memory, available in part.** `pdks memory` keeps decisions and failed approaches searchable
+  beside the code, as an index rebuilt from the documents. Queries over links, replaced records,
+  and carried-over obligations are still planned.
 - **Verify, planned.** A judgment should face independent, adversarial examination rather than be
   accepted merely because it sounds convincing.
 

@@ -142,6 +142,39 @@ pdks witness
 어댑터가 토큰을 담은 메시지를 사람의 입력으로 확인해야 밸브가 열립니다.
 토큰을 아는 것만으로는 증언할 수 없습니다. 밸브로 통과한 판정은 모두 `witnessed`로 기록됩니다.
 
+<a id="memory"></a>
+## `memory`
+
+선택 항목입니다. `pdks memory`만 이 절을 읽으며, 판정기는 읽지 않습니다. 선택 설치 패키지
+`@polydeukes/memory`가 필요합니다([`pdks memory`](../cli/memory.ko.md)).
+
+```yaml
+memory:
+  include:
+    - 'docs/**/*.md'
+  typeMap:
+    adr: decision
+  ticket:
+    - from: frontmatter
+      key: issue
+    - type: plan
+      from: title
+      pattern: '[A-Z]+-[0-9]+'
+  weights:
+    decision: 2
+```
+
+| 키 | 필수 | 하는 일 |
+|---|---|---|
+| `include` | 예 | 비어 있지 않은 glob 목록이며, `pdks memory`를 실행한 디렉터리 기준입니다. 이 glob이 가리키는 `.md` 파일을 색인하고, 이름이 `index.md`나 `log.md`인 파일은 건너뜁니다 |
+| `typeMap` | 아니요 | 문서 frontmatter의 `type`을 저장할 종류로 바꿉니다. 이 표에 없는 종류는 쓰인 그대로 저장합니다 |
+| `ticket` | 아니요 | 문서와 함께 저장할 티켓 값을 얻는 방법의 순서 있는 목록입니다. `from: title`은 제목을, `from: frontmatter`는 `key`로 지정한 frontmatter 필드를 읽습니다. `type`은 frontmatter의 `type`이 그 값과 같은 문서로 항목을 한정하고, `pattern`은 정규식의 첫 일치 부분만 남깁니다. 비어 있지 않은 값을 처음 낸 항목이 이깁니다 |
+| `weights` | 아니요 | 저장된 종류를 음이 아닌 수에 대응시킵니다. 가중치가 클수록 그 종류의 절이 검색 결과에서 앞에 옵니다 |
+
+이 네 키 밖의 키는 거부합니다. 빈 `include`, 비어 있지 않은 문자열이 아닌 `typeMap` 값, 음수이거나
+수가 아닌 가중치, 유효한 정규식이 아닌 `pattern`도 거부합니다. `typeMap`이나 `ticket`을 바꾸면 다음
+`pdks memory ingest`에서 모든 문서를 다시 처리합니다.
+
 <a id="three-lists"></a>
 ## 규율 목록 셋
 

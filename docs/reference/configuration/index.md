@@ -148,6 +148,40 @@ The adapter must identify the token's message as human input before it can open 
 Knowing the token alone is insufficient. Every judgment allowed through the valve is recorded
 as `witnessed`.
 
+<a id="memory"></a>
+## `memory`
+
+Optional. Only `pdks memory` reads it; the judge does not. It needs the optional package
+`@polydeukes/memory` ([`pdks memory`](../cli/memory.md)).
+
+```yaml
+memory:
+  include:
+    - 'docs/**/*.md'
+  typeMap:
+    adr: decision
+  ticket:
+    - from: frontmatter
+      key: issue
+    - type: plan
+      from: title
+      pattern: '[A-Z]+-[0-9]+'
+  weights:
+    decision: 2
+```
+
+| Key | Required | What it does |
+|---|---|---|
+| `include` | yes | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are indexed; files named `index.md` or `log.md` are skipped |
+| `typeMap` | no | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written |
+| `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`. `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
+| `weights` | no | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results |
+
+Keys outside these four are rejected, as are an empty `include`, a `typeMap` value that is not a
+non-empty string, a negative or non-numeric weight, and a `pattern` that is not a valid regular
+expression. A change to `typeMap` or `ticket` reprocesses every document on the next
+`pdks memory ingest`.
+
 <a id="three-lists"></a>
 ## The three discipline lists
 

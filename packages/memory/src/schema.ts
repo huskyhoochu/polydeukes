@@ -2,8 +2,11 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-/** Where the memory database file lives. */
-export type OpenMemoryDbSpec = { path: string };
+/**
+ * Where the memory database file lives, and whether to open an existing file for reading only
+ * — without creating it, changing its pragmas, or writing the schema.
+ */
+export type OpenMemoryDbSpec = { path: string; readOnly?: boolean };
 
 /** An open memory database connection. */
 export type OptimizeMemoryDbSpec = { db: DatabaseSync };
@@ -38,6 +41,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS section_fts USING fts5(
   content='section', content_rowid='rowid', tokenize='trigram'
 );
 
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
 CREATE TRIGGER IF NOT EXISTS section_ai AFTER INSERT ON section BEGIN
   INSERT INTO section_fts(rowid, doc_title, title, body)
   VALUES (NEW.rowid, NEW.doc_title, NEW.title, NEW.body);
@@ -49,8 +57,16 @@ CREATE TRIGGER IF NOT EXISTS section_ad AFTER DELETE ON section BEGIN
 END;
 `;
 
-/** Opens (creating if absent) the memory database at `path` with its pragmas and schema. */
-export function openMemoryDb({ path }: OpenMemoryDbSpec): DatabaseSync {
+/**
+ * Opens (creating if absent) the memory database at `path` with its pragmas and schema, or,
+ * under `readOnly`, opens the existing file as it is.
+ */
+export function openMemoryDb({ path, readOnly = false }: OpenMemoryDbSpec): DatabaseSync {
+  if (readOnly) {
+    const db = new DatabaseSync(path, { readOnly: true });
+    db.exec('PRAGMA busy_timeout = 5000');
+    return db;
+  }
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec('PRAGMA busy_timeout = 5000');

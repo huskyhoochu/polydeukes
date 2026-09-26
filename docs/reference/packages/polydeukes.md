@@ -30,6 +30,9 @@ takes it as a peer dependency rather than importing it.
 | `pdks docs [topic]` | Read a bundled topic |
 | `pdks docs search <query>` | Search the bundled docs |
 | `pdks docs show <document-id>` | Show one bundled document or section |
+| `pdks memory ingest [--rebuild]` | Index the documents `memory.include` reaches into `.polydeukes/memory.db` |
+| `pdks memory search <query>` | Search the index for sections |
+| `pdks memory show <id>` | Show one indexed document or section |
 
 Session-surface installers live on the adapters: `pdks-claude-code init`, `pdks-grok init`, and
 `pdks-codex init`.
@@ -55,6 +58,10 @@ surface with its two list names and counts.
 
 `pdks docs` is offline. It reads the installed package, not the network. Flags, JSON, and
 exit codes are in [`pdks docs`](../cli/docs.md).
+
+`pdks memory` loads the optional peer dependency `@polydeukes/memory` only when it runs; no
+other command imports it. Without the package installed it prints an install hint and exits
+`2`. See [`pdks memory`](../cli/memory.md).
 
 <a id="polydeukes-export-map"></a>
 ## Export map
@@ -192,7 +199,7 @@ No import. The umbrella assembles the module for both surfaces.
   `2`; they never return `1`.
 - `pdks covenant check` never prompts. It reads stdin and exits 0 or 2; the caller decides what
 that exit code means.
-- `pdks docs` and `pdks explain` print nothing partial on failure.
+- `pdks docs`, `pdks explain`, and `pdks memory` print nothing partial on failure.
 
 <a id="polydeukes-see-also"></a>
 ## See also
@@ -200,4 +207,5 @@ that exit code means.
 - [`pdks covenant check`](../cli/covenant-check.md)
 - [`pdks init`](../cli/init.md)
 - [`pdks explain`](../cli/explain.md)
+- [`pdks memory`](../cli/memory.md)
 - [`Configuration reference`](../configuration/index.md)

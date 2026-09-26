@@ -180,6 +180,22 @@
       }
     },
     {
+      "id": "cli-memory",
+      "category": "reference",
+      "order": 10,
+      "bundled": true,
+      "en": {
+        "path": "reference/cli/memory.md",
+        "title": "pdks memory",
+        "summary": "Index the project's markdown documents, then search and show their sections."
+      },
+      "ko": {
+        "path": "reference/cli/memory.ko.md",
+        "title": "pdks memory",
+        "summary": "프로젝트의 마크다운 문서를 색인하고 그 절을 검색하고 조회합니다."
+      }
+    },
+    {
       "id": "configuration",
       "category": "reference",
       "order": 11,
@@ -305,6 +321,22 @@
         "path": "reference/packages/sdk-ts.ko.md",
         "title": "@polydeukes/sdk-ts",
         "summary": "TypeScript에서 checkCovenant를 호출하고 세 가지 판정 결과를 처리합니다."
+      }
+    },
+    {
+      "id": "package-memory",
+      "category": "reference",
+      "order": 27,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/memory.md",
+        "title": "@polydeukes/memory",
+        "summary": "Consult the optional memory package, its verbs, and what its index holds."
+      },
+      "ko": {
+        "path": "reference/packages/memory.ko.md",
+        "title": "@polydeukes/memory",
+        "summary": "선택 설치 memory 패키지의 동사와 색인이 담는 내용을 확인합니다."
       }
     },
     {

@@ -31,6 +31,7 @@
 | [`pdks init`](./reference/cli/init.ko.md) | 프로젝트 설정 생성 |
 | [`pdks explain`](./reference/cli/explain.ko.md) | 등록된 규율과 강제 수준 확인 |
 | [`pdks docs`](./reference/cli/docs.ko.md) | 설치된 문서 검색과 조회 |
+| [`pdks memory`](./reference/cli/memory.ko.md) | 프로젝트의 마크다운 문서를 색인하고 그 절을 검색·조회 |
 
 <a id="reference-configuration"></a>
 ### 설정
@@ -55,6 +56,7 @@
 | [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.ko.md) | Grok 세션 표면입니다. 훅 페이로드에서 입력 IR로 |
 | [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.ko.md) | Codex 세션 표면입니다. 훅 페이로드에서 입력 IR로, 패치가 건드리는 파일마다 원소 하나 |
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.ko.md) | TypeScript에서 판정기를 호출하고 결과를 처리하는 방법 |
+| [`@polydeukes/memory`](./reference/packages/memory.ko.md) | `pdks memory`가 쓰는 선택 설치 색인입니다. 마크다운 절을 로컬 SQLite 데이터베이스에 둡니다 |
 
 <a id="shape-of-the-thing"></a>
 ## 한 페이지로 보는 구조

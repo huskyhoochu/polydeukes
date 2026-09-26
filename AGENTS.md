@@ -9,7 +9,7 @@ replaces the shared instructions here.
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is beta** (since v0.7.0). Six packages ship today: `core` (the covenant protocol — stdin-JSON
+**This repo is beta** (since v0.7.0). Seven packages ship today: `core` (the covenant protocol — stdin-JSON
 in, exit code out — with file-change evidence, the config schema, and the algebra declaration
 schema), the three adapters `adapter-claude-code`, `adapter-grok` and `adapter-codex` (each one
 agent's session payload onto the
@@ -26,17 +26,17 @@ hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `
 others do not: that host normalises every file edit that reaches the hook into `apply_patch`,
 whose input is the patch text rather than a path, so the adapter parses it into one IR element
 per file. `sdk-ts`
-(`@polydeukes/sdk-ts`) is the remaining published one: one verb, `checkCovenant`, that spawns
+(`@polydeukes/sdk-ts`) is one verb, `checkCovenant`, that spawns
 `pdks covenant check` with a caller-built IR
 and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
-`polydeukes`. One more directory, `packages/documentation`, is `private` and publishes
-nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/` at build
-time and carries no judgment logic. `packages/memory` (`@polydeukes/memory`) is `private` too:
-it splits markdown documents into section rows and keeps them in a
-`node:sqlite` index (FTS5, trigram) that can always be rebuilt from the documents, and no
-package imports it. Private package functions bring the index in line with the files the
-config's `memory.include` globs reach, search those rows, and show stored document or section
-content. Nothing depends the other way:
+`polydeukes`. `memory` (`@polydeukes/memory`) splits markdown documents into section rows and
+keeps them in a `node:sqlite` index (FTS5, trigram) at `.polydeukes/memory.db` that can always
+be rebuilt from the documents. The umbrella declares it as an optional peer and loads it only
+in `pdks memory ingest | search | show`, dynamically; the judgment chain never imports it, and
+without it that command prints an install hint and exits 2. One more directory,
+`packages/documentation`, is `private` and publishes nothing: it builds the public site at
+<https://polydeukes.vercel.app> from `docs/` at build time and carries no judgment logic.
+Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
 its agents need. The judge module opens no file at all, and core's only file I/O is the
 telemetry log it appends every judgment to.

@@ -29,6 +29,11 @@
           "path": "packages/sdk-ts/package.json",
           "jsonpath": "$.version"
         },
+        {
+          "type": "json",
+          "path": "packages/memory/package.json",
+          "jsonpath": "$.version"
+        },
         { "type": "json", "path": "packages/polydeukes/package.json", "jsonpath": "$.version" }
       ]
     }

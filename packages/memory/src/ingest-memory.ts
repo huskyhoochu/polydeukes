@@ -39,8 +39,9 @@ function contentHash(config: MemoryConfig, text: string): string {
 
 /**
  * Brings the stored documents in line with the files `config.include` reaches under `root` in
- * one write transaction: adds new ones, replaces changed ones (every one under `rebuild`), and
- * deletes those whose file is gone. On any error the database is left as it was.
+ * one write transaction: adds new ones, replaces changed ones (every one under `rebuild`),
+ * deletes those whose file is gone, and stamps the time of the run. On any error the database
+ * is left as it was.
  */
 export function ingestMemory({ db, root, config, rebuild = false }: IngestMemorySpec): void {
   db.exec('BEGIN IMMEDIATE');
@@ -66,6 +67,11 @@ export function ingestMemory({ db, root, config, rebuild = false }: IngestMemory
     const remove = db.prepare('DELETE FROM concept WHERE id = ?');
     for (const id of stored.keys()) if (!documents.has(id)) remove.run(id);
     optimizeMemoryDb({ db });
+    // Written on every run, unchanged documents included: the stamp dates the comparison
+    // with the files, and it rolls back with the rows it describes.
+    db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('ingested_at', ?)").run(
+      new Date().toISOString(),
+    );
     db.exec('COMMIT');
   } catch (error) {
     // SQLite ends the transaction itself on some errors (a full disk); a second ROLLBACK

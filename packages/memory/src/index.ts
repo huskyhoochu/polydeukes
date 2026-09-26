@@ -1,0 +1,23 @@
+/**
+ * @polydeukes/memory — a derived SQLite index over a project's markdown documents.
+ *
+ * The index is rebuilt from the documents at any time; the documents stay the record.
+ * See https://github.com/huskyhoochu/polydeukes
+ */
+
+export {
+  type DescribeMemoryIndexSpec,
+  describeMemoryIndex,
+  type MemoryIndexState,
+} from './describe-memory-index.ts';
+export { type IngestMemorySpec, ingestMemory } from './ingest-memory.ts';
+export type { MemoryConfig } from './memory-config.ts';
+export { type OpenMemoryDbSpec, openMemoryDb } from './schema.ts';
+export { type MemorySearchResult, type SearchMemorySpec, searchMemory } from './search-memory.ts';
+export {
+  type MemoryDocument,
+  type MemorySection,
+  type MemoryShownSection,
+  type ShowMemorySpec,
+  showMemory,
+} from './show-memory.ts';

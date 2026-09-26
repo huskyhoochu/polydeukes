@@ -102,11 +102,11 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 <a id="status-and-cli"></a>
 ## 현재 상태와 CLI
 
-**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 여섯 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 일곱 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR을 판정기에
-넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 그리고 판정기를 포함하며 `pdks`
-bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지 `polydeukes`입니다.
-ledger·memory·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
+넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, `pdks memory`가 쓰는 선택 설치 마크다운 색인
+`@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella)
+패키지 `polydeukes`입니다. ledger·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
 ```sh
 pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
@@ -119,6 +119,8 @@ git diff main...HEAD | pdks covenant check --diff   # ... 또는 ref 범위(PR�
 pdks covenant check < input.json                    # 또는 다른 프로그램이 만든 입력 IR에
 pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 출력 — 판정 없음
 pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
+pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db에 색인 (@polydeukes/memory 필요)
+pdks memory search <query> | show <id>             # 그 색인을 검색하거나 문서·절을 조회
 ```
 
 설치기는 `.claude/skills/`에 `discipline-draft` 스킬도 만듭니다. 반복되는 문제를 AI
@@ -161,10 +163,10 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 | `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), 설정 스키마와 그 검증, 대수 선언(algebra declaration) 스키마, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어. 설정을 디스크에서 읽는 일은 core가 아니라 우산의 `loadConfig`가 진다. core가 여는 파일은 자기 텔레메트리 로그뿐이다 |
 | `polydeukes`의 판정기(`src/covenant/`) | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant) |
 | `@polydeukes/ledger` *(계획)* | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전 |
-| `@polydeukes/memory` *(계획)* | 로컬 SQLite + FTS5 기반 저장소. 결정·시행착오를 검색 가능한 기억으로. 동기화는 선택 어댑터(기본 로컬) |
+| `@polydeukes/memory` | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다 |
 | `@polydeukes/verify` *(계획)* | 멀티에이전트 적대적 검증 오케스트레이터 |
 
-지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터 셋입니다. 나머지가 갖춰진 뒤의 도입 순서는
+지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터, `sdk-ts`, `memory`입니다. 나머지가 갖춰진 뒤의 도입 순서는
 `covenant` → `memory` → `ledger` → `verify`로 계획하고 있습니다. `covenant`와 `memory`는 프로젝트
 규모와 무관하게 가치를 낼 것으로 보고, `ledger`·`verify`는 다중 워크트리·팀 워크플로 규모를
 대상으로 합니다.
@@ -223,7 +225,7 @@ create-polydeukes           도메인 고유값을 템플릿·config로 외부�
 |------|------|
 | [`docs/reference/configuration/index.ko.md`](./docs/reference/configuration/index.ko.md) | 설정 레퍼런스 — 모든 키와 각 키의 규칙·함정 |
 | [`docs/reference/declaration-language/index.ko.md`](./docs/reference/declaration-language/index.ko.md) | 선언 언어 참조 — 모든 소스, 추출 단계, 관계, 기전의 문법과 제약 |
-| [`docs/reference/packages/polydeukes.ko.md`](./docs/reference/packages/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 여섯 개가 각각 담당하는 것 |
+| [`docs/reference/packages/polydeukes.ko.md`](./docs/reference/packages/polydeukes.ko.md) | 패키지 레퍼런스 — 서브커맨드와 종료 코드, 패키지 계약 |
 
 <a id="why-and-the-journal"></a>
 ### 배경과 릴리스

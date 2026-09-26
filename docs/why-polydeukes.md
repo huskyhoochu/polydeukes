@@ -26,8 +26,9 @@ better verification.
 
 ## What exists now
 
-Six packages provide a shared input vocabulary, three session adapters, a TypeScript client
-for programs, and the `polydeukes` umbrella, which carries the judge and the `pdks` command.
+Seven packages provide a shared input vocabulary, three session adapters, a TypeScript client
+for programs, an optional markdown index, and the `polydeukes` umbrella, which carries the judge
+and the `pdks` command.
 Two observation surfaces serve different purposes:
 
 - The **session surface** judges one call before it runs — an input IR on stdin. Claude Code,
@@ -56,6 +57,13 @@ of every discipline. A pairing declaration, for example, compares the selected k
 See [how judgment works](./concepts/judgment.md), [write
 disciplines](./how-to/write-disciplines.md),
 and the [configuration reference](./reference/configuration/index.md).
+
+`pdks memory` indexes the project's markdown documents into `.polydeukes/memory.db` and searches
+their sections. The documents stay the record and the index is derived from them: nothing is
+written to the index alone, so deleting it and running `pdks memory ingest` restores it, and how
+the file is kept is the project's choice. The index lives in the optional package
+`@polydeukes/memory`, which the judge never loads — a verdict is the same with or without it. See
+the [`pdks memory` reference](./reference/cli/memory.md).
 
 ## Principles and their limits
 
@@ -158,9 +166,11 @@ current design is hard to explain without them.
 
 ## What remains a plan
 
-A verifiable **ledger**, searchable local **memory**, and adversarial **verification** are roadmap
-components, not shipped services. Telemetry is not the future ledger, documentation search is not
-a memory system, and running a test suite is not an implemented adversarial review service.
+A verifiable **ledger** and adversarial **verification** are roadmap components, not shipped
+services. Of local **memory**, search and show over the project's documents ship; queries over
+links, replaced records, and carried-over obligations do not yet. Telemetry is not the future
+ledger, documentation search is not a memory system, and running a test suite is not an
+implemented adversarial review service.
 
 Polydeukes is not an agent runtime or a sandbox. It complements linters and tests: some declarations
 compare file contents, others require observed process evidence. It does not execute a fresh

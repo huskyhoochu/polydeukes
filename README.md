@@ -103,12 +103,12 @@ Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-**Status: beta** (since v0.7.0, 2026-09-16). Six packages ship — `@polydeukes/core` (the covenant
+**Status: beta** (since v0.7.0, 2026-09-16). Seven packages ship — `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
 `@polydeukes/sdk-ts` (the TypeScript client that hands an input IR to the judge from a program),
-and the `polydeukes` umbrella, which carries the judge and whose `pdks` bin (an alias of
-`polydeukes`) is the CLI. The ledger, memory, and verify packages are still blueprint. The CLI
-today:
+`@polydeukes/memory` (the optional markdown index behind `pdks memory`), and the `polydeukes`
+umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The
+ledger and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line
@@ -121,6 +121,8 @@ git diff main...HEAD | pdks covenant check --diff   # ... or over a ref range (a
 pdks covenant check < input.json                    # or an input IR another program built
 pdks explain             # print what each surface judges, skips, and excludes — no judgment
 pdks docs [topic]        # read the bundled documentation, offline
+pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (needs @polydeukes/memory)
+pdks memory search <query> | show <id>             # search that index, or show a document or section
 ```
 
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
@@ -166,13 +168,13 @@ knows nothing of the others.
 | `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
 | `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` *(planned)* | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
-| `@polydeukes/memory` *(planned)* | A local SQLite + FTS5 store. Turns decisions and dead ends into searchable memory. Syncing is an optional adapter (local by default) |
+| `@polydeukes/memory` | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, and `show`. The documents stay the record; the index is rebuilt from them |
 | `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
 
-Only `core`, the umbrella `polydeukes`, and the session adapter ship today. The planned adoption
-order once the rest exists is `covenant` → `memory` → `ledger` → `verify`: `covenant` and `memory`
-are expected to pay off regardless of project size, while `ledger` and `verify` target the
-scale of multiple worktrees and team workflows.
+`core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, and `memory` ship today. The
+planned adoption order once the rest exists is `covenant` → `memory` → `ledger` → `verify`:
+`covenant` and `memory` are expected to pay off regardless of project size, while `ledger` and
+`verify` target the scale of multiple worktrees and team workflows.
 
 <a id="design-blueprint"></a>
 ## Design blueprint (in brief)
@@ -233,7 +235,7 @@ layer you need.
 |----------|----------|
 | [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
 | [`docs/reference/declaration-language/index.md`](./docs/reference/declaration-language/index.md) | Declaration language reference — every source, extraction step, relation, and mechanism |
-| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and what each of the six packages owns |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and the package contract |
 
 <a id="why-and-the-journal"></a>
 ### Background and releases

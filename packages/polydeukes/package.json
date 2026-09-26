@@ -53,8 +53,17 @@
     "yaml": "catalog:"
   },
   "devDependencies": {
+    "@polydeukes/memory": "workspace:^",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@polydeukes/memory": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@polydeukes/memory": {
+      "optional": true
+    }
   }
 }

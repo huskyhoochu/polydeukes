@@ -30,6 +30,9 @@ import하지 않고 peer 의존으로 선언합니다.
 | `pdks docs [topic]` | 동봉된 주제를 읽음 |
 | `pdks docs search <query>` | 동봉된 문서를 검색 |
 | `pdks docs show <document-id>` | 동봉된 문서 또는 절을 표시 |
+| `pdks memory ingest [--rebuild]` | 설정의 `memory.include`가 가리키는 문서를 `.polydeukes/memory.db`에 색인 |
+| `pdks memory search <query>` | 색인에서 절을 검색 |
+| `pdks memory show <id>` | 색인된 문서 또는 절을 표시 |
 
 세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`, `pdks-grok init`,
 `pdks-codex init`입니다.
@@ -56,6 +59,10 @@ IR의 `session` 키는 다른 것을 말합니다. 호스트가 그 호출에 �
 
 `pdks docs`는 오프라인입니다. 네트워크가 아니라 설치된 패키지를 읽습니다. 플래그, JSON,
 종료 코드는 [`pdks docs`](../cli/docs.ko.md)에 있습니다.
+
+`pdks memory`는 선택 peer 의존인 `@polydeukes/memory`를 이 명령이 실행될 때만 불러오며, 다른
+명령은 이 패키지를 import하지 않습니다. 패키지가 설치되어 있지 않으면 설치 안내를 출력하고 `2`로
+종료합니다. [`pdks memory`](../cli/memory.ko.md)를 보세요.
 
 <a id="polydeukes-export-map"></a>
 ## 공개 심볼
@@ -183,7 +190,7 @@ fail-open입니다.
 - 숫자 코드는 `@polydeukes/core`의 `EXIT_UPHOLD`(`0`), `EXIT_BREAK_NON_BLOCKING`(`1`),
   `EXIT_BREAK_BLOCKING`(`2`)입니다. 우산 실행기는 `0` 또는 `2`만 노출하며 `1`을 반환하지 않습니다.
 - `pdks covenant check`는 사람에게 묻지 않습니다. 표준 입력을 읽고 종료 코드 0 또는 2를 내며, 그 종료 코드의 뜻은 호출한 쪽이 정합니다.
-- `pdks docs`와 `pdks explain`은 실패 시 중간 출력 없이 끝납니다.
+- `pdks docs`, `pdks explain`, `pdks memory`는 실패 시 중간 출력 없이 끝납니다.
 
 <a id="polydeukes-see-also"></a>
 ## 함께 보기
@@ -191,4 +198,5 @@ fail-open입니다.
 - [`pdks covenant check`](../cli/covenant-check.ko.md)
 - [`pdks init`](../cli/init.ko.md)
 - [`pdks explain`](../cli/explain.ko.md)
+- [`pdks memory`](../cli/memory.ko.md)
 - [설정 참조](../configuration/index.ko.md)

@@ -178,6 +178,9 @@ importers:
         specifier: 'catalog:'
         version: 2.9.0
     devDependencies:
+      '@polydeukes/memory':
+        specifier: workspace:^
+        version: link:../memory
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2

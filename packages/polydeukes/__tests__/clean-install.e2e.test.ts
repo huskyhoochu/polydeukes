@@ -72,6 +72,17 @@ const ADAPTER_DIR = 'adapter-claude-code';
 
 /** The vocabulary package — the umbrella's one workspace dependency, which the consumer must name directly (below). */
 const CORE_DIR = 'core';
+/** The memory package — the umbrella's optional peer, which a consumer installs itself. */
+const MEMORY_DIR = 'memory';
+/** Where `pdks memory` keeps the index, relative to the directory it runs in. */
+const MEMORY_DB_REL = '.polydeukes/memory.db';
+/** The fixture document `pdks memory ingest` indexes and `search` finds again. */
+const MEMORY_DOC_REL = 'notes/alpha.md';
+const MEMORY_DOC_TEXT = '---\ntitle: Alpha\n---\n## Topic\n\nneedleword here.\n';
+const MEMORY_SECTION_ID = 'notes/alpha#topic';
+const MEMORY_QUERY = 'needleword';
+/** The `memory` section appended to the generated config; the glob is a fixture value. */
+const MEMORY_CONFIG_BLOCK = "\nmemory:\n  include:\n    - 'notes/**/*.md'\n";
 /** The consumer-side subpath an editor's `$schema` line is measured against. */
 const CORE_SCHEMA_SPECIFIER = '@polydeukes/core/schema.json';
 /** The umbrella subpath, for runtime code that reads the schema. */
@@ -119,6 +130,7 @@ beforeAll(() => {
           [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}`,
           [packageNameOf(ADAPTER_DIR)]: `file:${tarballOf(ADAPTER_DIR)}`,
           [packageNameOf(CORE_DIR)]: `file:${tarballOf(CORE_DIR)}`,
+          [packageNameOf(MEMORY_DIR)]: `file:${tarballOf(MEMORY_DIR)}`,
         },
         pnpm: { overrides },
       },
@@ -629,6 +641,159 @@ syncBuiltinESMExports();
       }
     } finally {
       writeFileSync(indexPath, original);
+    }
+  }, 60_000);
+});
+
+describe('pdks memory through the tarball install', () => {
+  /** Spawn the consumer's own `pdks memory …`, cwd the consumer root. */
+  function spawnMemory(...args: string[]): SpawnSyncReturns<string> {
+    return spawnSync(join(consumerRoot, 'node_modules', '.bin', 'pdks'), ['memory', ...args], {
+      cwd: consumerRoot,
+      encoding: 'utf-8',
+    });
+  }
+
+  /**
+   * The one real copy of the memory package in the consumer's virtual store; every other
+   * spelling (the consumer's top-level link, the link beside the umbrella) is a symlink to
+   * it, so renaming this directory is what an install without the package looks like.
+   */
+  function memoryStoreDirs(): string[] {
+    const store = join(consumerRoot, 'node_modules', '.pnpm');
+    const prefix = `${packageNameOf(MEMORY_DIR).replace('/', '+')}@`;
+    return readdirSync(store)
+      .filter((entry) => entry.startsWith(prefix))
+      .map((entry) => join(store, entry, 'node_modules', ...packageNameOf(MEMORY_DIR).split('/')))
+      .filter((path) => existsSync(path));
+  }
+
+  const configPath = () => join(consumerRoot, CONFIG_REL);
+  let savedConfig: Buffer;
+
+  beforeAll(() => {
+    savedConfig = readFileSync(configPath());
+    writeFileSync(configPath(), `${savedConfig.toString('utf8')}${MEMORY_CONFIG_BLOCK}`);
+    mkdirSync(dirname(join(consumerRoot, MEMORY_DOC_REL)), { recursive: true });
+    writeFileSync(join(consumerRoot, MEMORY_DOC_REL), MEMORY_DOC_TEXT);
+  });
+
+  afterAll(() => {
+    if (savedConfig) writeFileSync(configPath(), savedConfig);
+    rmSync(join(consumerRoot, dirname(MEMORY_DOC_REL)), { recursive: true, force: true });
+    rmSync(join(consumerRoot, '.polydeukes'), { recursive: true, force: true });
+  });
+
+  it('ingests the fixture document and search returns its section', () => {
+    // The optional peer resolved through the real pnpm layout: a `peerDependencies` entry
+    // missing from the packed umbrella manifest, or a memory tarball without its barrel,
+    // leaves the dynamic import failing in every consumer tree that did install the
+    // package. The section id pins that the search read the index the ingest wrote.
+    rmSync(join(consumerRoot, '.polydeukes'), { recursive: true, force: true });
+    const ingest = spawnMemory('ingest');
+
+    expect(ingest.status, `ingest stderr: ${ingest.stderr}`).toBe(0);
+    expect(ingest.stdout).toBe(`indexed 1 document into ${MEMORY_DB_REL}\n`);
+    expect(existsSync(join(consumerRoot, MEMORY_DB_REL))).toBe(true);
+
+    const search = spawnMemory('search', MEMORY_QUERY, '--json');
+
+    expect(search.status, `search stderr: ${search.stderr}`).toBe(0);
+    expect(JSON.parse(search.stdout).results).toContainEqual(
+      expect.objectContaining({ id: MEMORY_SECTION_ID }),
+    );
+  }, 60_000);
+
+  it('the memory package is linked beside the umbrella inside the pnpm store', () => {
+    // What the optional peer declaration buys: pnpm links a declared peer next to the
+    // package that names it, so the umbrella's import resolves from its own realpath. A
+    // consumer tree with memory installed but no peer entry on the umbrella relies on
+    // hoisting into `.pnpm/node_modules`, which depends on the consumer's pnpm settings.
+    const store = join(consumerRoot, 'node_modules', '.pnpm');
+    const umbrellaEntries = readdirSync(store).filter((entry) =>
+      entry.startsWith(`${packageNameOf(UMBRELLA_DIR)}@`),
+    );
+    expect(umbrellaEntries.length).toBeGreaterThan(0);
+
+    const linked = umbrellaEntries.filter((entry) =>
+      existsSync(join(store, entry, 'node_modules', ...packageNameOf(MEMORY_DIR).split('/'))),
+    );
+
+    expect(linked.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('a module missing inside the installed memory answers pdks memory: <message>, not the install hint', () => {
+    // The install hint keys on the resolution failure of the package itself; a barrel whose
+    // own module is gone fails with the same error code against a file path, and a branch
+    // reading the code alone tells a user with a broken install to install what they have.
+    const [storeDir] = memoryStoreDirs();
+    if (storeDir === undefined) {
+      throw new Error('the memory package is not in the consumer store where this case looks');
+    }
+    const moduleFile = join(storeDir, 'dist', 'show-memory.js');
+    const stash = join(packRoot, 'memory-module-stashed.js');
+    renameSync(moduleFile, stash);
+    try {
+      const result = spawnMemory('search', 'x');
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.startsWith('pdks memory: ')).toBe(true);
+      expect(result.stderr).not.toContain('is not installed');
+    } finally {
+      renameSync(stash, moduleFile);
+    }
+  }, 60_000);
+
+  it('a memory.db that is not SQLite answers the SQLite message, not the install hint', () => {
+    // The install-hint branch keys on the package's own resolution failure alone. A branch
+    // that catches every error as "not installed" tells a user with a corrupt index to
+    // install a package they already have.
+    mkdirSync(join(consumerRoot, '.polydeukes'), { recursive: true });
+    writeFileSync(join(consumerRoot, MEMORY_DB_REL), 'this is not a database file\n');
+    try {
+      const result = spawnMemory('search', 'x');
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.startsWith('pdks memory: ')).toBe(true);
+      expect(result.stderr).toContain('not a database');
+      expect(result.stderr).not.toContain('is not installed');
+    } finally {
+      rmSync(join(consumerRoot, '.polydeukes'), { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('answers the install hint with exit 2 when the package is absent, and covenant check still judges', () => {
+    // The two halves of the optional-peer contract in one tree: the subcommand names the
+    // package to install instead of dying at node's exit 1 with a module-resolution stack,
+    // and the judge — which never imports memory — gives the same verdict as with the
+    // package present. A judge that reaches memory fails closed here with exit 2 and no row.
+    const stashed = memoryStoreDirs().map((path, i) => {
+      const stash = join(packRoot, `memory-stashed-${i}`);
+      renameSync(path, stash);
+      return [path, stash] as const;
+    });
+    if (stashed.length === 0) {
+      throw new Error(
+        'the memory package is not in the consumer store where this case moves it aside',
+      );
+    }
+    try {
+      const result = spawnMemory('search', 'x');
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trim()).toMatch(
+        /^pdks memory: @polydeukes\/memory is not installed — install it with `\S+ add -D @polydeukes\/memory`$/,
+      );
+
+      const judged = spawnConsumerHook(writePayload(CLEAN_TARGET, 'hello\n'));
+
+      expect(judged.status, `hook stderr: ${judged.stderr}`).toBe(0);
+      expect(rows().map((row) => row.slice(0, 2))).toEqual([['passed', RUNNER_LABEL]]);
+    } finally {
+      for (const [path, stash] of stashed) renameSync(stash, path);
     }
   }, 60_000);
 });

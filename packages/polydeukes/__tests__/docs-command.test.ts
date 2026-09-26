@@ -123,6 +123,17 @@ describe('real documentation through the CLI', () => {
     expect(part.stdout).not.toContain('<a id="next-step">');
   });
 
+  it('shows the memory command reference from the bundle', () => {
+    // A catalog entry without a bundled document behind it, or a document on disk the
+    // catalog never lists, both leave `pdks docs show cli-memory` answering exit 2 in every
+    // install; the byte equality pins that the bundle carries the source page itself.
+    const result = invoke(['show', 'cli-memory', '--json']);
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).markdown).toBe(
+      readFileSync(join(sourceRoot, 'reference/cli/memory.md'), 'utf8'),
+    );
+  });
+
   it('returns an explicit empty successful result for an absent query', () => {
     const result = invoke(['search', 'zz-docs-no-such-phrase-539', '--json']);
     expect(result.status, result.stderr).toBe(0);

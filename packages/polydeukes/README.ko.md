@@ -22,6 +22,7 @@ CLI 명령은 다음과 같습니다.
 - `pdks-codex init` (`@polydeukes/adapter-codex`가 제공)
 - `pdks explain`
 - `pdks docs [topic]`
+- `pdks memory ingest|search|show` (선택 peer 의존 `@polydeukes/memory`가 필요)
 
 <a id="public-symbols"></a>
 ## 공개 심볼
@@ -40,3 +41,4 @@ CLI 명령은 다음과 같습니다.
 - [`pdks covenant check`](../../docs/reference/cli/covenant-check.ko.md)
 - [`pdks init`](../../docs/reference/cli/init.ko.md)
 - [`pdks explain`](../../docs/reference/cli/explain.ko.md)
+- [`pdks memory`](../../docs/reference/cli/memory.ko.md)

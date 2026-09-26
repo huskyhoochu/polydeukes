@@ -23,6 +23,7 @@ CLI commands:
 - `pdks-codex init` (ships with `@polydeukes/adapter-codex`)
 - `pdks explain`
 - `pdks docs [topic]`
+- `pdks memory ingest|search|show` (needs the optional peer `@polydeukes/memory`)
 
 <a id="public-symbols"></a>
 ## Public symbols
@@ -41,3 +42,4 @@ spawns the bin rather than importing it.
 - [`pdks covenant check`](../../docs/reference/cli/covenant-check.md)
 - [`pdks init`](../../docs/reference/cli/init.md)
 - [`pdks explain`](../../docs/reference/cli/explain.md)
+- [`pdks memory`](../../docs/reference/cli/memory.md)

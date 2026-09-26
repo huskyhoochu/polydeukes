@@ -49,6 +49,7 @@ const BUNDLED_DOCS = [
   'reference/cli/init.md',
   'reference/cli/explain.md',
   'reference/cli/docs.md',
+  'reference/cli/memory.md',
   'reference/configuration/index.md',
   'reference/declaration-language/index.md',
   'reference/packages/polydeukes.md',
@@ -57,10 +58,11 @@ const BUNDLED_DOCS = [
   'reference/packages/adapter-grok.md',
   'reference/packages/adapter-codex.md',
   'reference/packages/sdk-ts.md',
+  'reference/packages/memory.md',
 ];
 
-/** The npm packages: the umbrella, the vocabulary package, three session adapters, the TypeScript SDK. */
-const PUBLISHED_PACKAGE_COUNT = 6;
+/** The npm packages: the umbrella, the vocabulary package, three session adapters, the TypeScript SDK, memory. */
+const PUBLISHED_PACKAGE_COUNT = 7;
 /** The tarball name prefix the retired judge package would pack under. */
 const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
 /** Where the folded judge's modules sit inside the umbrella tarball. */

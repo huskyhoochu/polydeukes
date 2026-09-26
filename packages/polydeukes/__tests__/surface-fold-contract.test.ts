@@ -22,11 +22,18 @@ const PACKAGE_DIRS = [
   'adapter-codex',
   'adapter-grok',
   'core',
+  'memory',
   'polydeukes',
   'sdk-ts',
 ];
 /** Workspace members that are not published; they carry no copy of the judge. */
-const PRIVATE_PACKAGE_DIRS = ['documentation', 'memory'];
+const PRIVATE_PACKAGE_DIRS = ['documentation'];
+/** The two specifiers the judgment chain never reaches: the memory package and its store. */
+const MEMORY_SPECIFIERS = ['@polydeukes/memory', 'node:sqlite'];
+/** A specifier the judgment chain does reach — the walk found edges if this is present. */
+const VOCABULARY_SPECIFIER = '@polydeukes/core';
+/** A specifier bin.ts reaches statically; its subcommand bodies are dynamic, so core is not one. */
+const BIN_STATIC_SPECIFIER = 'node:fs';
 /**
  * The name and the path the fold retires, assembled so this file is not its own
  * counterexample.
@@ -41,9 +48,10 @@ const RETIRED_PACKAGE_PATH = ['packages', 'covenant'].join('/');
 const EXCLUDED_DIRS = new Set(['_docs', 'node_modules', 'dist', '.git', '.polydeukes', '.turbo']);
 const EXCLUDED_FILES = new Set(['CHANGELOG.md']);
 /**
- * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies.
+ * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies,
+ * and the memory command module loads the optional memory package on the call alone.
  */
-const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts']);
+const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'memory-command.ts']);
 /** The words the `explain` module may no longer spell: host, VCS, and hook names. */
 const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook', 'grok'];
 /** The seven verbs the composition roots call on the judge module. */
@@ -94,10 +102,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds six packages', () => {
+describe('the workspace holds seven packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the six package directories', () => {
+  it('packages/ lists exactly the seven package directories', () => {
     const present = readdirSync(join(repoRoot, 'packages')).sort();
     expect(present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir))).toEqual(PACKAGE_DIRS);
   });
@@ -149,6 +157,72 @@ describe('the judge is a static module of the umbrella', () => {
         /\bimport\(/.test(stripComments(readFileSync(join(umbrellaSrc, rel), 'utf-8'))),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * Every module specifier a source file names: `import … from`, `export … from`, a bare
+ * side-effect `import '…'`, and — when `dynamic` is set — the string literal of an
+ * `import('…')` call. Type-only imports count too: the chain has no reason to name memory.
+ */
+function specifiersOf(text: string, dynamic: boolean): string[] {
+  const src = stripComments(text);
+  const found = [
+    ...src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^;]*?\bfrom\s+['"]([^'"]+)['"]/g),
+    ...src.matchAll(/(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g),
+    ...(dynamic ? src.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g) : []),
+  ];
+  return found.map((m) => m[1] as string);
+}
+
+/**
+ * The bare (non-relative) specifiers reachable from `roots` through relative imports —
+ * static ones, plus dynamic ones when `dynamic` is set. Relative edges are followed to
+ * the `.ts` file they spell.
+ */
+function reachableSpecifiers(roots: string[], dynamic: boolean): Set<string> {
+  const seen = new Set<string>();
+  const bare = new Set<string>();
+  const queue = [...roots];
+  while (queue.length > 0) {
+    const file = queue.pop() as string;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    for (const spec of specifiersOf(readFileSync(file, 'utf-8'), dynamic)) {
+      if (spec.startsWith('.')) queue.push(resolve(join(file, '..'), spec));
+      else bare.add(spec);
+    }
+  }
+  return bare;
+}
+
+describe('the judgment chain never reaches memory', () => {
+  const chainRoots = [
+    join(umbrellaSrc, 'covenant-check.ts'),
+    ...umbrellaSources()
+      .filter((rel) => rel.startsWith('covenant/'))
+      .map((rel) => join(umbrellaSrc, rel)),
+  ];
+
+  // One import of the memory package or its SQLite store anywhere under the judge makes
+  // every consumer without the optional peer fail closed on every call, and a corrupt
+  // index changes a verdict. The vocabulary specifier pins that the walk followed edges.
+  it('no specifier reachable from covenant-check.ts or src/covenant/ names @polydeukes/memory or node:sqlite', () => {
+    const reached = reachableSpecifiers(chainRoots, true);
+
+    expect(reached.has(VOCABULARY_SPECIFIER)).toBe(true);
+    expect(MEMORY_SPECIFIERS.filter((spec) => reached.has(spec))).toEqual([]);
+  });
+
+  // ESM imports are eager: a static import of memory anywhere bin.ts reaches statically
+  // resolves before argv is read, so `pdks covenant check` and `pdks docs` die at node's
+  // exit 1 in every tree that did not install the optional peer. Dynamic edges are left
+  // out: the memory branch loads its module on the call alone.
+  it('nothing bin.ts reaches through static imports names @polydeukes/memory or node:sqlite', () => {
+    const reached = reachableSpecifiers([join(umbrellaSrc, 'bin.ts')], false);
+
+    expect(reached.has(BIN_STATIC_SPECIFIER)).toBe(true);
+    expect(MEMORY_SPECIFIERS.filter((spec) => reached.has(spec))).toEqual([]);
   });
 });
 

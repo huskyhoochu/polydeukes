@@ -102,6 +102,23 @@ if (args[0] === 'docs') {
   }
 }
 
+if (args[0] === 'memory') {
+  try {
+    // Imported inside the try: the command module loads the optional memory package, which
+    // a tree without it must never reach on any other command's load path.
+    const { runMemory } = await import('./memory-command.ts');
+    const { text } = await runMemory({ cwd: process.cwd(), args: args.slice(1) });
+    await emitAndExit(text);
+  } catch (error) {
+    // stdout stays at zero bytes on this path: what cannot be answered is never answered
+    // halfway.
+    process.stderr.write(
+      `pdks memory: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exit(2);
+  }
+}
+
 if (args.length === 1 && args[0] === 'explain') {
   try {
     // Imported inside the try for the same reason `docs` is: the renderer pulls in both
@@ -151,7 +168,7 @@ const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(ar
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>]\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id>)\n',
   );
   process.exit(2);
 }

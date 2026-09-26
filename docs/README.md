@@ -30,6 +30,7 @@ Choose a guide for your task below.
 | [`pdks init`](./reference/cli/init.md) | Create project configuration |
 | [`pdks explain`](./reference/cli/explain.md) | Inspect registered disciplines and enforcement |
 | [`pdks docs`](./reference/cli/docs.md) | Search and retrieve installed documentation |
+| [`pdks memory`](./reference/cli/memory.md) | Index the project's markdown documents, then search and show their sections |
 
 <a id="reference-configuration"></a>
 ### Configuration
@@ -54,6 +55,7 @@ extraction step, combinator, relation, and mechanism with its syntax and constra
 | [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.md) | Grok session surface — hook payloads become the input IR |
 | [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.md) | Codex session surface — hook payloads become the input IR, one element per file the patch touches |
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md) | Call the judge from TypeScript and handle its result |
+| [`@polydeukes/memory`](./reference/packages/memory.md) | The optional index behind `pdks memory` — markdown sections in a local SQLite database |
 
 <a id="the-shape-of-the-thing-in-one-page"></a>
 <a id="shape-of-the-thing"></a>
