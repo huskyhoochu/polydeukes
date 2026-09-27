@@ -56,6 +56,15 @@ without the `.md` extension (`docs/guide`). Each H2 section becomes one row iden
 anchor is empty. The other keys of the section, `typeMap`, `ticket`, and `weights`, are in the
 [configuration reference](../configuration/index.md#memory).
 
+We recommend writing the documents in
+[Open Knowledge Format (OKF) v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md),
+markdown with a YAML frontmatter, and a bundle that follows it is indexed as it is. `ingest`
+reads these OKF keys: `title` for the document title, `type` for the type that `typeMap` and
+`weights` use, `status` so that `deprecated` sections sort last, `stale_after` to mark a result
+stale, and `verified` for the trust grade. The file names OKF reserves, `index.md` and `log.md`,
+are the ones skipped above. The format is not required: a file without frontmatter, or with
+frontmatter that does not parse, is indexed, and the keys it lacks take their defaults.
+
 When there is no config file, or the config has no `memory` section, `ingest` and `search`
 print the key to declare with an example and exit `2`. No database is created.
 

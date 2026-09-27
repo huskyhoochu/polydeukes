@@ -55,6 +55,15 @@ memory:
 (`docs/guide#install`). 첫 H2 앞의 본문은 앵커가 빈 행이 됩니다. 이 절의 나머지 키인 `typeMap`,
 `ticket`, `weights`는 [설정 참조](../configuration/index.ko.md#memory)에 있습니다.
 
+문서는
+[Open Knowledge Format(OKF) v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md),
+곧 YAML frontmatter가 달린 마크다운으로 작성하기를 권장합니다. 이 명세를 따르는 묶음(bundle)은
+그대로 색인됩니다. `ingest`가 읽는 OKF 키는 다음과 같습니다. `title`은 문서 제목, `type`은
+`typeMap`과 `weights`가 쓰는 유형입니다. `status`가 `deprecated`인 문서의 절은 결과의 맨 뒤에
+놓이고, `stale_after`가 지난 문서의 결과에는 오래됨 표시가 붙으며, `verified`는 신뢰 등급을
+정합니다. 위에서 건너뛴다고 한 `index.md`와 `log.md`는 OKF가 예약한 파일 이름입니다. 이 형식은
+필수가 아닙니다. frontmatter가 없거나 해석되지 않는 파일도 색인되며, 없는 키는 기본값을 씁니다.
+
 설정 파일이 없거나 설정에 `memory` 절이 없으면 `ingest`와 `search`는 선언할 키와 예시를 출력하고
 `2`로 종료합니다. 데이터베이스는 만들지 않습니다.
 
