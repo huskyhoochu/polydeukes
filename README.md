@@ -116,6 +116,7 @@ pdks memory ingest       # index the project's markdown into .polydeukes/memory.
 pdks memory search <query> | show <id>             # search that index, or show a document or section
 pdks memory lint | stats                           # report broken links, or count documents, links, and isolated documents
 pdks memory obligations <key>                      # list every obligation the config's rules extracted for one key
+pdks memory supersession <id>                      # list the chain of documents that replace, or were replaced by, one document
 ```
 
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a

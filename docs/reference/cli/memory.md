@@ -16,6 +16,7 @@ pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
+pdks memory supersession <id> [--json]
 pdks memory stats [--json]
 pdks memory usage [--json]
 ```
@@ -129,6 +130,10 @@ contains, and the section takes the score of its best passage. A long section is
 by the part that matches rather than by its whole length. Results still name sections, and a
 section appears once however many of its passages match.
 
+The sections of a document whose status is `deprecated`, or that another document replaces by the
+config's [`supersedes` rules](../configuration/index.md#memory), come after every other result,
+ordered among themselves by score.
+
 The first line of the table form is the time of the last ingest, followed by one line per
 result:
 
@@ -139,7 +144,8 @@ docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 
 Each result line carries five columns separated by a tab, shown as `⇥` above: the section id,
 the match path (`and`, `or`, or `like`), the document's status (followed by `, stale` when its
-`stale_after` date has passed), the trust grade, and `<document title> › <section title>` (the
+`stale_after` date has passed, then by `, superseded by <id> <id>…` naming the documents that
+replace it), the trust grade, and `<document title> › <section title>` (the
 document title alone for the text before the first H2). The match path belongs to each result:
 `or` when the section lacks one of the terms, `like` when it contains every term and at least
 one matched as a word shorter than three characters or as a prefix of the section id, and `and`
@@ -202,6 +208,8 @@ time of the last ingest, followed by one line per violation as `<rule>  <id>  <d
 unresolved  docs/guide#install  setup.md
 unlinked  docs/notes/release  REL-12
 untyped  docs/scratch
+unresolved-supersession  docs/adr/0007  supersedes 0003
+unquoted  docs/adr/0009  docs/adr/0004
 ```
 
 | Rule | Reported for | Detail |
@@ -209,8 +217,16 @@ untyped  docs/scratch
 | `unresolved` | a link that resolves to no indexed document | the link as written |
 | `unlinked` | a document that shares its ticket with another document and has no link of its own | the ticket |
 | `untyped` | a document whose frontmatter has no `type`, once any document has one | empty |
+| `unresolved-supersession` | a `supersedes` target that names no document, or more than one by ticket | the direction and the target as written |
+| `unquoted` | a document that declares, by a `direction: supersedes` rule, that it replaces another, and quotes no sentence of it | the replaced document |
 
-`unlinked` needs the `ticket` rules of the config; without them it is never reported. The JSON
+`unlinked` needs the `ticket` rules of the config; without them it is never reported. The two
+supersession rules need the `supersedes` rules. For `unquoted`, a quotation is the text of a
+line starting with `>` below the first H2, or the text inside `「…」` or `“…”`; the document
+passes when one quotation appears in the replaced document's text. Both sides are compared without markdown
+formatting: `>` markers, link and image syntax (their visible text stays), wikilink brackets
+(the alias, or else the name, stays), the characters `*`, `_`, `` ` ``, and `~`, and repeated
+whitespace are removed first. The JSON
 form is `{ "ingestedAt": …, "violations": [ … ] }`. `lint` exits `1` when it reports any
 violation and `0` when it reports none, so a script can use it as a check. Like `search`, it
 reads the index rather than the files: run `pdks memory ingest` first to lint the current text.
@@ -249,6 +265,34 @@ listed as well, and deciding what each line asks of the key is left to the reade
 config declares no `memory.obligations` rule, `obligations` exits `2` with one line naming the
 key to declare, because an empty answer would read as "no obligation". Like `search`, it reads
 the index rather than the files, and a changed rule takes effect after the next `ingest`.
+
+<a id="supersession"></a>
+## `pdks memory supersession`
+
+```sh
+pdks memory supersession docs/adr/0004
+pdks memory supersession docs/adr/0004 --json
+```
+
+`supersession` lists the replacement chain through one document, with no limit: the documents
+that replace it, the documents that replace those, and so on, and in the other direction the
+documents it replaces and what those replace. It follows each direction on its own, so a
+document that another member of the chain also replaces is not listed. The pairs come from the
+`memory.supersedes` rules of the config
+([configuration reference](../configuration/index.md#memory)). The first line of the table form
+is the time of the last ingest, followed by one line per pair:
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+docs/adr/0004⇥docs/adr/0002
+docs/adr/0009⇥docs/adr/0004
+```
+
+Each line carries the newer document id and, after a tab, the one it replaces, ordered by the
+newer id and then the older. The JSON form is `{ "ingestedAt": …, "supersession": [ … ] }`,
+where each pair carries `newer` and `older`. A document with no pair exits `0` with the header
+alone, or with an empty list; an id that is not a document in the index exits `2` like `show`.
+Like `show`, it reads the index alone and does not need the config.
 
 <a id="stats"></a>
 ## `pdks memory stats`
@@ -350,9 +394,9 @@ responsibility, and the same `.polydeukes/` line in `.gitignore` covers it.
 | An argument list outside the syntax above | `2` | Usage on stderr, empty stdout |
 | No config, or no `memory` section (`ingest`, `search`, `obligations`) | `2` | The key to declare on stderr |
 | No `memory.obligations` rule (`obligations`) | `2` | The key to declare on stderr |
-| No index file, or no completed ingest (`search`, `show`, `lint`, `obligations`, `stats`, `usage`) | `2` | The ingest hint on stderr |
+| No index file, or no completed ingest (`search`, `show`, `lint`, `obligations`, `supersession`, `stats`, `usage`) | `2` | The ingest hint on stderr |
 | No query log, or no line of it parses (`usage`) | `2` | The log hint on stderr, empty stdout |
-| An id not in the index (`show`) | `2` | Message on stderr, empty stdout |
+| An id not in the index (`show`, `supersession`) | `2` | Message on stderr, empty stdout |
 | `@polydeukes/memory` not installed | `2` | The install hint on stderr |
 | Any other error | `2` | `pdks memory: <message>` on stderr, empty stdout |
 

@@ -175,6 +175,10 @@ memory:
     - line: '^\s*[-*] \[ \]'
       key: '[A-Z]+-[0-9]+'
     - section: '^Unresolved questions$'
+  supersedes:
+    - line: 'superseded by'
+      key: '(?<=RFC )[0-9]+'
+      direction: superseded-by
 ```
 
 | Key | Required | What it does |
@@ -185,13 +189,16 @@ memory:
 | `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
 | `weights` | no | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results |
 | `obligations` | no | A list of rules that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line rule has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section rule has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` rules; a document without a ticket yields none. An entry has one form or the other |
+| `supersedes` | no | A list of rules that record which document replaces which. Each rule has `line`, `key`, and `direction`: in every section, each line that `line` matches names one target per match of `key` in that line. `direction: supersedes` means the document replaces the target; `direction: superseded-by` means the target replaces the document. A target resolves first by document name, as a wikilink name does (the document id equals it or ends in `/<target>`, ignoring case, the declaring document's directory first among several), then to the one other document whose ticket equals it; otherwise it stays unresolved and [`pdks memory lint`](../cli/memory.md#lint) reports it. A replaced document's sections rank after the others in search, and [`pdks memory supersession`](../cli/memory.md#supersession) lists the chain |
 
-Keys outside these six are rejected, as are an empty `include`, an `exclude` that is not a list
+Keys outside these seven are rejected, as are an empty `include`, an `exclude` that is not a list
 or holds anything but non-empty strings, a `typeMap` value that is not a
 non-empty string, a negative or non-numeric weight, a `pattern`, `line`, `key`, or `section`
-that is not a valid regular expression, and an `obligations` entry that mixes the two forms or
-lacks a key its form needs. A change to `typeMap`, `ticket`, or `obligations` reprocesses every
-document on the next `pdks memory ingest`.
+that is not a valid regular expression, an `obligations` entry that mixes the two forms or
+lacks a key its form needs, and a `supersedes` entry that lacks `line`, `key`, or `direction`,
+carries another key, or has a `direction` other than `supersedes` or `superseded-by`. A change
+to `typeMap`, `ticket`, `obligations`, or `supersedes` reprocesses every document on the next
+`pdks memory ingest`.
 
 <a id="three-lists"></a>
 ## The three discipline lists

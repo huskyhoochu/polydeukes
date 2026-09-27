@@ -17,6 +17,7 @@ pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
+pdks memory supersession <id> [--json]
 pdks memory stats [--json]
 pdks memory usage [--json]
 ```
@@ -125,6 +126,9 @@ pdks memory search release notes --json
 절은 전체 길이가 아니라 낱말이 맞은 부분으로 순위가 정해집니다. 결과는 여전히 절을 가리키며, 구간이
 여러 개 맞아도 절은 한 번만 나옵니다.
 
+상태가 `deprecated`인 문서, 그리고 설정의 [`supersedes` 규칙](../configuration/index.ko.md#memory)에 따라
+다른 문서가 대체한 문서의 절은 나머지 결과 뒤에 오고, 그 안에서는 점수 순으로 정렬됩니다.
+
 표 형태의 첫 줄은 마지막 ingest 시각이고, 이어서 결과마다 한 줄이 나옵니다.
 
 ```text
@@ -133,7 +137,8 @@ docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 ```
 
 결과 한 줄에는 탭(위 예시의 `⇥`)으로 구분한 다섯 열이 들어갑니다. 절 식별자, 매치 경로(`and`,
-`or`, `like`), 문서의 상태(`stale_after` 날짜가 지났으면 뒤에 `, stale`), 신뢰 등급,
+`or`, `like`), 문서의 상태(`stale_after` 날짜가 지났으면 뒤에 `, stale`, 다른 문서가 대체했으면 그 뒤에
+대체한 문서를 적은 `, superseded by <id> <id>…`), 신뢰 등급,
 `<문서 제목> › <절 제목>`(첫 H2 앞 본문이면 문서 제목만)입니다. 매치 경로는 결과마다 정해집니다.
 절이 검색 낱말 가운데 하나라도 담지 않으면 `or`, 모든 낱말을 담고 그중 하나라도 세 글자보다 짧은
 낱말이나 절 식별자의 앞부분으로 맞았으면 `like`, 나머지는 `and`입니다. JSON 형태는 `{ "ingestedAt": …, "results": [ … ] }`입니다.
@@ -194,6 +199,8 @@ pdks memory lint --json
 unresolved  docs/guide#install  setup.md
 unlinked  docs/notes/release  REL-12
 untyped  docs/scratch
+unresolved-supersession  docs/adr/0007  supersedes 0003
+unquoted  docs/adr/0009  docs/adr/0004
 ```
 
 | 규칙 | 보고 대상 | 세부 |
@@ -201,8 +208,14 @@ untyped  docs/scratch
 | `unresolved` | 색인된 어떤 문서로도 해소되지 않는 링크 | 적힌 그대로의 링크 |
 | `unlinked` | 다른 문서와 티켓을 공유하면서 자기 링크가 하나도 없는 문서 | 티켓 |
 | `untyped` | frontmatter에 `type`이 없는 문서. `type`을 가진 문서가 하나라도 있을 때만 보고합니다 | 비어 있음 |
+| `unresolved-supersession` | 어떤 문서도 가리키지 않거나 티켓으로 둘 이상을 가리키는 `supersedes` 대상 | 방향과 적힌 그대로의 대상 |
+| `unquoted` | `direction: supersedes` 규칙으로 다른 문서를 대체한다고 선언했지만 그 문서의 문장을 하나도 인용하지 않은 문서 | 대체된 문서 |
 
-`unlinked`는 설정의 `ticket` 규칙이 있어야 보고됩니다. 규칙이 없으면 보고하지 않습니다. JSON 형식은
+`unlinked`는 설정의 `ticket` 규칙이 있어야 보고됩니다. 규칙이 없으면 보고하지 않습니다. 대체 관련 규칙 둘은
+`supersedes` 규칙이 있어야 보고됩니다. `unquoted`에서 인용문은 첫 H2 아래에서 `>`로 시작하는 줄의 텍스트, 그리고
+`「…」`나 `“…”` 안의 텍스트입니다. 인용문 하나라도 대체된 문서의 본문에 있으면 통과합니다. 두 쪽 모두 markdown 서식을
+걷어낸 뒤 비교합니다. `>` 표지, 링크와 이미지 문법(보이는 텍스트는 남김), 위키링크 괄호(별칭이 있으면 별칭,
+없으면 이름을 남김), `*` · `_` · `` ` `` · `~` 문자, 연속된 공백을 먼저 지웁니다. JSON 형식은
 `{ "ingestedAt": …, "violations": [ … ] }`입니다. `lint`는 위반을 하나라도 보고하면 `1`, 하나도 없으면
 `0`으로 종료하므로 스크립트에서 검사로 쓸 수 있습니다. `search`처럼 파일이 아니라 색인을 읽으므로, 현재
 본문을 검사하려면 먼저 `pdks memory ingest`를 실행합니다. 링크를 읽고 해소하는 규칙은
@@ -237,6 +250,31 @@ docs/release-plan#follow-ups⇥- [ ] REL-12 move the changelog step
 각 줄이 그 키에 무엇을 요구하는지는 읽는 사람이 판단합니다. 설정에 `memory.obligations` 규칙이 없으면,
 빈 응답이 「의무 없음」으로 읽히지 않도록 `obligations`는 선언할 키를 알리는 한 줄을 출력하고 `2`로
 종료합니다. `search`와 마찬가지로 파일이 아니라 색인을 읽으므로, 규칙을 바꾸면 다음 `ingest`부터 반영됩니다.
+
+<a id="supersession"></a>
+## `pdks memory supersession`
+
+```sh
+pdks memory supersession docs/adr/0004
+pdks memory supersession docs/adr/0004 --json
+```
+
+`supersession`은 문서 하나를 지나는 대체(supersession) 사슬을 상한 없이 전부 나열합니다. 그 문서를 대체한
+문서, 그 문서를 다시 대체한 문서를 차례로 따라가고, 반대 방향으로는 그 문서가 대체한 문서와 그 문서가 대체한
+문서를 따라갑니다. 방향마다 따로 따라가므로, 사슬의 다른 문서가 함께 대체한 문서는 나열하지 않습니다. 대체
+관계는 설정의 `memory.supersedes` 규칙에서 나옵니다([설정 참조](../configuration/index.ko.md#memory)). 표 형태의
+첫 줄은 마지막 ingest 시각이고, 이어서 대체 관계마다 한 줄이 나옵니다.
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+docs/adr/0004⇥docs/adr/0002
+docs/adr/0009⇥docs/adr/0004
+```
+
+각 줄에는 새 문서의 식별자와, 탭 뒤에 그 문서가 대체한 문서의 식별자가 들어갑니다. 줄은 새 문서 식별자,
+그다음 옛 문서 식별자 순으로 정렬됩니다. JSON 형태는 `{ "ingestedAt": …, "supersession": [ … ] }`이고, 항목마다
+`newer`와 `older`를 담습니다. 대체 관계가 없는 문서는 머리 줄만 출력하거나 빈 목록을 내고 `0`으로 종료합니다.
+색인에 없는 문서 식별자는 `show`와 같이 `2`로 종료합니다. `show`처럼 색인만 읽으므로 설정이 필요하지 않습니다.
 
 <a id="stats"></a>
 ## `pdks memory stats`
@@ -338,9 +376,9 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 | 위 구문 밖의 인자 조합 | `2` | stderr에 사용법, stdout은 비어 있음 |
 | 설정 파일이 없거나 `memory` 절이 없음(`ingest`, `search`, `obligations`) | `2` | stderr에 선언할 키 |
 | `memory.obligations` 규칙이 없음(`obligations`) | `2` | stderr에 선언할 키 |
-| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `obligations`, `stats`, `usage`) | `2` | stderr에 ingest 안내 |
+| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `obligations`, `supersession`, `stats`, `usage`) | `2` | stderr에 ingest 안내 |
 | 조회 로그가 없거나 해석되는 줄이 없음(`usage`) | `2` | stderr에 로그 안내, stdout은 비어 있음 |
-| 색인에 없는 식별자(`show`) | `2` | stderr에 문구, stdout은 비어 있음 |
+| 색인에 없는 식별자(`show`, `supersession`) | `2` | stderr에 문구, stdout은 비어 있음 |
 | `@polydeukes/memory`가 설치되지 않음 | `2` | stderr에 설치 안내 |
 | 그 밖의 오류 | `2` | stderr에 `pdks memory: <오류 문구>`, stdout은 비어 있음 |
 

@@ -169,6 +169,10 @@ memory:
     - line: '^\s*[-*] \[ \]'
       key: '[A-Z]+-[0-9]+'
     - section: '^Unresolved questions$'
+  supersedes:
+    - line: 'superseded by'
+      key: '(?<=RFC )[0-9]+'
+      direction: superseded-by
 ```
 
 | 키 | 필수 | 하는 일 |
@@ -179,12 +183,14 @@ memory:
 | `ticket` | 아니요 | 문서와 함께 저장할 티켓 값을 얻는 방법의 순서 있는 목록입니다. `from: title`은 제목을, `from: frontmatter`는 `key`로 지정한 frontmatter 필드를 읽고, `from: path`는 문서 ID, 즉 `pdks memory`를 실행한 디렉터리를 기준으로 한 파일 경로에서 `.md`를 뗀 문자열(`text/2094-nll`)을 읽습니다. `type`은 frontmatter의 `type`이 그 값과 같은 문서로 항목을 한정하고, `pattern`은 정규식의 첫 일치 부분만 남깁니다. 비어 있지 않은 값을 처음 낸 항목이 이깁니다 |
 | `weights` | 아니요 | 저장된 종류를 음이 아닌 수에 대응시킵니다. 가중치가 클수록 그 종류의 절이 검색 결과에서 앞에 옵니다 |
 | `obligations` | 아니요 | [`pdks memory obligations`](../cli/memory.ko.md#obligations)가 나열할 의무(obligation)를 추출하는 규칙의 목록입니다. 줄 규칙은 `line`과 `key`를 가집니다. 모든 절에서 `line`에 맞는 줄마다, 그 줄 안에서 `key`에 맞는 부분 하나당 의무 하나를 만들고 맞은 문자열을 키로 삼습니다. 절 규칙은 `section` 하나만 가집니다. 제목이 `section`에 맞는 H2 절 하나가 의무 하나이고, 키는 `ticket` 규칙이 얻은 문서의 티켓입니다. 티켓이 없는 문서에서는 의무가 생기지 않습니다. 한 항목은 두 형태 중 하나만 씁니다 |
+| `supersedes` | 아니요 | 어느 문서가 어느 문서를 대체(supersede)하는지 기록하는 규칙의 목록입니다. 규칙마다 `line`, `key`, `direction`을 가집니다. 모든 절에서 `line`에 맞는 줄마다, 그 줄 안에서 `key`에 맞는 부분 하나당 대상 하나를 적은 것으로 봅니다. `direction: supersedes`는 이 문서가 대상을 대체한다는 뜻이고, `direction: superseded-by`는 대상이 이 문서를 대체한다는 뜻입니다. 대상은 먼저 위키링크 이름과 같은 방식으로 문서 이름에서 찾고(문서 ID가 대상과 같거나 `/<대상>`으로 끝나는 문서, 대소문자 무시, 여럿이면 선언한 문서와 같은 디렉터리의 것), 그다음 티켓이 대상과 같은 다른 문서가 하나일 때 그 문서로 정합니다. 둘 다 아니면 미해소로 남고 [`pdks memory lint`](../cli/memory.ko.md#lint)가 보고합니다. 대체된 문서의 절은 검색 결과에서 다른 결과 뒤에 오고, [`pdks memory supersession`](../cli/memory.ko.md#supersession)이 대체 사슬을 나열합니다 |
 
-이 여섯 키 밖의 키는 거부합니다. 빈 `include`, 목록이 아니거나 비어 있지 않은 문자열 외의 값이 든
+이 일곱 키 밖의 키는 거부합니다. 빈 `include`, 목록이 아니거나 비어 있지 않은 문자열 외의 값이 든
 `exclude`, 비어 있지 않은 문자열이 아닌 `typeMap` 값, 음수이거나 수가 아닌 가중치, 유효한 정규식이 아닌
-`pattern` · `line` · `key` · `section`, 두 형태를 섞었거나 그 형태에 필요한 키가 없는 `obligations` 항목도
-거부합니다. `typeMap`이나 `ticket`, `obligations`를 바꾸면 다음 `pdks memory ingest`에서 모든 문서를 다시
-처리합니다.
+`pattern` · `line` · `key` · `section`, 두 형태를 섞었거나 그 형태에 필요한 키가 없는 `obligations` 항목,
+`line` · `key` · `direction` 중 하나가 없거나 다른 키를 가졌거나 `direction`이 `supersedes`와 `superseded-by`
+밖의 값인 `supersedes` 항목도 거부합니다. `typeMap`이나 `ticket`, `obligations`, `supersedes`를 바꾸면 다음
+`pdks memory ingest`에서 모든 문서를 다시 처리합니다.
 
 <a id="three-lists"></a>
 ## 규율 목록 셋

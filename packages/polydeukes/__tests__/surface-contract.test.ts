@@ -116,6 +116,7 @@ const MEMORY_VERBS = [
   'ingestMemory',
   'lintMemory',
   'listObligations',
+  'listSupersession',
   'openMemoryDb',
   'searchMemory',
   'showMemory',
@@ -126,6 +127,7 @@ const MEMORY_TYPES = [
   'IngestMemorySpec',
   'LintMemorySpec',
   'ListObligationsSpec',
+  'ListSupersessionSpec',
   'MemoryConfig',
   'MemoryDocument',
   'MemoryIndexState',
@@ -137,6 +139,7 @@ const MEMORY_TYPES = [
   'MemorySearchResult',
   'MemorySection',
   'MemoryShownSection',
+  'MemorySupersession',
   'MemoryUsage',
   'MemoryViolation',
   'OpenMemoryDbSpec',
@@ -202,7 +205,7 @@ describe('the memory package is publishable', () => {
   // A verb missing from the barrel fails the umbrella's dynamic import at call time in
   // every consumer; `parseDocument`, `replaceDocument`, or `optimizeMemoryDb` re-exported
   // widens the contract to functions no caller fills a spec for.
-  it('its barrel re-exports exactly the eight verbs and the twenty-one types', () => {
+  it('its barrel re-exports exactly the nine verbs and the twenty-three types', () => {
     const names = barrelNames(readFileSync(join(MEMORY_DIR, 'src', 'index.ts'), 'utf-8'));
 
     expect(names.runtime).toEqual(MEMORY_VERBS);

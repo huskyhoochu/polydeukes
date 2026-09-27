@@ -15,7 +15,13 @@ const memory = {
     { line: '^\\s*[-*] \\[ \\]', key: '[A-Z]+-[0-9]+[a-z]?' },
     { section: '^Unresolved questions$' },
   ],
+  supersedes: [
+    { line: '(?<!partially )superseded by', key: '(?<=RFC )[0-9]+', direction: 'superseded-by' },
+    { line: '[Ss]upersedes', key: '(?<=RFC )[0-9]+', direction: 'supersedes' },
+  ],
 };
+/** A well-formed supersession rule every faulty fixture below varies one field of. */
+const supersedesRule = { line: 'x', key: 'y', direction: 'supersedes' };
 
 function accepted(value: unknown): boolean {
   try {
@@ -101,6 +107,71 @@ describe('memory config data contract', () => {
     ],
     [{ ...validLanguages, memory: { ...memory, obligations: [{}] } }, false],
     [{ ...validLanguages, memory: { ...memory, obligations: { line: 'x', key: 'y' } } }, false],
+    // Supersession rules: both directions and an empty list pass; one fixture per missing
+    // field, per non-string field, the third direction, an unknown key, a malformed pattern,
+    // and a non-array, so neither side admits a rule the other refuses.
+    [{ ...validLanguages, memory: { ...memory, supersedes: [] } }, true],
+    [{ ...validLanguages, memory: { ...memory, supersedes: [supersedesRule] } }, true],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ ...supersedesRule, direction: 'superseded-by' }] },
+      },
+      true,
+    ],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ key: 'y', direction: 'supersedes' }] },
+      },
+      false,
+    ],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ line: 'x', direction: 'supersedes' }] },
+      },
+      false,
+    ],
+    [{ ...validLanguages, memory: { ...memory, supersedes: [{ line: 'x', key: 'y' }] } }, false],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ ...supersedesRule, direction: 'replaces' }] },
+      },
+      false,
+    ],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ ...supersedesRule, direction: 'Supersedes' }] },
+      },
+      false,
+    ],
+    [
+      { ...validLanguages, memory: { ...memory, supersedes: [{ ...supersedesRule, line: 1 }] } },
+      false,
+    ],
+    [
+      { ...validLanguages, memory: { ...memory, supersedes: [{ ...supersedesRule, key: 1 }] } },
+      false,
+    ],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, supersedes: [{ ...supersedesRule, extra: true }] },
+      },
+      false,
+    ],
+    [
+      { ...validLanguages, memory: { ...memory, supersedes: [{ ...supersedesRule, line: '[' }] } },
+      false,
+    ],
+    [
+      { ...validLanguages, memory: { ...memory, supersedes: [{ ...supersedesRule, key: '[' }] } },
+      false,
+    ],
+    [{ ...validLanguages, memory: { ...memory, supersedes: supersedesRule } }, false],
   ] as const)('schema and runtime both judge memory fixture %#', (config, expected) => {
     expect(accepted(config)).toBe(expected);
     expect(validate(config)).toBe(expected);
@@ -130,6 +201,18 @@ describe('memory config data contract', () => {
     [{ ...memory, obligations: [{ section: '[' }] }, 'memory.obligations[0]'],
     [{ ...memory, obligations: [{ line: 'x', key: '[' }] }, 'memory.obligations[0]'],
     [{ ...memory, obligations: { line: 'x', key: 'y' } }, 'memory.obligations'],
+    // The second entry is the faulty one, so a message that always names index 0 fails; a
+    // rejection that names `memory.obligations` for a `supersedes` fault sends the user to
+    // the wrong list.
+    [{ ...memory, supersedes: [supersedesRule, { line: 'x', key: 'y' }] }, 'memory.supersedes[1]'],
+    [
+      { ...memory, supersedes: [{ ...supersedesRule, direction: 'replaces' }] },
+      'memory.supersedes[0]',
+    ],
+    [{ ...memory, supersedes: [{ ...supersedesRule, line: 1 }] }, 'memory.supersedes[0]'],
+    [{ ...memory, supersedes: [{ ...supersedesRule, extra: true }] }, 'memory.supersedes[0]'],
+    [{ ...memory, supersedes: [{ ...supersedesRule, key: '[' }] }, 'memory.supersedes[0]'],
+    [{ ...memory, supersedes: supersedesRule }, 'memory.supersedes'],
   ] as const)('names the invalid memory location %#', (candidate, location) => {
     try {
       defineConfig({ ...validLanguages, memory: candidate });

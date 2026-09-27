@@ -28,6 +28,7 @@ Public contract symbols include:
   `MemoryLink`
 - `lintMemory` · `LintMemorySpec` · `MemoryLintResult` · `MemoryViolation`
 - `listObligations` · `ListObligationsSpec` · `MemoryObligation`
+- `listSupersession` · `ListSupersessionSpec` · `MemorySupersession`
 - `describeMemoryIndex` · `DescribeMemoryIndexSpec` · `MemoryIndexState`
 - `summarizeMemoryUsage` · `SummarizeMemoryUsageSpec` · `MemoryLogEntry` · `MemoryUsage`
 - `MemoryConfig`
@@ -50,7 +51,8 @@ db.close();
 ```
 
 The command line form of the same calls is `pdks memory ingest`, `pdks memory search`,
-`pdks memory show`, `pdks memory lint`, `pdks memory obligations`, and `pdks memory stats`.
+`pdks memory show`, `pdks memory lint`, `pdks memory obligations`, `pdks memory supersession`,
+and `pdks memory stats`.
 
 <a id="see-also"></a>
 ## See also

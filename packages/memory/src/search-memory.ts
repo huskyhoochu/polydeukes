@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { SUPERSESSION_PAIRS } from './list-supersession.ts';
 import type { MemoryConfig } from './memory-config.ts';
 import { normalizeQuery } from './normalize-query.ts';
 
@@ -21,6 +22,8 @@ export type MemorySearchResult = {
   trust: 'human-reviewed' | 'machine-verified' | 'unverified';
   stale: boolean;
   matchPath: 'and' | 'or' | 'like';
+  /** the documents that directly replace this section's document, sorted; empty when none */
+  supersededBy: string[];
 };
 
 // `chunks` holds the term's score in each chunk of the section it matched; a section matched
@@ -190,6 +193,7 @@ export async function searchMemory({
   if (own) db.exec('BEGIN');
   let matches: Map<number, Match>[];
   let rows: ResultRow[];
+  const supersededBy = new Map<string, string[]>();
   try {
     matches = terms.map((term) => termMatches(db, term));
     const allIds = new Set(matches.flatMap((set) => [...set.keys()]));
@@ -206,6 +210,17 @@ export async function searchMemory({
                WHERE s.rowid IN (SELECT value FROM json_each(?))`,
             )
             .all(JSON.stringify(ids)) as ResultRow[]);
+    const pairs = db
+      .prepare(
+        `SELECT newer, older FROM (${SUPERSESSION_PAIRS})
+         WHERE older IN (SELECT value FROM json_each(?)) ORDER BY newer`,
+      )
+      .all(JSON.stringify([...new Set(rows.map((row) => row.concept_id))])) as {
+      newer: string;
+      older: string;
+    }[];
+    for (const { newer, older } of pairs)
+      supersededBy.set(older, [...(supersededBy.get(older) ?? []), newer]);
   } finally {
     if (own) db.exec('COMMIT');
   }
@@ -232,6 +247,7 @@ export async function searchMemory({
         stale: Number.isFinite(staleTime) && staleTime <= now.getTime(),
         matchPath:
           hits.length < matches.length ? 'or' : hits.some((hit) => hit.like) ? 'like' : 'and',
+        supersededBy: supersededBy.get(row.concept_id) ?? [],
       };
       return {
         result,
@@ -243,8 +259,10 @@ export async function searchMemory({
       };
     })
     .sort((a, b) => {
-      const status =
-        Number(a.result.status === 'deprecated') - Number(b.result.status === 'deprecated');
+      // A superseded document sorts with the deprecated ones, behind every other result.
+      const retired = ({ result }: typeof a): number =>
+        Number(result.status === 'deprecated' || result.supersededBy.length > 0);
+      const status = retired(a) - retired(b);
       return (
         status ||
         a.score - b.score ||

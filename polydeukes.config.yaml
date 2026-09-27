@@ -29,6 +29,11 @@ memory:
       key: "[A-Z]+-[0-9]+[a-z]?"
     - line: "이월|carry-over"
       key: "[A-Z]+-[0-9]+[a-z]?"
+  # A document that replaces another says so on a `> **대체:**` line linking it by file name.
+  supersedes:
+    - line: '^> \*\*대체:\*\*'
+      key: '[\w.-]+(?=\.md\))'
+      direction: supersedes
 
 # Read by both surfaces. Two kinds: a gate definition (an edit disarms a check rather than
 # passing it) and what a commit can never show (the gitignored dist).

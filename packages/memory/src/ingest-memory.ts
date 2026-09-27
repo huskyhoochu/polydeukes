@@ -31,10 +31,10 @@ function listDocuments(root: string, { include, exclude }: MemoryConfig): Map<st
  * as a new link form being read, so the first ingest after an upgrade reprocesses every document
  * instead of keeping rows the previous version derived.
  */
-const DERIVATION = 3;
+const DERIVATION = 4;
 
-// The stored rows of one text depend on `typeMap`, `ticket`, and `obligations` besides the text
-// itself, so a settings change reprocesses the documents it can affect.
+// The stored rows of one text depend on `typeMap`, `ticket`, `obligations`, and `supersedes`
+// besides the text itself, so a settings change reprocesses the documents it can affect.
 function contentHash(config: MemoryConfig, text: string): string {
   return createHash('sha256')
     .update(
@@ -43,6 +43,7 @@ function contentHash(config: MemoryConfig, text: string): string {
         typeMap: config.typeMap,
         ticket: config.ticket,
         obligations: config.obligations,
+        supersedes: config.supersedes,
       }),
     )
     .update(text)
@@ -50,6 +51,37 @@ function contentHash(config: MemoryConfig, text: string): string {
 }
 
 type Target = [dstConcept: string | null, dstSection: string | null];
+
+/**
+ * Finds a document by name: the one whose id equals the name or ends in `/<name>`, ignoring
+ * case, other than `excluded`; among several, the one in the source's directory. Undefined when
+ * none or more than one remains.
+ */
+function documentNamer(
+  documents: Iterable<string>,
+): (source: string, name: string, excluded?: string) => string | undefined {
+  const byLastSegment = new Map<string, string[]>();
+  for (const id of documents) {
+    const segment = id.slice(id.lastIndexOf('/') + 1).toLowerCase();
+    const ids = byLastSegment.get(segment) ?? [];
+    ids.push(id);
+    byLastSegment.set(segment, ids);
+  }
+  return (source, name, excluded) => {
+    const lower = name.toLowerCase();
+    const candidates = (byLastSegment.get(lower.slice(lower.lastIndexOf('/') + 1)) ?? []).filter(
+      (id) => {
+        const lowerId = id.toLowerCase();
+        return id !== excluded && (lowerId === lower || lowerId.endsWith(`/${lower}`));
+      },
+    );
+    const near =
+      candidates.length > 1
+        ? candidates.filter((id) => posix.dirname(id) === posix.dirname(source))
+        : candidates;
+    return near.length === 1 ? near[0] : undefined;
+  };
+}
 
 /**
  * Rewrites every edge's target from the stored documents and sections, so the result depends
@@ -72,13 +104,7 @@ function resolveEdges(db: DatabaseSync): void {
     rows.push(row);
     byAnchor.set(anchor, rows);
   }
-  const byLastSegment = new Map<string, string[]>();
-  for (const id of documents) {
-    const segment = id.slice(id.lastIndexOf('/') + 1).toLowerCase();
-    const ids = byLastSegment.get(segment) ?? [];
-    ids.push(id);
-    byLastSegment.set(segment, ids);
-  }
+  const namedDocument = documentNamer(documents);
 
   const markdownTarget = (source: string, raw: string): Target => {
     const hash = raw.indexOf('#');
@@ -95,23 +121,6 @@ function resolveEdges(db: DatabaseSync): void {
     if (!documents.has(document)) return [null, null];
     const section = anchor === undefined ? undefined : `${document}#${anchor}`;
     return [document, section !== undefined && sectionIds.has(section) ? section : null];
-  };
-
-  // The document whose id equals the name or ends in `/<name>`, ignoring case; among several,
-  // the one in the source's directory. Undefined when none or more than one remains.
-  const namedDocument = (source: string, name: string): string | undefined => {
-    const lower = name.toLowerCase();
-    const candidates = (byLastSegment.get(lower.slice(lower.lastIndexOf('/') + 1)) ?? []).filter(
-      (id) => {
-        const lowerId = id.toLowerCase();
-        return lowerId === lower || lowerId.endsWith(`/${lower}`);
-      },
-    );
-    const near =
-      candidates.length > 1
-        ? candidates.filter((id) => posix.dirname(id) === posix.dirname(source))
-        : candidates;
-    return near.length === 1 ? near[0] : undefined;
   };
 
   // The name before the alias and the first `#` names a document (empty: the source), and the
@@ -154,11 +163,41 @@ function resolveEdges(db: DatabaseSync): void {
 }
 
 /**
+ * Rewrites every supersession row's target from the stored documents: the document the key
+ * names, else the one document whose ticket equals the key, else none. The declaring document
+ * is never its own target.
+ */
+function resolveSupersession(db: DatabaseSync): void {
+  const concepts = db.prepare('SELECT id, ticket FROM concept').all() as {
+    id: string;
+    ticket: string | null;
+  }[];
+  const namedDocument = documentNamer(concepts.map((row) => row.id));
+  const rows = db.prepare('SELECT concept_id, direction, raw_target FROM supersession').all() as {
+    concept_id: string;
+    direction: string;
+    raw_target: string;
+  }[];
+  const update = db.prepare(
+    'UPDATE supersession SET dst_concept = ? WHERE concept_id = ? AND direction = ? AND raw_target = ?',
+  );
+  for (const row of rows) {
+    const ticketed = concepts.filter(
+      ({ id, ticket }) => ticket === row.raw_target && id !== row.concept_id,
+    );
+    const target =
+      namedDocument(row.concept_id, row.raw_target, row.concept_id) ??
+      (ticketed.length === 1 ? ticketed[0]?.id : undefined);
+    update.run(target ?? null, row.concept_id, row.direction, row.raw_target);
+  }
+}
+
+/**
  * Brings the stored documents in line with the files `config.include` reaches under `root`,
  * minus those `config.exclude` matches, in one write transaction: adds new ones, replaces
  * changed ones (every one under `rebuild`), deletes those whose file is gone or excluded,
- * resolves every link against the result, and stamps the time of the run. On any error the
- * database is left as it was.
+ * resolves every link and supersession row against the result, and stamps the time of the run.
+ * On any error the database is left as it was.
  */
 export function ingestMemory({ db, root, config, rebuild = false }: IngestMemorySpec): void {
   db.exec('BEGIN IMMEDIATE');
@@ -184,6 +223,7 @@ export function ingestMemory({ db, root, config, rebuild = false }: IngestMemory
     const remove = db.prepare('DELETE FROM concept WHERE id = ?');
     for (const id of stored.keys()) if (!documents.has(id)) remove.run(id);
     resolveEdges(db);
+    resolveSupersession(db);
     optimizeMemoryDb({ db });
     // Written on every run, unchanged documents included: the stamp dates the comparison
     // with the files, and it rolls back with the rows it describes.

@@ -17,8 +17,9 @@
 | `ingestMemory` | 쓰기 트랜잭션 하나 안에서 저장된 문서를 `include` glob이 가리키는 파일에 맞춥니다 |
 | `searchMemory` | 검색어를 검색 낱말로 줄이고, 그 낱말을 담은 절을 골라 순서를 정합니다. `Promise`를 돌려줍니다 |
 | `showMemory` | 저장된 문서 하나와 그 절들, 또는 저장된 절 하나를 거기서 나가고 들어오는 링크와 함께 돌려줍니다. 문서라면 티켓이 같은 다른 문서들도 함께 돌려줍니다 |
-| `lintMemory` | 해소되지 않은 링크, 티켓을 공유하면서 링크가 없는 문서, `type`이 없는 문서를 보고합니다 |
+| `lintMemory` | 해소되지 않은 링크, 티켓을 공유하면서 링크가 없는 문서, `type`이 없는 문서, 어떤 문서도 가리키지 않는 `supersedes` 대상, 대체한 문서를 전혀 인용하지 않은 문서를 보고합니다 |
 | `listObligations` | 설정의 `obligations` 규칙으로 ingest 때 추출해 한 키로 저장한 의무를 전부 돌려줍니다 |
+| `listSupersession` | 설정의 `supersedes` 규칙에서 나온 대체 관계 가운데 문서 하나를 지나는 사슬의 쌍을 양방향으로 전부 돌려줍니다. 저장된 문서가 아닌 식별자에는 `undefined`를 돌려줍니다 |
 | `describeMemoryIndex` | 마지막으로 끝난 ingest 시각과 문서 · 절 · 링크 · 미해소 링크 · 고립 문서의 수를 돌려줍니다 |
 | `summarizeMemoryUsage` | 조회 로그의 줄을 색인 문서와 대조해, 자주 반환된 문서, 한 번도 반환되지 않은 문서, 결과가 없거나 `or`로만 맞은 검색을 돌려줍니다 |
 
@@ -135,7 +136,7 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 
 | 타입 | 필드 |
 |---|---|
-| `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath` |
+| `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath`, `supersededBy` |
 | `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links`, `related`(티켓이 같은 문자열인 다른 문서들의 식별자, 식별자 순) |
 | `MemorySection` | `id`, `ord`, `title`, `body` |
 | `MemoryShownSection` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `body`, `ord`, `links` |
@@ -143,6 +144,7 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 | `MemoryLintResult` | `violations` |
 | `MemoryViolation` | `rule`, `id`, `detail` |
 | `MemoryObligation` | `key`, `sectionId`, `docTitle`, `sectionTitle`, `text` — 줄 규칙이면 맞은 줄(앞뒤 공백 제거), 절 규칙이면 절 본문입니다. `sectionId` 순, 같은 절 안에서는 위치 순으로 정렬됩니다 |
+| `MemorySupersession` | `newer`, `older` — 대체 관계 하나. `newer`, 그다음 `older` 순으로 정렬됩니다 |
 | `MemoryIndexState` | `documents`, `ingestedAt`(UTC 기준 ISO 8601 시각. ingest 전에는 `null`), `sections`, `links`, `unresolved`, `isolated` |
 
 `links`는 `{ out, in }`입니다. 문서의 `out`은 그 문서의 절에 적힌 링크이고 `in`은 그 문서로 해소된
@@ -155,7 +157,9 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 `matchPath`는 결과마다 정해집니다. 절이 검색 낱말 가운데 하나라도 담지 않으면 `or`, 모든 낱말을 담고
 그중 하나라도 부분 문자열이나 식별자 앞부분으로 일치했으면 `like`, 모든 낱말이 전문 색인으로 일치했으면
 `and`입니다. 검색어가 검색 낱말이 되는 규칙은 [`pdks memory search`](../cli/memory.ko.md#search)에 있습니다.
-`deprecated` 문서의 절은 맨 뒤로 가고, 설정한 가중치는 해당 문서 종류를 앞으로 옮깁니다.
+`deprecated` 문서와 다른 문서가 대체한 문서의 절은 맨 뒤로 갑니다. `supersededBy`는 결과의 문서를 직접
+대체한 문서의 식별자를 식별자 순으로 담고, 대체되지 않았으면 비어 있습니다. 설정한 가중치는 해당 문서 종류를
+앞으로 옮깁니다.
 
 <a id="limits"></a>
 ## 선언된 한계

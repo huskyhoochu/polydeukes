@@ -22,6 +22,11 @@ export {
   listObligations,
   type MemoryObligation,
 } from './list-obligations.ts';
+export {
+  type ListSupersessionSpec,
+  listSupersession,
+  type MemorySupersession,
+} from './list-supersession.ts';
 export type { MemoryConfig } from './memory-config.ts';
 export { type OpenMemoryDbSpec, openMemoryDb } from './schema.ts';
 export { type MemorySearchResult, type SearchMemorySpec, searchMemory } from './search-memory.ts';

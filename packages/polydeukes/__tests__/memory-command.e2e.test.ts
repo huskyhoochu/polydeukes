@@ -17,6 +17,7 @@ import {
   describeMemoryIndex,
   lintMemory,
   listObligations,
+  listSupersession,
   openMemoryDb,
   searchMemory,
   showMemory,
@@ -1359,5 +1360,236 @@ describe('pdks memory usage and the memory log', () => {
       `miss${TABLE_SEPARATOR}1${TABLE_SEPARATOR}zz-no such-491`,
     );
     expect(JSON.parse(json.stdout).misses).toEqual([{ query, count: 1 }]);
+  });
+});
+
+describe('pdks memory supersession and the superseded search results', () => {
+  /**
+   * The line marker and key pattern are fixture values. Three chained documents share one
+   * matched body: `chain-new` supersedes `chain-old` and `chain-oldest`, `chain-old`
+   * supersedes `chain-oldest` and is also stale, so one line carries both markers and one
+   * carries two newer ids. The oldest sorts first by id, so a search that ignores supersession
+   * answers it first. A fourth document declares a target no document resolves.
+   */
+  const CHAIN_QUERY = 'chain-term';
+  const CHAIN_BODY = `${CHAIN_QUERY} here.`;
+  const SUPERSESSION_MEMORY: MemoryConfig = {
+    ...MEMORY,
+    supersedes: [{ line: 'Supersedes:', key: '(?<=doc:)[a-z-]+', direction: 'supersedes' }],
+  };
+  const NEW_ID = 'notes/chain-new';
+  const OLD_ID = 'notes/chain-old';
+  const OLDEST_ID = 'notes/chain-oldest';
+  const ORPHAN_ID = 'notes/chain-orphan';
+  const MISSING_TARGET = 'nowhere-doc';
+  const CHAIN_DOCS: [string, string][] = [
+    [
+      'notes/chain-new.md',
+      `---\ntitle: Chain new\ntype: note\n---\n## Topic\n\n${CHAIN_BODY}\n\n## Notes\n\nSupersedes: doc:chain-old and doc:chain-oldest\n`,
+    ],
+    [
+      'notes/chain-old.md',
+      `---\ntitle: Chain old\ntype: note\nstale_after: 2000-01-01T00:00:00Z\n---\n## Topic\n\n${CHAIN_BODY}\n\n## Notes\n\nSupersedes: doc:chain-oldest\n`,
+    ],
+    [
+      'notes/chain-oldest.md',
+      `---\ntitle: Chain oldest\ntype: note\n---\n## Topic\n\n${CHAIN_BODY}\n`,
+    ],
+    [
+      'notes/chain-orphan.md',
+      `---\ntitle: Chain orphan\ntype: note\n---\n## Topic\n\nSupersedes: doc:${MISSING_TARGET}\n`,
+    ],
+  ];
+  const SUPERSEDED_MARK = ', superseded by ';
+
+  function ingestedChain(): void {
+    for (const [relative, text] of CHAIN_DOCS) writeFileSync(join(projectRoot, relative), text);
+    writeConfig({ memory: SUPERSESSION_MEMORY });
+    const result = pdks('memory', 'ingest');
+    if (result.status !== 0) throw new Error(`fixture ingest failed: ${result.stderr}`);
+  }
+
+  // A status column that never prints the marker, prints it before `, stale`, joins two ids
+  // with a comma, or prints it on the newer document passes an exit-code check; a `--json`
+  // that drops `supersededBy` diverges from `searchMemory`. The oracle is checked first so a
+  // search that ranks the superseded sections first fails here rather than in the table.
+  it('search appends ", superseded by <id> <id>" after the stale marker in the status column and --json carries supersededBy', async () => {
+    ingestedChain();
+    const db = openIndex();
+    const expected = await searchMemory({ db, query: CHAIN_QUERY, config: SUPERSESSION_MEMORY });
+    expect(expected.map((hit) => [hit.id, hit.stale, hit.supersededBy])).toEqual([
+      [`${NEW_ID}#topic`, false, []],
+      [`${OLD_ID}#topic`, true, [NEW_ID]],
+      [`${OLDEST_ID}#topic`, false, [NEW_ID, OLD_ID]],
+    ]);
+
+    const table = pdks('memory', 'search', CHAIN_QUERY);
+    const json = pdks('memory', 'search', CHAIN_QUERY, '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    const statusColumn = table.stdout
+      .trimEnd()
+      .split('\n')
+      .slice(1)
+      .map((line) => line.split(TABLE_SEPARATOR)[2]);
+    expect(statusColumn).toEqual([
+      'stable',
+      `stable${STALE_MARK}${SUPERSEDED_MARK}${NEW_ID}`,
+      `stable${SUPERSEDED_MARK}${NEW_ID} ${OLD_ID}`,
+    ]);
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout).results).toEqual(expected);
+  });
+
+  // A table that prints the pairs older-first, joins them with spaces, drops the stamp header,
+  // or includes the sibling pair (new, oldest) that the chain through `chain-old` never passes
+  // diverges from the pinned bytes; a `--json` keyed `pairs` or lacking the stamp diverges from
+  // `listSupersession` under the same stamp.
+  it('prints the stamp header and one <newer>\\t<older> line per pair of the chain, and --json as { ingestedAt, supersession }', () => {
+    ingestedChain();
+    const db = openIndex();
+    const expected = listSupersession({ db, id: OLD_ID });
+    expect(expected).toEqual([
+      { newer: NEW_ID, older: OLD_ID },
+      { newer: OLD_ID, older: OLDEST_ID },
+    ]);
+    const stamp = describeMemoryIndex({ db }).ingestedAt;
+
+    const table = pdks('memory', 'supersession', OLD_ID);
+    const json = pdks('memory', 'supersession', OLD_ID, '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stderr).toBe('');
+    expect(table.stdout).toBe(
+      [
+        `# ingested at ${stamp}`,
+        `${NEW_ID}${TABLE_SEPARATOR}${OLD_ID}`,
+        `${OLD_ID}${TABLE_SEPARATOR}${OLDEST_ID}`,
+        '',
+      ].join('\n'),
+    );
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, supersession: expected });
+  });
+
+  // A document with no pair answered with exit 2, or with a stdout that is not the header,
+  // reads as a failed command rather than an empty chain.
+  it('answers a document with no pair with exit 0, the header alone, and an empty list', () => {
+    ingestedChain();
+    const stamp = describeMemoryIndex({ db: openIndex() }).ingestedAt;
+
+    const table = pdks('memory', 'supersession', DOC_ID);
+    const json = pdks('memory', 'supersession', DOC_ID, '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stdout).toBe(`# ingested at ${stamp}\n`);
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, supersession: [] });
+  });
+
+  // An unknown document answered with the header and exit 0 is indistinguishable from a
+  // document with no pair; `show` refuses the same identifier with exit 2 and an empty stdout.
+  it.each([{ args: [UNKNOWN_ID] }, { args: [UNKNOWN_ID, '--json'] }])(
+    'refuses an unknown document $args as show does: exit 2, empty stdout, the id on stderr',
+    ({ args }) => {
+      ingestedChain();
+
+      const result = pdks('memory', 'supersession', ...args);
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toContain(UNKNOWN_ID);
+    },
+  );
+
+  // A verb that answers with no document, or reads only the first of two, exits 0 on a shape
+  // the table never promised.
+  it.each([{ args: ['supersession'] }, { args: ['supersession', OLD_ID, NEW_ID] }])(
+    'pdks memory $args exits 2 with usage and an empty stdout',
+    ({ args }) => {
+      ingestedChain();
+
+      const result = pdks('memory', ...args);
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toMatch(/usage/i);
+    },
+  );
+
+  // `supersession` needs the index alone; a verb that loads the config first refuses in a tree
+  // whose config is gone while the index it asks about is still there.
+  it('answers without a config file once the index exists', () => {
+    ingestedChain();
+    rmSync(join(projectRoot, CONFIG_REL));
+
+    const result = pdks('memory', 'supersession', OLD_ID, '--json');
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).supersession).toHaveLength(2);
+  });
+
+  // `openMemoryDb` creates an empty database at a missing path: a verb that opens before it
+  // checks answers "unknown document" from an index nobody built and leaves the file behind.
+  it('exits 2 with the ingest hint before any ingest and creates neither the index nor its directory', () => {
+    writeConfig({ memory: SUPERSESSION_MEMORY });
+
+    const result = pdks('memory', 'supersession', OLD_ID);
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
+    expect(existsSync(join(projectRoot, DB_DIR_REL))).toBe(false);
+  });
+
+  // A lint that stays at exit 0 over an unresolved or unquoted supersession lets a script
+  // read the index as clean; a line that folds the direction and the raw target, or names
+  // the older document as the id of the unquoted row, diverges from the pinned form; the
+  // two new rules come after `untyped` and `unresolved-supersession` before `unquoted`.
+  it('lint exits 1 with an unresolved-supersession line and an unquoted line per pair, and --json as the lintMemory value', () => {
+    writeFileSync(join(projectRoot, UNTYPED_DOC_REL), UNTYPED_DOC_TEXT);
+    ingestedChain();
+    const db = openIndex();
+    const expected = lintMemory({ db });
+    expect(expected.violations.map((v) => v.rule)).toEqual([
+      'untyped',
+      'unresolved-supersession',
+      'unquoted',
+      'unquoted',
+      'unquoted',
+    ]);
+    const stamp = describeMemoryIndex({ db }).ingestedAt;
+
+    const table = pdks('memory', 'lint');
+    const json = pdks('memory', 'lint', '--json');
+
+    expect(table.status).toBe(1);
+    expect(table.stderr).toBe('');
+    expect(table.stdout).toBe(
+      [
+        `# ingested at ${stamp}`,
+        'untyped  notes/untyped',
+        `unresolved-supersession  ${ORPHAN_ID}  supersedes ${MISSING_TARGET}`,
+        `unquoted  ${NEW_ID}  ${OLD_ID}`,
+        `unquoted  ${NEW_ID}  ${OLDEST_ID}`,
+        `unquoted  ${OLD_ID}  ${OLDEST_ID}`,
+        '',
+      ].join('\n'),
+    );
+    expect(json.status).toBe(1);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, violations: expected.violations });
+  });
+
+  // The usage lines are where a user learns the verb exists; one that still lists the verbs
+  // before this one sends them to `--help` for a verb that answers.
+  it('the root and memory usage lines name supersession', () => {
+    const rootUsage = pdks();
+    const memoryUsage = pdks('memory');
+
+    expect(rootUsage.status).toBe(2);
+    const group = /pdks memory \(([^)]*)\)/.exec(rootUsage.stderr)?.[1] ?? '';
+    expect(group).toMatch(/\bsupersession\b/);
+    expect(memoryUsage.status).toBe(2);
+    expect(memoryUsage.stderr).toContain('pdks memory supersession');
   });
 });

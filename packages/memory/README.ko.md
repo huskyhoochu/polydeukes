@@ -27,6 +27,7 @@ Node.js 24.15 이상이 필요합니다. 이 버전부터 `node:sqlite`가 안�
   `MemoryLink`
 - `lintMemory` · `LintMemorySpec` · `MemoryLintResult` · `MemoryViolation`
 - `listObligations` · `ListObligationsSpec` · `MemoryObligation`
+- `listSupersession` · `ListSupersessionSpec` · `MemorySupersession`
 - `describeMemoryIndex` · `DescribeMemoryIndexSpec` · `MemoryIndexState`
 - `summarizeMemoryUsage` · `SummarizeMemoryUsageSpec` · `MemoryLogEntry` · `MemoryUsage`
 - `MemoryConfig`
@@ -49,7 +50,7 @@ db.close();
 ```
 
 같은 호출의 명령줄 형태는 `pdks memory ingest`, `pdks memory search`, `pdks memory show`,
-`pdks memory lint`, `pdks memory stats`입니다.
+`pdks memory lint`, `pdks memory obligations`, `pdks memory supersession`, `pdks memory stats`입니다.
 
 <a id="see-also"></a>
 ## 같이 보기

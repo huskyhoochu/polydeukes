@@ -111,6 +111,11 @@ export type MemoryConfig = {
    * keys the whole section whose title matches by the document's ticket
    */
   obligations?: ({ line: string; key: string } | { section: string })[];
+  /**
+   * every match of `key` on a section line `line` matches names a document; `supersedes` says
+   * the declaring document replaces it, `superseded-by` that it replaces the declaring document
+   */
+  supersedes?: { line: string; key: string; direction: 'supersedes' | 'superseded-by' }[];
 };
 
 /**
@@ -234,10 +239,12 @@ const MEMORY_KEYS: ReadonlySet<string> = new Set([
   'ticket',
   'weights',
   'obligations',
+  'supersedes',
 ]);
 const TICKET_KEYS: ReadonlySet<string> = new Set(['type', 'from', 'key', 'pattern']);
 const LINE_OBLIGATION_KEYS: ReadonlySet<string> = new Set(['line', 'key']);
 const SECTION_OBLIGATION_KEYS: ReadonlySet<string> = new Set(['section']);
+const SUPERSEDES_KEYS: ReadonlySet<string> = new Set(['line', 'key', 'direction']);
 
 function validateMemory(value: unknown): MemoryConfig {
   if (!isPlainObject(value)) throw new ConfigValidationError('memory must be an object');
@@ -314,6 +321,27 @@ function validateMemory(value: unknown): MemoryConfig {
           throw new ConfigValidationError(`${location}.${field} is invalid`);
         }
       }
+    });
+  }
+  if (value.supersedes !== undefined) {
+    if (!Array.isArray(value.supersedes))
+      throw new ConfigValidationError('memory.supersedes must be an array');
+    value.supersedes.forEach((rule, index) => {
+      const location = `memory.supersedes[${index}]`;
+      if (!isPlainObject(rule)) throw new ConfigValidationError(`${location} must be an object`);
+      rejectUnknownKeys(rule, SUPERSEDES_KEYS, location);
+      for (const field of ['line', 'key'] as const) {
+        const pattern = rule[field];
+        if (typeof pattern !== 'string')
+          throw new ConfigValidationError(`${location}.${field} must be a string`);
+        try {
+          new RegExp(pattern);
+        } catch {
+          throw new ConfigValidationError(`${location}.${field} is invalid`);
+        }
+      }
+      if (rule.direction !== 'supersedes' && rule.direction !== 'superseded-by')
+        throw new ConfigValidationError(`${location}.direction is invalid`);
     });
   }
   return value as MemoryConfig;

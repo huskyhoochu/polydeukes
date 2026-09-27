@@ -67,7 +67,18 @@
         },
         "ticket": { "type": "array", "items": { "$ref": "#/$defs/memoryTicket" } },
         "weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
-        "obligations": { "type": "array", "items": { "$ref": "#/$defs/memoryObligation" } }
+        "obligations": { "type": "array", "items": { "$ref": "#/$defs/memoryObligation" } },
+        "supersedes": { "type": "array", "items": { "$ref": "#/$defs/memorySupersedes" } }
+      }
+    },
+    "memorySupersedes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "key", "direction"],
+      "properties": {
+        "line": { "type": "string", "format": "regex" },
+        "key": { "type": "string", "format": "regex" },
+        "direction": { "enum": ["supersedes", "superseded-by"] }
       }
     },
     "memoryObligation": {

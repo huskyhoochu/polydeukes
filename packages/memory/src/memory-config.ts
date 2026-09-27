@@ -16,4 +16,9 @@ export type MemoryConfig = {
    * keys the whole section whose title matches by the document's ticket
    */
   obligations?: ({ line: string; key: string } | { section: string })[];
+  /**
+   * every match of `key` on a section line `line` matches names a document; `supersedes` says
+   * the declaring document replaces it, `superseded-by` that it replaces the declaring document
+   */
+  supersedes?: { line: string; key: string; direction: 'supersedes' | 'superseded-by' }[];
 };

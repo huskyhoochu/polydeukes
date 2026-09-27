@@ -18,8 +18,9 @@
 | `ingestMemory` | Brings the stored documents in line with the files the `include` globs reach, in one write transaction |
 | `searchMemory` | Reduces the query to search terms, finds the sections that hold them, and orders them; returns a `Promise` |
 | `showMemory` | Returns one stored document with its sections, or one stored section, with the links leaving and arriving at it; a document also lists the other documents with the same ticket |
-| `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, and documents without a `type` |
+| `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, documents without a `type`, `supersedes` targets that name no document, and replacing documents that quote nothing of what they replace |
 | `listObligations` | Returns every obligation stored under one key, extracted at ingest by the `obligations` rules of the config |
+| `listSupersession` | Returns every replacement pair on the chain through one document, in both directions, from the `supersedes` rules of the config; `undefined` for an id that is not a stored document |
 | `describeMemoryIndex` | Returns the time of the last completed ingest and the counts of documents, sections, links, unresolved links, and isolated documents |
 | `summarizeMemoryUsage` | Lays query-log entries against the indexed documents: the documents returned most often, the documents never returned, and the searches that found nothing or only `or`-matched rows |
 
@@ -144,7 +145,7 @@ document, in either direction, and no other document has the same ticket.
 
 | Type | Fields |
 |---|---|
-| `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath` |
+| `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath`, `supersededBy` |
 | `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links`, `related` — the ids of the other documents whose ticket is the same string, in id order |
 | `MemorySection` | `id`, `ord`, `title`, `body` |
 | `MemoryShownSection` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `body`, `ord`, `links` |
@@ -152,6 +153,7 @@ document, in either direction, and no other document has the same ticket.
 | `MemoryLintResult` | `violations` |
 | `MemoryViolation` | `rule`, `id`, `detail` |
 | `MemoryObligation` | `key`, `sectionId`, `docTitle`, `sectionTitle`, `text` — the matched line, trimmed, for a line rule, and the section body for a section rule; ordered by `sectionId`, then position in the section |
+| `MemorySupersession` | `newer`, `older` — one replacement pair; ordered by `newer`, then `older` |
 | `MemoryIndexState` | `documents`, `ingestedAt` — ISO 8601 in UTC, or `null` before any ingest — `sections`, `links`, `unresolved`, `isolated` |
 
 `links` is `{ out, in }`. For a document, `out` holds the links written in any of its sections
@@ -165,8 +167,10 @@ entry has any other `by` value, and `unverified` otherwise. `matchPath` is set p
 when the section lacks one of the search terms, `like` when it holds every term and at least one
 matched by substring or id prefix, and `and` when every term matched through the full-text index.
 How a query becomes search terms is described under
-[`pdks memory search`](../cli/memory.md#search). Sections of `deprecated` documents sort last;
-a configured weight moves a document type earlier.
+[`pdks memory search`](../cli/memory.md#search). Sections of `deprecated` documents, and of
+documents another document replaces, sort last; `supersededBy` lists the ids of the documents
+that replace the result's document directly, in id order, and is empty otherwise. A configured
+weight moves a document type earlier.
 
 <a id="limits"></a>
 ## Declared limits

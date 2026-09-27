@@ -53,6 +53,15 @@ CREATE TABLE IF NOT EXISTS obligation (
   PRIMARY KEY (section_id, ord, key)
 ) STRICT;
 
+-- dst_concept is the document raw_target names, NULL when none or more than one does.
+CREATE TABLE IF NOT EXISTS supersession (
+  concept_id  TEXT NOT NULL REFERENCES concept(id) ON DELETE CASCADE,
+  direction   TEXT NOT NULL,
+  raw_target  TEXT NOT NULL,
+  dst_concept TEXT,
+  PRIMARY KEY (concept_id, direction, raw_target)
+) STRICT;
+
 -- start and end count characters as SQLite's substr does, not JavaScript string offsets.
 CREATE TABLE IF NOT EXISTS chunk (
   rowid         INTEGER PRIMARY KEY,

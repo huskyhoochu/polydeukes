@@ -114,6 +114,7 @@ pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db
 pdks memory search <query> | show <id>             # 그 색인을 검색하거나 문서·절을 조회
 pdks memory lint | stats                           # 깨진 링크를 보고하거나 문서·링크·고립 문서 수를 출력
 pdks memory obligations <key>                      # 설정 규칙이 한 키로 추출한 의무를 전부 나열
+pdks memory supersession <id>                      # 문서 하나를 대체했거나 그 문서가 대체한 문서의 사슬을 나열
 ```
 
 설치기는 `.claude/skills/`에 `discipline-draft` 스킬도 만듭니다. 반복되는 문제를 AI

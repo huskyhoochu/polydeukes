@@ -171,8 +171,8 @@ current design is hard to explain without them.
 ## What remains a plan
 
 A verifiable **ledger** and adversarial **verification** are roadmap components, not shipped
-services. Of local **memory**, search and show over the project's documents and the links
-between them ship; queries over replaced records and carried-over obligations do not yet.
+services. Of local **memory**, search and show over the project's documents, the links
+between them, the obligations carried over to a key, and the chain of replaced records ship.
 Telemetry is not the future ledger, documentation search is not a memory system, and running a
 test suite is not an implemented adversarial review service.
 

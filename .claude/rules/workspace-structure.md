@@ -28,8 +28,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), `explain` (the assembled-registration renderer, since CLI-01), and
-  `memory ingest | search | show | obligations | lint | stats | usage` (since MEMORY-15, `lint` ·
-  `stats` since MEMORY-05, `obligations` since MEMORY-14, `usage` since MEMORY-10:
+  `memory ingest | search | show | obligations | supersession | lint | stats | usage` (since MEMORY-15,
+  `lint` · `stats` since MEMORY-05, `obligations` since MEMORY-14, `usage` since MEMORY-10,
+  `supersession` since MEMORY-08:
   `src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`, by dynamic
   import, and only for this command).
   Since CONFIG-03 it owns the config discovery loader
@@ -93,7 +94,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/memory`** (`@polydeukes/memory`) is published and is an **optional peer** of the
   umbrella (`peerDependenciesMeta` optional plus a `devDependencies` entry, which is the turbo
   build edge); its barrel carries `openMemoryDb`, `ingestMemory`, `searchMemory`, `showMemory`,
-  `lintMemory`, `listObligations`, `describeMemoryIndex`, and `summarizeMemoryUsage`. Inside it,
+  `lintMemory`, `listObligations`, `listSupersession`, `describeMemoryIndex`, and
+  `summarizeMemoryUsage`. Inside it,
   `parseDocument` splits a markdown text into
   a preamble row and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` /
   `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
@@ -103,7 +105,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   section by its best passage. `replaceDocument` derives type and
   ticket columns from validated memory settings; `ingestMemory` compares the files the `include`
   globs reach, minus those an `exclude` glob matches, with the stored documents in one write
-  transaction — it skips a document whose hash of text plus type, ticket, and obligation settings is
+  transaction — it skips a document whose hash of text plus type, ticket, obligation, and
+  supersession settings is
   unchanged, replaces a changed one, and deletes one whose file is gone or excluded, then
   resolves every stored link row (`edge`, written per section from `[[x]]` and `.md` links)
   against the whole index, so a skipped document's links still follow
@@ -116,7 +119,12 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   documents once any document has a type. `replaceDocument` also writes `obligation` rows from
   the `obligations` rules (a line rule keys each match on a marker line; a section rule keys a
   matching H2 section by the document's ticket), and `listObligations` returns every row under one
-  key. `ingestMemory` also
+  key. It writes `supersession` rows from the `supersedes` line rules (each match of `key` on a
+  marker line names a target in one `direction`); `ingestMemory` resolves every row after the
+  reconciliation, by document name as a wikilink name resolves and then by a unique ticket, so
+  `searchMemory` sorts a replaced document with the deprecated ones and names its `supersededBy`,
+  `listSupersession` walks the chain both ways, and `lintMemory` reports unresolved targets and a
+  `direction: supersedes` declaration that quotes nothing of what it replaces. `ingestMemory` also
   writes `meta.ingested_at` in its transaction, which `describeMemoryIndex` reads with the
   document, section, link, unresolved, and isolated counts. `summarizeMemoryUsage` lays the
   entries of the query log `.polydeukes/memory-log.jsonl` against the indexed documents (hot,

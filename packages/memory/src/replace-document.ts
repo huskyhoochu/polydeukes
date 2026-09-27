@@ -58,6 +58,10 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
   const insertObligation = db.prepare(
     'INSERT OR IGNORE INTO obligation (section_id, ord, key, text) VALUES (?, ?, ?, ?)',
   );
+  // Rules and lines that name the same target in the same direction write one row between them.
+  const insertSupersession = db.prepare(
+    'INSERT OR IGNORE INTO supersession (concept_id, direction, raw_target) VALUES (?, ?, ?)',
+  );
   const rules = config?.obligations ?? [];
   for (const section of document.sections) {
     const id = `${document.id}#${section.anchor}`;
@@ -97,6 +101,14 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
         for (const [key] of line.matchAll(new RegExp(rule.key, 'g')))
           insertObligation.run(id, ord, key, line.trim());
       });
+    }
+    for (const rule of config?.supersedes ?? []) {
+      const marker = new RegExp(rule.line);
+      for (const line of lines) {
+        if (!marker.test(line)) continue;
+        for (const [key] of line.matchAll(new RegExp(rule.key, 'g')))
+          insertSupersession.run(document.id, rule.direction, key);
+      }
     }
   }
 }

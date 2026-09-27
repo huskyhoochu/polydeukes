@@ -1,7 +1,7 @@
 /**
- * `pdks memory ingest | search | show | obligations | lint | stats | usage` — the one umbrella
- * module that loads the optional `@polydeukes/memory` package, and only when this command runs,
- * so a tree without it keeps every other command.
+ * `pdks memory ingest | search | show | obligations | supersession | lint | stats | usage` — the
+ * one umbrella module that loads the optional `@polydeukes/memory` package, and only when this
+ * command runs, so a tree without it keeps every other command.
  */
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
@@ -25,7 +25,7 @@ const DB_REL = '.polydeukes/memory.db';
 const LOG_REL = '.polydeukes/memory-log.jsonl';
 
 const USAGE =
-  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]';
+  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory supersession <doc> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]';
 const NO_INDEX = `no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const NO_LOG = `no memory log at ${LOG_REL} — run pdks memory search, show, or obligations first`;
 const EXAMPLE = ['', 'memory:', '  include:', "    - 'docs/**/*.md'"].join('\n');
@@ -40,6 +40,7 @@ type Command =
   | { verb: 'search'; query: string; json: boolean }
   | { verb: 'show'; id: string; json: boolean }
   | { verb: 'obligations'; key: string; json: boolean }
+  | { verb: 'supersession'; id: string; json: boolean }
   | { verb: 'lint'; json: boolean }
   | { verb: 'stats'; json: boolean }
   | { verb: 'usage'; json: boolean };
@@ -56,6 +57,7 @@ function parseArgs(args: string[]): Command {
   if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), json };
   if (verb === 'show' && words.length === 1) return { verb, id: words[0] as string, json };
   if (verb === 'obligations' && words.length === 1) return { verb, key: words[0] as string, json };
+  if (verb === 'supersession' && words.length === 1) return { verb, id: words[0] as string, json };
   if ((verb === 'lint' || verb === 'stats' || verb === 'usage') && words.length === 0)
     return { verb, json };
   throw new Error(USAGE);
@@ -171,7 +173,9 @@ const titleOf = (docTitle: string, sectionTitle: string): string =>
   sectionTitle === '' ? docTitle : `${docTitle} › ${sectionTitle}`;
 
 function renderResult(hit: Memory.MemorySearchResult): string {
-  const status = hit.stale ? `${hit.status}, stale` : hit.status;
+  const stale = hit.stale ? `${hit.status}, stale` : hit.status;
+  const status =
+    hit.supersededBy.length === 0 ? stale : `${stale}, superseded by ${hit.supersededBy.join(' ')}`;
   return [hit.id, hit.matchPath, status, hit.trust, titleOf(hit.docTitle, hit.sectionTitle)].join(
     '\t',
   );
@@ -289,8 +293,8 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     }
   }
 
-  // `show`, `lint`, `stats`, and `usage` read no settings: the stored rows already carry what the
-  // settings derived.
+  // `show`, `supersession`, `lint`, `stats`, and `usage` read no settings: the stored rows
+  // already carry what the settings derived.
   const { db, ingestedAt } = openIndex(memory, path);
   try {
     if (command.verb === 'lint') {
@@ -330,6 +334,15 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
       if (command.json)
         return { text: `${JSON.stringify({ ingestedAt, ...usage })}\n`, exitCode: 0 };
       return { text: renderUsage(usage), exitCode: 0 };
+    }
+
+    if (command.verb === 'supersession') {
+      const supersession = memory.listSupersession({ db, id: command.id });
+      if (supersession === undefined) throw new Error(`unknown memory id: ${command.id}`);
+      if (command.json)
+        return { text: `${JSON.stringify({ ingestedAt, supersession })}\n`, exitCode: 0 };
+      const lines = supersession.map(({ newer, older }) => `${newer}\t${older}`);
+      return { text: `${[`# ingested at ${ingestedAt}`, ...lines].join('\n')}\n`, exitCode: 0 };
     }
 
     const shown = memory.showMemory({ db, id: command.id });
