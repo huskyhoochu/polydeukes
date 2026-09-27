@@ -77,8 +77,8 @@ db.close();
 <a id="rows"></a>
 ## Documents and sections
 
-`ingestMemory` indexes the `.md` files the globs reach under `root` and skips files named
-`index.md` or `log.md`. A document's id is its `root`-relative path without `.md`. Its title is
+`ingestMemory` indexes the `.md` files the `include` globs reach under `root`, minus the files
+an `exclude` glob matches. A document's id is its `root`-relative path without `.md`. Its title is
 the frontmatter `title`, else its first H1, else its id. Each H2 heading starts a section whose
 id is `<document id>#<anchor>`: the heading's explicit `{#anchor}` when present, else its
 lowercased text with punctuation removed and spaces as hyphens. The text before the first H2 is
@@ -108,9 +108,9 @@ when the target goes, whether or not the document holding it changed.
 | markdown `path.md#anchor` | the document at `path`, relative to the linking document's directory (the linking document itself when `path` is empty), and the section `<document>#<anchor>` when that section exists |
 | wikilink `[[x]]` | the one document whose id ends in the path segment `x`; else the section `x` of the linking document; else the one section anywhere whose anchor is `x` |
 
-A link to a file outside the `include` globs, to `index.md` or `log.md`, or to a path above
-`root` is unresolved. An anchor that names no H2 section, such as an H3 heading, resolves to the
-document alone.
+A link to a file outside the `include` globs, to a file an `exclude` glob leaves out, or to a
+path above `root` is unresolved. An anchor that names no H2 section, such as an H3 heading,
+resolves to the document alone.
 
 `lintMemory` reports three kinds of violation, ordered by kind, id, and detail:
 

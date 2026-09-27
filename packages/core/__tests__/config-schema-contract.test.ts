@@ -98,6 +98,9 @@ const VALID_CONFIGS: readonly unknown[] = [
   {},
   { memory: { include: ['docs/**/*.md'] } },
   { languages: {} },
+  // `memory.exclude` is optional and an empty array reads as absent. A schema carrying
+  // `minItems: 1` on it, or a validator that treats an empty array as missing data, rejects it.
+  { memory: { include: ['docs/**/*.md'], exclude: [] } },
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
@@ -184,6 +187,13 @@ const INVALID_CONFIGS: readonly unknown[] = [
   },
   // An array is typeof 'object', so the top-level check must reject it explicitly.
   ['languages'],
+  // `memory.exclude`, one fixture per constraint: a bare string pairs the schema's
+  // `type: array` with the validator's `Array.isArray`; the empty-string element and the
+  // number element pair `items: { type: string, minLength: 1 }` with the per-element check.
+  { memory: { include: ['docs/**/*.md'], exclude: '**/index.md' } },
+  { memory: { include: ['docs/**/*.md'], exclude: ['**/index.md', ''] } },
+  { memory: { include: ['docs/**/*.md'], exclude: ['**/index.md', 42] } },
+  { memory: { include: ['docs/**/*.md'], exclude: null } },
   { ...validLanguages, disciplines: [{ id: 'no-predicate', why: 'oops' }] },
   { ...validLanguages, disciplines: [{ id: 'two', forbid: 'x', immutable: 'y/**' }] },
   // `removed` and `present` are not yet accepted forbid directions; only `added` is.

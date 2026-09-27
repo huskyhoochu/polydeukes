@@ -118,23 +118,24 @@ function writeCorpus(size: number): void {
 
 describe('ingestMemory — the document list', () => {
   // A list that walks `root` instead of `include` picks up `outside/`; one that keeps every
-  // glob hit reads the `folder.md` directory or a `.txt`; one that matches `index`/`log` by
-  // prefix drops `index-notes`, by suffix drops `changelog`; one that cuts the id at the first
-  // dot turns `v1.2` into `v1`; one that refuses a parse failure drops `broken`; a raw insert
-  // over the file both globs return throws on the primary key.
-  it('indexes exactly the .md regular files any include glob reaches, minus index.md and log.md, as slash-separated ids without the extension', () => {
+  // glob hit reads the `folder.md` directory or a `.txt`; one that still skips a file by its
+  // name drops `index.md` and `log.md` at any depth although no exclude glob names them; one
+  // that cuts the id at the first dot turns `v1.2` into `v1`; one that refuses a parse
+  // failure drops `broken`; a raw insert over the file both globs return throws on the
+  // primary key.
+  it('indexes exactly the .md regular files any include glob reaches, index.md and log.md included, as slash-separated ids without the extension', () => {
     writeDoc('notes/alpha.md', page('Alpha', 'alpha text.'));
     writeDoc('notes/guides/beta.md', page('Beta', 'beta text.'));
     writeDoc('notes/guides/deep/gamma.md', page('Gamma', 'gamma text.'));
-    writeDoc('notes/index-notes.md', page('Index notes', 'not reserved.'));
-    writeDoc('notes/changelog.md', page('Changelog', 'not reserved.'));
+    writeDoc('notes/index-notes.md', page('Index notes', 'plain name.'));
+    writeDoc('notes/changelog.md', page('Changelog', 'plain name.'));
     writeDoc('notes/v1.2.md', page('Version', 'dotted name.'));
-    writeDoc('notes/index.md', page('Reserved', 'excluded.'));
-    writeDoc('notes/log.md', page('Reserved', 'excluded.'));
+    writeDoc('notes/index.md', page('Index', 'a page, not a table of contents.'));
+    writeDoc('notes/log.md', page('Log', 'a page.'));
     writeDoc('notes/folder.md/inner.md', page('Inner', 'inside a directory named .md.'));
     writeDoc('notes/broken.md', '---\n: [\n---\n## One\nunparseable frontmatter.');
-    writeDoc('notes/guides/index.md', page('Reserved', 'excluded.'));
-    writeDoc('notes/guides/deep/log.md', page('Reserved', 'excluded.'));
+    writeDoc('notes/guides/index.md', page('Guides index', 'a page.'));
+    writeDoc('notes/guides/deep/log.md', page('Deep log', 'a page.'));
     writeDoc('notes/readme.txt', page('Not markdown', 'excluded.'));
     writeDoc('notes/guides/draft.md.bak', page('Not markdown', 'excluded.'));
     writeDoc('outside/omega.md', page('Omega', 'excluded.'));
@@ -149,7 +150,11 @@ describe('ingestMemory — the document list', () => {
       'notes/folder.md/inner',
       'notes/guides/beta',
       'notes/guides/deep/gamma',
+      'notes/guides/deep/log',
+      'notes/guides/index',
+      'notes/index',
       'notes/index-notes',
+      'notes/log',
       'notes/v1.2',
     ]);
     expect(sectionRows(db).map((r) => r.id)).toEqual([
@@ -159,10 +164,117 @@ describe('ingestMemory — the document list', () => {
       'notes/folder.md/inner#one',
       'notes/guides/beta#one',
       'notes/guides/deep/gamma#one',
+      'notes/guides/deep/log#one',
+      'notes/guides/index#one',
+      'notes/index#one',
       'notes/index-notes#one',
+      'notes/log#one',
       'notes/v1.2#one',
     ]);
     expectFtsConsistent(db);
+  });
+});
+
+describe('ingestMemory — exclude globs', () => {
+  // The include list reaches the root and every `notes/` depth, and names `notes/releases/`
+  // a second time so that an include hit and an exclude hit land on the same file.
+  const ROOT_INCLUDE = ['*.md', 'notes/**/*.md', 'notes/releases/*.md'];
+  const EXCLUDE = ['**/index.md', 'notes/releases/**'];
+  const tree = () => {
+    writeDoc('index.md', page('Root index', 'root page.'));
+    writeDoc('log.md', page('Root log', 'root page.'));
+    writeDoc('notes/alpha.md', page('Alpha', 'alpha text.'));
+    writeDoc('notes/index.md', page('Index', 'a page.'));
+    writeDoc('notes/index-notes.md', page('Index notes', 'plain name.'));
+    writeDoc('notes/guides/index.md', page('Guides index', 'a page.'));
+    writeDoc('notes/releases/v1.md', page('Release 1', 'release record.'));
+    writeDoc('notes/releases/deep/v2.md', page('Release 2', 'release record.'));
+  };
+
+  // A list that ignores `exclude` keeps `index.md` and the release records; one that applies
+  // the exclude globs to the name alone or to the last segment misses `notes/releases/deep/v2`
+  // or drops `index-notes`; one that lets an include hit outrank an exclude hit keeps
+  // `notes/releases/v1`; one that anchors `**/index.md` below the first directory keeps the
+  // root `index`; one that reads an empty `exclude` as "exclude everything" stores nothing.
+  it('drops every file an exclude glob matches, by name or by directory, even when an include glob names it too', () => {
+    tree();
+    const db = open('exclude.db');
+    ingestMemory({ db, root, config: { include: ROOT_INCLUDE, exclude: EXCLUDE } });
+    expect(conceptIds(db)).toEqual(['log', 'notes/alpha', 'notes/index-notes']);
+    expect(sectionRows(db).map((r) => r.id)).toEqual([
+      'log#one',
+      'notes/alpha#one',
+      'notes/index-notes#one',
+    ]);
+
+    const all = open('exclude-empty.db');
+    ingestMemory({ db: all, root, config: { include: ROOT_INCLUDE, exclude: [] } });
+    expect(conceptIds(all)).toEqual([
+      'index',
+      'log',
+      'notes/alpha',
+      'notes/guides/index',
+      'notes/index',
+      'notes/index-notes',
+      'notes/releases/deep/v2',
+      'notes/releases/v1',
+    ]);
+    expectFtsConsistent(db);
+    expectFtsConsistent(all);
+  });
+
+  // Node's glob prunes a directory an exclude glob matches, so `notes/releases/*` leaves out
+  // `notes/releases/deep/v2` although that path does not match the glob. A per-file match keeps
+  // it; the documents describe the pruning, and this test holds the two together.
+  it('leaves out everything under a directory an exclude glob matches', () => {
+    tree();
+    const db = open('exclude-dir.db');
+    ingestMemory({ db, root, config: { include: ROOT_INCLUDE, exclude: ['notes/releases/*'] } });
+    expect(conceptIds(db)).not.toContain('notes/releases/deep/v2');
+    expect(conceptIds(db)).not.toContain('notes/releases/v1');
+    expect(conceptIds(db)).toContain('notes/alpha');
+  });
+
+  // A hash over the whole config rewrites every surviving document when `exclude` changes;
+  // an ingest that only ever deletes documents whose file is gone leaves the newly excluded
+  // rows behind; one that compares against the previous file list instead of the stored
+  // rows never re-adds `notes/index` when the glob goes.
+  it('deletes a stored document once an exclude glob covers it, keeps the other rows in place, matches a rebuild, and indexes it again when the glob goes', () => {
+    tree();
+    const db = open('exclude-reconcile.db');
+    ingestMemory({ db, root, config: { include: ROOT_INCLUDE } });
+    const firstRowids = sectionRowids(db);
+    expect(rowidById(firstRowids).has('notes/index#one')).toBe(true);
+
+    ingestMemory({ db, root, config: { include: ROOT_INCLUDE, exclude: EXCLUDE } });
+    expect(conceptIds(db)).toEqual(['log', 'notes/alpha', 'notes/index-notes']);
+    expect(sectionRowids(db)).toEqual(
+      firstRowids.filter((r) =>
+        ['log#one', 'notes/alpha#one', 'notes/index-notes#one'].includes(r.id),
+      ),
+    );
+    const fresh = open('exclude-fresh.db');
+    ingestMemory({
+      db: fresh,
+      root,
+      config: { include: ROOT_INCLUDE, exclude: EXCLUDE },
+      rebuild: true,
+    });
+    expectSameRows(db, fresh);
+    expectFtsConsistent(db);
+
+    ingestMemory({ db, root, config: { include: ROOT_INCLUDE } });
+    expect(conceptIds(db)).toEqual([
+      'index',
+      'log',
+      'notes/alpha',
+      'notes/guides/index',
+      'notes/index',
+      'notes/index-notes',
+      'notes/releases/deep/v2',
+      'notes/releases/v1',
+    ]);
+    expect(sectionRows(db).find((r) => r.id === 'notes/index#one')?.body).toBe('a page.');
   });
 });
 

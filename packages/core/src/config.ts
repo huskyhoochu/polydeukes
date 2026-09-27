@@ -96,6 +96,8 @@ export type DisciplineDraft = {
 /** Settings for deriving document columns and ordering memory search results. */
 export type MemoryConfig = {
   include: string[];
+  /** globs whose matches are left out even when an include glob reaches them */
+  exclude?: string[];
   typeMap?: Record<string, string>;
   ticket?: (
     | { type?: string; from: 'title'; pattern?: string }
@@ -218,7 +220,13 @@ const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set([
 const PROFILE_KEYS: ReadonlySet<string> = new Set(['productionGlob', 'testCmd']);
 const TELEMETRY_KEYS: ReadonlySet<string> = new Set(['logPath']);
 const WITNESS_KEYS: ReadonlySet<string> = new Set(['token', 'ttlMinutes']);
-const MEMORY_KEYS: ReadonlySet<string> = new Set(['include', 'typeMap', 'ticket', 'weights']);
+const MEMORY_KEYS: ReadonlySet<string> = new Set([
+  'include',
+  'exclude',
+  'typeMap',
+  'ticket',
+  'weights',
+]);
 const TICKET_KEYS: ReadonlySet<string> = new Set(['type', 'from', 'key', 'pattern']);
 
 function validateMemory(value: unknown): MemoryConfig {
@@ -232,6 +240,12 @@ function validateMemory(value: unknown): MemoryConfig {
     throw new ConfigValidationError(
       'memory.include must be a non-empty array of non-empty strings',
     );
+  }
+  if (
+    value.exclude !== undefined &&
+    (!Array.isArray(value.exclude) || !value.exclude.every(isNonEmptyString))
+  ) {
+    throw new ConfigValidationError('memory.exclude must be an array of non-empty strings');
   }
   for (const name of ['typeMap', 'weights'] as const) {
     const mapping = value[name];
@@ -582,7 +596,7 @@ function validateWitness(witness: unknown): { token: string; ttlMinutes: number 
  * non-empty string template, `telemetry.logPath` is not a non-empty string after trimming,
  * `protectedPaths` carries a non-string or empty element, or `adapters` is not a map of
  * plain-object namespaces. When present, `memory` must declare non-empty include globs and
- * valid classification, ticket, and weight data.
+ * valid exclude globs, classification, ticket, and weight data.
  */
 export function defineConfig(config: unknown): ResolvedConfig {
   if (!isPlainObject(config)) {

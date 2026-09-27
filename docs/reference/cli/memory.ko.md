@@ -44,16 +44,19 @@ pdks memory: @polydeukes/memory is not installed — install it with `pnpm add -
 ## 색인 대상
 
 `ingest`와 `search`는 설정의 `memory` 절을 읽습니다. `memory.include`는 색인할 파일의 glob
-목록입니다.
+목록이고, 선택 키인 `memory.exclude`는 색인에서 뺄 파일의 glob 목록입니다.
 
 ```yaml
 memory:
   include:
     - 'docs/**/*.md'
+  exclude:
+    - 'docs/releases/**'
 ```
 
-색인에는 현재 디렉터리 아래에서 이 glob이 가리키는 `.md` 파일이 들어갑니다. 이름이 `index.md`나
-`log.md`인 파일은 건너뜁니다. 문서 하나가 행 하나가 되며, 식별자는 `.md` 확장자를 뺀 경로입니다
+색인에는 현재 디렉터리 아래에서 `include` glob이 가리키는 `.md` 파일 중 `exclude` glob에 맞지 않는
+파일이 들어갑니다. 디렉터리에 맞는 glob은 그 아래 파일을 모두 뺍니다. 파일 이름만으로 건너뛰는
+파일은 없습니다. 문서 하나가 행 하나가 되며, 식별자는 `.md` 확장자를 뺀 경로입니다
 (`docs/guide`). H2 절 하나도 행 하나가 되며, 식별자는 `<문서 식별자>#<앵커>`입니다
 (`docs/guide#install`). 첫 H2 앞의 본문은 앵커가 빈 행이 됩니다. 이 절의 나머지 키인 `typeMap`,
 `ticket`, `weights`는 [설정 참조](../configuration/index.ko.md#memory)에 있습니다.
@@ -64,7 +67,8 @@ memory:
 그대로 색인됩니다. `ingest`가 읽는 OKF 키는 다음과 같습니다. `title`은 문서 제목, `type`은
 `typeMap`과 `weights`가 쓰는 유형입니다. `status`가 `deprecated`인 문서의 절은 결과의 맨 뒤에
 놓이고, `stale_after`가 지난 문서의 결과에는 오래됨 표시가 붙으며, `verified`는 신뢰 등급을
-정합니다. 위에서 건너뛴다고 한 `index.md`와 `log.md`는 OKF가 예약한 파일 이름입니다. 이 형식은
+정합니다. OKF는 `index.md`와 `log.md`를 묶음의 목차와 기록에 쓰는 이름으로 예약합니다. 이 두 파일을 색인에서
+빼려면 `exclude`에 `'**/index.md'`와 `'**/log.md'`를 넣습니다. 이 형식은
 필수가 아닙니다. frontmatter가 없거나 해석되지 않는 파일도 색인되며, 없는 키는 기본값을 씁니다.
 
 설정 파일이 없거나 설정에 `memory` 절이 없으면 `ingest`와 `search`는 선언할 키와 예시를 출력하고

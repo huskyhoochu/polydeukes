@@ -1,6 +1,8 @@
 /** The validated data consumed by document replacement and search. */
 export type MemoryConfig = {
   include: string[];
+  /** globs whose matches are left out even when an include glob reaches them */
+  exclude?: string[];
   typeMap?: Record<string, string>;
   ticket?: (
     | { type?: string; from: 'title'; pattern?: string }

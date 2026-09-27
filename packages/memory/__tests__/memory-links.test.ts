@@ -155,8 +155,9 @@ describe('ingestMemory — resolving each link form', () => {
   // path to the root instead of the source's directory misses `sub/leaf.md` from `notes/top`
   // and `../top.md` from `notes/sub/leaf`; one that keeps `./` unnormalised misses that row;
   // one that clamps `../../notes/twin.md` at the root instead of leaving it above it resolves
-  // `notes/twin`; one that resolves the on-disk `index.md`, `log.md`, `[[index]]`, or the
-  // out-of-include `outside.md` fills a concept for a document the index never stored; one
+  // `notes/twin`; one that stores the excluded `index.md` and `log.md` anyway resolves
+  // `index.md`, `log.md`, and `[[index]]`; one that resolves the out-of-include `outside.md`
+  // from disk fills a concept for a document the index never stored; one
   // that leaves `dst_concept` NULL when a same-document anchor is missing (`#nope`) loses the
   // document half of the table; one that fills `dst_section` for the H3
   // anchor `deep` invents a section row; one that takes an ambiguous last segment (`twin`
@@ -166,8 +167,8 @@ describe('ingestMemory — resolving each link form', () => {
   // one that picks any `one` anchor when two exist resolves a link the table leaves NULL.
   it('fills dst_concept and dst_section exactly as the resolution table says for markdown paths and wikilinks', () => {
     writeDoc('outside.md', page('Outside', ['one', 'not indexed.']));
-    writeDoc('notes/index.md', page('Reserved', ['one', 'never indexed.']));
-    writeDoc('notes/log.md', page('Reserved', ['one', 'never indexed.']));
+    writeDoc('notes/index.md', page('Index', ['one', 'excluded by config.']));
+    writeDoc('notes/log.md', page('Log', ['one', 'excluded by config.']));
     writeDoc(
       'notes/top.md',
       page(
@@ -198,7 +199,7 @@ describe('ingestMemory — resolving each link form', () => {
       ),
     );
     const db = open('resolve.db');
-    ingestMemory({ db, root, config: BASE_CONFIG });
+    ingestMemory({ db, root, config: { include: INCLUDE, exclude: ['**/index.md', '**/log.md'] } });
 
     const row = (
       src_section: string,
@@ -291,6 +292,57 @@ describe('ingestMemory — resolution does not depend on ingest order', () => {
     ingestMemory({ db, root, config: BASE_CONFIG });
     expect(edgeRows(db)).toEqual([]);
     expectSameIndex(db, freshBuild('fresh-5.db'));
+  });
+});
+
+describe('ingestMemory — links to a document an exclude glob covers', () => {
+  const EXCLUDED: MemoryConfig = { include: INCLUDE, exclude: ['**/index.md'] };
+  const tree = () => {
+    writeDoc('notes/alpha.md', page('Alpha', ['one', '[i](index.md#one) [[log]]']));
+    writeDoc('notes/index.md', page('Index', ['one', 'index text.']));
+    writeDoc('notes/log.md', page('Log', ['one', 'log text.']));
+  };
+  const freshBuild = (name: string, config: MemoryConfig): DatabaseSync => {
+    const db = open(name);
+    ingestMemory({ db, root, config, rebuild: true });
+    return db;
+  };
+  const expectSameIndex = (a: DatabaseSync, b: DatabaseSync): void => {
+    expect(edgeRows(a)).toEqual(edgeRows(b));
+    expect(conceptRows(a)).toEqual(conceptRows(b));
+    expect(sectionRows(a)).toEqual(sectionRows(b));
+  };
+  const targets = (db: DatabaseSync) => edgeRows(db).map((r) => [r.dst_concept, r.dst_section]);
+
+  // A list that still skips `index.md` by name leaves the first step unresolved; an ingest
+  // that deletes only documents whose file is gone keeps `notes/index` and its edge target
+  // after the glob arrives; a resolver that runs per changed document never revisits the
+  // unchanged `alpha`, so its edge stays resolved after the exclusion and stays NULL after
+  // the glob goes, while the rebuilt database says otherwise at both steps.
+  it('resolves a link to index.md while no exclude glob covers it, clears it to an unresolved edge when one does, and resolves it again when the glob goes, matching a rebuild at every step', () => {
+    tree();
+    const db = open('excluded-links.db');
+    ingestMemory({ db, root, config: BASE_CONFIG });
+    expect(targets(db)).toEqual([
+      ['notes/index', 'notes/index#one'],
+      ['notes/log', null],
+    ]);
+    expectSameIndex(db, freshBuild('excluded-fresh-1.db', BASE_CONFIG));
+
+    ingestMemory({ db, root, config: EXCLUDED });
+    expect(targets(db)).toEqual([
+      [null, null],
+      ['notes/log', null],
+    ]);
+    expect(conceptRows(db).map((r) => r.id)).toEqual(['notes/alpha', 'notes/log']);
+    expectSameIndex(db, freshBuild('excluded-fresh-2.db', EXCLUDED));
+
+    ingestMemory({ db, root, config: BASE_CONFIG });
+    expect(targets(db)).toEqual([
+      ['notes/index', 'notes/index#one'],
+      ['notes/log', null],
+    ]);
+    expectSameIndex(db, freshBuild('excluded-fresh-3.db', BASE_CONFIG));
   });
 });
 

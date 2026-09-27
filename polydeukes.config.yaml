@@ -7,6 +7,7 @@ languages:
 
 memory:
   include: ["_docs/**/*.md"]
+  exclude: ["**/index.md", "**/log.md"]
   typeMap:
     prd: prd
     adr: adr

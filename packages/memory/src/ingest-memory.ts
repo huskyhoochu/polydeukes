@@ -15,12 +15,10 @@ export type IngestMemorySpec = {
   rebuild?: boolean;
 };
 
-const RESERVED_NAMES = new Set(['index.md', 'log.md']);
-
-function listDocuments(root: string, include: string[]): Map<string, string> {
+function listDocuments(root: string, { include, exclude }: MemoryConfig): Map<string, string> {
   const paths = new Map<string, string>();
-  for (const entry of globSync(include, { cwd: root, withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.md') || RESERVED_NAMES.has(entry.name)) continue;
+  for (const entry of globSync(include, { cwd: root, exclude, withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
     const path = join(entry.parentPath, entry.name);
     const id = relative(root, path).split(sep).join('/').slice(0, -'.md'.length);
     paths.set(id, path);
@@ -123,16 +121,17 @@ function resolveEdges(db: DatabaseSync): void {
 }
 
 /**
- * Brings the stored documents in line with the files `config.include` reaches under `root` in
- * one write transaction: adds new ones, replaces changed ones (every one under `rebuild`),
- * deletes those whose file is gone, resolves every link against the result, and stamps the
- * time of the run. On any error the database is left as it was.
+ * Brings the stored documents in line with the files `config.include` reaches under `root`,
+ * minus those `config.exclude` matches, in one write transaction: adds new ones, replaces
+ * changed ones (every one under `rebuild`), deletes those whose file is gone or excluded,
+ * resolves every link against the result, and stamps the time of the run. On any error the
+ * database is left as it was.
  */
 export function ingestMemory({ db, root, config, rebuild = false }: IngestMemorySpec): void {
   db.exec('BEGIN IMMEDIATE');
   try {
     // List both sides after taking the lock: files and rows may change while this one waits.
-    const documents = listDocuments(root, config.include);
+    const documents = listDocuments(root, config);
     const stored = new Map(
       (
         db.prepare('SELECT id, content_hash FROM concept').all() as {

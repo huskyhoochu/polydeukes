@@ -97,10 +97,11 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
   trigram FTS5 external-content table synced by triggers. `replaceDocument` derives type and
   ticket columns from validated memory settings; `ingestMemory` compares the files the `include`
-  globs reach with the stored documents in one write transaction — it skips a document whose hash
-  of text plus type and ticket settings is unchanged, replaces a changed one, and deletes one
-  whose file is gone, then resolves every stored link row (`edge`, written per section from
-  `[[x]]` and `.md` links) against the whole index, so a skipped document's links still follow
+  globs reach, minus those an `exclude` glob matches, with the stored documents in one write
+  transaction — it skips a document whose hash of text plus type and ticket settings is
+  unchanged, replaces a changed one, and deletes one whose file is gone or excluded, then
+  resolves every stored link row (`edge`, written per section from `[[x]]` and `.md` links)
+  against the whole index, so a skipped document's links still follow
   their targets; `searchMemory` finds section rows and applies configured type weights, while
   `showMemory` returns stored document or section content with its links (and, for a
   document, the other documents with the same stored ticket, computed at read time), and

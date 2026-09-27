@@ -36,6 +36,7 @@ const CONFIG_REL = 'polydeukes.config.json';
 const INCLUDE = ['notes/**/*.md'];
 const MEMORY: MemoryConfig = {
   include: INCLUDE,
+  exclude: ['**/index.md'],
   typeMap: { decision: 'reference' },
   weights: { reference: 4 },
 };
@@ -48,8 +49,8 @@ const DOCS: [string, string][] = [
   ],
   ['notes/guides/zeta.md', `---\ntitle: Zeta\ntype: guide\n---\n## One\n\n${SHARED_BODY}\n`],
   ['notes/gamma.md', '---\ntitle: Gamma\ntype: note\n---\n## One\n\ngamma text.\n'],
-  // Reserved name: reached by the glob and never indexed.
-  ['notes/index.md', '---\ntitle: Reserved\n---\n## One\n\nexcluded.\n'],
+  // Reached by the include glob and left out by MEMORY's exclude glob alone.
+  ['notes/index.md', '---\ntitle: Excluded\n---\n## One\n\nexcluded.\n'],
 ];
 const INDEXED_COUNT = 3;
 const DOC_ID = 'notes/alpha';
@@ -165,7 +166,8 @@ const sectionRows = (db: DatabaseSync): Row[] =>
     .all() as Row[];
 
 describe('pdks memory ingest', () => {
-  // A count over every glob hit reports 4 (`index.md` included); a database written
+  // A command that drops `exclude` on the way to the ingest reports 4 (`index.md`
+  // included); a database written
   // anywhere but `.polydeukes/memory.db` under cwd is one `search` never finds; a stamp
   // the command never writes leaves `ingestedAt` null.
   it('indexes the documents the include globs reach into .polydeukes/memory.db and stamps the ingest', () => {
@@ -224,7 +226,8 @@ describe('pdks memory ingest', () => {
 
   // A loader that still requires `languages` exits 2 on the config the memory docs show
   // and creates no index; a command that catches that as "no memory section" prints the
-  // declaration hint for a key the config already declares.
+  // declaration hint for a key the config already declares. With no exclude glob, no file
+  // is skipped by its name: `index.md` is the fourth document.
   it('indexes from a config that declares only memory.include, exiting 0', () => {
     writeFileSync(join(projectRoot, CONFIG_REL), JSON.stringify(MEMORY_ONLY_CONFIG, null, 2));
 
@@ -232,8 +235,8 @@ describe('pdks memory ingest', () => {
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stderr).toBe('');
-    expect(result.stdout).toBe(`${indexedLine(INDEXED_COUNT)}\n`);
-    expect(describeMemoryIndex({ db: openIndex() }).documents).toBe(INDEXED_COUNT);
+    expect(result.stdout).toBe(`${indexedLine(INDEXED_COUNT + 1)}\n`);
+    expect(describeMemoryIndex({ db: openIndex() }).documents).toBe(INDEXED_COUNT + 1);
   });
 
   // An ingest that treats an empty file list as an error, or prints nothing for it, leaves

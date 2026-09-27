@@ -4,6 +4,7 @@ import { validate, validLanguages } from './helpers.ts';
 
 const memory = {
   include: ['notes/**/*.md'],
+  exclude: ['**/index.md', 'notes/releases/**'],
   typeMap: { decision: 'reference', guide: 'howto' },
   ticket: [
     { type: 'decision', from: 'frontmatter', key: 'issue', pattern: '[A-Z]+-[0-9]+' },
@@ -61,6 +62,12 @@ describe('memory config data contract', () => {
     [{ ...memory, weights: { reference: -1 } }, 'memory.weights.reference'],
     [{ ...memory, weights: { reference: Number.POSITIVE_INFINITY } }, 'memory.weights.reference'],
     [{ ...memory, ticket: [{ from: 'title', pattern: '[' }] }, 'memory.ticket[0]'],
+    // A rejection that names `memory.include` for an `exclude` fault sends the user to the
+    // wrong key; one that names nothing leaves the schema as the only hint.
+    [{ ...memory, exclude: '**/index.md' }, 'memory.exclude'],
+    [{ ...memory, exclude: ['**/index.md', ''] }, 'memory.exclude'],
+    // An emptied YAML `exclude:` parses to null; a truthiness check would let it through.
+    [{ ...memory, exclude: null }, 'memory.exclude'],
   ] as const)('names the invalid memory location %#', (candidate, location) => {
     try {
       defineConfig({ ...validLanguages, memory: candidate });

@@ -255,7 +255,7 @@ describe('the public documentation names pdks memory', () => {
     'pdks memory ingest --rebuild',
     '@polydeukes/memory',
   ];
-  const CONFIG_KEYS = ['include', 'typeMap', 'ticket', 'weights'];
+  const CONFIG_KEYS = ['include', 'exclude', 'typeMap', 'ticket', 'weights'];
 
   /**
    * The body of the first heading whose text names `memory`: from that heading line to
@@ -291,7 +291,7 @@ describe('the public documentation names pdks memory', () => {
   // looked for inside that section alone, since `include` and `ticket` are also words other
   // sections of the same page use.
   it.each([[CONFIG_DOC_PATH], [ko(CONFIG_DOC_PATH)]])(
-    '%s documents the memory section and its four keys inside it',
+    '%s documents the memory section and its five keys inside it',
     (path) => {
       const section = memorySection(read(path));
 

@@ -153,6 +153,8 @@ pdks witness
 memory:
   include:
     - 'docs/**/*.md'
+  exclude:
+    - 'docs/releases/**'
   typeMap:
     adr: decision
   ticket:
@@ -167,14 +169,16 @@ memory:
 
 | 키 | 필수 | 하는 일 |
 |---|---|---|
-| `include` | 예 | 비어 있지 않은 glob 목록이며, `pdks memory`를 실행한 디렉터리 기준입니다. 이 glob이 가리키는 `.md` 파일을 색인하고, 이름이 `index.md`나 `log.md`인 파일은 건너뜁니다 |
+| `include` | 예 | 비어 있지 않은 glob 목록이며, `pdks memory`를 실행한 디렉터리 기준입니다. 이 glob이 가리키는 `.md` 파일을 색인합니다 |
+| `exclude` | 아니요 | glob 목록이며, `include`와 같은 디렉터리를 기준으로 합니다. 이 glob 중 하나에 맞는 파일은 `include`가 가리키더라도 색인하지 않습니다. 디렉터리에 맞는 glob은 그 아래 파일을 모두 뺍니다. `docs/releases/*`는 `docs/releases/old/v1.md`도 뺍니다 |
 | `typeMap` | 아니요 | 문서 frontmatter의 `type`을 저장할 종류로 바꿉니다. 이 표에 없는 종류는 쓰인 그대로 저장합니다 |
 | `ticket` | 아니요 | 문서와 함께 저장할 티켓 값을 얻는 방법의 순서 있는 목록입니다. `from: title`은 제목을, `from: frontmatter`는 `key`로 지정한 frontmatter 필드를 읽습니다. `type`은 frontmatter의 `type`이 그 값과 같은 문서로 항목을 한정하고, `pattern`은 정규식의 첫 일치 부분만 남깁니다. 비어 있지 않은 값을 처음 낸 항목이 이깁니다 |
 | `weights` | 아니요 | 저장된 종류를 음이 아닌 수에 대응시킵니다. 가중치가 클수록 그 종류의 절이 검색 결과에서 앞에 옵니다 |
 
-이 네 키 밖의 키는 거부합니다. 빈 `include`, 비어 있지 않은 문자열이 아닌 `typeMap` 값, 음수이거나
-수가 아닌 가중치, 유효한 정규식이 아닌 `pattern`도 거부합니다. `typeMap`이나 `ticket`을 바꾸면 다음
-`pdks memory ingest`에서 모든 문서를 다시 처리합니다.
+이 다섯 키 밖의 키는 거부합니다. 빈 `include`, 목록이 아니거나 비어 있지 않은 문자열 외의 값이 든
+`exclude`, 비어 있지 않은 문자열이 아닌 `typeMap` 값, 음수이거나 수가 아닌 가중치, 유효한 정규식이 아닌
+`pattern`도 거부합니다. `typeMap`이나 `ticket`을 바꾸면 다음 `pdks memory ingest`에서 모든 문서를 다시
+처리합니다.
 
 <a id="three-lists"></a>
 ## 규율 목록 셋
