@@ -42,7 +42,7 @@ const db = openMemoryDb({ path: '.polydeukes/memory.db' });
 ingestMemory({ db, root: process.cwd(), config });
 
 const { documents, ingestedAt } = describeMemoryIndex({ db });
-const results = searchMemory({ db, query: 'release notes', config });
+const results = await searchMemory({ db, query: 'release notes', config });
 db.close();
 ```
 

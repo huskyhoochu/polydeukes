@@ -104,7 +104,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   unchanged, replaces a changed one, and deletes one whose file is gone or excluded, then
   resolves every stored link row (`edge`, written per section from `[[x]]` and `.md` links)
   against the whole index, so a skipped document's links still follow
-  their targets; `searchMemory` finds section rows and applies configured type weights, while
+  their targets; `searchMemory` (async) normalizes the query first — Korean words lose particles and
+  endings through the `garu-ko` analyzer, loaded only for a Hangul query, and English function words
+  drop out — then finds section rows and applies configured type weights, while
   `showMemory` returns stored document or section content with its links (and, for a
   document, the other documents with the same stored ticket, computed at read time), and
   `lintMemory` reports unresolved links, unlinked same-ticket documents, and untyped
@@ -118,8 +120,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   experimental warning. The database is a derived index — any schema change is absorbed by
   rebuilding it from the documents. The judgment chain never imports it.
 - **Dependency direction:** a scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
-  `sdk-ts`) takes vocabulary only from `core` — `memory` uses none and has no dependency — and
-  never depends on a sibling; core depends on nothing. An agent
+  `sdk-ts`) takes vocabulary only from `core` — `memory` uses none and has no workspace
+  dependency (its runtime dependencies are `yaml` and `garu-ko`) — and never depends on a
+  sibling; core depends on nothing. An agent
   adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
   `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`, `pdks-codex`); `sdk-ts`
   takes the same peer for the same spawn and ships no bin. The umbrella takes `memory` as an

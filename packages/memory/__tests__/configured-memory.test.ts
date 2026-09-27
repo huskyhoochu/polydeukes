@@ -161,7 +161,7 @@ describe('ticket rules reading the document id', () => {
 });
 
 describe('configured search ranking', () => {
-  it('uses only declared map keys for a document type that names an Object prototype member', () => {
+  it('uses only declared map keys for a document type that names an Object prototype member', async () => {
     const config = {
       include: ['notes/**/*.md'],
       typeMap: { decision: 'reference' },
@@ -171,13 +171,13 @@ describe('configured search ranking', () => {
     ingest('notes/z', '---\ntype: decision\n---\n## Topic\nneedleword.\n', config);
 
     expect(concept('notes/a').doc_type).toBe('toString');
-    expect(searchMemory({ db, query: 'needleword', config }).map((row) => row.id)).toEqual([
+    expect((await searchMemory({ db, query: 'needleword', config })).map((row) => row.id)).toEqual([
       'notes/z#topic',
       'notes/a#topic',
     ]);
   });
 
-  it('weights stored document types within status without changing hits or paths', () => {
+  it('weights stored document types within status without changing hits or paths', async () => {
     const config = {
       include: ['notes/**/*.md'],
       typeMap: { decision: 'reference', guide: 'howto' },
@@ -191,8 +191,8 @@ describe('configured search ranking', () => {
       config,
     );
 
-    const baseline = searchMemory({ db, query: 'needleword' });
-    const weighted = searchMemory({ db, query: 'needleword', config });
+    const baseline = await searchMemory({ db, query: 'needleword' });
+    const weighted = await searchMemory({ db, query: 'needleword', config });
     expect(baseline.map((row) => row.id)).toEqual([
       'notes/a#topic',
       'notes/z#topic',

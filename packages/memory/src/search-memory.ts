@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryConfig } from './memory-config.ts';
+import { normalizeQuery } from './normalize-query.ts';
 
-/** The index, literal query, result limit, freshness clock, and optional type weights. */
+/** The index, query, result limit, freshness clock, and optional type weights. */
 export type SearchMemorySpec = {
   db: DatabaseSync;
   query: string;
@@ -123,22 +124,32 @@ function termMatches(db: DatabaseSync, term: string): Map<number, Match> {
   return found;
 }
 
-/** Finds sections by literal terms, widening to any term only when all terms match no section. */
-export function searchMemory({
+/**
+ * Finds sections by the query's normalized terms, any of them matching. A query that
+ * normalization leaves unchanged or empties runs its words as written, widening to any word
+ * only when all words match no section.
+ */
+export async function searchMemory({
   db,
   query,
   limit = 20,
   now = new Date(),
   config,
-}: SearchMemorySpec): MemorySearchResult[] {
-  const terms = query.trim().split(/\s+/u).filter(Boolean);
-  if (terms.length === 0 || !Number.isInteger(limit) || limit <= 0) return [];
+}: SearchMemorySpec): Promise<MemorySearchResult[]> {
+  const raw = query.trim().split(/\s+/u).filter(Boolean);
+  if (raw.length === 0 || !Number.isInteger(limit) || limit <= 0) return [];
 
+  const normalized = await normalizeQuery(query);
+  // An identifier query comes back from normalization unchanged; comparing with the whitespace
+  // split keeps it on the AND path, where a section must hold every word.
+  const literal =
+    normalized.length === 0 ||
+    (normalized.length === raw.length && normalized.every((term, i) => term === raw[i]));
+  const terms = literal ? raw : normalized;
   const matches = terms.map((term) => termMatches(db, term));
   const allIds = new Set(matches.flatMap((set) => [...set.keys()]));
   const andIds = [...allIds].filter((id) => matches.every((set) => set.has(id)));
-  const fallback = andIds.length === 0;
-  const ids = fallback ? [...allIds] : andIds;
+  const ids = literal && andIds.length > 0 ? andIds : [...allIds];
   if (ids.length === 0) return [];
 
   const rows = db
@@ -164,7 +175,8 @@ export function searchMemory({
         status: row.status,
         trust: trustOf(metadata),
         stale: Number.isFinite(staleTime) && staleTime <= now.getTime(),
-        matchPath: fallback ? 'or' : hits.some((hit) => hit.like) ? 'like' : 'and',
+        matchPath:
+          hits.length < matches.length ? 'or' : hits.some((hit) => hit.like) ? 'like' : 'and',
       };
       return {
         result,

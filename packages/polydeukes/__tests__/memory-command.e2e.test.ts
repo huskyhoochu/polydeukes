@@ -107,6 +107,15 @@ const SPACED_DOC_REL = 'notes/My Guide/setup.md';
 const SPACED_DOC_TEXT = '---\ntitle: Setup\ntype: guide\n---\n## Install\n\nspaced-term here.\n';
 const SPACED_SECTION_ID = 'notes/My Guide/setup#install';
 const SPACED_QUERY = 'spaced-term';
+/**
+ * A Korean question whose two content words carry a particle and an ending, written only
+ * where the question is asked. Taken literally neither word is in any document; with the
+ * particle and ending off, both are in this one section.
+ */
+const KOREAN_DOC_REL = 'notes/korean.md';
+const KOREAN_DOC_TEXT = '---\ntitle: Korean\ntype: note\n---\n## One\n\ncognee 제거 결정.\n';
+const KOREAN_SECTION_ID = 'notes/korean#one';
+const KOREAN_QUESTION = ['왜', 'cognee를', '제거했나'];
 /** The one character between two columns of the `search` table form. */
 const TABLE_SEPARATOR = '\t';
 /** A config declaring the memory section and nothing else — the shape the memory docs show. */
@@ -296,12 +305,12 @@ describe('pdks memory search', () => {
   // configured weight, so a command that searches without the memory settings, or reads a
   // different database than the one it wrote, answers in the wrong order; a stamp copied
   // from the clock instead of the database drifts from the DB's own value.
-  it('--json carries the DB stamp and the results searchMemory returns for the same DB and settings', () => {
+  it('--json carries the DB stamp and the results searchMemory returns for the same DB and settings', async () => {
     ingested();
     const db = openIndex();
-    const expected = searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
+    const expected = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
     expect(expected.length).toBe(2);
-    expect(searchMemory({ db, query: SHARED_QUERY })).not.toEqual(expected);
+    expect(await searchMemory({ db, query: SHARED_QUERY })).not.toEqual(expected);
 
     const result = pdks('memory', 'search', SHARED_QUERY, '--json');
 
@@ -316,12 +325,14 @@ describe('pdks memory search', () => {
   // A command that searches only the first positional word hits both alpha sections; one
   // that takes `--json` as a query word, or only in the last position, answers the table
   // form or a no-hit list.
-  it('joins the positional words into one query and takes --json in any position', () => {
+  it('joins the positional words into one query and takes --json in any position', async () => {
     ingested();
     const db = openIndex();
-    const expected = searchMemory({ db, query: JOINED_QUERY.join(' '), config: MEMORY });
+    const expected = await searchMemory({ db, query: JOINED_QUERY.join(' '), config: MEMORY });
     expect(expected.map((r) => r.id)).toEqual([SECTION_ID]);
-    expect(searchMemory({ db, query: JOINED_QUERY[0] as string, config: MEMORY })).toHaveLength(2);
+    expect(
+      await searchMemory({ db, query: JOINED_QUERY[0] as string, config: MEMORY }),
+    ).toHaveLength(2);
     const [first, second] = JOINED_QUERY as [string, string];
 
     const trailing = pdks('memory', 'search', first, second, '--json');
@@ -340,11 +351,11 @@ describe('pdks memory search', () => {
   // onto one line or drops the identifier a `show` needs next, a line missing the match
   // path or trust grade, and a stale marker printed on every line or on none all pass an
   // exit-code-only check. The stale document's `stale_after` is in the past.
-  it('prints the stamp header and one line per result in the table form, marking the stale hit', () => {
+  it('prints the stamp header and one line per result in the table form, marking the stale hit', async () => {
     writeFileSync(join(projectRoot, STALE_DOC_REL), STALE_DOC_TEXT);
     ingested();
     const db = openIndex();
-    const expected = searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
+    const expected = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
     expect(expected.filter((hit) => hit.stale).map((hit) => hit.id)).toEqual([STALE_SECTION_ID]);
     const stamp = describeMemoryIndex({ db }).ingestedAt;
 
@@ -372,12 +383,12 @@ describe('pdks memory search', () => {
   // joined with two spaces hands `cut -f1` a truncated id; a renderer that pads columns to
   // width joins them with more than one tab, and one that escapes the space in the id
   // hands `show` an identifier the index does not hold.
-  it('separates the five columns with one tab so an id containing a space survives cut -f1', () => {
+  it('separates the five columns with one tab so an id containing a space survives cut -f1', async () => {
     mkdirSync(join(projectRoot, dirname(SPACED_DOC_REL)), { recursive: true });
     writeFileSync(join(projectRoot, SPACED_DOC_REL), SPACED_DOC_TEXT);
     ingested();
     const db = openIndex();
-    const expected = searchMemory({ db, query: SPACED_QUERY, config: MEMORY });
+    const expected = await searchMemory({ db, query: SPACED_QUERY, config: MEMORY });
     expect(expected.map((hit) => hit.id)).toEqual([SPACED_SECTION_ID]);
 
     const result = pdks('memory', 'search', SPACED_QUERY);
@@ -389,6 +400,37 @@ describe('pdks memory search', () => {
     expect(fields).toHaveLength(5);
     expect(fields[0]).toBe(SPACED_SECTION_ID);
     expect(SPACED_SECTION_ID).toContain(' ');
+  });
+
+  // No stored column holds any of the question's words as written, so a command that reads
+  // the section text for them literally answers an empty list; one whose analyzer load lets
+  // the loader's deprecation line through prints it on stderr, where a script reading the
+  // table sees a failure.
+  it('answers a Korean question with particles through the normalized path, with an empty stderr', async () => {
+    writeFileSync(join(projectRoot, KOREAN_DOC_REL), KOREAN_DOC_TEXT);
+    ingested();
+    const db = openIndex();
+    const question = KOREAN_QUESTION.join(' ');
+    const expected = await searchMemory({ db, query: question, config: MEMORY });
+    expect(expected.map((hit) => [hit.id, hit.matchPath])).toEqual([[KOREAN_SECTION_ID, 'like']]);
+    const literal = db.prepare(
+      'SELECT count(*) AS n FROM section WHERE doc_title LIKE ? OR title LIKE ? OR body LIKE ?',
+    );
+    for (const word of KOREAN_QUESTION) {
+      const pattern = `%${word}%`;
+      expect((literal.get(pattern, pattern, pattern) as { n: number }).n, word).toBe(0);
+    }
+
+    const json = pdks('memory', 'search', ...KOREAN_QUESTION, '--json');
+    const table = pdks('memory', 'search', ...KOREAN_QUESTION);
+
+    expect(json.status, json.stderr).toBe(0);
+    expect(json.stderr).toBe('');
+    expect(JSON.parse(json.stdout).results).toEqual(expected);
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stderr).toBe('');
+    expect(table.stdout.trimEnd().split('\n').slice(1)).toHaveLength(1);
+    expect(table.stdout).toContain(`${KOREAN_SECTION_ID}${TABLE_SEPARATOR}like`);
   });
 
   // A no-hit query answered with exit 2, or with a stdout that is not the documented

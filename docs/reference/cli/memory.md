@@ -104,9 +104,25 @@ pdks memory search release notes --json
 ```
 
 The words after `search` are joined with single spaces into one query, and `--json` may appear
-anywhere among them. A section matches when it contains every word; when no section does, a
-section that contains any word matches. The first line of the table form is the time of the
-last ingest, followed by one line per result:
+anywhere among them. The query is reduced to search terms first:
+
+- A word containing Hangul goes through a Korean morphological analyzer bundled with the package
+  (`garu-ko`; it reads no network), which removes its particles and endings. A Korean word with
+  neither is kept whole, and question words such as `왜` and `어떻게` drop out:
+  `세션이 잠기면 어떻게 복구하나요` becomes `세션` · `잠기` · `복구`.
+- Any other word loses surrounding punctuation (a leading `.`, as in `.gitignore`, stays) and a
+  trailing possessive (`'s`). Function words
+  (`the`, `why`, `does`, …) and one-character words drop out. Case and word endings are kept, so
+  `Why did the adapter's typecheck stay green` becomes `adapter` · `typecheck` · `stay` · `green`
+  and an identifier such as `ISSUE-63b` stays as written.
+
+When this changes none of the words, or drops all of them, the words are searched as written: a
+section matches when it contains every word; when no section does, a section that contains any
+word matches. Otherwise a section matches when it contains any of the terms, and sections are
+ranked by the sum of the scores of the terms they contain.
+
+The first line of the table form is the time of the last ingest, followed by one line per
+result:
 
 ```text
 # ingested at 2026-01-15T09:30:00.000Z
@@ -116,7 +132,10 @@ docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 Each result line carries five columns separated by a tab, shown as `⇥` above: the section id,
 the match path (`and`, `or`, or `like`), the document's status (followed by `, stale` when its
 `stale_after` date has passed), the trust grade, and `<document title> › <section title>` (the
-document title alone for the text before the first H2). The JSON form is
+document title alone for the text before the first H2). The match path belongs to each result:
+`or` when the section lacks one of the terms, `like` when it contains every term and at least
+one matched as a word shorter than three characters or as a prefix of the section id, and `and`
+otherwise. The JSON form is
 `{ "ingestedAt": …, "results": [ … ] }`. A query with no match exits `0` with the header alone,
 or with an empty `results` list.
 

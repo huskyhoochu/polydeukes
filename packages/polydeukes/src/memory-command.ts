@@ -188,7 +188,7 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const config = memorySettings(cwd);
     const { db, ingestedAt } = openIndex(memory, path);
     try {
-      const results = memory.searchMemory({ db, query: command.query, config });
+      const results = await memory.searchMemory({ db, query: command.query, config });
       if (command.json) {
         return { text: `${JSON.stringify({ ingestedAt, results })}\n`, exitCode: 0 };
       }

@@ -348,7 +348,7 @@ describe('ingestMemory — replace, delete, rename, add in one step', () => {
   // Skipping the delete transition leaves the removed document and the pre-rename id in
   // `concept`; a replace that appends instead of replacing keeps the edited body twice; a
   // stale FTS entry makes the search lists differ while the row sets still agree.
-  it('yields the same concept rows, section rows, FTS integrity, and search results as a DB built once from the final tree', () => {
+  it('yields the same concept rows, section rows, FTS integrity, and search results as a DB built once from the final tree', async () => {
     writeCorpus(SIZE);
     const a = open('history.db');
     ingestMemory({ db: a, root, config: BASE_CONFIG });
@@ -377,12 +377,12 @@ describe('ingestMemory — replace, delete, rename, add in one step', () => {
     // `notes/renamed` reaches the moved document through its id prefix, since its text is
     // the same as before the rename.
     for (const query of ['corpus-title', 'edited-body', 'notes/renamed', 'section-body part 3']) {
-      const found = searchMemory({ db: a, query }).map((r) => r.id);
+      const found = (await searchMemory({ db: a, query })).map((r) => r.id);
       expect(found.length, query).toBeGreaterThan(0);
-      expect(found, query).toEqual(searchMemory({ db: b, query }).map((r) => r.id));
+      expect(found, query).toEqual((await searchMemory({ db: b, query })).map((r) => r.id));
     }
-    expect(searchMemory({ db: a, query: 'notes/doc-6' })).toEqual([]);
-    expect(searchMemory({ db: a, query: 'notes/doc-9' })).toEqual([]);
+    expect(await searchMemory({ db: a, query: 'notes/doc-6' })).toEqual([]);
+    expect(await searchMemory({ db: a, query: 'notes/doc-9' })).toEqual([]);
   }, 60_000);
 
   // A DB-side list built from `section` never sees an empty document, so it is never deleted;

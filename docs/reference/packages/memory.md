@@ -16,7 +16,7 @@
 |---|---|
 | `openMemoryDb` | Opens the database file, creating it and its tables when absent |
 | `ingestMemory` | Brings the stored documents in line with the files the `include` globs reach, in one write transaction |
-| `searchMemory` | Finds sections by literal query words and orders them |
+| `searchMemory` | Reduces the query to search terms, finds the sections that hold them, and orders them; returns a `Promise` |
 | `showMemory` | Returns one stored document with its sections, or one stored section, with the links leaving and arriving at it; a document also lists the other documents with the same ticket |
 | `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, and documents without a `type` |
 | `listObligations` | Returns every obligation stored under one key, extracted at ingest by the `obligations` rules of the config |
@@ -57,7 +57,7 @@ const db = openMemoryDb({ path: '.polydeukes/memory.db' });
 
 ingestMemory({ db, root: process.cwd(), config });
 const state = describeMemoryIndex({ db });
-const results = searchMemory({ db, query: 'release notes', config });
+const results = await searchMemory({ db, query: 'release notes', config });
 const shown = showMemory({ db, id: 'docs/guide#install' });
 const { violations } = lintMemory({ db });
 db.close();
@@ -153,15 +153,20 @@ the links resolved to that section. Both are sorted by `from`, then `target`.
 In a search result, `status` is the frontmatter `status` (default `stable`), and `stale` is
 true once the frontmatter `stale_after` time has passed. `trust` is `human-reviewed` when a
 frontmatter `verified` entry has a `by` value starting with `human:`, `machine-verified` when an
-entry has any other `by` value, and `unverified` otherwise. `matchPath` is `and` when every word
-matched through the full-text index, `like` when a word matched by substring or id prefix, and
-`or` when no section matched every word and the results match any word. Sections of
-`deprecated` documents sort last; a configured weight moves a document type earlier.
+entry has any other `by` value, and `unverified` otherwise. `matchPath` is set per result: `or`
+when the section lacks one of the search terms, `like` when it holds every term and at least one
+matched by substring or id prefix, and `and` when every term matched through the full-text index.
+How a query becomes search terms is described under
+[`pdks memory search`](../cli/memory.md#search). Sections of `deprecated` documents sort last;
+a configured weight moves a document type earlier.
 
 <a id="limits"></a>
 ## Declared limits
 
-- **Search is literal.** Words are matched as text, not by meaning or translation.
+- **Search matches text, not meaning.** Terms are matched as text after normalization, not by
+  meaning or translation, so a document that uses a synonym is not found: a question that says
+  "change" does not reach a document that says "set". The Korean analyzer is the `garu-ko`
+  dependency (MIT), whose model ships inside that package and is read without network access.
 - **The index is only as recent as the last ingest.** `searchMemory` does not read the files;
   `describeMemoryIndex` reports when they were last compared.
 - **Links are read in two forms.** A markdown path starting with `/` is not resolved, and a

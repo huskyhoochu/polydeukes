@@ -15,7 +15,7 @@
 |---|---|
 | `openMemoryDb` | 데이터베이스 파일을 엽니다. 없으면 파일과 테이블을 만듭니다 |
 | `ingestMemory` | 쓰기 트랜잭션 하나 안에서 저장된 문서를 `include` glob이 가리키는 파일에 맞춥니다 |
-| `searchMemory` | 검색어 낱말을 글자 그대로 찾아 절을 고르고 순서를 정합니다 |
+| `searchMemory` | 검색어를 검색 낱말로 줄이고, 그 낱말을 담은 절을 골라 순서를 정합니다. `Promise`를 돌려줍니다 |
 | `showMemory` | 저장된 문서 하나와 그 절들, 또는 저장된 절 하나를 거기서 나가고 들어오는 링크와 함께 돌려줍니다. 문서라면 티켓이 같은 다른 문서들도 함께 돌려줍니다 |
 | `lintMemory` | 해소되지 않은 링크, 티켓을 공유하면서 링크가 없는 문서, `type`이 없는 문서를 보고합니다 |
 | `listObligations` | 설정의 `obligations` 규칙으로 ingest 때 추출해 한 키로 저장한 의무를 전부 돌려줍니다 |
@@ -55,7 +55,7 @@ const db = openMemoryDb({ path: '.polydeukes/memory.db' });
 
 ingestMemory({ db, root: process.cwd(), config });
 const state = describeMemoryIndex({ db });
-const results = searchMemory({ db, query: 'release notes', config });
+const results = await searchMemory({ db, query: 'release notes', config });
 const shown = showMemory({ db, id: 'docs/guide#install' });
 const { violations } = lintMemory({ db });
 db.close();
@@ -145,14 +145,18 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 검색 결과의 `status`는 frontmatter의 `status`이고(기본값 `stable`), `stale`은 frontmatter의
 `stale_after` 시각이 지나면 참입니다. `trust`는 frontmatter `verified` 항목의 `by` 값이 `human:`으로
 시작하면 `human-reviewed`, 다른 `by` 값이 있으면 `machine-verified`, 그 밖에는 `unverified`입니다.
-`matchPath`는 모든 낱말이 전문 색인으로 일치했으면 `and`, 어떤 낱말이 부분 문자열이나 식별자 앞부분으로
-일치했으면 `like`, 모든 낱말을 담은 절이 없어 낱말 하나라도 담은 절을 돌려주면 `or`입니다.
+`matchPath`는 결과마다 정해집니다. 절이 검색 낱말 가운데 하나라도 담지 않으면 `or`, 모든 낱말을 담고
+그중 하나라도 부분 문자열이나 식별자 앞부분으로 일치했으면 `like`, 모든 낱말이 전문 색인으로 일치했으면
+`and`입니다. 검색어가 검색 낱말이 되는 규칙은 [`pdks memory search`](../cli/memory.ko.md#search)에 있습니다.
 `deprecated` 문서의 절은 맨 뒤로 가고, 설정한 가중치는 해당 문서 종류를 앞으로 옮깁니다.
 
 <a id="limits"></a>
 ## 선언된 한계
 
-- **검색은 글자 그대로입니다.** 낱말은 텍스트로 비교하며, 의미 해석이나 번역은 하지 않습니다.
+- **검색은 의미가 아니라 텍스트를 비교합니다.** 정규화한 낱말을 텍스트로 비교하며, 의미 해석이나
+  번역은 하지 않습니다. 그래서 동의어로 적힌 문서는 찾지 못합니다. "바꾸기"라고 묻는 질문은 "설정하기"라고 쓴
+  문서에 닿지 않습니다. 한국어 분석기는 의존성 `garu-ko`(MIT)이고, 그 모델은 패키지 안에 들어 있어
+  네트워크 없이 읽습니다.
 - **색인은 마지막 ingest 시점까지만 최신입니다.** `searchMemory`는 파일을 읽지 않습니다.
   `describeMemoryIndex`가 파일과 마지막으로 대조한 시각을 알려 줍니다.
 - **링크는 두 표기만 읽습니다.** `/`로 시작하는 markdown 경로는 해소하지 않고, 링크를 담은 문서의

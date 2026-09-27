@@ -35,6 +35,7 @@
     "access": "public"
   },
   "dependencies": {
+    "garu-ko": "0.9.18",
     "yaml": "catalog:"
   },
   "devDependencies": {
