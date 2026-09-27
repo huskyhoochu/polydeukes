@@ -17,6 +17,11 @@ export {
   type MemoryLintResult,
   type MemoryViolation,
 } from './lint-memory.ts';
+export {
+  type ListObligationsSpec,
+  listObligations,
+  type MemoryObligation,
+} from './list-obligations.ts';
 export type { MemoryConfig } from './memory-config.ts';
 export { type OpenMemoryDbSpec, openMemoryDb } from './schema.ts';
 export { type MemorySearchResult, type SearchMemorySpec, searchMemory } from './search-memory.ts';

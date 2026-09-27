@@ -1,7 +1,7 @@
 /**
- * `pdks memory ingest | search | show | lint | stats` — the one umbrella module that loads the
- * optional `@polydeukes/memory` package, and only when this command runs, so a tree without it
- * keeps every other command.
+ * `pdks memory ingest | search | show | obligations | lint | stats` — the one umbrella module that
+ * loads the optional `@polydeukes/memory` package, and only when this command runs, so a tree
+ * without it keeps every other command.
  */
 
 import { existsSync } from 'node:fs';
@@ -23,10 +23,12 @@ const MEMORY_PACKAGE = '@polydeukes/memory';
 const DB_REL = '.polydeukes/memory.db';
 
 const USAGE =
-  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory lint [--json] | pdks memory stats [--json]';
+  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory lint [--json] | pdks memory stats [--json]';
 const NO_INDEX = `no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const EXAMPLE = ['', 'memory:', '  include:', "    - 'docs/**/*.md'"].join('\n');
 const NO_SETTINGS = `memory.include is not declared — add the globs of the markdown files to index to the project config, for example:\n${EXAMPLE}`;
+const NO_OBLIGATION_RULES =
+  'memory.obligations is not declared — add the line or section rules that mark an obligation to the project config';
 const noConfig = (cwd: string): string =>
   `no config in ${cwd} (${CONFIG_FILENAMES.join(', ')}) — run pdks memory from the directory that holds it, or create one that declares memory.include, for example:\n${EXAMPLE}`;
 
@@ -34,6 +36,7 @@ type Command =
   | { verb: 'ingest'; rebuild: boolean }
   | { verb: 'search'; query: string; json: boolean }
   | { verb: 'show'; id: string; json: boolean }
+  | { verb: 'obligations'; key: string; json: boolean }
   | { verb: 'lint'; json: boolean }
   | { verb: 'stats'; json: boolean };
 
@@ -48,6 +51,7 @@ function parseArgs(args: string[]): Command {
   if (words.some((word) => word.startsWith('--'))) throw new Error(USAGE);
   if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), json };
   if (verb === 'show' && words.length === 1) return { verb, id: words[0] as string, json };
+  if (verb === 'obligations' && words.length === 1) return { verb, key: words[0] as string, json };
   if ((verb === 'lint' || verb === 'stats') && words.length === 0) return { verb, json };
   throw new Error(USAGE);
 }
@@ -158,7 +162,7 @@ function renderRelated({ related }: Memory.MemoryDocument): string {
  * Runs one `pdks memory` command against `<cwd>/.polydeukes/memory.db`.
  *
  * @throws Error whose message is the one stderr line the caller prints: usage, a missing
- * package, a missing `memory` section, a missing index, or an unknown id.
+ * package, a missing `memory` section or obligation rules, a missing index, or an unknown id.
  */
 export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemoryOutcome> {
   const command = parseArgs(args);
@@ -192,6 +196,27 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
         text: `${[`# ingested at ${ingestedAt}`, ...results.map(renderResult)].join('\n')}\n`,
         exitCode: 0,
       };
+    } finally {
+      db.close();
+    }
+  }
+
+  if (command.verb === 'obligations') {
+    // Without rules no row can exist, and an empty answer would read as no obligation left.
+    if (!memorySettings(cwd).obligations?.length) throw new Error(NO_OBLIGATION_RULES);
+    const { db, ingestedAt } = openIndex(memory, path);
+    try {
+      const obligations = memory.listObligations({ db, key: command.key });
+      if (command.json) {
+        return { text: `${JSON.stringify({ ingestedAt, obligations })}\n`, exitCode: 0 };
+      }
+      // A section rule's text starts at the blank line under its heading.
+      const lines = obligations.map(({ sectionId, text }) => {
+        const first = text.split('\n').find((line) => line.trim() !== '') ?? '';
+        // A tab in the text would read as a third column.
+        return `${sectionId}\t${first.trim().replaceAll('\t', ' ')}`;
+      });
+      return { text: `${[`# ingested at ${ingestedAt}`, ...lines].join('\n')}\n`, exitCode: 0 };
     } finally {
       db.close();
     }

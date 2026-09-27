@@ -19,6 +19,7 @@
 | `searchMemory` | Finds sections by literal query words and orders them |
 | `showMemory` | Returns one stored document with its sections, or one stored section, with the links leaving and arriving at it; a document also lists the other documents with the same ticket |
 | `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, and documents without a `type` |
+| `listObligations` | Returns every obligation stored under one key, extracted at ingest by the `obligations` rules of the config |
 | `describeMemoryIndex` | Returns the time of the last completed ingest and the counts of documents, sections, links, unresolved links, and isolated documents |
 
 The database is derived from the documents. It can be deleted and rebuilt from them at any
@@ -69,6 +70,7 @@ db.close();
 | `SearchMemorySpec` | `db`, `query`, optional `limit` (default 20), `now`, and `config` |
 | `ShowMemorySpec` | `db`, `id` — a document or section id |
 | `LintMemorySpec` | `db` |
+| `ListObligationsSpec` | `db`, `key` |
 | `DescribeMemoryIndexSpec` | `db` |
 
 `MemoryConfig` is the same shape as the config's
@@ -141,6 +143,7 @@ document, in either direction, and no other document has the same ticket.
 | `MemoryLink` | `from` (the section the link is written in), `target` (`[[x]]`, or the markdown link's target), `to` (the section or document it resolved to, or `null`) |
 | `MemoryLintResult` | `violations` |
 | `MemoryViolation` | `rule`, `id`, `detail` |
+| `MemoryObligation` | `key`, `sectionId`, `docTitle`, `sectionTitle`, `text` — the matched line, trimmed, for a line rule, and the section body for a section rule; ordered by `sectionId`, then position in the section |
 | `MemoryIndexState` | `documents`, `ingestedAt` — ISO 8601 in UTC, or `null` before any ingest — `sections`, `links`, `unresolved`, `isolated` |
 
 `links` is `{ out, in }`. For a document, `out` holds the links written in any of its sections

@@ -22,6 +22,13 @@ memory:
   weights:
     prd: 1
     adr: 1
+  # The carry-over sweep of /ticket PRE: an unchecked box or a carry-over marker, keyed by
+  # every ticket id the line names.
+  obligations:
+    - line: '^\s*[-*] \[ \]'
+      key: "[A-Z]+-[0-9]+[a-z]?"
+    - line: "이월|carry-over"
+      key: "[A-Z]+-[0-9]+[a-z]?"
 
 # Read by both surfaces. Two kinds: a gate definition (an edit disarms a check rather than
 # passing it) and what a commit can never show (the gitignored dist).

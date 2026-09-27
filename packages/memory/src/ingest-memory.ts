@@ -33,12 +33,17 @@ function listDocuments(root: string, { include, exclude }: MemoryConfig): Map<st
  */
 const DERIVATION = 2;
 
-// The stored rows of one text depend on `typeMap` and `ticket` besides the text itself, so a
-// settings change reprocesses the documents it can affect.
+// The stored rows of one text depend on `typeMap`, `ticket`, and `obligations` besides the text
+// itself, so a settings change reprocesses the documents it can affect.
 function contentHash(config: MemoryConfig, text: string): string {
   return createHash('sha256')
     .update(
-      JSON.stringify({ derivation: DERIVATION, typeMap: config.typeMap, ticket: config.ticket }),
+      JSON.stringify({
+        derivation: DERIVATION,
+        typeMap: config.typeMap,
+        ticket: config.ticket,
+        obligations: config.obligations,
+      }),
     )
     .update(text)
     .digest('hex');

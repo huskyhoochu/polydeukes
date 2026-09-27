@@ -11,4 +11,9 @@ export type MemoryConfig = {
     | { type?: string; from: 'path'; pattern?: string }
   )[];
   weights?: Record<string, number>;
+  /**
+   * a `line` rule keys every match of `key` on a section line `line` matches; a `section` rule
+   * keys the whole section whose title matches by the document's ticket
+   */
+  obligations?: ({ line: string; key: string } | { section: string })[];
 };

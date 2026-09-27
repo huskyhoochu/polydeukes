@@ -7,6 +7,7 @@ import type { MemoryConfig } from '@polydeukes/memory';
 import {
   describeMemoryIndex,
   lintMemory,
+  listObligations,
   openMemoryDb,
   searchMemory,
   showMemory,
@@ -763,6 +764,181 @@ describe('pdks memory before any ingest', () => {
       expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
     },
   );
+});
+
+describe('pdks memory obligations', () => {
+  /**
+   * The rules are fixture values: a checkbox line rule and a section rule. The document
+   * carries the key as its ticket and on one checkbox line inside the matching section, so
+   * the key has one row from each rule form in the same section; the other checkbox line
+   * carries a second key so a query that ignores the key answers three rows. The section
+   * body has more than one line, so a table that prints the whole text shows.
+   */
+  const OBLIGATION_KEY = 'AB-1';
+  const OTHER_KEY = 'AB-2';
+  const NO_ROW_KEY = 'AB-3';
+  const OBLIGATION_MEMORY: MemoryConfig = {
+    ...MEMORY,
+    ticket: [{ from: 'frontmatter', key: 'issue' }],
+    obligations: [
+      { line: '^\\s*[-*] \\[ \\]', key: '[A-Z]+-[0-9]+' },
+      { section: '^Unresolved questions$' },
+    ],
+  };
+  const OBLIGATION_DOC_REL = 'notes/duty.md';
+  const OBLIGATION_SECTION_ID = 'notes/duty#unresolved-questions';
+  const SECTION_FIRST_LINE = 'first line of the section.';
+  const CHECKBOX_LINE = `- [ ] ${OBLIGATION_KEY} pending`;
+  const OBLIGATION_DOC_TEXT = `---\ntitle: Duty\ntype: note\nissue: ${OBLIGATION_KEY}\n---\n## Unresolved questions\n\n  ${SECTION_FIRST_LINE}\nsecond line.\n${CHECKBOX_LINE}\n- [ ] ${OTHER_KEY} other\n`;
+
+  function ingestedWithRules(): void {
+    writeFileSync(join(projectRoot, OBLIGATION_DOC_REL), OBLIGATION_DOC_TEXT);
+    writeConfig({ memory: OBLIGATION_MEMORY });
+    const result = pdks('memory', 'ingest');
+    if (result.status !== 0) throw new Error(`fixture ingest failed: ${result.stderr}`);
+  }
+
+  // A command that answers every row regardless of the key carries `AB-2`; one that
+  // reshapes the rows, cuts them at a limit, or copies the clock instead of the DB stamp
+  // diverges from `listObligations` on the same database.
+  it('--json carries the DB stamp and the rows listObligations returns for the same DB', () => {
+    ingestedWithRules();
+    const db = openIndex();
+    const expected = listObligations({ db, key: OBLIGATION_KEY });
+    expect(expected.map((row) => [row.sectionId, row.text.trim().split('\n')[0]])).toEqual([
+      [OBLIGATION_SECTION_ID, SECTION_FIRST_LINE],
+      [OBLIGATION_SECTION_ID, CHECKBOX_LINE],
+    ]);
+    expect(listObligations({ db, key: OTHER_KEY })).toHaveLength(1);
+
+    const result = pdks('memory', 'obligations', OBLIGATION_KEY, '--json');
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(JSON.parse(result.stdout)).toEqual({
+      ingestedAt: describeMemoryIndex({ db }).ingestedAt,
+      obligations: expected,
+    });
+  });
+
+  // The section body starts with the blank line under its heading and an indented line, as
+  // rfcs writes it: a table that prints the first line as stored shows an empty column.
+  // A table that prints the whole section body spreads one row over three lines; one that
+  // folds the columns with spaces hands `cut -f1` a truncated id; one that prints the
+  // other key's row, or the clock instead of the DB stamp, diverges from the pinned bytes.
+  it('prints the stamp header and one line per row as the section id, a tab, and the first line of the text', () => {
+    ingestedWithRules();
+    const stamp = describeMemoryIndex({ db: openIndex() }).ingestedAt;
+
+    const result = pdks('memory', 'obligations', OBLIGATION_KEY);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toBe(
+      [
+        `# ingested at ${stamp}`,
+        `${OBLIGATION_SECTION_ID}${TABLE_SEPARATOR}${SECTION_FIRST_LINE}`,
+        `${OBLIGATION_SECTION_ID}${TABLE_SEPARATOR}${CHECKBOX_LINE}`,
+        '',
+      ].join('\n'),
+    );
+  });
+
+  // A tab inside the text is read by `cut -f2` as a third column; the table keeps two.
+  it('prints a tab inside the text as a space, so each line keeps two tab-separated columns', () => {
+    writeFileSync(join(projectRoot, 'notes/tabbed.md'), `## Tabbed\n- [ ] ${NO_ROW_KEY}\tsplit\n`);
+    ingestedWithRules();
+
+    const result = pdks('memory', 'obligations', NO_ROW_KEY);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trimEnd().split('\n').slice(1)).toEqual([
+      `notes/tabbed#tabbed${TABLE_SEPARATOR}- [ ] ${NO_ROW_KEY} split`,
+    ]);
+  });
+
+  // A key with no row answered with exit 2, or with a stdout that is not the documented
+  // shape, reads as a failed command rather than an empty answer.
+  it('answers a key with no row with exit 0, the header alone, and an empty list', () => {
+    ingestedWithRules();
+    const stamp = describeMemoryIndex({ db: openIndex() }).ingestedAt;
+
+    const table = pdks('memory', 'obligations', NO_ROW_KEY);
+    const json = pdks('memory', 'obligations', NO_ROW_KEY, '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stdout).toBe(`# ingested at ${stamp}\n`);
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, obligations: [] });
+  });
+
+  // Without rules, zero rows and "no obligation" are the same answer, so the command must
+  // refuse: one that answers the header and exit 0 reads as a clean sweep; one that treats
+  // an empty list as declared rules does the same; a refusal shaped as usage, or as more
+  // than one line, hides the key the user has to declare. The index exists here, so the
+  // only reason left to refuse is the rules.
+  it.each([
+    { state: 'absent', memory: MEMORY },
+    { state: 'an empty list', memory: { ...MEMORY, obligations: [] } },
+  ])(
+    'exits 2 with one stderr line naming memory.obligations when the rules are $state',
+    ({ memory }) => {
+      ingestedWithRules();
+      writeConfig({ memory });
+
+      const table = pdks('memory', 'obligations', OBLIGATION_KEY);
+      const json = pdks('memory', 'obligations', OBLIGATION_KEY, '--json');
+
+      for (const result of [table, json]) {
+        expect(result.status).toBe(2);
+        expect(result.stdout).toBe('');
+        expect(result.stderr.trimEnd().split('\n')).toHaveLength(1);
+        expect(result.stderr).toContain('memory.obligations');
+        expect(result.stderr).not.toMatch(/usage/i);
+      }
+    },
+  );
+
+  // A verb that answers with no key, or reads only the first of two keys, exits 0 on a
+  // shape the table never promised.
+  it.each([{ args: ['obligations'] }, { args: ['obligations', OBLIGATION_KEY, OTHER_KEY] }])(
+    'pdks memory $args exits 2 with usage and an empty stdout',
+    ({ args }) => {
+      ingestedWithRules();
+
+      const result = pdks('memory', ...args);
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toMatch(/usage/i);
+    },
+  );
+
+  // A first ingest that failed leaves a database file with the schema and no stamp; a
+  // check on the file alone answers `# ingested at null` and exit 0.
+  it('exits 2 with the ingest hint over a memory.db no ingest has committed', () => {
+    writeConfig({ memory: OBLIGATION_MEMORY });
+    openMemoryDb({ path: join(projectRoot, DB_REL) }).close();
+
+    const result = pdks('memory', 'obligations', OBLIGATION_KEY);
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
+  });
+
+  // `openMemoryDb` creates an empty database at a missing path: a verb that opens before
+  // it checks answers zero rows from an index nobody built and leaves the file behind.
+  it('exits 2 with the ingest hint before any ingest and creates neither the index nor its directory', () => {
+    writeConfig({ memory: OBLIGATION_MEMORY });
+
+    const result = pdks('memory', 'obligations', OBLIGATION_KEY);
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
+    expect(existsSync(join(projectRoot, DB_DIR_REL))).toBe(false);
+  });
 });
 
 describe('argument shapes outside the command table', () => {

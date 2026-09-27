@@ -115,6 +115,7 @@ pdks docs [topic]        # read the bundled documentation, offline
 pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (needs @polydeukes/memory)
 pdks memory search <query> | show <id>             # search that index, or show a document or section
 pdks memory lint | stats                           # report broken links, or count documents, links, and isolated documents
+pdks memory obligations <key>                      # list every obligation the config's rules extracted for one key
 ```
 
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a

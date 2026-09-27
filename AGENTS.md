@@ -32,10 +32,10 @@ and returns the verdict as a value — no bin, no judgment logic, peer on both `
 `polydeukes`. `memory` (`@polydeukes/memory`) splits markdown documents into section rows and
 keeps them in a `node:sqlite` index (FTS5, trigram) at `.polydeukes/memory.db` that can always
 be rebuilt from the documents. The umbrella declares it as an optional peer and loads it only
-in `pdks memory ingest | search | show | lint | stats`, dynamically; the judgment chain never
-imports it, and without it that command prints an install hint and exits 2. One more directory,
-`packages/documentation`, is `private` and publishes nothing: it builds the public site at
-<https://polydeukes.vercel.app> from `docs/` at build time and carries no judgment logic.
+in `pdks memory ingest | search | show | obligations | lint | stats`, dynamically; the judgment
+chain never imports it, and without it that command prints an install hint and exits 2. One
+more directory, `packages/documentation`, is `private` and publishes nothing: it builds the
+public site at <https://polydeukes.vercel.app> from `docs/` at build time and carries no judgment logic.
 Nothing depends the other way:
 the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
 its agents need. The judge module opens no file at all, and core's only file I/O is the

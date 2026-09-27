@@ -28,9 +28,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), `explain` (the assembled-registration renderer, since CLI-01), and
-  `memory ingest | search | show | lint | stats` (since MEMORY-15, `lint` · `stats` since
-  MEMORY-05: `src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`,
-  by dynamic import, and only for this command).
+  `memory ingest | search | show | obligations | lint | stats` (since MEMORY-15, `lint` ·
+  `stats` since MEMORY-05, `obligations` since MEMORY-14: `src/memory-command.ts`, the one
+  umbrella module that loads `@polydeukes/memory`, by dynamic import, and only for this
+  command).
   Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file. Since
   SURFACE-02 it also owns **the judge (`src/covenant/`)** — the dispatcher, the discipline
@@ -92,13 +93,14 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/memory`** (`@polydeukes/memory`) is published and is an **optional peer** of the
   umbrella (`peerDependenciesMeta` optional plus a `devDependencies` entry, which is the turbo
   build edge); its barrel carries `openMemoryDb`, `ingestMemory`, `searchMemory`, `showMemory`,
-  `lintMemory`, and `describeMemoryIndex`. Inside it, `parseDocument` splits a markdown text into
+  `lintMemory`, `listObligations`, and `describeMemoryIndex`. Inside it, `parseDocument` splits
+  a markdown text into
   a preamble row and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` /
   `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
   trigram FTS5 external-content table synced by triggers. `replaceDocument` derives type and
   ticket columns from validated memory settings; `ingestMemory` compares the files the `include`
   globs reach, minus those an `exclude` glob matches, with the stored documents in one write
-  transaction — it skips a document whose hash of text plus type and ticket settings is
+  transaction — it skips a document whose hash of text plus type, ticket, and obligation settings is
   unchanged, replaces a changed one, and deletes one whose file is gone or excluded, then
   resolves every stored link row (`edge`, written per section from `[[x]]` and `.md` links)
   against the whole index, so a skipped document's links still follow
@@ -106,7 +108,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `showMemory` returns stored document or section content with its links (and, for a
   document, the other documents with the same stored ticket, computed at read time), and
   `lintMemory` reports unresolved links, unlinked same-ticket documents, and untyped
-  documents once any document has a type. `ingestMemory` also
+  documents once any document has a type. `replaceDocument` also writes `obligation` rows from
+  the `obligations` rules (a line rule keys each match on a marker line; a section rule keys a
+  matching H2 section by the document's ticket), and `listObligations` returns every row under one
+  key. `ingestMemory` also
   writes `meta.ingested_at` in its transaction, which `describeMemoryIndex` reads with the
   document, section, link, unresolved, and isolated counts. It has no core dependency, so it has
   no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where `node:sqlite` stops printing an

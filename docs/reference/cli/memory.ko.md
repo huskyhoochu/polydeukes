@@ -16,6 +16,7 @@ pdks memory ingest [--rebuild]
 pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
+pdks memory obligations <key> [--json]
 pdks memory stats [--json]
 ```
 
@@ -185,6 +186,36 @@ untyped  docs/scratch
 본문을 검사하려면 먼저 `pdks memory ingest`를 실행합니다. 링크를 읽고 해소하는 규칙은
 [패키지 참조](../packages/memory.ko.md#links)에 있습니다.
 
+<a id="obligations"></a>
+## `pdks memory obligations`
+
+```sh
+pdks memory obligations REL-12
+pdks memory obligations REL-12 --json
+```
+
+`obligations`는 키 하나로 저장된 의무(obligation)를 상한 없이 전부 나열합니다. 의무는 설정의
+`memory.obligations` 규칙에서 나오고, `ingest`가 문서마다 그 규칙을 적용합니다. 줄 규칙은 미체크
+체크박스 같은 표지 줄을 그 줄에 적힌 키마다 의무 하나로 만들고, 절 규칙은 `Unresolved questions` 같은
+절을 문서의 티켓을 키로 하는 의무 하나로 만듭니다. 규칙은 [설정 참조](../configuration/index.ko.md#memory)에
+있습니다. 표 형식의 첫 줄은 마지막 ingest 시각이고, 이어서 의무마다 한 줄이 나옵니다.
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+docs/release-plan#follow-ups⇥- [ ] REL-12 move the changelog step
+```
+
+각 줄에는 절 식별자가 있고, 탭 뒤에 의무 텍스트에서 비어 있지 않은 첫 줄이 있습니다. 줄은 절
+식별자 순으로, 같은 절 안에서는 위치 순으로 정렬됩니다. JSON 형식은
+`{ "ingestedAt": …, "obligations": [ … ] }`이고, 의무마다 `key`, `sectionId`, `docTitle`,
+`sectionTitle`, 그리고 전체 `text`가 들어 있습니다. 의무가 없는 키는 머리 줄만 출력하거나 빈 목록을
+출력하고 `0`으로 종료합니다.
+
+규칙은 줄의 의미가 아니라 형태에 맞춰 추출합니다. 따라서 티켓을 선례로 인용한 줄도 함께 나열되며,
+각 줄이 그 키에 무엇을 요구하는지는 읽는 사람이 판단합니다. 설정에 `memory.obligations` 규칙이 없으면,
+빈 응답이 「의무 없음」으로 읽히지 않도록 `obligations`는 선언할 키를 알리는 한 줄을 출력하고 `2`로
+종료합니다. `search`와 마찬가지로 파일이 아니라 색인을 읽으므로, 규칙을 바꾸면 다음 `ingest`부터 반영됩니다.
+
 <a id="stats"></a>
 ## `pdks memory stats`
 
@@ -223,7 +254,7 @@ pdks memory ingest --rebuild
 그 줄을 바꾸지 않는 한 커밋에 들어가지 않습니다. 기록은 문서 쪽에 있습니다. 파일을 지우고
 `pdks memory ingest`를 다시 실행하면 색인이 복원됩니다.
 
-`search`, `show`, `lint`, `stats`는 이 파일을 만들지 않습니다. 파일이 없거나 그 안에서 끝난 ingest가 없으면 `2`로
+`search`, `show`, `lint`, `obligations`, `stats`는 이 파일을 만들지 않습니다. 파일이 없거나 그 안에서 끝난 ingest가 없으면 `2`로
 종료합니다.
 
 ```text
@@ -238,8 +269,9 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 | 성공한 명령. 일치가 없는 검색과 위반이 없는 `lint` 포함 | `0` | stdout에 응답 |
 | `lint`가 위반을 보고함 | `1` | stdout에 보고 |
 | 위 구문 밖의 인자 조합 | `2` | stderr에 사용법, stdout은 비어 있음 |
-| 설정 파일이 없거나 `memory` 절이 없음(`ingest`, `search`) | `2` | stderr에 선언할 키 |
-| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `stats`) | `2` | stderr에 ingest 안내 |
+| 설정 파일이 없거나 `memory` 절이 없음(`ingest`, `search`, `obligations`) | `2` | stderr에 선언할 키 |
+| `memory.obligations` 규칙이 없음(`obligations`) | `2` | stderr에 선언할 키 |
+| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `obligations`, `stats`) | `2` | stderr에 ingest 안내 |
 | 색인에 없는 식별자(`show`) | `2` | stderr에 문구, stdout은 비어 있음 |
 | `@polydeukes/memory`가 설치되지 않음 | `2` | stderr에 설치 안내 |
 | 그 밖의 오류 | `2` | stderr에 `pdks memory: <오류 문구>`, stdout은 비어 있음 |

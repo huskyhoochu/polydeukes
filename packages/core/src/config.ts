@@ -106,6 +106,11 @@ export type MemoryConfig = {
     | { type?: string; from: 'path'; pattern?: string }
   )[];
   weights?: Record<string, number>;
+  /**
+   * a `line` rule keys every match of `key` on a section line `line` matches; a `section` rule
+   * keys the whole section whose title matches by the document's ticket
+   */
+  obligations?: ({ line: string; key: string } | { section: string })[];
 };
 
 /**
@@ -228,8 +233,11 @@ const MEMORY_KEYS: ReadonlySet<string> = new Set([
   'typeMap',
   'ticket',
   'weights',
+  'obligations',
 ]);
 const TICKET_KEYS: ReadonlySet<string> = new Set(['type', 'from', 'key', 'pattern']);
+const LINE_OBLIGATION_KEYS: ReadonlySet<string> = new Set(['line', 'key']);
+const SECTION_OBLIGATION_KEYS: ReadonlySet<string> = new Set(['section']);
 
 function validateMemory(value: unknown): MemoryConfig {
   if (!isPlainObject(value)) throw new ConfigValidationError('memory must be an object');
@@ -284,6 +292,26 @@ function validateMemory(value: unknown): MemoryConfig {
           new RegExp(rule.pattern);
         } catch {
           throw new ConfigValidationError(`${location}.pattern is invalid`);
+        }
+      }
+    });
+  }
+  if (value.obligations !== undefined) {
+    if (!Array.isArray(value.obligations))
+      throw new ConfigValidationError('memory.obligations must be an array');
+    value.obligations.forEach((rule, index) => {
+      const location = `memory.obligations[${index}]`;
+      if (!isPlainObject(rule)) throw new ConfigValidationError(`${location} must be an object`);
+      const fields = 'section' in rule ? SECTION_OBLIGATION_KEYS : LINE_OBLIGATION_KEYS;
+      rejectUnknownKeys(rule, fields, location);
+      for (const field of fields) {
+        const pattern = rule[field];
+        if (typeof pattern !== 'string')
+          throw new ConfigValidationError(`${location}.${field} must be a string`);
+        try {
+          new RegExp(pattern);
+        } catch {
+          throw new ConfigValidationError(`${location}.${field} is invalid`);
         }
       }
     });
@@ -598,7 +626,7 @@ function validateWitness(witness: unknown): { token: string; ttlMinutes: number 
  * non-empty string template, `telemetry.logPath` is not a non-empty string after trimming,
  * `protectedPaths` carries a non-string or empty element, or `adapters` is not a map of
  * plain-object namespaces. When present, `memory` must declare non-empty include globs and
- * valid exclude globs, classification, ticket, and weight data.
+ * valid exclude globs, classification, ticket, weight, and obligation data.
  */
 export function defineConfig(config: unknown): ResolvedConfig {
   if (!isPlainObject(config)) {

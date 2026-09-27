@@ -18,6 +18,7 @@
 | `searchMemory` | 검색어 낱말을 글자 그대로 찾아 절을 고르고 순서를 정합니다 |
 | `showMemory` | 저장된 문서 하나와 그 절들, 또는 저장된 절 하나를 거기서 나가고 들어오는 링크와 함께 돌려줍니다. 문서라면 티켓이 같은 다른 문서들도 함께 돌려줍니다 |
 | `lintMemory` | 해소되지 않은 링크, 티켓을 공유하면서 링크가 없는 문서, `type`이 없는 문서를 보고합니다 |
+| `listObligations` | 설정의 `obligations` 규칙으로 ingest 때 추출해 한 키로 저장한 의무를 전부 돌려줍니다 |
 | `describeMemoryIndex` | 마지막으로 끝난 ingest 시각과 문서 · 절 · 링크 · 미해소 링크 · 고립 문서의 수를 돌려줍니다 |
 
 데이터베이스는 문서에서 파생된 것입니다. 언제든 지우고 문서에서 다시 만들 수 있으므로, 저장
@@ -67,6 +68,7 @@ db.close();
 | `SearchMemorySpec` | `db`, `query`, 선택 항목 `limit`(기본값 20), `now`, `config` |
 | `ShowMemorySpec` | `db`, `id` — 문서나 절의 식별자 |
 | `LintMemorySpec` | `db` |
+| `ListObligationsSpec` | `db`, `key` |
 | `DescribeMemoryIndexSpec` | `db` |
 
 `MemoryConfig`는 설정의 [`memory` 절](../configuration/index.ko.md#memory)과 같은 형태입니다.
@@ -133,6 +135,7 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 | `MemoryLink` | `from`(링크가 적힌 절), `target`(`[[x]]` 또는 markdown 링크의 대상), `to`(해소된 절이나 문서, 없으면 `null`) |
 | `MemoryLintResult` | `violations` |
 | `MemoryViolation` | `rule`, `id`, `detail` |
+| `MemoryObligation` | `key`, `sectionId`, `docTitle`, `sectionTitle`, `text` — 줄 규칙이면 맞은 줄(앞뒤 공백 제거), 절 규칙이면 절 본문입니다. `sectionId` 순, 같은 절 안에서는 위치 순으로 정렬됩니다 |
 | `MemoryIndexState` | `documents`, `ingestedAt`(UTC 기준 ISO 8601 시각. ingest 전에는 `null`), `sections`, `links`, `unresolved`, `isolated` |
 
 `links`는 `{ out, in }`입니다. 문서의 `out`은 그 문서의 절에 적힌 링크이고 `in`은 그 문서로 해소된

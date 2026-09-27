@@ -11,6 +11,10 @@ const memory = {
     { from: 'title', pattern: '[A-Z]+-[0-9]+' },
   ],
   weights: { reference: 2, howto: 0.5 },
+  obligations: [
+    { line: '^\\s*[-*] \\[ \\]', key: '[A-Z]+-[0-9]+[a-z]?' },
+    { section: '^Unresolved questions$' },
+  ],
 };
 
 function accepted(value: unknown): boolean {
@@ -64,6 +68,39 @@ describe('memory config data contract', () => {
     [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', extra: true }] } }, false],
     [{ ...validLanguages, memory: { ...memory, weights: { reference: -1 } } }, false],
     [{ ...validLanguages, memory: { ...memory, weights: { reference: '2' } } }, false],
+    // Obligation rules: the two forms each alone, an empty list, and one fixture per way of
+    // mixing or truncating a form, so neither side admits a rule the other refuses.
+    [{ ...validLanguages, memory: { ...memory, obligations: [] } }, true],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: 'x', key: 'y' }] } }, true],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ section: 'x' }] } }, true],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: 'x' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ key: 'y' }] } }, false],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, obligations: [{ line: 'x', key: 'y', section: 'z' }] },
+      },
+      false,
+    ],
+    [
+      { ...validLanguages, memory: { ...memory, obligations: [{ section: 'x', key: 'y' }] } },
+      false,
+    ],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: 1, key: 'y' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: 'x', key: 1 }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ section: 1 }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: '[', key: 'y' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ section: '[' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{ line: 'x', key: '[' }] } }, false],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, obligations: [{ line: 'x', key: 'y', extra: true }] },
+      },
+      false,
+    ],
+    [{ ...validLanguages, memory: { ...memory, obligations: [{}] } }, false],
+    [{ ...validLanguages, memory: { ...memory, obligations: { line: 'x', key: 'y' } } }, false],
   ] as const)('schema and runtime both judge memory fixture %#', (config, expected) => {
     expect(accepted(config)).toBe(expected);
     expect(validate(config)).toBe(expected);
@@ -85,6 +122,14 @@ describe('memory config data contract', () => {
     [{ ...memory, exclude: ['**/index.md', ''] }, 'memory.exclude'],
     // An emptied YAML `exclude:` parses to null; a truthiness check would let it through.
     [{ ...memory, exclude: null }, 'memory.exclude'],
+    // The second entry is the faulty one, so a message that always names index 0 fails.
+    [{ ...memory, obligations: [{ section: 'ok' }, { line: 'x' }] }, 'memory.obligations[1]'],
+    [{ ...memory, obligations: [{ key: 'y' }] }, 'memory.obligations[0]'],
+    [{ ...memory, obligations: [{ line: 'x', key: 'y', section: 'z' }] }, 'memory.obligations[0]'],
+    [{ ...memory, obligations: [{ line: 1, key: 'y' }] }, 'memory.obligations[0]'],
+    [{ ...memory, obligations: [{ section: '[' }] }, 'memory.obligations[0]'],
+    [{ ...memory, obligations: [{ line: 'x', key: '[' }] }, 'memory.obligations[0]'],
+    [{ ...memory, obligations: { line: 'x', key: 'y' } }, 'memory.obligations'],
   ] as const)('names the invalid memory location %#', (candidate, location) => {
     try {
       defineConfig({ ...validLanguages, memory: candidate });

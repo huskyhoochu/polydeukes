@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS edge (
   PRIMARY KEY (src_section, form, raw_target)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS obligation (
+  section_id TEXT NOT NULL REFERENCES section(id) ON DELETE CASCADE,
+  ord        INTEGER NOT NULL,
+  key        TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  PRIMARY KEY (section_id, ord, key)
+) STRICT;
+
 CREATE VIRTUAL TABLE IF NOT EXISTS section_fts USING fts5(
   doc_title, title, body,
   content='section', content_rowid='rowid', tokenize='trigram'

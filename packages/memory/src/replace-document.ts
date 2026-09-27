@@ -39,26 +39,43 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
       : config?.typeMap && Object.hasOwn(config.typeMap, sourceType)
         ? config.typeMap[sourceType]
         : sourceType;
+  const ticket = ticketFor(document, config);
   db.prepare(
     'INSERT INTO concept (id, title, metadata, status, stale_after, doc_type, ticket) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(
-    document.id,
-    document.title,
-    JSON.stringify(metadata),
-    status,
-    staleAfter,
-    docType,
-    ticketFor(document, config),
-  );
+  ).run(document.id, document.title, JSON.stringify(metadata), status, staleAfter, docType, ticket);
   const insert = db.prepare(
     'INSERT INTO section (id, concept_id, ord, doc_title, title, body) VALUES (?, ?, ?, ?, ?, ?)',
   );
   const insertEdge = db.prepare(
     'INSERT INTO edge (src_section, form, raw_target) VALUES (?, ?, ?)',
   );
+  // Rules that admit the same line, section, and key write one row between them.
+  const insertObligation = db.prepare(
+    'INSERT OR IGNORE INTO obligation (section_id, ord, key, text) VALUES (?, ?, ?, ?)',
+  );
+  const rules = config?.obligations ?? [];
   for (const section of document.sections) {
     const id = `${document.id}#${section.anchor}`;
     insert.run(id, document.id, section.ord, document.title, section.title, section.body);
     for (const link of section.links) insertEdge.run(id, link.form, link.target);
+    const lines = section.body.split('\n');
+    for (const rule of rules) {
+      if ('section' in rule) {
+        // The preamble, the one row whose anchor is empty, has no title, so no section rule reads it.
+        if (
+          section.anchor !== '' &&
+          ticket !== null &&
+          new RegExp(rule.section).test(section.title)
+        )
+          insertObligation.run(id, -1, ticket, section.body);
+        continue;
+      }
+      const marker = new RegExp(rule.line);
+      lines.forEach((line, ord) => {
+        if (!marker.test(line)) return;
+        for (const [key] of line.matchAll(new RegExp(rule.key, 'g')))
+          insertObligation.run(id, ord, key, line.trim());
+      });
+    }
   }
 }

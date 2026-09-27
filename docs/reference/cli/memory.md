@@ -15,6 +15,7 @@ pdks memory ingest [--rebuild]
 pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
+pdks memory obligations <key> [--json]
 pdks memory stats [--json]
 ```
 
@@ -189,6 +190,39 @@ reads the index rather than the files: run `pdks memory ingest` first to lint th
 How links are read and resolved is in the
 [package reference](../packages/memory.md#links).
 
+<a id="obligations"></a>
+## `pdks memory obligations`
+
+```sh
+pdks memory obligations REL-12
+pdks memory obligations REL-12 --json
+```
+
+`obligations` lists every obligation stored under one key, with no limit. The obligations come
+from the `memory.obligations` rules of the config, which `ingest` applies to each document: a
+line rule turns a marker line, such as an unchecked checkbox, into one obligation per key it
+names, and a section rule turns a section, such as `Unresolved questions`, into one obligation
+keyed by the document's ticket. The rules are in the
+[configuration reference](../configuration/index.md#memory). The first line of the table form is
+the time of the last ingest, followed by one line per obligation:
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+docs/release-plan#follow-ups⇥- [ ] REL-12 move the changelog step
+```
+
+Each line carries the section id and, after a tab, the first non-empty line of the obligation's
+text. The lines are ordered by section id, then by position in the section. The JSON form is
+`{ "ingestedAt": …, "obligations": [ … ] }`, where each obligation carries `key`, `sectionId`,
+`docTitle`, `sectionTitle`, and the full `text`. A key with no obligation exits `0` with the
+header alone, or with an empty list.
+
+A rule matches the form of a line, not its meaning: a line that cites a ticket as a precedent is
+listed as well, and deciding what each line asks of the key is left to the reader. When the
+config declares no `memory.obligations` rule, `obligations` exits `2` with one line naming the
+key to declare, because an empty answer would read as "no obligation". Like `search`, it reads
+the index rather than the files, and a changed rule takes effect after the next `ingest`.
+
 <a id="stats"></a>
 ## `pdks memory stats`
 
@@ -227,8 +261,8 @@ makes no copy of it. The `.polydeukes/` line that `pdks init` adds to `.gitignor
 so it stays out of commits unless you change that line. The documents are the record: deleting
 the file and running `pdks memory ingest` again restores the index.
 
-`search`, `show`, `lint`, and `stats` never create the file. When it does not exist, or no
-ingest has completed in it, they exit `2`:
+`search`, `show`, `lint`, `obligations`, and `stats` never create the file. When it does not
+exist, or no ingest has completed in it, they exit `2`:
 
 ```text
 pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first
@@ -242,8 +276,9 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 | A successful command, including a search with no match and a `lint` with no violation | `0` | Answer on stdout |
 | `lint` reports a violation | `1` | The report on stdout |
 | An argument list outside the syntax above | `2` | Usage on stderr, empty stdout |
-| No config, or no `memory` section (`ingest`, `search`) | `2` | The key to declare on stderr |
-| No index file, or no completed ingest (`search`, `show`, `lint`, `stats`) | `2` | The ingest hint on stderr |
+| No config, or no `memory` section (`ingest`, `search`, `obligations`) | `2` | The key to declare on stderr |
+| No `memory.obligations` rule (`obligations`) | `2` | The key to declare on stderr |
+| No index file, or no completed ingest (`search`, `show`, `lint`, `obligations`, `stats`) | `2` | The ingest hint on stderr |
 | An id not in the index (`show`) | `2` | Message on stderr, empty stdout |
 | `@polydeukes/memory` not installed | `2` | The install hint on stderr |
 | Any other error | `2` | `pdks memory: <message>` on stderr, empty stdout |

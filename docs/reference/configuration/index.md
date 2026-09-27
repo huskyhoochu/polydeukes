@@ -171,6 +171,10 @@ memory:
       pattern: '[A-Z]+-[0-9]+'
   weights:
     decision: 2
+  obligations:
+    - line: '^\s*[-*] \[ \]'
+      key: '[A-Z]+-[0-9]+'
+    - section: '^Unresolved questions$'
 ```
 
 | Key | Required | What it does |
@@ -180,12 +184,14 @@ memory:
 | `typeMap` | no | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written |
 | `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
 | `weights` | no | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results |
+| `obligations` | no | A list of rules that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line rule has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section rule has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` rules; a document without a ticket yields none. An entry has one form or the other |
 
-Keys outside these five are rejected, as are an empty `include`, an `exclude` that is not a list
+Keys outside these six are rejected, as are an empty `include`, an `exclude` that is not a list
 or holds anything but non-empty strings, a `typeMap` value that is not a
-non-empty string, a negative or non-numeric weight, and a `pattern` that is not a valid regular
-expression. A change to `typeMap` or `ticket` reprocesses every document on the next
-`pdks memory ingest`.
+non-empty string, a negative or non-numeric weight, a `pattern`, `line`, `key`, or `section`
+that is not a valid regular expression, and an `obligations` entry that mixes the two forms or
+lacks a key its form needs. A change to `typeMap`, `ticket`, or `obligations` reprocesses every
+document on the next `pdks memory ingest`.
 
 <a id="three-lists"></a>
 ## The three discipline lists
