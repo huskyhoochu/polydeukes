@@ -34,18 +34,9 @@ pnpm add -D polydeukes @polydeukes/core
 
 ### 2. 첫 규율 설정하기
 
-생성된 `polydeukes.config.yaml`을 편집기에서 여세요. `languages`의 임시 항목을 프로젝트의
-소스 경로와 테스트 명령으로 바꿉니다. 예를 들면 다음과 같습니다.
-
-```yaml
-languages:
-  typescript:
-    productionGlob: 'src/**'
-    testCmd: 'pnpm test'
-```
-
-생성된 `protectedPaths`와 `witness` 블록은 유지하세요. 아래 `disciplines` 목록을 추가하거나,
-이미 목록이 있다면 항목만 덧붙이세요. `src/`에 새로 추가되는 줄에 `TODO`가 있으면 알려 줍니다.
+생성된 `polydeukes.config.yaml`을 편집기에서 여세요. 생성된 `protectedPaths`와 `witness`
+블록은 유지하세요. 아래 `disciplines` 목록을 추가하거나, 이미 목록이 있다면 항목만
+덧붙이세요. `src/`에 새로 추가되는 줄에 `TODO`가 있으면 알려 줍니다.
 
 ```yaml
 disciplines:

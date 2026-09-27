@@ -97,6 +97,19 @@ const PAIR_C_REL = 'notes/pair-c.md';
 const PAIR_C_ID = 'notes/pair-c';
 const PAIR_C_TEXT = '---\ntitle: Pair C RQ-7\ntype: note\n---\n## One\n\npair c text.\n';
 
+/**
+ * A document whose path carries a space, so its section id does too. The query word is
+ * unique to it, so the search answers exactly this one section.
+ */
+const SPACED_DOC_REL = 'notes/My Guide/setup.md';
+const SPACED_DOC_TEXT = '---\ntitle: Setup\ntype: guide\n---\n## Install\n\nspaced-term here.\n';
+const SPACED_SECTION_ID = 'notes/My Guide/setup#install';
+const SPACED_QUERY = 'spaced-term';
+/** The one character between two columns of the `search` table form. */
+const TABLE_SEPARATOR = '\t';
+/** A config declaring the memory section and nothing else — the shape the memory docs show. */
+const MEMORY_ONLY_CONFIG = { memory: { include: INCLUDE } };
+
 const NO_INDEX_LINE = `pdks memory: no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const indexedLine = (n: number) => `indexed ${n} document${n === 1 ? '' : 's'} into ${DB_REL}`;
 
@@ -207,6 +220,20 @@ describe('pdks memory ingest', () => {
     expect(result.stdout).toBe('');
     expect(result.stderr.startsWith('pdks memory: ')).toBe(true);
     expect(existsSync(join(projectRoot, DB_REL))).toBe(false);
+  });
+
+  // A loader that still requires `languages` exits 2 on the config the memory docs show
+  // and creates no index; a command that catches that as "no memory section" prints the
+  // declaration hint for a key the config already declares.
+  it('indexes from a config that declares only memory.include, exiting 0', () => {
+    writeFileSync(join(projectRoot, CONFIG_REL), JSON.stringify(MEMORY_ONLY_CONFIG, null, 2));
+
+    const result = pdks('memory', 'ingest');
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toBe(`${indexedLine(INDEXED_COUNT)}\n`);
+    expect(describeMemoryIndex({ db: openIndex() }).documents).toBe(INDEXED_COUNT);
   });
 
   // An ingest that treats an empty file list as an error, or prints nothing for it, leaves
@@ -325,21 +352,39 @@ describe('pdks memory search', () => {
     expect(lines).toHaveLength(expected.length + 1);
     expected.forEach((hit, i) => {
       const line = lines[i + 1] as string;
-      const fields = [
-        hit.id,
-        hit.matchPath,
-        hit.stale ? `${hit.status}${STALE_MARK}` : hit.status,
-        hit.trust,
-        `${hit.docTitle} › ${hit.sectionTitle}`,
-      ];
-      let cursor = 0;
-      for (const field of fields) {
-        const at = line.indexOf(field, cursor);
-        expect(at, `${field} in "${line}"`).toBeGreaterThanOrEqual(cursor);
-        cursor = at + field.length;
-      }
-      if (!hit.stale) expect(line, line).not.toContain(STALE_MARK);
+      expect(line).toBe(
+        [
+          hit.id,
+          hit.matchPath,
+          hit.stale ? `${hit.status}${STALE_MARK}` : hit.status,
+          hit.trust,
+          `${hit.docTitle} › ${hit.sectionTitle}`,
+        ].join(TABLE_SEPARATOR),
+      );
     });
+  });
+
+  // A section id or title carrying a space cannot be split on runs of spaces, so a table
+  // joined with two spaces hands `cut -f1` a truncated id; a renderer that pads columns to
+  // width joins them with more than one tab, and one that escapes the space in the id
+  // hands `show` an identifier the index does not hold.
+  it('separates the five columns with one tab so an id containing a space survives cut -f1', () => {
+    mkdirSync(join(projectRoot, dirname(SPACED_DOC_REL)), { recursive: true });
+    writeFileSync(join(projectRoot, SPACED_DOC_REL), SPACED_DOC_TEXT);
+    ingested();
+    const db = openIndex();
+    const expected = searchMemory({ db, query: SPACED_QUERY, config: MEMORY });
+    expect(expected.map((hit) => hit.id)).toEqual([SPACED_SECTION_ID]);
+
+    const result = pdks('memory', 'search', SPACED_QUERY);
+
+    expect(result.status, result.stderr).toBe(0);
+    const lines = result.stdout.trimEnd().split('\n').slice(1);
+    expect(lines).toHaveLength(1);
+    const fields = (lines[0] as string).split(TABLE_SEPARATOR);
+    expect(fields).toHaveLength(5);
+    expect(fields[0]).toBe(SPACED_SECTION_ID);
+    expect(SPACED_SECTION_ID).toContain(' ');
   });
 
   // A no-hit query answered with exit 2, or with a stdout that is not the documented

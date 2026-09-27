@@ -14,8 +14,9 @@ For the complete syntax of relations and extraction steps, see the [Declaration 
 <a id="languages"></a>
 ## `languages`
 
-Required. The language axis, first-class. Keys are your values (`typescript`, `python`, …) —
-the core ships no language names and never interprets the command string.
+Optional. The language axis. Keys are your values (`typescript`, `python`, …) — the core
+ships no language names and never interprets the command string. A config without the key, or
+with an empty map, is valid, and no judgment reads these values.
 
 ```yaml
 languages:

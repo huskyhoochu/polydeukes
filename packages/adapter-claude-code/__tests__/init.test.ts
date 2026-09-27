@@ -557,6 +557,24 @@ describe('discipline classification skill — the embedded config examples are l
       expect(fence, fence).not.toContain('enforce: block');
     }
   });
+
+  it('carries no languages block in any fenced example and no sentence calling it required', () => {
+    // No judgment path reads `languages`, so an example that opens with the block teaches
+    // the consumer to declare a profile nothing consumes, and a sentence naming it "the
+    // schema's one required block" states a rule the loader does not hold. A fence is a
+    // whole document, so a live top-level key sits at column 0; the resolved value beside
+    // it is what separates "block removed" from "fence broken", since loadConfig fills the
+    // empty record only for a document it accepted.
+    const skill = generatedSkill();
+    const fences = yamlFences(skill);
+
+    expect(fences.length).toBeGreaterThan(0);
+    for (const fence of fences) {
+      expect(fence, fence).not.toMatch(/^languages\s*:/m);
+      expect(loadFenceAsConfig(fence).config.languages, fence).toEqual({});
+    }
+    expect(skill).not.toContain("the schema's one required block");
+  });
 });
 
 describe('discipline classification skill — current declaration capabilities', () => {

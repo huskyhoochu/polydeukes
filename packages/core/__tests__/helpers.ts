@@ -24,7 +24,7 @@ ajvFormats.default.default(ajv);
 export const validate = ajv.compile(schema);
 
 /**
- * The minimal `languages` block every fixture needs (the key is required).
+ * The `languages` block most fixtures carry so a discipline or witness case varies one key.
  *
  * `testCmd` is deliberately `fake-runner`, never a real runner name: the core stores the
  * command and never runs it, so a real name would imply a coupling that does not exist.

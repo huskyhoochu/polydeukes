@@ -104,14 +104,13 @@ pdks memory search release notes --json
 
 ```text
 # ingested at 2026-01-15T09:30:00.000Z
-docs/guide#install  and  stable  unverified  Guide › Install
+docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 ```
 
-결과 한 줄에는 절 식별자, 매치 경로(`and`, `or`, `like`), 문서의 상태(`stale_after` 날짜가 지났으면
-뒤에 `, stale`), 신뢰 등급, `<문서 제목> › <절 제목>`(첫 H2 앞 본문이면 문서 제목만)이 들어갑니다.
-JSON 형태는
-`{ "ingestedAt": …, "results": [ … ] }`입니다. 일치하는 절이 없는 검색도 `0`으로 종료하며, 머리
-줄만 출력하거나 빈 `results` 목록을 냅니다.
+결과 한 줄에는 탭(위 예시의 `⇥`)으로 구분한 다섯 열이 들어갑니다. 절 식별자, 매치 경로(`and`,
+`or`, `like`), 문서의 상태(`stale_after` 날짜가 지났으면 뒤에 `, stale`), 신뢰 등급,
+`<문서 제목> › <절 제목>`(첫 H2 앞 본문이면 문서 제목만)입니다. JSON 형태는 `{ "ingestedAt": …, "results": [ … ] }`입니다.
+일치하는 절이 없는 검색도 `0`으로 종료하며, 머리 줄만 출력하거나 빈 `results` 목록을 냅니다.
 
 `search`는 파일이 아니라 색인을 읽습니다. 머리 줄의 시각 뒤에 바뀐 문서는 다음 `ingest` 전까지
 반영되지 않습니다.

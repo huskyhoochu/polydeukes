@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 // The project-side scaffold layer, the half every distribution path shares. It creates the
 // config and the telemetry ignore line and NOTHING else: registration artifacts belong to
 // the session layer, which is what lets another distribution path reuse this function
@@ -41,7 +42,7 @@ const SCHEMA_LINE =
  * than failing a call.
  */
 const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json', '.grok/hooks'];
-/** A minimal valid sibling config — languages is the schema's only required key. */
+/** A minimal valid sibling config, deliberately unlike anything the scaffold generates. */
 const VALID_SIBLING_YML = [
   'languages:',
   '  typescript:',
@@ -96,14 +97,26 @@ describe('scaffoldProject — the shared project-side layer', () => {
 describe('generated config — valid by construction', () => {
   it('passes loadConfig and carries the minimum protectedPaths', () => {
     // loadConfig throwing here is the worst case: the session surface is fail-closed, so
-    // an invalid generated config blocks every call right after install. Dropping the
-    // languages placeholder makes validation reject the config; a missing resolution-path
-    // entry lets a stub on the node_modules walk replace the judge, and every call then
-    // passes with no telemetry row.
+    // an invalid generated config blocks every call right after install. A missing
+    // resolution-path entry lets a stub on the node_modules walk replace the judge, and
+    // every call then passes with no telemetry row.
     scaffoldProject(projectRoot);
 
     const { config } = loadConfig({ rootDir: projectRoot });
     expect(config.protectedPaths).toEqual(expect.arrayContaining(MINIMUM_PROTECTED_PATHS));
+  });
+
+  it('carries no languages key — the generated document declares nothing no judgment reads', () => {
+    // No judgment path reads `languages`, so a generated block is a profile the consumer
+    // has to maintain for nothing. Asserted on the parsed document rather than the text:
+    // a commented-out `# languages:` line is prose and passes, a live key is what fails.
+    // The loadConfig pass beside it is what separates "key removed" from "document
+    // broken" — a scaffold that cut the block mid-mapping fails there, not here.
+    scaffoldProject(projectRoot);
+
+    const document = parseYaml(read(CONFIG_CANONICAL)) as Record<string, unknown>;
+    expect(Object.keys(document)).not.toContain('languages');
+    expect(loadConfig({ rootDir: projectRoot }).config.languages).toEqual({});
   });
 
   it('carries a witness block — a valveless generated config makes the first block a lockout', () => {

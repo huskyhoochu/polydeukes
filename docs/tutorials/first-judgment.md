@@ -72,8 +72,8 @@ valve is assembled. See [configuration errors](../troubleshooting.md#invalid-con
 
 ## Continue with a real project
 
-- [Configure the project](../how-to/configure-project.md) to replace the placeholder language
-  and test command.
+- [Configure the project](../how-to/configure-project.md) to choose whether a violation advises
+  or blocks.
 - [Connect the surfaces](../how-to/connect-surfaces.md) for Grok, Codex, or a git pre-commit
   hook.
 - [Write a discipline](../how-to/write-disciplines.md) and observe an advisory before choosing

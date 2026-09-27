@@ -237,14 +237,10 @@ line below only spells that default out. NEVER write \`enforce: block\` from thi
 promotion to block is the user's own choice, made after the advise measurements have been
 read.
 
-The examples below are whole documents, so \`languages:\` — the schema's one required block —
-appears alongside the entry; in a config that already has one, copy the entry only.
+The examples below are whole documents; in a config that already has entries, copy the entry
+only.
 
 \`\`\`yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'no-focused-tests'
     why: 'a committed .only silently shrinks the suite to one test'
@@ -274,10 +270,6 @@ A command-line ban reads the fixed source \`command\` and scopes on it — the s
 the mechanism's shape, so a \`forbidden-command\` entry without it is refused at load time:
 
 \`\`\`yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 sessionDisciplines:
   - id: 'no-force-push'
     why: 'a force push rewrites history nobody reviewed'
@@ -299,10 +291,6 @@ the allowed-status file must exist and contain valid JSON. File bindings use the
 contents for a file changed by the current observation, not a second stale disk read.
 
 \`\`\`yaml
-languages:
-  json:
-    productionGlob: 'locales/**/*.json'
-    testCmd: 'pnpm test'
 disciplines:
   - id: 'locale-key-parity'
     why: 'the ko and en locales must carry the same keys'
@@ -326,10 +314,6 @@ disciplines:
 \`\`\`
 
 \`\`\`yaml
-languages:
-  json:
-    productionGlob: '*.json'
-    testCmd: 'pnpm test'
 disciplines:
   - id: 'status-vocabulary'
     why: 'statuses.json may contain only values listed in allowed-statuses.json'
@@ -353,10 +337,6 @@ editing only the allowed list does not trigger it. Broaden the observation delib
 changes to that list must recheck all dependent files.
 
 \`\`\`yaml
-languages:
-  typescript:
-    productionGlob: 'src/**'
-    testCmd: 'pnpm test'
 sessionDisciplines:
   - id: 'manifest-needs-npm-view'
     why: 'a successful package lookup must precede a manifest edit'
@@ -411,10 +391,6 @@ example list. Check the catalogue, extraction steps, and observation channel fir
 \`delegated-scope\` declaration cannot be registered as a judged entry.
 
 \`\`\`yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'benchmark-supports-performance-claim'
     why: 'a performance claim needs a fresh benchmark run during judgment; the engine cannot execute it'

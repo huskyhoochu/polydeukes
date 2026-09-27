@@ -52,8 +52,8 @@ export function unjudgeableSelfModCovenant(): CovenantModule {
 }
 
 /**
- * Write `polydeukes.config.json` into `repoRoot`: the minimal valid config (`languages`
- * is required) plus the caller's keys.
+ * Write `polydeukes.config.json` into `repoRoot`: the minimal config every check suite
+ * shares (one language profile and the telemetry path) plus the caller's keys.
  *
  * Separate from {@link createCheckRepo} because the session-surface suites need this
  * writer without the git repository around it — they drive the hook, which never reads

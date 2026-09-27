@@ -4,7 +4,6 @@
   "description": "Schema v2 (config as data) — equivalent to the runtime defineConfig() validator; the equivalence is enforced by a contract test.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["languages"],
   "properties": {
     "$schema": {
       "description": "IDE schema reference — accepted and ignored by the runtime validator.",
@@ -13,7 +12,6 @@
     "languages": {
       "description": "Language axis, first-class. Keys are user values ('typescript', 'python', ...).",
       "type": "object",
-      "minProperties": 1,
       "additionalProperties": { "$ref": "#/$defs/languageProfile" }
     },
     "protectedPaths": {

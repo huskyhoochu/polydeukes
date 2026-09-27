@@ -30,7 +30,7 @@ pdks init
 - `polydeukes.config.yaml`
 - `.gitignore`의 `.polydeukes/` 항목
 
-설정 파일에는 언어 블록, 보호 목록, 증인(witness) 블록, 주석으로 된 규율(discipline) 예제가
+설정 파일에는 보호 목록, 증인(witness) 블록, 주석으로 된 규율(discipline) 예제가
 있습니다. 완성된 정책이 아니라 프로젝트에 맞춰 고칠 출발점입니다.
 
 <a id="init-claude-code"></a>

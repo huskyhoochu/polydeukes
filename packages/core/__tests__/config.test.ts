@@ -316,16 +316,6 @@ describe('v1 failure-path regression (fixtures ported to v2 templates)', () => {
     expect(error.message).toContain('typescript');
   });
 
-  it('rejects missing languages', () => {
-    expectConfigValidationError({});
-  });
-
-  it('rejects an empty languages object', () => {
-    // `languages` present but carrying zero entries is a distinct failure surface from
-    // "missing entirely"; both are rejected.
-    expectConfigValidationError({ languages: {} });
-  });
-
   it('rejects protectedPaths with a non-string element', () => {
     // Catches the every-element-is-string check on protectedPaths being dropped.
     expectConfigValidationError({
@@ -341,6 +331,30 @@ describe('v1 failure-path regression (fixtures ported to v2 templates)', () => {
       ...validTwoLanguageConfig,
       adapters: ['packages/adapter-foo', 'packages/adapter-bar'],
     });
+  });
+});
+
+// No judgment path reads `languages`, so a config that declares none — a memory-only
+// project — is as valid as one that declares two. The resolved shape stays an object so
+// every reader of `ResolvedConfig.languages` keeps indexing it without a presence check.
+describe('languages — an optional key resolving to an empty record when absent', () => {
+  it('accepts an empty config and resolves languages to {}', () => {
+    // Catches a validator that still requires the key, and one that leaves `languages`
+    // undefined on the resolved value instead of filling the empty record.
+    const resolved = defineConfig({});
+
+    expect(resolved.languages).toEqual({});
+  });
+
+  it.each([
+    ['an array', [{ productionGlob: 'lib/**/*.ts', testCmd: 'fake-runner {scope}' }]],
+    ['null', null],
+  ])('rejects %s as languages, naming the key', (_shape, languages) => {
+    // Making the key optional must not make its type unchecked: null is what an emptied
+    // YAML `languages:` parses to, and `?? {}` would pass it silently; an array is
+    // typeof 'object' and slips past a check that forgot `Array.isArray`.
+    const error = expectConfigValidationError({ languages });
+    expect(error.message).toContain('languages');
   });
 });
 

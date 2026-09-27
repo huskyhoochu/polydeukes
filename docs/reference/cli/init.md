@@ -30,7 +30,7 @@ The scaffold is the same one every surface starts from:
 - `polydeukes.config.yaml`
 - `.gitignore` with `.polydeukes/`
 
-The config file starts with the language block, a protection list, a witness block, and commented
+The config file starts with a protection list, a witness block, and commented
 discipline examples. It is a starter policy, not a complete project policy.
 
 <a id="init-claude-code"></a>

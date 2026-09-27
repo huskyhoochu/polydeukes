@@ -82,14 +82,10 @@ line below only spells that default out. NEVER write `enforce: block` from this 
 promotion to block is the user's own choice, made after the advise measurements have been
 read.
 
-The examples below are whole documents, so `languages:` — the schema's one required block —
-appears alongside the entry; in a config that already has one, copy the entry only.
+The examples below are whole documents; in a config that already has entries, copy the entry
+only.
 
 ```yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'no-focused-tests'
     why: 'a committed .only silently shrinks the suite to one test'
@@ -117,10 +113,6 @@ only shell calls are judged; `lines` splits the command line, `matches` keeps th
 lines, and `empty` is the verdict:
 
 ```yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'no-force-push'
     why: 'a force push rewrites history nobody reviewed'
@@ -140,10 +132,6 @@ ran and succeeded, and requires one matching the precedent — `nonEmpty` is the
 `skipped` instead of blocking:
 
 ```yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'manifest-needs-npm-view'
     why: 'a dependency version must be measured before it is written'
@@ -194,10 +182,6 @@ catalogue, extraction steps, and observation channel before choosing a draft. Ke
 vocabulary checks are expressible today. `delegated-scope` is reserved, not a usable declaration.
 
 ```yaml
-languages:
-  placeholder:
-    productionGlob: 'src/**'
-    testCmd: 'echo "set a verification command for {scope}"'
 disciplines:
   - id: 'benchmark-supports-performance-claim'
     why: 'a performance claim needs a fresh benchmark run during judgment; the engine cannot execute it'

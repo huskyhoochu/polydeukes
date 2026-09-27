@@ -19,10 +19,6 @@
 설치 절차는 [첫 판정 튜토리얼](../tutorials/first-judgment.ko.md)에 있습니다.
 
 ```yaml
-languages:
-  json:
-    productionGlob: 'locales/**/*.json'
-    testCmd: 'pnpm test'
 telemetry:
   logPath: '.polydeukes/roi.log'
 disciplines:
@@ -187,10 +183,6 @@ SDK는 실행 전체에 기본값 `enforce: 'block'`을 적용합니다. 이 수
 필요한 약속이지만 현재 문법으로 표현할 수 없다면 `draft`로 등록합니다.
 
 ```yaml
-languages:
-  json:
-    productionGlob: 'locales/**/*.json'
-    testCmd: 'pnpm test'
 disciplines:
   - id: 'benchmark-supports-performance-claim'
     why: 'a performance claim must be supported by a fresh benchmark run during judgment.'

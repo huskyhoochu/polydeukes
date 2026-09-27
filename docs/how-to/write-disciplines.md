@@ -19,10 +19,6 @@ config removes the witness valve.
 The [first-judgment tutorial](../tutorials/first-judgment.md) supplies installation steps.
 
 ```yaml
-languages:
-  json:
-    productionGlob: 'locales/**/*.json'
-    testCmd: 'pnpm test'
 telemetry:
   logPath: '.polydeukes/roi.log'
 disciplines:
@@ -186,10 +182,6 @@ The three agent adapters use the same setting.
 If the promise is real but the grammar cannot express it yet, write a draft.
 
 ```yaml
-languages:
-  json:
-    productionGlob: 'locales/**/*.json'
-    testCmd: 'pnpm test'
 disciplines:
   - id: 'benchmark-supports-performance-claim'
     why: 'a performance claim must be supported by a fresh benchmark run during judgment.'

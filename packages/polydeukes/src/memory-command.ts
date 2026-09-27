@@ -115,7 +115,7 @@ const titleOf = (docTitle: string, sectionTitle: string): string =>
 function renderResult(hit: Memory.MemorySearchResult): string {
   const status = hit.stale ? `${hit.status}, stale` : hit.status;
   return [hit.id, hit.matchPath, status, hit.trust, titleOf(hit.docTitle, hit.sectionTitle)].join(
-    '  ',
+    '\t',
   );
 }
 

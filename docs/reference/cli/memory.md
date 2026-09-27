@@ -105,13 +105,13 @@ last ingest, followed by one line per result:
 
 ```text
 # ingested at 2026-01-15T09:30:00.000Z
-docs/guide#install  and  stable  unverified  Guide › Install
+docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 ```
 
-Each result line carries the section id, the match path (`and`, `or`, or `like`), the
-document's status (followed by `, stale` when its `stale_after` date has passed), the trust
-grade, and `<document title> › <section title>` (the document title alone for the text before
-the first H2). The JSON form is
+Each result line carries five columns separated by a tab, shown as `⇥` above: the section id,
+the match path (`and`, `or`, or `like`), the document's status (followed by `, stale` when its
+`stale_after` date has passed), the trust grade, and `<document title> › <section title>` (the
+document title alone for the text before the first H2). The JSON form is
 `{ "ingestedAt": …, "results": [ … ] }`. A query with no match exits `0` with the header alone,
 or with an empty `results` list.
 

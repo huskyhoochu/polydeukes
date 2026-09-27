@@ -113,8 +113,8 @@ export type MemoryConfig = {
 export type PolydeukesConfig = {
   /** IDE schema reference — accepted and ignored, never part of the resolution */
   $schema?: string;
-  /** language axis, first-class. keys are user values ('typescript', 'python', …) */
-  languages: Record<string, LanguageProfile>;
+  /** language axis. keys are user values ('typescript', 'python', …); absent resolves to `{}` */
+  languages?: Record<string, LanguageProfile>;
   /** raw protected path patterns — normalized downstream, never here */
   protectedPaths?: string[];
   /**
@@ -467,8 +467,11 @@ function validateDisciplines(
 
 /** Validate the `languages` map and compile each profile's `{scope}` template. */
 function validateLanguages(languages: unknown): Record<string, ResolvedLanguageProfile> {
-  if (!isPlainObject(languages) || Object.keys(languages).length === 0) {
-    throw new ConfigValidationError('languages must be a non-empty object');
+  if (!isPlainObject(languages)) {
+    // An emptied YAML `languages:` parses to null; the whole key is what goes.
+    throw new ConfigValidationError(
+      'languages must be an object — to declare no languages, remove the key',
+    );
   }
 
   const resolvedLanguages: Record<string, ResolvedLanguageProfile> = {};
@@ -574,8 +577,8 @@ function validateWitness(witness: unknown): { token: string; ttlMinutes: number 
  * {@link ResolvedConfig} with defaults filled and templates compiled. Pure — no file I/O.
  *
  * Throws {@link ConfigValidationError} (naming the offending field path) when the top level
- * is not a plain object, any object level carries an unknown key, `languages` is
- * missing/empty, any language's `productionGlob` is missing/empty, any `testCmd` is not a
+ * is not a plain object, any object level carries an unknown key, `languages` is present
+ * but not an object, any language's `productionGlob` is missing/empty, any `testCmd` is not a
  * non-empty string template, `telemetry.logPath` is not a non-empty string after trimming,
  * `protectedPaths` carries a non-string or empty element, or `adapters` is not a map of
  * plain-object namespaces. When present, `memory` must declare non-empty include globs and
@@ -593,7 +596,8 @@ export function defineConfig(config: unknown): ResolvedConfig {
     throw new ConfigValidationError('$schema must be a string');
   }
 
-  const resolvedLanguages = validateLanguages(config.languages);
+  const resolvedLanguages =
+    config.languages !== undefined ? validateLanguages(config.languages) : {};
   const protectedPaths =
     config.protectedPaths !== undefined ? validateProtectedPaths(config.protectedPaths) : undefined;
   const adapters = config.adapters !== undefined ? validateAdapters(config.adapters) : undefined;

@@ -2,9 +2,9 @@
 
 **English** · [한국어](./configure-project.ko.md)
 
-Keep one configuration file at the project root, define the production files and verification
-command, and choose how violations should affect work. Start with the
-[first-judgment tutorial](../tutorials/first-judgment.md) if the package is not installed yet.
+Keep one configuration file at the project root and choose how violations should affect work.
+Start with the [first-judgment tutorial](../tutorials/first-judgment.md) if the package is not
+installed yet.
 
 <a id="find-the-config"></a>
 ## Find the config file
@@ -50,23 +50,6 @@ If you installed `@polydeukes/core` directly rather than the umbrella, name its 
 That is a file path an editor reads statically. Code that reads the schema at runtime uses the
 exports subpath `@polydeukes/core/schema.json` instead. JSON configurations can use a `$schema`
 property; the loader accepts it but leaves it out of the resolved configuration.
-
-<a id="fill-the-language-block"></a>
-## Fill the language block
-
-`languages` must contain at least one entry. Each entry specifies production paths and a
-verification command:
-
-```yaml
-languages:
-  typescript:
-    productionGlob: 'src/**'
-    testCmd: 'pnpm test'
-```
-
-Language names are project-defined keys. Replace the installer's placeholder with meaningful
-paths and a command; deleting the block or leaving it empty makes the configuration invalid.
-Loading this setting does not itself run the command.
 
 <a id="choose-advise-or-block"></a>
 ## Choose advise or block

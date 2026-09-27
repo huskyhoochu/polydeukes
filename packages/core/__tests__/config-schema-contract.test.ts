@@ -91,6 +91,13 @@ const VALID_CONFIGS: readonly unknown[] = [
     ...validLanguages,
     witness: { token: 'fake-witness-token', ttlMinutes: 10 },
   },
+  // `languages` is optional and no judgment path reads it: the empty document, a config
+  // declaring only the memory section, and an explicitly empty `languages` must all be
+  // accepted by both sides. A schema still listing the key under `required`, or still
+  // carrying `minProperties: 1`, rejects one of these while defineConfig accepts it.
+  {},
+  { memory: { include: ['docs/**/*.md'] } },
+  { languages: {} },
 ];
 
 const INVALID_CONFIGS: readonly unknown[] = [
@@ -99,8 +106,12 @@ const INVALID_CONFIGS: readonly unknown[] = [
     ...validLanguages,
     $schema: 42,
   },
-  {},
-  { languages: {} },
+  // Optional is not untyped: a non-object `languages` pairs the schema's `type: object`
+  // with the validator's container check. The array is typeof 'object' on the validator
+  // side, so it is the fixture that catches a check missing `Array.isArray`; null is what an
+  // emptied YAML `languages:` parses to.
+  { languages: [] },
+  { languages: null },
   {
     languages: {
       typescript: { productionGlob: 'packages/core/src/**/*', testCmd: '' },

@@ -72,8 +72,8 @@ tail -n 5 .polydeukes/roi.log
 
 ## 실제 프로젝트에 적용하기
 
-- [프로젝트 설정](../how-to/configure-project.ko.md)에서 임시 언어 이름과 테스트 명령을
-  바꿉니다.
+- [프로젝트 설정](../how-to/configure-project.ko.md)에서 위반을 권고로 둘지 차단할지
+  정합니다.
 - Grok, Codex, git pre-commit 훅은 [관측 표면 연결](../how-to/connect-surfaces.ko.md)을
   참고합니다.
 - [규율 작성](../how-to/write-disciplines.ko.md) 예제를 실행하고, 권고 결과를 확인한 뒤 차단

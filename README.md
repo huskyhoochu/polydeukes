@@ -35,18 +35,9 @@ after installing the shared packages.
 
 ### 2. Configure your first discipline
 
-Open the generated `polydeukes.config.yaml` in your editor. Replace its `languages` placeholder
-with your source paths and test command, for example:
-
-```yaml
-languages:
-  typescript:
-    productionGlob: 'src/**'
-    testCmd: 'pnpm test'
-```
-
-Keep the generated `protectedPaths` and `witness` blocks. Add this `disciplines` list, or append
-the entry to your existing list. It reports newly added lines containing `TODO` in `src/`:
+Open the generated `polydeukes.config.yaml` in your editor. Keep the generated `protectedPaths`
+and `witness` blocks. Add this `disciplines` list, or append the entry to your existing list.
+It reports newly added lines containing `TODO` in `src/`:
 
 ```yaml
 disciplines:

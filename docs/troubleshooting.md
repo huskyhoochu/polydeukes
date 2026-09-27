@@ -25,7 +25,7 @@ one accepted filename. The loader will not choose one on your behalf. Retry `pdk
 ## Invalid config
 
 Parsing or schema failures exit 2 and name the file; schema errors also identify the offending
-field. Repair invalid YAML, custom tags, unknown fields, or an empty `languages` object.
+field. Repair invalid YAML, custom tags, or unknown fields.
 Custom YAML tags are rejected even if the parser cannot execute them: configuration is data.
 
 Typos such as `protectedPath:` or `adaptors:` are refused. Adapter namespace names are deliberately
