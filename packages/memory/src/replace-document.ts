@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { chunkSpans } from './chunk-body.ts';
 import type { MemoryConfig } from './memory-config.ts';
 import type { ParsedDocument } from './parse-document.ts';
 
@@ -46,6 +47,10 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
   const insert = db.prepare(
     'INSERT INTO section (id, concept_id, ord, doc_title, title, body) VALUES (?, ?, ?, ?, ?, ?)',
   );
+  const insertChunk = db.prepare('INSERT INTO chunk (section_rowid, start, end) VALUES (?, ?, ?)');
+  const indexChunk = db.prepare(
+    'INSERT INTO chunk_fts (rowid, doc_title, title, body) VALUES (?, ?, ?, ?)',
+  );
   const insertEdge = db.prepare(
     'INSERT INTO edge (src_section, form, raw_target) VALUES (?, ?, ?)',
   );
@@ -56,7 +61,23 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
   const rules = config?.obligations ?? [];
   for (const section of document.sections) {
     const id = `${document.id}#${section.anchor}`;
-    insert.run(id, document.id, section.ord, document.title, section.title, section.body);
+    const { lastInsertRowid: sectionRowid } = insert.run(
+      id,
+      document.id,
+      section.ord,
+      document.title,
+      section.title,
+      section.body,
+    );
+    // The spans are contiguous from 0, so a running count converts them to characters.
+    let characters = 0;
+    for (const { start, end } of chunkSpans(section.body)) {
+      const text = section.body.slice(start, end);
+      const length = [...text].length;
+      const { lastInsertRowid } = insertChunk.run(sectionRowid, characters, characters + length);
+      characters += length;
+      indexChunk.run(lastInsertRowid, document.title, section.title, text);
+    }
     for (const link of section.links) insertEdge.run(id, link.form, link.target);
     const lines = section.body.split('\n');
     for (const rule of rules) {

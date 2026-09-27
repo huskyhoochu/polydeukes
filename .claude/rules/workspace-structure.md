@@ -97,7 +97,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   a markdown text into
   a preamble row and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` /
   `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
-  trigram FTS5 external-content table synced by triggers. `replaceDocument` derives type and
+  contentless trigram FTS5 table over chunks: `replaceDocument` splits each section body into
+  passages of at most 2,000 characters at blank lines, line breaks, or spaces, stores their
+  offsets in SQLite characters, and writes one index row per passage, and `searchMemory` ranks a
+  section by its best passage. `replaceDocument` derives type and
   ticket columns from validated memory settings; `ingestMemory` compares the files the `include`
   globs reach, minus those an `exclude` glob matches, with the stored documents in one write
   transaction — it skips a document whose hash of text plus type, ticket, and obligation settings is

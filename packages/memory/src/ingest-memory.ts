@@ -31,7 +31,7 @@ function listDocuments(root: string, { include, exclude }: MemoryConfig): Map<st
  * as a new link form being read, so the first ingest after an upgrade reprocesses every document
  * instead of keeping rows the previous version derived.
  */
-const DERIVATION = 2;
+const DERIVATION = 3;
 
 // The stored rows of one text depend on `typeMap`, `ticket`, and `obligations` besides the text
 // itself, so a settings change reprocesses the documents it can affect.

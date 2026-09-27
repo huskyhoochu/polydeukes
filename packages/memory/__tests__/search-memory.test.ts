@@ -178,6 +178,13 @@ describe('searchMemory', () => {
     for (let i = 0; i < 32_767; i++) {
       insert.run(`many#${i}`, 'many', i, '', '', 'x');
     }
+    // One chunk per section, written by SQL so the index reaches the rows the bulk insert made.
+    db.exec(
+      'INSERT INTO chunk (rowid, section_rowid, start, end) SELECT rowid, rowid, 0, length(body) FROM section',
+    );
+    db.exec(
+      'INSERT INTO chunk_fts (rowid, doc_title, title, body) SELECT c.rowid, s.doc_title, s.title, s.body FROM chunk AS c JOIN section AS s ON s.rowid = c.section_rowid',
+    );
     db.exec('COMMIT');
 
     const results = await searchMemory({ db, query: 'x' });
@@ -336,105 +343,135 @@ describe('searchMemory ranks LIKE-path (1–2 char) terms by bm25', () => {
   });
 });
 
-describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same rows', () => {
+describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same chunks', () => {
   const k1 = 1.2;
   const b = 0.75;
   // ASCII-only case folding, the same fold SQLite LIKE applies.
   const foldAscii = (text: string) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
   const occurrences = (text: string, term: string) => foldAscii(text).split(term).length - 1;
 
-  type Row = { rowid: number; doc_title: string; title: string; body: string };
-
+  /**
+   * One short document per row, so each row is one section and one chunk. The document
+   * title comes from frontmatter; an empty one falls back to the id `c<i>`, two characters.
+   */
   function insertRows(rows: [string, string, string][]): void {
-    db.exec('BEGIN');
-    db.prepare('INSERT INTO concept (id, title) VALUES (?, ?)').run('c', 'C');
-    const insert = db.prepare(
-      'INSERT INTO section (id, concept_id, ord, doc_title, title, body) VALUES (?, ?, ?, ?, ?, ?)',
+    ingest(
+      rows.map(([docTitle, title, body], i) => ({
+        id: `c${i}`,
+        text: `${docTitle === '' ? '' : `---\ntitle: ${docTitle}\n---\n`}## ${title}\n\n${body}\n`,
+      })),
     );
-    rows.forEach(([docTitle, title, body], i) => {
-      insert.run(`c#${i}`, 'c', i, docTitle, title, body);
-    });
-    db.exec('COMMIT');
+  }
+
+  type Chunk = { rowid: number; id: string; columns: [string, string, string] };
+
+  /** Every chunk with the three columns its index row carries: both titles and its own span. */
+  function chunks(): Chunk[] {
+    return (
+      db
+        .prepare(
+          'SELECT c.rowid, s.id, s.doc_title, s.title, s.body, c.start, c.end FROM chunk AS c JOIN section AS s ON s.rowid = c.section_rowid',
+        )
+        .all() as {
+        rowid: number;
+        id: string;
+        doc_title: string;
+        title: string;
+        body: string;
+        start: number;
+        end: number;
+      }[]
+    ).map((row) => ({
+      rowid: row.rowid,
+      id: row.id,
+      columns: [row.doc_title, row.title, row.body.slice(row.start, row.end)],
+    }));
   }
 
   // len is the trigram token count per column, max(chars − 2, 0), summed over the three columns.
-  const LEN =
-    'max(length(doc_title) - 2, 0) + max(length(title) - 2, 0) + max(length(body) - 2, 0)';
+  const tokens = (text: string) => Math.max([...text].length - 2, 0);
+  const rawChars = (text: string) => [...text].length;
 
-  const RAW_LEN = 'length(doc_title) + length(title) + length(body)';
-  const MATCHES = 'doc_title LIKE ? OR title LIKE ? OR body LIKE ?';
-
-  // `lenExpr` and `avgOverMatched` select a wrong length unit or a wrong avglen population, so
+  // `rawLen` and `avgOverMatched` select a wrong length unit or a wrong avglen population, so
   // a test can show which of them a fixture rejects.
   function handScores(
     term: string,
-    { lenExpr = LEN, avgOverMatched = false }: { lenExpr?: string; avgOverMatched?: boolean } = {},
+    { rawLen = false, avgOverMatched = false }: { rawLen?: boolean; avgOverMatched?: boolean } = {},
   ): Map<number, number> {
-    const pattern = `%${term}%`;
-    const { N } = db.prepare('SELECT count(*) AS N FROM section').get() as { N: number };
-    const { avglen } = (
-      avgOverMatched
-        ? db
-            .prepare(`SELECT avg(${lenExpr}) AS avglen FROM section WHERE ${MATCHES}`)
-            .get(pattern, pattern, pattern)
-        : db.prepare(`SELECT avg(${lenExpr}) AS avglen FROM section`).get()
-    ) as { avglen: number };
-    const matched = db
-      .prepare(`SELECT rowid, doc_title, title, body FROM section WHERE ${MATCHES}`)
-      .all(pattern, pattern, pattern) as Row[];
-    const n = matched.length;
-    const rawIdf = Math.log((N - n + 0.5) / (n + 0.5));
+    const unit = rawLen ? rawChars : tokens;
+    const rows = chunks().map((chunk) => ({
+      rowid: chunk.rowid,
+      len: chunk.columns.reduce((sum, column) => sum + unit(column), 0),
+      tf: chunk.columns.reduce((sum, column) => sum + occurrences(column, term), 0),
+    }));
+    const N = rows.length;
+    const matched = rows.filter((row) => row.tf > 0);
+    const population = avgOverMatched ? matched : rows;
+    const avglen = population.reduce((sum, row) => sum + row.len, 0) / population.length;
+    const rawIdf = Math.log((N - matched.length + 0.5) / (matched.length + 0.5));
     const idf = rawIdf <= 0 ? 1e-6 : rawIdf;
-    const scores = new Map<number, number>();
-    for (const row of matched) {
-      const tf = [row.doc_title, row.title, row.body].reduce(
-        (sum, column) => sum + occurrences(column, term),
-        0,
-      );
-      const { len } = db
-        .prepare(`SELECT ${lenExpr} AS len FROM section WHERE rowid = ?`)
-        .get(row.rowid) as { len: number };
-      scores.set(row.rowid, (-idf * tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * len) / avglen)));
-    }
-    return scores;
+    return new Map(
+      matched.map(({ rowid, tf, len }) => [
+        rowid,
+        (-idf * tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * len) / avglen)),
+      ]),
+    );
   }
 
-  const rowidOf = (id: string) =>
-    (db.prepare('SELECT rowid FROM section WHERE id = ?').get(id) as { rowid: number }).rowid;
+  /** The chunk rowids of one section, in span order. */
+  const chunkRowidsOf = (id: string) =>
+    (
+      db
+        .prepare(
+          'SELECT c.rowid FROM chunk AS c JOIN section AS s ON s.rowid = c.section_rowid WHERE s.id = ? ORDER BY c.start',
+        )
+        .all(id) as { rowid: number }[]
+    ).map((row) => row.rowid);
 
   function ftsScores(term: string): Map<number, number> {
     const rows = db
-      .prepare(
-        'SELECT rowid, bm25(section_fts) AS score FROM section_fts WHERE section_fts MATCH ?',
-      )
+      .prepare('SELECT rowid, bm25(chunk_fts) AS score FROM chunk_fts WHERE chunk_fts MATCH ?')
       .all(`"${term}"`) as { rowid: number; score: number }[];
     return new Map(rows.map((row) => [row.rowid, row.score]));
   }
 
-  it('matches bm25() to six decimals with a positive IDF, including columns under 3 chars', () => {
-    // Pins the formula against SQLite's own bm25(): the hand computation agrees only when a
-    // column of 0–2 chars counts 0 tokens (max(chars − 2, 0), not raw chars) and when
-    // uppercase `ABC` is counted, as the trigram tokenizer folds case.
-    insertRows([
-      ['Abc guide', '', 'abc once.'],
-      ['ab', 'Abc', 'abc abc abc here.'],
-      ['Other', 'Two', 'ABC in capitals.'],
-      ['Other', 'Long', 'nothing matching at all in this longer body 한국어 본문.'],
-      ['x', 'y', 'z'],
-      ['Other', 'Five', 'still nothing.'],
-      ['Other', 'Six', 'still nothing.'],
-      ['Other', 'Seven', 'still nothing.'],
+  it('matches bm25(chunk_fts) per chunk to six decimals with a positive IDF, columns under 3 chars, and a section of several chunks', () => {
+    // Pins the formula against SQLite's own bm25() at chunk level: N and avglen are taken over
+    // every chunk, tf and len over the chunk's own span plus the two title columns every chunk
+    // of a section carries. The hand computation agrees only when a column of 0–2 chars counts
+    // 0 tokens (max(chars − 2, 0), not raw chars) and when uppercase `ABC` is counted, as the
+    // trigram tokenizer folds case. The long section's three chunks hold 1, 3, and 0 body
+    // occurrences under one matching document title, so a tf or len read from the whole
+    // section ties or shifts them.
+    const words = (count: number, placed: Record<number, string>) =>
+      Array.from({ length: count }, (_, i) => placed[i] ?? 'filler').join(' ');
+    const long = (paragraphs: Record<number, string>[]) =>
+      paragraphs.map((placed) => words(250, placed)).join('\n\n');
+    ingest([
+      {
+        id: 'notes/long',
+        text: `---\ntitle: Abc guide\n---\n## Topic\n\n${long([{ 3: 'abc' }, { 3: 'abc', 40: 'abc', 80: 'abc' }, {}])}\n`,
+      },
+      { id: 'notes/ab', text: '---\ntitle: ab\n---\n## Abc\n\nabc abc abc here.\n' },
+      { id: 'notes/caps', text: '# Other\n\n## Two\n\nABC in capitals.\n' },
+      ...Array.from({ length: 3 }, (_, i) => ({
+        id: `notes/f${i}`,
+        text: `# Other\n\n## Long\n\n${long([{}, {}])}\n`,
+      })),
     ]);
     const expected = handScores('abc');
     const actual = ftsScores('abc');
     expect([...actual.keys()].sort()).toEqual([...expected.keys()].sort());
-    expect(expected.size).toBe(3);
+    expect(expected.size).toBe(5);
+    const longChunks = chunkRowidsOf('notes/long#topic');
+    expect(longChunks).toHaveLength(3);
+    expect(longChunks.every((rowid) => expected.has(rowid))).toBe(true);
     for (const [rowid, score] of expected) {
       expect(score).toBeLessThan(0);
       expect(actual.get(rowid), `rowid ${rowid}`).toBeCloseTo(score, 6);
     }
-    // The three matching rows must not tie: tf and len both move the score.
-    expect(new Set([...expected.values()]).size).toBe(3);
+    // The five matching chunks must not tie: tf and len both move the score.
+    expect(new Set([...expected.values()]).size).toBe(5);
   });
 
   it('floors a non-positive IDF at 1e-6 instead of 0, as bm25() does', () => {
@@ -447,6 +484,7 @@ describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same rows', (
       ['Other', 'Long', 'nothing matching at all.'],
       ['x', 'y', 'z'],
     ]);
+    expect(chunks()).toHaveLength(5);
     const expected = handScores('abc');
     const actual = ftsScores('abc');
     expect(expected.size).toBe(3);
@@ -460,8 +498,8 @@ describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same rows', (
   it('orders a LIKE-path hit against an FTS-path hit on one scale in an OR fallback', async () => {
     // `qz needleword` has no section with both terms, so both rows come back and their order
     // is decided by a LIKE score against an FTS5 score. The fixture is tuned so the correct
-    // LIKE score (trigram-token len, avglen over every row) ranks z first, while len counted
-    // in raw characters or avglen taken over the matched rows alone would rank y first — the
+    // LIKE score (trigram-token len, avglen over every chunk) ranks z first, while len counted
+    // in raw characters or avglen taken over the matched chunks alone would rank y first — the
     // three assertions on the hand scores keep the fixture discriminating. z sorts after y
     // by ID, so ID order cannot produce the expected result either.
     const filler = (i: number) => ({
@@ -476,11 +514,13 @@ describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same rows', (
       filler(2),
       filler(3),
     ]);
-    const z = rowidOf('notes/z#x');
-    const y = ftsScores('needleword').get(rowidOf('notes/y#y')) as number;
+    const [z, ...zRest] = chunkRowidsOf('notes/z#x') as [number, ...number[]];
+    const [yChunk, ...yRest] = chunkRowidsOf('notes/y#y') as [number, ...number[]];
+    expect([zRest, yRest]).toEqual([[], []]);
+    const y = ftsScores('needleword').get(yChunk) as number;
     const correct = handScores('qz').get(z) as number;
     expect(correct).toBeLessThan(y);
-    expect(handScores('qz', { lenExpr: RAW_LEN }).get(z) as number).toBeGreaterThan(y);
+    expect(handScores('qz', { rawLen: true }).get(z) as number).toBeGreaterThan(y);
     expect(handScores('qz', { avgOverMatched: true }).get(z) as number).toBeGreaterThan(y);
 
     const results = await searchMemory({ db, query: 'qz needleword' });

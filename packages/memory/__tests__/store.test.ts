@@ -46,13 +46,18 @@ function ingest(db: DatabaseSync, sources: Source[]): void {
 }
 
 /**
- * FTS5's own consistency command over the external-content table. It raises when the index
- * and the `section` rows disagree, which SQLite's `integrity_check` never sees.
+ * FTS5's own consistency command over the chunk index. It raises when the index structure
+ * is damaged, which SQLite's `integrity_check` never sees.
  */
+// The index keeps no text, so its integrity check reads structure only; the row counts are what
+// show that every chunk, and nothing but a chunk, is indexed.
 function expectFtsConsistent(db: DatabaseSync): void {
   expect(() =>
-    db.exec("INSERT INTO section_fts(section_fts, rank) VALUES ('integrity-check', 1)"),
+    db.exec("INSERT INTO chunk_fts(chunk_fts, rank) VALUES ('integrity-check', 1)"),
   ).not.toThrow();
+  const count = (table: string) =>
+    (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+  expect(count('chunk_fts')).toBe(count('chunk'));
 }
 
 type SectionRow = { id: string; ord: number; title: string; doc_title: string };
@@ -71,7 +76,7 @@ function sectionRows(db: DatabaseSync, conceptId: string): SectionRow[] {
 function matchIds(db: DatabaseSync, term: string): string[] {
   const rows = db
     .prepare(
-      'SELECT section.id AS id FROM section_fts JOIN section ON section.rowid = section_fts.rowid WHERE section_fts MATCH ?',
+      'SELECT DISTINCT section.id AS id FROM chunk_fts JOIN chunk ON chunk.rowid = chunk_fts.rowid JOIN section ON section.rowid = chunk.section_rowid WHERE chunk_fts MATCH ?',
     )
     .all(`"${term}"`) as { id: string }[];
   return rows.map((r) => r.id).sort();

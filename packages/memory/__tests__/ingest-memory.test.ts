@@ -61,10 +61,15 @@ function writeDoc(relative: string, text: string): void {
 /** A one-section document with no preamble row; the body is stored verbatim. */
 const page = (title: string, body: string): string => `---\ntitle: ${title}\n---\n## One\n${body}`;
 
+// The index keeps no text, so its integrity check reads structure only; the row counts are what
+// show that every chunk, and nothing but a chunk, is indexed.
 function expectFtsConsistent(db: DatabaseSync): void {
   expect(() =>
-    db.exec("INSERT INTO section_fts(section_fts, rank) VALUES ('integrity-check', 1)"),
+    db.exec("INSERT INTO chunk_fts(chunk_fts, rank) VALUES ('integrity-check', 1)"),
   ).not.toThrow();
+  const count = (table: string) =>
+    (db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+  expect(count('chunk_fts')).toBe(count('chunk'));
 }
 
 type ConceptRow = Record<string, unknown> & { id: string };

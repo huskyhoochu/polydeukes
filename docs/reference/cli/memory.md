@@ -118,8 +118,15 @@ anywhere among them. The query is reduced to search terms first:
 
 When this changes none of the words, or drops all of them, the words are searched as written: a
 section matches when it contains every word; when no section does, a section that contains any
-word matches. Otherwise a section matches when it contains any of the terms, and sections are
-ranked by the sum of the scores of the terms they contain.
+word matches. Otherwise a section matches when it contains any of the terms.
+
+A section is ranked by its best passage. A section longer than 2,000 characters is scored in
+passages of up to 2,000 characters, cut after a blank line, a line break, or other whitespace, so
+no term is split between two passages; a run of more than 2,000 characters with no whitespace
+stays one passage. A passage's score is the sum of the scores of the terms it
+contains, and the section takes the score of its best passage. A long section is therefore ranked
+by the part that matches rather than by its whole length. Results still name sections, and a
+section appears once however many of its passages match.
 
 The first line of the table form is the time of the last ingest, followed by one line per
 result:
@@ -278,7 +285,9 @@ pdks memory ingest --rebuild
 Keeping, backing up, and versioning the index file is the user's responsibility. Polydeukes
 makes no copy of it. The `.polydeukes/` line that `pdks init` adds to `.gitignore` covers it,
 so it stays out of commits unless you change that line. The documents are the record: deleting
-the file and running `pdks memory ingest` again restores the index.
+the file and running `pdks memory ingest` again restores the index. An index written by an
+earlier version of `@polydeukes/memory` is brought up to date by the next `pdks memory ingest`;
+run it after upgrading, before searching.
 
 `search`, `show`, `lint`, `obligations`, and `stats` never create the file. When it does not
 exist, or no ingest has completed in it, they exit `2`:

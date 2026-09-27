@@ -86,6 +86,13 @@ id is `<document id>#<anchor>`: the heading's explicit `{#anchor}` when present,
 lowercased text with punctuation removed and spaces as hyphens. The text before the first H2 is
 a section with an empty anchor.
 
+For search, each section body is also split into passages of at most 2,000 characters, cut after
+a blank line, a line break, or other whitespace (a longer run with no whitespace stays one
+passage), and each passage is indexed with the document and
+section titles. `searchMemory` scores each passage by the terms it contains and ranks a section
+by its best passage. Passages are internal to the index: results, `showMemory`, and links name
+sections.
+
 `ingestMemory` skips a document whose text and derived settings are unchanged, unless `rebuild`
 is set. On any error the database is left as it was, including the time
 `describeMemoryIndex` reports.

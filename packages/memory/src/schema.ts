@@ -11,8 +11,8 @@ export type OpenMemoryDbSpec = { path: string; readOnly?: boolean };
 /** An open memory database connection. */
 export type OptimizeMemoryDbSpec = { db: DatabaseSync };
 
-// The FTS triggers read only NEW and OLD: a subquery on `concept` inside the delete trigger
-// would see the concept already removed by the cascade and hand FTS a NULL title.
+// `chunk_fts` stores no text, so the writer inserts each chunk's columns itself; a deleted
+// chunk, including one removed by its section's cascade, is taken out of the index by rowid.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS concept (
   id          TEXT PRIMARY KEY,
@@ -53,9 +53,18 @@ CREATE TABLE IF NOT EXISTS obligation (
   PRIMARY KEY (section_id, ord, key)
 ) STRICT;
 
-CREATE VIRTUAL TABLE IF NOT EXISTS section_fts USING fts5(
+-- start and end count characters as SQLite's substr does, not JavaScript string offsets.
+CREATE TABLE IF NOT EXISTS chunk (
+  rowid         INTEGER PRIMARY KEY,
+  section_rowid INTEGER NOT NULL REFERENCES section(rowid) ON DELETE CASCADE,
+  start         INTEGER NOT NULL,
+  end           INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS chunk_section ON chunk(section_rowid);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(
   doc_title, title, body,
-  content='section', content_rowid='rowid', tokenize='trigram'
+  content='', contentless_delete=1, tokenize='trigram'
 );
 
 CREATE TABLE IF NOT EXISTS meta (
@@ -63,14 +72,8 @@ CREATE TABLE IF NOT EXISTS meta (
   value TEXT NOT NULL
 ) STRICT;
 
-CREATE TRIGGER IF NOT EXISTS section_ai AFTER INSERT ON section BEGIN
-  INSERT INTO section_fts(rowid, doc_title, title, body)
-  VALUES (NEW.rowid, NEW.doc_title, NEW.title, NEW.body);
-END;
-
-CREATE TRIGGER IF NOT EXISTS section_ad AFTER DELETE ON section BEGIN
-  INSERT INTO section_fts(section_fts, rowid, doc_title, title, body)
-  VALUES ('delete', OLD.rowid, OLD.doc_title, OLD.title, OLD.body);
+CREATE TRIGGER IF NOT EXISTS chunk_ad AFTER DELETE ON chunk BEGIN
+  DELETE FROM chunk_fts WHERE rowid = OLD.rowid;
 END;
 `;
 
@@ -94,11 +97,32 @@ export function openMemoryDb({ path, readOnly = false }: OpenMemoryDbSpec): Data
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA synchronous = NORMAL');
   db.exec('PRAGMA foreign_keys = ON');
-  db.exec(SCHEMA);
+  // A file an earlier version wrote indexes whole sections in section_fts and has no chunk rows.
+  // Its ingest stamp goes with that index, so until an ingest fills the chunks the commands
+  // report that no ingest has completed instead of answering every query with no hit.
+  const earlier = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'section_fts'")
+    .get();
+  if (!earlier) {
+    db.exec(SCHEMA);
+    return db;
+  }
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('DROP TRIGGER IF EXISTS section_ai');
+    db.exec('DROP TRIGGER IF EXISTS section_ad');
+    db.exec('DROP TABLE section_fts');
+    db.exec(SCHEMA);
+    db.exec("DELETE FROM meta WHERE key = 'ingested_at'");
+    db.exec('COMMIT');
+  } catch (error) {
+    if (db.isTransaction) db.exec('ROLLBACK');
+    throw error;
+  }
   return db;
 }
 
 /** Merges the FTS index segments so delete markers from replaced rows do not accumulate. */
 export function optimizeMemoryDb({ db }: OptimizeMemoryDbSpec): void {
-  db.exec("INSERT INTO section_fts(section_fts) VALUES ('optimize')");
+  db.exec("INSERT INTO chunk_fts(chunk_fts) VALUES ('optimize')");
 }
