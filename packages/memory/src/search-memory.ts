@@ -36,6 +36,11 @@ type ResultRow = {
   doc_type: string | null;
 };
 
+const K1 = 1.2;
+const B = 0.75;
+const TOKENS =
+  'max(length(doc_title) - 2, 0) + max(length(title) - 2, 0) + max(length(body) - 2, 0)';
+
 const escapeLike = (term: string): string =>
   term.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 
@@ -71,13 +76,38 @@ function termMatches(db: DatabaseSync, term: string): Map<number, Match> {
       .all(phrase, pattern, pattern, pattern) as Candidate[];
     for (const row of rows) found.set(row.rowid, { score: row.score ?? 0, like: false });
   } else {
+    // FTS5's bm25 formula with its trigram token count as length, so these scores share one
+    // scale with the bm25() scores of longer terms. The totals ride in the same statement as
+    // the matches so both come from one snapshot and the match count never exceeds N.
     const rows = db
       .prepare(
-        `SELECT rowid FROM section WHERE doc_title LIKE ? ESCAPE '\\'
-         OR title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\'`,
+        `SELECT rowid, ${TOKENS} AS len,
+                (length(doc_title) + length(title) + length(body)
+                 - length(replace(lower(doc_title), lower(?1), ''))
+                 - length(replace(lower(title), lower(?1), ''))
+                 - length(replace(lower(body), lower(?1), ''))) / length(?1) AS tf,
+                (SELECT count(*) FROM section) AS N,
+                (SELECT avg(${TOKENS}) FROM section) AS avglen
+         FROM section WHERE doc_title LIKE ?2 ESCAPE '\\'
+         OR title LIKE ?2 ESCAPE '\\' OR body LIKE ?2 ESCAPE '\\'`,
       )
-      .all(pattern, pattern, pattern) as Candidate[];
-    for (const row of rows) found.set(row.rowid, { score: 0, like: true });
+      .all(term, pattern) as {
+      rowid: number;
+      len: number;
+      tf: number;
+      N: number;
+      avglen: number;
+    }[];
+    const N = rows[0]?.N ?? 0;
+    const rawIdf = Math.log((N - rows.length + 0.5) / (rows.length + 0.5));
+    const idf = rawIdf <= 0 ? 1e-6 : rawIdf;
+    for (const { rowid, len, tf, avglen } of rows) {
+      // With no section long enough for a trigram every length is 0; a 0/0 ratio would make
+      // the score NaN and discard the type weight.
+      const ratio = avglen > 0 ? len / avglen : 0;
+      const score = (-idf * tf * (K1 + 1)) / (tf + K1 * (1 - B + B * ratio));
+      found.set(rowid, { score, like: true });
+    }
   }
 
   const idRows = db

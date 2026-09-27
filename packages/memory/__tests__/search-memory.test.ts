@@ -211,3 +211,258 @@ describe('searchMemory', () => {
     expect(byId.get('notes/human#topic')).toMatchObject({ trust: 'human-reviewed' });
   });
 });
+
+describe('searchMemory ranks LIKE-path (1–2 char) terms by bm25', () => {
+  // Every document shares one doc_title so the two candidates differ only in body; the third
+  // document adds non-matching rows so N > 2n keeps the IDF positive rather than floored.
+  const doc = (id: string, body: string) => ({
+    id,
+    text: `---\ntitle: Same doc\n---\n## Topic\n\n${body}\n`,
+  });
+  const filler = [
+    {
+      id: 'notes/filler',
+      text: '# Filler\n\n## One\n\nnothing here.\n\n## Two\n\nnothing here.\n',
+    },
+  ];
+  const order = (query: string) => searchMemory({ db, query }).map((row) => row.id);
+
+  it('ranks more occurrences of a 2-char term first at equal length, counted ASCII case-insensitively', () => {
+    // Catches a LIKE path that scores every match 0 (ID order), and a tf that counts only the
+    // query's own case: the `QZ Qz qZ` row would then tie at 0 and lose. The uppercase query
+    // catches a fold applied to the rows but not to the term.
+    ingest([doc('notes/a', 'qz aa aa aa aa.'), doc('notes/z', 'QZ Qz qZ aa aa.'), ...filler]);
+    expect(order('qz')).toEqual(['notes/z#topic', 'notes/a#topic']);
+    expect(order('QZ')).toEqual(['notes/z#topic', 'notes/a#topic']);
+  });
+
+  it('keeps tf ahead of ID order when the term matches over half the sections (IDF floored)', () => {
+    // N = 2, n = 2 makes the raw IDF negative. A missing floor gives positive scores and puts
+    // the higher-tf row last; a floor at 0 ties both rows and falls back to ID order.
+    ingest([doc('notes/a', 'qz aa aa aa aa.'), doc('notes/z', 'qz qz qz aa aa.')]);
+    expect(order('qz')).toEqual(['notes/z#topic', 'notes/a#topic']);
+  });
+
+  it('keeps type weights when every column is under three characters', () => {
+    // No column reaches a trigram, so the mean length is 0; the length ratio must not turn
+    // every score into NaN, which would drop the weight and fall back to ID order.
+    ingest([
+      { id: 'notes/b', text: '---\ntitle: qz\ntype: prd\n---\n## B\n' },
+      { id: 'notes/a', text: '---\ntitle: qz\n---\n## B\n' },
+    ]);
+    const config = { include: [], weights: { prd: 5 } };
+    expect(searchMemory({ db, query: 'qz', config }).map((row) => row.id)).toEqual([
+      'notes/b#b',
+      'notes/a#b',
+    ]);
+  });
+
+  it('counts occurrences in doc_title and title, not only in body', () => {
+    // Each row holds the term in one column only. Counting body alone leaves y and z at 0;
+    // counting title and body alone leaves y at 0. Same tf between y and z, y is shorter.
+    ingest([
+      doc('notes/a', 'qz aa aa aa aa.'),
+      { id: 'notes/y', text: '---\ntitle: qz qz qz\n---\n## Topic\n\naa aa aa aa aa.\n' },
+      { id: 'notes/z', text: '---\ntitle: Same doc\n---\n## qz qz qz\n\naa aa aa aa aa.\n' },
+      ...filler,
+    ]);
+    expect(order('qz')).toEqual(['notes/y#topic', 'notes/z#qz-qz-qz', 'notes/a#topic']);
+  });
+
+  it('ranks the shorter section first at equal occurrences of a 2-char term', () => {
+    // Catches a score without length normalisation (b = 0) — equal tf would tie by ID.
+    ingest([doc('notes/a', 'qz aa aa aa aa aa aa aa.'), doc('notes/z', 'qz.'), ...filler]);
+    expect(order('qz')).toEqual(['notes/z#topic', 'notes/a#topic']);
+  });
+
+  it('lets a 2-char term break the tie of a mixed query whose long term scores equally', () => {
+    // Bodies are the same length and hold `needleword` once each, so the FTS contribution is
+    // identical; catches a mixed query that sums only the FTS-path score.
+    ingest([
+      doc('notes/a', 'needleword qz aa aa.'),
+      doc('notes/z', 'needleword qz qz qz.'),
+      ...filler,
+    ]);
+    const results = searchMemory({ db, query: 'needleword qz' });
+    expect(results.map((row) => row.id)).toEqual(['notes/z#topic', 'notes/a#topic']);
+    // A result with any LIKE-path hit is labelled `like`; the new score does not relabel it.
+    expect(results.every((row) => row.matchPath === 'like')).toBe(true);
+  });
+
+  it('keeps identifier-prefix-only hits at score 0: after text hits, among themselves by ID', () => {
+    // Catches a prefix hit scored as if it were a text match, and a text hit that no longer
+    // outranks an ID-only hit whose section ID sorts earlier.
+    ingest([
+      doc('qz-b', 'nothing here.'),
+      doc('qz-a', 'nothing here.'),
+      doc('zz-text', 'qz appears.'),
+      ...filler,
+    ]);
+    expect(order('qz')).toEqual(['zz-text#topic', 'qz-a#topic', 'qz-b#topic']);
+  });
+
+  it('keeps the LIKE score of a section matched by both its ID prefix and its text', () => {
+    // qz-b matches by prefix and by body (tf 1); dropping its text score to 0 would put it
+    // behind nothing but tie it with qz-a and lose to it by ID. zz-text has tf 3 at the same
+    // length.
+    ingest([
+      doc('qz-a', 'nothing here.'),
+      doc('qz-b', 'qz aa aa aa.'),
+      doc('zz-text', 'qz qz qz aa.'),
+      ...filler,
+    ]);
+    expect(order('qz')).toEqual(['zz-text#topic', 'qz-b#topic', 'qz-a#topic']);
+  });
+});
+
+describe('the LIKE-path bm25 formula reproduces FTS5 bm25() on the same rows', () => {
+  const k1 = 1.2;
+  const b = 0.75;
+  // ASCII-only case folding, the same fold SQLite LIKE applies.
+  const foldAscii = (text: string) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  const occurrences = (text: string, term: string) => foldAscii(text).split(term).length - 1;
+
+  type Row = { rowid: number; doc_title: string; title: string; body: string };
+
+  function insertRows(rows: [string, string, string][]): void {
+    db.exec('BEGIN');
+    db.prepare('INSERT INTO concept (id, title) VALUES (?, ?)').run('c', 'C');
+    const insert = db.prepare(
+      'INSERT INTO section (id, concept_id, ord, doc_title, title, body) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    rows.forEach(([docTitle, title, body], i) => {
+      insert.run(`c#${i}`, 'c', i, docTitle, title, body);
+    });
+    db.exec('COMMIT');
+  }
+
+  // len is the trigram token count per column, max(chars − 2, 0), summed over the three columns.
+  const LEN =
+    'max(length(doc_title) - 2, 0) + max(length(title) - 2, 0) + max(length(body) - 2, 0)';
+
+  const RAW_LEN = 'length(doc_title) + length(title) + length(body)';
+  const MATCHES = 'doc_title LIKE ? OR title LIKE ? OR body LIKE ?';
+
+  // `lenExpr` and `avgOverMatched` select a wrong length unit or a wrong avglen population, so
+  // a test can show which of them a fixture rejects.
+  function handScores(
+    term: string,
+    { lenExpr = LEN, avgOverMatched = false }: { lenExpr?: string; avgOverMatched?: boolean } = {},
+  ): Map<number, number> {
+    const pattern = `%${term}%`;
+    const { N } = db.prepare('SELECT count(*) AS N FROM section').get() as { N: number };
+    const { avglen } = (
+      avgOverMatched
+        ? db
+            .prepare(`SELECT avg(${lenExpr}) AS avglen FROM section WHERE ${MATCHES}`)
+            .get(pattern, pattern, pattern)
+        : db.prepare(`SELECT avg(${lenExpr}) AS avglen FROM section`).get()
+    ) as { avglen: number };
+    const matched = db
+      .prepare(`SELECT rowid, doc_title, title, body FROM section WHERE ${MATCHES}`)
+      .all(pattern, pattern, pattern) as Row[];
+    const n = matched.length;
+    const rawIdf = Math.log((N - n + 0.5) / (n + 0.5));
+    const idf = rawIdf <= 0 ? 1e-6 : rawIdf;
+    const scores = new Map<number, number>();
+    for (const row of matched) {
+      const tf = [row.doc_title, row.title, row.body].reduce(
+        (sum, column) => sum + occurrences(column, term),
+        0,
+      );
+      const { len } = db
+        .prepare(`SELECT ${lenExpr} AS len FROM section WHERE rowid = ?`)
+        .get(row.rowid) as { len: number };
+      scores.set(row.rowid, (-idf * tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * len) / avglen)));
+    }
+    return scores;
+  }
+
+  const rowidOf = (id: string) =>
+    (db.prepare('SELECT rowid FROM section WHERE id = ?').get(id) as { rowid: number }).rowid;
+
+  function ftsScores(term: string): Map<number, number> {
+    const rows = db
+      .prepare(
+        'SELECT rowid, bm25(section_fts) AS score FROM section_fts WHERE section_fts MATCH ?',
+      )
+      .all(`"${term}"`) as { rowid: number; score: number }[];
+    return new Map(rows.map((row) => [row.rowid, row.score]));
+  }
+
+  it('matches bm25() to six decimals with a positive IDF, including columns under 3 chars', () => {
+    // Pins the formula against SQLite's own bm25(): the hand computation agrees only when a
+    // column of 0–2 chars counts 0 tokens (max(chars − 2, 0), not raw chars) and when
+    // uppercase `ABC` is counted, as the trigram tokenizer folds case.
+    insertRows([
+      ['Abc guide', '', 'abc once.'],
+      ['ab', 'Abc', 'abc abc abc here.'],
+      ['Other', 'Two', 'ABC in capitals.'],
+      ['Other', 'Long', 'nothing matching at all in this longer body 한국어 본문.'],
+      ['x', 'y', 'z'],
+      ['Other', 'Five', 'still nothing.'],
+      ['Other', 'Six', 'still nothing.'],
+      ['Other', 'Seven', 'still nothing.'],
+    ]);
+    const expected = handScores('abc');
+    const actual = ftsScores('abc');
+    expect([...actual.keys()].sort()).toEqual([...expected.keys()].sort());
+    expect(expected.size).toBe(3);
+    for (const [rowid, score] of expected) {
+      expect(score).toBeLessThan(0);
+      expect(actual.get(rowid), `rowid ${rowid}`).toBeCloseTo(score, 6);
+    }
+    // The three matching rows must not tie: tf and len both move the score.
+    expect(new Set([...expected.values()]).size).toBe(3);
+  });
+
+  it('floors a non-positive IDF at 1e-6 instead of 0, as bm25() does', () => {
+    // N = 5, n = 3 makes ln((N − n + 0.5)/(n + 0.5)) negative; the hand formula agrees with
+    // bm25() only with the 1e-6 floor — a floor at 0 gives 0, no floor gives positive scores.
+    insertRows([
+      ['Abc guide', '', 'abc once.'],
+      ['ab', 'Abc', 'abc abc abc here.'],
+      ['Other', 'Two', 'ABC in capitals.'],
+      ['Other', 'Long', 'nothing matching at all.'],
+      ['x', 'y', 'z'],
+    ]);
+    const expected = handScores('abc');
+    const actual = ftsScores('abc');
+    expect(expected.size).toBe(3);
+    for (const [rowid, score] of expected) {
+      expect(score).toBeLessThan(0);
+      expect(score).toBeGreaterThan(-1e-4);
+      expect((actual.get(rowid) ?? Number.NaN) / score, `rowid ${rowid}`).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('orders a LIKE-path hit against an FTS-path hit on one scale in an OR fallback', () => {
+    // `qz needleword` has no section with both terms, so both rows come back and their order
+    // is decided by a LIKE score against an FTS5 score. The fixture is tuned so the correct
+    // LIKE score (trigram-token len, avglen over every row) ranks z first, while len counted
+    // in raw characters or avglen taken over the matched rows alone would rank y first — the
+    // three assertions on the hand scores keep the fixture discriminating. z sorts after y
+    // by ID, so ID order cannot produce the expected result either.
+    const filler = (i: number) => ({
+      id: `notes/f${i}`,
+      text: `# F\n\n## One\n\n${'filler '.repeat(10)}\n`,
+    });
+    // z's doc_title and title are under 3 chars: 0 trigram tokens each, 3 raw chars together.
+    ingest([
+      { id: 'notes/y', text: '## Y\n\nneedleword needleword\n' },
+      { id: 'notes/z', text: '---\ntitle: Sd\n---\n## X\n\nqz aa.\n' },
+      filler(1),
+      filler(2),
+      filler(3),
+    ]);
+    const z = rowidOf('notes/z#x');
+    const y = ftsScores('needleword').get(rowidOf('notes/y#y')) as number;
+    const correct = handScores('qz').get(z) as number;
+    expect(correct).toBeLessThan(y);
+    expect(handScores('qz', { lenExpr: RAW_LEN }).get(z) as number).toBeGreaterThan(y);
+    expect(handScores('qz', { avgOverMatched: true }).get(z) as number).toBeGreaterThan(y);
+
+    const results = searchMemory({ db, query: 'qz needleword' });
+    expect(results.map((row) => row.id)).toEqual(['notes/z#x', 'notes/y#y']);
+  });
+});
