@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { LINK_AS_WRITTEN } from './show-memory.ts';
+import { LINK_AS_WRITTEN, SAME_TICKET } from './show-memory.ts';
 
 /** An open memory database connection. */
 export type LintMemorySpec = { db: DatabaseSync };
@@ -23,7 +23,7 @@ FROM edge WHERE dst_concept IS NULL ORDER BY id, detail`;
 // Any outgoing link counts, resolved or not: an unresolved link is reported by its own rule.
 const UNLINKED = `SELECT 'unlinked' AS rule, c.id, c.ticket AS detail FROM concept c
 WHERE c.ticket IS NOT NULL
-  AND EXISTS (SELECT 1 FROM concept o WHERE o.ticket = c.ticket AND o.id != c.id)
+  AND EXISTS (SELECT 1 FROM concept o WHERE ${SAME_TICKET})
   AND NOT EXISTS (SELECT 1 FROM edge e JOIN section s ON s.id = e.src_section WHERE s.concept_id = c.id)
 ORDER BY c.id, detail`;
 

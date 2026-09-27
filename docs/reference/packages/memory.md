@@ -17,7 +17,7 @@
 | `openMemoryDb` | Opens the database file, creating it and its tables when absent |
 | `ingestMemory` | Brings the stored documents in line with the files the `include` globs reach, in one write transaction |
 | `searchMemory` | Finds sections by literal query words and orders them |
-| `showMemory` | Returns one stored document with its sections, or one stored section, with the links leaving and arriving at it |
+| `showMemory` | Returns one stored document with its sections, or one stored section, with the links leaving and arriving at it; a document also lists the other documents with the same ticket |
 | `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, and documents without a `type` |
 | `describeMemoryIndex` | Returns the time of the last completed ingest and the counts of documents, sections, links, unresolved links, and isolated documents |
 
@@ -122,7 +122,7 @@ document alone.
 
 The ticket comes from the `ticket` extraction rules of the config, so `unlinked` is never
 reported without them. A document is **isolated** when no resolved link connects it to another
-document, in either direction.
+document, in either direction, and no other document has the same ticket.
 
 <a id="results"></a>
 ## Result types
@@ -130,7 +130,7 @@ document, in either direction.
 | Type | Fields |
 |---|---|
 | `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath` |
-| `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links` |
+| `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links`, `related` — the ids of the other documents whose ticket is the same string, in id order |
 | `MemorySection` | `id`, `ord`, `title`, `body` |
 | `MemoryShownSection` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `body`, `ord`, `links` |
 | `MemoryLink` | `from` (the section the link is written in), `target` (`[[x]]`, or the markdown link's target), `to` (the section or document it resolved to, or `null`) |

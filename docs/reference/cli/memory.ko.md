@@ -140,6 +140,18 @@ out  docs/guide#install  [[faq]]  → docs/faq
 in  docs/index-page#  → docs/guide
 ```
 
+문서 식별자를 주면, 티켓이 같은 문자열인 다른 문서들도 함께 보여 줍니다. 티켓은 마지막 ingest가
+설정의 `ticket` 추출 규칙으로 저장해 둔 값이므로, 규칙을 바꾸면 다음 `ingest`부터 반영됩니다.
+그런 문서가 있으면 표 형식의 링크 블록 뒤에 `## related` 블록이 붙고, 한 줄에 문서 식별자 하나씩
+나옵니다. `--json`에서는 이 목록이 `related`에 들어갑니다. 절 식별자에는 관련 문서가
+나오지 않습니다.
+
+```text
+## related
+docs/design-notes
+docs/release-plan
+```
+
 <a id="lint"></a>
 ## `pdks memory lint`
 
@@ -189,7 +201,8 @@ isolated  3/12
 ```
 
 `links`는 저장된 링크 전부의 수이고 `unresolved`는 그중 어떤 문서로도 해소되지 않은 링크의 수입니다.
-해소된 링크가 어느 방향으로도 다른 문서와 잇지 않는 문서를 고립 문서로 셉니다. JSON 형식은
+해소된 링크가 어느 방향으로도 다른 문서와 잇지 않고, 티켓이 같은 다른 문서도 없는 문서를 고립 문서로
+셉니다. JSON 형식은
 `{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`입니다.
 
 <a id="database"></a>

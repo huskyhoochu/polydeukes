@@ -142,6 +142,18 @@ out  docs/guide#install  [[faq]]  → docs/faq
 in  docs/index-page#  → docs/guide
 ```
 
+A document id also lists the other documents whose ticket is the same string. The ticket is
+the one the last ingest stored from the config's `ticket` extraction rules, so a changed rule
+takes effect after the next `ingest`. When there is one, the table form ends with a
+`## related` block after the links, one document id per line; `--json` carries the list as
+`related`. A section id shows no related documents.
+
+```text
+## related
+docs/design-notes
+docs/release-plan
+```
+
 <a id="lint"></a>
 ## `pdks memory lint`
 
@@ -193,7 +205,7 @@ isolated  3/12
 
 `links` counts every stored link and `unresolved` those that resolve to no document. A
 document is isolated when no resolved link connects it to another document in either
-direction. The JSON form is
+direction and no other document has the same ticket. The JSON form is
 `{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`.
 
 <a id="database"></a>

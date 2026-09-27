@@ -77,6 +77,25 @@ const LINKED_TARGET_ID = 'notes/gamma';
 /** A document with no `type`, written only where an untyped violation is asserted. */
 const UNTYPED_DOC_REL = 'notes/untyped.md';
 const UNTYPED_DOC_TEXT = '---\ntitle: Untyped\n---\n## One\n\nplain.\n';
+/**
+ * The ticket pattern is a fixture value no fixed document title matches. The three below
+ * share a ticket, so each related block has two lines; the first one also links out, so its
+ * related block has to land after its links block, and the second has no links at all.
+ */
+const TICKET_MEMORY: MemoryConfig = {
+  ...MEMORY,
+  ticket: [{ from: 'title', pattern: 'RQ-[0-9]+' }],
+};
+const PAIR_A_REL = 'notes/pair-a.md';
+const PAIR_A_ID = 'notes/pair-a';
+const PAIR_A_BODY = '[[gamma]] here.';
+const PAIR_A_TEXT = `---\ntitle: Pair A RQ-7\ntype: note\n---\n## One\n\n${PAIR_A_BODY}\n`;
+const PAIR_B_REL = 'notes/pair-b.md';
+const PAIR_B_ID = 'notes/pair-b';
+const PAIR_B_TEXT = '---\ntitle: Pair B RQ-7\ntype: note\n---\n## One\n\npair b text.\n';
+const PAIR_C_REL = 'notes/pair-c.md';
+const PAIR_C_ID = 'notes/pair-c';
+const PAIR_C_TEXT = '---\ntitle: Pair C RQ-7\ntype: note\n---\n## One\n\npair c text.\n';
 
 const NO_INDEX_LINE = `pdks memory: no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const indexedLine = (n: number) => `indexed ${n} document${n === 1 ? '' : 's'} into ${DB_REL}`;
@@ -470,6 +489,58 @@ describe('pdks memory show', () => {
     expect(linkFree.stdout).toBe(`# Alpha\n\n## One\n\n${SHARED_BODY}\n\n## Two\n\nalpha only.\n`);
     expect(json.status, json.stderr).toBe(0);
     expect(JSON.parse(json.stdout)).toEqual(expected);
+  });
+
+  // A renderer that prints the related block before the links block, prints it for a
+  // document with no ticket partner, or prints it on a section reshapes the bytes every
+  // reader of `show` parses; a renderer that joins the ids on one line differs once there
+  // are two; a `--json` that drops or reshapes `related` diverges from `showMemory`.
+  it('appends a related block after the links block for a document sharing a ticket, and omits it otherwise', () => {
+    writeFileSync(join(projectRoot, PAIR_A_REL), PAIR_A_TEXT);
+    writeFileSync(join(projectRoot, PAIR_B_REL), PAIR_B_TEXT);
+    writeFileSync(join(projectRoot, PAIR_C_REL), PAIR_C_TEXT);
+    writeConfig({ memory: TICKET_MEMORY });
+    const ingest = pdks('memory', 'ingest');
+    expect(ingest.status, ingest.stderr).toBe(0);
+    const db = openIndex();
+    const expectedA = showMemory({ db, id: PAIR_A_ID });
+    const expectedSection = showMemory({ db, id: `${PAIR_A_ID}#one` });
+
+    const withLinks = pdks('memory', 'show', PAIR_A_ID);
+    const linkFree = pdks('memory', 'show', PAIR_B_ID);
+    const section = pdks('memory', 'show', `${PAIR_A_ID}#one`);
+    const json = pdks('memory', 'show', PAIR_A_ID, '--json');
+    const sectionJson = pdks('memory', 'show', `${PAIR_A_ID}#one`, '--json');
+
+    expect(withLinks.status, withLinks.stderr).toBe(0);
+    expect(withLinks.stdout).toBe(
+      [
+        `# Pair A RQ-7\n\n## One\n\n${PAIR_A_BODY}\n`,
+        '\n## links\n',
+        `out  ${PAIR_A_ID}#one  [[gamma]]  → ${LINKED_TARGET_ID}\n`,
+        '\n## related\n',
+        `${PAIR_B_ID}\n`,
+        `${PAIR_C_ID}\n`,
+      ].join(''),
+    );
+    expect(linkFree.status, linkFree.stderr).toBe(0);
+    expect(linkFree.stdout).toBe(
+      [
+        '# Pair B RQ-7\n\n## One\n\npair b text.\n',
+        '\n## related\n',
+        `${PAIR_A_ID}\n`,
+        `${PAIR_C_ID}\n`,
+      ].join(''),
+    );
+    expect(section.status, section.stderr).toBe(0);
+    expect(section.stdout).toContain(PAIR_A_BODY);
+    expect(section.stdout).not.toContain('## related');
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual(expectedA);
+    expect(JSON.parse(json.stdout).related).toEqual([PAIR_B_ID, PAIR_C_ID]);
+    expect(sectionJson.status, sectionJson.stderr).toBe(0);
+    expect(JSON.parse(sectionJson.stdout)).toEqual(expectedSection);
+    expect(JSON.parse(sectionJson.stdout)).not.toHaveProperty('related');
   });
 });
 

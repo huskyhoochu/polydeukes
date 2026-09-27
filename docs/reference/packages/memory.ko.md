@@ -16,7 +16,7 @@
 | `openMemoryDb` | 데이터베이스 파일을 엽니다. 없으면 파일과 테이블을 만듭니다 |
 | `ingestMemory` | 쓰기 트랜잭션 하나 안에서 저장된 문서를 `include` glob이 가리키는 파일에 맞춥니다 |
 | `searchMemory` | 검색어 낱말을 글자 그대로 찾아 절을 고르고 순서를 정합니다 |
-| `showMemory` | 저장된 문서 하나와 그 절들, 또는 저장된 절 하나를 거기서 나가고 들어오는 링크와 함께 돌려줍니다 |
+| `showMemory` | 저장된 문서 하나와 그 절들, 또는 저장된 절 하나를 거기서 나가고 들어오는 링크와 함께 돌려줍니다. 문서라면 티켓이 같은 다른 문서들도 함께 돌려줍니다 |
 | `lintMemory` | 해소되지 않은 링크, 티켓을 공유하면서 링크가 없는 문서, `type`이 없는 문서를 보고합니다 |
 | `describeMemoryIndex` | 마지막으로 끝난 ingest 시각과 문서 · 절 · 링크 · 미해소 링크 · 고립 문서의 수를 돌려줍니다 |
 
@@ -115,7 +115,7 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 | `untyped` | frontmatter에 비어 있지 않은 문자열 `type`이 없는 문서 | 그 문서 | 빈 문자열 |
 
 티켓은 설정의 `ticket` 추출 규칙에서 오므로, 규칙이 없으면 `unlinked`는 보고되지 않습니다. 해소된
-링크가 어느 방향으로도 다른 문서와 잇지 않는 문서를 **고립** 문서라고 합니다.
+링크가 어느 방향으로도 다른 문서와 잇지 않고, 티켓이 같은 다른 문서도 없는 문서를 **고립** 문서라고 합니다.
 
 <a id="results"></a>
 ## 결과 타입
@@ -123,7 +123,7 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 | 타입 | 필드 |
 |---|---|
 | `MemorySearchResult` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, `trust`, `stale`, `matchPath` |
-| `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links` |
+| `MemoryDocument` | `id`, `title`, `metadata`, `sections`, `links`, `related`(티켓이 같은 문자열인 다른 문서들의 식별자, 식별자 순) |
 | `MemorySection` | `id`, `ord`, `title`, `body` |
 | `MemoryShownSection` | `id`, `conceptId`, `docTitle`, `sectionTitle`, `body`, `ord`, `links` |
 | `MemoryLink` | `from`(링크가 적힌 절), `target`(`[[x]]` 또는 markdown 링크의 대상), `to`(해소된 절이나 문서, 없으면 `null`) |

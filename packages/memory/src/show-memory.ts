@@ -13,13 +13,17 @@ export type MemoryLinks = { out: MemoryLink[]; in: MemoryLink[] };
 
 /** A stored section in source order. */
 export type MemorySection = { id: string; ord: number; title: string; body: string };
-/** A stored document and all of its sections. */
+/**
+ * A stored document, all of its sections, and the ids of the other documents whose stored
+ * ticket is the same string.
+ */
 export type MemoryDocument = {
   id: string;
   title: string;
   metadata: Record<string, unknown>;
   sections: MemorySection[];
   links: MemoryLinks;
+  related: string[];
 };
 /** One stored section selected by its exact identifier. */
 export type MemoryShownSection = {
@@ -35,6 +39,12 @@ export type MemoryShownSection = {
 /** SQL for an `edge` row's link as written: `[[x]]` for a wikilink, the target otherwise. */
 export const LINK_AS_WRITTEN =
   "CASE form WHEN 'wiki' THEN '[[' || raw_target || ']]' ELSE raw_target END";
+
+/**
+ * SQL that holds when document `o` shares document `c`'s stored ticket: the same string, and
+ * not the same document. A NULL ticket equals nothing, so an unticketed document has no partner.
+ */
+export const SAME_TICKET = 'o.ticket = c.ticket AND o.id != c.id';
 
 const LINK_SELECT = `SELECT e.src_section AS "from", ${LINK_AS_WRITTEN} AS target,
   coalesce(e.dst_section, e.dst_concept) AS "to"
@@ -71,6 +81,14 @@ export function showMemory({
         'JOIN section s ON s.id = e.src_section WHERE s.concept_id = ?',
         'WHERE e.dst_concept = ?',
       ),
+      related: (
+        db
+          .prepare(
+            `SELECT o.id FROM concept c JOIN concept o ON ${SAME_TICKET}
+              WHERE c.id = ? ORDER BY o.id`,
+          )
+          .all(id) as { id: string }[]
+      ).map((row) => row.id),
     };
   }
 

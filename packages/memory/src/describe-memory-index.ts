@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { SAME_TICKET } from './show-memory.ts';
 
 /** An open memory database connection. */
 export type DescribeMemoryIndexSpec = { db: DatabaseSync };
@@ -6,8 +7,8 @@ export type DescribeMemoryIndexSpec = { db: DatabaseSync };
 /**
  * How many documents the index holds, the ISO 8601 UTC time of the last committed ingest
  * (`null` when no ingest has committed), how many sections and links it holds, how many links
- * resolved to no document, and how many documents no resolved link connects to another
- * document in either direction.
+ * resolved to no document, and how many documents have neither a resolved link to or from
+ * another document nor another document with the same stored ticket.
  */
 export type MemoryIndexState = {
   documents: number;
@@ -25,6 +26,8 @@ const CONNECTED = `SELECT count(*) AS n FROM (
   UNION
   SELECT e.dst_concept FROM edge e JOIN section s ON s.id = e.src_section
     WHERE e.dst_concept IS NOT NULL AND e.dst_concept != s.concept_id
+  UNION
+  SELECT c.id FROM concept c WHERE EXISTS (SELECT 1 FROM concept o WHERE ${SAME_TICKET})
 )`;
 
 /**

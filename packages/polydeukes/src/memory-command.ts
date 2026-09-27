@@ -149,6 +149,11 @@ function renderLinks({ links }: Memory.MemoryDocument | Memory.MemoryShownSectio
   return lines.length === 0 ? '' : `\n## links\n${lines.map((line) => `${line}\n`).join('')}`;
 }
 
+/** The `## related` block, or nothing when no other document shares the ticket. */
+function renderRelated({ related }: Memory.MemoryDocument): string {
+  return related.length === 0 ? '' : `\n## related\n${related.map((id) => `${id}\n`).join('')}`;
+}
+
 /**
  * Runs one `pdks memory` command against `<cwd>/.polydeukes/memory.db`.
  *
@@ -229,8 +234,13 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const shown = memory.showMemory({ db, id: command.id });
     if (shown === undefined) throw new Error(`unknown memory id: ${command.id}`);
     if (command.json) return { text: `${JSON.stringify(shown)}\n`, exitCode: 0 };
-    const text = 'sections' in shown ? renderDocument(shown) : renderSection(shown);
-    return { text: `${text}${renderLinks(shown)}`, exitCode: 0 };
+    if (!('sections' in shown)) {
+      return { text: `${renderSection(shown)}${renderLinks(shown)}`, exitCode: 0 };
+    }
+    return {
+      text: `${renderDocument(shown)}${renderLinks(shown)}${renderRelated(shown)}`,
+      exitCode: 0,
+    };
   } finally {
     db.close();
   }
