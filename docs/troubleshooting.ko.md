@@ -168,7 +168,9 @@ covenant check failed closed: invalid config in polydeukes.config.yaml: … — 
 ## 다른 컴퓨터로 프로젝트를 옮길 때
 
 텔레메트리와 `.polydeukes/baseline.json`은 로컬 상태이며 Git이 옮겨 주는 판정 이력이
-아닙니다. 이 파일 없이 저장소를 복제해도 과거 판정이 복원되지는 않습니다. 세션 훅은 기준
+아닙니다. 이 파일 없이 저장소를 복제해도 과거 판정이 복원되지는 않습니다. memory 조회 로그
+`.polydeukes/memory-log.jsonl`도 로컬 상태입니다. memory 색인은 문서에서 다시 만들 수 있지만,
+조회가 무엇을 돌려줬는지 적은 로그는 다시 만들 수 없습니다. 세션 훅은 기준
 상태가 없거나 유효하지 않으면 이를 기록하고 다음 비교에 쓸 기준을 만듭니다. 과거 변경을
 판정했다는 증거가 생기는 것은 아닙니다. 필요한 로그는 따로 보관해 옮기세요.
 `telemetry.logPath`를 바꿨다면 모든 기록이 `.polydeukes/`에 있다고 가정해서는 안 됩니다.

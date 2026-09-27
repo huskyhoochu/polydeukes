@@ -1,10 +1,10 @@
 /**
- * `pdks memory ingest | search | show | obligations | lint | stats` — the one umbrella module that
- * loads the optional `@polydeukes/memory` package, and only when this command runs, so a tree
- * without it keeps every other command.
+ * `pdks memory ingest | search | show | obligations | lint | stats | usage` — the one umbrella
+ * module that loads the optional `@polydeukes/memory` package, and only when this command runs,
+ * so a tree without it keeps every other command.
  */
 
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type * as Memory from '@polydeukes/memory';
 import { CONFIG_FILENAMES, loadConfig } from './load-config.ts';
@@ -21,10 +21,13 @@ export type RunMemoryOutcome = { text: string; exitCode: 0 | 1 };
 const MEMORY_PACKAGE = '@polydeukes/memory';
 /** Where the index lives, relative to the directory the command runs in. */
 const DB_REL = '.polydeukes/memory.db';
+/** Where `search`, `show`, and `obligations` append one JSON line per answer. */
+const LOG_REL = '.polydeukes/memory-log.jsonl';
 
 const USAGE =
-  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory lint [--json] | pdks memory stats [--json]';
+  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]';
 const NO_INDEX = `no index at ${DB_REL} — run \`pdks memory ingest\` first`;
+const NO_LOG = `no memory log at ${LOG_REL} — run pdks memory search, show, or obligations first`;
 const EXAMPLE = ['', 'memory:', '  include:', "    - 'docs/**/*.md'"].join('\n');
 const NO_SETTINGS = `memory.include is not declared — add the globs of the markdown files to index to the project config, for example:\n${EXAMPLE}`;
 const NO_OBLIGATION_RULES =
@@ -38,7 +41,8 @@ type Command =
   | { verb: 'show'; id: string; json: boolean }
   | { verb: 'obligations'; key: string; json: boolean }
   | { verb: 'lint'; json: boolean }
-  | { verb: 'stats'; json: boolean };
+  | { verb: 'stats'; json: boolean }
+  | { verb: 'usage'; json: boolean };
 
 function parseArgs(args: string[]): Command {
   const [verb, ...rest] = args;
@@ -52,7 +56,8 @@ function parseArgs(args: string[]): Command {
   if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), json };
   if (verb === 'show' && words.length === 1) return { verb, id: words[0] as string, json };
   if (verb === 'obligations' && words.length === 1) return { verb, key: words[0] as string, json };
-  if ((verb === 'lint' || verb === 'stats') && words.length === 0) return { verb, json };
+  if ((verb === 'lint' || verb === 'stats' || verb === 'usage') && words.length === 0)
+    return { verb, json };
   throw new Error(USAGE);
 }
 
@@ -95,6 +100,55 @@ function openIndex(memory: typeof Memory, path: string) {
     throw new Error(NO_INDEX);
   }
   return { db, ingestedAt };
+}
+
+/**
+ * Appends one line to the memory log in a single write. Called only once a command has its
+ * answer, so a refused call leaves no line; a log that cannot be written loses the line and
+ * leaves the answer as it is.
+ */
+function appendLog(
+  cwd: string,
+  command: Memory.MemoryLogEntry['command'],
+  query: string,
+  results: Memory.MemoryLogEntry['results'],
+): void {
+  const entry: Memory.MemoryLogEntry = { at: new Date().toISOString(), command, query, results };
+  try {
+    appendFileSync(join(cwd, LOG_REL), `${JSON.stringify(entry)}\n`);
+  } catch {
+    // A read-only or full `.polydeukes/` still answers the query.
+  }
+}
+
+/**
+ * The log's entries, or `undefined` when there is no log or no line of it parses. A line that
+ * is not JSON is skipped: it is the tail a process cut off mid-write.
+ */
+function readLog(cwd: string): Memory.MemoryLogEntry[] | undefined {
+  const path = join(cwd, LOG_REL);
+  if (!existsSync(path)) return undefined;
+  const entries = readFileSync(path, 'utf-8')
+    .split('\n')
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line) as Memory.MemoryLogEntry];
+      } catch {
+        return [];
+      }
+    });
+  return entries.length === 0 ? undefined : entries;
+}
+
+function renderUsage(usage: Memory.MemoryUsage): string {
+  const lines = [
+    `# log ${usage.from} .. ${usage.to} · ${usage.entries} entries`,
+    ...usage.hot.map(({ id, count }) => `hot\t${count}\t${id}`),
+    ...usage.dead.map((id) => `dead\t${id}`),
+    // A tab or line break in a query would read as another column or line.
+    ...usage.misses.map(({ query, count }) => `miss\t${count}\t${query.replace(/[\t\n\r]/g, ' ')}`),
+  ];
+  return `${lines.join('\n')}\n`;
 }
 
 /** A body without the blank lines that separated it from its heading. */
@@ -162,7 +216,8 @@ function renderRelated({ related }: Memory.MemoryDocument): string {
  * Runs one `pdks memory` command against `<cwd>/.polydeukes/memory.db`.
  *
  * @throws Error whose message is the one stderr line the caller prints: usage, a missing
- * package, a missing `memory` section or obligation rules, a missing index, or an unknown id.
+ * package, a missing `memory` section or obligation rules, a missing index, a missing or
+ * unreadable query log, or an unknown id.
  */
 export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemoryOutcome> {
   const command = parseArgs(args);
@@ -189,6 +244,12 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const { db, ingestedAt } = openIndex(memory, path);
     try {
       const results = await memory.searchMemory({ db, query: command.query, config });
+      appendLog(
+        cwd,
+        'search',
+        command.query,
+        results.map(({ id, matchPath }) => ({ id, matchPath })),
+      );
       if (command.json) {
         return { text: `${JSON.stringify({ ingestedAt, results })}\n`, exitCode: 0 };
       }
@@ -207,6 +268,12 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const { db, ingestedAt } = openIndex(memory, path);
     try {
       const obligations = memory.listObligations({ db, key: command.key });
+      appendLog(
+        cwd,
+        'obligations',
+        command.key,
+        obligations.map(({ sectionId }) => ({ id: sectionId })),
+      );
       if (command.json) {
         return { text: `${JSON.stringify({ ingestedAt, obligations })}\n`, exitCode: 0 };
       }
@@ -222,7 +289,7 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     }
   }
 
-  // `show`, `lint`, and `stats` read the index alone: the stored rows already carry what the
+  // `show`, `lint`, `stats`, and `usage` read no settings: the stored rows already carry what the
   // settings derived.
   const { db, ingestedAt } = openIndex(memory, path);
   try {
@@ -256,8 +323,18 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
       return { text: rows.map(([name, value]) => `${name}  ${value}\n`).join(''), exitCode: 0 };
     }
 
+    if (command.verb === 'usage') {
+      const entries = readLog(cwd);
+      if (entries === undefined) throw new Error(NO_LOG);
+      const usage = memory.summarizeMemoryUsage({ db, entries });
+      if (command.json)
+        return { text: `${JSON.stringify({ ingestedAt, ...usage })}\n`, exitCode: 0 };
+      return { text: renderUsage(usage), exitCode: 0 };
+    }
+
     const shown = memory.showMemory({ db, id: command.id });
     if (shown === undefined) throw new Error(`unknown memory id: ${command.id}`);
+    appendLog(cwd, 'show', command.id, [{ id: command.id }]);
     if (command.json) return { text: `${JSON.stringify(shown)}\n`, exitCode: 0 };
     if (!('sections' in shown)) {
       return { text: `${renderSection(shown)}${renderLinks(shown)}`, exitCode: 0 };

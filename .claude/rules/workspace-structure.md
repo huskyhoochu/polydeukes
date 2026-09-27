@@ -28,10 +28,10 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), `explain` (the assembled-registration renderer, since CLI-01), and
-  `memory ingest | search | show | obligations | lint | stats` (since MEMORY-15, `lint` ·
-  `stats` since MEMORY-05, `obligations` since MEMORY-14: `src/memory-command.ts`, the one
-  umbrella module that loads `@polydeukes/memory`, by dynamic import, and only for this
-  command).
+  `memory ingest | search | show | obligations | lint | stats | usage` (since MEMORY-15, `lint` ·
+  `stats` since MEMORY-05, `obligations` since MEMORY-14, `usage` since MEMORY-10:
+  `src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`, by dynamic
+  import, and only for this command).
   Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file. Since
   SURFACE-02 it also owns **the judge (`src/covenant/`)** — the dispatcher, the discipline
@@ -93,8 +93,8 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/memory`** (`@polydeukes/memory`) is published and is an **optional peer** of the
   umbrella (`peerDependenciesMeta` optional plus a `devDependencies` entry, which is the turbo
   build edge); its barrel carries `openMemoryDb`, `ingestMemory`, `searchMemory`, `showMemory`,
-  `lintMemory`, `listObligations`, and `describeMemoryIndex`. Inside it, `parseDocument` splits
-  a markdown text into
+  `lintMemory`, `listObligations`, `describeMemoryIndex`, and `summarizeMemoryUsage`. Inside it,
+  `parseDocument` splits a markdown text into
   a preamble row and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` /
   `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
   contentless trigram FTS5 table over chunks: `replaceDocument` splits each section body into
@@ -118,7 +118,11 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   matching H2 section by the document's ticket), and `listObligations` returns every row under one
   key. `ingestMemory` also
   writes `meta.ingested_at` in its transaction, which `describeMemoryIndex` reads with the
-  document, section, link, unresolved, and isolated counts. It has no core dependency, so it has
+  document, section, link, unresolved, and isolated counts. `summarizeMemoryUsage` lays the
+  entries of the query log `.polydeukes/memory-log.jsonl` against the indexed documents (hot,
+  dead, and missed searches); the umbrella appends that log after each successful `search`,
+  `show`, and `obligations`, and it is local state the index rebuild never touches. It has no
+  core dependency, so it has
   no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where `node:sqlite` stops printing an
   experimental warning. The database is a derived index — any schema change is absorbed by
   rebuilding it from the documents. The judgment chain never imports it.

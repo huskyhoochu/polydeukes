@@ -21,6 +21,7 @@
 | `lintMemory` | Reports unresolved links, documents that share a ticket and link to nothing, and documents without a `type` |
 | `listObligations` | Returns every obligation stored under one key, extracted at ingest by the `obligations` rules of the config |
 | `describeMemoryIndex` | Returns the time of the last completed ingest and the counts of documents, sections, links, unresolved links, and isolated documents |
+| `summarizeMemoryUsage` | Lays query-log entries against the indexed documents: the documents returned most often, the documents never returned, and the searches that found nothing or only `or`-matched rows |
 
 The database is derived from the documents. It can be deleted and rebuilt from them at any
 time, so a change to the stored shape is absorbed by a rebuild. The judge never imports this

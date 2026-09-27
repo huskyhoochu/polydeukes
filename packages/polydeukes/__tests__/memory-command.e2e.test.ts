@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
@@ -27,6 +36,10 @@ const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 const DB_REL = '.polydeukes/memory.db';
 const DB_DIR_REL = '.polydeukes';
 const CONFIG_REL = 'polydeukes.config.json';
+/** Where the query commands append one JSON line each, relative to the directory they run in. */
+const LOG_REL = '.polydeukes/memory-log.jsonl';
+/** ISO 8601 in UTC, as `Date#toISOString` writes it. */
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 
 /**
  * Globs, types, and weights are fixture values. The two documents that share a body carry
@@ -1008,23 +1021,343 @@ describe('argument shapes outside the command table', () => {
     expect(result.stderr).toMatch(/usage/i);
   });
 
-  // The root usage line is where a user learns the command and its verbs exist.
-  it('the root usage line names pdks memory with lint and stats', () => {
+  // The root usage line is where a user learns the command and its verbs exist. The line
+  // itself starts with `usage:`, so the verb is looked for inside the memory group's
+  // parentheses, where a bare `toContain('usage')` would match the prefix.
+  it('the root usage line names pdks memory with lint, stats, obligations, and usage', () => {
     const result = pdks();
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('pdks memory');
-    expect(result.stderr).toContain('lint');
-    expect(result.stderr).toContain('stats');
+    const group = /pdks memory \(([^)]*)\)/.exec(result.stderr)?.[1] ?? '';
+    for (const verb of ['lint', 'stats', 'obligations', 'usage']) {
+      expect(group, verb).toMatch(new RegExp(`\\b${verb}\\b`));
+    }
   });
 
   // The memory usage line is where a user learns which verbs the area answers; one that
   // still lists only the first three sends them to `--help` for a verb that exists.
-  it('the memory usage line names lint and stats', () => {
+  it('the memory usage line names lint, stats, obligations, and usage', () => {
     const result = pdks('memory');
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('pdks memory lint');
     expect(result.stderr).toContain('pdks memory stats');
+    expect(result.stderr).toContain('pdks memory obligations');
+    expect(result.stderr).toContain('pdks memory usage');
+  });
+});
+
+describe('pdks memory usage and the memory log', () => {
+  /**
+   * Three checkbox lines under one key: two in the first section, one in the second. The
+   * obligations answer orders rows by section id, so the second section's row comes first,
+   * and the first section's id appears twice. The rules and the key are fixture values.
+   */
+  const LOG_KEY = 'LG-1';
+  const LOG_OBLIGATION_MEMORY: MemoryConfig = {
+    ...MEMORY,
+    obligations: [{ line: '^\\s*[-*] \\[ \\]', key: '[A-Z]+-[0-9]+' }],
+  };
+  const LOG_DUTY_REL = 'notes/log-duty.md';
+  const LOG_DUTY_TODO_ID = 'notes/log-duty#todo';
+  const LOG_DUTY_LATER_ID = 'notes/log-duty#later';
+  const LOG_DUTY_TEXT = `---\ntitle: Log duty\ntype: note\n---\n## Todo\n\n- [ ] ${LOG_KEY} pending\n- [ ] ${LOG_KEY} again\n\n## Later\n\n- [ ] ${LOG_KEY} afterwards\n`;
+  const LOG_DUTY_ROW_IDS = [LOG_DUTY_LATER_ID, LOG_DUTY_TODO_ID, LOG_DUTY_TODO_ID];
+  /** A line cut off mid-write, as a reader sees while the writer's process is still running. */
+  const TRUNCATED_LINE = '{"at":"2026-09-28T00:00';
+  const NO_LOG_PREFIX = `pdks memory: no memory log at ${LOG_REL}`;
+
+  const logPath = () => join(projectRoot, LOG_REL);
+  const logLines = (): string[] => readFileSync(logPath(), 'utf-8').split('\n').filter(Boolean);
+  const logEntries = (): unknown[] => logLines().map((line) => JSON.parse(line));
+
+  // A line written only under `--json`, one whose `query` is the first word or the argument
+  // list, one whose results are ids alone, or one that drops the match path a miss count
+  // reads diverges from the `--json` answer the same call printed; a line with no `at`, or
+  // one in local time, cannot bound the summary's span.
+  it('search appends one line per successful call, table or --json, with the answered ids and match paths in output order', async () => {
+    ingested();
+    const db = openIndex();
+    const shared = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
+    const joined = await searchMemory({ db, query: JOINED_QUERY.join(' '), config: MEMORY });
+    expect(shared).toHaveLength(2);
+    expect(joined.map((r) => r.id)).toEqual([SECTION_ID]);
+    const asLogged = (hits: typeof shared) =>
+      hits.map((r) => ({ id: r.id, matchPath: r.matchPath }));
+
+    const json = pdks('memory', 'search', SHARED_QUERY, '--json');
+    const table = pdks('memory', 'search', SHARED_QUERY);
+    const words = pdks('memory', 'search', ...JOINED_QUERY);
+
+    expect(json.status, json.stderr).toBe(0);
+    expect(table.status, table.stderr).toBe(0);
+    expect(words.status, words.stderr).toBe(0);
+    expect(JSON.parse(json.stdout).results).toEqual(shared);
+    expect(logEntries()).toEqual([
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'search',
+        query: SHARED_QUERY,
+        results: asLogged(shared),
+      },
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'search',
+        query: SHARED_QUERY,
+        results: asLogged(shared),
+      },
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'search',
+        query: JOINED_QUERY.join(' '),
+        results: asLogged(joined),
+      },
+    ]);
+  });
+
+  // A `show` line that names every section of the document, or the document of a requested
+  // section, counts documents the caller never opened; a `matchPath` on a show or obligations
+  // result reads as a search to the miss count; an obligations line carrying the key rather
+  // than the section id is one the summary cannot map to a document; one that folds the two
+  // rows of one section into one id, or lists the sections in file order, diverges from
+  // the rows the command printed.
+  it('show and obligations append one line each: the requested id, or one section id per row answered in output order, without a match path', () => {
+    writeFileSync(join(projectRoot, LOG_DUTY_REL), LOG_DUTY_TEXT);
+    writeConfig({ memory: LOG_OBLIGATION_MEMORY });
+    const ingest = pdks('memory', 'ingest');
+    expect(ingest.status, ingest.stderr).toBe(0);
+    expect(listObligations({ db: openIndex(), key: LOG_KEY }).map((r) => r.sectionId)).toEqual(
+      LOG_DUTY_ROW_IDS,
+    );
+
+    const document = pdks('memory', 'show', DOC_ID);
+    const section = pdks('memory', 'show', SECTION_ID, '--json');
+    const obligations = pdks('memory', 'obligations', LOG_KEY);
+
+    expect(document.status, document.stderr).toBe(0);
+    expect(section.status, section.stderr).toBe(0);
+    expect(obligations.status, obligations.stderr).toBe(0);
+    expect(logEntries()).toEqual([
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'show',
+        query: DOC_ID,
+        results: [{ id: DOC_ID }],
+      },
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'show',
+        query: SECTION_ID,
+        results: [{ id: SECTION_ID }],
+      },
+      {
+        at: expect.stringMatching(ISO_UTC),
+        command: 'obligations',
+        query: LOG_KEY,
+        results: LOG_DUTY_ROW_IDS.map((id) => ({ id })),
+      },
+    ]);
+  });
+
+  // A line appended before the command has its answer records a failed `show` as a hit on
+  // the id it refused; a line from `ingest`, `lint`, `stats`, or `usage` carries no returned
+  // id and pads the entry count the header reports; a `--rebuild` that clears `.polydeukes/`
+  // state with the index throws away the only record of past queries.
+  it('appends nothing from ingest, lint, stats, usage, or a refused show, and keeps the log across ingest --rebuild', () => {
+    ingested();
+    for (const args of [['lint'], ['stats'], ['show', UNKNOWN_ID]]) {
+      pdks('memory', ...args);
+    }
+    expect(existsSync(logPath())).toBe(false);
+    const first = pdks('memory', 'search', SHARED_QUERY);
+    expect(first.status, first.stderr).toBe(0);
+    const written = logLines();
+    expect(written).toHaveLength(1);
+
+    const rebuild = pdks('memory', 'ingest', '--rebuild');
+    const usage = pdks('memory', 'usage');
+    const refused = pdks('memory', 'show', UNKNOWN_ID);
+    pdks('memory', 'lint');
+    pdks('memory', 'stats');
+
+    expect(rebuild.status, rebuild.stderr).toBe(0);
+    expect(usage.status, usage.stderr).toBe(0);
+    expect(refused.status).toBe(2);
+    expect(logLines()).toEqual(written);
+  });
+
+  // A search refused for a missing index that still appends a line records a query nobody
+  // answered, under a `.polydeukes/` directory the refusal itself created.
+  it('a search with no index appends nothing and creates no log', () => {
+    writeConfig({ memory: MEMORY });
+
+    const result = pdks('memory', 'search', SHARED_QUERY);
+
+    expect(result.status).toBe(2);
+    expect(existsSync(logPath())).toBe(false);
+  });
+
+  // A summary that answers an empty header or `0 entries` with exit 0 over a log nobody
+  // wrote reads as "every document is dead"; a refusal on exit 1 is indistinguishable from
+  // a violation; a refusal that names the index sends the user to an ingest that will not
+  // help. The index is present, so the log is the only thing missing.
+  it.each([{ args: ['usage'] }, { args: ['usage', '--json'] }])(
+    'pdks memory $args exits 2 with one stderr line naming the log path and an empty stdout when no log exists',
+    ({ args }) => {
+      ingested();
+      expect(existsSync(logPath())).toBe(false);
+
+      const result = pdks('memory', ...args);
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.trimEnd().split('\n')).toHaveLength(1);
+      expect(result.stderr.startsWith(NO_LOG_PREFIX)).toBe(true);
+    },
+  );
+
+  // A log whose only line is cut off parses to zero entries: a summary that answers it
+  // reports every document dead over a record that holds no query, with exit 0 and a
+  // header reading `null .. null`. The index is present, so the log is what is refused.
+  it('exits 2 with the no-log line and an empty stdout over a log with no parseable line', () => {
+    ingested();
+    writeFileSync(logPath(), TRUNCATED_LINE);
+
+    const result = pdks('memory', 'usage');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.startsWith(NO_LOG_PREFIX)).toBe(true);
+  });
+
+  // With neither index nor log, a refusal that names the log sends the user to a `search`
+  // that the missing index refuses in turn; the ingest hint is the one step that unblocks.
+  it('exits 2 with the ingest hint when neither the index nor the log exists', () => {
+    writeConfig({ memory: MEMORY });
+    expect(existsSync(join(projectRoot, DB_DIR_REL))).toBe(false);
+
+    const result = pdks('memory', 'usage');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
+  });
+
+  // With a log but no committed index, every logged id maps to no document: a summary that
+  // answers it lists nothing as dead and nothing as hot with exit 0. The log is present, so
+  // the index is the only thing missing.
+  it('exits 2 with the ingest hint over a log whose index no ingest has committed', () => {
+    writeConfig({ memory: MEMORY });
+    openMemoryDb({ path: join(projectRoot, DB_REL) }).close();
+    writeFileSync(
+      logPath(),
+      `${JSON.stringify({ at: '2026-09-28T00:00:00.000Z', command: 'show', query: DOC_ID, results: [{ id: DOC_ID }] })}\n`,
+    );
+
+    const result = pdks('memory', 'usage');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.trim()).toBe(NO_INDEX_LINE);
+  });
+
+  // The table is pinned by value over four logged calls and one cut-off line: a header
+  // counting the cut-off line says 5, a hot count over sections rather than documents
+  // gives `alpha` a different number than the two calls that named it, a dead line for
+  // `zeta` or none for `gamma` misreads the log, a miss counted once folds the repeated
+  // no-hit search, and a column joined with spaces hands `cut -f` the wrong field. Two
+  // rows of every kind are not needed here; the ordering rules have their own unit tests.
+  // The config is removed before `usage` runs, so a summary that loads it refuses.
+  it('prints the log span header, then hot, dead, and miss lines tab-separated, and --json the same summary under the DB stamp', async () => {
+    ingested();
+    const db = openIndex();
+    const shared = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
+    expect(shared.map((r) => r.conceptId).sort()).toEqual([DOC_ID, 'notes/guides/zeta']);
+    expect(shared.some((r) => r.matchPath !== 'or')).toBe(true);
+    for (const args of [
+      ['search', SHARED_QUERY],
+      ['search', NO_HIT_QUERY],
+      ['show', DOC_ID],
+      ['search', NO_HIT_QUERY, '--json'],
+    ]) {
+      const result = pdks('memory', ...args);
+      expect(result.status, result.stderr).toBe(0);
+    }
+    const entries = logEntries() as { at: string }[];
+    expect(entries).toHaveLength(4);
+    appendFileSync(logPath(), TRUNCATED_LINE);
+    const from = entries[0]?.at;
+    const to = entries[3]?.at;
+    rmSync(join(projectRoot, CONFIG_REL));
+
+    const table = pdks('memory', 'usage');
+    const json = pdks('memory', 'usage', '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stderr).toBe('');
+    expect(table.stdout).toBe(
+      [
+        `# log ${from} .. ${to} · 4 entries`,
+        `hot${TABLE_SEPARATOR}2${TABLE_SEPARATOR}${DOC_ID}`,
+        `hot${TABLE_SEPARATOR}1${TABLE_SEPARATOR}notes/guides/zeta`,
+        `dead${TABLE_SEPARATOR}notes/gamma`,
+        `miss${TABLE_SEPARATOR}2${TABLE_SEPARATOR}${NO_HIT_QUERY}`,
+        '',
+      ].join('\n'),
+    );
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({
+      ingestedAt: describeMemoryIndex({ db }).ingestedAt,
+      from,
+      to,
+      entries: 4,
+      hot: [
+        { id: DOC_ID, count: 2 },
+        { id: 'notes/guides/zeta', count: 1 },
+      ],
+      dead: ['notes/gamma'],
+      misses: [{ query: NO_HIT_QUERY, count: 2 }],
+    });
+  });
+
+  // A `usage` that ignores a trailing word exits 0 on a shape the table never promised.
+  it('pdks memory usage extra exits 2 with usage and an empty stdout', () => {
+    ingested();
+
+    const result = pdks('memory', 'usage', 'extra');
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/usage/i);
+  });
+
+  // A log path that cannot be appended to (here a directory, as a read-only or full
+  // `.polydeukes/` would also refuse) must not turn an answered query into exit 2.
+  it('answers a search with exit 0 and the same stdout when the log cannot be written', async () => {
+    ingested();
+    const expected = await searchMemory({ db: openIndex(), query: SHARED_QUERY, config: MEMORY });
+    mkdirSync(logPath());
+
+    const result = pdks('memory', 'search', SHARED_QUERY, '--json');
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).results).toEqual(expected);
+  });
+
+  // A tab left in the missed query adds a fourth column to the table line; the JSON form
+  // keeps the query as it was run.
+  it('prints a tab inside a missed query as a space in the table and keeps it in --json', () => {
+    ingested();
+    const query = 'zz-no\tsuch-491';
+    expect(pdks('memory', 'search', query).status).toBe(0);
+
+    const table = pdks('memory', 'usage');
+    const json = pdks('memory', 'usage', '--json');
+
+    expect(table.stdout.split('\n')).toContain(
+      `miss${TABLE_SEPARATOR}1${TABLE_SEPARATOR}zz-no such-491`,
+    );
+    expect(JSON.parse(json.stdout).misses).toEqual([{ query, count: 1 }]);
   });
 });

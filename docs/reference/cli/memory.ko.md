@@ -18,6 +18,7 @@ pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
 pdks memory stats [--json]
+pdks memory usage [--json]
 ```
 
 모든 경로는 명령을 실행한 디렉터리 기준입니다. 설정 파일도 그 디렉터리에서 찾고, 색인은 그
@@ -260,6 +261,41 @@ isolated  3/12
 셉니다. JSON 형식은
 `{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`입니다.
 
+<a id="usage"></a>
+## `pdks memory usage`
+
+```sh
+pdks memory usage
+pdks memory usage --json
+```
+
+`search`, `show`, `obligations`가 성공할 때마다 `.polydeukes/memory-log.jsonl`에 JSON 한 줄이
+덧붙습니다. 줄에는 시각, 명령, 질의(검색 낱말, 조회한 식별자, obligations 키), 그리고 명령이
+돌려준 식별자가 출력 순서대로 담기며, 검색 결과에는 매치 경로가 함께 담깁니다. `usage`는 이
+로그를 색인에 있는 문서와 대조합니다.
+
+```text
+# log 2026-09-28T01:00:24.000Z .. 2026-09-30T10:12:00.000Z · 42 entries
+hot⇥7⇥docs/roadmap
+dead⇥docs/adr/0003-cache
+miss⇥2⇥cache eviction policy
+```
+
+열은 탭 하나로 구분하며, 위에서는 `⇥`로 표시했습니다. 머리 줄은 첫 줄과 마지막 줄의 시각, 그리고
+해석된 줄 수를 보여 줍니다. `hot` 줄은 색인에 있는
+문서와 그 문서를 돌려준 로그 줄의 수입니다. 한 줄이 같은 문서의 절을 여러 개 돌려줬어도 한 번으로
+셉니다. `dead` 줄은 어느 로그 줄도 돌려주지 않은 색인 문서입니다. `miss` 줄은 결과가 없었거나
+`or`로만 맞은 행을 돌려준 검색 질의와 그 질의를 실행한 횟수입니다. 색인에 더는 없는 문서의
+식별자는 `hot`과 `dead`에서 빠집니다. JSON 형식은
+`{ "ingestedAt", "from", "to", "entries", "hot", "dead", "misses" }`입니다.
+
+`usage`는 설정 파일을 읽지 않습니다. JSON으로 해석되지 않는 줄은 건너뜁니다. 로그가 없거나
+해석되는 줄이 하나도 없으면 `2`로 종료합니다.
+
+```text
+pdks memory: no memory log at .polydeukes/memory-log.jsonl — run pdks memory search, show, or obligations first
+```
+
 <a id="database"></a>
 ## 색인 파일
 
@@ -277,12 +313,20 @@ pdks memory ingest --rebuild
 다음 `pdks memory ingest`가 새 판에 맞게 갱신합니다. 패키지를 올린 뒤에는 검색하기 전에 ingest를
 실행하세요.
 
-`search`, `show`, `lint`, `obligations`, `stats`는 이 파일을 만들지 않습니다. 파일이 없거나 그 안에서 끝난 ingest가 없으면 `2`로
-종료합니다.
+`search`, `show`, `lint`, `obligations`, `stats`, `usage`는 이 파일을 만들지 않습니다. 파일이 없거나
+그 안에서 끝난 ingest가 없으면 `2`로 종료합니다.
 
 ```text
 pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first
 ```
+
+<a id="log"></a>
+## 조회 로그
+
+조회 로그는 `.polydeukes/memory-log.jsonl`입니다. 색인과 달리 문서에서 다시 만들 수 없습니다.
+`ingest --rebuild`나 색인 삭제는 로그를 건드리지 않고, 재구축 전후로 식별자가 같으므로 `usage`의
+집계가 이어집니다. 로그를 보존하거나 지우는 일은 사용자의 책임이며, `.gitignore`의 같은
+`.polydeukes/` 줄이 이 파일도 덮습니다.
 
 <a id="exit-codes"></a>
 ## 종료 코드
@@ -294,7 +338,8 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 | 위 구문 밖의 인자 조합 | `2` | stderr에 사용법, stdout은 비어 있음 |
 | 설정 파일이 없거나 `memory` 절이 없음(`ingest`, `search`, `obligations`) | `2` | stderr에 선언할 키 |
 | `memory.obligations` 규칙이 없음(`obligations`) | `2` | stderr에 선언할 키 |
-| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `obligations`, `stats`) | `2` | stderr에 ingest 안내 |
+| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `obligations`, `stats`, `usage`) | `2` | stderr에 ingest 안내 |
+| 조회 로그가 없거나 해석되는 줄이 없음(`usage`) | `2` | stderr에 로그 안내, stdout은 비어 있음 |
 | 색인에 없는 식별자(`show`) | `2` | stderr에 문구, stdout은 비어 있음 |
 | `@polydeukes/memory`가 설치되지 않음 | `2` | stderr에 설치 안내 |
 | 그 밖의 오류 | `2` | stderr에 `pdks memory: <오류 문구>`, stdout은 비어 있음 |

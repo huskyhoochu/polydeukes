@@ -29,6 +29,7 @@ Public contract symbols include:
 - `lintMemory` · `LintMemorySpec` · `MemoryLintResult` · `MemoryViolation`
 - `listObligations` · `ListObligationsSpec` · `MemoryObligation`
 - `describeMemoryIndex` · `DescribeMemoryIndexSpec` · `MemoryIndexState`
+- `summarizeMemoryUsage` · `SummarizeMemoryUsageSpec` · `MemoryLogEntry` · `MemoryUsage`
 - `MemoryConfig`
 
 <a id="examples"></a>

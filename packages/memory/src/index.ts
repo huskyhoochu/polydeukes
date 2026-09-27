@@ -34,3 +34,9 @@ export {
   type ShowMemorySpec,
   showMemory,
 } from './show-memory.ts';
+export {
+  type MemoryLogEntry,
+  type MemoryUsage,
+  type SummarizeMemoryUsageSpec,
+  summarizeMemoryUsage,
+} from './summarize-memory-usage.ts';

@@ -17,6 +17,7 @@ pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
 pdks memory stats [--json]
+pdks memory usage [--json]
 ```
 
 Every path is relative to the directory the command runs in. The config is discovered there,
@@ -272,6 +273,41 @@ document is isolated when no resolved link connects it to another document in ei
 direction and no other document has the same ticket. The JSON form is
 `{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`.
 
+<a id="usage"></a>
+## `pdks memory usage`
+
+```sh
+pdks memory usage
+pdks memory usage --json
+```
+
+Every successful `search`, `show`, and `obligations` appends one JSON line to
+`.polydeukes/memory-log.jsonl`: the time, the command, its query (the search words, the shown
+id, or the obligations key), and the ids it returned in output order, each search result with
+its match path. `usage` lays that log against the documents in the index:
+
+```text
+# log 2026-09-28T01:00:24.000Z .. 2026-09-30T10:12:00.000Z · 42 entries
+hot⇥7⇥docs/roadmap
+dead⇥docs/adr/0003-cache
+miss⇥2⇥cache eviction policy
+```
+
+Columns are separated by a tab, shown as `⇥` above. The header gives the time of the first and
+last line and the number of lines that parsed. A `hot` line
+is an indexed document and the number of log lines that returned it; a line that returned several
+of its sections counts once. A `dead` line is an indexed document no log line returned. A `miss`
+line is a search query that returned nothing or only `or`-matched rows, with how many times it
+was run. Ids of documents no longer in the index are left out of `hot` and `dead`. The JSON form
+is `{ "ingestedAt", "from", "to", "entries", "hot", "dead", "misses" }`.
+
+`usage` reads no config. A line that does not parse as JSON is skipped. When the log does not
+exist or no line of it parses, `usage` exits `2`:
+
+```text
+pdks memory: no memory log at .polydeukes/memory-log.jsonl — run pdks memory search, show, or obligations first
+```
+
 <a id="database"></a>
 ## The index file
 
@@ -289,12 +325,20 @@ the file and running `pdks memory ingest` again restores the index. An index wri
 earlier version of `@polydeukes/memory` is brought up to date by the next `pdks memory ingest`;
 run it after upgrading, before searching.
 
-`search`, `show`, `lint`, `obligations`, and `stats` never create the file. When it does not
+`search`, `show`, `lint`, `obligations`, `stats`, and `usage` never create the file. When it does not
 exist, or no ingest has completed in it, they exit `2`:
 
 ```text
 pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first
 ```
+
+<a id="log"></a>
+## The query log
+
+The query log is `.polydeukes/memory-log.jsonl`. Unlike the index, it cannot be rebuilt from the
+documents: `ingest --rebuild` and deleting the index leave it in place, and ids stay the same
+across a rebuild, so `usage` counts continue. Keeping or removing it is the user's
+responsibility, and the same `.polydeukes/` line in `.gitignore` covers it.
 
 <a id="exit-codes"></a>
 ## Exit codes
@@ -306,7 +350,8 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 | An argument list outside the syntax above | `2` | Usage on stderr, empty stdout |
 | No config, or no `memory` section (`ingest`, `search`, `obligations`) | `2` | The key to declare on stderr |
 | No `memory.obligations` rule (`obligations`) | `2` | The key to declare on stderr |
-| No index file, or no completed ingest (`search`, `show`, `lint`, `obligations`, `stats`) | `2` | The ingest hint on stderr |
+| No index file, or no completed ingest (`search`, `show`, `lint`, `obligations`, `stats`, `usage`) | `2` | The ingest hint on stderr |
+| No query log, or no line of it parses (`usage`) | `2` | The log hint on stderr, empty stdout |
 | An id not in the index (`show`) | `2` | Message on stderr, empty stdout |
 | `@polydeukes/memory` not installed | `2` | The install hint on stderr |
 | Any other error | `2` | `pdks memory: <message>` on stderr, empty stdout |

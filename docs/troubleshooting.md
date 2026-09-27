@@ -170,7 +170,9 @@ lists](./reference/configuration/index.md#three-lists).
 ## Moving a project between machines
 
 Telemetry and `.polydeukes/baseline.json` are local state, not a portable history supplied by Git.
-A clone without them does not reconstruct prior judgments. The session hook records an absent
+A clone without them does not reconstruct prior judgments. The memory query log
+`.polydeukes/memory-log.jsonl` is local state too: the memory index can be rebuilt from the
+documents, but the log of what queries returned cannot. The session hook records an absent
 or invalid baseline and establishes one for subsequent comparisons; this is not proof that old
 changes were judged. Preserve needed logs separately when migrating, and check any custom
 `telemetry.logPath` rather than assuming `.polydeukes/` holds all records.
