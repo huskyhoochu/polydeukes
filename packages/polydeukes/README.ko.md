@@ -22,7 +22,7 @@ CLI 명령은 다음과 같습니다.
 - `pdks-codex init` (`@polydeukes/adapter-codex`가 제공)
 - `pdks explain`
 - `pdks docs [topic]`
-- `pdks memory ingest|search|show` (선택 peer 의존 `@polydeukes/memory`가 필요)
+- `pdks memory ingest|search|show|lint|stats` (선택 peer 의존 `@polydeukes/memory`가 필요)
 
 <a id="public-symbols"></a>
 ## 공개 심볼

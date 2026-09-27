@@ -123,6 +123,7 @@ pdks explain             # print what each surface judges, skips, and excludes â
 pdks docs [topic]        # read the bundled documentation, offline
 pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (needs @polydeukes/memory)
 pdks memory search <query> | show <id>             # search that index, or show a document or section
+pdks memory lint | stats                           # report broken links, or count documents, links, and isolated documents
 ```
 
 The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
@@ -168,7 +169,7 @@ knows nothing of the others.
 | `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, transcript interface â€” a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
 | `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
 | `@polydeukes/ledger` *(planned)* | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
-| `@polydeukes/memory` | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, and `show`. The documents stay the record; the index is rebuilt from them |
+| `@polydeukes/memory` | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, `show`, `lint`, and `stats`. The documents stay the record; the index is rebuilt from them |
 | `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
 
 `core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, and `memory` ship today. The

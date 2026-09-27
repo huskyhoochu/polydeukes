@@ -1,7 +1,7 @@
 /**
- * `pdks memory ingest | search | show` — the one umbrella module that loads the optional
- * `@polydeukes/memory` package, and only when this command runs, so a tree without it keeps
- * every other command.
+ * `pdks memory ingest | search | show | lint | stats` — the one umbrella module that loads the
+ * optional `@polydeukes/memory` package, and only when this command runs, so a tree without it
+ * keeps every other command.
  */
 
 import { existsSync } from 'node:fs';
@@ -12,15 +12,18 @@ import { CONFIG_FILENAMES, loadConfig } from './load-config.ts';
 /** Inputs for one `pdks memory` call: the directory it runs in and the words after `memory`. */
 export type RunMemorySpec = { cwd: string; args: string[] };
 
-/** Complete stdout, returned only after every step succeeds. */
-export type RunMemoryOutcome = { text: string };
+/**
+ * Complete stdout, returned only after every step succeeds, and the exit code: 1 when `lint`
+ * found a violation, 0 otherwise.
+ */
+export type RunMemoryOutcome = { text: string; exitCode: 0 | 1 };
 
 const MEMORY_PACKAGE = '@polydeukes/memory';
 /** Where the index lives, relative to the directory the command runs in. */
 const DB_REL = '.polydeukes/memory.db';
 
 const USAGE =
-  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json]';
+  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory lint [--json] | pdks memory stats [--json]';
 const NO_INDEX = `no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const EXAMPLE = ['', 'memory:', '  include:', "    - 'docs/**/*.md'"].join('\n');
 const NO_SETTINGS = `memory.include is not declared — add the globs of the markdown files to index to the project config, for example:\n${EXAMPLE}`;
@@ -30,7 +33,9 @@ const noConfig = (cwd: string): string =>
 type Command =
   | { verb: 'ingest'; rebuild: boolean }
   | { verb: 'search'; query: string; json: boolean }
-  | { verb: 'show'; id: string; json: boolean };
+  | { verb: 'show'; id: string; json: boolean }
+  | { verb: 'lint'; json: boolean }
+  | { verb: 'stats'; json: boolean };
 
 function parseArgs(args: string[]): Command {
   const [verb, ...rest] = args;
@@ -43,6 +48,7 @@ function parseArgs(args: string[]): Command {
   if (words.some((word) => word.startsWith('--'))) throw new Error(USAGE);
   if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), json };
   if (verb === 'show' && words.length === 1) return { verb, id: words[0] as string, json };
+  if ((verb === 'lint' || verb === 'stats') && words.length === 0) return { verb, json };
   throw new Error(USAGE);
 }
 
@@ -134,6 +140,15 @@ function renderSection(section: Memory.MemoryShownSection): string {
   return `# ${titleOf(section.docTitle, section.sectionTitle)}\n\n${body}\n`;
 }
 
+/** The `## links` block, or nothing when no link leaves or arrives. */
+function renderLinks({ links }: Memory.MemoryDocument | Memory.MemoryShownSection): string {
+  const lines = [
+    ...links.out.map((link) => `out  ${link.from}  ${link.target}  → ${link.to ?? 'unresolved'}`),
+    ...links.in.map((link) => `in  ${link.from}  → ${link.to}`),
+  ];
+  return lines.length === 0 ? '' : `\n## links\n${lines.map((line) => `${line}\n`).join('')}`;
+}
+
 /**
  * Runs one `pdks memory` command against `<cwd>/.polydeukes/memory.db`.
  *
@@ -153,6 +168,7 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
       const { documents } = memory.describeMemoryIndex({ db });
       return {
         text: `indexed ${documents} document${documents === 1 ? '' : 's'} into ${DB_REL}\n`,
+        exitCode: 0,
       };
     } finally {
       db.close();
@@ -164,22 +180,57 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const { db, ingestedAt } = openIndex(memory, path);
     try {
       const results = memory.searchMemory({ db, query: command.query, config });
-      if (command.json) return { text: `${JSON.stringify({ ingestedAt, results })}\n` };
+      if (command.json) {
+        return { text: `${JSON.stringify({ ingestedAt, results })}\n`, exitCode: 0 };
+      }
       return {
         text: `${[`# ingested at ${ingestedAt}`, ...results.map(renderResult)].join('\n')}\n`,
+        exitCode: 0,
       };
     } finally {
       db.close();
     }
   }
 
-  // `show` reads the index alone: the stored rows already carry what the settings derived.
-  const { db } = openIndex(memory, path);
+  // `show`, `lint`, and `stats` read the index alone: the stored rows already carry what the
+  // settings derived.
+  const { db, ingestedAt } = openIndex(memory, path);
   try {
+    if (command.verb === 'lint') {
+      const { violations } = memory.lintMemory({ db });
+      const exitCode = violations.length === 0 ? 0 : 1;
+      if (command.json)
+        return { text: `${JSON.stringify({ ingestedAt, violations })}\n`, exitCode };
+      // An empty detail (`untyped`) leaves no trailing separator.
+      const lines = violations.map(({ rule, id, detail }) =>
+        [rule, id, detail].filter((part) => part !== '').join('  '),
+      );
+      return { text: `${[`# ingested at ${ingestedAt}`, ...lines].join('\n')}\n`, exitCode };
+    }
+
+    if (command.verb === 'stats') {
+      const { documents, sections, links, unresolved, isolated } = memory.describeMemoryIndex({
+        db,
+      });
+      if (command.json) {
+        const stats = { ingestedAt, documents, sections, links, unresolved, isolated };
+        return { text: `${JSON.stringify(stats)}\n`, exitCode: 0 };
+      }
+      const rows: [string, string | number][] = [
+        ['documents', documents],
+        ['sections', sections],
+        ['links', links],
+        ['unresolved', unresolved],
+        ['isolated', `${isolated}/${documents}`],
+      ];
+      return { text: rows.map(([name, value]) => `${name}  ${value}\n`).join(''), exitCode: 0 };
+    }
+
     const shown = memory.showMemory({ db, id: command.id });
     if (shown === undefined) throw new Error(`unknown memory id: ${command.id}`);
-    if (command.json) return { text: `${JSON.stringify(shown)}\n` };
-    return { text: 'sections' in shown ? renderDocument(shown) : renderSection(shown) };
+    if (command.json) return { text: `${JSON.stringify(shown)}\n`, exitCode: 0 };
+    const text = 'sections' in shown ? renderDocument(shown) : renderSection(shown);
+    return { text: `${text}${renderLinks(shown)}`, exitCode: 0 };
   } finally {
     db.close();
   }

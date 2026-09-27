@@ -28,8 +28,9 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), `explain` (the assembled-registration renderer, since CLI-01), and
-  `memory ingest | search | show` (since MEMORY-15: `src/memory-command.ts`, the one umbrella
-  module that loads `@polydeukes/memory`, by dynamic import, and only for this command).
+  `memory ingest | search | show | lint | stats` (since MEMORY-15, `lint` · `stats` since
+  MEMORY-05: `src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`,
+  by dynamic import, and only for this command).
   Since CONFIG-03 it owns the config discovery loader
   (`loadConfig`) — the one place allowed to read and parse the data config file. Since
   SURFACE-02 it also owns **the judge (`src/covenant/`)** — the dispatcher, the discipline
@@ -91,20 +92,23 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/memory`** (`@polydeukes/memory`) is published and is an **optional peer** of the
   umbrella (`peerDependenciesMeta` optional plus a `devDependencies` entry, which is the turbo
   build edge); its barrel carries `openMemoryDb`, `ingestMemory`, `searchMemory`, `showMemory`,
-  and `describeMemoryIndex`. Inside it, `parseDocument` splits a markdown text into a preamble row
-  and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` / `replaceDocument` /
-  `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a trigram FTS5
-  external-content table synced by triggers. `replaceDocument` derives type and ticket columns
-  from validated memory settings; `ingestMemory` compares the files the `include` globs reach with
-  the stored documents in one write transaction — it skips a document whose hash of text plus type
-  and ticket settings is unchanged, replaces a changed one, and deletes one whose file is gone;
-  `searchMemory` finds section rows and applies configured type weights, while `showMemory`
-  returns stored document or section content. `ingestMemory` also writes `meta.ingested_at` in its
-  transaction, which `describeMemoryIndex` reads with the document count. It has no core
-  dependency, so it has no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where
-  `node:sqlite` stops printing an experimental warning. The database is a derived index — any
-  schema change is absorbed by rebuilding it from the documents. The judgment chain never imports
-  it.
+  `lintMemory`, and `describeMemoryIndex`. Inside it, `parseDocument` splits a markdown text into
+  a preamble row and one row per H2, keyed `<document id>#<anchor>`; `openMemoryDb` /
+  `replaceDocument` / `optimizeMemoryDb` keep those rows in a `node:sqlite` database with a
+  trigram FTS5 external-content table synced by triggers. `replaceDocument` derives type and
+  ticket columns from validated memory settings; `ingestMemory` compares the files the `include`
+  globs reach with the stored documents in one write transaction — it skips a document whose hash
+  of text plus type and ticket settings is unchanged, replaces a changed one, and deletes one
+  whose file is gone, then resolves every stored link row (`edge`, written per section from
+  `[[x]]` and `.md` links) against the whole index, so a skipped document's links still follow
+  their targets; `searchMemory` finds section rows and applies configured type weights, while
+  `showMemory` returns stored document or section content with its links, and `lintMemory` reports
+  unresolved links, unlinked same-ticket documents, and untyped documents. `ingestMemory` also
+  writes `meta.ingested_at` in its transaction, which `describeMemoryIndex` reads with the
+  document, section, link, unresolved, and isolated counts. It has no core dependency, so it has
+  no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where `node:sqlite` stops printing an
+  experimental warning. The database is a derived index — any schema change is absorbed by
+  rebuilding it from the documents. The judgment chain never imports it.
 - **Dependency direction:** a scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
   `sdk-ts`) takes vocabulary only from `core` — `memory` uses none and has no dependency — and
   never depends on a sibling; core depends on nothing. An agent

@@ -3,9 +3,9 @@
 **English** · [한국어](./README.ko.md)
 
 This package keeps a SQLite index of a project's markdown documents so their sections can be
-searched and shown. Each document becomes one row, and each H2 section one row keyed
-`<document id>#<anchor>`. The documents stay the record: the index can be deleted and rebuilt
-from them at any time.
+searched and shown, and keeps the links between them. Each document becomes one row, and each
+H2 section one row keyed `<document id>#<anchor>`. The documents stay the record: the index can
+be deleted and rebuilt from them at any time.
 
 It is an optional companion to `polydeukes`, whose `pdks memory` command loads it. Install it
 next to the umbrella:
@@ -24,7 +24,9 @@ Public contract symbols include:
 - `openMemoryDb` · `OpenMemoryDbSpec`
 - `ingestMemory` · `IngestMemorySpec`
 - `searchMemory` · `SearchMemorySpec` · `MemorySearchResult`
-- `showMemory` · `ShowMemorySpec` · `MemoryDocument` · `MemorySection` · `MemoryShownSection`
+- `showMemory` · `ShowMemorySpec` · `MemoryDocument` · `MemorySection` · `MemoryShownSection` ·
+  `MemoryLink`
+- `lintMemory` · `LintMemorySpec` · `MemoryLintResult` · `MemoryViolation`
 - `describeMemoryIndex` · `DescribeMemoryIndexSpec` · `MemoryIndexState`
 - `MemoryConfig`
 
@@ -45,8 +47,8 @@ const results = searchMemory({ db, query: 'release notes', config });
 db.close();
 ```
 
-The command line form of the same calls is `pdks memory ingest`, `pdks memory search`, and
-`pdks memory show`.
+The command line form of the same calls is `pdks memory ingest`, `pdks memory search`,
+`pdks memory show`, `pdks memory lint`, and `pdks memory stats`.
 
 <a id="see-also"></a>
 ## See also

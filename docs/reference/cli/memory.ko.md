@@ -2,7 +2,8 @@
 
 [English](./memory.md) · **한국어**
 
-프로젝트의 마크다운 문서를 로컬 SQLite 데이터베이스에 색인하고, 그 절을 검색하고 조회합니다.
+프로젝트의 마크다운 문서를 로컬 SQLite 데이터베이스에 색인하고, 그 절을 검색하고 조회하며, 문서 사이의
+링크를 검사합니다.
 이 명령은 `pdks` 실행 파일에 들어 있으며, 선택 설치 패키지 `@polydeukes/memory`를 이 명령이
 실행될 때만 불러옵니다. `pdks covenant check`는 이 패키지를 불러오지 않으므로, 패키지가 있든
 없든 판정 결과는 같습니다.
@@ -14,6 +15,8 @@
 pdks memory ingest [--rebuild]
 pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
+pdks memory lint [--json]
+pdks memory stats [--json]
 ```
 
 모든 경로는 명령을 실행한 디렉터리 기준입니다. 설정 파일도 그 디렉터리에서 찾고, 색인은 그
@@ -123,8 +126,71 @@ pdks memory show docs/guide#install --json
 
 문서 식별자를 주면 `# <제목>`을 출력하고, 이어 절마다 `## <절 제목>`과 본문을 출력합니다. 절
 식별자를 주면 `# <문서 제목> › <절 제목>`과 그 절의 본문을 출력합니다. `--json`은 저장된 문서나
-절을 객체 하나로 출력합니다. 색인에 없는 식별자는 stderr에 문구를 내고 stdout에는 아무것도 내지
-않은 채 `2`로 종료합니다. `show`는 색인만 읽으므로 설정 파일이 필요하지 않습니다.
+절을 `links`까지 포함한 객체 하나로 출력합니다. 색인에 없는 식별자는 stderr에 문구를 내고 stdout에는
+아무것도 내지 않은 채 `2`로 종료합니다. `show`, `lint`, `stats`는 색인만 읽으므로 설정 파일이 필요하지
+않습니다.
+
+그 문서나 절에서 나가거나 들어오는 링크가 있으면, 표 형식의 끝에 `## links` 블록이 붙습니다. 거기에
+적힌 링크마다 `out` 줄 하나, 거기로 해소된 링크마다 `in` 줄 하나가 나옵니다.
+
+```text
+## links
+out  docs/guide#install  setup.md  → unresolved
+out  docs/guide#install  [[faq]]  → docs/faq
+in  docs/index-page#  → docs/guide
+```
+
+<a id="lint"></a>
+## `pdks memory lint`
+
+```sh
+pdks memory lint
+pdks memory lint --json
+```
+
+`lint`는 색인에 있는 링크 위반을 보고합니다. 표 형식의 첫 줄은 마지막 ingest 시각이고, 이어 위반마다
+`<rule>  <id>  <detail>` 한 줄이 나옵니다.
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+unresolved  docs/guide#install  setup.md
+unlinked  docs/notes/release  REL-12
+untyped  docs/scratch
+```
+
+| 규칙 | 보고 대상 | 세부 |
+|---|---|---|
+| `unresolved` | 색인된 어떤 문서로도 해소되지 않는 링크 | 적힌 그대로의 링크 |
+| `unlinked` | 다른 문서와 티켓을 공유하면서 자기 링크가 하나도 없는 문서 | 티켓 |
+| `untyped` | frontmatter에 `type`이 없는 문서 | 비어 있음 |
+
+`unlinked`는 설정의 `ticket` 규칙이 있어야 보고됩니다. 규칙이 없으면 보고하지 않습니다. JSON 형식은
+`{ "ingestedAt": …, "violations": [ … ] }`입니다. `lint`는 위반을 하나라도 보고하면 `1`, 하나도 없으면
+`0`으로 종료하므로 스크립트에서 검사로 쓸 수 있습니다. `search`처럼 파일이 아니라 색인을 읽으므로, 현재
+본문을 검사하려면 먼저 `pdks memory ingest`를 실행합니다. 링크를 읽고 해소하는 규칙은
+[패키지 참조](../packages/memory.ko.md#links)에 있습니다.
+
+<a id="stats"></a>
+## `pdks memory stats`
+
+```sh
+pdks memory stats
+pdks memory stats --json
+```
+
+`stats`는 다섯 줄을 출력합니다.
+
+```text
+documents  12
+sections  48
+links  30
+unresolved  2
+isolated  3/12
+```
+
+`links`는 저장된 링크 전부의 수이고 `unresolved`는 그중 어떤 문서로도 해소되지 않은 링크의 수입니다.
+해소된 링크가 어느 방향으로도 다른 문서와 잇지 않는 문서를 고립 문서로 셉니다. JSON 형식은
+`{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`입니다.
 
 <a id="database"></a>
 ## 색인 파일
@@ -141,7 +207,7 @@ pdks memory ingest --rebuild
 그 줄을 바꾸지 않는 한 커밋에 들어가지 않습니다. 기록은 문서 쪽에 있습니다. 파일을 지우고
 `pdks memory ingest`를 다시 실행하면 색인이 복원됩니다.
 
-`search`와 `show`는 이 파일을 만들지 않습니다. 파일이 없거나 그 안에서 끝난 ingest가 없으면 `2`로
+`search`, `show`, `lint`, `stats`는 이 파일을 만들지 않습니다. 파일이 없거나 그 안에서 끝난 ingest가 없으면 `2`로
 종료합니다.
 
 ```text
@@ -153,10 +219,11 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 
 | 조건 | 종료 코드 | 출력 |
 |---|---|---|
-| 성공한 명령. 일치가 없는 검색 포함 | `0` | stdout에 응답 |
+| 성공한 명령. 일치가 없는 검색과 위반이 없는 `lint` 포함 | `0` | stdout에 응답 |
+| `lint`가 위반을 보고함 | `1` | stdout에 보고 |
 | 위 구문 밖의 인자 조합 | `2` | stderr에 사용법, stdout은 비어 있음 |
 | 설정 파일이 없거나 `memory` 절이 없음(`ingest`, `search`) | `2` | stderr에 선언할 키 |
-| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`) | `2` | stderr에 ingest 안내 |
+| 색인 파일이 없거나 끝난 ingest가 없음(`search`, `show`, `lint`, `stats`) | `2` | stderr에 ingest 안내 |
 | 색인에 없는 식별자(`show`) | `2` | stderr에 문구, stdout은 비어 있음 |
 | `@polydeukes/memory`가 설치되지 않음 | `2` | stderr에 설치 안내 |
 | 그 밖의 오류 | `2` | stderr에 `pdks memory: <오류 문구>`, stdout은 비어 있음 |

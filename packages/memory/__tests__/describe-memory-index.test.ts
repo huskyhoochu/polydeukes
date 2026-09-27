@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { describeMemoryIndex } from '../src/describe-memory-index.ts';
 import { ingestMemory } from '../src/ingest-memory.ts';
@@ -19,6 +19,8 @@ const BASE_CONFIG: MemoryConfig = { include: INCLUDE };
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 /** A stamp no clock in this run can produce. */
 const SENTINEL_STAMP = '2000-01-01T00:00:00.000Z';
+/** The link counts of an index no ingest has written — all zero, including on a file with no schema. */
+const UNBUILT = { sections: 0, links: 0, unresolved: 0, isolated: 0 };
 
 let tmp: string;
 let root: string;
@@ -67,7 +69,7 @@ describe('describeMemoryIndex', () => {
   it('reports zero documents and a null stamp on a database no ingest has written', () => {
     const db = open('fresh.db');
 
-    expect(describeMemoryIndex({ db })).toEqual({ documents: 0, ingestedAt: null });
+    expect(describeMemoryIndex({ db })).toEqual({ ...UNBUILT, documents: 0, ingestedAt: null });
   });
 
   // An empty file opened read-only has no tables: a describe that queries `concept` throws
@@ -79,9 +81,25 @@ describe('describeMemoryIndex', () => {
     const db = openMemoryDb({ path, readOnly: true });
     opened.push(db);
 
-    expect(describeMemoryIndex({ db })).toEqual({ documents: 0, ingestedAt: null });
+    expect(describeMemoryIndex({ db })).toEqual({ ...UNBUILT, documents: 0, ingestedAt: null });
     db.close();
     expect(statSync(path).size).toBe(0);
+  });
+
+  // An index written before links were stored has documents and a stamp but no `edge` table:
+  // reporting its stamp lets `show` and `lint` run and fail on "no such table" rather than
+  // point the reader at an ingest, which rebuilds it.
+  it('reads an index without the edge table as one no ingest of this version has written', () => {
+    const path = join(tmp, 'older.db');
+    const older = new DatabaseSync(path);
+    older.exec(
+      "CREATE TABLE concept (id TEXT PRIMARY KEY); CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL); INSERT INTO concept VALUES ('notes/alpha'); INSERT INTO meta VALUES ('ingested_at', '2026-01-01T00:00:00.000Z');",
+    );
+    older.close();
+    const db = openMemoryDb({ path, readOnly: true });
+    opened.push(db);
+
+    expect(describeMemoryIndex({ db })).toEqual({ ...UNBUILT, documents: 0, ingestedAt: null });
   });
 
   // A count over `section` reports 3 for two documents; a stamp written in local time or
@@ -151,7 +169,14 @@ describe('describeMemoryIndex', () => {
     ingestMemory({ db, root, config: BASE_CONFIG });
     db.exec(`UPDATE meta SET value = '${SENTINEL_STAMP}' WHERE key = 'ingested_at'`);
     const before = describeMemoryIndex({ db });
-    expect(before).toEqual({ documents: 1, ingestedAt: SENTINEL_STAMP });
+    expect(before).toEqual({
+      documents: 1,
+      ingestedAt: SENTINEL_STAMP,
+      sections: 1,
+      links: 0,
+      unresolved: 0,
+      isolated: 1,
+    });
 
     for (let n = 0; n < 300; n++) {
       writeDoc(`notes/doc-${n}.md`, page(`Note ${n}`, `section-body note ${n}.`.repeat(40)));

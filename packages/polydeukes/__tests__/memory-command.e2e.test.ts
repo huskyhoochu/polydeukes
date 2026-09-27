@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryConfig } from '@polydeukes/memory';
-import { describeMemoryIndex, openMemoryDb, searchMemory, showMemory } from '@polydeukes/memory';
+import {
+  describeMemoryIndex,
+  lintMemory,
+  openMemoryDb,
+  searchMemory,
+  showMemory,
+} from '@polydeukes/memory';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeConfigAt } from './helpers.ts';
 
@@ -58,6 +64,19 @@ const STALE_DOC_REL = 'notes/stale.md';
 const STALE_DOC_TEXT = `---\ntitle: Stale\ntype: note\nstale_after: 2000-01-01T00:00:00Z\n---\n## One\n\n${SHARED_BODY}\n`;
 const STALE_SECTION_ID = 'notes/stale#one';
 const STALE_MARK = ', stale';
+/**
+ * A document linking out three ways — a wikilink that resolves to `gamma` by its unique
+ * last path segment, one that resolves nowhere, and a markdown link to gamma's section —
+ * written only where links are asserted. With it, `alpha` and `zeta` are the isolated pair.
+ */
+const LINKED_DOC_REL = 'notes/hub.md';
+const LINKED_DOC_ID = 'notes/hub';
+const LINKED_BODY = '[[gamma]] and [[nowhere]] and [g](gamma.md#one).';
+const LINKED_DOC_TEXT = `---\ntitle: Hub\ntype: note\n---\n## One\n\n${LINKED_BODY}\n`;
+const LINKED_TARGET_ID = 'notes/gamma';
+/** A document with no `type`, written only where an untyped violation is asserted. */
+const UNTYPED_DOC_REL = 'notes/untyped.md';
+const UNTYPED_DOC_TEXT = '---\ntitle: Untyped\n---\n## One\n\nplain.\n';
 
 const NO_INDEX_LINE = `pdks memory: no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const indexedLine = (n: number) => `indexed ${n} document${n === 1 ? '' : 's'} into ${DB_REL}`;
@@ -410,13 +429,157 @@ describe('pdks memory show', () => {
     expect(result.status, result.stderr).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ id: DOC_ID });
   });
+
+  // A renderer that prints the block for a link-free document changes the bytes every
+  // existing reader of `show` parses; one that prints `null` for an unresolved target, drops
+  // the `in` lines on the target document, or orders the lines by target document rather
+  // than by from and target diverges from the pinned form; a `--json` that reshapes the
+  // links diverges from `showMemory`.
+  it('appends a links block for a document with edges and keeps the link-free form byte-identical', () => {
+    writeFileSync(join(projectRoot, LINKED_DOC_REL), LINKED_DOC_TEXT);
+    ingested();
+    const db = openIndex();
+    const expected = showMemory({ db, id: LINKED_DOC_ID });
+    expect(expected?.links.out).toHaveLength(3);
+
+    const linked = pdks('memory', 'show', LINKED_DOC_ID);
+    const target = pdks('memory', 'show', LINKED_TARGET_ID);
+    const linkFree = pdks('memory', 'show', DOC_ID);
+    const json = pdks('memory', 'show', LINKED_DOC_ID, '--json');
+
+    expect(linked.status, linked.stderr).toBe(0);
+    expect(linked.stdout).toBe(
+      [
+        `# Hub\n\n## One\n\n${LINKED_BODY}\n`,
+        '\n## links\n',
+        `out  ${LINKED_DOC_ID}#one  [[gamma]]  → ${LINKED_TARGET_ID}\n`,
+        `out  ${LINKED_DOC_ID}#one  [[nowhere]]  → unresolved\n`,
+        `out  ${LINKED_DOC_ID}#one  gamma.md#one  → ${LINKED_TARGET_ID}#one\n`,
+      ].join(''),
+    );
+    expect(target.status, target.stderr).toBe(0);
+    expect(target.stdout).toBe(
+      [
+        '# Gamma\n\n## One\n\ngamma text.\n',
+        '\n## links\n',
+        `in  ${LINKED_DOC_ID}#one  → ${LINKED_TARGET_ID}\n`,
+        `in  ${LINKED_DOC_ID}#one  → ${LINKED_TARGET_ID}#one\n`,
+      ].join(''),
+    );
+    expect(linkFree.status, linkFree.stderr).toBe(0);
+    expect(linkFree.stdout).toBe(`# Alpha\n\n## One\n\n${SHARED_BODY}\n\n## Two\n\nalpha only.\n`);
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual(expected);
+  });
+});
+
+describe('pdks memory stats', () => {
+  // Four documents' worth of arithmetic is pinned by value, so a count wired to the wrong
+  // field — `links` printed where `unresolved` belongs, `isolated` printed as a bare number
+  // or over the section count, a sixth line or a stamp header — fails on the bytes; a
+  // `--json` that copies the clock or reshapes the keys diverges from `describeMemoryIndex`.
+  it('prints the five count lines with isolated over the document count, and --json as the describeMemoryIndex value', () => {
+    writeFileSync(join(projectRoot, LINKED_DOC_REL), LINKED_DOC_TEXT);
+    ingested();
+    const state = describeMemoryIndex({ db: openIndex() });
+    expect(state).toMatchObject({
+      documents: 4,
+      sections: 5,
+      links: 3,
+      unresolved: 1,
+      isolated: 2,
+    });
+
+    const table = pdks('memory', 'stats');
+    const json = pdks('memory', 'stats', '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stderr).toBe('');
+    expect(table.stdout).toBe(
+      'documents  4\nsections  5\nlinks  3\nunresolved  1\nisolated  2/4\n',
+    );
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({
+      ingestedAt: state.ingestedAt,
+      documents: 4,
+      sections: 5,
+      links: 3,
+      unresolved: 1,
+      isolated: 2,
+    });
+  });
+
+  // `stats` and `lint` need the index alone; a command that loads the config first refuses
+  // in a tree whose config is gone while the index it asks about is still there.
+  it.each([{ args: ['stats', '--json'] }, { args: ['lint'] }])(
+    'pdks memory $args answers without a config file once the index exists',
+    ({ args }) => {
+      ingested();
+      rmSync(join(projectRoot, CONFIG_REL));
+
+      const result = pdks('memory', ...args);
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).not.toBe('');
+    },
+  );
+});
+
+describe('pdks memory lint', () => {
+  // A violation answered with exit 0 lets a script read a broken index as clean; exit 2
+  // makes it indistinguishable from a usage error; a report on stderr, a missing stamp
+  // header, or a line that folds the three fields with one space diverges from the pinned
+  // form; a `--json` that reshapes or reorders the list diverges from `lintMemory`.
+  it('exits 1 with the stamp header and one line per violation, and --json as the lintMemory value', () => {
+    writeFileSync(join(projectRoot, LINKED_DOC_REL), LINKED_DOC_TEXT);
+    writeFileSync(join(projectRoot, UNTYPED_DOC_REL), UNTYPED_DOC_TEXT);
+    ingested();
+    const db = openIndex();
+    const expected = lintMemory({ db });
+    expect(expected.violations.map((v) => v.rule)).toEqual(['unresolved', 'untyped']);
+    const stamp = describeMemoryIndex({ db }).ingestedAt;
+
+    const table = pdks('memory', 'lint');
+    const json = pdks('memory', 'lint', '--json');
+
+    expect(table.status).toBe(1);
+    expect(table.stderr).toBe('');
+    const lines = table.stdout.split('\n');
+    expect(lines[0]).toBe(`# ingested at ${stamp}`);
+    expect(lines[1]).toBe(`unresolved  ${LINKED_DOC_ID}#one  [[nowhere]]`);
+    expect(lines[2]).toBe('untyped  notes/untyped');
+    expect(lines.slice(3)).toEqual(['']);
+    expect(json.status).toBe(1);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, violations: expected.violations });
+  });
+
+  // A clean index answered with exit 1, or with any line after the header, reads as a
+  // violation to the script that gates on it.
+  it('exits 0 with the stamp header alone when nothing is violated', () => {
+    ingested();
+    const stamp = describeMemoryIndex({ db: openIndex() }).ingestedAt;
+
+    const table = pdks('memory', 'lint');
+    const json = pdks('memory', 'lint', '--json');
+
+    expect(table.status, table.stderr).toBe(0);
+    expect(table.stdout).toBe(`# ingested at ${stamp}\n`);
+    expect(table.stderr).toBe('');
+    expect(json.status, json.stderr).toBe(0);
+    expect(JSON.parse(json.stdout)).toEqual({ ingestedAt: stamp, violations: [] });
+  });
 });
 
 describe('pdks memory before any ingest', () => {
   // `openMemoryDb` creates an empty database at a missing path: a `search` or `show` that
   // opens first answers 0 hits from an index nobody built and leaves the file behind, so
   // every later run reads the empty index as a real one.
-  it.each([{ args: ['search', 'x'] }, { args: ['show', DOC_ID] }])(
+  it.each([
+    { args: ['search', 'x'] },
+    { args: ['show', DOC_ID] },
+    { args: ['lint'] },
+    { args: ['stats'] },
+  ])(
     'pdks memory $args exits 2 with the ingest hint and creates neither the index nor its directory',
     ({ args }) => {
       writeConfig({ memory: MEMORY });
@@ -462,7 +625,12 @@ describe('pdks memory before any ingest', () => {
 
   // A first ingest that failed leaves a database file with the schema and no stamp; a
   // check on the file alone reads it as an index and answers 0 hits or "not found".
-  it.each([{ args: ['search', 'x'] }, { args: ['show', DOC_ID] }])(
+  it.each([
+    { args: ['search', 'x'] },
+    { args: ['show', DOC_ID] },
+    { args: ['lint'] },
+    { args: ['stats'] },
+  ])(
     'with a memory.db no ingest has committed, pdks memory $args exits 2 with the ingest hint',
     ({ args }) => {
       writeConfig({ memory: MEMORY });
@@ -481,11 +649,12 @@ describe('pdks memory before any ingest', () => {
 describe('argument shapes outside the command table', () => {
   // Each shape is run against a prepared index so the only reason left to refuse is the
   // argument list: a bare `memory` that lists the index, an `ingest` that swallows an extra
-  // word or `--json`, a `show` that answers with no identifier, all exit 0 on something the
-  // table never promised.
+  // word or `--json`, a `show` that answers with no identifier, a `lint` or `stats` that
+  // ignores a trailing word, all exit 0 on something the table never promised.
   it.each([
     { args: [] },
-    { args: ['lint'] },
+    { args: ['lint', 'extra'] },
+    { args: ['stats', 'extra'] },
     { args: ['ingest', 'extra'] },
     { args: ['ingest', '--json'] },
     { args: ['show'] },
@@ -502,11 +671,23 @@ describe('argument shapes outside the command table', () => {
     expect(result.stderr).toMatch(/usage/i);
   });
 
-  // The root usage line is where a user learns the command exists.
-  it('the root usage line names pdks memory', () => {
+  // The root usage line is where a user learns the command and its verbs exist.
+  it('the root usage line names pdks memory with lint and stats', () => {
     const result = pdks();
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('pdks memory');
+    expect(result.stderr).toContain('lint');
+    expect(result.stderr).toContain('stats');
+  });
+
+  // The memory usage line is where a user learns which verbs the area answers; one that
+  // still lists only the first three sends them to `--help` for a verb that exists.
+  it('the memory usage line names lint and stats', () => {
+    const result = pdks('memory');
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('pdks memory lint');
+    expect(result.stderr).toContain('pdks memory stats');
   });
 });

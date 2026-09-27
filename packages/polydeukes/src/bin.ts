@@ -42,17 +42,17 @@ function readStdin(): string {
 }
 
 /**
- * Write `text` to stdout and end the process — exit 0 once the write drains, exit 2 when
+ * Write `text` to stdout and end the process — exit `exitCode` once the write drains, exit 2 when
  * the reader went away. A piped write is asynchronous, so the exit waits for the flush; a
  * reader that closes mid-write makes the stream emit `error` outside any try frame, and
  * this handler is what keeps that off node's default exit 1 with a stack trace.
  */
-async function emitAndExit(text: string): Promise<never> {
+async function emitAndExit(text: string, exitCode = 0): Promise<never> {
   process.stdout.on('error', () => process.exit(2));
   await new Promise<void>((settle) => {
     process.stdout.write(text, () => settle());
   });
-  process.exit(0);
+  process.exit(exitCode);
 }
 
 const args = process.argv.slice(2);
@@ -107,8 +107,8 @@ if (args[0] === 'memory') {
     // Imported inside the try: the command module loads the optional memory package, which
     // a tree without it must never reach on any other command's load path.
     const { runMemory } = await import('./memory-command.ts');
-    const { text } = await runMemory({ cwd: process.cwd(), args: args.slice(1) });
-    await emitAndExit(text);
+    const { text, exitCode } = await runMemory({ cwd: process.cwd(), args: args.slice(1) });
+    await emitAndExit(text, exitCode);
   } catch (error) {
     // stdout stays at zero bytes on this path: what cannot be answered is never answered
     // halfway.
@@ -168,7 +168,7 @@ const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(ar
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id>)\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id> | lint | stats)\n',
   );
   process.exit(2);
 }

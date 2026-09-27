@@ -11,11 +11,19 @@ export {
   type MemoryIndexState,
 } from './describe-memory-index.ts';
 export { type IngestMemorySpec, ingestMemory } from './ingest-memory.ts';
+export {
+  type LintMemorySpec,
+  lintMemory,
+  type MemoryLintResult,
+  type MemoryViolation,
+} from './lint-memory.ts';
 export type { MemoryConfig } from './memory-config.ts';
 export { type OpenMemoryDbSpec, openMemoryDb } from './schema.ts';
 export { type MemorySearchResult, type SearchMemorySpec, searchMemory } from './search-memory.ts';
 export {
   type MemoryDocument,
+  type MemoryLink,
+  type MemoryLinks,
   type MemorySection,
   type MemoryShownSection,
   type ShowMemorySpec,

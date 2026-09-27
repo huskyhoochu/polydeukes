@@ -48,14 +48,12 @@ export function replaceDocument({ db, document, config }: ReplaceDocumentSpec): 
   const insert = db.prepare(
     'INSERT INTO section (id, concept_id, ord, doc_title, title, body) VALUES (?, ?, ?, ?, ?, ?)',
   );
+  const insertEdge = db.prepare(
+    'INSERT INTO edge (src_section, form, raw_target) VALUES (?, ?, ?)',
+  );
   for (const section of document.sections) {
-    insert.run(
-      `${document.id}#${section.anchor}`,
-      document.id,
-      section.ord,
-      document.title,
-      section.title,
-      section.body,
-    );
+    const id = `${document.id}#${section.anchor}`;
+    insert.run(id, document.id, section.ord, document.title, section.title, section.body);
+    for (const link of section.links) insertEdge.run(id, link.form, link.target);
   }
 }

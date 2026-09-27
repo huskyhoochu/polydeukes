@@ -32,7 +32,9 @@ import하지 않고 peer 의존으로 선언합니다.
 | `pdks docs show <document-id>` | 동봉된 문서 또는 절을 표시 |
 | `pdks memory ingest [--rebuild]` | 설정의 `memory.include`가 가리키는 문서를 `.polydeukes/memory.db`에 색인 |
 | `pdks memory search <query>` | 색인에서 절을 검색 |
-| `pdks memory show <id>` | 색인된 문서 또는 절을 표시 |
+| `pdks memory show <id>` | 색인된 문서 또는 절을 링크와 함께 표시 |
+| `pdks memory lint` | 해소되지 않은 링크, 링크 없는 문서, type 없는 문서를 보고. 하나라도 있으면 `1`로 종료 |
+| `pdks memory stats` | 색인된 문서 · 절 · 링크 · 미해소 링크 · 고립 문서의 수를 출력 |
 
 세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`, `pdks-grok init`,
 `pdks-codex init`입니다.

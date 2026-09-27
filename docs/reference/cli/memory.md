@@ -2,10 +2,10 @@
 
 **English** · [한국어](./memory.ko.md)
 
-Index the project's markdown documents into a local SQLite database, then search and show
-their sections. The command is part of the `pdks` bin and loads the optional package
-`@polydeukes/memory` only when it runs. `pdks covenant check` never loads it, so a verdict is
-the same with or without the package.
+Index the project's markdown documents into a local SQLite database, then search and show their
+sections and check the links between them. The command is part of the `pdks` bin and loads the
+optional package `@polydeukes/memory` only when it runs. `pdks covenant check` never loads it,
+so a verdict is the same with or without the package.
 
 <a id="syntax"></a>
 ## Syntax
@@ -14,6 +14,8 @@ the same with or without the package.
 pdks memory ingest [--rebuild]
 pdks memory search <query…> [--json]
 pdks memory show <id> [--json]
+pdks memory lint [--json]
+pdks memory stats [--json]
 ```
 
 Every path is relative to the directory the command runs in. The config is discovered there,
@@ -126,9 +128,73 @@ pdks memory show docs/guide#install --json
 
 A document id prints `# <title>` and then each section as `## <section title>` with its body. A
 section id prints `# <document title> › <section title>` and that section's body. `--json`
-prints the stored document or section as one object. An id that is not in the index exits `2`
-with a message on stderr and nothing on stdout. `show` reads the index alone and does not need
-the config.
+prints the stored document or section as one object, including its `links`. An id that is not
+in the index exits `2` with a message on stderr and nothing on stdout. `show`, `lint`, and
+`stats` read the index alone and do not need the config.
+
+When links leave or arrive at the document or section, the table form ends with a `## links`
+block: one `out` line per link written in it, and one `in` line per link resolved to it.
+
+```text
+## links
+out  docs/guide#install  setup.md  → unresolved
+out  docs/guide#install  [[faq]]  → docs/faq
+in  docs/index-page#  → docs/guide
+```
+
+<a id="lint"></a>
+## `pdks memory lint`
+
+```sh
+pdks memory lint
+pdks memory lint --json
+```
+
+`lint` reports the link violations the index holds. The first line of the table form is the
+time of the last ingest, followed by one line per violation as `<rule>  <id>  <detail>`:
+
+```text
+# ingested at 2026-01-15T09:30:00.000Z
+unresolved  docs/guide#install  setup.md
+unlinked  docs/notes/release  REL-12
+untyped  docs/scratch
+```
+
+| Rule | Reported for | Detail |
+|---|---|---|
+| `unresolved` | a link that resolves to no indexed document | the link as written |
+| `unlinked` | a document that shares its ticket with another document and has no link of its own | the ticket |
+| `untyped` | a document whose frontmatter has no `type` | empty |
+
+`unlinked` needs the `ticket` rules of the config; without them it is never reported. The JSON
+form is `{ "ingestedAt": …, "violations": [ … ] }`. `lint` exits `1` when it reports any
+violation and `0` when it reports none, so a script can use it as a check. Like `search`, it
+reads the index rather than the files: run `pdks memory ingest` first to lint the current text.
+How links are read and resolved is in the
+[package reference](../packages/memory.md#links).
+
+<a id="stats"></a>
+## `pdks memory stats`
+
+```sh
+pdks memory stats
+pdks memory stats --json
+```
+
+`stats` prints five lines:
+
+```text
+documents  12
+sections  48
+links  30
+unresolved  2
+isolated  3/12
+```
+
+`links` counts every stored link and `unresolved` those that resolve to no document. A
+document is isolated when no resolved link connects it to another document in either
+direction. The JSON form is
+`{ "ingestedAt", "documents", "sections", "links", "unresolved", "isolated" }`.
 
 <a id="database"></a>
 ## The index file
@@ -145,8 +211,8 @@ makes no copy of it. The `.polydeukes/` line that `pdks init` adds to `.gitignor
 so it stays out of commits unless you change that line. The documents are the record: deleting
 the file and running `pdks memory ingest` again restores the index.
 
-`search` and `show` never create the file. When it does not exist, or no ingest has completed
-in it, they exit `2`:
+`search`, `show`, `lint`, and `stats` never create the file. When it does not exist, or no
+ingest has completed in it, they exit `2`:
 
 ```text
 pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first
@@ -157,10 +223,11 @@ pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` firs
 
 | Condition | Exit | Output |
 |---|---|---|
-| A successful command, including a search with no match | `0` | Answer on stdout |
+| A successful command, including a search with no match and a `lint` with no violation | `0` | Answer on stdout |
+| `lint` reports a violation | `1` | The report on stdout |
 | An argument list outside the syntax above | `2` | Usage on stderr, empty stdout |
 | No config, or no `memory` section (`ingest`, `search`) | `2` | The key to declare on stderr |
-| No index file, or no completed ingest (`search`, `show`) | `2` | The ingest hint on stderr |
+| No index file, or no completed ingest (`search`, `show`, `lint`, `stats`) | `2` | The ingest hint on stderr |
 | An id not in the index (`show`) | `2` | Message on stderr, empty stdout |
 | `@polydeukes/memory` not installed | `2` | The install hint on stderr |
 | Any other error | `2` | `pdks memory: <message>` on stderr, empty stdout |

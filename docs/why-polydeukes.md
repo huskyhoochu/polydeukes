@@ -62,8 +62,12 @@ and the [configuration reference](./reference/configuration/index.md).
 their sections. The documents stay the record and the index is derived from them: nothing is
 written to the index alone, so deleting it and running `pdks memory ingest` restores it, and how
 the file is kept is the project's choice. The index lives in the optional package
-`@polydeukes/memory`, which the judge never loads — a verdict is the same with or without it. See
-the [`pdks memory` reference](./reference/cli/memory.md).
+`@polydeukes/memory`, which the judge never loads — a verdict is the same with or without it.
+Links between documents are stored as rows, and a link whose target does not exist is recorded
+rather than refused: an ingest that refused a document would leave the index disagreeing with
+files that git still holds. `pdks memory lint` reports those links and exits `1`, so the check
+runs wherever the project chooses to run it. See the
+[`pdks memory` reference](./reference/cli/memory.md).
 
 ## Principles and their limits
 
@@ -167,10 +171,10 @@ current design is hard to explain without them.
 ## What remains a plan
 
 A verifiable **ledger** and adversarial **verification** are roadmap components, not shipped
-services. Of local **memory**, search and show over the project's documents ship; queries over
-links, replaced records, and carried-over obligations do not yet. Telemetry is not the future
-ledger, documentation search is not a memory system, and running a test suite is not an
-implemented adversarial review service.
+services. Of local **memory**, search and show over the project's documents and the links
+between them ship; queries over replaced records and carried-over obligations do not yet.
+Telemetry is not the future ledger, documentation search is not a memory system, and running a
+test suite is not an implemented adversarial review service.
 
 Polydeukes is not an agent runtime or a sandbox. It complements linters and tests: some declarations
 compare file contents, others require observed process evidence. It does not execute a fresh

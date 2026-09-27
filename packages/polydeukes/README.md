@@ -23,7 +23,7 @@ CLI commands:
 - `pdks-codex init` (ships with `@polydeukes/adapter-codex`)
 - `pdks explain`
 - `pdks docs [topic]`
-- `pdks memory ingest|search|show` (needs the optional peer `@polydeukes/memory`)
+- `pdks memory ingest|search|show|lint|stats` (needs the optional peer `@polydeukes/memory`)
 
 <a id="public-symbols"></a>
 ## Public symbols

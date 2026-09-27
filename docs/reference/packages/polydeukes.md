@@ -32,7 +32,9 @@ takes it as a peer dependency rather than importing it.
 | `pdks docs show <document-id>` | Show one bundled document or section |
 | `pdks memory ingest [--rebuild]` | Index the documents `memory.include` reaches into `.polydeukes/memory.db` |
 | `pdks memory search <query>` | Search the index for sections |
-| `pdks memory show <id>` | Show one indexed document or section |
+| `pdks memory show <id>` | Show one indexed document or section with its links |
+| `pdks memory lint` | Report unresolved links, unlinked documents, and untyped documents; exit `1` when any is found |
+| `pdks memory stats` | Count the indexed documents, sections, links, unresolved links, and isolated documents |
 
 Session-surface installers live on the adapters: `pdks-claude-code init`, `pdks-grok init`, and
 `pdks-codex init`.

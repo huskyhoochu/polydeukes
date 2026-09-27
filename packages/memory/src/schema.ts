@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS section (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS section_concept ON section(concept_id);
 
+CREATE TABLE IF NOT EXISTS edge (
+  src_section TEXT NOT NULL REFERENCES section(id) ON DELETE CASCADE,
+  form        TEXT NOT NULL,
+  raw_target  TEXT NOT NULL,
+  dst_concept TEXT,
+  dst_section TEXT,
+  PRIMARY KEY (src_section, form, raw_target)
+) STRICT;
+
 CREATE VIRTUAL TABLE IF NOT EXISTS section_fts USING fts5(
   doc_title, title, body,
   content='section', content_rowid='rowid', tokenize='trigram'

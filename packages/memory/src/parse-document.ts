@@ -3,8 +3,17 @@ import { parse } from 'yaml';
 /** One markdown document: its identifier and full text. */
 export type ParseDocumentSpec = { id: string; text: string };
 
-/** One row of a document: the preamble (anchor `''`) or one H2 section. */
-export type ParsedSection = { anchor: string; ord: number; title: string; body: string };
+/** A link in a section body: a `[[target]]` wikilink or a `[text](target)` markdown link. */
+export type ParsedLink = { form: 'wiki' | 'markdown'; target: string };
+
+/** One row of a document: the preamble (anchor `''`) or one H2 section, with its links. */
+export type ParsedSection = {
+  anchor: string;
+  ord: number;
+  title: string;
+  body: string;
+  links: ParsedLink[];
+};
 
 /** A document split into its title, section rows, and optional frontmatter mapping. */
 export type ParsedDocument = {
@@ -20,6 +29,16 @@ const H1 = /^ {0,3}#(?:[ \t](.*))?$/;
 const H2 = /^ {0,3}##(?:[ \t](.*))?$/;
 const EXPLICIT_ANCHOR = /\s*\{#([^}]+)\}\s*$/;
 const CLOSING_HASHES = /(?:^|\s+)#+\s*$/;
+// A code span opens and closes on whole runs of backticks of one length, so a run with no
+// closing run stays text instead of being retried as a shorter one. It may run over a line
+// break but never past a blank line, which ends the paragraph.
+const CODE_SPAN = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)/g;
+const WIKILINK = /\[\[([^\]\n]+)\]\]/g;
+// The optional `!` is matched so that an image's `[…](…)` tail is consumed and skipped. Link
+// text may wrap onto the next line, as a paragraph filled to a width does, but not past a blank
+// line.
+const MARKDOWN_LINK = /(!?)\[(?:(?!\n[ \t]*\n)[^\]])*\]\(([^)\s]+)\)/g;
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
 function frontmatterMetadata(yamlText: string): Record<string, unknown> | undefined {
   try {
@@ -29,6 +48,29 @@ function frontmatterMetadata(yamlText: string): Record<string, unknown> | undefi
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The links of a section's text outside fences, once per form and target. A markdown link is
+ * kept only when the path before `#` is empty (the same document) or names a `.md` file.
+ */
+function collectLinks(prose: string[]): ParsedLink[] {
+  const text = prose.join('\n').replace(CODE_SPAN, '');
+  const found: ParsedLink[] = [];
+  for (const match of text.matchAll(WIKILINK)) {
+    found.push({ form: 'wiki', target: match[1] as string });
+  }
+  for (const match of text.matchAll(MARKDOWN_LINK)) {
+    const target = match[2] as string;
+    if (match[1] === '!' || SCHEME.test(target)) continue;
+    const path = target.split('#')[0] as string;
+    if (path === '' || path.endsWith('.md')) found.push({ form: 'markdown', target });
+  }
+  const links: ParsedLink[] = [];
+  for (const link of found) {
+    if (!links.some((l) => l.form === link.form && l.target === link.target)) links.push(link);
+  }
+  return links;
 }
 
 function slug(title: string): string {
@@ -53,11 +95,20 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
 
   let h1Title: string | undefined;
   const preamble: string[] = [];
-  const headings: { title: string; anchor: string | undefined; lines: string[] }[] = [];
+  // The section text outside fences; a fence line stands as a blank line so no code span or
+  // link is read across it.
+  const preambleProse: string[] = [];
+  const headings: {
+    title: string;
+    anchor: string | undefined;
+    lines: string[];
+    prose: string[];
+  }[] = [];
   let fence: { char: string; length: number } | undefined;
 
   for (const line of content === '' ? [] : content.split('\n')) {
     const current = headings.at(-1)?.lines ?? preamble;
+    const prose = headings.at(-1)?.prose ?? preambleProse;
     if (fence) {
       const close = line.match(FENCE);
       const marker = close?.[1];
@@ -65,12 +116,14 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
         fence = undefined;
       }
       current.push(line);
+      prose.push('');
       continue;
     }
     const open = line.match(FENCE)?.[1];
     if (open) {
       fence = { char: open[0] as string, length: open.length };
       current.push(line);
+      prose.push('');
       continue;
     }
     const h2 = line.match(H2);
@@ -79,7 +132,7 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
       const explicit = title.match(EXPLICIT_ANCHOR);
       if (explicit) title = title.slice(0, explicit.index);
       title = title.replace(CLOSING_HASHES, '').trim();
-      headings.push({ title, anchor: explicit?.[1], lines: [] });
+      headings.push({ title, anchor: explicit?.[1], lines: [], prose: [] });
       continue;
     }
     if (h1Title === undefined) {
@@ -87,13 +140,20 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
       const title = (h1?.[1] ?? '').replace(EXPLICIT_ANCHOR, '').replace(CLOSING_HASHES, '').trim();
       if (title !== '') h1Title = title;
     }
+    prose.push(line);
     current.push(line);
   }
 
   const sections: ParsedSection[] = [];
   const preambleBody = preamble.join('\n');
   if (preambleBody.trim() !== '') {
-    sections.push({ anchor: '', ord: 0, title: '', body: preambleBody });
+    sections.push({
+      anchor: '',
+      ord: 0,
+      title: '',
+      body: preambleBody,
+      links: collectLinks(preambleProse),
+    });
   }
   // The preamble's '' is always taken, so an H2 whose slug is empty never collides with it.
   const used = new Set<string>(['']);
@@ -107,6 +167,7 @@ export function parseDocument({ id, text: raw }: ParseDocumentSpec): ParsedDocum
       ord: sections.length,
       title: heading.title,
       body: heading.lines.join('\n'),
+      links: collectLinks(heading.prose),
     });
   }
 

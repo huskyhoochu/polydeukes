@@ -121,6 +121,7 @@ pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 
 pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
 pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db에 색인 (@polydeukes/memory 필요)
 pdks memory search <query> | show <id>             # 그 색인을 검색하거나 문서·절을 조회
+pdks memory lint | stats                           # 깨진 링크를 보고하거나 문서·링크·고립 문서 수를 출력
 ```
 
 설치기는 `.claude/skills/`에 `discipline-draft` 스킬도 만듭니다. 반복되는 문제를 AI
@@ -163,7 +164,7 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 | `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), 설정 스키마와 그 검증, 대수 선언(algebra declaration) 스키마, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어. 설정을 디스크에서 읽는 일은 core가 아니라 우산의 `loadConfig`가 진다. core가 여는 파일은 자기 텔레메트리 로그뿐이다 |
 | `polydeukes`의 판정기(`src/covenant/`) | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant) |
 | `@polydeukes/ledger` *(계획)* | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전 |
-| `@polydeukes/memory` | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다 |
+| `@polydeukes/memory` | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`·`lint`·`stats`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다 |
 | `@polydeukes/verify` *(계획)* | 멀티에이전트 적대적 검증 오케스트레이터 |
 
 지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터, `sdk-ts`, `memory`입니다. 나머지가 갖춰진 뒤의 도입 순서는
