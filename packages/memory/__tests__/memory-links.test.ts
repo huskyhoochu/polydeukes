@@ -160,8 +160,10 @@ describe('ingestMemory — resolving each link form', () => {
   // from disk fills a concept for a document the index never stored; one
   // that leaves `dst_concept` NULL when a same-document anchor is missing (`#nope`) loses the
   // document half of the table; one that fills `dst_section` for the H3
-  // anchor `deep` invents a section row; one that takes an ambiguous last segment (`twin`
-  // exists twice) at rule one never reaches the unique `twin` anchor at rule three; one that
+  // anchor `deep` invents a section row; `twin` exists twice, so a resolver that reports
+  // every duplicate as ambiguous leaves `notes/wiki`'s link NULL instead of taking the
+  // same-directory `notes/twin`, and one that takes any duplicate from `notes/other/far`
+  // never reaches the unique `twin` anchor at rule three; one that
   // runs rule two before rule one sends `[[leaf]]` to the source's own `#leaf` section; one
   // that runs rule three before rule two sends `[[own]]` nowhere (two documents carry `own`);
   // one that picks any `one` anchor when two exist resolves a link the table leaves NULL.
@@ -190,6 +192,7 @@ describe('ingestMemory — resolving each link form', () => {
     );
     writeDoc('notes/twin.md', page('Twin', ['one', 'x'], ['own', 'x']));
     writeDoc('notes/sub/twin.md', page('Other twin', ['alone', 'x']));
+    writeDoc('notes/other/far.md', page('Far', ['one', '[[twin]]']));
     writeDoc(
       'notes/wiki.md',
       page(
@@ -209,6 +212,7 @@ describe('ingestMemory — resolving each link form', () => {
       dst_section: string | null,
     ): EdgeRow => ({ src_section, form, raw_target, dst_concept, dst_section });
     expect(edgeRows(db)).toEqual([
+      row('notes/other/far#one', 'wiki', 'twin', 'notes/sub/leaf', 'notes/sub/leaf#twin'),
       row('notes/sub/leaf#here', 'markdown', '../top.md#one', 'notes/top', 'notes/top#one'),
       row('notes/top#one', 'markdown', '#nope', 'notes/top', null),
       row('notes/top#one', 'markdown', '#two', 'notes/top', 'notes/top#two'),
@@ -227,7 +231,7 @@ describe('ingestMemory — resolving each link form', () => {
       row('notes/wiki#own', 'wiki', 'nowhere', null, null),
       row('notes/wiki#own', 'wiki', 'one', null, null),
       row('notes/wiki#own', 'wiki', 'own', 'notes/wiki', 'notes/wiki#own'),
-      row('notes/wiki#own', 'wiki', 'twin', 'notes/sub/leaf', 'notes/sub/leaf#twin'),
+      row('notes/wiki#own', 'wiki', 'twin', 'notes/twin', null),
     ]);
   });
 });

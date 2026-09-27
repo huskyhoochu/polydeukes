@@ -33,7 +33,12 @@ const CLOSING_HASHES = /(?:^|\s+)#+\s*$/;
 // closing run stays text instead of being retried as a shorter one. It may run over a line
 // break but never past a blank line, which ends the paragraph.
 const CODE_SPAN = /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)/g;
-const WIKILINK = /\[\[([^\]\n]+)\]\]/g;
+// `[[1]](https://…)` is a markdown link to a URL whose text is `[1]`, not a wikilink. A
+// parenthesis holding anything but a URL, such as `(2FA)` or prose, leaves the wikilink in place.
+const WIKILINK = /\[\[([^\]\n]+)\]\](?!\([a-z][a-z0-9+.-]*:[^)\s]*\))/gi;
+// Obsidian's accepted file formats other than markdown; a wikilink to one is an attachment.
+const ATTACHMENT =
+  /\.(?:base|canvas|avif|bmp|gif|jpeg|jpg|png|svg|webp|flac|m4a|mp3|ogg|wav|webm|3gp|mkv|mov|mp4|ogv|pdf)$/i;
 // The optional `!` is matched so that an image's `[…](…)` tail is consumed and skipped. Link
 // text may wrap onto the next line, as a paragraph filled to a width does, but not past a blank
 // line.
@@ -51,14 +56,33 @@ function frontmatterMetadata(yamlText: string): Record<string, unknown> | undefi
 }
 
 /**
- * The links of a section's text outside fences, once per form and target. A markdown link is
- * kept only when the path before `#` is empty (the same document) or names a `.md` file.
+ * A wikilink target split into the name before its alias (`|`, or `\|` inside a table row) and
+ * first `#`, trimmed, and the text after the last `#` when there is one.
+ */
+export function splitWikiTarget(target: string): { name: string; heading?: string } {
+  const unaliased = target.replace(/\\?\|[\s\S]*$/, '');
+  const hash = unaliased.indexOf('#');
+  if (hash === -1) return { name: unaliased.trim() };
+  return {
+    name: unaliased.slice(0, hash).trim(),
+    heading: unaliased.slice(unaliased.lastIndexOf('#') + 1),
+  };
+}
+
+/**
+ * The links of a section's text outside fences, once per form and target. A wikilink is kept
+ * unless its name, without alias and fragment, ends in an attachment format; a markdown link
+ * only when the path before `#` is empty (the same document) or names a `.md` file.
  */
 function collectLinks(prose: string[]): ParsedLink[] {
   const text = prose.join('\n').replace(CODE_SPAN, '');
   const found: ParsedLink[] = [];
   for (const match of text.matchAll(WIKILINK)) {
-    found.push({ form: 'wiki', target: match[1] as string });
+    const target = match[1] as string;
+    const { name } = splitWikiTarget(target);
+    if (!ATTACHMENT.test(name.slice(name.lastIndexOf('/') + 1))) {
+      found.push({ form: 'wiki', target });
+    }
   }
   for (const match of text.matchAll(MARKDOWN_LINK)) {
     const target = match[2] as string;
@@ -73,7 +97,8 @@ function collectLinks(prose: string[]): ParsedLink[] {
   return links;
 }
 
-function slug(title: string): string {
+/** The anchor an H2 heading gets when it declares none. */
+export function slug(title: string): string {
   return title
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, '')

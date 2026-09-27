@@ -106,7 +106,7 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `showMemory` returns stored document or section content with its links (and, for a
   document, the other documents with the same stored ticket, computed at read time), and
   `lintMemory` reports unresolved links, unlinked same-ticket documents, and untyped
-  documents. `ingestMemory` also
+  documents once any document has a type. `ingestMemory` also
   writes `meta.ingested_at` in its transaction, which `describeMemoryIndex` reads with the
   document, section, link, unresolved, and isolated counts. It has no core dependency, so it has
   no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where `node:sqlite` stops printing an

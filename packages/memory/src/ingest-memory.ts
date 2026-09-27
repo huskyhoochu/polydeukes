@@ -3,7 +3,7 @@ import { globSync, readFileSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryConfig } from './memory-config.ts';
-import { parseDocument } from './parse-document.ts';
+import { parseDocument, slug, splitWikiTarget } from './parse-document.ts';
 import { replaceDocument } from './replace-document.ts';
 import { optimizeMemoryDb } from './schema.ts';
 
@@ -31,7 +31,7 @@ function listDocuments(root: string, { include, exclude }: MemoryConfig): Map<st
  * as a new link form being read, so the first ingest after an upgrade reprocesses every document
  * instead of keeping rows the previous version derived.
  */
-const DERIVATION = 1;
+const DERIVATION = 2;
 
 // The stored rows of one text depend on `typeMap` and `ticket` besides the text itself, so a
 // settings change reprocesses the documents it can affect.
@@ -69,7 +69,7 @@ function resolveEdges(db: DatabaseSync): void {
   }
   const byLastSegment = new Map<string, string[]>();
   for (const id of documents) {
-    const segment = id.slice(id.lastIndexOf('/') + 1);
+    const segment = id.slice(id.lastIndexOf('/') + 1).toLowerCase();
     const ids = byLastSegment.get(segment) ?? [];
     ids.push(id);
     byLastSegment.set(segment, ids);
@@ -92,13 +92,41 @@ function resolveEdges(db: DatabaseSync): void {
     return [document, section !== undefined && sectionIds.has(section) ? section : null];
   };
 
-  // A document named by its last path segment first, then a section of the source, then the
-  // one section anywhere with that anchor; an ambiguous match falls through to the next.
+  // The document whose id equals the name or ends in `/<name>`, ignoring case; among several,
+  // the one in the source's directory. Undefined when none or more than one remains.
+  const namedDocument = (source: string, name: string): string | undefined => {
+    const lower = name.toLowerCase();
+    const candidates = (byLastSegment.get(lower.slice(lower.lastIndexOf('/') + 1)) ?? []).filter(
+      (id) => {
+        const lowerId = id.toLowerCase();
+        return lowerId === lower || lowerId.endsWith(`/${lower}`);
+      },
+    );
+    const near =
+      candidates.length > 1
+        ? candidates.filter((id) => posix.dirname(id) === posix.dirname(source))
+        : candidates;
+    return near.length === 1 ? near[0] : undefined;
+  };
+
+  // The name before the alias and the first `#` names a document (empty: the source), and the
+  // text after the last `#` a section of it by anchor, then by slug; a block fragment (`^`)
+  // names no section. With no document and no fragment, a section of the source named by the
+  // name comes next, then the one section anywhere with that anchor; an ambiguous match falls
+  // through to the next.
   const wikiTarget = (source: string, raw: string): Target => {
-    const named = byLastSegment.get(raw);
-    if (named?.length === 1) return [named[0] as string, null];
-    if (sectionIds.has(`${source}#${raw}`)) return [source, `${source}#${raw}`];
-    const anchored = byAnchor.get(raw);
+    const { name, heading } = splitWikiTarget(raw);
+    const document = name === '' ? source : namedDocument(source, name);
+    if (document !== undefined) {
+      if (heading === undefined || heading.startsWith('^')) return [document, null];
+      for (const section of [`${document}#${heading}`, `${document}#${slug(heading)}`]) {
+        if (sectionIds.has(section)) return [document, section];
+      }
+      return [document, null];
+    }
+    if (heading !== undefined) return [null, null];
+    if (sectionIds.has(`${source}#${name}`)) return [source, `${source}#${name}`];
+    const anchored = byAnchor.get(name);
     const only = anchored?.length === 1 ? anchored[0] : undefined;
     return only ? [only.concept_id, only.id] : [null, null];
   };

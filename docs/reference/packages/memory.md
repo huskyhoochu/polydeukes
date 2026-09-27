@@ -94,7 +94,11 @@ is set. On any error the database is left as it was, including the time
 `ingestMemory` stores each link written in a section body as one row, once per section, form,
 and target. Two forms are read, outside fenced code and inline code spans:
 
-- a wikilink `[[target]]`, where the target is everything between the brackets;
+- a wikilink `[[target]]` or embed `![[target]]`, where the target is everything between the
+  brackets. A wikilink to a file in one of Obsidian's accepted non-markdown formats (`png`,
+  `svg`, `pdf`, `mp4`, `canvas`, `base`, and the other image, audio, and video extensions it
+  lists) is an attachment and not a link, and `[[1]](https://…)` is a markdown link whose text
+  is `[1]`;
 - a markdown link `[text](target)` whose path before `#` is empty (the same document) or ends
   in `.md`. Images, links with a scheme (`https:`, `mailto:`), and other files are not links
   here. Frontmatter is not read for links.
@@ -106,7 +110,8 @@ when the target goes, whether or not the document holding it changed.
 | Form | Resolves to |
 |---|---|
 | markdown `path.md#anchor` | the document at `path`, relative to the linking document's directory (the linking document itself when `path` is empty), and the section `<document>#<anchor>` when that section exists |
-| wikilink `[[x]]` | the one document whose id ends in the path segment `x`; else the section `x` of the linking document; else the one section anywhere whose anchor is `x` |
+| wikilink `[[x]]` | the one document whose id is `x` or ends in `/x`, ignoring case; among several, the one in the linking document's directory; else the section `x` of the linking document; else the one section anywhere whose anchor is `x` |
+| wikilink `[[x#h]]`, `[[x\|label]]` | the label after `\|` (escaped with a backslash in a table row) is dropped; `x` names the document as above (the linking document when empty), and `h` — the text after the last `#` — the section whose anchor is `h` or the anchor its heading text makes. A block reference `#^id` names the document alone |
 
 A link to a file outside the `include` globs, to a file an `exclude` glob leaves out, or to a
 path above `root` is unresolved. An anchor that names no H2 section, such as an H3 heading,
@@ -118,7 +123,7 @@ resolves to the document alone.
 |---|---|---|---|
 | `unresolved` | a link that resolved to no document | the section it is written in | the link as written |
 | `unlinked` | a document with a ticket that another document shares, and no link of its own | the document | the ticket |
-| `untyped` | a document whose frontmatter has no non-empty string `type` | the document | empty |
+| `untyped` | a document whose frontmatter has no non-empty string `type`, reported only when another document has one | the document | empty |
 
 The ticket comes from the `ticket` extraction rules of the config, so `unlinked` is never
 reported without them. A document is **isolated** when no resolved link connects it to another
@@ -156,8 +161,9 @@ matched through the full-text index, `like` when a word matched by substring or 
 - **Search is literal.** Words are matched as text, not by meaning or translation.
 - **The index is only as recent as the last ingest.** `searchMemory` does not read the files;
   `describeMemoryIndex` reports when they were last compared.
-- **Links are read in two forms.** `[[x|label]]` and `[[x#anchor]]` are read as the target
-  `x|label` and `x#anchor`, and a markdown path starting with `/` is not resolved.
+- **Links are read in two forms.** A markdown path starting with `/` is not resolved, and a
+  wikilink name shared by several documents outside the linking document's directory is
+  unresolved.
 - **Keeping the database is the user's responsibility.** The package makes no backup of it,
   and a rebuild from the documents restores it.
 

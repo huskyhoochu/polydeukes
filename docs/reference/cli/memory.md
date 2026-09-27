@@ -180,7 +180,7 @@ untyped  docs/scratch
 |---|---|---|
 | `unresolved` | a link that resolves to no indexed document | the link as written |
 | `unlinked` | a document that shares its ticket with another document and has no link of its own | the ticket |
-| `untyped` | a document whose frontmatter has no `type` | empty |
+| `untyped` | a document whose frontmatter has no `type`, once any document has one | empty |
 
 `unlinked` needs the `ticket` rules of the config; without them it is never reported. The JSON
 form is `{ "ingestedAt": …, "violations": [ … ] }`. `lint` exits `1` when it reports any

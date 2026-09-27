@@ -29,20 +29,21 @@ ORDER BY c.id, detail`;
 
 /**
  * Reports links that resolved to no document, documents that share a ticket with another
- * document and link to nothing, and documents whose stored metadata has no non-empty string
- * `type`.
+ * document and link to nothing, and — once any document's stored metadata has a non-empty
+ * string `type` — the documents whose metadata has none.
  */
 export function lintMemory({ db }: LintMemorySpec): MemoryLintResult {
   const documents = db.prepare('SELECT id, metadata FROM concept ORDER BY id').all() as {
     id: string;
     metadata: string;
   }[];
-  const untyped = documents
-    .filter(({ metadata }) => {
-      const type: unknown = JSON.parse(metadata).type;
-      return typeof type !== 'string' || type === '';
-    })
-    .map(({ id }): MemoryViolation => ({ rule: 'untyped', id, detail: '' }));
+  const untypedDocuments = documents.filter(({ metadata }) => {
+    const type: unknown = JSON.parse(metadata).type;
+    return typeof type !== 'string' || type === '';
+  });
+  const untyped = (untypedDocuments.length === documents.length ? [] : untypedDocuments).map(
+    ({ id }): MemoryViolation => ({ rule: 'untyped', id, detail: '' }),
+  );
   return {
     violations: [
       ...(db.prepare(UNRESOLVED).all() as MemoryViolation[]),

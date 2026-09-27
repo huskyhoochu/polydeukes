@@ -177,7 +177,7 @@ untyped  docs/scratch
 |---|---|---|
 | `unresolved` | 색인된 어떤 문서로도 해소되지 않는 링크 | 적힌 그대로의 링크 |
 | `unlinked` | 다른 문서와 티켓을 공유하면서 자기 링크가 하나도 없는 문서 | 티켓 |
-| `untyped` | frontmatter에 `type`이 없는 문서 | 비어 있음 |
+| `untyped` | frontmatter에 `type`이 없는 문서. `type`을 가진 문서가 하나라도 있을 때만 보고합니다 | 비어 있음 |
 
 `unlinked`는 설정의 `ticket` 규칙이 있어야 보고됩니다. 규칙이 없으면 보고하지 않습니다. JSON 형식은
 `{ "ingestedAt": …, "violations": [ … ] }`입니다. `lint`는 위반을 하나라도 보고하면 `1`, 하나도 없으면
