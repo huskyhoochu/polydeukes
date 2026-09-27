@@ -12,8 +12,12 @@ memory:
     adr: adr
     dev-log: dev-log
   ticket:
-    - from: title
+    - type: prd
+      from: title
       pattern: "[A-Z]+-[0-9]+[a-z]?"
+    - from: frontmatter
+      key: ticket
+      pattern: "^[A-Z]+-[0-9]+[a-z]?$"
   weights:
     prd: 1
     adr: 1

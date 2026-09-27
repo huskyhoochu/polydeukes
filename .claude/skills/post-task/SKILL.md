@@ -47,9 +47,10 @@ only, not a diary):
 
 If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` following the
 OKF contract in `_docs/knowledge/foundation.adr.knowledge-format.md` (frontmatter `scope` ·
-`type: dev-log` · `title` equal to the H1 · `tags` · `created_at`; relative markdown links, never
-`[[x]]`): searchable one-line conclusion as the title, body as symptom → wrong hypothesis → real
-cause → prescription, one `## H2 {#anchor}` per atomic topic. Add its entry to
+`type: dev-log` · `title` equal to the H1 · `tags` · `created_at` · `ticket` (inside a `/ticket`
+loop only: the loop's ID, e.g. `MEMORY-07`; outside a loop, omit the key); relative markdown
+links, never `[[x]]`): searchable one-line conclusion as the title, body as symptom → wrong
+hypothesis → real cause → prescription, one `## H2 {#anchor}` per atomic topic. Add its entry to
 `_docs/knowledge/index.md` under its scope heading.
 If all three are no, record `dev-log: none` explicitly.
 

@@ -86,6 +86,9 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - Invoke the `tdd` skill with the PRD as the feature description. It owns
   PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE; do not re-implement its phases here.
 - The loop does not proceed until VALIDATE passes (tests + typecheck + `pnpm check`).
+- A knowledge document the loop writes besides the PRD (dev-log · ADR · research) carries
+  `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to
+  this PRD; the PRD itself takes its ticket from the H1 and carries no `ticket:` key.
 - **Tick each acceptance criterion the moment a run proves it — not at the end.** As every
   phase lands (GREEN goes green, a spawn returns, VALIDATE passes), flip the criteria that run
   proved to `- [x]` in the PRD and write *which run showed it* on the same line. Batching the
