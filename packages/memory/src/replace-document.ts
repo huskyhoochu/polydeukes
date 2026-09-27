@@ -13,7 +13,12 @@ function ticketFor(document: ParsedDocument, config?: MemoryConfig): string | nu
   const sourceType = document.metadata?.type;
   for (const rule of config?.ticket ?? []) {
     if (rule.type !== undefined && rule.type !== sourceType) continue;
-    const raw = rule.from === 'title' ? document.title : document.metadata?.[rule.key];
+    const raw =
+      rule.from === 'title'
+        ? document.title
+        : rule.from === 'path'
+          ? document.id
+          : document.metadata?.[rule.key];
     if (typeof raw !== 'string' || raw.trim() === '') continue;
     const ticket = rule.pattern === undefined ? raw : new RegExp(rule.pattern).exec(raw)?.[0];
     if (ticket?.trim()) return ticket;

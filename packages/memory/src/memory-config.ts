@@ -4,9 +4,11 @@ export type MemoryConfig = {
   /** globs whose matches are left out even when an include glob reaches them */
   exclude?: string[];
   typeMap?: Record<string, string>;
+  /** rules tried in order; `path` reads the document id, the root-relative path without `.md` */
   ticket?: (
     | { type?: string; from: 'title'; pattern?: string }
     | { type?: string; from: 'frontmatter'; key: string; pattern?: string }
+    | { type?: string; from: 'path'; pattern?: string }
   )[];
   weights?: Record<string, number>;
 };

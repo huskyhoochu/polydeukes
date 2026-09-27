@@ -101,6 +101,65 @@ describe('configured document replacement', () => {
   });
 });
 
+describe('ticket rules reading the document id', () => {
+  // A path rule reads the document id (`/`-separated, no `.md`), keeps the first match of its
+  // pattern, sits in the same ordered evaluation as the other rules, and honours `type`. Every
+  // document carries a title with its own number, so a rule that read the title would differ.
+  it('reads the first pattern match from the document id, the whole id without a pattern, and keeps rule order', () => {
+    const config: MemoryConfig = {
+      include: ['text/**/*.md'],
+      ticket: [
+        { from: 'frontmatter', key: 'issue', pattern: '[A-Z]+-[0-9]+' },
+        { type: 'rfc', from: 'path', pattern: '[0-9]+' },
+        { from: 'path' },
+      ],
+    };
+    const docs = [
+      // First match of the pattern, taken from the nested id rather than the file name.
+      [
+        'text/3392-leadership-council/motivation',
+        '---\ntitle: RFC 1\ntype: rfc\n---\n## Topic\nText.\n',
+        '3392',
+      ],
+      // First match, not last: a later number in the id must not win.
+      [
+        'text/2094-nll/2071-appendix',
+        '---\ntitle: RFC 1\ntype: rfc\n---\n## Topic\nText.\n',
+        '2094',
+      ],
+      // An earlier rule that yields a value stops evaluation before the path rule.
+      ['text/2094-nll', '---\ntype: rfc\nissue: BK-34\n---\n## Topic\nText.\n', 'BK-34'],
+      // No pattern match falls through to the next rule, whose absent pattern stores the whole
+      // id — the `/`-separated id without `.md`, not a filesystem path.
+      ['text/no-number', '---\ntitle: RFC 1\ntype: rfc\n---\n## Topic\nText.\n', 'text/no-number'],
+      // The `type` limit skips the typed path rule for another type and for an untyped document.
+      [
+        'text/4000-guide',
+        '---\ntitle: RFC 1\ntype: guide\n---\n## Topic\nText.\n',
+        'text/4000-guide',
+      ],
+      ['text/5000-untyped', '# RFC 1\n## Topic\nText.\n', 'text/5000-untyped'],
+    ] as const;
+    for (const [id, text, expected] of docs) {
+      ingest(id, text, config);
+      expect(concept(id).ticket).toBe(expected);
+      ingest(id, text, config);
+      expect(concept(id).ticket).toBe(expected);
+    }
+  });
+
+  // A path rule whose pattern matches nothing must leave the ticket unset rather than storing
+  // the empty string or the whole id.
+  it('stores no ticket when the only path rule has a pattern that matches nothing', () => {
+    const config: MemoryConfig = {
+      include: ['text/**/*.md'],
+      ticket: [{ from: 'path', pattern: '[0-9]+' }],
+    };
+    ingest('text/no-number', '# RFC 1\n## Topic\nText.\n', config);
+    expect(concept('text/no-number').ticket).toBeNull();
+  });
+});
+
 describe('configured search ranking', () => {
   it('uses only declared map keys for a document type that names an Object prototype member', () => {
     const config = {

@@ -99,9 +99,11 @@ export type MemoryConfig = {
   /** globs whose matches are left out even when an include glob reaches them */
   exclude?: string[];
   typeMap?: Record<string, string>;
+  /** rules tried in order; `path` reads the document id, the root-relative path without `.md` */
   ticket?: (
     | { type?: string; from: 'title'; pattern?: string }
     | { type?: string; from: 'frontmatter'; key: string; pattern?: string }
+    | { type?: string; from: 'path'; pattern?: string }
   )[];
   weights?: Record<string, number>;
 };
@@ -269,7 +271,7 @@ function validateMemory(value: unknown): MemoryConfig {
       const location = `memory.ticket[${index}]`;
       if (!isPlainObject(rule)) throw new ConfigValidationError(`${location} must be an object`);
       rejectUnknownKeys(rule, TICKET_KEYS, location);
-      if (rule.from !== 'title' && rule.from !== 'frontmatter')
+      if (rule.from !== 'title' && rule.from !== 'frontmatter' && rule.from !== 'path')
         throw new ConfigValidationError(`${location}.from is invalid`);
       if (rule.type !== undefined && !isNonEmptyString(rule.type))
         throw new ConfigValidationError(`${location}.type is invalid`);

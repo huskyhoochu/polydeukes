@@ -178,7 +178,7 @@ memory:
 | `include` | yes | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are indexed |
 | `exclude` | no | A list of globs, relative to the same directory as `include`. A file one of them matches is not indexed, even when `include` reaches it. A glob that matches a directory leaves out every file under it: `docs/releases/*` also leaves out `docs/releases/old/v1.md` |
 | `typeMap` | no | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written |
-| `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`. `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
+| `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
 | `weights` | no | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results |
 
 Keys outside these five are rejected, as are an empty `include`, an `exclude` that is not a list

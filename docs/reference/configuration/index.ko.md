@@ -172,7 +172,7 @@ memory:
 | `include` | 예 | 비어 있지 않은 glob 목록이며, `pdks memory`를 실행한 디렉터리 기준입니다. 이 glob이 가리키는 `.md` 파일을 색인합니다 |
 | `exclude` | 아니요 | glob 목록이며, `include`와 같은 디렉터리를 기준으로 합니다. 이 glob 중 하나에 맞는 파일은 `include`가 가리키더라도 색인하지 않습니다. 디렉터리에 맞는 glob은 그 아래 파일을 모두 뺍니다. `docs/releases/*`는 `docs/releases/old/v1.md`도 뺍니다 |
 | `typeMap` | 아니요 | 문서 frontmatter의 `type`을 저장할 종류로 바꿉니다. 이 표에 없는 종류는 쓰인 그대로 저장합니다 |
-| `ticket` | 아니요 | 문서와 함께 저장할 티켓 값을 얻는 방법의 순서 있는 목록입니다. `from: title`은 제목을, `from: frontmatter`는 `key`로 지정한 frontmatter 필드를 읽습니다. `type`은 frontmatter의 `type`이 그 값과 같은 문서로 항목을 한정하고, `pattern`은 정규식의 첫 일치 부분만 남깁니다. 비어 있지 않은 값을 처음 낸 항목이 이깁니다 |
+| `ticket` | 아니요 | 문서와 함께 저장할 티켓 값을 얻는 방법의 순서 있는 목록입니다. `from: title`은 제목을, `from: frontmatter`는 `key`로 지정한 frontmatter 필드를 읽고, `from: path`는 문서 ID, 즉 `pdks memory`를 실행한 디렉터리를 기준으로 한 파일 경로에서 `.md`를 뗀 문자열(`text/2094-nll`)을 읽습니다. `type`은 frontmatter의 `type`이 그 값과 같은 문서로 항목을 한정하고, `pattern`은 정규식의 첫 일치 부분만 남깁니다. 비어 있지 않은 값을 처음 낸 항목이 이깁니다 |
 | `weights` | 아니요 | 저장된 종류를 음이 아닌 수에 대응시킵니다. 가중치가 클수록 그 종류의 절이 검색 결과에서 앞에 옵니다 |
 
 이 다섯 키 밖의 키는 거부합니다. 빈 `include`, 목록이 아니거나 비어 있지 않은 문자열 외의 값이 든

@@ -47,6 +47,21 @@ describe('memory config data contract', () => {
     ],
     [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'body' }] } }, false],
     [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'title', extra: true }] } }, false],
+    // A path rule: one fixture per constraint of the node, so the schema and the runtime
+    // cannot drift on a constraint no fixture reaches.
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path' }] } }, true],
+    [
+      {
+        ...validLanguages,
+        memory: { ...memory, ticket: [{ from: 'path', type: 'rfc', pattern: '[0-9]+' }] },
+      },
+      true,
+    ],
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', key: 'id' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', type: '' }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', type: 1 }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', pattern: 1 }] } }, false],
+    [{ ...validLanguages, memory: { ...memory, ticket: [{ from: 'path', extra: true }] } }, false],
     [{ ...validLanguages, memory: { ...memory, weights: { reference: -1 } } }, false],
     [{ ...validLanguages, memory: { ...memory, weights: { reference: '2' } } }, false],
   ] as const)('schema and runtime both judge memory fixture %#', (config, expected) => {
@@ -62,6 +77,8 @@ describe('memory config data contract', () => {
     [{ ...memory, weights: { reference: -1 } }, 'memory.weights.reference'],
     [{ ...memory, weights: { reference: Number.POSITIVE_INFINITY } }, 'memory.weights.reference'],
     [{ ...memory, ticket: [{ from: 'title', pattern: '[' }] }, 'memory.ticket[0]'],
+    [{ ...memory, ticket: [{ from: 'path', key: 'id' }] }, 'memory.ticket[0]'],
+    [{ ...memory, ticket: [{ from: 'path', pattern: '[' }] }, 'memory.ticket[0]'],
     // A rejection that names `memory.include` for an `exclude` fault sends the user to the
     // wrong key; one that names nothing leaves the schema as the only hint.
     [{ ...memory, exclude: '**/index.md' }, 'memory.exclude'],
