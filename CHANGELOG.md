@@ -11,6 +11,13 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.11.1](https://github.com/huskyhoochu/polydeukes/compare/v0.11.0...v0.11.1) (2026-09-28)
+
+
+### Miscellaneous Chores
+
+* judge truncated output and unread workflow dispatches ([94f9eda](https://github.com/huskyhoochu/polydeukes/commit/94f9eda3d414f0d0f254c538d29a45966dfef64d))
+
 ## [0.11.0](https://github.com/huskyhoochu/polydeukes/compare/v0.10.1...v0.11.0) (2026-09-28)
 
 
