@@ -11,6 +11,29 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.11.0](https://github.com/huskyhoochu/polydeukes/compare/v0.10.1...v0.11.0) (2026-09-28)
+
+
+### Features
+
+* **memory:** let a ticket rule read the document id (MEMORY-03b) ([#145](https://github.com/huskyhoochu/polydeukes/issues/145)) ([60fc1fd](https://github.com/huskyhoochu/polydeukes/commit/60fc1fdd4bb013f3e2d438937a71c9f8f2f1a006))
+* **memory:** let memory.exclude choose the files ingest leaves out (MEMORY-04b) ([#143](https://github.com/huskyhoochu/polydeukes/issues/143)) ([306d868](https://github.com/huskyhoochu/polydeukes/commit/306d868e8b8d1ff6b092ff2f9147f4e1df808af3))
+* **memory:** list the obligations the config's rules extract for a key (MEMORY-14) ([#146](https://github.com/huskyhoochu/polydeukes/issues/146)) ([1f1a61c](https://github.com/huskyhoochu/polydeukes/commit/1f1a61c905e29c24e359ea3d8927da381069a4ee))
+* **memory:** log what memory queries return and summarize it with pdks memory usage (MEMORY-10) ([#149](https://github.com/huskyhoochu/polydeukes/issues/149)) ([e29044f](https://github.com/huskyhoochu/polydeukes/commit/e29044fce9c64e2a1973ce3f02ce2be164a18d88))
+* **memory:** normalize natural-language search queries (MEMORY-17) ([#147](https://github.com/huskyhoochu/polydeukes/issues/147)) ([f539d31](https://github.com/huskyhoochu/polydeukes/commit/f539d313cf6805e9422838b891969e234cc884fc))
+* **memory:** publish the memory index and add pdks memory ingest, search, show (MEMORY-15) ([#136](https://github.com/huskyhoochu/polydeukes/issues/136)) ([45a77af](https://github.com/huskyhoochu/polydeukes/commit/45a77afaf966ab6fc689596fbc0757eb05da8cc2))
+* **memory:** record which document replaces which and rank replaced ones last (MEMORY-08) ([#150](https://github.com/huskyhoochu/polydeukes/issues/150)) ([4eeb685](https://github.com/huskyhoochu/polydeukes/commit/4eeb685640b02bad5ebb070e5472fcdcc4077546))
+* **memory:** relate documents that share a ticket in show and stats (MEMORY-06) ([#140](https://github.com/huskyhoochu/polydeukes/issues/140)) ([ff3340d](https://github.com/huskyhoochu/polydeukes/commit/ff3340dec36e8a4842f64d4d3c4fa56891c6c451))
+* **memory:** store links as edges and add pdks memory lint and stats (MEMORY-05) ([#139](https://github.com/huskyhoochu/polydeukes/issues/139)) ([3da43c0](https://github.com/huskyhoochu/polydeukes/commit/3da43c014aea7213d8e14c1c7c48523f8c0d883a))
+
+
+### Bug Fixes
+
+* **memory:** accept a memory-only config and tab-separate search columns (MEMORY-15b) ([#142](https://github.com/huskyhoochu/polydeukes/issues/142)) ([69540bc](https://github.com/huskyhoochu/polydeukes/commit/69540bcc169db3ddc3d1ceb1398992c7a5478eef))
+* **memory:** rank a long section by its best-matching passage (MEMORY-16) ([#148](https://github.com/huskyhoochu/polydeukes/issues/148)) ([0321501](https://github.com/huskyhoochu/polydeukes/commit/032150125b50154935a01c8dca90aa4144270889))
+* **memory:** rank short-term search hits by the FTS5 bm25 formula (MEMORY-02b) ([#138](https://github.com/huskyhoochu/polydeukes/issues/138)) ([37f91ec](https://github.com/huskyhoochu/polydeukes/commit/37f91ec5f700ba192142fb440c1844c900c8b457))
+* **memory:** resolve wikilink aliases, fragments, and attachments the Obsidian way (MEMORY-05b) ([#144](https://github.com/huskyhoochu/polydeukes/issues/144)) ([299f373](https://github.com/huskyhoochu/polydeukes/commit/299f373b328a5d9e9a720e9e0c5d18973861970c))
+
 ## [0.10.1](https://github.com/huskyhoochu/polydeukes/compare/v0.10.0...v0.10.1) (2026-09-25)
 
 
