@@ -419,6 +419,20 @@ sessionDisciplines:
         - id: "reads-through-memory"
           relation: { op: "empty", of: "hits" }
           message: "command line searches _docs/knowledge directly instead of pdks memory: {value}"
+  - id: "output-is-read-whole"
+    why: "a result cut by head or tail reads as the whole result: on 2026-09-28 a grep piped to head showed 10 of 21 files, the twelfth was the test that failed the release. count the result or read it whole; tail -f (following a log) is not a cut."
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - { op: "matches", re: '(^|[;&|(]\s*)(head|tail)\b(?!\s+-[fF]\b)' }
+      relate:
+        - id: "not-truncated"
+          relation: { op: "empty", of: "hits" }
+          message: "command line cuts its output with head or tail: {value}"
 
   # ---- the history axis: what the session did before this call
   - id: "manifest-needs-evidence"
@@ -577,6 +591,32 @@ sessionDisciplines:
         - id: "read-first"
           relation: { op: "nonEmpty", of: "reads" }
           message: "no successful read of foundation.research.first-principles-prd precedes this PRD edit"
+  - id: "workflow-read-before-dispatch"
+    why: "a dispatched workflow does what its file says, not what its name suggests: on 2026-09-28 a publish run was dispatched from main without reading publish.yml, whose guard refuses any commit that is not the release tag. the read must precede the dispatch; the check sees whether a workflow file was read, not which one."
+    declare:
+      mechanism: "precedent"
+      scope: { source: "command", include: ['\bgh\s+workflow\s+run\b'] }
+      sources: { session: { transcript: true } }
+      supply: { session: "pass" }
+      extract:
+        shellReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - { op: "matches", re: '\b(cat|less|bat|grep|rg|sed|awk)\b.*\.github/workflows/' }
+        fileReads:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Read"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.file_path" }
+          - { op: "matches", re: '\.github/workflows/' }
+        reads:
+          - { op: "union", of: ["shellReads", "fileReads"] }
+      relate:
+        - id: "read-first"
+          relation: { op: "nonEmpty", of: "reads" }
+          message: "no successful read of a .github/workflows file precedes this dispatch"
   - id: "tests-before-implementation"
     why: "the implementer subagent writes to pass tests that already exist; a spawn order the other way is implementation first with tests fitted after."
     declare:
