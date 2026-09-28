@@ -402,6 +402,23 @@ sessionDisciplines:
         - id: "no-npm-mutation"
           relation: { op: "empty", of: "hits" }
           message: "command line mutates dependencies outside pnpm: {value}"
+  - id: "knowledge-reads-go-through-memory"
+    why: "knowledge is read through the memory index (pdks memory search, show, obligations); a shell grep, rg, or find over _docs/knowledge reads around it, and the query log that counts which sections are used never sees the lookup."
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: '(^|[;&|(]\s*)(grep|rg|find)\b[^;&|]*_docs/knowledge|(^|[;&|(]\s*)ls\b[^;&|]*_docs/knowledge[^;&]*\|\s*(grep|rg)\b',
+            }
+      relate:
+        - id: "reads-through-memory"
+          relation: { op: "empty", of: "hits" }
+          message: "command line searches _docs/knowledge directly instead of pdks memory: {value}"
 
   # ---- the history axis: what the session did before this call
   - id: "manifest-needs-evidence"
@@ -454,7 +471,7 @@ sessionDisciplines:
           - { op: "select", path: "args.command" }
           - {
               op: "matches",
-              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcovenant\.(dev-log|research)\.',
+              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\bcovenant\.(dev-log|research)\.',
             }
         fileReads:
           - { op: "source", of: "session" }
@@ -484,7 +501,7 @@ sessionDisciplines:
           - { op: "select", path: "args.command" }
           - {
               op: "matches",
-              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bcore\.(dev-log|research)\.',
+              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\bcore\.(dev-log|research)\.',
             }
         fileReads:
           - { op: "source", of: "session" }
@@ -517,7 +534,7 @@ sessionDisciplines:
           - { op: "select", path: "args.command" }
           - {
               op: "matches",
-              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\badapter\.(dev-log|research)\.',
+              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\badapter\.(dev-log|research)\.',
             }
         fileReads:
           - { op: "source", of: "session" }
@@ -546,7 +563,7 @@ sessionDisciplines:
           - { op: "select", path: "args.command" }
           - {
               op: "matches",
-              re: '\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b.*\bfirst-principles-prd\b',
+              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\bfirst-principles-prd\b',
             }
         fileReads:
           - { op: "source", of: "session" }

@@ -48,11 +48,11 @@ recorded in `_docs/knowledge/`.
 ```text
 ### TDD Pre-flight
 - Task area: <one line — e.g. "core covenant protocol: stdin-JSON parse + exit-code map">
-- knowledge scan (`ls _docs/knowledge/ | grep -iE '<keywords>'`):
-  - <filename>: <one-line takeaway>   ← repeat per match, or "no matches" if zero
-- body grep (`grep -rn '<identifier or phrase>' _docs/knowledge/` — what the filename scan cannot reach):
-  - <file:line>: <one-line takeaway>   ← repeat per hit, or "no matches"
-  - Skipped because: <reason>   ← only when the scan already answered the area
+- area search (`pnpm exec pdks memory search '<keywords>'`):
+  - <section id>: <one-line takeaway>   ← repeat per hit, or "no matches" if zero
+- identifier search (`pnpm exec pdks memory search '<identifier>'` — symbol, file, config key, ticket ID):
+  - <section id>: <one-line takeaway>   ← repeat per hit, or "no matches"
+  - Skipped because: <reason>   ← only when the area search already answered the area
 - PRD consulted (`_docs/prd/<ID>.md`):
   - <acceptance criteria / invariants this cycle must satisfy>
 - Library docs (context7 — required when touching an external library API):
@@ -60,16 +60,16 @@ recorded in `_docs/knowledge/`.
   - Skipped because: <reason>   ← only if no external library API is involved
 ```
 
-**The body grep is the second net, not a replacement.** The filename scan is the primary — it
-is instant and its domain is exactly "which document should I open". The body grep exists because
-that scan is *structurally* blind to what lives in document bodies: a prescription whose keywords
-never reach the filename, a carry-over recorded in a prior PRD's follow-ups. Grep for the
-identifiers the cycle will touch (symbol, file, config key, ticket ID), not topic words — an
-identifier is exact where a topic word matches every neighbouring document.
+**Both searches read the memory index, never the files** (`.claude/rules/knowledge-reads.md`).
+Run `pnpm exec pdks memory ingest` first so the index holds the current documents. The area
+search takes topic words and ranks sections; the identifier search takes the identifiers the
+cycle will touch (symbol, file, config key, ticket ID) — an identifier is exact where a topic
+word matches every neighbouring section, and it reaches a prescription or a carry-over whose
+keywords never appear in a filename. Open a hit with `pnpm exec pdks memory show <section id>`.
 
 Every field must be grounded in tool output from this turn (not memory); empty results are valid
-("no matches"), a missing block is not. The knowledge scan command runs *in this turn* — paste
-matching filenames, do not synthesize. The user may exempt the block via the literal phrase
+("no matches"), a missing block is not. The search commands run *in this turn* — paste the
+section ids they return, do not synthesize. The user may exempt the block via the literal phrase
 `skip preflight` or `no context7 needed` in their **most recent** message (an earlier exemption
 does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 (`audit <path>`) skips Pre-flight because no production code is produced.

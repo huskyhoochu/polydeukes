@@ -35,22 +35,24 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `release-please-config.json` entry missing; the release PR then had to be closed, its
   branch deleted, and the workflow re-run before the package could publish at all. The
   checklist is the contract; this bullet is what makes the main session open it in time.
-- Scan `_docs/knowledge/` for entries relevant to the ticket's area before writing the PRD —
-  the PRD must build on recorded decisions, not re-derive them.
-- **Carry-over sweep (separate from the keyword scan):** carried-over items live in the *body*
-  (§8 follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket,
-  so a filename scan structurally misses them
-  (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`). Grep the archive body and
-  the memory's progress log for the ticket's ID and carry-over markers, e.g.
-  `grep -ln '이월\|carry-over' _docs/knowledge/*.prd.*.md` plus a `grep '<ID>'` over the memory
-  progress notes. Obligations also live by *form*, not vocabulary: an unchecked `- [ ]` item in an
-  archived PRD's disposition list that names this ticket carries no carry-over word at all
-  (`foundation.dev-log.carryover-grep-misses-disposition-sections.md`), so add
-  `grep -n '^\s*- \[ \].*<ID>' _docs/knowledge/*.md`. Every hit must be dispositioned in the PRD's
-  scope section — included or explicitly excluded; silence is a miss.
-- **The lookups above do not depend on each other — issue them in one response.** The knowledge
-  scan and the carry-over greps read different parts of the archive; running them one per turn
-  spends a round trip on each.
+- **Knowledge is read through the memory index** (`.claude/rules/knowledge-reads.md`). Refresh it
+  with `pnpm exec pdks memory ingest`, then search the ticket's area before writing the PRD —
+  the PRD must build on recorded decisions, not re-derive them:
+  `pnpm exec pdks memory search '<area keywords>'`, and open a hit with
+  `pnpm exec pdks memory show <section id>`.
+- **Carry-over sweep (separate from the area search):** carried-over items live in the *body*
+  (§8 follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket
+  (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`), and also by *form*: an
+  unchecked `- [ ]` item that names this ticket carries no carry-over word at all
+  (`foundation.dev-log.carryover-grep-misses-disposition-sections.md`).
+  `pnpm exec pdks memory obligations <ID>` returns every line the root config's
+  `memory.obligations` rules extract for the ID — the unchecked boxes and the carry-over-marker
+  lines. `pnpm exec pdks memory search <ID>` returns every section that names the ID anywhere.
+  Every hit must be dispositioned in the PRD's scope section — included or explicitly excluded;
+  silence is a miss.
+- **The lookups above do not depend on each other — issue them in one response** after the
+  ingest. The area search and the carry-over sweep read different parts of the archive; running
+  them one per turn spends a round trip on each.
 - **The PRD preserves no legacy.** The roadmap row and every carry-over hit above are
   *candidate* requirements, not requirements. For each one the PRD records (1) who asked for
   it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
