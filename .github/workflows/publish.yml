@@ -77,7 +77,4 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
-      # The root package and the documentation site are private and skip themselves; the
-      # six publishable workspace packages go in dependency order with workspace:/catalog:
-      # specifiers rewritten to real versions.
       - run: pnpm -r publish --provenance --access public --no-git-checks
