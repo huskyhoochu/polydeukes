@@ -39,6 +39,7 @@ const EXPECTED: Record<string, string[]> = {
   'hooks-stay-armed': ['command'],
   'work-stays-recoverable': ['command'],
   'pnpm-only': ['command'],
+  'knowledge-reads-go-through-memory': ['command'],
   'commits-come-from-the-main-session': ['actor', 'command'],
   // the session history
   'manifest-needs-evidence': ['transcript'],
@@ -67,7 +68,7 @@ function liveEntries(): Entry[] {
 }
 
 describe('the live config against the channel table', () => {
-  it('carries exactly the 25 judged ids the table names plus the one draft', () => {
+  it('carries exactly the 26 judged ids the table names plus the one draft', () => {
     // The table is the oracle; an entry added or renamed without a row here is a
     // placement nobody wrote down.
     const entries = liveEntries();
