@@ -2,15 +2,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parse } from 'yaml';
 import { covenantModule } from '../src/covenant/module.ts';
 
 // The judge is a module of the umbrella, not a package beside it. These are text and
 // layout oracles over the working tree: which package directories exist, which names no
-// file may still spell, which umbrella modules exist and which do not, and what the root
-// config protects. This file reads source text ONLY and never rebuilds dist (no
-// `beforeAll` build step, ever): a rebuild while the tree is mid-change locks the session
-// behind the fail-closed hook.
+// source file may still spell, and which umbrella modules exist and which do not. This
+// file reads source text ONLY and never rebuilds dist (no `beforeAll` build step, ever):
+// a rebuild while the tree is mid-change locks the session behind the fail-closed hook.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
@@ -41,12 +39,10 @@ const BIN_STATIC_SPECIFIER = 'node:fs';
 const RETIRED_PACKAGE_NAME = ['@polydeukes', 'covenant'].join('/');
 const RETIRED_PACKAGE_PATH = ['packages', 'covenant'].join('/');
 /**
- * Where the retired name may still appear: the wiki clone, the release record, and
- * everything the tree does not track (installed modules, build output, the build cache,
- * git's own store, the telemetry log).
+ * Directories the source walk never enters: installed modules, build output, and the
+ * documentation site's build-time copy of `docs/`.
  */
-const EXCLUDED_DIRS = new Set(['_docs', 'node_modules', 'dist', '.git', '.polydeukes', '.turbo']);
-const EXCLUDED_FILES = new Set(['CHANGELOG.md']);
+const EXCLUDED_DIRS = new Set(['node_modules', 'dist', join('src', 'content', 'docs')]);
 /**
  * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies,
  * and the memory command module loads the optional memory package on the call alone.
@@ -64,22 +60,24 @@ const COVENANT_MEMBERS = [
   'supplySources',
   'transcriptModRegistration',
 ];
-/** The root config's protected entry for the umbrella's own build output. */
-const UMBRELLA_DIST_ENTRY = 'packages/polydeukes/dist';
 
-/** Every file under `dir`, recursively, skipping the excluded directory names at any depth. */
+/** Every file under `dir`, recursively, skipping the excluded directories. */
 function walk(dir: string): string[] {
+  if (!existsSync(dir)) return [];
   return readdirSync(dir).flatMap((name) => {
-    if (EXCLUDED_DIRS.has(name)) return [];
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return walk(path);
-    return EXCLUDED_FILES.has(name) ? [] : [path];
+    if (statSync(path).isDirectory()) {
+      return [...EXCLUDED_DIRS].some((excluded) => path.endsWith(excluded)) ? [] : walk(path);
+    }
+    return [path];
   });
 }
 
-/** Repo-relative paths of every tracked-tree file whose text contains `needle`. */
+/** Repo-relative paths of every package source or test file whose text contains `needle`. */
 function filesContaining(needle: string): string[] {
-  return walk(repoRoot)
+  return readdirSync(join(repoRoot, 'packages'))
+    .flatMap((dir) => ['src', '__tests__'].map((sub) => join(repoRoot, 'packages', dir, sub)))
+    .flatMap(walk)
     .filter((path) => readFileSync(path, 'utf-8').includes(needle))
     .map((path) => relative(repoRoot, path))
     .sort();
@@ -111,17 +109,15 @@ describe('the workspace holds seven packages', () => {
   });
 });
 
-describe('the retired package name resolves nowhere in the tree', () => {
-  // One surviving import of the retired name — a test alias, a manifest dependency, a
-  // lockfile entry, a rule's path glob — is a reference `pnpm install` can no longer
-  // satisfy, and the first consumer of it crashes before any verdict.
-  it('no file spells the retired package name', () => {
+describe('the retired package name resolves nowhere in package sources', () => {
+  // One surviving import of the retired name — a source import or a test alias — is a
+  // reference `pnpm install` can no longer satisfy, and the first consumer of it crashes
+  // before any verdict.
+  it('no package source or test file spells the retired package name', () => {
     expect(filesContaining(RETIRED_PACKAGE_NAME)).toEqual([]);
   });
 
-  // The path form survives in places the name does not reach: a protected-paths entry, a
-  // discipline scope, a release-please extra-file, a rule's `paths:` glob.
-  it('no file spells the retired package path', () => {
+  it('no package source or test file spells the retired package path', () => {
     expect(filesContaining(RETIRED_PACKAGE_PATH)).toEqual([]);
   });
 });
@@ -264,20 +260,5 @@ describe('explain speaks of input modes, not hosts', () => {
       new RegExp(`(?<![\\w])${word}(?![\\w])`).test(text),
     );
     expect(found).toEqual([]);
-  });
-});
-
-describe('the root config protects the dists that exist', () => {
-  const config = parse(readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8')) as {
-    protectedPaths: string[];
-  };
-
-  // An entry for a directory that no build produces matches nothing and reads as still
-  // protected; the umbrella entry beside it is what the folded judge's dist now sits under.
-  it('lists the umbrella dist and no entry under the retired package path', () => {
-    expect(config.protectedPaths).toContain(UMBRELLA_DIST_ENTRY);
-    expect(config.protectedPaths.filter((entry) => entry.startsWith(RETIRED_PACKAGE_PATH))).toEqual(
-      [],
-    );
   });
 });

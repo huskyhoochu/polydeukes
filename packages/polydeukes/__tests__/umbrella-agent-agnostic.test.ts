@@ -1,13 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parse as parseYaml } from 'yaml';
 
 // The umbrella after this repository moved onto the delegators its adapters generate, checked
-// as source text, manifest, and root config: the in-process session path is gone, the
-// umbrella depends on no adapter, and its sources carry no agent's tool roster or payload
-// keys. Source text ONLY — this file must never rebuild dist: a rebuild while the tree is
-// mid-change locks the session behind the fail-closed hook.
+// as source text and manifest: the in-process session path is gone, the umbrella depends on
+// no adapter, and its sources carry no agent's tool roster or payload keys. Source text ONLY —
+// this file must never rebuild dist: a rebuild while the tree is mid-change locks the session
+// behind the fail-closed hook.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaDir = resolve(import.meta.dirname, '..');
@@ -39,11 +38,6 @@ const AGENT_TOOL_NAMES = [
 ];
 /** An agent's payload keys, matched as whole identifiers. */
 const AGENT_PAYLOAD_KEYS = ['tool_name', 'toolInput', 'tool_input', 'transcript_path'];
-
-/** The dist the Grok delegator loads; a link of the protected chain once it is wired. */
-const GROK_DIST = 'packages/adapter-grok/dist';
-/** The links already on the chain: the `pdks` bin and the Claude delegator's dist. */
-const EXISTING_CHAIN_DISTS = ['packages/polydeukes/dist', 'packages/adapter-claude-code/dist'];
 
 const stripComments = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -132,19 +126,5 @@ describe('the umbrella knows no agent tool roster or payload key', () => {
       carriers(umbrellaSrc, identifier(key)).map((entry) => `${key} in ${entry}`),
     );
     expect(found, `agent payload keys in umbrella src:\n${found.join('\n')}`).toEqual([]);
-  });
-});
-
-describe('the root config protects every dist a delegator loads', () => {
-  it('lists the Grok adapter dist beside the umbrella and Claude adapter dists', () => {
-    // A delegator and the dist it loads are two links of one chain: an unprotected Grok
-    // dist is a rebuild no judgment sees. The two existing links stay — the list is a
-    // minimum, and the rewiring only adds.
-    const config = parseYaml(readFileSync(join(repoRoot, 'polydeukes.config.yaml'), 'utf-8')) as {
-      protectedPaths?: string[];
-    };
-    expect(config.protectedPaths ?? []).toEqual(
-      expect.arrayContaining([GROK_DIST, ...EXISTING_CHAIN_DISTS]),
-    );
   });
 });

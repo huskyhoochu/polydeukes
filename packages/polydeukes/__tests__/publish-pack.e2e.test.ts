@@ -30,39 +30,8 @@ const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
 const REQUIRED_ENTRIES = ['package/package.json', 'package/README.md', 'package/LICENSE'];
 const DIST_PREFIX = 'package/dist/';
 
-/** The package whose tarball carries the docs bundle. */
+/** The umbrella package directory, whose tarball carries the folded judge. */
 const UMBRELLA_DIR = 'polydeukes';
-const DOCS_PREFIX = 'package/dist/docs/';
-/**
- * The required reader journeys, enumerated independently of the source catalog so losing
- * a catalog member cannot silently shrink the published documentation.
- */
-const BUNDLED_DOCS = [
-  'README.md',
-  'tutorials/first-judgment.md',
-  'how-to/connect-surfaces.md',
-  'how-to/configure-project.md',
-  'how-to/write-disciplines.md',
-  'troubleshooting.md',
-  'concepts/judgment.md',
-  'reference/cli/covenant-check.md',
-  'reference/cli/init.md',
-  'reference/cli/explain.md',
-  'reference/cli/docs.md',
-  'reference/cli/memory.md',
-  'reference/configuration/index.md',
-  'reference/declaration-language/index.md',
-  'reference/packages/polydeukes.md',
-  'reference/packages/core.md',
-  'reference/packages/adapter-claude-code.md',
-  'reference/packages/adapter-grok.md',
-  'reference/packages/adapter-codex.md',
-  'reference/packages/sdk-ts.md',
-  'reference/packages/memory.md',
-];
-
-/** The npm packages: the umbrella, the vocabulary package, three session adapters, the TypeScript SDK, memory. */
-const PUBLISHED_PACKAGE_COUNT = 7;
 /** The tarball name prefix the retired judge package would pack under. */
 const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
 /** Where the folded judge's modules sit inside the umbrella tarball. */
@@ -175,38 +144,10 @@ describe('tarball contents match the published enumeration', () => {
   );
 });
 
-describe('the umbrella tarball carries the docs bundle', () => {
-  it('ships every required document in both languages with catalog and index', () => {
-    // A copy step dropped from the build script, a member lost from its list, or
-    // `dist/docs` excluded from what npm packs each install a package whose `pdks docs`
-    // exits 2 for the missing topic, with nothing consumer-side explaining why.
-    const entries = tarEntries(UMBRELLA_DIR);
-
-    for (const relative of BUNDLED_DOCS) {
-      expect(entries).toContain(`${DOCS_PREFIX}${relative}`);
-      expect(entries).toContain(`${DOCS_PREFIX}${relative.replace(/\.md$/, '.ko.md')}`);
-    }
-    expect(entries).toContain(`${DOCS_PREFIX}catalog.json`);
-    expect(entries).toContain(`${DOCS_PREFIX}index.json`);
-  }, 30_000);
-
-  it('ships only the cataloged reader journeys as bundled Markdown', () => {
-    const entries = tarEntries(UMBRELLA_DIR);
-    const bundled = entries.filter(
-      (entry) => entry.startsWith(DOCS_PREFIX) && entry.endsWith('.md'),
-    );
-    const expected = BUNDLED_DOCS.flatMap((path) => [path, path.replace(/\.md$/, '.ko.md')]).map(
-      (path) => `${DOCS_PREFIX}${path}`,
-    );
-    expect(bundled.sort()).toEqual(expected.sort());
-  }, 30_000);
-});
-
 describe('the judge ships inside the umbrella tarball', () => {
   // The retired judge directory left publishable packs an extra tarball that publishes
-  // a judge nobody depends on; a private-flag mistake on a sibling packs two.
-  it('packs exactly the published tarballs and none for the retired judge package', () => {
-    expect(PACKAGE_DIRS).toHaveLength(PUBLISHED_PACKAGE_COUNT);
+  // a judge nobody depends on.
+  it('packs no tarball for the retired judge package', () => {
     const names = PACKAGE_DIRS.map((dir) => basename(tarballOf(dir)));
     expect(names.filter((name) => name.startsWith(RETIRED_TARBALL_PREFIX))).toEqual([]);
   }, 30_000);

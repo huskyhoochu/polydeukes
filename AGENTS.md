@@ -99,11 +99,11 @@ pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two o
 the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
 builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
 so the delegator never needs regenerating. This repository is developed from Claude Code, Grok,
-and Codex, so it carries all three delegators. The three files here are byte-identical to what
-`pdks-claude-code init`, `pdks-grok init`, and `pdks-codex init` write into a consumer's tree,
-which makes the verdicts we meet every day a measurement of the shipped install units rather
-than a private arrangement; `delegators-are-generated.test.ts` runs all three installers and
-diffs the result against these files. The Grok registration matches on that host's own names
+and Codex, so it carries all three delegators. The three files here are what
+`pdks-claude-code init`, `pdks-grok init`, and `pdks-codex init` write into a consumer's tree —
+regenerate them by running those installers, never by hand — which makes the verdicts we meet
+every day a measurement of the shipped install units rather than a private arrangement.
+The Grok registration matches on that host's own names
 (`write` · `search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
 stands between a Grok call and its judgment. Codex Code Mode coverage is version-dependent:
 in codex-cli 0.154.0, `exec` and its nested calls left no hook event; in a local 0.156.1

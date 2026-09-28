@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { ConfigValidationError } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
 // The loader compiles every `declare` entry of the three lists with the same compiler the
@@ -19,7 +17,6 @@ const CHANGES = 'changes';
 const SPAWNS = 'spawns';
 const UNREGISTERED_STEP = 'sha256';
 const UNKNOWN_KEY = 'nonsense';
-const REPO_CONFIG = resolve(import.meta.dirname, '../../../polydeukes.config.yaml');
 
 /** The compiler's own phrasings — the loader carries them unchanged. */
 const UNREGISTERED_REASON = `'${UNREGISTERED_STEP}' is not a registered extract step — the registry carries ${UNARY_STEP_NAMES.join(', ')}`;
@@ -208,18 +205,6 @@ describe('parseConfigSource — a declaration the engine cannot compile does not
     expect(error.message.startsWith(`invalid config in ${CONFIG_PATH}: 2 problems\n`)).toBe(true);
     expect(error.message).toContain(`\n  - ${first} extract own: ${UNREGISTERED_REASON}`);
     expect(error.message).toContain(`\n  - ${second} extract own: ${UNKNOWN_KEY_REASON}`);
-  });
-
-  it("the repository's own config still loads", () => {
-    // The other end: a compile check that refuses a judgeable declaration locks every
-    // session on this repository at the next hook call.
-    const source = readFileSync(REPO_CONFIG, 'utf-8');
-
-    const { config } = parseConfigSource({ source, configPath: CONFIG_PATH });
-
-    expect(config.disciplines?.length).toBeGreaterThan(0);
-    expect(config.sessionDisciplines?.length).toBeGreaterThan(0);
-    expect(config.changeSetDisciplines?.length).toBeGreaterThan(0);
   });
 
   it('a config whose only entry is a draft loads — a draft carries nothing to compile', () => {

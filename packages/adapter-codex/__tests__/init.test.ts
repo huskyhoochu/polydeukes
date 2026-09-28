@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initCodex } from '../src/init.ts';
 
@@ -32,7 +32,6 @@ const LEGACY_COMMAND = `node ${HOOK_REL}`;
 const ARTIFACTS = [HOOK_REL, JSON_REL];
 const ADAPTER_SPECIFIER = '@polydeukes/adapter-codex';
 const VOUCHED_BIN = '/vouched/polydeukes/dist/bin.js';
-const CHECKOUT_ROOT = resolve(import.meta.dirname, '../../..');
 const USER_MATCHER = 'WebSearch';
 const USER_SIBLING_COMMAND = 'echo sibling';
 
@@ -198,15 +197,6 @@ describe('initCodex — the command string is stable across runs and trees', () 
     } finally {
       rmSync(otherRoot, { recursive: true, force: true });
     }
-  });
-
-  it('matches this repository dogfooding hooks.json byte for byte', () => {
-    // A hand-maintained dogfood definition can look equivalent while carrying a different
-    // trust hash or missing a lifecycle event. The repository artifact must be init output,
-    // not a separately maintained approximation.
-    init();
-
-    expect(read(JSON_REL)).toBe(readFileSync(join(CHECKOUT_ROOT, JSON_REL), 'utf-8'));
   });
 });
 

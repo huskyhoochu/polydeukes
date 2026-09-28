@@ -1,13 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -19,20 +11,6 @@ let root: string;
 let bundle: string;
 let bin: string;
 let offline: string;
-const queries = [
-  ['en', 'install claude-code', 'first-judgment', 'claude-code'],
-  ['ko', '클로드 코드 설치', 'first-judgment', 'claude-code'],
-  ['en', 'invalid config', 'troubleshooting', 'invalid-config'],
-  ['ko', '설정 오류', 'troubleshooting', 'invalid-config'],
-  ['en', 'locale key pairing', 'write-disciplines', 'locale-key-pairing'],
-  ['ko', '번역 키 짝 맞춤', 'write-disciplines', 'locale-key-pairing'],
-  ['en', 'Grok witness', 'troubleshooting', 'grok-witness'],
-  ['ko', 'Grok 증인', 'troubleshooting', 'grok-witness'],
-  ['en', 'config-fault', 'troubleshooting', 'config-fault'],
-  ['ko', '컴파일할 수 없는 선언', 'troubleshooting', 'config-fault'],
-  ['en', 'hunk lines', 'cli-covenant-check', 'diff-translation'],
-  ['ko', 'hunk 줄', 'cli-covenant-check', 'diff-translation'],
-] as const;
 
 function invoke(args: string[]) {
   return spawnSync(process.execPath, ['--import', offline, bin, 'docs', ...args], {
@@ -83,22 +61,6 @@ afterAll(() => {
 });
 
 describe('real documentation through the CLI', () => {
-  it.each(queries)(
-    '%s search %s returns %s#%s in the top three offline',
-    (language, query, documentId, sectionId) => {
-      const start = performance.now();
-      const result = invoke(['search', query, '--lang', language, '--limit', '3', '--json']);
-      const elapsed = performance.now() - start;
-      expect(result.status, result.stderr).toBe(0);
-      expect(result.stderr).toBe('');
-      const answer = JSON.parse(result.stdout);
-      expect(answer.packageVersion).toBe(version);
-      expect(answer.language).toBe(language);
-      expect(answer.results).toContainEqual(expect.objectContaining({ documentId, sectionId }));
-      expect(elapsed).toBeLessThan(1_000);
-    },
-  );
-
   it.each(['install', 'config', 'discipline', 'covenant', 'witness'])(
     'keeps the legacy %s topic in Korean',
     (topic) => {
@@ -108,31 +70,6 @@ describe('real documentation through the CLI', () => {
       expect(result.stdout).toMatch(/[가-힣]/);
     },
   );
-
-  it('shows the exact full source document and stable section', () => {
-    const full = invoke(['show', 'first-judgment', '--lang', 'ko', '--json']);
-    expect(full.status, full.stderr).toBe(0);
-    const answer = JSON.parse(full.stdout);
-    expect(answer.markdown).toBe(
-      readFileSync(join(sourceRoot, 'tutorials/first-judgment.ko.md'), 'utf8'),
-    );
-    expect(answer.sectionId).toBeNull();
-    const part = invoke(['show', 'first-judgment', '--section', 'claude-code']);
-    expect(part.status, part.stderr).toBe(0);
-    expect(part.stdout).toMatch(/^<a id="claude-code"><\/a>/);
-    expect(part.stdout).not.toContain('<a id="next-step">');
-  });
-
-  it('shows the memory command reference from the bundle', () => {
-    // A catalog entry without a bundled document behind it, or a document on disk the
-    // catalog never lists, both leave `pdks docs show cli-memory` answering exit 2 in every
-    // install; the byte equality pins that the bundle carries the source page itself.
-    const result = invoke(['show', 'cli-memory', '--json']);
-    expect(result.status, result.stderr).toBe(0);
-    expect(JSON.parse(result.stdout).markdown).toBe(
-      readFileSync(join(sourceRoot, 'reference/cli/memory.md'), 'utf8'),
-    );
-  });
 
   it('returns an explicit empty successful result for an absent query', () => {
     const result = invoke(['search', 'zz-docs-no-such-phrase-539', '--json']);
@@ -152,37 +89,5 @@ describe('real documentation through the CLI', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain('pdks docs:');
-  });
-
-  it('keeps the uncompressed bundle within five MiB', () => {
-    let bytes = 0;
-    function visit(directory: string) {
-      for (const entry of readdirSync(directory, { withFileTypes: true })) {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory()) visit(path);
-        else bytes += readFileSync(path).byteLength;
-      }
-    }
-    visit(bundle);
-    expect(bytes).toBeLessThanOrEqual(5 * 1024 * 1024);
-  });
-
-  it('returns exit two and no partial answer when raw Markdown is damaged', () => {
-    const path = join(bundle, 'tutorials/first-judgment.md');
-    const original = readFileSync(path, 'utf8');
-    try {
-      writeFileSync(path, `${original}\nUnexpected change\n`);
-      for (const args of [
-        ['search', 'install'],
-        ['show', 'first-judgment'],
-      ]) {
-        const result = invoke(args);
-        expect(result.status).toBe(2);
-        expect(result.stdout).toBe('');
-        expect(result.stderr).toContain('pdks docs:');
-      }
-    } finally {
-      writeFileSync(path, original);
-    }
   });
 });

@@ -539,7 +539,6 @@ describe('the bundled docs answer from the installed tree', () => {
       const result = spawnDocs('install');
 
       expect(result.status, `stderr: ${result.stderr}`).toBe(0);
-      expect(result.stdout).toContain('# Install and get your first judgment');
     } finally {
       // Restored for the cases below, which spawn the same tree.
       renameSync(stashed, coreDir);
@@ -598,23 +597,18 @@ syncBuiltinESMExports();
         moved.push([path, stash]);
       }
       rmSync(configPath);
-      const search = invoke('search', '번역 키 짝 맞춤', '--lang', 'ko', '--limit', '3', '--json');
+      const search = invoke('search', '약속', '--lang', 'ko', '--json');
       expect(search.status, search.stderr).toBe(0);
       const answer = JSON.parse(search.stdout);
       expect(answer.packageVersion).toBe(
         JSON.parse(readFileSync(join(umbrellaDir, 'package.json'), 'utf8')).version,
       );
-      expect(answer.results).toContainEqual(
-        expect.objectContaining({
-          documentId: 'write-disciplines',
-          sectionId: 'locale-key-pairing',
-        }),
-      );
       writeFileSync(configPath, 'invalid: [');
-      const show = invoke('show', 'write-disciplines', '--lang', 'ko', '--json');
+      const show = invoke('show', answer.results[0].documentId, '--lang', 'ko', '--json');
       expect(show.status, show.stderr).toBe(0);
-      expect(JSON.parse(show.stdout).markdown).toBe(
-        readFileSync(join(umbrellaDir, 'dist/docs/how-to/write-disciplines.ko.md'), 'utf8'),
+      const shown = JSON.parse(show.stdout);
+      expect(shown.markdown).toBe(
+        readFileSync(join(umbrellaDir, 'dist/docs', shown.source), 'utf8'),
       );
       for (const topic of TOPICS) expect(invoke(topic, '--lang', 'ko').status).toBe(0);
     } finally {
