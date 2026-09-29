@@ -2,8 +2,9 @@
 
 [English](sdk-ts.md) · **한국어**
 
-> **TypeScript에서 판정기를 호출합니다.** `checkCovenant`에 약속(covenant) 입력 IR을
-> 전달하면 `pdks covenant check`의 판정 결과를 값으로 반환합니다.
+> **TypeScript에서 판정기를 호출합니다.** `checkCovenant`에 약속(covenant) 입력 IR을,
+> `checkChangeSet`에 통합 diff를 전달하면 `pdks covenant check`의 판정 결과를 값으로
+> 반환합니다.
 >
 > 베타입니다. `polydeukes` · `@polydeukes/core`와 함께 설치하며, 둘 다 이 패키지의
 > `peerDependencies`입니다.
@@ -17,6 +18,7 @@
 | 단위 | 하는 일 |
 |---|---|
 | `checkCovenant` | 판정받는 프로젝트에서 `pdks covenant check`를 스폰하고 판정 결과를 돌려줍니다 |
+| `checkChangeSet` | 판정받는 프로젝트에서 `pdks covenant check --diff`를 스폰하고 판정 결과를 돌려줍니다 |
 | 우산 패키지 찾기 | `repoRoot`의 설치 그래프에서 `polydeukes`를 찾아 `pdks` 실행 파일을 읽습니다 |
 | 판정 결과 변환 | 종료 코드 `0`은 `upheld`, `2`는 `blocked`, 그 밖은 모두 `unjudged`입니다 |
 
@@ -122,6 +124,48 @@ SDK는 `blocked.reason`과 `upheld.advisories`를 데이터로 반환합니다. 
 무인 루프에서 결과를 처리하는 방법은
 [규율 작성하기](../../how-to/write-disciplines.ko.md#posture)를 참고하세요.
 
+<a id="change-set"></a>
+## `checkChangeSet`
+
+`checkChangeSet`은 호출 하나가 아니라 끝난 변경 집합을 판정합니다. `repoRoot`에서 통합 diff를
+표준 입력에 넣어 `pdks covenant check --diff --enforce <level>`을 스폰하고, `checkCovenant`와
+같은 판정 결과 셋을 돌려줍니다.
+
+```ts
+import { checkChangeSet } from '@polydeukes/sdk-ts';
+
+const verdict = await checkChangeSet({
+  repoRoot: '/path/to/the/project',
+  diff: gitDiffOutput, // 예: 새 파일은 `git add -N .` 뒤, repoRoot에서 실행한 `git diff HEAD`
+});
+```
+
+```ts
+type CheckChangeSetSpec = {
+  repoRoot: string;
+  diff: string;
+  enforce?: 'advise' | 'block';
+  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
+};
+```
+
+| 필드 | 무엇인가 |
+|---|---|
+| `repoRoot` | 판정받는 프로젝트입니다. 설정 발견, `file` 소스가 읽는 작업 트리, 자식의 cwd, 우산 패키지를 찾는 설치 그래프가 모두 여기 걸립니다 |
+| `diff` | 호출자의 통합 diff이며 자식의 표준 입력으로 원문 그대로 갑니다. 경로는 `a/`·`b/` 뒤에 `repoRoot` 기준으로 적혀 있어야 하며, `repoRoot`가 최상위인 저장소에서 `git diff`가 출력하는 형식이 이것입니다. 이 형식이면 어떤 생산자의 diff든 되고, SDK는 `git`을 실행하지도 텍스트를 검사하지도 않습니다. `git diff`는 `git add -N`으로 표시하기 전까지 추적되지 않은 파일을 빼놓습니다 |
+| `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
+| `spawn` | `checkCovenant`와 같은 자식 프로세스 실행 함수입니다 |
+
+**기본값이 CLI와 다릅니다.** `--enforce` 없이 실행한 `pdks covenant check --diff`는 모든 판정
+결과를 종료 코드 0의 `advised`로 기록하므로, diff에 보호 경로가 있어도 `blocked`가 돌아오지
+않습니다. `checkChangeSet`은 따로 정하지 않으면 `checkCovenant`처럼 `--enforce block`을
+넘깁니다. 보호 경로와 `enforce: block`을 단 항목은 `blocked`로 돌아오고, 나머지 위반은
+`upheld.advisories`에 담겨 돌아옵니다.
+
+변경 집합은 변경 집합 표면이 컴파일하는 `disciplines`와 `changeSetDisciplines`로 판정됩니다.
+어느 목록에 어떤 항목이 드는지는
+[설정 참조](../configuration/index.ko.md#placement-rule)를 참고하세요.
+
 <a id="failure"></a>
 ## 실패 예제
 
@@ -145,9 +189,9 @@ const verdict = await checkCovenant({ repoRoot: '/tmp/project-without-polydeukes
 
 - **IR은 호출자가 만듭니다.** 도구 명부와 변경 전 상태와 봉투는 호스트가 아는 사실이므로,
   그것을 아는 소비자가 채웁니다. 이 패키지는 그중 무엇도 공급하지 않습니다.
-- **SDK가 여는 것은 세션 표면뿐입니다.** 입력이 표준 입력의 IR로 가고, 그것이 이 실행을 세션
-  표면 판정으로 만듭니다. 끝난 변경 집합을 가진 호출자는 대신 셸에서
-  `pdks covenant check --diff`에 통합 diff를 파이프합니다.
+- **변경 집합은 `repoRoot`의 작업 트리를 기준으로 판정됩니다.** diff는 바뀐 파일마다 hunk의
+  줄을 `pre`와 `post`로 공급하지만, `file` 소스는 디스크에서 읽습니다. diff를 넘기면서
+  `repoRoot`를 다른 상태의 트리로 두면 그 항목들은 그 트리를 판정합니다.
 - **여기서는 텔레메트리 행을 쓰지 않습니다.** 행은 모두 자식이 씁니다.
 - **`unjudged`는 통과가 아닙니다.** 판정기가 답하지 않았다는 사실을 기록하며, 판정기가 없는
   프로젝트에서 무엇을 허용할지는 소비자가 정합니다.

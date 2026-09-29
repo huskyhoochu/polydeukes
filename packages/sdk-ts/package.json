@@ -1,7 +1,7 @@
 {
   "name": "@polydeukes/sdk-ts",
   "version": "0.11.1",
-  "description": "Polydeukes SDK for TypeScript — one verb that hands a covenant input IR to `pdks covenant check` and returns the verdict as a value. Beta.",
+  "description": "Polydeukes SDK for TypeScript — hands a covenant input IR or a unified diff to `pdks covenant check` and returns the verdict as a value. Beta.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
   "repository": {

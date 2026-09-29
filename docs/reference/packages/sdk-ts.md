@@ -2,8 +2,9 @@
 
 **English** · [한국어](sdk-ts.ko.md)
 
-> **Call the judge from TypeScript.** Pass a covenant input IR to `checkCovenant`
-> and receive the verdict from `pdks covenant check` as a value.
+> **Call the judge from TypeScript.** Pass a covenant input IR to `checkCovenant`, or a
+> unified diff to `checkChangeSet`, and receive the verdict from `pdks covenant check` as a
+> value.
 >
 > Beta. Install it next to `polydeukes` and `@polydeukes/core`, which it names as
 > `peerDependencies`.
@@ -18,6 +19,7 @@ the judgment.
 | Unit | What it does |
 |---|---|
 | `checkCovenant` | Spawns `pdks covenant check` in the judged project and returns the verdict |
+| `checkChangeSet` | Spawns `pdks covenant check --diff` in the judged project and returns the verdict |
 | Umbrella resolution | Finds `polydeukes` in the install graph of `repoRoot` and reads its `pdks` bin |
 | Verdict translation | Exit `0` is `upheld`, exit `2` is `blocked`, everything else is `unjudged` |
 
@@ -124,6 +126,49 @@ to send them: to the model, an issue, or a log. The SDK accepts no separate witn
 See [write disciplines](../../how-to/write-disciplines.md#posture) for handling these results
 in an unattended loop.
 
+<a id="change-set"></a>
+## `checkChangeSet`
+
+`checkChangeSet` judges a finished change set rather than one call. It spawns
+`pdks covenant check --diff --enforce <level>` in `repoRoot` with the unified diff on stdin,
+and returns the same three verdicts as `checkCovenant`.
+
+```ts
+import { checkChangeSet } from '@polydeukes/sdk-ts';
+
+const verdict = await checkChangeSet({
+  repoRoot: '/path/to/the/project',
+  diff: gitDiffOutput, // e.g. `git diff HEAD` in repoRoot, after `git add -N .` for new files
+});
+```
+
+```ts
+type CheckChangeSetSpec = {
+  repoRoot: string;
+  diff: string;
+  enforce?: 'advise' | 'block';
+  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
+};
+```
+
+| Field | What it is |
+|---|---|
+| `repoRoot` | The project being judged: config discovery, the working tree that `file` sources read, the child's cwd, and the install graph the umbrella is found in |
+| `diff` | The caller's unified diff, sent verbatim as the child's stdin. Paths are relative to `repoRoot` behind `a/` and `b/`, as `git diff` prints them from a repository whose top is `repoRoot`. Any producer of that form works; the SDK neither runs `git` nor checks the text. `git diff` leaves out untracked files until `git add -N` marks them |
+| `enforce` | The observer's posture for the whole run. **Absent is `block`** |
+| `spawn` | The same injected spawn seam as `checkCovenant`'s |
+
+**The default differs from the CLI's.** `pdks covenant check --diff` without `--enforce` lands
+every verdict `advised` at exit 0, so a protected path in the diff never comes back `blocked`.
+`checkChangeSet` passes `--enforce block` unless told otherwise, as `checkCovenant` does:
+protected paths and entries carrying `enforce: block` come back `blocked`, and every other
+break comes back in `upheld.advisories`.
+
+The change set is judged with `disciplines` plus `changeSetDisciplines`, the lists the
+change-set surface compiles. See the
+[configuration reference](../configuration/index.md#placement-rule) for which entries each
+list holds.
+
 <a id="failure"></a>
 ## A failure example
 
@@ -148,9 +193,10 @@ judgment happens, and no judgment happened.
 - **The caller builds the IR.** The tool roster, the pre-state, and the envelope are the
   host's facts, so a consumer that knows them fills them in. This package supplies none of
   them.
-- **The SDK exposes the session surface only.** The input travels as an IR on stdin, which is
-  what makes the run a session-surface judgment. A caller that has a finished change set pipes
-  a unified diff to `pdks covenant check --diff` from its shell instead.
+- **A change set is judged against the working tree in `repoRoot`.** The diff supplies each
+  changed file's `pre` and `post` as its hunk lines, but a `file` source is read from disk. A
+  caller that passes a diff while `repoRoot` holds a different tree has those entries judge
+  that tree.
 - **No telemetry row is written here.** Every row comes from the child.
 - **An `unjudged` verdict is not a pass.** It records that the judge did not answer, and the
   consumer decides what a project without a judge is allowed to do.

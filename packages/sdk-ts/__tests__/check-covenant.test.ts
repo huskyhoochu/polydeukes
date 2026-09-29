@@ -235,6 +235,26 @@ describe('the spawn itself failing is a verdict value, never a throw', () => {
     expect((verdict as { reason: string }).reason).toContain('spawn EACCES');
   });
 
+  it('an input that cannot be serialized resolves to unjudged, and an absent umbrella still says so', async () => {
+    // `args` is `Record<string, unknown>`, so a BigInt typechecks. Serializing before the
+    // umbrella resolves, or outside the spawn's failure branch, rejects the promise instead.
+    const unserializable = {
+      ...writeInput(),
+      toolCalls: [{ name: WRITE_FILE, args: { size: 10n } }],
+    } as CovenantInput;
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    const absent = await checkCovenant({ repoRoot, input: unserializable, spawn });
+    installStubPolydeukes();
+    const installed = await checkCovenant({ repoRoot, input: unserializable, spawn });
+
+    expect(absent).toMatchObject({ verdict: 'unjudged' });
+    expect(absent).toHaveProperty('reason', expect.stringContaining('polydeukes'));
+    expect(installed).toMatchObject({ verdict: 'unjudged' });
+    expect(installed).toHaveProperty('reason', expect.stringContaining('BigInt'));
+    expect(calls).toEqual([]);
+  });
+
   it('the default spawn returns the child status when the child exits before reading a large stdin', async () => {
     // A child that fails fast leaves the parent's in-flight stdin write to raise EPIPE on
     // the stream; unhandled, that is an uncaughtException in the caller's process.

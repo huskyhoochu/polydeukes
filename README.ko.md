@@ -94,7 +94,7 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 ## 현재 상태와 CLI
 
 **상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 일곱 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
-프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR을 판정기에
+프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR이나 통합 diff를 판정기에
 넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, `pdks memory`가 쓰는 선택 설치 마크다운 색인
 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella)
 패키지 `polydeukes`입니다. ledger·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.

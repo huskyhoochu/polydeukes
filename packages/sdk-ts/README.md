@@ -2,10 +2,10 @@
 
 **English** · [한국어](./README.ko.md)
 
-This package hands a covenant input IR to the judge from TypeScript. It locates the
-`polydeukes` install of the project being judged, spawns `pdks covenant check` with the input
-on stdin, and returns the verdict as a value. No judgment logic lives here, and no telemetry
-row is written here — the child process writes it.
+This package hands a covenant input IR or a unified diff to the judge from TypeScript. It
+locates the `polydeukes` install of the project being judged, spawns `pdks covenant check`
+with the input on stdin, and returns the verdict as a value. No judgment logic lives here, and
+no telemetry row is written here — the child process writes it.
 
 Install it next to `polydeukes` and `@polydeukes/core`, which it names as `peerDependencies`:
 
@@ -24,6 +24,8 @@ Public contract symbols include:
 - `CheckCovenantSpec`
 - `CheckCovenantSpawnSpec`
 - `CheckCovenantVerdict`
+- `checkChangeSet`
+- `CheckChangeSetSpec`
 
 <a id="examples"></a>
 ## Examples
@@ -49,9 +51,20 @@ if (verdict.verdict === 'blocked') {
 }
 ```
 
-`enforce` defaults to `block`. The three verdicts are `upheld`, `blocked`, and `unjudged`;
-`unjudged` covers a project with no `polydeukes` installed and any child status that is not a
-verdict.
+`checkChangeSet` judges a finished change set instead of one call. It spawns
+`pdks covenant check --diff` with the unified diff on stdin and returns the same verdicts:
+
+```ts
+import { checkChangeSet } from '@polydeukes/sdk-ts';
+
+// The diff is the caller's, with paths relative to repoRoot: `git diff HEAD` (after
+// `git add -N .`, so new files appear), or any producer of the same form.
+const verdict = await checkChangeSet({ repoRoot: process.cwd(), diff });
+```
+
+`enforce` defaults to `block` for both verbs. The three verdicts are `upheld`, `blocked`, and
+`unjudged`; `unjudged` covers a project with no `polydeukes` installed and any child status
+that is not a verdict.
 
 <a id="see-also"></a>
 ## See also

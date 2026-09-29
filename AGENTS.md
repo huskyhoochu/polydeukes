@@ -26,10 +26,10 @@ hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `
 others do not: that host normalises every file edit that reaches the hook into `apply_patch`,
 whose input is the patch text rather than a path, so the adapter parses it into one IR element
 per file. `sdk-ts`
-(`@polydeukes/sdk-ts`) is one verb, `checkCovenant`, that spawns
-`pdks covenant check` with a caller-built IR
-and returns the verdict as a value — no bin, no judgment logic, peer on both `core` and
-`polydeukes`. `memory` (`@polydeukes/memory`) splits markdown documents into section rows and
+(`@polydeukes/sdk-ts`) is two verbs that spawn `pdks covenant check` and return the verdict
+as a value: `checkCovenant` with a caller-built IR, `checkChangeSet` with a caller's unified
+diff under `--diff` — no bin, no judgment logic, peer on both `core` and `polydeukes`.
+`memory` (`@polydeukes/memory`) splits markdown documents into section rows and
 keeps them in a `node:sqlite` index (FTS5, trigram) at `.polydeukes/memory.db` that can always
 be rebuilt from the documents. The umbrella declares it as an optional peer and loads it only
 in `pdks memory ingest | search | show | obligations | supersession | lint | stats | usage`,

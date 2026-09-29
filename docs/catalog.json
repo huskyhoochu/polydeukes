@@ -315,12 +315,12 @@
       "en": {
         "path": "reference/packages/sdk-ts.md",
         "title": "@polydeukes/sdk-ts",
-        "summary": "Call checkCovenant from TypeScript and handle its three verdicts."
+        "summary": "Call checkCovenant or checkChangeSet from TypeScript and handle their three verdicts."
       },
       "ko": {
         "path": "reference/packages/sdk-ts.ko.md",
         "title": "@polydeukes/sdk-ts",
-        "summary": "TypeScript에서 checkCovenant를 호출하고 세 가지 판정 결과를 처리합니다."
+        "summary": "TypeScript에서 checkCovenant나 checkChangeSet을 호출하고 세 가지 판정 결과를 처리합니다."
       }
     },
     {

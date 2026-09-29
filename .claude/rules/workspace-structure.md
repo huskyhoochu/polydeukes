@@ -76,9 +76,11 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   It writes `.codex/hooks/covenant-pretooluse.mjs` and merges four lifecycle entries into
   `.codex/hooks.json`. Hook trust is bound to the definition hash, so a changed definition
   needs `/hooks` approval before it runs.
-- **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) is the TypeScript consumer entry to the session
-  surface: one verb `checkCovenant`, which resolves `polydeukes` in the judged project's install
-  graph and spawns `pdks covenant check` with a caller-built IR on stdin. No bin, no judgment
+- **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) is the TypeScript consumer entry to both
+  surfaces: two verbs that resolve `polydeukes` in the judged project's install graph and spawn
+  `pdks covenant check` — `checkCovenant` with a caller-built IR on stdin, `checkChangeSet` with
+  a caller's unified diff under `--diff`. Both share one runner (`runCheck`, not exported from
+  the barrel) for resolution, spawn, and the status → verdict mapping. No bin, no judgment
   logic, no telemetry row of its own. Peer on `core` (the `CovenantInput` type) and on
   `polydeukes` (the bin it spawns). The umbrella does not depend on it.
 - **`packages/documentation`** (`@polydeukes/documentation`) is **`private`** and publishes

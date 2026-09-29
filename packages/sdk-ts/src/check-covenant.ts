@@ -1,10 +1,11 @@
 /**
  * `checkCovenant` — hand one covenant input to `pdks covenant check` and read the verdict.
  *
- * The whole package: locate the umbrella in the caller's install graph, spawn its bin with
- * the input on stdin, and turn the child's exit status and stderr into a value. Nothing
- * here judges, records a telemetry row, or adds to the input — the branches are whether
- * the umbrella resolved and what status the child left with.
+ * Also the runner every verb of this package goes through: locate the umbrella in the
+ * caller's install graph, spawn its bin with the input on stdin, and turn the child's exit
+ * status and stderr into a value. Nothing here judges, records a telemetry row, or adds to
+ * the input — the branches are whether the umbrella resolved and what status the child left
+ * with.
  */
 
 import { spawn as spawnChild } from 'node:child_process';
@@ -44,8 +45,22 @@ export type CheckCovenantVerdict =
   | { verdict: 'blocked'; reason: string }
   | { verdict: 'unjudged'; reason: string };
 
-/** The judge's own subcommand — the caller's input goes to its stdin. */
-const CHECK_ARGS = ['covenant', 'check', '--enforce'] as const;
+/** What the shared runner needs from a verb: its input mode, its posture, and its stdin. */
+export type RunCheckSpec = {
+  repoRoot: string;
+  /** What the not-installed reason says would have been judged. */
+  subject: string;
+  /** `--diff`: the stdin is a unified diff rather than an input IR. */
+  diffMode: boolean;
+  /** ABSENT is `block`, for every verb. */
+  enforce?: 'advise' | 'block';
+  /**
+   * Called only once the umbrella resolved, inside the spawn's failure branch: a stdin that
+   * cannot be produced comes back as `unjudged`, never as a rejection.
+   */
+  stdin: () => string;
+  spawn?: CheckCovenantSpec['spawn'];
+};
 
 /**
  * Run the bin under this process's node executable, collect stderr, and discard stdout.
@@ -82,16 +97,15 @@ function defaultSpawn(spec: CheckCovenantSpawnSpec): Promise<{
 }
 
 /**
- * Judge one input against the covenants of `repoRoot` and return the verdict as a value.
- *
- * The input travels verbatim; this package neither reads nor completes it.
+ * Resolve the umbrella under `repoRoot`, spawn `pdks covenant check` with the verb's stdin,
+ * and read the child's status as a verdict. Every verb of this package goes through here.
  */
-export async function checkCovenant(spec: CheckCovenantSpec): Promise<CheckCovenantVerdict> {
+export async function runCheck(spec: RunCheckSpec): Promise<CheckCovenantVerdict> {
   const bin = findUmbrellaBin(spec.repoRoot);
   if (bin === undefined) {
     return {
       verdict: 'unjudged',
-      reason: `no ${UMBRELLA_PACKAGE} in the install graph of ${spec.repoRoot}: install it to have this input judged`,
+      reason: `no ${UMBRELLA_PACKAGE} in the install graph of ${spec.repoRoot}: install it to have ${spec.subject} judged`,
     };
   }
 
@@ -101,9 +115,16 @@ export async function checkCovenant(spec: CheckCovenantSpec): Promise<CheckCoven
   try {
     ({ status, stderr } = await spawn({
       command: process.execPath,
-      args: [bin, ...CHECK_ARGS, spec.enforce ?? 'block'],
+      args: [
+        bin,
+        'covenant',
+        'check',
+        ...(spec.diffMode ? ['--diff'] : []),
+        '--enforce',
+        spec.enforce ?? 'block',
+      ],
       cwd: spec.repoRoot,
-      stdin: JSON.stringify(spec.input),
+      stdin: spec.stdin(),
     }));
   } catch (error) {
     // No process ran, so no verdict and no row: the failure comes back as the value the
@@ -123,4 +144,20 @@ export async function checkCovenant(spec: CheckCovenantSpec): Promise<CheckCoven
         ? 'the judge was killed by a signal before it answered'
         : `the judge exited with status ${status} instead of a verdict`,
   };
+}
+
+/**
+ * Judge one input against the covenants of `repoRoot` and return the verdict as a value.
+ *
+ * The input travels verbatim; this package neither reads nor completes it.
+ */
+export async function checkCovenant(spec: CheckCovenantSpec): Promise<CheckCovenantVerdict> {
+  return runCheck({
+    repoRoot: spec.repoRoot,
+    subject: 'this input',
+    diffMode: false,
+    enforce: spec.enforce,
+    stdin: () => JSON.stringify(spec.input),
+    spawn: spec.spawn,
+  });
 }

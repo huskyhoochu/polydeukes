@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 // This package's contract, checked as source text and manifest: the SDK carries no
 // judgment, writes no row, builds no IR, loads no sibling, and its barrel carries exactly
-// the four names a consumer reads. Source text ONLY — this file must never rebuild dist: a
+// the six names a consumer reads. Source text ONLY — this file must never rebuild dist: a
 // rebuild while the tree is mid-change locks the session behind the fail-closed hook.
 
 const pkgDir = resolve(import.meta.dirname, '..');
@@ -15,6 +15,7 @@ const FORBIDDEN_IMPORTS = [
   'polydeukes',
   '@polydeukes/adapter-claude-code',
   '@polydeukes/adapter-grok',
+  '@polydeukes/adapter-codex',
 ];
 /** The judge's verbs: naming one here is judging or recording in-process. */
 const FORBIDDEN_VERBS = ['appendRecord', 'dispatchCovenants', 'compileDisciplineRegistrations'];
@@ -23,12 +24,14 @@ const FORBIDDEN_IR_KEYS = ['session:', 'tools:'];
 /** One host's tool roster, matched as quoted literals: the roster is the consumer's value. */
 const FORBIDDEN_TOOL_LITERALS = ['Write', 'Edit', 'Bash'];
 
-/** The consumer contract of the `.` entry point. */
+/** The consumer contract of the `.` entry point: two verbs and the types their specs need. */
 const KEPT_EXPORTS: readonly string[] = [
   'checkCovenant',
   'CheckCovenantSpec',
   'CheckCovenantSpawnSpec',
   'CheckCovenantVerdict',
+  'checkChangeSet',
+  'CheckChangeSetSpec',
 ];
 
 const IDENT = '[A-Za-z_][A-Za-z0-9_]*';
@@ -133,7 +136,7 @@ describe('the SDK source judges nothing, records nothing, and builds no IR', () 
 });
 
 describe('the barrel export set', () => {
-  it('is exactly the four consumer names, no more and no less', () => {
+  it('is exactly the six consumer names, no more and no less', () => {
     // A leaked helper widens the contract one release at a time; a dropped name strands a
     // consumer import. `export *` would defeat this check by carrying nothing to parse.
     const barrel = readFileSync(join(sdkSrc, 'index.ts'), 'utf-8');
