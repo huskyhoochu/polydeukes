@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/adapter-codex",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "description": "Polydeukes adapter for Codex — records lifecycle evidence, translates PreToolUse payloads into agent-neutral covenant input IR, and registers the session surface. Beta.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
