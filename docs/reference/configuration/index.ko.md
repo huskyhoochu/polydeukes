@@ -314,6 +314,36 @@ changeSetDisciplines:   # 변경 집합 표면만. changes를 읽습니다
 항목을 다른 목록으로 옮기는 것이 편집의 전부입니다. 옮겨도 항목 본문은 그대로이고, 새 자리가
 맞는지는 로더가 답합니다.
 
+<a id="config-layer"></a>
+### 설정 층
+
+여러 저장소를 판정하는 프로그램은 자기 규율을 판정받는 모든 트리 밖의 파일에 두고
+`pdks covenant check --config-layer <path>`(SDK의 `configLayer` 필드)로 넘길 수 있습니다. 층은
+세 규율 목록과 `$schema`만 담는 yaml 또는 json 파일이며, 그 밖의 키가 있으면 그 키를 대며 층을
+거부합니다.
+
+```yaml
+sessionDisciplines:
+  - id: 'no-flushall'
+    why: 'tests share one Redis server'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: '\bFLUSHALL\b' }
+      relate:
+        - { id: 'no-flush', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+```
+
+층의 각 목록은 설정의 같은 이름 목록 뒤에 이어 붙고, 합친 설정을 하나로 검증합니다. 배치 규칙은
+층 항목에도 적용되고, 같은 id가 두 파일에 함께 있을 수 없습니다. 그 밖의 모든 것, 곧
+`protectedPaths` · `witness` · `telemetry`와 세계를 읽는 위치는 판정받는 프로젝트의 설정과 트리에서
+그대로 옵니다. 층은 `protectedPaths`에 더해지지 않습니다. 판정받는 에이전트가 쓸 수 없는 곳에 층을
+두는 것은 호출자의 배치입니다. 읽거나 로드할 수 없는 층은 실행을 fail-closed로 막습니다.
+
 <a id="disciplines"></a>
 ## `disciplines`
 

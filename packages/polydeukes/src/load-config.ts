@@ -12,8 +12,13 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ResolvedConfig } from '@polydeukes/core';
-import { ConfigValidationError, defineConfig, isPlainObject } from '@polydeukes/core';
+import type { ConfigLayer, ResolvedConfig } from '@polydeukes/core';
+import {
+  ConfigValidationError,
+  defineConfig,
+  defineConfigLayer,
+  isPlainObject,
+} from '@polydeukes/core';
 import { parseDocument } from 'yaml';
 import { compileDeclaration } from './covenant/declaration-engine.ts';
 
@@ -40,6 +45,8 @@ export type ParseConfigSourceSpec = {
   source: string;
   /** rootDir-relative path the source came from — the self-protection entry and error context. */
   configPath: string;
+  /** A config layer merged over the source: its text and the path it was read from. */
+  layer?: { source: string; path: string };
 };
 
 /** `LoadedConfig` — the loader's return value. */
@@ -98,24 +105,15 @@ export function discoverConfigPath(spec: DiscoverConfigPathSpec): string {
  * The parse-and-validate half, over a text rather than a file: parse, `$schema` strip,
  * `defineConfig`, declaration compile, self-protection attach. Exported so the runner can ask
  * whether a text a call is about to write would load, without opening any file.
+ *
+ * A `layer` is parsed the same way and validated by `defineConfigLayer`; its lists are appended
+ * after the source's, list by list, before `defineConfig` and the compile run over the whole.
+ * Self-protection attaches `configPath` alone — the layer lives outside the judged tree.
  */
 export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
-  const { source, configPath } = spec;
+  const { source, configPath, layer } = spec;
 
-  // Default core schema — custom tags stay unresolved and surface as errors or
-  // warnings depending on version; both escalate to a throw (config-as-data:
-  // uncomputable, so it cannot lie).
-  const document = parseDocument(source);
-  const problems = [...document.errors, ...document.warnings];
-  if (problems.length > 0) {
-    // Every problem in one message: reporting only the first costs one fix-rerun loop
-    // per hidden problem. Each parser message already carries its own position; a lone
-    // problem keeps the direct message shape.
-    throw new Error(
-      `failed to parse ${configPath}: ${listProblems(problems.map((problem) => problem.message))}`,
-    );
-  }
-  const parsed: unknown = document.toJS();
+  const parsed = parseText(source, configPath);
 
   // Strip the IDE `$schema` reference before delegating — the loader owns no
   // structural validation beyond this key removal.
@@ -125,12 +123,20 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
     input = rest;
   }
 
+  let context = configPath;
+  if (layer !== undefined) {
+    const lists = parseLayerSource(layer);
+    // A source that is not an object is refused by `defineConfig` below, layer or not.
+    if (isPlainObject(input)) input = appendLayer(input, lists);
+    context = `${configPath} with layer ${layer.path}`;
+  }
+
   let config: ResolvedConfig;
   try {
     config = defineConfig(input);
   } catch (error) {
     if (error instanceof ConfigValidationError) {
-      throw new ConfigValidationError(`invalid config in ${configPath}: ${error.message}`);
+      throw new ConfigValidationError(`invalid config in ${context}: ${error.message}`);
     }
     throw error;
   }
@@ -149,7 +155,7 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
     return 'kind' in compiled ? [`${compiled.location}: ${compiled.reason}`] : [];
   });
   if (faults.length > 0) {
-    throw new ConfigValidationError(`invalid config in ${configPath}: ${listProblems(faults)}`);
+    throw new ConfigValidationError(`invalid config in ${context}: ${listProblems(faults)}`);
   }
 
   // Self-protection attach (idempotent) — the discovered config file is part of
@@ -160,6 +166,56 @@ export function parseConfigSource(spec: ParseConfigSourceSpec): LoadedConfig {
   }
 
   return { config, configPath };
+}
+
+/**
+ * Parse one config text with the default core schema — custom tags stay unresolved and
+ * surface as errors or warnings depending on version; both escalate to a throw (config-as-data:
+ * uncomputable, so it cannot lie).
+ */
+function parseText(source: string, path: string): unknown {
+  const document = parseDocument(source);
+  const problems = [...document.errors, ...document.warnings];
+  if (problems.length > 0) {
+    // Every problem in one message: reporting only the first costs one fix-rerun loop
+    // per hidden problem. Each parser message already carries its own position; a lone
+    // problem keeps the direct message shape.
+    throw new Error(
+      `failed to parse ${path}: ${listProblems(problems.map((problem) => problem.message))}`,
+    );
+  }
+  return document.toJS();
+}
+
+/**
+ * A config layer's text parsed and validated on its own, the layer's path on any error.
+ * Exported so the runner can tell a layer that is broken by itself from a merge that fails.
+ */
+export function parseLayerSource(layer: { source: string; path: string }): ConfigLayer {
+  const parsed = parseText(layer.source, layer.path);
+  try {
+    return defineConfigLayer(parsed);
+  } catch (error) {
+    if (error instanceof ConfigValidationError) {
+      throw new ConfigValidationError(`invalid config layer in ${layer.path}: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * The source's lists with the layer's appended, list by list. A source list that is not an
+ * array is left for `defineConfig` to refuse.
+ */
+function appendLayer(input: Record<string, unknown>, lists: ConfigLayer): Record<string, unknown> {
+  const merged = { ...input };
+  for (const [list, entries] of Object.entries(lists)) {
+    if (entries === undefined) continue;
+    const own = merged[list];
+    if (own === undefined) merged[list] = entries;
+    else if (Array.isArray(own)) merged[list] = [...own, ...entries];
+  }
+  return merged;
 }
 
 /**

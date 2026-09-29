@@ -40,11 +40,13 @@ export {
 } from './catalogue.ts';
 export {
   type AlgebraDeclarationBody,
+  type ConfigLayer,
   ConfigValidationError,
   DEFAULT_TELEMETRY_LOG_PATH,
   type DisciplineDraft,
   type DisciplineEntry,
   defineConfig,
+  defineConfigLayer,
   type EnforceLevel,
   type LanguageProfile,
   type MemoryConfig,

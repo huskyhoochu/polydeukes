@@ -29,7 +29,12 @@ import type { CovenantRegistration } from './covenant/dispatch.ts';
 import { type CovenantModule, covenantModule } from './covenant/module.ts';
 import { ttlWitness } from './covenant/ttl-witness.ts';
 import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
-import { discoverConfigPath, type LoadedConfig, parseConfigSource } from './load-config.ts';
+import {
+  discoverConfigPath,
+  type LoadedConfig,
+  parseConfigSource,
+  parseLayerSource,
+} from './load-config.ts';
 import { sessionPreStateReader, unobservedPreStateReader } from './pre-state-reader.ts';
 import { worktreeReader } from './worktree-reader.ts';
 
@@ -63,6 +68,11 @@ export type CovenantCheckSpec = {
    * runner settles before the config loads. Absent, both of those apply in that order.
    */
   telemetryPath?: string;
+  /**
+   * A config layer merged over the discovered config, resolved against `repoRoot`. A layer
+   * that cannot be read or does not merge fails the run closed like any other load failure.
+   */
+  configLayer?: string;
   /** Overrides the judge module the run assembles against (tests and assembly injection). */
   covenant?: CovenantModule;
   /**
@@ -244,10 +254,13 @@ function settleConfig(spec: CovenantCheckSpec):
       configPath?: string;
       /** The text that file held, when it was read and the failure was its parse. */
       source?: string;
+      /** The config layer's text and resolved path, when one was named and read. */
+      layer?: { source: string; path: string };
     } {
   let telemetryPath: string | undefined;
   let configPath: string | undefined;
   let source: string | undefined;
+  let layer: { source: string; path: string } | undefined;
   try {
     // The environment variable sits between the caller's path and the config's, matching
     // what the baseline comparison in this same process already resolves — the two write
@@ -258,7 +271,11 @@ function settleConfig(spec: CovenantCheckSpec):
       spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, DEFAULT_TELEMETRY_LOG_PATH);
     configPath = discoverConfigPath({ rootDir: spec.repoRoot });
     source = readFileSync(join(spec.repoRoot, configPath), 'utf-8');
-    const { config } = parseConfigSource({ source, configPath });
+    if (spec.configLayer !== undefined) {
+      const path = resolve(spec.repoRoot, spec.configLayer);
+      layer = { source: readFileSync(path, 'utf-8'), path };
+    }
+    const { config } = parseConfigSource({ source, configPath, ...(layer && { layer }) });
     telemetryPath =
       spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
     return { settled: true, telemetryPath, config };
@@ -269,6 +286,7 @@ function settleConfig(spec: CovenantCheckSpec):
       error,
       ...(configPath === undefined ? {} : { configPath }),
       ...(source === undefined ? {} : { source }),
+      ...(layer === undefined ? {} : { layer }),
     };
   }
 }
@@ -457,6 +475,33 @@ function assertJudgeableShape(input: CovenantInput): void {
  * This branch reads no posture: the session hook always spawns with `--enforce block`, so a
  * repair that blocked under that posture would never run anywhere.
  */
+/**
+ * Whether an edit to the discovered config could be what makes this run load. Without a
+ * layer, always. With one, only when the layer loads on its own — no edit to the discovered
+ * file fixes the layer — and the discovered file fails on its own too: a file that loads by
+ * itself and clashes only with the layer is not the broken config the repair path exists for.
+ */
+function repairsTheConfig(
+  spec: CovenantCheckSpec,
+  failure: { configPath?: string; source?: string; layer?: { source: string; path: string } },
+): boolean {
+  if (spec.configLayer === undefined) return true;
+  const { configPath, source, layer } = failure;
+  if (layer === undefined || !loads(() => parseLayerSource(layer))) return false;
+  if (configPath === undefined || source === undefined) return true;
+  return !loads(() => parseConfigSource({ source, configPath }));
+}
+
+/** Whether `load` returns without throwing. */
+function loads(load: () => unknown): boolean {
+  try {
+    load();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function settleLoadFailure(
   spec: CovenantCheckSpec,
   failure: {
@@ -464,10 +509,11 @@ function settleLoadFailure(
     error: unknown;
     configPath?: string;
     source?: string;
+    layer?: { source: string; path: string };
   },
 ): CovenantCheckOutcome {
   const { telemetryPath, error, configPath } = failure;
-  if (configPath === undefined || spec.surface !== 'session') {
+  if (configPath === undefined || spec.surface !== 'session' || !repairsTheConfig(spec, failure)) {
     return failClosed(telemetryPath, error);
   }
 
@@ -479,7 +525,7 @@ function settleLoadFailure(
   }
 
   const loaded = repairs(input, failure, spec.repoRoot);
-  if (loaded !== null) {
+  if (loaded !== null && 'config' in loaded) {
     // The repaired config's own log path, under the precedence `settleConfig` uses, so the
     // next call's baseline comparison reads this row where it looks for it.
     const rowPath =
@@ -497,27 +543,30 @@ function settleLoadFailure(
     return { exitCode: 0 };
   }
 
+  // With a layer, the result can fail on the layer's entries, which the author of the
+  // discovered file never sees — so the reason is named.
+  const refused = loaded === null ? '' : ` (this call's result does not load ${loaded.refusal})`;
   return failClosed(
     telemetryPath,
     error,
-    ` — fix ${configPath} in one Edit or Write whose result loads; every other call stays blocked until it does`,
+    ` — fix ${configPath} in one Edit or Write whose result loads; every other call stays blocked until it does${refused}`,
   );
 }
 
 /**
- * The loaded config a single call would leave behind, or null when this observation is not
- * that call: exactly one call carrying a plain object, its evidence a modification of the
- * discovered config file (relativized against the root, since a host names its paths
- * absolutely), starting from the bytes the loader read, and leaving a `post` the loader
- * accepts. Requiring the pre to be those bytes keeps a partial view of the file — one
+ * The loaded config a single call would leave behind, the reason its `post` does not load
+ * when a layer is merged, or null when this observation is not that call: exactly one call
+ * carrying a plain object, its evidence a modification of the discovered config file
+ * (relativized against the root, since a host names its paths absolutely), starting from the
+ * bytes the loader read, and leaving a `post` the loader accepts. Requiring the pre to be those bytes keeps a partial view of the file — one
  * notebook cell, or evidence a caller composed — out of the branch.
  */
 function repairs(
   input: CovenantInput,
-  failure: { configPath?: string; source?: string },
+  failure: { configPath?: string; source?: string; layer?: { source: string; path: string } },
   repoRoot: string,
-): LoadedConfig | null {
-  const { configPath, source } = failure;
+): LoadedConfig | { refusal: string } | null {
+  const { configPath, source, layer } = failure;
   if (configPath === undefined || source === undefined) return null;
   if (!Array.isArray(input.toolCalls) || input.toolCalls.length !== 1) return null;
   const call = input.toolCalls[0];
@@ -529,9 +578,11 @@ function repairs(
   const post = fileChange.post;
   if (typeof post !== 'string') return null;
   try {
-    return parseConfigSource({ source: post, configPath });
-  } catch {
-    return null;
+    return parseConfigSource({ source: post, configPath, ...(layer && { layer }) });
+  } catch (error) {
+    return layer === undefined
+      ? null
+      : { refusal: `with layer ${layer.path}: ${messageOf(error)}` };
   }
 }
 

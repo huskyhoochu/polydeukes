@@ -28,6 +28,10 @@ export type CheckCovenantSpec = {
   input: CovenantInput;
   /** The observer's posture for the run. ABSENT is `block`. */
   enforce?: 'advise' | 'block';
+  /** A config layer merged over the discovered config; the umbrella resolves it against `repoRoot`. */
+  configLayer?: string;
+  /** Where the child writes its telemetry rows, ahead of the config's own log path. */
+  telemetryPath?: string;
   /** Injected spawn seam — absent, the child runs under this process's node executable. */
   spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
 };
@@ -54,6 +58,10 @@ export type RunCheckSpec = {
   diffMode: boolean;
   /** ABSENT is `block`, for every verb. */
   enforce?: 'advise' | 'block';
+  /** `--config-layer <path>`, only when defined. */
+  configLayer?: string;
+  /** `--telemetry-path <path>`, only when defined. */
+  telemetryPath?: string;
   /**
    * Called only once the umbrella resolved, inside the spawn's failure branch: a stdin that
    * cannot be produced comes back as `unjudged`, never as a rejection.
@@ -122,6 +130,8 @@ export async function runCheck(spec: RunCheckSpec): Promise<CheckCovenantVerdict
         ...(spec.diffMode ? ['--diff'] : []),
         '--enforce',
         spec.enforce ?? 'block',
+        ...(spec.configLayer === undefined ? [] : ['--config-layer', spec.configLayer]),
+        ...(spec.telemetryPath === undefined ? [] : ['--telemetry-path', spec.telemetryPath]),
       ],
       cwd: spec.repoRoot,
       stdin: spec.stdin(),
@@ -157,6 +167,8 @@ export async function checkCovenant(spec: CheckCovenantSpec): Promise<CheckCoven
     subject: 'this input',
     diffMode: false,
     enforce: spec.enforce,
+    configLayer: spec.configLayer,
+    telemetryPath: spec.telemetryPath,
     stdin: () => JSON.stringify(spec.input),
     spawn: spec.spawn,
   });

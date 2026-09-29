@@ -135,6 +135,80 @@ describe('checkCovenant — what the seam is handed', () => {
   });
 });
 
+/** Injected fixture values — a host layer and a row file, both outside the judged tree. */
+const LAYER_PATH = '/host/policy/discipline-layer.json';
+const TELEMETRY_PATH = '/host/logs/roi.log';
+
+/** The flag-value pairs after the fixed argv, keyed by flag, so the order between pairs is free. */
+function flagPairs(args: readonly string[], fixedLength: number): Record<string, string> {
+  const tail = args.slice(fixedLength);
+  const pairs: Record<string, string> = {};
+  for (let i = 0; i < tail.length; i += 2) pairs[tail[i] as string] = tail[i + 1] as string;
+  return pairs;
+}
+
+describe('checkCovenant — configLayer and telemetryPath travel as flags', () => {
+  it('`configLayer` appends `--config-layer <path>` after the fixed argv, verbatim', async () => {
+    // The path is the host's, resolved by the umbrella against repoRoot; an SDK that
+    // resolves it here, or drops it, hands the child another file or none.
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkCovenant({ repoRoot, input: writeInput(), configLayer: LAYER_PATH, spawn });
+
+    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--config-layer', LAYER_PATH]);
+  });
+
+  it('`telemetryPath` appends `--telemetry-path <path>` after the fixed argv, verbatim', async () => {
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkCovenant({ repoRoot, input: writeInput(), telemetryPath: TELEMETRY_PATH, spawn });
+
+    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--telemetry-path', TELEMETRY_PATH]);
+  });
+
+  it('both fields together send both pairs, each flag beside its own value', async () => {
+    // One field overwriting the other's slot, or the two values swapped under the wrong
+    // flag, sends the row file as the layer and fails every call closed.
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkCovenant({
+      repoRoot,
+      input: writeInput(),
+      enforce: 'advise',
+      configLayer: LAYER_PATH,
+      telemetryPath: TELEMETRY_PATH,
+      spawn,
+    });
+
+    const args = calls[0]?.args ?? [];
+    expect(args.slice(0, ADVISE_ARGS.length + 1)).toEqual([bin, ...ADVISE_ARGS]);
+    expect(flagPairs(args, ADVISE_ARGS.length + 1)).toEqual({
+      '--config-layer': LAYER_PATH,
+      '--telemetry-path': TELEMETRY_PATH,
+    });
+  });
+
+  it('fields present with the value undefined add nothing — the argv is the one without them', async () => {
+    // A presence check (`'configLayer' in spec`) pushes the flag with `undefined` as its
+    // value, which the bin's argv table reads as a missing value and refuses as usage.
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkCovenant({
+      repoRoot,
+      input: writeInput(),
+      configLayer: undefined,
+      telemetryPath: undefined,
+      spawn,
+    });
+
+    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS]);
+  });
+});
+
 describe('checkCovenant — the child status is the verdict', () => {
   it("status 0 → { verdict: 'upheld', advisories: <stderr> }", async () => {
     // Advisory lines travel on stderr at exit 0; a consumer with no TTY decides whether

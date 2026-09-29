@@ -11,7 +11,7 @@
 ## 구문
 
 ```sh
-pdks covenant check [--diff] [--enforce advise|block]
+pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
 `--diff`가 없으면 stdin은 약속(covenant) 입력 IR입니다. `@polydeukes/core`가 정의하는 JSON
@@ -19,8 +19,12 @@ pdks covenant check [--diff] [--enforce advise|block]
 도구 명부 `tools`와 살아 있는 에이전트 세션의 증거 `session`)입니다. `--diff`를 주면 stdin은
 unified diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이 실행의 관측자 자세이며
 기본값은 `advise`입니다. 기본값에서는 모든 위반이 행으로 기록되고 종료 코드 0입니다. `--enforce block`을
-주면 보호 경로 위반과 `enforce: block` 항목의 위반이 종료 코드 2가 됩니다. 플래그는 각각 한
-번씩, 순서는 무관합니다. 그 밖의 인자는 사용법 오류입니다. stdin은 EOF까지 읽습니다.
+주면 보호 경로 위반과 `enforce: block` 항목의 위반이 종료 코드 2가 됩니다. `--config-layer`는
+프로젝트 설정과 함께 판정할 규율 목록을 담은 [설정 층](../configuration/index.ko.md#config-layer)을
+가리키며, 상대 경로는 작업 디렉터리를 기준으로 해석합니다. `--telemetry-path`는 이 실행의 행을
+덧붙일 파일을 가리키며, `POLYDEUKES_TELEMETRY_PATH`와 설정의 `telemetry.logPath`보다 앞섭니다.
+플래그는 각각 한 번씩, 순서는 무관하고, 플래그의 값은 비어 있거나 `--`로 시작할 수 없습니다. 그 밖의 인자는
+사용법 오류입니다. stdin은 EOF까지 읽습니다.
 
 <a id="covenant-check-boundaries"></a>
 ## 관측 경계
@@ -96,6 +100,7 @@ hunk만으로 판정합니다. 그래서 표지 하나를 지운 diff는 통과�
 | 병합 diff(`diff --cc`) · 짝이 맞지 않는 `---`/`+++` · 미지의 hunk 줄 | exit `2`, `covenant-check`의 `blocked` 행 하나 |
 | 다른 인자 | exit `2`, stderr에 사용법 줄. stdin은 읽지 않습니다 |
 | 설정 부재 · 중복 · 무효 | exit `2` |
+| `--config-layer` 파일이 없거나, 파싱되지 않거나, 세 규율 목록 밖의 키를 담았거나, 설정의 id를 다시 쓴 경우 | exit `2`, `covenant-check`의 `blocked` 행 하나. 층을 빼고 판정하는 일은 없습니다 |
 | 판정 본체 로드 실패 | exit `2` |
 
 자세는 설정이 아니라 명령줄에 있고, 프롬프트는 없습니다. 이 명령은 성공 또는 실패를 답하고,

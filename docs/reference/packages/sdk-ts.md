@@ -81,6 +81,8 @@ type CheckCovenantSpec = {
   repoRoot: string;
   input: CovenantInput;
   enforce?: 'advise' | 'block';
+  configLayer?: string;
+  telemetryPath?: string;
   spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
 };
 
@@ -93,6 +95,8 @@ type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; st
 | `input` | The caller's own IR, sent verbatim as the child's stdin |
 | `enforce` | The observer's posture for the whole run. **Absent is `block`** |
 | `spawn` | An injected spawn seam. Absent, the child runs under this process's node executable |
+| `configLayer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repoRoot` |
+| `telemetryPath` | The file this run's rows are appended to, sent as `--telemetry-path` |
 
 **`enforce` defaults to `block`.** That is the surface's level, not an entry's: protected paths
 and entries carrying `enforce: block` stop the call, and every other break is recorded
@@ -147,6 +151,8 @@ type CheckChangeSetSpec = {
   repoRoot: string;
   diff: string;
   enforce?: 'advise' | 'block';
+  configLayer?: string;
+  telemetryPath?: string;
   spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
 };
 ```
@@ -157,6 +163,8 @@ type CheckChangeSetSpec = {
 | `diff` | The caller's unified diff, sent verbatim as the child's stdin. Paths are relative to `repoRoot` behind `a/` and `b/`, as `git diff` prints them from a repository whose top is `repoRoot`. Any producer of that form works; the SDK neither runs `git` nor checks the text. `git diff` leaves out untracked files until `git add -N` marks them |
 | `enforce` | The observer's posture for the whole run. **Absent is `block`** |
 | `spawn` | The same injected spawn seam as `checkCovenant`'s |
+| `configLayer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repoRoot` |
+| `telemetryPath` | The file this run's rows are appended to, sent as `--telemetry-path` |
 
 **The default differs from the CLI's.** `pdks covenant check --diff` without `--enforce` lands
 every verdict `advised` at exit 0, so a protected path in the diff never comes back `blocked`.

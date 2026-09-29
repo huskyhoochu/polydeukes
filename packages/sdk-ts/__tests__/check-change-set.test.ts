@@ -137,6 +137,42 @@ describe('checkChangeSet — what the seam is handed', () => {
   });
 });
 
+/** Injected fixture values — a host layer and a row file, both outside the judged tree. */
+const LAYER_PATH = '/host/policy/discipline-layer.json';
+const TELEMETRY_PATH = '/host/logs/roi.log';
+
+describe('checkChangeSet — configLayer and telemetryPath travel as flags', () => {
+  it('`configLayer` appends `--config-layer <path>` after the fixed argv, verbatim', async () => {
+    // This verb goes through the same runner as `checkCovenant`, but a field left off this
+    // verb's spec-to-runner mapping is a host policy that applies to one surface only.
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkChangeSet({
+      repoRoot,
+      diff: creationDiff(TARGET, CONTENT),
+      configLayer: LAYER_PATH,
+      spawn,
+    });
+
+    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--config-layer', LAYER_PATH]);
+  });
+
+  it('`telemetryPath` appends `--telemetry-path <path>` after the fixed argv, verbatim', async () => {
+    const bin = installStubPolydeukes();
+    const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
+
+    await checkChangeSet({
+      repoRoot,
+      diff: creationDiff(TARGET, CONTENT),
+      telemetryPath: TELEMETRY_PATH,
+      spawn,
+    });
+
+    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--telemetry-path', TELEMETRY_PATH]);
+  });
+});
+
 describe('checkChangeSet — the fail-open branches', () => {
   it("status 1 → { verdict: 'unjudged' } with a reason naming the status", async () => {
     // A crashed child is not a verdict. Mapping 1 onto `blocked` invents a break; mapping

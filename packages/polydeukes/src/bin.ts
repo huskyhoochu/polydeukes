@@ -138,14 +138,20 @@ if (args.length === 1 && args[0] === 'explain') {
 
 /**
  * Read the `covenant check` flags, or null for any argv outside the finite table: `--diff`
- * at most once, `--enforce` at most once with `advise` or `block`, in either order, and
- * nothing else.
+ * at most once, `--enforce` at most once with `advise` or `block`, `--config-layer` and
+ * `--telemetry-path` at most once each with a non-empty path, in any order, and nothing else.
+ * A path that starts with `--` is a missing value followed by a flag.
  */
-function parseCheckFlags(
-  flags: string[],
-): { diffMode: boolean; enforce?: 'advise' | 'block' } | null {
+function parseCheckFlags(flags: string[]): {
+  diffMode: boolean;
+  enforce?: 'advise' | 'block';
+  configLayer?: string;
+  telemetryPath?: string;
+} | null {
   let diffMode = false;
   let enforce: 'advise' | 'block' | undefined;
+  let configLayer: string | undefined;
+  let telemetryPath: string | undefined;
   for (let i = 0; i < flags.length; i += 1) {
     const flag = flags[i];
     if (flag === '--diff' && !diffMode) {
@@ -159,20 +165,31 @@ function parseCheckFlags(
       i += 1;
       continue;
     }
+    if (
+      (flag === '--config-layer' && configLayer === undefined) ||
+      (flag === '--telemetry-path' && telemetryPath === undefined)
+    ) {
+      const path = flags[i + 1];
+      if (path === undefined || path === '' || path.startsWith('--')) return null;
+      if (flag === '--config-layer') configLayer = path;
+      else telemetryPath = path;
+      i += 1;
+      continue;
+    }
     return null;
   }
-  return { diffMode, enforce };
+  return { diffMode, enforce, configLayer, telemetryPath };
 }
 
 const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(args.slice(2)) : null;
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
   );
   process.exit(2);
 }
-const { diffMode, enforce } = check;
+const { diffMode, enforce, configLayer, telemetryPath } = check;
 
 try {
   // Loaded here rather than at the top of the file. This runner statically pulls in the
@@ -194,6 +211,8 @@ try {
     // call the caller observed.
     surface: diffMode ? 'changeSet' : 'session',
     ...(enforce !== undefined && { enforce }),
+    ...(configLayer !== undefined && { configLayer }),
+    ...(telemetryPath !== undefined && { telemetryPath }),
   });
   process.exit(exitCode);
 } catch (error) {

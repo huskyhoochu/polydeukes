@@ -122,6 +122,11 @@ function allFileChanges(input: CovenantInput): FileChange[];
 `ResolvedConfig`도 같은 이름으로 셋을 싣되 판정 항목만 담고, 초안(draft)은 `drafts`로 갈라
 둡니다. 입력이 선언하지 않은 목록은 빈 배열이 되지 않고 없는 채로 남습니다.
 
+`defineConfigLayer()`는 [설정 층](../configuration/index.ko.md#config-layer)을 검증합니다. 세 목록과
+`$schema`만 담은 객체여야 하고, 항목은 `defineConfig()`와 같은 규칙으로 검사합니다. 목록은 받은
+그대로(`ConfigLayer`) 돌려주며, 로더가 그것을 설정의 목록에 이어 붙인 뒤 합친 설정을
+`defineConfig()`로 검증합니다.
+
 검증기와 우산 패키지가 함께 쓰는 유도는 내보내는 함수 하나입니다.
 
 ```ts

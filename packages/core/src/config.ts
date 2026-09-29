@@ -709,3 +709,44 @@ export function defineConfig(config: unknown): ResolvedConfig {
     ...(witness !== undefined && { witness }),
   };
 }
+
+/**
+ * `ConfigLayer` — a second discipline file merged over a config: its three lists only.
+ * Every other key would need a merge rule between two files.
+ */
+export type ConfigLayer = Pick<
+  PolydeukesConfig,
+  'disciplines' | 'sessionDisciplines' | 'changeSetDisciplines'
+>;
+
+const LAYER_LISTS =
+  'a config layer carries only disciplines, sessionDisciplines, changeSetDisciplines';
+
+/**
+ * Validate parsed unknown data as a {@link ConfigLayer} and return its lists as given, only
+ * those present. The entries take the validation {@link defineConfig} gives them, with one id
+ * space across the layer's three lists; `$schema` is accepted and left out of the result.
+ */
+export function defineConfigLayer(layer: unknown): ConfigLayer {
+  if (!isPlainObject(layer)) {
+    throw new ConfigValidationError(`config layer must be a plain object: ${LAYER_LISTS}`);
+  }
+  for (const key of Object.keys(layer)) {
+    if (key !== '$schema' && !(DISCIPLINE_LISTS as readonly string[]).includes(key)) {
+      throw new ConfigValidationError(`unknown key '${key}' in config layer: ${LAYER_LISTS}`);
+    }
+  }
+  if (layer.$schema !== undefined && typeof layer.$schema !== 'string') {
+    throw new ConfigValidationError('$schema must be a string');
+  }
+
+  const seenIds = new Set<string>();
+  const result: ConfigLayer = {};
+  for (const list of DISCIPLINE_LISTS) {
+    if (layer[list] !== undefined) {
+      validateDisciplines(layer[list], list, seenIds);
+      result[list] = layer[list] as DisciplineEntry[];
+    }
+  }
+  return result;
+}

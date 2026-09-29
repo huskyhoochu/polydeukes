@@ -16,6 +16,10 @@ export type CheckChangeSetSpec = {
   diff: string;
   /** The observer's posture for the run. ABSENT is `block`. */
   enforce?: 'advise' | 'block';
+  /** A config layer merged over the discovered config; the umbrella resolves it against `repoRoot`. */
+  configLayer?: string;
+  /** Where the child writes its telemetry rows, ahead of the config's own log path. */
+  telemetryPath?: string;
   /** Injected spawn seam — the same one `checkCovenant` takes. */
   spawn?: CheckCovenantSpec['spawn'];
 };
@@ -27,6 +31,8 @@ export async function checkChangeSet(spec: CheckChangeSetSpec): Promise<CheckCov
     subject: 'this change set',
     diffMode: true,
     enforce: spec.enforce,
+    configLayer: spec.configLayer,
+    telemetryPath: spec.telemetryPath,
     stdin: () => spec.diff,
     spawn: spec.spawn,
   });

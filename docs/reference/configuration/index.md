@@ -323,6 +323,37 @@ changeSetDisciplines:   # the change-set surface only — reads changes
 Moving an entry between lists is the whole edit: the entry's body is unchanged by the move,
 and the loader is what says whether the new place is the right one.
 
+<a id="config-layer"></a>
+### A config layer
+
+A program that judges many repositories can keep disciplines of its own in a file outside
+every judged tree and pass it with `pdks covenant check --config-layer <path>` (the SDK's
+`configLayer` field). The layer is a yaml or json file with at most the three discipline lists
+and `$schema`; any other key refuses the layer with the key named.
+
+```yaml
+sessionDisciplines:
+  - id: 'no-flushall'
+    why: 'tests share one Redis server'
+    declare:
+      mechanism: 'forbidden-command'
+      scope: { source: 'command' }
+      extract:
+        hits:
+          - { op: 'source', of: 'command' }
+          - { op: 'lines' }
+          - { op: 'matches', re: '\bFLUSHALL\b' }
+      relate:
+        - { id: 'no-flush', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+```
+
+Each layer list is appended after the config's list of the same name, and the merged config is
+validated as one: the placement rule applies to layer entries, and an id may not appear in both
+files. Everything else — `protectedPaths`, `witness`, `telemetry`, where the world is read —
+still comes from the judged project's config and tree. The layer is not added to
+`protectedPaths`: keeping it where the judged agents cannot write is the caller's arrangement.
+A layer that cannot be read or loaded fails the run closed.
+
 <a id="disciplines"></a>
 ## `disciplines`
 

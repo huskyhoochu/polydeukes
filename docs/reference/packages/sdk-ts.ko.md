@@ -80,6 +80,8 @@ type CheckCovenantSpec = {
   repoRoot: string;
   input: CovenantInput;
   enforce?: 'advise' | 'block';
+  configLayer?: string;
+  telemetryPath?: string;
   spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
 };
 
@@ -92,6 +94,8 @@ type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; st
 | `input` | 호출자 자신의 IR이며 자식의 표준 입력으로 원문 그대로 갑니다 |
 | `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
 | `spawn` | 자식 프로세스 실행 함수를 지정합니다. 생략하면 현재 프로세스의 Node.js 실행 파일을 사용합니다 |
+| `configLayer` | 프로젝트 설정과 함께 판정할 [설정 층](../configuration/index.ko.md#config-layer)이며 `--config-layer`로 넘어갑니다. 상대 경로는 `repoRoot` 기준입니다 |
+| `telemetryPath` | 이 실행의 행을 덧붙일 파일이며 `--telemetry-path`로 넘어갑니다 |
 
 **`enforce`의 기본값은 `block`입니다.** 이것은 표면의 강제 수준이지 항목의 것이 아닙니다.
 보호 경로와 `enforce: block`을 단 항목이 호출을 멈추고, 나머지 위반은 종료 코드 0에
@@ -145,6 +149,8 @@ type CheckChangeSetSpec = {
   repoRoot: string;
   diff: string;
   enforce?: 'advise' | 'block';
+  configLayer?: string;
+  telemetryPath?: string;
   spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
 };
 ```
@@ -155,6 +161,8 @@ type CheckChangeSetSpec = {
 | `diff` | 호출자의 통합 diff이며 자식의 표준 입력으로 원문 그대로 갑니다. 경로는 `a/`·`b/` 뒤에 `repoRoot` 기준으로 적혀 있어야 하며, `repoRoot`가 최상위인 저장소에서 `git diff`가 출력하는 형식이 이것입니다. 이 형식이면 어떤 생산자의 diff든 되고, SDK는 `git`을 실행하지도 텍스트를 검사하지도 않습니다. `git diff`는 `git add -N`으로 표시하기 전까지 추적되지 않은 파일을 빼놓습니다 |
 | `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
 | `spawn` | `checkCovenant`와 같은 자식 프로세스 실행 함수입니다 |
+| `configLayer` | 프로젝트 설정과 함께 판정할 [설정 층](../configuration/index.ko.md#config-layer)이며 `--config-layer`로 넘어갑니다. 상대 경로는 `repoRoot` 기준입니다 |
+| `telemetryPath` | 이 실행의 행을 덧붙일 파일이며 `--telemetry-path`로 넘어갑니다 |
 
 **기본값이 CLI와 다릅니다.** `--enforce` 없이 실행한 `pdks covenant check --diff`는 모든 판정
 결과를 종료 코드 0의 `advised`로 기록하므로, diff에 보호 경로가 있어도 `blocked`가 돌아오지

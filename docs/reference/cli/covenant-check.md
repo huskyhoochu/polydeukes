@@ -11,7 +11,7 @@ caller produces the observation, the command judges it and answers with an exit 
 ## Syntax
 
 ```sh
-pdks covenant check [--diff] [--enforce advise|block]
+pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
 Without `--diff`, stdin is the covenant input IR — the JSON document `@polydeukes/core` defines
@@ -20,8 +20,13 @@ Without `--diff`, stdin is the covenant input IR — the JSON document `@polydeu
 `--diff`, stdin is a unified diff and the command translates it into that IR first.
 `--enforce` is the observer's posture for the run and
 defaults to `advise`: every break lands as a row and exit 0. `--enforce block` makes a protected
-path or an entry set to `enforce: block` exit 2. Each flag at most once, in either order; any
-other argument is a usage error. stdin is read to EOF.
+path or an entry set to `enforce: block` exit 2. `--config-layer` names a
+[config layer](../configuration/index.md#config-layer) whose discipline lists are judged
+alongside the project's config; a relative path resolves against the working directory.
+`--telemetry-path` names the file this run's rows are appended to, ahead of
+`POLYDEUKES_TELEMETRY_PATH` and the config's `telemetry.logPath`. Each flag at most once, in any
+order, and a flag's value may not be empty or start with `--`; any other argument is a usage error.
+stdin is read to EOF.
 
 <a id="covenant-check-boundaries"></a>
 ## Observation boundaries
@@ -100,6 +105,7 @@ disciplines skip on this surface.
 | A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line | exit `2`, one `blocked` `covenant-check` row |
 | Any other argument | exit `2` with the usage line on stderr, stdin unread |
 | Missing, ambiguous, or invalid config | exit `2` |
+| A `--config-layer` file that is missing, does not parse, carries a key outside the three discipline lists, or repeats an id of the config | exit `2`, one `blocked` `covenant-check` row — the run is never judged without the layer |
 | Judge body cannot load | exit `2` |
 
 The posture lives on the command line, not in the config, and there is no prompt. The command

@@ -128,6 +128,11 @@ written in the right one.
 drafts split out into `drafts`. A list the input did not declare stays absent rather than
 becoming an empty array.
 
+`defineConfigLayer()` validates a [config layer](../configuration/index.md#config-layer): an
+object carrying at most the three lists and `$schema`, its entries checked by the same rules
+`defineConfig()` applies. It returns the lists as given (`ConfigLayer`); the loader appends them
+to the config's own lists and validates the merged config with `defineConfig()`.
+
 The derivation both the validator and the umbrella use is one exported function:
 
 ```ts

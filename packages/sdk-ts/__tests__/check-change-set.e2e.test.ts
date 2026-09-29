@@ -84,6 +84,90 @@ function rows(): [string, string, string][] {
   return readRecords(path).records.map((record) => [record.event, record.label, record.subject]);
 }
 
+/** Injected fixture values — the host layer outside the tree, its one entry, and the line it forbids. */
+const LAYER_FILE = 'discipline-layer.json';
+const LAYER_ID = 'host-no-flushall';
+const LAYER_WHY = 'a cache flush in a shared environment erases every other tenant’s state';
+const FORBIDDEN_LINE = 'redis.FLUSHALL();';
+const LAYER_TELEMETRY_FILE = 'layer-roi.log';
+
+/**
+ * A layer with one shared-list entry at `enforce: block`: an added-only declaration over
+ * `src/` whose added lines may not carry the forbidden token. The change-set surface reads
+ * `pre` · `post` of the created file, so this is the list that surface compiles.
+ */
+function flushBanLayer(): Record<string, unknown> {
+  return {
+    disciplines: [
+      {
+        id: LAYER_ID,
+        why: LAYER_WHY,
+        enforce: 'block',
+        declare: {
+          mechanism: 'added-only',
+          scope: { source: 'target.path', include: ['^src/'] },
+          supply: { pre: 'empty', post: 'empty' },
+          extract: {
+            before: [
+              { op: 'source', of: 'pre' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(FLUSHALL)' },
+            ],
+            after: [
+              { op: 'source', of: 'post' },
+              { op: 'lines' },
+              { op: 'keyByPattern', re: '(FLUSHALL)' },
+            ],
+            added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+          },
+          relate: [{ id: 'no-flush', relation: { op: 'empty', of: 'added' }, message: '{value}' }],
+        },
+      },
+    ],
+  };
+}
+
+/** Every telemetry row at an absolute path as [event, label, subject]. */
+function rowsAt(path: string): [string, string, string][] {
+  if (!existsSync(path)) return [];
+  return readRecords(path).records.map((record) => [record.event, record.label, record.subject]);
+}
+
+describe('checkChangeSet with a config layer on a real install graph', () => {
+  let outside: string;
+
+  beforeEach(() => {
+    outside = realpathSync(mkdtempSync(join(tmpdir(), 'pdks-sdk-ts-layer-outside-')));
+  });
+
+  afterEach(() => {
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it('a diff adding the forbidden line under the layer’s entry → blocked, the id in the reason, one blocked row under the id at telemetryPath', async () => {
+    // The row's label and location separate the four ways this can be green wrongly: a
+    // layer never handed on leaves `upheld`; a layer that fails to load blocks under the
+    // runner's label; a `telemetryPath` parsed and dropped writes the row to the config's
+    // log; and the subject must be the created file, not the runner's `-`.
+    scaffoldConsumer();
+    const layerPath = join(outside, LAYER_FILE);
+    const telemetryPath = join(outside, LAYER_TELEMETRY_FILE);
+    writeFileSync(layerPath, JSON.stringify(flushBanLayer()));
+
+    const verdict = await checkChangeSet({
+      repoRoot: projectRoot,
+      diff: creationDiff(ORDINARY_TARGET, FORBIDDEN_LINE),
+      configLayer: layerPath,
+      telemetryPath,
+    });
+
+    expect(verdict).toMatchObject({ verdict: 'blocked' });
+    expect(verdict).toHaveProperty('reason', expect.stringContaining(LAYER_ID));
+    expect(rowsAt(telemetryPath)).toContainEqual(['blocked', LAYER_ID, ORDINARY_TARGET]);
+    expect(rows().filter(([, label]) => label === LAYER_ID)).toEqual([]);
+  });
+});
+
 describe('checkChangeSet on a real install graph', () => {
   it('a diff creating a file under the protected path → blocked, with the reason and one self-mod row', async () => {
     // The exact row separates a verdict from a fail-closed crash on the same status: a
