@@ -187,6 +187,33 @@ disciplines:
 | `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | `a` 중 키가 `b`에 없는 항목입니다. |
 | `intersect` | `{ op: 'intersect', of: ['a', 'b'] }` | `a` 중 키가 `b`에도 있는 항목입니다. 값은 `a`의 것을 사용합니다. |
 
+<a id="drop-matching-lines"></a>
+### 다른 추출이 고른 줄 빼기
+
+`lines`는 줄마다 줄 번호를 키로 붙이므로, 같은 텍스트에서 만든 두 추출은 키를 공유합니다. 그래서
+`onlyIn`으로 한 추출에서 다른 추출이 고른 줄을 뺄 수 있습니다. 조합 연산자 뒤에는 단항 스텝을
+이어 쓸 수 있습니다. 식별자 규율이 주석 줄에서 위반을 내지 않게 하려면 다음처럼 씁니다.
+
+```yaml
+extract:
+  postHits:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'matches', re: '\bflush(?:db|all)\b', i: true }
+  postComments:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'matches', re: '^(//|/\*|\*)' }
+  after:
+    - { op: 'onlyIn', of: 'postHits', notIn: 'postComments' }
+    - { op: 'keyByPattern', re: '\b(flush(?:db|all))\b', i: true }
+```
+
+`before`도 `pre`에서 같은 방식으로 만들고, 평소처럼 `after`와 `before`를 비교합니다. `lines`는 줄마다
+앞뒤 공백을 지우므로 `^`는 공백이 아닌 첫 글자입니다. 같은 줄에서 코드 뒤에 붙은 주석
+(`x(); // flushDb`)은 주석 줄이 아니므로 여전히 맞습니다. 줄 단위 정규식으로는 한 줄 안의 코드와
+주석을 가를 수 없습니다.
+
 <a id="relations"></a>
 ## 관계
 

@@ -184,6 +184,33 @@ The operands are two distinct extraction names. `onlyIn` and `intersect` compare
 | `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | Items from `a` whose keys do not occur in `b`. |
 | `intersect` | `{ op: 'intersect', of: ['a', 'b'] }` | Items from `a` whose keys occur in `b`, with values from `a`. |
 
+<a id="drop-matching-lines"></a>
+### Drop the lines another extraction matches
+
+`lines` keys each line by its line number, so two extractions over the same text share keys, and
+`onlyIn` drops from one the lines the other matched. The pipeline after a combinator continues
+with unary steps. This keeps an identifier discipline from breaking on comment lines:
+
+```yaml
+extract:
+  postHits:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'matches', re: '\bflush(?:db|all)\b', i: true }
+  postComments:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'matches', re: '^(//|/\*|\*)' }
+  after:
+    - { op: 'onlyIn', of: 'postHits', notIn: 'postComments' }
+    - { op: 'keyByPattern', re: '\b(flush(?:db|all))\b', i: true }
+```
+
+Build `before` the same way from `pre`, then compare `after` with `before` as usual. `lines` trims
+each line, so `^` is the first non-space character. A comment after code on the same line
+(`x(); // flushDb`) is not a comment line and still matches: a regex over a line cannot tell code
+from comment inside it.
+
 <a id="relations"></a>
 ## Relations
 
