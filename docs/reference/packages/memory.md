@@ -160,6 +160,10 @@ document, in either direction, and no other document has the same ticket.
 and `in` the links resolved to it; for a section, `out` holds the links written in it and `in`
 the links resolved to that section. Both are sorted by `from`, then `target`.
 
+In `MemorySearchResult` and `MemoryShownSection`, `id` is the section's id
+(`<document id>#<anchor>`) and `conceptId` is the id of the document the section belongs to, the
+same document id described under [Documents and sections](#rows).
+
 In a search result, `status` is the frontmatter `status` (default `stable`), and `stale` is
 true once the frontmatter `stale_after` time has passed. `trust` is `human-reviewed` when a
 frontmatter `verified` entry has a `by` value starting with `human:`, `machine-verified` when an

@@ -151,6 +151,9 @@ H3 제목처럼 H2 절이 아닌 앵커는 문서까지만 해소됩니다.
 링크입니다. 절의 `out`은 그 절에 적힌 링크이고 `in`은 그 절로 해소된 링크입니다. 둘 다 `from`, 그다음
 `target` 순서로 정렬합니다.
 
+`MemorySearchResult`와 `MemoryShownSection`에서 `id`는 절의 식별자(`<문서 식별자>#<앵커>`)이고,
+`conceptId`는 그 절이 속한 문서의 식별자입니다. [문서와 절](#rows)에서 설명하는 문서 식별자와 같습니다.
+
 검색 결과의 `status`는 frontmatter의 `status`이고(기본값 `stable`), `stale`은 frontmatter의
 `stale_after` 시각이 지나면 참입니다. `trust`는 frontmatter `verified` 항목의 `by` 값이 `human:`으로
 시작하면 `human-reviewed`, 다른 `by` 값이 있으면 `machine-verified`, 그 밖에는 `unverified`입니다.
