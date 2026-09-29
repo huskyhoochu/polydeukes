@@ -11,6 +11,14 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.12.0](https://github.com/b95labs/polydeukes/compare/v0.11.1...v0.12.0) (2026-09-29)
+
+
+### Features
+
+* merge a config layer from outside the judged tree ([#154](https://github.com/b95labs/polydeukes/issues/154)) ([73d1ff7](https://github.com/b95labs/polydeukes/commit/73d1ff7a187804eb763c2cb574d9299e88104afe))
+* **sdk-ts:** add checkChangeSet for change-set judgments ([#152](https://github.com/b95labs/polydeukes/issues/152)) ([846591b](https://github.com/b95labs/polydeukes/commit/846591b227914875cf801336f0f6a3f16601afa1))
+
 ## [0.11.1](https://github.com/huskyhoochu/polydeukes/compare/v0.11.0...v0.11.1) (2026-09-28)
 
 
