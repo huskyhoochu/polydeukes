@@ -158,7 +158,7 @@ function to select the applicable discipline list.
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
 
-Three places, all of them indirect.
+Four places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
   [the configuration reference](../configuration/index.md).
@@ -166,6 +166,12 @@ Three places, all of them indirect.
   project that installs this package directly. A consumer of the umbrella names the copy
   bundled there instead; both spellings are in
   [configuration.md's IDE section](../../how-to/configure-project.md#add-ide-support).
+- **The input IR's JSON Schema** — `@polydeukes/core/covenant-input.schema.json`, for a host
+  written in another language that builds the input `pdks covenant check` reads on stdin. It
+  guarantees one direction: a document the schema accepts is one the command reads without
+  refusing. The command checks less than the schema does, so the converse does not hold. The
+  schema has no `world` key, because the command fills that axis itself and refuses an input
+  that carries one.
 - **The protocol above** — reading a `blocked` row means reading the vocabulary a body
   answered in.
 

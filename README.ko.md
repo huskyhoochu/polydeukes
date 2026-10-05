@@ -154,7 +154,7 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 
 | 패키지 | 역할 |
 |--------|------|
-| `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), 설정 스키마와 그 검증, 대수 선언(algebra declaration) 스키마, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어. 설정을 디스크에서 읽는 일은 core가 아니라 우산의 `loadConfig`가 진다. core가 여는 파일은 자기 텔레메트리 로그뿐이다 |
+| `@polydeukes/core` | 약속(covenant) 프로토콜(stdin-JSON / exit-2), 설정 스키마와 그 검증, 대수 선언(algebra declaration) 스키마, 다른 언어의 호스트를 위한 입력 IR JSON Schema, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어. 설정을 디스크에서 읽는 일은 core가 아니라 우산의 `loadConfig`가 진다. core가 여는 파일은 자기 텔레메트리 로그뿐이다 |
 | `polydeukes`의 판정기(`src/covenant/`) | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant) |
 | `@polydeukes/ledger` *(계획)* | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전 |
 | `@polydeukes/memory` | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`·`lint`·`stats`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다 |

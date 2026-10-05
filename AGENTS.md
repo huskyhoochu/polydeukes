@@ -10,9 +10,9 @@ A development *discipline* framework for building alongside an AI coding partner
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
 **This repo is beta** (since v0.7.0). Seven packages ship today: `core` (the covenant protocol — stdin-JSON
-in, exit code out — with file-change evidence, the config schema, and the algebra declaration
-schema), the three adapters `adapter-claude-code`, `adapter-grok` and `adapter-codex` (each one
-agent's session payload onto the
+in, exit code out — with file-change evidence, the config schema, the algebra declaration
+schema, and the input IR schema), the three adapters `adapter-claude-code`, `adapter-grok`
+and `adapter-codex` (each one agent's session payload onto the
 input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the
 umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
 surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`

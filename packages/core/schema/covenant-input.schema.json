@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CovenantInput",
+  "description": "The input a host sends to `pdks covenant check` on stdin. Any document this schema accepts, the command reads without refusing; `world` is absent because the command fills that axis itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["toolCalls", "subagentSpawns", "userMessages"],
+  "properties": {
+    "toolCalls": {
+      "description": "The judged tool calls, each carrying its own file-change evidence when the adapter has it.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ToolCall"
+      }
+    },
+    "subagentSpawns": {
+      "description": "The subagents the observed turn spawned.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SubagentSpawn"
+      }
+    },
+    "userMessages": {
+      "description": "The user messages the observed turn carries.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/UserMessage"
+      }
+    },
+    "actor": {
+      "$ref": "#/$defs/Actor"
+    },
+    "tools": {
+      "$ref": "#/$defs/Tools"
+    },
+    "session": {
+      "$ref": "#/$defs/Session"
+    }
+  },
+  "$defs": {
+    "ToolCall": {
+      "description": "One tool call; an absent `fileChange` means the call is unproven, and no sibling call's evidence stands in for it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "The tool name the host reports.",
+          "type": "string"
+        },
+        "args": {
+          "description": "The call's arguments as the host passed them.",
+          "type": "object"
+        },
+        "fileChange": {
+          "$ref": "#/$defs/FileChange"
+        }
+      }
+    },
+    "FileChange": {
+      "description": "One file's mutation evidence around the judged call, discriminated by `kind`. `delete.pre` is the text baseline when one exists, absent for a binary blob.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path", "post"],
+          "properties": {
+            "kind": {
+              "const": "create"
+            },
+            "path": {
+              "type": "string"
+            },
+            "post": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path", "pre", "post"],
+          "properties": {
+            "kind": {
+              "const": "modify"
+            },
+            "path": {
+              "type": "string"
+            },
+            "pre": {
+              "type": "string"
+            },
+            "post": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path"],
+          "properties": {
+            "kind": {
+              "const": "delete"
+            },
+            "path": {
+              "type": "string"
+            },
+            "pre": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "SubagentSpawn": {
+      "description": "One subagent spawn; `kind` is the subagent name the adapter fills in.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string"
+        }
+      }
+    },
+    "UserMessage": {
+      "description": "One user message's text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "Channels": {
+      "description": "Evidence channel texts by kind. `sidecar` is the spawn-record list as JSON text: `'[]'` says the channel observed no spawn, an absent key says there is no channel.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sidecar": {
+          "type": "string"
+        }
+      }
+    },
+    "Actor": {
+      "description": "Who made the observation. `agentType` is the subagent kind when the call comes from one; the empty object is the main session.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agentType": {
+          "type": "string"
+        }
+      }
+    },
+    "Tools": {
+      "description": "The host's tool roster: `mutating` names the tools whose calls change a file, `shell` the ones carrying a command line, and `commandArgs` the argument keys that command line travels in. A non-empty `shell` needs a non-empty `commandArgs`, since a shell call's command line is read from those keys.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutating", "shell", "commandArgs"],
+      "properties": {
+        "mutating": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shell": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commandArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "not": {
+        "required": ["shell", "commandArgs"],
+        "properties": {
+          "shell": {
+            "type": "array",
+            "minItems": 1
+          },
+          "commandArgs": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    "Session": {
+      "description": "The evidence a live agent session carries that the repository's disk does not. A session whose lists are empty is a host that named its evidence and could not deliver it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userMessages", "toolCalls"],
+      "properties": {
+        "evidencePath": {
+          "description": "Where the session evidence was read from.",
+          "type": "string"
+        },
+        "userMessages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionUserMessage"
+          }
+        },
+        "toolCalls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionToolCall"
+          }
+        },
+        "channels": {
+          "$ref": "#/$defs/Channels"
+        }
+      }
+    },
+    "SessionUserMessage": {
+      "description": "One session user message, with the time it was sent when the session proves it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "timestampMs": {
+          "description": "Milliseconds since the Unix epoch.",
+          "type": "number"
+        }
+      }
+    },
+    "SessionToolCall": {
+      "description": "One session tool call, with its outcome when the session proves it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "args": {
+          "type": "object"
+        },
+        "succeeded": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

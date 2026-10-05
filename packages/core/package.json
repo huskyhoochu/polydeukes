@@ -19,7 +19,8 @@
       "import": "./dist/index.js"
     },
     "./schema.json": "./schema/polydeukes.schema.json",
-    "./algebra-declaration.schema.json": "./schema/algebra-declaration.schema.json"
+    "./algebra-declaration.schema.json": "./schema/algebra-declaration.schema.json",
+    "./covenant-input.schema.json": "./schema/covenant-input.schema.json"
   },
   "files": [
     "dist",

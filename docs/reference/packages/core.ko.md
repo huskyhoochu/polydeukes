@@ -152,7 +152,7 @@ function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): Decl
 <a id="consumer-contract"></a>
 ## 사용자와의 접점
 
-일반 사용자는 다음 세 경로로 이 패키지의 기능을 사용합니다.
+일반 사용자는 다음 네 경로로 이 패키지의 기능을 사용합니다.
 
 - **설정 파일.** 그 스키마가 여기서 정의됩니다. 어휘 레퍼런스는
   [설정 레퍼런스](../configuration/index.ko.md)입니다.
@@ -160,6 +160,11 @@ function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): Decl
   직접 설치한 프로젝트가 쓰는 경로입니다. 우산을 설치한 소비자는 그쪽에 동봉된 사본을
   가리킵니다. 두 철자 모두
   [configuration.md의 IDE 절](../../how-to/configure-project.ko.md#add-ide-support)에 있습니다.
+- **입력 IR의 JSON Schema.** `@polydeukes/core/covenant-input.schema.json`입니다. 다른 언어로
+  작성한 호스트가 `pdks covenant check`의 stdin에 넣을 입력을 만들 때 씁니다. 이 스키마는 한
+  방향만 보장합니다. 스키마가 받는 문서는 이 명령이 거부하지 않고 읽습니다. 명령은 스키마보다
+  적게 검사하므로 그 반대는 성립하지 않습니다. 스키마에는 `world` 키가 없습니다. 명령이 그 축을
+  직접 채우고, `world`를 실은 입력은 거부하기 때문입니다.
 - **위의 프로토콜.** `blocked` 행을 읽는다는 것은 본체가 답한 어휘를 읽는다는 뜻입니다.
 
 그 밖의 기능은 `polydeukes`를 통해 사용합니다.
