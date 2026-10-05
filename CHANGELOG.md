@@ -11,6 +11,14 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.13.0](https://github.com/huskyhoochu/polydeukes/compare/v0.12.0...v0.13.0) (2026-10-05)
+
+
+### Features
+
+* **core:** export the input IR as a JSON Schema ([#155](https://github.com/huskyhoochu/polydeukes/issues/155)) ([8cf0839](https://github.com/huskyhoochu/polydeukes/commit/8cf08397becc5d2c5751fd2979599b80694afd25))
+* **sdk-rust:** add polydeukes-sdk, check_covenant for a Rust host ([#157](https://github.com/huskyhoochu/polydeukes/issues/157)) ([4f3dcdc](https://github.com/huskyhoochu/polydeukes/commit/4f3dcdcbd71ba8f807638f3f0f82085edb50d6d2))
+
 ## [0.12.0](https://github.com/huskyhoochu/polydeukes/compare/v0.11.1...v0.12.0) (2026-09-29)
 
 
