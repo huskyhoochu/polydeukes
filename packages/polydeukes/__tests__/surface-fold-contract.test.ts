@@ -26,6 +26,8 @@ const PACKAGE_DIRS = [
 ];
 /** Workspace members that are not published; they carry no copy of the judge. */
 const PRIVATE_PACKAGE_DIRS = ['documentation'];
+/** Directories that carry no `package.json`: the Rust SDK is a cargo crate, not a workspace member. */
+const NON_NPM_DIRS = ['sdk-rust'];
 /** The two specifiers the judgment chain never reaches: the memory package and its store. */
 const MEMORY_SPECIFIERS = ['@polydeukes/memory', 'node:sqlite'];
 /** A specifier the judgment chain does reach — the walk found edges if this is present. */
@@ -105,7 +107,9 @@ describe('the workspace holds seven packages', () => {
   // manifest depends on and every path glob still matches.
   it('packages/ lists exactly the seven package directories', () => {
     const present = readdirSync(join(repoRoot, 'packages')).sort();
-    expect(present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir))).toEqual(PACKAGE_DIRS);
+    expect(
+      present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir) && !NON_NPM_DIRS.includes(dir)),
+    ).toEqual(PACKAGE_DIRS);
   });
 });
 

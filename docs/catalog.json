@@ -324,6 +324,22 @@
       }
     },
     {
+      "id": "package-sdk-rust",
+      "category": "reference",
+      "order": 26,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/sdk-rust.md",
+        "title": "polydeukes-sdk (Rust)",
+        "summary": "Call check_covenant from Rust and handle its three verdicts."
+      },
+      "ko": {
+        "path": "reference/packages/sdk-rust.ko.md",
+        "title": "polydeukes-sdk (Rust)",
+        "summary": "Rust에서 check_covenant를 호출하고 세 가지 판정 결과를 처리합니다."
+      }
+    },
+    {
       "id": "package-memory",
       "category": "reference",
       "order": 27,

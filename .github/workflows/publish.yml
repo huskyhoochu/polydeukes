@@ -32,7 +32,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance — the attestation binds the tarballs to this run
+  id-token: write # npm provenance, and the OIDC token crates.io trusted publishing trades
 
 jobs:
   publish:
@@ -78,3 +78,57 @@ jobs:
       - run: node scripts/check-docs.mjs
 
       - run: pnpm -r publish --provenance --access public --no-git-checks
+
+  # The Rust SDK goes to crates.io from the same tag, and only after the npm upload above
+  # succeeded: a crates.io version cannot be taken back, and the crate is useless without the
+  # `polydeukes` it spawns.
+  # Auth is crates.io trusted publishing: the crate's settings page names this repo and this
+  # workflow file, and the action trades the job's OIDC token for a short-lived registry
+  # token it revokes when the job ends. A crate that does not exist yet has no settings page,
+  # so its first version is published by hand. crates.io refuses a version that is already
+  # there, so the upload is skipped when the registry has it — a re-run publishes nothing twice.
+  publish-crate:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Verify HEAD is exactly the tagged release
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          test "$TAG" = "v$(node -p 'require("./package.json").version')"
+
+      - run: pnpm install --frozen-lockfile
+
+      # The crate's end-to-end test spawns the built `pdks`.
+      - run: pnpm turbo run build
+
+      - run: cargo test --manifest-path packages/sdk-rust/Cargo.toml
+
+      - name: Skip a version the registry already has
+        id: published
+        run: |
+          set -euo pipefail
+          VERSION="$(cargo metadata --manifest-path packages/sdk-rust/Cargo.toml --no-deps --format-version 1 | node -p 'JSON.parse(require("fs").readFileSync(0)).packages[0].version')"
+          # A Cargo.toml the release left behind would otherwise read as already published.
+          test "$VERSION" = "$(node -p 'require("./package.json").version')"
+          STATUS="$(curl -s -o /dev/null -w '%{http_code}' -A 'polydeukes-publish (github.com/huskyhoochu/polydeukes)' "https://crates.io/api/v1/crates/polydeukes-sdk/$VERSION")"
+          echo "exists=$([ "$STATUS" = 200 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: rust-lang/crates-io-auth-action@v1
+        if: steps.published.outputs.exists == 'false'
+        id: auth
+
+      - run: cargo publish --manifest-path packages/sdk-rust/Cargo.toml
+        if: steps.published.outputs.exists == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

@@ -93,9 +93,11 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 <a id="status-and-cli"></a>
 ## 현재 상태와 CLI
 
-**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). 일곱 패키지가 발행되어 있습니다. `@polydeukes/core`(약속(covenant)
+**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). npm 패키지 일곱 개와 Rust crate 하나가 발행되어
+있습니다. `@polydeukes/core`(약속(covenant)
 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR이나 통합 diff를 판정기에
-넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, `pdks memory`가 쓰는 선택 설치 마크다운 색인
+넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 일을 Rust 호스트에서 하는 crate
+`polydeukes-sdk`(입력 IR만), `pdks memory`가 쓰는 선택 설치 마크다운 색인
 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella)
 패키지 `polydeukes`입니다. ledger·verify 패키지는 아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
 
@@ -160,7 +162,7 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 | `@polydeukes/memory` | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`·`lint`·`stats`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다 |
 | `@polydeukes/verify` *(계획)* | 멀티에이전트 적대적 검증 오케스트레이터 |
 
-지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터, `sdk-ts`, `memory`입니다. 나머지가 갖춰진 뒤의 도입 순서는
+지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터, `sdk-ts`, `sdk-rust`, `memory`입니다. 나머지가 갖춰진 뒤의 도입 순서는
 `covenant` → `memory` → `ledger` → `verify`로 계획하고 있습니다. `covenant`와 `memory`는 프로젝트
 규모와 무관하게 가치를 낼 것으로 보고, `ledger`·`verify`는 다중 워크트리·팀 워크플로 규모를
 대상으로 합니다.

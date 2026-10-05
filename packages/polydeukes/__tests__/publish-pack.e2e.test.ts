@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,10 +16,11 @@ const repoRoot = resolve(import.meta.dirname, '../../..');
 
 /**
  * The publishable package directories — derived from the same domain `pnpm -r publish`
- * acts on (workspace packages whose manifest is not private), so a new package enters this
- * suite the moment it exists instead of waiting on a checklist.
+ * acts on (directories carrying a `package.json` whose manifest is not private), so a new
+ * package enters this suite the moment it exists instead of waiting on a checklist.
  */
 const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
+  if (!existsSync(join(repoRoot, 'packages', dir, 'package.json'))) return false;
   const manifest = JSON.parse(
     readFileSync(join(repoRoot, 'packages', dir, 'package.json'), 'utf-8'),
   ) as { private?: boolean };

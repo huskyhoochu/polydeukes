@@ -35,3 +35,13 @@ jobs:
       - run: pnpm -r test
 
       - run: node scripts/check-docs.mjs
+
+      # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it. Its
+      # end-to-end test spawns the `pdks` built above. A minimal stable toolchain is
+      # installed when the runner has no cargo.
+      - name: Install Rust when absent
+        run: |
+          command -v cargo >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - run: cargo test --manifest-path packages/sdk-rust/Cargo.toml

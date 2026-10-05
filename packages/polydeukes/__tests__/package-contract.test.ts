@@ -351,8 +351,12 @@ interface Manifest {
   exports?: ExportsMap;
 }
 
-/** Publishable packages — same domain `pnpm -r publish` acts on (manifest not private). */
+/**
+ * Publishable packages — same domain `pnpm -r publish` acts on (directories carrying a
+ * `package.json` whose manifest is not private).
+ */
 const PACKAGES: Pkg[] = readdirSync(join(repoRoot, 'packages'))
+  .filter((dirName) => existsSync(join(repoRoot, 'packages', dirName, 'package.json')))
   .map((dirName): { dir: string; manifest: Manifest } => {
     const dir = join(repoRoot, 'packages', dirName);
     const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')) as Manifest;
