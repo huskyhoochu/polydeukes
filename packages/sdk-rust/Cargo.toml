@@ -17,5 +17,5 @@ tempfile = "3"
 # Exact: the generated text is compared byte for byte.
 typify = "=0.8.0"
 schemars = "0.8"
-prettyplease = "=0.2.37"
-syn = "2"
+prettyplease = "=0.3.0"
+syn = "3"
