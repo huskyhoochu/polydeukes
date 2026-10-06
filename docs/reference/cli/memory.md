@@ -12,7 +12,7 @@ so a verdict is the same with or without the package.
 
 ```sh
 pdks memory ingest [--rebuild]
-pdks memory search <query…> [--json]
+pdks memory search <query…> [--json] [--limit <n>]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
@@ -152,6 +152,12 @@ one matched as a word shorter than three characters or as a prefix of the sectio
 otherwise. The JSON form is
 `{ "ingestedAt": …, "results": [ … ] }`. A query with no match exits `0` with the header alone,
 or with an empty `results` list.
+
+`search` returns at most 20 results. `--limit <n>` sets another ceiling, and like `--json` it may
+appear anywhere among the query words; `n` is a positive integer written in digits with no
+leading zero, no larger than 9007199254740991. A value
+that is not, a missing value, or `--limit` given twice is a usage error with exit `2`, so a
+mistyped limit never reads as a search with no results.
 
 `search` reads the index, not the files. A document changed since the time in the header is not
 reflected until the next `ingest`.

@@ -463,6 +463,114 @@ describe('pdks memory search', () => {
   });
 });
 
+describe('pdks memory search --limit', () => {
+  /** With the stale document written, the shared query hits three sections. */
+  const LIMITED_HITS = 3;
+  const LIMIT = '1';
+  const logPath = () => join(projectRoot, LOG_REL);
+
+  function ingestedWithThreeHits(): void {
+    writeFileSync(join(projectRoot, STALE_DOC_REL), STALE_DOC_TEXT);
+    ingested();
+  }
+
+  // A command that refuses `--limit` as an unknown flag, one that reads the flag but never
+  // hands the value to `searchMemory` (three results), or one that passes `limit + 1` (two)
+  // all differ from the oracle; a value read into the query words changes the logged query.
+  it('--limit 1 --json answers the one result searchMemory returns under limit 1, wherever the flag sits', async () => {
+    ingestedWithThreeHits();
+    const db = openIndex();
+    const unlimited = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
+    expect(unlimited).toHaveLength(LIMITED_HITS);
+    const expected = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY, limit: 1 });
+    expect(expected).toHaveLength(1);
+
+    const trailing = pdks('memory', 'search', SHARED_QUERY, '--json', '--limit', LIMIT);
+    const leading = pdks('memory', 'search', '--limit', LIMIT, SHARED_QUERY, '--json');
+
+    expect(trailing.status, trailing.stderr).toBe(0);
+    expect(trailing.stderr).toBe('');
+    expect(JSON.parse(trailing.stdout).results).toEqual(expected);
+    expect(leading.status, leading.stderr).toBe(0);
+    expect(JSON.parse(leading.stdout)).toEqual(JSON.parse(trailing.stdout));
+    const logged = readFileSync(logPath(), 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => (JSON.parse(line) as { query: string }).query);
+    expect(logged).toEqual([SHARED_QUERY, SHARED_QUERY]);
+  });
+
+  // Raising the ceiling is what the flag is for: a command that clamps the value to the
+  // default, or drops a value above it, answers 20 here.
+  it('--limit above the default of 20 returns every match past the twentieth', () => {
+    const sections = Array.from({ length: 22 }, (_, i) => `## S${i + 1}\n\nmany-term.\n`);
+    writeFileSync(
+      join(projectRoot, 'notes/many.md'),
+      `---\ntitle: Many\n---\n${sections.join('\n')}`,
+    );
+    ingested();
+
+    const capped = pdks('memory', 'search', 'many-term', '--json');
+    const raised = pdks('memory', 'search', 'many-term', '--json', '--limit', '25');
+
+    expect(capped.status, capped.stderr).toBe(0);
+    expect(JSON.parse(capped.stdout).results).toHaveLength(20);
+    expect(raised.status, raised.stderr).toBe(0);
+    expect(JSON.parse(raised.stdout).results).toHaveLength(22);
+  });
+
+  // Each row is run against a prepared index so the argument list is the only reason left
+  // to refuse. `searchMemory` answers `[]` for zero, a negative, or a fraction, so a value
+  // passed through unchecked prints an empty result list and exit 0 where the user mistyped
+  // a flag; a check that accepts a leading zero, a value above the safe-integer range, the
+  // next flag as the value, or the second of two flags lets the same shapes through. No log
+  // line proves the refusal landed before the search ran. The flag row carries a valid number
+  // after it, so a parser that drops `--json` first and reads `2` as the value exits 0.
+  it.each([
+    { value: ['0'] },
+    { value: ['-1'] },
+    { value: ['1.5'] },
+    { value: ['01'] },
+    { value: ['9007199254740993'] },
+    { value: [] },
+    { value: ['--json', '2'] },
+    { value: ['2', '--limit', '3'] },
+  ])(
+    'search <query> --limit $value exits 2 with usage, an empty stdout, and no log line',
+    ({ value }) => {
+      ingestedWithThreeHits();
+
+      const result = pdks('memory', 'search', SHARED_QUERY, '--limit', ...value);
+
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toMatch(/usage/i);
+      expect(existsSync(logPath())).toBe(false);
+    },
+  );
+
+  // A flag parsed for every verb lets `show` accept a limit it has no use for and exit 0 on
+  // a shape the table never promised.
+  it('show <id> --limit 1 exits 2 with usage and an empty stdout', () => {
+    ingested();
+
+    const result = pdks('memory', 'show', DOC_ID, '--limit', LIMIT);
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/usage/i);
+  });
+
+  // The memory usage line is where a user learns the flag exists; one that still shows
+  // `search <query…> [--json]` alone sends them to the docs for an option the verb takes.
+  it('the memory usage line names --limit <n> on search', () => {
+    const result = pdks('memory');
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/pdks memory search [^|]*\[--limit <n>\]/);
+  });
+});
+
 describe('pdks memory show', () => {
   // A document rendered with the section identifier heading, sections out of stored
   // order, or a JSON shape reshaped by the command diverges from what `showMemory` returns.
@@ -1010,8 +1118,8 @@ describe('argument shapes outside the command table', () => {
     { args: ['ingest', '--json'] },
     { args: ['show'] },
     { args: ['search'] },
-    { args: ['search', 'x', '--limit', '5'] },
     { args: ['show', DOC_ID, '--rebuild'] },
+    { args: ['search', 'x', '--limit=5'] },
   ])('pdks memory $args exits 2 with usage and an empty stdout', ({ args }) => {
     ingested();
 

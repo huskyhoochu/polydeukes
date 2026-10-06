@@ -13,7 +13,7 @@
 
 ```sh
 pdks memory ingest [--rebuild]
-pdks memory search <query…> [--json]
+pdks memory search <query…> [--json] [--limit <n>]
 pdks memory show <id> [--json]
 pdks memory lint [--json]
 pdks memory obligations <key> [--json]
@@ -143,6 +143,10 @@ docs/guide#install⇥and⇥stable⇥unverified⇥Guide › Install
 절이 검색 낱말 가운데 하나라도 담지 않으면 `or`, 모든 낱말을 담고 그중 하나라도 세 글자보다 짧은
 낱말이나 절 식별자의 앞부분으로 맞았으면 `like`, 나머지는 `and`입니다. JSON 형태는 `{ "ingestedAt": …, "results": [ … ] }`입니다.
 일치하는 절이 없는 검색도 `0`으로 종료하며, 머리 줄만 출력하거나 빈 `results` 목록을 냅니다.
+
+`search`는 결과를 많아야 20개 돌려줍니다. `--limit <n>`은 다른 상한을 정하고, `--json`처럼 검색어
+사이 어디에 있어도 됩니다. `n`은 앞자리 0 없이 숫자로 쓴 양의 정수이고, 9007199254740991을 넘지 않습니다. 그렇지 않은 값, 값 없음, 두 번 쓴
+`--limit`은 exit `2`의 사용법 오류이므로, 잘못 쓴 상한이 결과 없는 검색으로 읽히지 않습니다.
 
 `search`는 파일이 아니라 색인을 읽습니다. 머리 줄의 시각 뒤에 바뀐 문서는 다음 `ingest` 전까지
 반영되지 않습니다.

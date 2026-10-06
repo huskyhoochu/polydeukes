@@ -25,7 +25,7 @@ const DB_REL = '.polydeukes/memory.db';
 const LOG_REL = '.polydeukes/memory-log.jsonl';
 
 const USAGE =
-  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory supersession <doc> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]';
+  'usage: pdks memory ingest [--rebuild] | pdks memory search <query…> [--json] [--limit <n>] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory supersession <doc> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]';
 const NO_INDEX = `no index at ${DB_REL} — run \`pdks memory ingest\` first`;
 const NO_LOG = `no memory log at ${LOG_REL} — run pdks memory search, show, or obligations first`;
 const EXAMPLE = ['', 'memory:', '  include:', "    - 'docs/**/*.md'"].join('\n');
@@ -37,7 +37,7 @@ const noConfig = (cwd: string): string =>
 
 type Command =
   | { verb: 'ingest'; rebuild: boolean }
-  | { verb: 'search'; query: string; json: boolean }
+  | { verb: 'search'; query: string; limit: number | undefined; json: boolean }
   | { verb: 'show'; id: string; json: boolean }
   | { verb: 'obligations'; key: string; json: boolean }
   | { verb: 'supersession'; id: string; json: boolean }
@@ -46,7 +46,19 @@ type Command =
   | { verb: 'usage'; json: boolean };
 
 function parseArgs(args: string[]): Command {
-  const [verb, ...rest] = args;
+  const [verb, ...given] = args;
+  let rest = given;
+  let limit: number | undefined;
+  // Taken out before `--json` is, so a `--json` in the value slot is read as the value.
+  const at = verb === 'search' ? rest.indexOf('--limit') : -1;
+  if (at !== -1) {
+    const value = rest[at + 1] ?? '';
+    if (!/^[1-9][0-9]*$/.test(value) || !Number.isSafeInteger(Number(value))) {
+      throw new Error(USAGE);
+    }
+    limit = Number(value);
+    rest = [...rest.slice(0, at), ...rest.slice(at + 2)];
+  }
   if (verb === 'ingest' && (rest.length === 0 || (rest.length === 1 && rest[0] === '--rebuild'))) {
     return { verb, rebuild: rest.length === 1 };
   }
@@ -54,7 +66,7 @@ function parseArgs(args: string[]): Command {
   const json = words.length < rest.length;
   // Any other flag is refused rather than searched for as a word.
   if (words.some((word) => word.startsWith('--'))) throw new Error(USAGE);
-  if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), json };
+  if (verb === 'search' && words.length > 0) return { verb, query: words.join(' '), limit, json };
   if (verb === 'show' && words.length === 1) return { verb, id: words[0] as string, json };
   if (verb === 'obligations' && words.length === 1) return { verb, key: words[0] as string, json };
   if (verb === 'supersession' && words.length === 1) return { verb, id: words[0] as string, json };
@@ -247,7 +259,12 @@ export async function runMemory({ cwd, args }: RunMemorySpec): Promise<RunMemory
     const config = memorySettings(cwd);
     const { db, ingestedAt } = openIndex(memory, path);
     try {
-      const results = await memory.searchMemory({ db, query: command.query, config });
+      const results = await memory.searchMemory({
+        db,
+        query: command.query,
+        config,
+        limit: command.limit,
+      });
       appendLog(
         cwd,
         'search',

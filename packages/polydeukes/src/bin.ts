@@ -185,7 +185,7 @@ const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(ar
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
+    'usage: pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> [--limit <n>] | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
   );
   process.exit(2);
 }
