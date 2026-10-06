@@ -1,7 +1,9 @@
-//! Hand one covenant input to `pdks covenant check` and read the verdict as a value.
+//! Hand one covenant input, or one change set as a unified diff, to `pdks covenant check` and
+//! read the verdict as a value.
 //!
 //! The crate locates the `polydeukes` umbrella in the judged project's install graph, spawns its
-//! bin under `node` with the input on stdin, and maps the child's exit status. It judges nothing.
+//! bin under `node` with the input or the diff on stdin, and maps the child's exit status. It
+//! judges nothing.
 
 #[rustfmt::skip]
 mod ir;
@@ -115,11 +117,63 @@ fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
     })
 }
 
+/// `check_change_set` input.
+pub struct CheckChangeSetSpec<'a> {
+    /// The project being judged — config discovery, the child's cwd, and the install graph.
+    pub repo_root: &'a Path,
+    /// A unified diff, sent verbatim.
+    pub diff: &'a str,
+    /// `None` is `Block`.
+    pub enforce: Option<Enforce>,
+    /// A config layer merged over the discovered config; the umbrella resolves it against `repo_root`.
+    pub config_layer: Option<&'a Path>,
+    /// Where the child writes its telemetry rows, ahead of the config's own log path.
+    pub telemetry_path: Option<&'a Path>,
+    /// Injected spawn seam — `None` runs `node` from `PATH` with every stream piped.
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
+}
+
 /// Judge one input against the covenants of `repo_root` and return the verdict as a value.
 pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
+    run_check(
+        spec.repo_root,
+        spec.enforce,
+        spec.config_layer,
+        spec.telemetry_path,
+        spec.spawn,
+        false,
+        || serde_json::to_string(spec.input).map_err(io::Error::other),
+    )
+}
+
+/// Judge one change set, a unified diff, against the covenants of `repo_root` and return the
+/// verdict as a value.
+pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
+    run_check(
+        spec.repo_root,
+        spec.enforce,
+        spec.config_layer,
+        spec.telemetry_path,
+        spec.spawn,
+        true,
+        || Ok(spec.diff.to_string()),
+    )
+}
+
+/// Resolve the umbrella, spawn `pdks covenant check` (with `--diff` under `diff_mode`), and map
+/// the child's status. `stdin` runs after resolution, so its error is `Unjudged`, never a panic.
+fn run_check(
+    repo_root: &Path,
+    enforce: Option<Enforce>,
+    config_layer: Option<&Path>,
+    telemetry_path: Option<&Path>,
+    spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
+    diff_mode: bool,
+    stdin: impl FnOnce() -> io::Result<String>,
+) -> CheckCovenantVerdict {
     // Absolute once, for the walk and the child's cwd alike: a relative root has no ancestors
     // above `.`, and a relative bin path would be read from the child's new cwd.
-    let repo_root = match std::path::absolute(spec.repo_root) {
+    let repo_root = match std::path::absolute(repo_root) {
         Ok(path) => path,
         Err(error) => {
             return CheckCovenantVerdict::Unjudged {
@@ -128,9 +182,14 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
         }
     };
     let Some(bin) = find_umbrella_bin(&repo_root) else {
+        let subject = if diff_mode {
+            "this change set"
+        } else {
+            "this input"
+        };
         return CheckCovenantVerdict::Unjudged {
             reason: format!(
-                "no {UMBRELLA_PACKAGE} in the install graph of {}: install it to have this input judged",
+                "no {UMBRELLA_PACKAGE} in the install graph of {}: install it to have {subject} judged",
                 repo_root.display()
             ),
         };
@@ -140,36 +199,39 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
         bin.to_string_lossy().into_owned(),
         "covenant".into(),
         "check".into(),
-        "--enforce".into(),
-        match spec.enforce.unwrap_or(Enforce::Block) {
+    ];
+    if diff_mode {
+        args.push("--diff".into());
+    }
+    args.push("--enforce".into());
+    args.push(
+        match enforce.unwrap_or(Enforce::Block) {
             Enforce::Advise => "advise",
             Enforce::Block => "block",
         }
         .into(),
-    ];
-    if let Some(layer) = spec.config_layer {
+    );
+    if let Some(layer) = config_layer {
         args.push("--config-layer".into());
         args.push(layer.to_string_lossy().into_owned());
     }
-    if let Some(path) = spec.telemetry_path {
+    if let Some(path) = telemetry_path {
         args.push("--telemetry-path".into());
         args.push(path.to_string_lossy().into_owned());
     }
 
-    let outcome = serde_json::to_string(spec.input)
-        .map_err(io::Error::other)
-        .and_then(|stdin| {
-            let spawn_spec = SpawnSpec {
-                command: "node".into(),
-                args,
-                cwd: repo_root,
-                stdin,
-            };
-            match spec.spawn {
-                Some(spawn) => spawn(spawn_spec),
-                None => default_spawn(spawn_spec),
-            }
-        });
+    let outcome = stdin().and_then(|stdin| {
+        let spawn_spec = SpawnSpec {
+            command: "node".into(),
+            args,
+            cwd: repo_root,
+            stdin,
+        };
+        match spawn {
+            Some(spawn) => spawn(spawn_spec),
+            None => default_spawn(spawn_spec),
+        }
+    });
 
     match outcome {
         Ok(SpawnOutcome {

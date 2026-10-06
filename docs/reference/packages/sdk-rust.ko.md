@@ -2,8 +2,8 @@
 
 [English](sdk-rust.md) · **한국어**
 
-> **Rust에서 판정기를 호출합니다.** 약속(covenant) 입력을 `check_covenant`에 넘기면
-> `pdks covenant check`의 판정 결과를 값으로 받습니다.
+> **Rust에서 판정기를 호출합니다.** 약속(covenant) 입력을 `check_covenant`에, unified diff를
+> `check_change_set`에 넘기면 `pdks covenant check`의 판정 결과를 값으로 받습니다.
 >
 > 베타입니다. crates.io에 `polydeukes-sdk`로 출판되어 있습니다. 판정받는 프로젝트는 npm에서
 > `polydeukes`를 설치해야 하고, `PATH`에 `node`가 있어야 합니다.
@@ -18,6 +18,7 @@ stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉�
 | 단위 | 하는 일 |
 |---|---|
 | `check_covenant` | 판정받는 프로젝트에서 `pdks covenant check`를 실행하고 판정 결과를 돌려줍니다 |
+| `check_change_set` | 끝난 변경 집합에 대해 같은 일을 합니다. diff를 stdin에 넣고 `pdks covenant check --diff`를 실행합니다 |
 | `CovenantInput`과 그 구성 타입 | `@polydeukes/core/covenant-input.schema.json`에서 생성한 입력 타입입니다 |
 | 우산 탐색 | Node와 같이 `repo_root`에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다 |
 | 판정 결과 변환 | exit `0`은 `Upheld`, exit `2`는 `Blocked`, 나머지는 모두 `Unjudged`입니다 |
@@ -118,7 +119,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
 | `input` | 호출자의 입력이고, 직렬화되어 자식의 stdin으로 갑니다 |
 | `enforce` | 실행 전체에 적용되는 관측자의 기본 자세입니다. **`None`은 `Block`입니다** |
 | `config_layer` | 프로젝트 설정과 함께 판정되는 [설정 층](../configuration/index.ko.md#config-layer)이고, `--config-layer`로 전달됩니다. 상대 경로는 `repo_root` 기준입니다 |
-| `telemetry_path` | 이번 실행의 행을 덧붙일 파일이고, `--telemetry-path`로 전달됩니다 |
+| `telemetry_path` | 이번 실행의 행을 덧붙일 파일이고, `--telemetry-path`로 전달됩니다. 상대 경로는 자식의 cwd인 `repo_root` 기준입니다 |
 | `spawn` | 주입하는 스폰 이음매입니다. `None`이면 `PATH`의 `node`를 실행합니다. 시그널로 끝난 자식의 `SpawnOutcome::status`는 `None`입니다 |
 
 **`enforce`의 기본값은 `Block`입니다.** `@polydeukes/sdk-ts`와 같습니다. 보호 경로와
@@ -126,6 +127,53 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
 
 기본 스폰은 표준 스트림 셋을 모두 파이프로 연결하고 아무것도 물려주지 않습니다. stderr는 모아서
 돌려주고, stdout은 읽어서 버립니다. 판정기는 stdout에 판정 결과를 쓰지 않습니다.
+
+<a id="change-set"></a>
+## `check_change_set`
+
+`check_change_set`은 호출 하나가 아니라 끝난 변경 집합을 판정합니다. `repo_root`에서
+`pdks covenant check --diff --enforce <level>`을 실행하면서 unified diff를 stdin에 넣고,
+`check_covenant`와 같은 우산 탐색 · 스폰 · status 매핑을 거쳐 같은 세 가지 판정 결과를 돌려줍니다.
+
+```rust
+use polydeukes_sdk::{check_change_set, CheckChangeSetSpec};
+
+let verdict = check_change_set(CheckChangeSetSpec {
+    repo_root: Path::new("/path/to/the/project"),
+    diff: &git_diff_output, // a/ b/ 형식을 지키는 `git diff`는 아래 참고
+    enforce: None,
+    config_layer: None,
+    telemetry_path: None,
+    spawn: None,
+});
+```
+
+```rust
+pub struct CheckChangeSetSpec<'a> {
+    pub repo_root: &'a Path,
+    pub diff: &'a str,
+    pub enforce: Option<Enforce>,
+    pub config_layer: Option<&'a Path>,
+    pub telemetry_path: Option<&'a Path>,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+```
+
+`diff`는 그대로 자식의 stdin으로 갑니다. 경로는 `repo_root`가 최상위인 저장소에서 `git diff`가
+출력하는 것처럼 `a/`·`b/` 뒤에 `repo_root` 기준으로 적힙니다. 이 crate는 `git`을 실행하지 않고 텍스트도
+검사하지 않습니다. 사용자의 git 설정은 이 형식을 바꿀 수 있습니다. `diff.mnemonicPrefix`는 `c/`와
+`w/`를 쓰고, `color.diff = always`는 이스케이프 코드를 더하고, `diff.external`은 출력을 통째로
+바꿉니다. 변환이 접두를 벗기지 못한 경로는 어느 보호 항목에도 라우팅되지 않습니다. 명령줄에서 형식을
+고정하세요.
+
+```sh
+git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
+```
+
+`git diff`는 `git add -N`으로 표시하기 전까지 추적되지 않은 파일을 빠뜨립니다.
+
+나머지 필드의 의미는 `check_covenant`와 같고, `enforce`의 기본값도 `Block`입니다.
+`--diff`의 기본값이 `advise`인 CLI와는 다릅니다.
 
 <a id="verdicts"></a>
 ## 세 가지 판정 결과
@@ -144,13 +192,16 @@ pub enum CheckCovenantVerdict {
 | `Blocked` | `2` | 판정을 받았고 무언가가 막았습니다. `reason`은 자식의 stderr 원문입니다 |
 | `Unjudged` | 그 밖의 값, 시그널, 스폰 실패, 우산 없음 | 판정이 일어나지 않았습니다. `reason`이 그 이유를 말합니다. 이것을 통과로 읽으면 설치되지 않은 판정기가 모든 호출을 통과시키게 됩니다 |
 
-`check_covenant`는 `Result`가 아니라 판정 결과를 돌려줍니다. 모든 실패는 `Unjudged`로 돌아옵니다.
+두 동사 모두 `Result`가 아니라 판정 결과를 돌려줍니다. 모든 실패는 `Unjudged`로 돌아옵니다.
+
+`reason`과 `advisories`는 사람이 읽는 텍스트입니다. 한 실행이 판정한 경로와 규율을 값으로 읽으려면
+`telemetry_path`를 주고, 그 행을 [`pdks covenant check`](../cli/covenant-check.ko.md#reading-rows)의
+설명대로 읽습니다. 변경 집합은 실행마다 새 파일을, 세션 입력은 세션 전체에 파일 하나를 씁니다. 판정
+결과는 여전히 exit status가 정합니다.
 
 <a id="limits"></a>
 ## 선언된 한계
 
-- **세션 표면만 다룹니다.** 변경 집합(`pdks covenant check --diff`)은
-  [`@polydeukes/sdk-ts`](sdk-ts.ko.md#change-set)나 CLI로 판정합니다.
 - **API는 블로킹입니다.** 비동기 호스트는 이 호출을 블로킹 작업으로 감쌉니다.
 - **`node`는 `PATH`에서 찾습니다.** `node`가 없는 호스트는 스폰 오류를 담은 `Unjudged`를 받습니다.
 - **이 crate는 우산의 버전을 확인하지 않습니다.** 설치된 우산이 파싱하지 못하는 입력은

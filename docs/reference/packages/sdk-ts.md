@@ -130,6 +130,11 @@ to send them: to the model, an issue, or a log. The SDK accepts no separate witn
 See [write disciplines](../../how-to/write-disciplines.md#posture) for handling these results
 in an unattended loop.
 
+Both texts are for a person. To read which paths and disciplines a run judged as values, pass
+`telemetryPath` and read its rows as
+[`pdks covenant check`](../cli/covenant-check.md#reading-rows) describes: a new file per change
+set, one file for the whole session for session inputs.
+
 <a id="change-set"></a>
 ## `checkChangeSet`
 

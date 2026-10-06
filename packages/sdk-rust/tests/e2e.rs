@@ -1,16 +1,17 @@
-//! `check_covenant` against the BUILT `pdks`: a throwaway tree scaffolded by `pdks init`,
-//! wired to the checkout's install graph by symlink, with one protected path of its own. Only
-//! a real spawn proves that the crate finds the umbrella from the consumer's repo_root, that
-//! the child reads the consumer's config, and that the row the child writes is the judge's
-//! own. `check_covenant.rs` pins the same contract through the injected seam.
+//! `check_covenant` and `check_change_set` against the BUILT `pdks`: a throwaway tree
+//! scaffolded by `pdks init`, wired to the checkout's install graph by symlink, with one
+//! protected path of its own. Only a real spawn proves that the crate finds the umbrella from
+//! the consumer's repo_root, that the child reads the consumer's config, and that the row the
+//! child writes is the judge's own. `check_covenant.rs` and `check_change_set.rs` pin the same
+//! contract through the injected seam.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use polydeukes_sdk::{
-    CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, FileChange, ToolCall, Tools,
-    check_covenant,
+    CheckChangeSetSpec, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, FileChange,
+    ToolCall, Tools, check_change_set, check_covenant,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -27,6 +28,14 @@ const TELEMETRY_REL: &str = "roi.log";
 /// The meta-covenant that judges a write under a protected path.
 const SELF_MOD_LABEL: &str = "self-mod";
 const BLOCKED_EVENT: &str = "blocked";
+/// The consumer's config file, which `pdks init` writes and the judge protects on its own;
+/// the change-set cases hand its row file by `telemetry_path` instead of the config's.
+const CONFIG_FILE: &str = "polydeukes.config.yaml";
+const CHANGE_SET_TELEMETRY_REL: &str = "change-set.log";
+/// A unified diff adding an entry to the config, paths in `a/`/`b/` form from repo_root.
+const CONFIG_DIFF: &str = "diff --git a/polydeukes.config.yaml b/polydeukes.config.yaml\n--- a/polydeukes.config.yaml\n+++ b/polydeukes.config.yaml\n@@ -5,2 +5,3 @@\n protectedPaths:\n   - 'pipeline/gates'\n+  - 'src/secrets'\n";
+/// A unified diff creating the ordinary target.
+const ORDINARY_DIFF: &str = "diff --git a/src/answer.ts b/src/answer.ts\nnew file mode 100644\n--- /dev/null\n+++ b/src/answer.ts\n@@ -0,0 +1 @@\n+export const answer = 42;\n";
 
 fn checkout_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -127,7 +136,11 @@ fn judge(root: &Path, input: &CovenantInput) -> CheckCovenantVerdict {
 /// Every telemetry row under the fixture as (event, label, subject); rows are tab-separated
 /// `timestamp event label subject`.
 fn rows(root: &Path) -> Vec<(String, String, String)> {
-    let Ok(text) = fs::read_to_string(root.join(TELEMETRY_REL)) else {
+    rows_in(&root.join(TELEMETRY_REL))
+}
+
+fn rows_in(file: &Path) -> Vec<(String, String, String)> {
+    let Ok(text) = fs::read_to_string(file) else {
         return vec![];
     };
     text.lines()
@@ -192,4 +205,69 @@ fn a_write_outside_every_protected_path_is_upheld_and_leaves_no_blocked_row() {
         "expected upheld"
     );
     assert_eq!(blocked_rows(&root), vec![]);
+}
+
+fn judge_change_set(root: &Path, diff: &str) -> CheckCovenantVerdict {
+    check_change_set(CheckChangeSetSpec {
+        repo_root: root,
+        diff,
+        enforce: None,
+        config_layer: None,
+        telemetry_path: Some(&root.join(CHANGE_SET_TELEMETRY_REL)),
+        spawn: None,
+    })
+}
+
+#[test]
+fn a_diff_touching_the_config_is_blocked_and_the_telemetry_path_file_holds_one_self_mod_row() {
+    // Three things only a real child proves at once: `--diff` reached the argv (without it
+    // the diff text is refused as an input IR, exit 2 with no self-mod row), the row landed in
+    // the file this call named rather than the config's own log, and its subject is the
+    // protected entry the change reached (a file entry here, so it equals the path) — the
+    // value a host compares against a session's `witnessed` row.
+    let (_dir, root) = project_root();
+    scaffold_consumer(&root);
+
+    let verdict = judge_change_set(&root, CONFIG_DIFF);
+
+    let CheckCovenantVerdict::Blocked { reason } = verdict else {
+        panic!("expected blocked");
+    };
+    assert!(
+        reason.contains(CONFIG_FILE),
+        "reason names the protected file: {reason}"
+    );
+    let expected = (
+        BLOCKED_EVENT.to_string(),
+        SELF_MOD_LABEL.to_string(),
+        CONFIG_FILE.to_string(),
+    );
+    let in_named_file: Vec<_> = rows_in(&root.join(CHANGE_SET_TELEMETRY_REL))
+        .into_iter()
+        .filter(|(event, _, _)| event == BLOCKED_EVENT)
+        .collect();
+    assert_eq!(in_named_file, vec![expected]);
+    assert_eq!(blocked_rows(&root), vec![]);
+}
+
+#[test]
+fn a_diff_outside_every_protected_path_is_upheld_and_leaves_no_blocked_row() {
+    // The over-blocking end: a child anchored on the test process's cwd would read THIS
+    // checkout's config and its disciplines over `src/`; the consumer's config has none.
+    let (_dir, root) = project_root();
+    scaffold_consumer(&root);
+
+    let verdict = judge_change_set(&root, ORDINARY_DIFF);
+
+    assert!(
+        matches!(verdict, CheckCovenantVerdict::Upheld { .. }),
+        "expected upheld"
+    );
+    assert_eq!(
+        rows_in(&root.join(CHANGE_SET_TELEMETRY_REL))
+            .into_iter()
+            .filter(|(event, _, _)| event == BLOCKED_EVENT)
+            .count(),
+        0
+    );
 }

@@ -4,7 +4,7 @@ version = "0.13.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Polydeukes SDK for Rust — hands a covenant input to `pdks covenant check` and returns the verdict as a value."
+description = "Polydeukes SDK for Rust — hands a covenant input or a change set to `pdks covenant check` and returns the verdict as a value."
 repository = "https://github.com/huskyhoochu/polydeukes"
 readme = "README.md"
 

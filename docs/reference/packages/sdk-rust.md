@@ -2,8 +2,8 @@
 
 **English** · [한국어](sdk-rust.ko.md)
 
-> **Call the judge from Rust.** Pass a covenant input to `check_covenant` and receive the
-> verdict from `pdks covenant check` as a value.
+> **Call the judge from Rust.** Pass a covenant input to `check_covenant`, or a unified diff to
+> `check_change_set`, and receive the verdict from `pdks covenant check` as a value.
 >
 > Beta. Published on crates.io as `polydeukes-sdk`. The judged project installs `polydeukes`
 > from npm, and `node` must be on `PATH`.
@@ -18,6 +18,7 @@ performs the judgment, so a discipline judged from Rust and from Node gets the s
 | Unit | What it does |
 |---|---|
 | `check_covenant` | Spawns `pdks covenant check` in the judged project and returns the verdict |
+| `check_change_set` | The same for a finished change set: spawns `pdks covenant check --diff` with the diff on stdin |
 | `CovenantInput` and its parts | The input types, generated from `@polydeukes/core/covenant-input.schema.json` |
 | Umbrella resolution | Walks up from `repo_root` to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks` |
 | Verdict translation | Exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
@@ -118,7 +119,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
 | `input` | The caller's input, serialized as the child's stdin |
 | `enforce` | The observer's posture for the whole run. **`None` is `Block`** |
 | `config_layer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repo_root` |
-| `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path` |
+| `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path`. A relative path resolves against `repo_root`, the child's cwd |
 | `spawn` | An injected spawn seam. `None` runs `node` from `PATH`. `SpawnOutcome::status` is `None` when a signal ended the child |
 
 **`enforce` defaults to `Block`,** as it does in `@polydeukes/sdk-ts`: protected paths and
@@ -127,6 +128,54 @@ exit 0.
 
 The default spawn pipes all three standard streams and inherits none. stderr is collected and
 returned; stdout is read and dropped, because the judge writes no verdict there.
+
+<a id="change-set"></a>
+## `check_change_set`
+
+`check_change_set` judges a finished change set rather than one call. It spawns
+`pdks covenant check --diff --enforce <level>` in `repo_root` with the unified diff on stdin and
+returns the same three verdicts as `check_covenant`, through the same resolution, spawn, and
+status mapping.
+
+```rust
+use polydeukes_sdk::{check_change_set, CheckChangeSetSpec};
+
+let verdict = check_change_set(CheckChangeSetSpec {
+    repo_root: Path::new("/path/to/the/project"),
+    diff: &git_diff_output, // see below for a `git diff` that keeps the a/ b/ form
+    enforce: None,
+    config_layer: None,
+    telemetry_path: None,
+    spawn: None,
+});
+```
+
+```rust
+pub struct CheckChangeSetSpec<'a> {
+    pub repo_root: &'a Path,
+    pub diff: &'a str,
+    pub enforce: Option<Enforce>,
+    pub config_layer: Option<&'a Path>,
+    pub telemetry_path: Option<&'a Path>,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+```
+
+`diff` is sent verbatim as the child's stdin. Its paths are relative to `repo_root` behind `a/`
+and `b/`, as `git diff` prints them from a repository whose top is `repo_root`; the crate neither
+runs `git` nor checks the text. A user's git config can change that form — `diff.mnemonicPrefix`
+writes `c/` and `w/`, `color.diff = always` adds escape codes, `diff.external` replaces the
+output — and a path the translation cannot strip routes to no protected entry. Pin the form on
+the command line:
+
+```sh
+git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
+```
+
+`git diff` leaves out untracked files until `git add -N` marks them.
+
+The other fields mean what they mean for `check_covenant`, and
+`enforce` again defaults to `Block` — unlike the CLI, whose `--diff` default is `advise`.
 
 <a id="verdicts"></a>
 ## The three verdicts
@@ -145,13 +194,17 @@ pub enum CheckCovenantVerdict {
 | `Blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim |
 | `Unjudged` | anything else, a signal, a failed spawn, or no umbrella | No judgment happened. `reason` says which. Reading it as an uphold would let an uninstalled judge pass every call |
 
-`check_covenant` returns a verdict, never a `Result`: every failure comes back as `Unjudged`.
+Both verbs return a verdict, never a `Result`: every failure comes back as `Unjudged`.
+
+`reason` and `advisories` are text for a person. To read which paths and disciplines a run
+judged as values, pass `telemetry_path` and read its rows as
+[`pdks covenant check`](../cli/covenant-check.md#reading-rows) describes: a new file per change
+set, one file for the whole session for session inputs. The verdict still comes from the exit
+status.
 
 <a id="limits"></a>
 ## Declared limits
 
-- **The session surface only.** A change set (`pdks covenant check --diff`) is judged from
-  [`@polydeukes/sdk-ts`](sdk-ts.md#change-set) or the CLI.
 - **The API is blocking.** An async host wraps the call in a blocking task.
 - **`node` comes from `PATH`.** A host without it gets `Unjudged` with the spawn error.
 - **The crate does not check the umbrella's version.** An input the installed umbrella cannot

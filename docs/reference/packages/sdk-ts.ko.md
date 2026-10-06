@@ -128,6 +128,10 @@ SDK는 `blocked.reason`과 `upheld.advisories`를 데이터로 반환합니다. 
 무인 루프에서 결과를 처리하는 방법은
 [규율 작성하기](../../how-to/write-disciplines.ko.md#posture)를 참고하세요.
 
+두 텍스트는 사람이 읽는 것입니다. 한 실행이 판정한 경로와 규율을 값으로 읽으려면 `telemetryPath`를
+주고, 그 행을 [`pdks covenant check`](../cli/covenant-check.ko.md#reading-rows)의 설명대로 읽습니다.
+변경 집합은 실행마다 새 파일을, 세션 입력은 세션 전체에 파일 하나를 씁니다.
+
 <a id="change-set"></a>
 ## `checkChangeSet`
 

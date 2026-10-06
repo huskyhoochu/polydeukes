@@ -98,7 +98,7 @@ Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
 `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
 `@polydeukes/sdk-ts` (the TypeScript client that hands an input IR or a unified diff to the judge
-from a program), the crate `polydeukes-sdk` (the same client for a Rust host, input IR only),
+from a program), the crate `polydeukes-sdk` (the same client for a Rust host),
 `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and the `polydeukes`
 umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The
 ledger and verify packages are still blueprint. The CLI today:

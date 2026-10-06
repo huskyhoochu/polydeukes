@@ -2,9 +2,10 @@
 
 **English** · [한국어](./README.ko.md)
 
-This crate hands a covenant input to the Polydeukes judge from Rust. It locates the
-`polydeukes` install of the project being judged, spawns `pdks covenant check` under `node`
-with the input on stdin, and returns the verdict as a value. No judgment logic lives here, and
+This crate hands a covenant input, or a finished change set as a unified diff, to the
+Polydeukes judge from Rust. It locates the `polydeukes` install of the project being judged,
+spawns `pdks covenant check` under `node` with the input or the diff on stdin, and returns the
+verdict as a value. No judgment logic lives here, and
 no telemetry row is written here — the child process writes it.
 
 ```sh
@@ -19,8 +20,8 @@ must be on `PATH`.
 
 Public items include:
 
-- `check_covenant`
-- `CheckCovenantSpec`
+- `check_covenant` and `check_change_set`
+- `CheckCovenantSpec` and `CheckChangeSetSpec`
 - `CheckCovenantVerdict`
 - `Enforce`
 - `SpawnSpec` and `SpawnOutcome`
@@ -62,6 +63,10 @@ The call blocks until the judge exits; an async host runs it with
 `tokio::task::spawn_blocking`. `enforce` defaults to `Block`. The three verdicts are `Upheld`,
 `Blocked`, and `Unjudged`; `Unjudged` covers a project with no `polydeukes` installed, a failed
 spawn, and any child status that is not a verdict.
+
+`check_change_set` takes `diff` in place of `input` and spawns `pdks covenant check --diff`; its
+paths are relative to `repo_root` behind `a/` and `b/`, as `git diff` prints them. It returns the
+same three verdicts.
 
 <a id="see-also"></a>
 ## See also

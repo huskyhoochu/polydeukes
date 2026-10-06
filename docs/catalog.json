@@ -123,12 +123,12 @@
       "en": {
         "path": "reference/cli/covenant-check.md",
         "title": "pdks covenant check",
-        "summary": "Judge a unified diff or an input IR from stdin, and read the exit codes."
+        "summary": "Judge a unified diff or an input IR from stdin, and read the exit codes and the rows of one run."
       },
       "ko": {
         "path": "reference/cli/covenant-check.ko.md",
         "title": "pdks covenant check",
-        "summary": "stdin의 unified diff나 입력 IR을 판정하고 종료 코드를 읽는 방법을 설명합니다."
+        "summary": "stdin의 unified diff나 입력 IR을 판정하고, 종료 코드와 한 실행의 행을 읽는 방법을 설명합니다."
       }
     },
     {
@@ -331,12 +331,12 @@
       "en": {
         "path": "reference/packages/sdk-rust.md",
         "title": "polydeukes-sdk (Rust)",
-        "summary": "Call check_covenant from Rust and handle its three verdicts."
+        "summary": "Call check_covenant or check_change_set from Rust and handle the three verdicts."
       },
       "ko": {
         "path": "reference/packages/sdk-rust.ko.md",
         "title": "polydeukes-sdk (Rust)",
-        "summary": "Rust에서 check_covenant를 호출하고 세 가지 판정 결과를 처리합니다."
+        "summary": "Rust에서 check_covenant나 check_change_set을 호출하고 세 가지 판정 결과를 처리합니다."
       }
     },
     {

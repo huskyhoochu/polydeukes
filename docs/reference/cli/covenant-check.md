@@ -113,6 +113,48 @@ answers success or failure; whether a commit proceeds is decided by the hook tha
 row records the verdict, not the commit's fate — a `blocked` row can sit beside a commit that
 landed because the wiring ignored the exit code.
 
+<a id="reading-rows"></a>
+## Reading the rows of one run
+
+Each judgment appends one line to the telemetry log. A line has four or five fields separated by
+tabs:
+
+| Field | Value |
+|---|---|
+| 1 | ISO 8601 timestamp |
+| 2 | One of the six verdict words: `passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed` |
+| 3 | Label: a meta-covenant (`self-mod`, `shell-mod`, `transcript-mod`), a discipline id, `covenant-check` for the command itself, `baseline` for an `unattributed` row, or `shell-unjudgeable` for a shell call no discipline could read |
+| 4 | Subject: for a meta-covenant, the protected entry the call reached (the first one in config order), not the file under it — and when the call could not be read, the first protected entry of the config or `-`, because an unread call routes fail-closed; for a discipline or `covenant-check`, the judged path; `-` for none |
+| 5 | Optional. On `skipped`, the skip reason (`no-observation` · `config-fault` · `supply-pass`); on any other word, the witness list as a JSON array |
+
+For a change set, pass `--telemetry-path` with a new file on each call, and that file holds the
+rows of that run alone. A session input is different: its baseline comparison reads the rows the
+earlier calls of the session left in the same file, so a host keeps one file for the whole
+session rather than one per call. A caller that needs the reasons as values reads them there:
+
+- **The exit code decides the verdict; the rows explain it.** Telemetry writes are fail-open, so
+  a row can be missing. Exit `2` with no `blocked` row is still a block, and no row turns exit
+  `0` into one.
+- **Protected entries** are the subjects of rows labelled `self-mod` or `shell-mod` — `blocked`
+  under `--enforce block`, `advised` under the default posture. A directory entry names the
+  directory, whichever file under it the change touched.
+- **Discipline breaks** are `blocked` or `advised` rows labelled with the discipline id. The
+  fifth field, when present, lists what the judgment found.
+- **`witnessed`** is a blocked verdict a human opened through the witness valve.
+
+**A witnessed session judged again as a change set.** This surface has no witness valve. A
+protected edit a human opened on the session surface leaves `witnessed⇥self-mod⇥<entry>` in that
+session's telemetry, and the same edit in a diff judged with `--enforce block` leaves
+`blocked⇥self-mod⇥<entry>`. Both surfaces name the same protected entry from the config, even
+when the session input named the file by its absolute path, so a caller compares the two sets of
+rows by entry. The diff itself needs no editing. What the comparison can say is bounded:
+
+- Read the `witnessed` rows from a file that holds that session alone. A row carries no session
+  identity, so a shared log such as `.polydeukes/roi.log` mixes in other sessions and other days.
+- A match says the session opened an edit under that entry, not that the diff holds only that
+  edit. Under a directory entry, edits to different files carry the same subject; under any
+  entry, an edit the session never observed lands in the same diff row as the one it opened.
+
 <a id="covenant-check-examples"></a>
 ## Examples
 

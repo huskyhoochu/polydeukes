@@ -2,9 +2,9 @@
 
 [English](./README.md) · **한국어**
 
-이 crate는 Rust에서 약속(covenant) 입력을 Polydeukes 판정기에 넘깁니다. 판정받는 프로젝트에
-설치된 `polydeukes`를 찾고, `node`로 `pdks covenant check`를 실행하면서 입력을 stdin에 넣고,
-판정 결과를 값으로 돌려줍니다. 판정 로직은 여기에 없고, 텔레메트리 행도 여기서 쓰지 않습니다.
+이 crate는 Rust에서 약속(covenant) 입력이나, unified diff로 된 끝난 변경 집합을 Polydeukes
+판정기에 넘깁니다. 판정받는 프로젝트에 설치된 `polydeukes`를 찾고, `node`로 `pdks covenant check`를
+실행하면서 입력이나 diff를 stdin에 넣고, 판정 결과를 값으로 돌려줍니다. 판정 로직은 여기에 없고, 텔레메트리 행도 여기서 쓰지 않습니다.
 행은 자식 프로세스가 씁니다.
 
 ```sh
@@ -19,8 +19,8 @@ cargo add polydeukes-sdk
 
 공개 항목은 다음과 같습니다.
 
-- `check_covenant`
-- `CheckCovenantSpec`
+- `check_covenant`와 `check_change_set`
+- `CheckCovenantSpec`과 `CheckChangeSetSpec`
 - `CheckCovenantVerdict`
 - `Enforce`
 - `SpawnSpec`과 `SpawnOutcome`
@@ -62,6 +62,10 @@ if let CheckCovenantVerdict::Blocked { reason } = verdict {
 실행합니다. `enforce`의 기본값은 `Block`입니다. 판정 결과는 `Upheld`, `Blocked`, `Unjudged`
 셋입니다. `Unjudged`는 `polydeukes`가 설치되지 않은 프로젝트, 스폰 실패, 판정 결과가 아닌 자식
 status를 모두 포함합니다.
+
+`check_change_set`은 `input` 대신 `diff`를 받고 `pdks covenant check --diff`를 실행합니다. diff의
+경로는 `git diff`가 출력하는 것처럼 `a/`·`b/` 뒤에 `repo_root` 기준으로 적힙니다. 돌려주는 판정
+결과는 같은 셋입니다.
 
 <a id="see-also"></a>
 ## 함께 보기
