@@ -11,6 +11,14 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.14.0](https://github.com/huskyhoochu/polydeukes/compare/v0.13.0...v0.14.0) (2026-10-06)
+
+
+### Features
+
+* **polydeukes:** add --limit to pdks memory search ([#160](https://github.com/huskyhoochu/polydeukes/issues/160)) ([e1936cb](https://github.com/huskyhoochu/polydeukes/commit/e1936cb5b335f4fed03fbd2be83da7aa71847dc5))
+* **sdk-rust:** add check_change_set and document reading one run's rows ([#158](https://github.com/huskyhoochu/polydeukes/issues/158)) ([2142b8d](https://github.com/huskyhoochu/polydeukes/commit/2142b8d8e95b719b83d82491bfc65d4b71515674))
+
 ## [0.13.0](https://github.com/huskyhoochu/polydeukes/compare/v0.12.0...v0.13.0) (2026-10-05)
 
 
