@@ -11,6 +11,18 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.16.0](https://github.com/huskyhoochu/polydeukes/compare/v0.15.0...v0.16.0) (2026-10-10)
+
+
+### Features
+
+* **polydeukes:** add allMatches, an extract step keying every regex match ([#219](https://github.com/huskyhoochu/polydeukes/issues/219)) ([4919312](https://github.com/huskyhoochu/polydeukes/commit/4919312a29e53edc1959de8960371a0b866bed39))
+
+
+### Bug Fixes
+
+* **polydeukes:** name the witness valve's state when it refuses a block ([#221](https://github.com/huskyhoochu/polydeukes/issues/221)) ([15016e3](https://github.com/huskyhoochu/polydeukes/commit/15016e3bd0997e66ee7ec39548f1c8b94b1fdd44))
+
 ## [0.15.0](https://github.com/huskyhoochu/polydeukes/compare/v0.14.0...v0.15.0) (2026-10-10)
 
 
