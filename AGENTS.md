@@ -95,8 +95,27 @@ keeps the roadmap a plan rather than a defect list.
 
 Work that starts from an outside issue report takes its ID from the GitHub number instead
 (`ISSUE-59`, split as `ISSUE-62a`), whether or not it closes a finished ticket's gap — the
-report number is the stronger identifier, and the archived-PRD footnote still applies. The
-sub-roadmap in `_docs/roadmap.issues.md` owns those tickets and the rules around them.
+report number is the stronger identifier, and the archived-PRD footnote still applies.
+
+**Tickets live in Forgejo issues, not in a document.** Every planned ticket, candidate,
+open-on-condition item, and observed friction is one issue on `b95labs/polydeukes`, titled with
+its ID, labelled by kind, and placed on one of three kanban projects (roadmap, issue reports,
+docs). A milestone's goal and Exit Criteria are its Forgejo milestone description, and the
+milestone is named for its goal, not a version number. No wiki page duplicates them.
+
+An outside report is first reproduced in a scratch repository with the released `pdks` bin,
+and its verdict (accurate · partial · not reproduced · misreproduced) is posted as a comment.
+It is then dispositioned one way: a doc chore (committed to `main`, report closed at once), an
+`ISSUE-<n>` ticket — without waiting when leaving it costs a locked session, a discipline
+silently off while rows read `passed`, or a declaration that can only answer one way — or a
+`friction` issue carrying its re-evaluation trigger. Commits and PR bodies cite the report as
+`huskyhoochu/polydeukes#<n>`; a bare `#<n>` resolves to a Forgejo number. A report is closed by
+hand, with the version that shipped it.
+
+**A milestone closes through a fixed gate**, once its Exit Criteria hold: ① a full audit runs
+every criterion's command; ② a dogfooding journal round is added with numbers; ③ the
+release-please PR merges; ④ `_docs/roadmap.history.md` gains the gate entry and inherits the
+milestone's Exit Criteria verbatim.
 
 ## Self-dogfooding (ON since 2026-07-14)
 

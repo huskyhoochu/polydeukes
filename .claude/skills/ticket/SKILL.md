@@ -22,11 +22,13 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 ### 1. PRE — roadmap check + PRD (blocks everything)
 
-- Confirm the ticket exists in `_docs/roadmap.md` — or, for an `ISSUE-<n>` ticket (optionally
-  suffixed when one report splits into several, `ISSUE-62a`), in the tracking table of
-  `_docs/roadmap.issues.md` — is unchecked, and **all its dependencies are checked ✅**. A
-  ticket with unmet dependencies does not start — say so and stop.
-- Re-read the ticket's row (검증기준 = acceptance criteria) and its `why` bullet.
+- Confirm the ticket is an **open Forgejo issue** on `b95labs/polydeukes` whose title starts with
+  the ID (`LEDGER-01 · …`; an `ISSUE-<n>` ticket, optionally suffixed when one report splits into
+  several, `ISSUE-62a`, sits on the 「이슈 로드맵」 project), and that **every ticket its body names
+  as a dependency is a closed issue**. A ticket with unmet dependencies does not start — say so
+  and stop. The issue is the ticket's only record; no wiki document lists tickets.
+- Re-read the issue body (검증기준 = acceptance criteria) and its `why`, and the milestone
+  description when the issue has one (its goal and Exit Criteria).
 - **If the ticket creates a package, read the new-package scaffold checklist in
   `.claude/rules/workspace-structure.md` NOW and put each of its registrations into the PRD
   as an acceptance criterion.** The rule auto-loads for the files it names, but the files a
@@ -53,7 +55,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - **The lookups above do not depend on each other — issue them in one response** after the
   ingest. The area search and the carry-over sweep read different parts of the archive; running
   them one per turn spends a round trip on each.
-- **The PRD preserves no legacy.** The roadmap row and every carry-over hit above are
+- **The PRD preserves no legacy.** The issue body and every carry-over hit above are
   *candidate* requirements, not requirements. For each one the PRD records (1) who asked for
   it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
   does not need. No field, value, or option kept "for later": a later ticket reviving part of
@@ -177,13 +179,16 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 Archiving happens **when the PR merges**, never merely when acceptance criteria pass:
 
-- Check the ticket ✅ in `_docs/roadmap.md` (and update any downstream rows the work informed).
+- Close the ticket's Forgejo issue with a comment naming the PR and the squash commit, and
+  comment on any open issue whose body the work changed (a dependency now met, a scope it
+  informed). An `ISSUE-<n>` ticket's GitHub report is closed separately, with the version
+  that shipped it.
 - **Reconcile the acceptance criteria — every box, in both places they live** (the PRD and,
-  when the ticket came from a sub-roadmap, that document's criteria list). By now the boxes
+  when the issue body carries its own checklist, that list). By now the boxes
   should already be ticked, each carrying the run that proved it (phase 3) — this step audits
   that record rather than creating it. Any box still empty is answered here, not filled in:
   either name the run that proved it and tick it, or leave it unticked with a line saying so
-  and a destination, exactly like a review finding. Ticking a roadmap row while its own
+  and a destination, exactly like a review finding. Closing a ticket issue while its own
   criteria stay `- [ ]` is what makes an archived ticket read as "completed without
   verification", and it also destroys the only record of how it was verified.
 - **Do the same for the doc-disposition list.** It is not an acceptance criterion, so the
@@ -196,7 +201,7 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   keep the rest of the frontmatter, and add the new file's entry to `_docs/knowledge/index.md`
   under its scope heading. Archived PRDs are immutable.
 - **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any
-  dev-log from POST-TASK, the archived PRD, the roadmap tick — is only a local edit until that
+  dev-log from POST-TASK, the archived PRD — is only a local edit until that
   push. Unpushed knowledge exists on one machine, which is exactly what the telemetry loss
   demonstrated costs a project its record:
 
@@ -204,16 +209,20 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   git -C _docs add -A && git -C _docs commit && git -C _docs push
   ```
 
-- Report which roadmap tickets the merge unlocked.
+- Report which open issues the merge unlocked (those naming this ID as a dependency).
 
 ## Notes
 
+- Tickets are Forgejo issues on `b95labs/polydeukes`, grouped on three kanban projects
+  (「일반 로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」) and labelled by kind (`ticket` ·
+  `candidate` · `conditional` · `friction` · `chore`); a milestone's description holds its goal
+  and Exit Criteria. A new or split ticket is a new issue with the same labels and project.
 - `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the
-  project's Forgejo wiki, which is where the roadmap, PRDs, and knowledge entries actually
-  live. Edits there are ordinary git work: commit and push in that directory (see ARCHIVE).
-  This skill is checked into the main repo, so contributors without that clone can still
-  follow the loop's shape with their own roadmap/PRD store.
+  project's Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there
+  are ordinary git work: commit and push in that directory (see ARCHIVE). This skill is checked
+  into the main repo, so contributors without that clone can still follow the loop's shape with
+  their own tracker and PRD store.
 - Vocabulary is binding throughout: `covenant` / `discipline framework` / `memory` — never
   `guard` / `harness` / `kb` (see `.claude/rules/domain-terms.md`).
 - Unit tasks must stay small enough for one PRD, verifiable by a command or test. If PRE
-  reveals the ticket is bigger than that, propose splitting it in the roadmap first.
+  reveals the ticket is bigger than that, propose splitting it into separate issues first.
