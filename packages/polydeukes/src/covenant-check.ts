@@ -27,7 +27,7 @@ import { compareBaseline, updateBaseline } from './baseline.ts';
 import { relativizeForScope } from './covenant/discipline.ts';
 import type { CovenantRegistration } from './covenant/dispatch.ts';
 import { type CovenantModule, covenantModule } from './covenant/module.ts';
-import { ttlWitness } from './covenant/ttl-witness.ts';
+import { type TtlWitnessSpec, ttlWitness, witnessExpiredAt } from './covenant/ttl-witness.ts';
 import { STAGED_DELETE, STAGED_WRITE } from './diff-ir.ts';
 import {
   discoverConfigPath,
@@ -245,7 +245,7 @@ function readInput(spec: CovenantCheckSpec): CovenantInput {
  * how far it got: which file was discovered, and the bytes that file held.
  */
 function settleConfig(spec: CovenantCheckSpec):
-  | { settled: true; telemetryPath: string; config: LoadedConfig['config'] }
+  | { settled: true; telemetryPath: string; config: LoadedConfig['config']; configPath: string }
   | {
       settled: false;
       telemetryPath: string | undefined;
@@ -278,7 +278,7 @@ function settleConfig(spec: CovenantCheckSpec):
     const { config } = parseConfigSource({ source, configPath, ...(layer && { layer }) });
     telemetryPath =
       spec.telemetryPath ?? envPath ?? resolve(spec.repoRoot, config.telemetry.logPath);
-    return { settled: true, telemetryPath, config };
+    return { settled: true, telemetryPath, config, configPath };
   } catch (error) {
     return {
       settled: false,
@@ -308,6 +308,30 @@ function changedPaths(input: CovenantInput): string[] {
   return paths;
 }
 
+type WitnessConfig = NonNullable<LoadedConfig['config']['witness']>;
+
+/** The config's witness as the predicate's spec. */
+function ttlSpecOf(witness: WitnessConfig): TtlWitnessSpec {
+  // Minutes are the human-facing unit in config; the predicate takes milliseconds.
+  return { token: witness.token, ttlMs: witness.ttlMinutes * 60_000 };
+}
+
+/** The witness valve's state, for a session-surface block the valve refused. */
+function witnessStateLine(
+  configPath: string,
+  configured: WitnessConfig | undefined,
+  transcript: CanonicalTranscript,
+): string {
+  if (configured === undefined) {
+    return `no witness is configured; a person can add witness: { token, ttlMinutes } to ${configPath}, or make this change themselves`;
+  }
+  const open = `a person can open this for ${configured.ttlMinutes} minutes by sending the witness token alone on the first line of a message`;
+  const expiredAt = witnessExpiredAt(ttlSpecOf(configured), transcript);
+  return expiredAt === undefined
+    ? open
+    : `${open}; the last witness expired at ${new Date(expiredAt).toISOString()}`;
+}
+
 /**
  * Assemble the registrations and dispatch every toolCall. Any throw here (a
  * registration-build failure) is unjudgeable: block and leave one record.
@@ -316,6 +340,7 @@ async function judgeInput(
   spec: CovenantCheckSpec,
   telemetryPath: string,
   config: LoadedConfig['config'],
+  configPath: string,
   input: CovenantInput,
 ): Promise<CovenantCheckOutcome> {
   try {
@@ -325,19 +350,25 @@ async function judgeInput(
 
     let blocked = false;
     let advisedCount = 0;
+    let valveRefusedABlock = false;
     const { tools, session } = input;
     // One witness predicate shared by every registration: a witness is a session-wide
     // permission the human granted, not a per-covenant one. It exists only where a session
     // does — the valve reads human utterances, and an input with no session has none to
     // read — so a session-free input assembles exactly the registrations it did before.
-    const witness =
-      config.witness === undefined || session === undefined
-        ? undefined
-        : ttlWitness({
-            token: config.witness.token,
-            // Minutes are the human-facing unit in config; the predicate takes milliseconds.
-            ttlMs: config.witness.ttlMinutes * 60_000,
-          });
+    // Without `witness:` in the config the valve is closed; either way it records each
+    // label it refused, so a block it refused can end with the valve's state.
+    const refusedLabels = new Set<string>();
+    let witness: CovenantRegistration['witness'];
+    if (session !== undefined) {
+      const valve =
+        config.witness === undefined ? () => false : ttlWitness(ttlSpecOf(config.witness));
+      witness = (witnessInput, witnessTranscript, context) => {
+        const opens = valve(witnessInput, witnessTranscript, context);
+        if (!opens) refusedLabels.add(context.label);
+        return opens;
+      };
+    }
     const transcript = session === undefined ? undefined : transcriptFromSession(session);
     // Assembled ONCE for the run, not per call: a judge takes its call set as an argument,
     // so the table is payload-free.
@@ -372,6 +403,8 @@ async function judgeInput(
     };
 
     for (const call of input.toolCalls) {
+      // Per call: a label refused on an earlier call says nothing about this call's blocks.
+      refusedLabels.clear();
       const { exitCode, results } = await covenant.dispatchCovenants({
         stdinPayload: JSON.stringify({
           toolCalls: [call],
@@ -390,6 +423,9 @@ async function judgeInput(
         world,
       });
       if (exitCode === 2) blocked = true;
+      if (results.some((result) => result.event === 'blocked' && refusedLabels.has(result.label))) {
+        valveRefusedABlock = true;
+      }
       advisedCount += results.filter((result) => result.event === 'advised').length;
       // One call, one record: a call no registration routed leaves no row of its own, so
       // the runner writes the pass under its label — the session surface does the same.
@@ -401,6 +437,13 @@ async function judgeInput(
           subject: typeof subject === 'string' ? subject : '-',
         });
       }
+    }
+    // The token itself is never written: stderr reaches the agent the valve defends against.
+    // A session that carries no human message at all is a host whose message evidence is not
+    // arriving, so no token typed now would reach the valve; the line would send the person
+    // down a path that cannot open the block.
+    if (valveRefusedABlock && transcript !== undefined && session?.userMessages.length) {
+      process.stderr.write(`${witnessStateLine(configPath, config.witness, transcript)}\n`);
     }
     // Names no level: the commit's fate is read from the run.
     if (advisedCount > 0) {
@@ -600,7 +643,7 @@ function repairs(
 export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<CovenantCheckOutcome> {
   const settlement = settleConfig(spec);
   if (!settlement.settled) return settleLoadFailure(spec, settlement);
-  const { telemetryPath, config } = settlement;
+  const { telemetryPath, config, configPath } = settlement;
 
   let input: CovenantInput;
   try {
@@ -636,7 +679,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<Covenan
   const result =
     input.toolCalls.length === 0
       ? { exitCode: 0 as const }
-      : await judgeInput(spec, telemetryPath, config, input);
+      : await judgeInput(spec, telemetryPath, config, configPath, input);
 
   try {
     if (comparison !== undefined) updateBaseline(comparison);

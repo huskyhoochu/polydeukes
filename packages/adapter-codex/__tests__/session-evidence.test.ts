@@ -23,8 +23,10 @@ const PROMPT = 'pdks witness\ncontinue';
 const RECEIVED_AT_MS = 1_788_000_000_000;
 const TARGET_FILE = '.codex/hooks/extra.mjs';
 const WITNESS_TOKEN = 'pdks witness';
-const ESCAPED_WITNESS_TOKEN = 'pdks "witness"';
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
+/** The one recovery line the adapter keeps — a Codex-only fact the umbrella cannot see. */
+const NO_EVIDENCE_RECOVERY_LINE =
+  'recovery: no UserPromptSubmit evidence was recorded, so witness cannot release this call; use the user terminal';
 
 type SpawnCall = {
   command: string;
@@ -304,68 +306,23 @@ describe('runHook — lifecycle evidence failures', () => {
 });
 
 describe('runHook — blocked-verdict recovery', () => {
-  it('names the configured token and terminal fallback only after a valid blocked verdict with user evidence', () => {
-    // A generic retry omits the first-line constraint and makes a mid-sentence token look
-    // sufficient; attaching this hint before a verdict falsely suggests witness can repair
-    // envelope or evidence corruption.
-    installStubPolydeukes();
-    writeFileSync(
-      join(repoRoot, 'polydeukes.config.json'),
-      JSON.stringify({
-        languages: { typescript: { productionGlob: 'src/**/*.ts', testCmd: 'true' } },
-        witness: { token: WITNESS_TOKEN, ttlMinutes: 10 },
-      }),
-    );
-    const lifecycle = recordingSpawn(2);
-    invoke(lifecyclePayload('UserPromptSubmit', { prompt: 'ordinary request' }), lifecycle.spawn);
-    stderr = [];
-    const judgment = recordingSpawn(2);
-
-    const outcome = invoke(preToolPayload(), judgment.spawn);
-
-    expect(outcome).toEqual({ exitCode: 2 });
-    expect(judgment.calls).toHaveLength(1);
-    expect(judgment.calls[0]?.stdin).toMatch(/^\{/);
-    expect(stderr.join('')).toContain(WITNESS_TOKEN);
-    expect(stderr.join('')).toMatch(/first line/i);
-    expect(stderr.join('')).toMatch(/terminal/i);
-  });
-
   it.each([
-    [
-      'an inline YAML mapping',
-      [
-        'languages:',
-        '  typescript:',
-        "    productionGlob: 'src/**/*.ts'",
-        "    testCmd: 'true'",
-        `witness: { token: "${WITNESS_TOKEN}", ttlMinutes: 10 }`,
-        '',
-      ].join('\n'),
-      WITNESS_TOKEN,
-    ],
-    [
-      'an escaped double-quoted YAML token',
-      [
-        'languages:',
-        '  typescript:',
-        "    productionGlob: 'src/**/*.ts'",
-        "    testCmd: 'true'",
-        'witness:',
-        `  token: "${ESCAPED_WITNESS_TOKEN.replaceAll('"', '\\"')}"`,
-        '  ttlMinutes: 10',
-        '',
-      ].join('\n'),
-      ESCAPED_WITNESS_TOKEN,
-    ],
+    ['witness configured', { witness: { token: WITNESS_TOKEN, ttlMinutes: 10 } }],
+    ['no witness configured', {}],
   ] as const)(
-    'reads the recovery token through the canonical config loader from %s',
-    (_form, config, token) => {
-      // A line-oriented token regexp accepts only one handwritten YAML layout and either
-      // misses an inline mapping or prints YAML escape syntax instead of the configured
-      // token. Recovery must agree with every form the judgment's config loader accepts.
+    'adds no recovery line of its own to a blocked verdict with user evidence (%s)',
+    (_state, witnessConfig) => {
+      // With evidence on record the valve state is the umbrella's to report, from the
+      // judgment that consulted it. An adapter line here says it twice, and one that reads
+      // the config prints the token for the agent to quote back to itself.
       installStubPolydeukes();
-      writeFileSync(join(repoRoot, 'polydeukes.config.yaml'), config);
+      writeFileSync(
+        join(repoRoot, 'polydeukes.config.json'),
+        JSON.stringify({
+          languages: { typescript: { productionGlob: 'src/**/*.ts', testCmd: 'true' } },
+          ...witnessConfig,
+        }),
+      );
       const lifecycle = recordingSpawn(2);
       invoke(lifecyclePayload('UserPromptSubmit', { prompt: 'ordinary request' }), lifecycle.spawn);
       stderr = [];
@@ -376,9 +333,8 @@ describe('runHook — blocked-verdict recovery', () => {
       expect(outcome).toEqual({ exitCode: 2 });
       expect(judgment.calls).toHaveLength(1);
       expect(judgment.calls[0]?.stdin).toMatch(/^\{/);
-      expect(stderr.join('')).toContain(token);
-      expect(stderr.join('')).toMatch(/first line/i);
-      expect(stderr.join('')).toMatch(/terminal/i);
+      expect(stderr.join('')).not.toContain('recovery:');
+      expect(stderr.join('')).not.toContain(WITNESS_TOKEN);
     },
   );
 
@@ -393,9 +349,7 @@ describe('runHook — blocked-verdict recovery', () => {
     expect(outcome).toEqual({ exitCode: 2 });
     expect(calls).toHaveLength(1);
     expect(calls[0]?.stdin).toMatch(/^\{/);
-    expect(stderr.join('')).toMatch(/UserPromptSubmit/i);
-    expect(stderr.join('')).toMatch(/witness/i);
-    expect(stderr.join('')).toMatch(/terminal/i);
+    expect(stderr.join('')).toContain(NO_EVIDENCE_RECOVERY_LINE);
   });
 
   it('adds no recovery hint when the judge crashes instead of returning a blocked verdict', () => {

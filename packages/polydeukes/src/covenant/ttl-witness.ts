@@ -12,7 +12,7 @@
  * inspects its shape.
  */
 
-import { resolveFailMode } from '@polydeukes/core';
+import { type CanonicalTranscript, resolveFailMode } from '@polydeukes/core';
 import type { WitnessPredicate } from './dispatch.ts';
 
 /** Configuration for {@link ttlWitness}. */
@@ -74,20 +74,7 @@ export function ttlWitness(spec: TtlWitnessSpec): WitnessPredicate {
     // a message's position in the transcript.
     const judgedAt = now();
     return transcript.findUserMessages().some((message) => {
-      // The first line only, compared whole: an utterance invokes the witness, it does
-      // not merely mention it. `split` keeps a leading blank line as an empty first
-      // element, so a token below it never matches, and `trim` absorbs both surrounding
-      // spaces and the trailing `\r` of a CRLF transport — CRLF only: a lone `\r` with no
-      // `\n` is not treated as a line break, so such a message fails closed (refused),
-      // never open.
-      //
-      // `trim` covers the whole Unicode space class, so a token padded with NBSP, an
-      // ideographic space, or a BOM opens the valve exactly as an ASCII-padded one does.
-      // That latitude is intentional: this seam defends provenance, not secrecy — the
-      // token is read only from `findUserMessages()`, so no AI-synthesised padding
-      // reaches it, while a human's IME or clipboard routinely supplies these.
-      const [firstLine = ''] = message.text.split('\n');
-      if (firstLine.trim() !== token) return false;
+      if (!invokesToken(message.text, token)) return false;
       if (message.timestampMs === undefined) {
         return resolveFailMode('evidence-absence') === 'open';
       }
@@ -95,4 +82,52 @@ export function ttlWitness(spec: TtlWitnessSpec): WitnessPredicate {
       return elapsed >= 0 && elapsed <= ttlMs;
     });
   };
+}
+
+/**
+ * Whether an utterance invokes `token` (already trimmed): its first line, compared whole.
+ *
+ * An utterance invokes the witness, it does not merely mention it. `split` keeps a leading
+ * blank line as an empty first element, so a token below it never matches, and `trim`
+ * absorbs both surrounding spaces and the trailing `\r` of a CRLF transport — CRLF only: a
+ * lone `\r` with no `\n` is not treated as a line break, so such a message fails closed
+ * (refused), never open.
+ *
+ * `trim` covers the whole Unicode space class, so a token padded with NBSP, an ideographic
+ * space, or a BOM opens the valve exactly as an ASCII-padded one does. That latitude is
+ * intentional: this seam defends provenance, not secrecy — the token is read only from
+ * `findUserMessages()`, so no AI-synthesised padding reaches it, while a human's IME or
+ * clipboard routinely supplies these.
+ */
+function invokesToken(text: string, token: string): boolean {
+  const [firstLine = ''] = text.split('\n');
+  return firstLine.trim() === token;
+}
+
+/**
+ * The instant the last witness expired, or `undefined` when no token message proves one.
+ *
+ * Among the user messages that invoke the token with a `timestampMs` not ahead of `now()`,
+ * the latest one's `timestampMs + ttlMs`, when that instant has passed. A token message with
+ * no timestamp proves no expiry, and a future-dated one proves nothing about freshness.
+ */
+export function witnessExpiredAt(
+  spec: TtlWitnessSpec,
+  transcript: CanonicalTranscript,
+): number | undefined {
+  const { ttlMs, now = Date.now } = spec;
+  const token = spec.token.trim();
+  const judgedAt = now();
+  let latest: number | undefined;
+  for (const message of transcript.findUserMessages()) {
+    const sentAt = message.timestampMs;
+    // The IR admits any number, and `null` once JSON has carried a NaN: neither proves when
+    // a message was sent, and an instant outside the Date range cannot be named.
+    if (typeof sentAt !== 'number' || !Number.isFinite(sentAt) || sentAt > judgedAt) continue;
+    if (!invokesToken(message.text, token)) continue;
+    if (latest === undefined || sentAt > latest) latest = sentAt;
+  }
+  if (latest === undefined || latest + ttlMs >= judgedAt) return undefined;
+  const expiredAt = latest + ttlMs;
+  return Number.isNaN(new Date(expiredAt).getTime()) ? undefined : expiredAt;
 }

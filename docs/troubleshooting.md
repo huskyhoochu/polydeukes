@@ -135,6 +135,13 @@ intentional protected edit; no previous failed attempt is required. The token is
 The valve checks human provenance and applies only to a blocking judgment. A successful retry
 appends a `witnessed` row; it does not rewrite the earlier blocked row.
 
+When the valve could have opened a blocked call and did not, the block's last line says why.
+`no witness is configured` names the config file to add `witness: { token, ttlMinutes }` to; until
+then no message can open the block. `a person can open this for <n> minutes` means the valve is
+configured and no token message is within its window; when it adds `the last witness expired at
+<time>`, the token was sent and its window has passed, so it must be sent again. The line never
+contains the token.
+
 A witness cannot repair missing modules or other failures that prevent judgment assembly.
 
 <a id="blocked-commit"></a>

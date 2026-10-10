@@ -134,6 +134,13 @@ covenant check failed closed: invalid config in polydeukes.config.yaml: … — 
 확인하고 차단 판정에만 적용됩니다. 증언으로 허용한 호출은 `witnessed` 행을 새로 남깁니다.
 앞서 기록한 `blocked` 행을 고치는 것이 아닙니다.
 
+밸브가 열 수 있었던 차단을 열지 않았다면, 차단 메시지의 마지막 줄이 그 이유를 알려 줍니다.
+`no witness is configured`는 `witness: { token, ttlMinutes }`를 추가할 설정 파일을 알려 주며,
+추가하기 전까지는 어떤 메시지로도 차단을 허용할 수 없습니다. `a person can open this for <n>
+minutes`는 밸브가 설정돼 있지만 유효 시간 안에 토큰 메시지가 없다는 뜻입니다. 여기에
+`the last witness expired at <time>`이 붙으면 토큰을 보낸 적은 있지만 유효 시간이 지났으므로
+다시 보내야 합니다. 이 줄에는 토큰이 들어가지 않습니다.
+
 모듈 누락처럼 판정기를 조립하지 못하게 하는 오류는 증인으로 해결할 수 없습니다.
 
 <a id="blocked-commit"></a>

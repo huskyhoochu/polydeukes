@@ -19,9 +19,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isAbsolute, relative, resolve } from 'node:path';
 import type { CovenantInput, FileChange } from '@polydeukes/core';
 import { EXIT_BREAK_BLOCKING, EXIT_UPHOLD, isPlainObject } from '@polydeukes/core';
 import { parseApplyPatch } from './apply-patch.ts';
@@ -267,41 +265,16 @@ function handleLifecycle(
   return { exitCode: EXIT_UPHOLD };
 }
 
-function configuredWitnessToken(repoRoot: string): string | undefined {
-  try {
-    // The schema is the umbrella's public data entry point. Its sibling loader is the
-    // canonical discovery, YAML decoding, and validation path the spawned judge uses.
-    // Node 24 can synchronously require this ESM module, which keeps `runHook` synchronous.
-    const schemaPath = fileURLToPath(import.meta.resolve('polydeukes/schema.json'));
-    const loaderPath = join(dirname(schemaPath), '..', 'load-config.js');
-    const loader = createRequire(import.meta.url)(loaderPath) as {
-      loadConfig(spec: { rootDir: string }): {
-        config: { witness?: { token: string; ttlMinutes: number } };
-      };
-    };
-    return loader.loadConfig({ rootDir: repoRoot }).config.witness?.token;
-  } catch {
-    // Recovery text is advisory. The child already emitted the authoritative config or
-    // verdict diagnostic, so failure to load a token degrades to the terminal fallback.
-    return undefined;
-  }
-}
-
-function writeBlockedRecovery(repoRoot: string, hasUserEvidence: boolean): void {
+/**
+ * The one recovery line this adapter adds: with no `UserPromptSubmit` evidence on record no
+ * utterance reaches the witness valve, so no token typed in the session can release the call.
+ */
+function writeBlockedRecovery(hasUserEvidence: boolean): void {
   if (!hasUserEvidence) {
     process.stderr.write(
       'recovery: no UserPromptSubmit evidence was recorded, so witness cannot release this call; use the user terminal\n',
     );
-    return;
   }
-  const token = configuredWitnessToken(repoRoot);
-  if (token === undefined) {
-    process.stderr.write('recovery: no witness is configured; use the user terminal\n');
-    return;
-  }
-  process.stderr.write(
-    `recovery: enter '${token}' alone on the first line and retry within its configured window; if it remains blocked, use the user terminal\n`,
-  );
 }
 
 /**
@@ -381,7 +354,7 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     );
   }
   if (status === EXIT_BREAK_BLOCKING && validIr) {
-    writeBlockedRecovery(spec.repoRoot, hasUserEvidence);
+    writeBlockedRecovery(hasUserEvidence);
   }
   return { exitCode: status === EXIT_UPHOLD ? EXIT_UPHOLD : EXIT_BREAK_BLOCKING };
 }
