@@ -239,6 +239,59 @@ describe('frozen path — one create is allowed, nothing after it', () => {
   });
 });
 
+// The same promise over the whole file instead of its lines, with `allMatches` giving every
+// call its own key. Over a whole file `keyByPattern` keys the one allowed call and never
+// sees the one written after it.
+const CALL_PATTERN = '(warn!\\("[^"]*")';
+const LEGACY = 'warn!("legacy message here");\n';
+const NEW_CALL = 'warn!("brand new message");\n';
+const NEW_KEY = 'warn!("brand new message"';
+
+function wholeFile(): AlgebraDeclaration {
+  return {
+    ...addedOnly,
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'allMatches', re: CALL_PATTERN },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'allMatches', re: CALL_PATTERN },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }],
+    },
+  };
+}
+
+describe('added-only over a whole file — allMatches sees past the first match', () => {
+  const pre = LEGACY;
+  const post = `${LEGACY}foo();\n${NEW_CALL}`;
+
+  it('breaks on a new call written after an allowed one, naming the new call as the key', () => {
+    // The first-match reading keys both sides by the legacy call and passes; the witness
+    // key is the call text itself, not a position, so `{key}` in the message names it.
+    expect(witnessesOf(judge(wholeFile(), world({ pre, post })), ENTRY)).toEqual([
+      { key: NEW_KEY, value: NEW_KEY },
+    ]);
+  });
+
+  it('passes when pre and post are the same file carrying both calls', () => {
+    // Every key in `after` is in `before`; a step that keyed by position, or an `onlyIn`
+    // reading match count, would report the second call as new.
+    expect(judge(wholeFile(), world({ pre: post, post })).kind).toBe('pass');
+  });
+
+  it('a new call written twice is reported twice under one key', () => {
+    // The step does not dedupe; `onlyIn` filters by key membership, so both items of the new
+    // key survive. A dedupe in the step or a set-backed difference answers one witness.
+    const twice = `${LEGACY}${NEW_CALL}bar();\n${NEW_CALL}`;
+    const witnesses = witnessesOf(judge(wholeFile(), world({ pre, post: twice })), ENTRY);
+    expect(witnesses).toHaveLength(2);
+    expect(witnesses.map((w) => w.key)).toEqual([NEW_KEY, NEW_KEY]);
+  });
+});
+
 describe('added-only — scope', () => {
   it('a path outside the include list is not judged even when post adds a match', () => {
     // The scope stands before the pipelines; a declaration that judges every world blocks

@@ -10,7 +10,7 @@ import {
 } from '../../src/covenant/declaration-engine.ts';
 import { extracted, isConfigFault, judge, witnessesOf } from './declaration-engine-helpers.ts';
 
-// The extract registry: seventeen unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: eighteen unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -90,13 +90,14 @@ function snapshot(parts: { userMessages?: Turn[]; toolCalls?: Call[]; observedAt
 }
 
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the seventeen unary steps and no combinator', () => {
+  it('lists exactly the eighteen unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
       [
         'ageMs',
         'agentType',
+        'allMatches',
         'field',
         'filter',
         'first',
@@ -137,6 +138,7 @@ describe('extract registry — the closed set of unary steps', () => {
     matches: { step: { op: 'matches', re: 'b' }, items: positioned(['abc']) },
     items: { step: { op: 'items' }, items: positioned([['x', 'y']]) },
     keyByPattern: { step: { op: 'keyByPattern', re: '^(.+)$' }, items: positioned(['x']) },
+    allMatches: { step: { op: 'allMatches', re: '(x)' }, items: positioned(['x']) },
     toolUses: { step: { op: 'toolUses' }, items: positioned([snapshot({ toolCalls: [call(0)] })]) },
     userTexts: {
       step: { op: 'userTexts', re: 'x' },
@@ -781,6 +783,189 @@ describe('keyByPattern — two pipelines folded onto one key, related by Implies
     // validation, so an over-strict validator would pass every one of them.
     const verdict = judge(decl, { [RECORDS]: ['a.src', 'a.gen', 'b.src'] });
     expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: 'b', value: 'b.src' }]);
+  });
+});
+
+describe('allMatches — one item per non-overlapping match of a constant regex over each value', () => {
+  // Where `keyByPattern` keys a value by its first match, this step emits every match: the
+  // key is capture group 1 (the whole match when the expression has no group) and the value
+  // is always the whole match. The fixtures carry two matches per value wherever a
+  // first-match-only reading would answer differently.
+  const step: UnaryStep = { op: 'allMatches', re: 'warn!\\("([^"]*)"' };
+
+  it('an empty input yields no items', () => {
+    // An implementation that reads the first item before checking there is one throws here.
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('a value with no match yields no items', () => {
+    // A `matches`-style filter keeps the item under its position; an unguarded `exec()[1]`
+    // throws on null. Both are wrong: nothing matched, so there is nothing to key.
+    expect(run(step, positioned(['info!("x")']))).toEqual([]);
+  });
+
+  it('emits every match of one value in position order, key the capture and value the whole match', () => {
+    // The first-match reading answers one item; a value that copies the input string
+    // answers the whole text three times; a key taken from the whole match reads `warn!("a"`.
+    // The captures are deliberately unsorted so a sort cannot hide behind them.
+    expect(run(step, positioned(['warn!("b"); warn!("a"); warn!("c");']))).toEqual([
+      { key: 'b', value: 'warn!("b"' },
+      { key: 'a', value: 'warn!("a"' },
+      { key: 'c', value: 'warn!("c"' },
+    ]);
+  });
+
+  it('matches of two input items come out in input order, the input key discarded', () => {
+    // Items are not re-keyed by their input position: the key is the capture alone. A
+    // partition by input item or a renumbering across items answers different keys.
+    const items: Items = [
+      { key: 'second', value: 'warn!("z") warn!("y")' },
+      { key: 'first', value: 'warn!("x")' },
+    ];
+    expect(run(step, items)).toEqual([
+      { key: 'z', value: 'warn!("z"' },
+      { key: 'y', value: 'warn!("y"' },
+      { key: 'x', value: 'warn!("x"' },
+    ]);
+  });
+
+  it('an expression without a capture group keys each item by the whole match', () => {
+    // Reading `match[1]` unconditionally writes `undefined` into every key, and every item
+    // then folds onto one shared key in a relation that compares keys.
+    expect(run({ op: 'allMatches', re: 'TODO' }, positioned(['a TODO b TODO']))).toEqual([
+      { key: 'TODO', value: 'TODO' },
+      { key: 'TODO', value: 'TODO' },
+    ]);
+  });
+
+  it('drops a match whose group 1 did not take part, and keeps the bound one', () => {
+    // Over `xy` the alternation matches twice, once on each branch; the `y` branch leaves
+    // group 1 unbound. Writing that slot into `key` yields an `undefined` key despite the
+    // type; falling back to the whole match gives a capture-bearing declaration two key
+    // sources. Like `keyByPattern`, the step drops what it cannot key.
+    expect(run({ op: 'allMatches', re: '(x)|y' }, positioned(['xy']))).toEqual([
+      { key: 'x', value: 'x' },
+    ]);
+  });
+
+  it('a match that spans a newline is one item', () => {
+    // The reason this step exists beside `lines`: a formatter may split the call and its
+    // string literal onto two lines, and a line-wise pass never sees the pair together.
+    const text = 'Err(format!(\n    "service x")';
+    expect(
+      run({ op: 'allMatches', re: 'Err\\(format!\\(\\s*"([^"]*)"' }, positioned([text])),
+    ).toEqual([{ key: 'service x', value: 'Err(format!(\n    "service x"' }]);
+  });
+
+  it('a group bound to the empty string keys by the empty string', () => {
+    // A truthiness check on the capture drops this item, and `match[1] || match[0]` keys it
+    // by the whole match; only an `undefined` slot means the group did not take part.
+    expect(run(step, positioned(['warn!("")']))).toEqual([{ key: '', value: 'warn!(""' }]);
+  });
+
+  it('keys by group 1 when the expression has two groups', () => {
+    expect(run({ op: 'allMatches', re: '(\\w)(\\d)' }, positioned(['a1 b2']))).toEqual([
+      { key: 'a', value: 'a1' },
+      { key: 'b', value: 'b2' },
+    ]);
+  });
+
+  it('matches do not overlap', () => {
+    // A hand-rolled loop that advances one character past each match start reports `aa`
+    // twice over `aaa`; `matchAll` resumes after the match.
+    expect(run({ op: 'allMatches', re: 'aa' }, positioned(['aaa']))).toEqual([
+      { key: 'aa', value: 'aa' },
+    ]);
+  });
+
+  it('a zero-length match is an empty-key item, and the scan still advances', () => {
+    // `a*` over `ba` matches empty at 0, `a` at 1, empty at 2 — the three items `matchAll`
+    // reports. A hand-rolled `exec` loop that forgets to bump `lastIndex` on an empty match
+    // never terminates; a falsy check on the capture or the match drops the two empties.
+    expect(run({ op: 'allMatches', re: 'a*' }, positioned(['ba']))).toEqual([
+      { key: '', value: '' },
+      { key: 'a', value: 'a' },
+      { key: '', value: '' },
+    ]);
+  });
+
+  it('is case-sensitive without `i` and case-insensitive with it', () => {
+    // A step copied from `matches` that forgets the flag drops the upper-case call; one that
+    // forgets the global flag throws out of `matchAll`.
+    const items = positioned(['WARN!("a") warn!("b")']);
+    expect(run(step, items)).toEqual([{ key: 'b', value: 'warn!("b"' }]);
+    expect(run({ op: 'allMatches', re: 'warn!\\("([^"]*)"', i: true }, items)).toEqual([
+      { key: 'a', value: 'WARN!("a"' },
+      { key: 'b', value: 'warn!("b"' },
+    ]);
+  });
+
+  it('reads a non-string value through String()', () => {
+    // A `typeof value === 'string'` gate drops the number; the value is the matched text, so
+    // `42` yields the string `'4'` and `'2'`, never the number itself.
+    expect(run({ op: 'allMatches', re: '\\d' }, positioned([42]))).toEqual([
+      { key: '4', value: '4' },
+      { key: '2', value: '2' },
+    ]);
+  });
+
+  it('after `source`, a well-formed step compiles and an expression without a group is admitted', () => {
+    // The `run` cases bypass validation, so an over-strict validator — one copied from
+    // `keyByPattern` that demands a capture group — would pass every one of them.
+    for (const re of ['warn!\\("([^"]*)"', 'TODO']) {
+      expect(
+        compileDeclaration({
+          declaration: {
+            discipline: 'probe',
+            mechanism: 'scoped-valve',
+            extract: {
+              [EXTRACT]: [
+                { op: 'source', of: SRC },
+                { op: 'allMatches', re },
+              ],
+            },
+            relate: [{ id: ENTRY, relation: { op: 'empty', of: EXTRACT }, message: 'm' }],
+          },
+        }),
+      ).not.toSatisfy(isConfigFault);
+    }
+  });
+
+  it('rejects a missing `re` and an empty-string `re`', () => {
+    // Compilation refuses an unregistered name and a bad argument at the same `location`,
+    // so the reason is what tells the two apart — asserting the location alone would pass
+    // while the step does not exist at all. An empty expression matches empty at every
+    // position, which is a blocker rather than a predicate.
+    const steps = [
+      { op: 'allMatches' },
+      { op: 'allMatches', re: '' },
+      { op: 'allMatches', re: 1 },
+    ] as UnaryStep[];
+    for (const step of steps) {
+      const raised = stepFault(step);
+      expect(raised.location).toContain(EXTRACT);
+      expect(raised.reason).toBe("'allMatches' needs 're' as a non-empty string");
+    }
+  });
+
+  it('rejects an expression that does not compile, as a fault rather than a throw', () => {
+    const raised = stepFault({ op: 'allMatches', re: '(' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'allMatches' cannot compile the expression '('");
+  });
+
+  it('rejects a non-boolean `i`', () => {
+    const raised = stepFault({ op: 'allMatches', re: 'x', i: 'yes' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'allMatches' takes 'i' as a boolean");
+  });
+
+  it('rejects an argument key outside `re` and `i`', () => {
+    // `g` is the flag the step adds itself; a step that accepts it as an argument has an
+    // open key set.
+    const raised = stepFault({ op: 'allMatches', re: 'x', g: true });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'allMatches' does not take the argument 'g'");
   });
 });
 

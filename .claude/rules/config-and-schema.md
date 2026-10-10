@@ -26,7 +26,8 @@ that the trigger is "editing this file at all".
 
 `^` without the `m` flag anchors to the whole string. A pattern that runs over a whole text
 as one string therefore matches only the first line and the discipline silently stops
-firing — write `(^|\n)` there. A declaration's `lines` step splits first, so `^` inside
+firing — write `(?:^|\n)` there. It is non-capturing, so a step that keys by capture group 1
+does not key by the anchor. A declaration's `lines` step splits first, so `^` inside
 `keyByPattern` or `matches` after it is a line start, and a pattern spanning a line boundary
 does not match. `lines` also trims each line, so a pattern that anchors on leading indent
 (`^  token:`) never matches — measured on the live valve declaration, which read `unchanged`

@@ -122,7 +122,7 @@ combine a paired extraction from `state`. Further steps transform the result in 
 <a id="extract-steps"></a>
 ## Extraction steps
 
-The table lists all 17 unary steps. Example arguments show their exact keys; an unknown argument
+The table lists all 18 unary steps. Example arguments show their exact keys; an unknown argument
 causes a compilation error. Unless stated otherwise, steps preserve item order.
 
 | Step | Arguments | Result |
@@ -133,6 +133,7 @@ causes a compilation error. Unless stated otherwise, steps preserve item order.
 | `items` | None | Expand each array by one level into items keyed by zero-based position. Drop non-arrays. |
 | `keyBy` | `field: 'id'` (required) | Set the key to the string form of an object's field. Drop non-objects and absent, null, or object-valued fields. Keep the original value. |
 | `keyByPattern` | `re: '^(.+)\.ts$'` (required), `i: true` (optional, default `false`) | Set the key to capture group 1 of the first regex match. Drop non-matches and unbound captures. Keep the original value. |
+| `allMatches` | `re: '"([^"]*)"'` (required), `i: true` (optional, default `false`) | Emit one item per non-overlapping match in each stringified value, in match order. The key is capture group 1, or the whole match when the regex has no group; the value is the whole match. Drop matches whose group 1 is unbound. Equal keys are not merged. |
 | `field` | `name: 'version'` (required) | Keep the key and replace the value with that object property. An absent property yields `undefined`; a non-object is dropped. |
 | `filter` | `when: [{ field: 'succeeded', eq: true }]` (required) | Keep items satisfying every predicate. `when: []` keeps all items. See the predicate table below. |
 | `flattenKeys` | None | List nested leaf paths, such as `home.title`, as both keys and values. Translation text is discarded. |
@@ -153,6 +154,8 @@ indices are not enumerated. Empty objects produce no paths, including when neste
 Regex steps use JavaScript regular expressions. `i` is the supported flag; there is no `g` or `m`
 argument. A regex over whole file text anchors `^` at the start of that text. Put `lines` first to
 match each trimmed line. `keyByPattern` requires a capturing group, and uses only its first match.
+Over a whole file that is one key per file, and every match after the first gets no key.
+`allMatches` gives each match its own item, and a match may cross a line break.
 
 <a id="filter-predicates"></a>
 ## Filter predicates
@@ -252,6 +255,8 @@ Each `relate` entry requires a unique `id`, a `relation`, and exactly one messag
 Templates substitute `{key}` and `{value}` from the first violating item. `{before}` is its
 previous value for `unchanged`, or an empty string when absent. Multiple violations add a count
 suffix. Object values use their JavaScript string form; extract the field you want to display.
+After `keyByPattern` over a whole file the value is the whole file, so template `{key}`; after
+`allMatches` the value is the match itself.
 
 The optional declaration `witness` has its own optional `extract` and required `relate`. It can
 reference the body's extractions; the body cannot reference witness extractions, and witness

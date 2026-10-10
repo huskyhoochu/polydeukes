@@ -134,7 +134,7 @@ outside a closed list is rejected by validation, never coerced.
   `Items → Items`, an item is `{ key, value }`. `key` drives `onlyIn` · `intersect` · `implies` ·
   `unchanged`; `value` is compared by structural equality. A scalar source is one item under
   key `'0'`; a list without an index keys its elements by position. A key comes from an
-  element's position, a field of an object value, or a capture over the value's own text.
+  element's position, a field of an object value, or a pattern over the value's own text.
 - **Paired source** — `source: state` runs the same pipeline over `pre` and `post`. A pair in
   any relation but `unchanged`, or a single extraction under `unchanged`, is a config fault.
 - **Config fault** — the value `compileDeclaration` returns instead of a compiled declaration

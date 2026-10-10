@@ -167,7 +167,8 @@ authoring traps, each measured on a live config:
   "editing this file at all" as the trigger.
 - **`^` means a line start only after `lines`.** A declaration's `lines` step splits the
   content first, so `^` inside `keyByPattern` or `matches` after it is a line start; a
-  pattern over an unsplit text anchors to the whole text, so write `(^|\n)` there.
+  pattern over an unsplit text anchors to the whole text, so write `(?:^|\n)` there
+  (non-capturing, so group 1 stays the key).
 - **Author both directions.** Before registering, write down one string the pattern must
   match and one nearby string it must not (`forbid` vs `forbidden`, a flag vs its
   substring). A pattern checked in only the breaking direction over-fires in review-proof
