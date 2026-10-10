@@ -55,6 +55,7 @@
   "devDependencies": {
     "@polydeukes/memory": "workspace:^",
     "@types/node": "catalog:",
+    "ajv": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MemorySearchOutput",
+  "description": "What `pdks memory search --json` prints on stdout at exit 0. An empty `results` is a search that found nothing; every failure exits non-zero with nothing on stdout. Objects stay open so a host built against this schema keeps reading a newer command's output.",
+  "type": "object",
+  "required": ["ingestedAt", "results"],
+  "properties": {
+    "ingestedAt": {
+      "description": "When the index being searched was last ingested, as an ISO 8601 timestamp.",
+      "type": "string"
+    },
+    "results": {
+      "description": "The matched sections, in the command's ranking order.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemorySearchResult"
+      }
+    }
+  },
+  "$defs": {
+    "MemorySearchResult": {
+      "description": "One section found in the memory index.",
+      "type": "object",
+      "required": [
+        "id",
+        "conceptId",
+        "docTitle",
+        "sectionTitle",
+        "status",
+        "trust",
+        "stale",
+        "matchPath",
+        "supersededBy"
+      ],
+      "properties": {
+        "id": {
+          "description": "The section id: the document id, `#`, and the heading's slug.",
+          "type": "string"
+        },
+        "conceptId": {
+          "description": "The id of the document the section belongs to.",
+          "type": "string"
+        },
+        "docTitle": {
+          "description": "The document's title.",
+          "type": "string"
+        },
+        "sectionTitle": {
+          "description": "The section's heading.",
+          "type": "string"
+        },
+        "status": {
+          "description": "The document's status as its front matter states it.",
+          "type": "string"
+        },
+        "trust": {
+          "description": "Who verified the document: a human reviewer, a machine, or nobody.",
+          "enum": ["human-reviewed", "machine-verified", "unverified"]
+        },
+        "stale": {
+          "description": "Whether the document's `stale_after` date has passed.",
+          "type": "boolean"
+        },
+        "matchPath": {
+          "description": "How the query matched: every word, some words, or a substring scan.",
+          "enum": ["and", "or", "like"]
+        },
+        "supersededBy": {
+          "description": "The documents that directly replace this section's document, sorted; empty when none.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -3,7 +3,9 @@
 **English** · [한국어](sdk-rust.ko.md)
 
 > **Call the judge from Rust.** Pass a covenant input to `check_covenant`, or a unified diff to
-> `check_change_set`, and receive the verdict from `pdks covenant check` as a value.
+> `check_change_set`, and receive the verdict from `pdks covenant check` as a value. Ingest and
+> search a project's memory with `memory_ingest` and `memory_search`, and receive the hits as
+> values.
 >
 > Beta. Published on crates.io as `polydeukes-sdk`. The judged project installs `polydeukes`
 > from npm, and `node` must be on `PATH`.
@@ -20,8 +22,10 @@ performs the judgment, so a discipline judged from Rust and from Node gets the s
 | `check_covenant` | Spawns `pdks covenant check` in the judged project and returns the verdict |
 | `check_change_set` | The same for a finished change set: spawns `pdks covenant check --diff` with the diff on stdin |
 | `CovenantInput` and its parts | The input types, generated from `@polydeukes/core/covenant-input.schema.json` |
-| Umbrella resolution | Walks up from `repo_root` to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks` |
-| Verdict translation | Exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
+| `memory_ingest` · `memory_search` | Spawn `pdks memory ingest` and `pdks memory search --json` in a memory root and return the outcome |
+| `MemorySearchOutput` and its parts | The search output types, generated from `@polydeukes/core/memory-search-output.schema.json` |
+| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks` |
+| Verdict translation | For the covenant verbs, exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
 
 The child process writes telemetry during judgment. The crate adds no rows of its own.
 
@@ -110,7 +114,7 @@ pub struct CheckCovenantSpec<'a> {
 
 pub enum Enforce { Advise, Block }
 pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String }
-pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
+pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stderr: String }
 ```
 
 | Field | What it is |
@@ -126,8 +130,8 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
 entries carrying `enforce: block` stop the call, and every other break is recorded `advised` at
 exit 0.
 
-The default spawn pipes all three standard streams and inherits none. stderr is collected and
-returned; stdout is read and dropped, because the judge writes no verdict there.
+The default spawn pipes all three standard streams and inherits none, and collects stdout and
+stderr. The covenant verbs read no stdout, because the judge writes no verdict there.
 
 <a id="change-set"></a>
 ## `check_change_set`
@@ -202,6 +206,76 @@ judged as values, pass `telemetry_path` and read its rows as
 set, one file for the whole session for session inputs. The verdict still comes from the exit
 status.
 
+<a id="memory"></a>
+## `memory_ingest` and `memory_search`
+
+The memory verbs run `pdks memory` in a memory root, through the same umbrella resolution and
+spawn seam as the covenant verbs. `memory_ingest` spawns `pdks memory ingest`. `memory_search`
+spawns `pdks memory search <query> --json`, adds `--limit <n>` when `limit` is set, and parses
+stdout into the types generated from `@polydeukes/core/memory-search-output.schema.json`. The
+child loads the optional peer `@polydeukes/memory`, which the memory root installs beside
+`polydeukes`.
+
+```rust
+use polydeukes_sdk::{
+    memory_ingest, memory_search, MemoryIngestOutcome, MemoryIngestSpec, MemorySearchOutcome,
+    MemorySearchSpec,
+};
+use std::num::NonZeroU32;
+use std::path::Path;
+
+let root = Path::new("/path/to/the/memory/root");
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, spawn: None }) {
+    eprintln!("{reason}");
+}
+
+match memory_search(MemorySearchSpec {
+    root,
+    query: "session report",
+    limit: NonZeroU32::new(5),
+    spawn: None,
+}) {
+    MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
+    MemorySearchOutcome::Empty => { /* the index was searched and nothing matched */ }
+    MemorySearchOutcome::Unavailable { reason } => { /* recall is broken: tell the owner */ }
+}
+```
+
+```rust
+pub struct MemoryIngestSpec<'a> {
+    pub root: &'a Path,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
+
+pub struct MemorySearchSpec<'a> {
+    pub root: &'a Path,
+    pub query: &'a str,
+    pub limit: Option<NonZeroU32>,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+pub enum MemorySearchOutcome {
+    Found { hits: Vec<MemorySearchResult> },
+    Empty,
+    Unavailable { reason: String },
+}
+```
+
+`root` is the child's cwd, where the command reads its config and index, and the directory the
+umbrella search starts from. A relative path is taken from the current directory. `query` is sent
+as one argument. `limit` is sent as `--limit`; `None` leaves the command's own default.
+
+| Outcome | When |
+|---|---|
+| `Ingested` | `pdks memory ingest` exited `0`. Its stdout is not read |
+| `Found { hits }` | The search exited `0` and printed at least one result. `hits` keeps the command's order and count |
+| `Empty` | The search exited `0` and printed an empty `results` list |
+| `Unavailable { reason }` | No umbrella, a failed spawn, a signal, any non-zero exit, or a stdout the generated types cannot parse. On a non-zero exit `reason` is the child's stderr verbatim, which names a missing `@polydeukes/memory`, a missing index, or a refused query |
+
+`Empty` comes only from a search that ran and matched nothing, so a host can tell an owner that
+recall is broken instead of running on without it. The fields of `MemorySearchResult` are the
+ones [`pdks memory search --json`](../cli/memory.md) prints, in snake case.
+
 <a id="limits"></a>
 ## Declared limits
 
@@ -214,10 +288,13 @@ status.
   (`Blocked`). The schema forbids that pair, but the generated `Tools` type cannot express it.
 - **An `Unjudged` verdict is not a pass.** The consumer decides what a project without a judge
   is allowed to do.
+- **`trust` and `matchPath` are closed enums.** A value a newer CLI prints that this crate does
+  not know makes the whole search `Unavailable`. The same minor release keeps them in step.
 
 <a id="see-also"></a>
 ## See also
 
 - [`@polydeukes/sdk-ts`](sdk-ts.md)
 - [`pdks covenant check`](../cli/covenant-check.md)
+- [`pdks memory`](../cli/memory.md)
 - [`@polydeukes/core`](core.md#consumer-contract)

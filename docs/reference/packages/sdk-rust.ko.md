@@ -4,6 +4,7 @@
 
 > **Rust에서 판정기를 호출합니다.** 약속(covenant) 입력을 `check_covenant`에, unified diff를
 > `check_change_set`에 넘기면 `pdks covenant check`의 판정 결과를 값으로 받습니다.
+> `memory_ingest`와 `memory_search`로 프로젝트의 memory를 색인하고 검색해서 결과를 값으로 받습니다.
 >
 > 베타입니다. crates.io에 `polydeukes-sdk`로 출판되어 있습니다. 판정받는 프로젝트는 npm에서
 > `polydeukes`를 설치해야 하고, `PATH`에 `node`가 있어야 합니다.
@@ -20,8 +21,10 @@ stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉�
 | `check_covenant` | 판정받는 프로젝트에서 `pdks covenant check`를 실행하고 판정 결과를 돌려줍니다 |
 | `check_change_set` | 끝난 변경 집합에 대해 같은 일을 합니다. diff를 stdin에 넣고 `pdks covenant check --diff`를 실행합니다 |
 | `CovenantInput`과 그 구성 타입 | `@polydeukes/core/covenant-input.schema.json`에서 생성한 입력 타입입니다 |
-| 우산 탐색 | Node와 같이 `repo_root`에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다 |
-| 판정 결과 변환 | exit `0`은 `Upheld`, exit `2`는 `Blocked`, 나머지는 모두 `Unjudged`입니다 |
+| `memory_ingest` · `memory_search` | memory 루트에서 `pdks memory ingest`와 `pdks memory search --json`을 실행하고 결과를 돌려줍니다 |
+| `MemorySearchOutput`과 그 구성 타입 | `@polydeukes/core/memory-search-output.schema.json`에서 생성한 검색 출력 타입입니다 |
+| 우산 탐색 | Node와 같이 동사의 루트(`repo_root`, memory 동사는 `root`)에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다 |
+| 판정 결과 변환 | 약속 동사에서는 exit `0`이 `Upheld`, exit `2`는 `Blocked`, 나머지는 모두 `Unjudged`입니다 |
 
 텔레메트리 행은 판정하는 자식 프로세스가 씁니다. 이 crate는 행을 따로 쓰지 않습니다.
 
@@ -110,7 +113,7 @@ pub struct CheckCovenantSpec<'a> {
 
 pub enum Enforce { Advise, Block }
 pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String }
-pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
+pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stderr: String }
 ```
 
 | 필드 | 의미 |
@@ -125,8 +128,8 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stderr: String }
 **`enforce`의 기본값은 `Block`입니다.** `@polydeukes/sdk-ts`와 같습니다. 보호 경로와
 `enforce: block`을 단 항목이 호출을 막고, 그 밖의 위반은 exit 0의 `advised`로 기록됩니다.
 
-기본 스폰은 표준 스트림 셋을 모두 파이프로 연결하고 아무것도 물려주지 않습니다. stderr는 모아서
-돌려주고, stdout은 읽어서 버립니다. 판정기는 stdout에 판정 결과를 쓰지 않습니다.
+기본 스폰은 표준 스트림 셋을 모두 파이프로 연결하고 아무것도 물려주지 않으며, stdout과 stderr를
+모아서 돌려줍니다. 약속 동사는 stdout을 읽지 않습니다. 판정기는 stdout에 판정 결과를 쓰지 않습니다.
 
 <a id="change-set"></a>
 ## `check_change_set`
@@ -199,6 +202,77 @@ pub enum CheckCovenantVerdict {
 설명대로 읽습니다. 변경 집합은 실행마다 새 파일을, 세션 입력은 세션 전체에 파일 하나를 씁니다. 판정
 결과는 여전히 exit status가 정합니다.
 
+<a id="memory"></a>
+## `memory_ingest`와 `memory_search`
+
+memory 동사는 memory 루트에서 `pdks memory`를 실행합니다. 우산 탐색과 스폰 이음매는 약속 동사와
+같습니다. `memory_ingest`는 `pdks memory ingest`를 실행합니다. `memory_search`는
+`pdks memory search <query> --json`을 실행하고, `limit`이 있으면 `--limit <n>`을 덧붙이고, stdout을
+`@polydeukes/core/memory-search-output.schema.json`에서 생성한 타입으로 파싱합니다. 자식 프로세스는
+선택 peer인 `@polydeukes/memory`를 불러오므로, memory 루트는 이 패키지를 `polydeukes` 옆에 설치해야
+합니다.
+
+```rust
+use polydeukes_sdk::{
+    memory_ingest, memory_search, MemoryIngestOutcome, MemoryIngestSpec, MemorySearchOutcome,
+    MemorySearchSpec,
+};
+use std::num::NonZeroU32;
+use std::path::Path;
+
+let root = Path::new("/path/to/the/memory/root");
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, spawn: None }) {
+    eprintln!("{reason}");
+}
+
+match memory_search(MemorySearchSpec {
+    root,
+    query: "session report",
+    limit: NonZeroU32::new(5),
+    spawn: None,
+}) {
+    MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
+    MemorySearchOutcome::Empty => { /* 색인을 검색했고 맞는 절이 없습니다 */ }
+    MemorySearchOutcome::Unavailable { reason } => { /* 회상이 동작하지 않습니다. 소유자에게 알립니다 */ }
+}
+```
+
+```rust
+pub struct MemoryIngestSpec<'a> {
+    pub root: &'a Path,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
+
+pub struct MemorySearchSpec<'a> {
+    pub root: &'a Path,
+    pub query: &'a str,
+    pub limit: Option<NonZeroU32>,
+    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+}
+pub enum MemorySearchOutcome {
+    Found { hits: Vec<MemorySearchResult> },
+    Empty,
+    Unavailable { reason: String },
+}
+```
+
+`root`는 자식의 cwd이고, 명령이 설정과 색인을 읽는 곳이며, 우산 탐색을 시작하는 디렉터리입니다.
+상대 경로는 현재 디렉터리 기준입니다. `query`는 인자 하나로 전달됩니다. `limit`은 `--limit`으로
+전달되고, `None`이면 명령의 기본값을 씁니다.
+
+| 결과 | 나오는 경우 |
+|---|---|
+| `Ingested` | `pdks memory ingest`가 exit `0`으로 끝났습니다. stdout은 읽지 않습니다 |
+| `Found { hits }` | 검색이 exit `0`으로 끝났고 결과를 하나 이상 출력했습니다. `hits`의 순서와 개수는 명령이 출력한 그대로입니다 |
+| `Empty` | 검색이 exit `0`으로 끝났고 빈 `results` 목록을 출력했습니다 |
+| `Unavailable { reason }` | 우산이 없거나, 스폰이 실패했거나, 시그널로 끝났거나, exit가 `0`이 아니거나, stdout을 생성 타입으로 파싱하지 못했습니다. exit가 `0`이 아니면 `reason`은 자식의 stderr 그대로이고, `@polydeukes/memory`가 없는지, 색인이 없는지, 질의가 거부됐는지를 알려 줍니다 |
+
+`Empty`는 검색을 실제로 실행해서 맞는 절이 없을 때만 나옵니다. 그래서 호스트는 회상이 없는 채로
+계속 실행하는 대신, 회상이 동작하지 않는다는 사실을 소유자에게 알릴 수 있습니다.
+`MemorySearchResult`의 필드는 [`pdks memory search --json`](../cli/memory.ko.md)이 출력하는 필드와
+같고, 이름만 snake case로 바뀝니다.
+
 <a id="limits"></a>
 ## 선언된 한계
 
@@ -210,10 +284,13 @@ pub enum CheckCovenantVerdict {
 - **`shell`이 비어 있지 않은데 `command_args`가 빈 도구 목록은 실행기가 거부합니다**(`Blocked`).
   스키마는 이 조합을 금지하지만, 생성된 `Tools` 타입은 그 제약을 표현하지 못합니다.
 - **`Unjudged`는 통과가 아닙니다.** 판정기가 없는 프로젝트에 무엇을 허용할지는 소비자가 정합니다.
+- **`trust`와 `matchPath`는 닫힌 열거형입니다.** 더 새로운 CLI가 이 crate가 모르는 값을 출력하면
+  그 검색 전체가 `Unavailable`이 됩니다. 같은 minor 릴리스를 쓰면 두 쪽의 값이 맞습니다.
 
 <a id="see-also"></a>
 ## 함께 보기
 
 - [`@polydeukes/sdk-ts`](sdk-ts.ko.md)
 - [`pdks covenant check`](../cli/covenant-check.ko.md)
+- [`pdks memory`](../cli/memory.ko.md)
 - [`@polydeukes/core`](core.ko.md#consumer-contract)

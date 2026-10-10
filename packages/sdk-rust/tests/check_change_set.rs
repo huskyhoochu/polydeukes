@@ -78,6 +78,7 @@ impl RecordingSeam {
         let (status, stderr) = self.outcome;
         Ok(SpawnOutcome {
             status,
+            stdout: String::new(),
             stderr: stderr.to_string(),
         })
     }

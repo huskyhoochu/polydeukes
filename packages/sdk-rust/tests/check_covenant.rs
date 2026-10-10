@@ -119,6 +119,7 @@ impl RecordingSeam {
         match self.outcome {
             Some((status, stderr)) => Ok(SpawnOutcome {
                 status,
+                stdout: String::new(),
                 stderr: stderr.to_string(),
             }),
             None => Err(io::Error::new(

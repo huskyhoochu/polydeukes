@@ -4,7 +4,8 @@
 
 이 crate는 Rust에서 약속(covenant) 입력이나, unified diff로 된 끝난 변경 집합을 Polydeukes
 판정기에 넘깁니다. 판정받는 프로젝트에 설치된 `polydeukes`를 찾고, `node`로 `pdks covenant check`를
-실행하면서 입력이나 diff를 stdin에 넣고, 판정 결과를 값으로 돌려줍니다. 판정 로직은 여기에 없고, 텔레메트리 행도 여기서 쓰지 않습니다.
+실행하면서 입력이나 diff를 stdin에 넣고, 판정 결과를 값으로 돌려줍니다. `pdks memory`로
+프로젝트의 memory를 색인하고 검색해서 결과를 값으로 돌려주기도 합니다. 판정 로직은 여기에 없고, 텔레메트리 행도 여기서 쓰지 않습니다.
 행은 자식 프로세스가 씁니다.
 
 ```sh
@@ -23,8 +24,12 @@ cargo add polydeukes-sdk
 - `CheckCovenantSpec`과 `CheckChangeSetSpec`
 - `CheckCovenantVerdict`
 - `Enforce`
+- `memory_ingest`와 `memory_search`, 그리고 `MemoryIngestSpec` · `MemorySearchSpec` ·
+  `MemoryIngestOutcome` · `MemorySearchOutcome`
 - `SpawnSpec`과 `SpawnOutcome`
 - `CovenantInput`과 그 구성 타입. `@polydeukes/core/covenant-input.schema.json`에서 생성합니다
+- `MemorySearchOutput`과 그 구성 타입. `@polydeukes/core/memory-search-output.schema.json`에서
+  생성합니다
 
 <a id="examples"></a>
 ## 예시
@@ -66,6 +71,10 @@ status를 모두 포함합니다.
 `check_change_set`은 `input` 대신 `diff`를 받고 `pdks covenant check --diff`를 실행합니다. diff의
 경로는 `git diff`가 출력하는 것처럼 `a/`·`b/` 뒤에 `repo_root` 기준으로 적힙니다. 돌려주는 판정
 결과는 같은 셋입니다.
+
+`memory_search`는 memory 루트에서 `pdks memory search <query> --json`을 실행하고 `Found`,
+`Empty`, `Unavailable` 중 하나를 돌려줍니다. `Empty`는 검색을 실행해서 맞는 절이 없을 때만 나오고,
+`@polydeukes/memory`가 없거나 색인이 없는 경우를 포함한 모든 실패는 `Unavailable`입니다.
 
 <a id="see-also"></a>
 ## 함께 보기

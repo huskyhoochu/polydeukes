@@ -20,7 +20,8 @@
     },
     "./schema.json": "./schema/polydeukes.schema.json",
     "./algebra-declaration.schema.json": "./schema/algebra-declaration.schema.json",
-    "./covenant-input.schema.json": "./schema/covenant-input.schema.json"
+    "./covenant-input.schema.json": "./schema/covenant-input.schema.json",
+    "./memory-search-output.schema.json": "./schema/memory-search-output.schema.json"
   },
   "files": [
     "dist",
@@ -40,7 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "ajv": "8.20.0",
+    "ajv": "catalog:",
     "ajv-formats": "3.0.1",
     "typescript": "catalog:",
     "vitest": "catalog:"

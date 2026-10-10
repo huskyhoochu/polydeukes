@@ -5,7 +5,8 @@
 This crate hands a covenant input, or a finished change set as a unified diff, to the
 Polydeukes judge from Rust. It locates the `polydeukes` install of the project being judged,
 spawns `pdks covenant check` under `node` with the input or the diff on stdin, and returns the
-verdict as a value. No judgment logic lives here, and
+verdict as a value. It also ingests and searches a project's memory through `pdks memory` and
+returns the hits as values. No judgment logic lives here, and
 no telemetry row is written here — the child process writes it.
 
 ```sh
@@ -24,8 +25,12 @@ Public items include:
 - `CheckCovenantSpec` and `CheckChangeSetSpec`
 - `CheckCovenantVerdict`
 - `Enforce`
+- `memory_ingest` and `memory_search`, with `MemoryIngestSpec`, `MemorySearchSpec`,
+  `MemoryIngestOutcome`, and `MemorySearchOutcome`
 - `SpawnSpec` and `SpawnOutcome`
 - `CovenantInput` and its parts, generated from `@polydeukes/core/covenant-input.schema.json`
+- `MemorySearchOutput` and its parts, generated from
+  `@polydeukes/core/memory-search-output.schema.json`
 
 <a id="examples"></a>
 ## Examples
@@ -67,6 +72,10 @@ spawn, and any child status that is not a verdict.
 `check_change_set` takes `diff` in place of `input` and spawns `pdks covenant check --diff`; its
 paths are relative to `repo_root` behind `a/` and `b/`, as `git diff` prints them. It returns the
 same three verdicts.
+
+`memory_search` spawns `pdks memory search <query> --json` in a memory root and returns `Found`,
+`Empty`, or `Unavailable`. `Empty` is a search that ran and matched nothing; a missing
+`@polydeukes/memory`, a missing index, and every other failure are `Unavailable`.
 
 <a id="see-also"></a>
 ## See also

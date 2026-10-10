@@ -158,7 +158,7 @@ function to select the applicable discipline list.
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
 
-Four places, all of them indirect.
+Five places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
   [the configuration reference](../configuration/index.md).
@@ -172,6 +172,10 @@ Four places, all of them indirect.
   refusing. The command checks less than the schema does, so the converse does not hold. The
   schema has no `world` key, because the command fills that axis itself and refuses an input
   that carries one.
+- **The memory search output's JSON Schema** — `@polydeukes/core/memory-search-output.schema.json`,
+  for a host written in another language that reads `pdks memory search --json`. Every field of a
+  result is required, and no object is closed, so a field the command adds later does not break
+  an existing host.
 - **The protocol above** — reading a `blocked` row means reading the vocabulary a body
   answered in.
 
