@@ -112,16 +112,18 @@ describe('searchMemory', () => {
     }
   });
 
-  it('uses AND before OR, deduplicates sections, and treats query syntax as text', async () => {
+  it('ranks the full match before the partial one, deduplicates sections, and treats query syntax as text', async () => {
     ingest([
       { id: 'notes/a', text: '# A\n\n## Both\n\nalpha beta 100% ready.\n' },
       { id: 'notes/b', text: '# B\n\n## One\n\nalpha literal_x and a "quote".\n' },
       { id: 'notes/c', text: '# C\n\n## Other\n\ngamma.\n' },
     ]);
 
-    const andResults = await searchMemory({ db, query: 'alpha beta' });
-    expect(andResults.map((result) => result.id)).toEqual(['notes/a#both']);
-    expect(andResults[0]?.matchPath).toBe('and');
+    const results = await searchMemory({ db, query: 'alpha beta' });
+    expect(results.map((result) => [result.id, result.matchPath])).toEqual([
+      ['notes/a#both', 'and'],
+      ['notes/b#one', 'or'],
+    ]);
 
     const orResults = await searchMemory({ db, query: 'alpha beta gamma' });
     expect(orResults.map((result) => result.id).sort()).toEqual([
@@ -645,29 +647,187 @@ describe('searchMemory keeps a query on the literal path when normalization drop
     id,
     text: `---\ntitle: Same doc\n---\n## Topic\n\n${body}\n`,
   });
+  // Length normalisation lowers every term's score in a long body, so `a`, holding both
+  // words once among the filler, scores worse than `b`, which repeats one word in a short
+  // body. The literal path still answers `a` first because it holds more of the words.
+  const long = (words: string) => `${words} ${'filler '.repeat(120)}`;
+  // Non-matching rows keep every term's IDF positive, so the scores differ instead of tying.
+  const filler = Array.from({ length: 4 }, (_, i) => ({
+    id: `notes/f${i}`,
+    text: '# Filler\n\n## One\n\nnothing here.\n\n## Two\n\nnothing here.\n',
+  }));
 
   // `why` and `the` are function words and `얼마` · `다시` are an interrogative and an adverb,
   // so normalization leaves nothing; the search then runs the words as written. A search
-  // over the empty list answers nothing; one that unions the original words answers `b` too.
-  // Each fixture holds both words in `a` and one in `b`, so the AND answer is `a` alone.
+  // over the empty list answers nothing; one that ranks the written words by score alone,
+  // as the normalized path does, answers `b` first.
   it.each([
-    { query: 'why the', bodyA: 'why the drift.', bodyB: 'the only.', path: 'and' },
-    { query: '얼마 다시', bodyA: '얼마 다시 시도.', bodyB: '다시 하나.', path: 'like' },
+    { query: 'why the', bodyA: long('why the drift.'), bodyB: 'the the the only.', path: 'and' },
+    { query: '얼마 다시', bodyA: long('얼마 다시 시도.'), bodyB: '다시 다시 다시.', path: 'like' },
   ])(
-    '$query: answers the AND result of the words as written',
+    '$query: answers the words as written, the section holding both first',
     async ({ query, bodyA, bodyB, path }) => {
-      ingest([doc('notes/a', bodyA), doc('notes/b', bodyB)]);
+      ingest([doc('notes/a', bodyA), doc('notes/b', bodyB), ...filler]);
       const results = await searchMemory({ db, query });
-      expect(results.map((row) => [row.id, row.matchPath])).toEqual([['notes/a#topic', path]]);
+      expect(results.map((row) => [row.id, row.matchPath])).toEqual([
+        ['notes/a#topic', path],
+        ['notes/b#topic', 'or'],
+      ]);
     },
   );
 
   // The literal path is chosen by comparing lists; a normalization that trims or collapses
   // the whitespace before comparing sees a changed list and sends the identifiers to the
-  // union, which answers `b` as well.
-  it('keeps an identifier query with surrounding and repeated whitespace on the AND path', async () => {
-    ingest([doc('notes/a', 'T-260901 and MQ-568 both.'), doc('notes/b', 'T-260901 alone.')]);
+  // normalized path, which ranks by score alone and answers `b` first.
+  it('keeps an identifier query with surrounding and repeated whitespace on the literal path', async () => {
+    ingest([
+      doc('notes/a', long('T-260901 and MQ-568 both.')),
+      doc('notes/b', 'T-260901 T-260901 T-260901.'),
+      ...filler,
+    ]);
     const results = await searchMemory({ db, query: '  T-260901   MQ-568 ' });
-    expect(results.map((row) => [row.id, row.matchPath])).toEqual([['notes/a#topic', 'and']]);
+    expect(results.map((row) => [row.id, row.matchPath])).toEqual([
+      ['notes/a#topic', 'and'],
+      ['notes/b#topic', 'or'],
+    ]);
+  });
+
+  // Normalization deduplicates, so a repeated word reaches the search only on this path.
+  // Each section holds one distinct word and `b` scores better; counting `why` twice
+  // answers `a` first.
+  it('counts a repeated word once when ranking by matched words', async () => {
+    ingest([doc('notes/a', long('why')), doc('notes/b', 'the the the.'), ...filler]);
+    const results = await searchMemory({ db, query: 'why why the' });
+    expect(results.map((row) => [row.id, row.matchPath])).toEqual([
+      ['notes/b#topic', 'or'],
+      ['notes/a#topic', 'or'],
+    ]);
+  });
+});
+
+describe('searchMemory fills the literal path with partial matches, most matched words first', () => {
+  const doc = (id: string, body: string) => ({
+    id,
+    text: `---\ntitle: Same doc\n---\n## Topic\n\n${body}\n`,
+  });
+  // Length normalisation lowers every term's score in a long body, so a section holding
+  // more of the query's words among the filler scores worse than a short section that
+  // repeats one word; the fixtures below rely on that to separate word count from score.
+  const long = (words: string) => `${words} ${'filler '.repeat(120)}`;
+  // Non-matching rows keep every term's IDF positive, so the scores differ instead of tying.
+  const filler = Array.from({ length: 4 }, (_, i) => ({
+    id: `notes/f${i}`,
+    text: '# Filler\n\n## One\n\nnothing here.\n\n## Two\n\nnothing here.\n',
+  }));
+  const rows = async (query: string, limit?: number) =>
+    (await searchMemory({ db, query, limit })).map((row) => [row.id, row.matchPath]);
+
+  /** Each section's bm25 sum over the words it holds, read from the index (lower is better). */
+  function bm25Sum(words: string[]): Map<string, number> {
+    const sums = new Map<string, number>();
+    for (const word of words) {
+      const hits = db
+        .prepare(
+          'SELECT s.id AS id, bm25(chunk_fts) AS score FROM chunk_fts JOIN chunk AS c ON c.rowid = chunk_fts.rowid JOIN section AS s ON s.rowid = c.section_rowid WHERE chunk_fts MATCH ?',
+        )
+        .all(`"${word}"`) as { id: string; score: number }[];
+      for (const hit of hits) sums.set(hit.id, (sums.get(hit.id) ?? 0) + hit.score);
+    }
+    return sums;
+  }
+
+  it('answers the section holding every word first, then the sections holding some, and leaves the unrelated one out', async () => {
+    // Catches candidates cut to the full matches whenever there is one (`b` and `c` missing
+    // under a limit they fit in), a partial match ranked before the full one, and a path tag
+    // applied to the whole answer instead of per row.
+    ingest([
+      doc('notes/a', 'companion chat one-shot relay.'),
+      doc('notes/b', 'companion chat relay.'),
+      doc('notes/c', 'companion chat one-shot.'),
+      doc('notes/d', 'billing.'),
+    ]);
+    const found = await rows('companion chat one-shot relay', 50);
+    expect(found[0]).toEqual(['notes/a#topic', 'and']);
+    expect(found.slice(1).sort()).toEqual([
+      ['notes/b#topic', 'or'],
+      ['notes/c#topic', 'or'],
+    ]);
+  });
+
+  it('returns only the full matches in score order when they reach the limit', async () => {
+    // `m` holds one word five times and outscores `a`; a union ranked by score alone answers
+    // `z`, `m` and cuts `a`. Catches the limit applied before the sort as well: the first two
+    // candidates by ID are `a` and `m`.
+    ingest([
+      doc('notes/a', long('alpha beta')),
+      doc('notes/m', 'alpha alpha alpha alpha alpha.'),
+      doc('notes/z', 'alpha alpha beta beta.'),
+      ...filler,
+    ]);
+    const sums = bm25Sum(['alpha', 'beta']);
+    expect(sums.get('notes/m#topic')).toBeLessThan(sums.get('notes/a#topic') as number);
+    expect(await rows('alpha beta', 2)).toEqual([
+      ['notes/z#topic', 'and'],
+      ['notes/a#topic', 'and'],
+    ]);
+  });
+
+  it('ranks sections matched on two words before one matched on a single rarer word', async () => {
+    // No section holds all three words. `d` repeats the rarest word in a short body, so it has
+    // the best score; a ranking by score alone answers `d` first, as the two-word sections `a`
+    // and `c` carry their words in long bodies.
+    ingest([
+      doc('notes/a', long('companion chat one-shot relay')),
+      doc('notes/b', long('companion chat relay')),
+      doc('notes/c', long('companion chat one-shot')),
+      doc('notes/d', 'billing billing billing.'),
+      ...filler,
+    ]);
+    const sums = bm25Sum(['companion', 'one-shot', 'billing']);
+    expect(sums.get('notes/d#topic')).toBeLessThan(sums.get('notes/a#topic') as number);
+    expect(sums.get('notes/d#topic')).toBeLessThan(sums.get('notes/c#topic') as number);
+    const found = await rows('companion one-shot billing');
+    expect(found.slice(0, 2).sort()).toEqual([
+      ['notes/a#topic', 'or'],
+      ['notes/c#topic', 'or'],
+    ]);
+    // Among the one-word sections the score decides: `d` before `b`.
+    expect(found.slice(2)).toEqual([
+      ['notes/d#topic', 'or'],
+      ['notes/b#topic', 'or'],
+    ]);
+  });
+
+  it('keeps score order on the normalized path when a one-word section outscores a two-word one', async () => {
+    // `the drift snapshot` normalizes to `drift` · `snapshot`. `a` repeats `drift` in a short
+    // body and outscores `z`, which holds both words once among the filler; a matched-word
+    // count applied on this path too answers `z` first.
+    ingest([
+      doc('notes/a', 'drift drift drift drift drift drift.'),
+      doc('notes/z', long('drift snapshot')),
+      ...filler,
+    ]);
+    expect(await rows('the drift snapshot')).toEqual([
+      ['notes/a#topic', 'or'],
+      ['notes/z#topic', 'and'],
+    ]);
+  });
+
+  it('puts a deprecated full match after a partial match that is not retired', async () => {
+    // Catches the retired key placed after the matched-word count, and every full match
+    // grouped before every partial one regardless of status.
+    ingest([
+      {
+        id: 'notes/a',
+        text: '---\ntitle: Same doc\nstatus: deprecated\n---\n## Topic\n\nalpha beta.\n',
+      },
+      doc('notes/z', 'alpha only.'),
+      ...filler,
+    ]);
+    const found = await searchMemory({ db, query: 'alpha beta' });
+    expect(found.map((row) => [row.id, row.matchPath, row.status])).toEqual([
+      ['notes/z#topic', 'or', 'stable'],
+      ['notes/a#topic', 'and', 'deprecated'],
+    ]);
   });
 });

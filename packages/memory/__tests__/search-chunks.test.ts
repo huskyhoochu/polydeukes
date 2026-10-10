@@ -393,8 +393,8 @@ describe('searchMemory returns the section-level match set unchanged', () => {
   /**
    * The (section id, match path) set from a full scan of the `section` rows: per term, the
    * sections whose title, document title, or body contains it, or whose id or document id
-   * starts with it; every term for a literal query when any section holds them all, any term
-   * otherwise. A term of one or two characters, or an id-prefix hit, marks the scan path.
+   * starts with it; a section matched by any term is in the set. A term of one or two
+   * characters, or an id-prefix hit, marks the scan path.
    */
   async function oracle(query: string): Promise<string[]> {
     const raw = query.trim().split(/\s+/u).filter(Boolean);
@@ -425,10 +425,8 @@ describe('searchMemory returns the section-level match set unchanged', () => {
       for (const id of byId) found.set(id, true);
       return found;
     });
-    const all = new Set(hits.flatMap((set) => [...set.keys()]));
-    const every = [...all].filter((id) => hits.every((set) => set.has(id)));
-    const ids = literal && every.length > 0 ? every : [...all];
-    return ids
+    const ids = new Set(hits.flatMap((set) => [...set.keys()]));
+    return [...ids]
       .map((id) => {
         const own = hits.filter((set) => set.has(id));
         const path =

@@ -167,8 +167,8 @@ function termMatches(db: DatabaseSync, term: string): Map<number, Match> {
 
 /**
  * Finds sections by the query's normalized terms, any of them matching. A query that
- * normalization leaves unchanged or empties runs its words as written, widening to any word
- * only when all words match no section.
+ * normalization leaves unchanged or empties runs its words as written, any of them matching,
+ * and ranks the sections holding more of the words first.
  */
 export async function searchMemory({
   db,
@@ -182,11 +182,11 @@ export async function searchMemory({
 
   const normalized = await normalizeQuery(query);
   // An identifier query comes back from normalization unchanged; comparing with the whitespace
-  // split keeps it on the AND path, where a section must hold every word.
+  // split keeps it on the literal path, where sections holding more of the words rank first.
   const literal =
     normalized.length === 0 ||
     (normalized.length === raw.length && normalized.every((term, i) => term === raw[i]));
-  const terms = literal ? raw : normalized;
+  const terms = literal ? [...new Set(raw)] : normalized;
   // Every read below comes from one snapshot, so a chunk's hit and its section's row agree even
   // while an ingest commits in another connection.
   const own = !db.isTransaction;
@@ -196,9 +196,7 @@ export async function searchMemory({
   const supersededBy = new Map<string, string[]>();
   try {
     matches = terms.map((term) => termMatches(db, term));
-    const allIds = new Set(matches.flatMap((set) => [...set.keys()]));
-    const andIds = [...allIds].filter((id) => matches.every((set) => set.has(id)));
-    const ids = literal && andIds.length > 0 ? andIds : [...allIds];
+    const ids = [...new Set(matches.flatMap((set) => [...set.keys()]))];
     rows =
       ids.length === 0
         ? []
@@ -251,6 +249,8 @@ export async function searchMemory({
       };
       return {
         result,
+        // A key of its own, so no doc_type weight lifts a section above one holding more words.
+        matched: literal ? hits.length : 0,
         score:
           score -
           (row.doc_type !== null && config?.weights && Object.hasOwn(config.weights, row.doc_type)
@@ -265,6 +265,7 @@ export async function searchMemory({
       const status = retired(a) - retired(b);
       return (
         status ||
+        b.matched - a.matched ||
         a.score - b.score ||
         (a.result.id < b.result.id ? -1 : a.result.id > b.result.id ? 1 : 0)
       );

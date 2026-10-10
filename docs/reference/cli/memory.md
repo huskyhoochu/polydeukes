@@ -118,9 +118,10 @@ anywhere among them. The query is reduced to search terms first:
   `Why did the adapter's typecheck stay green` becomes `adapter` · `typecheck` · `stay` · `green`
   and an identifier such as `ISSUE-63b` stays as written.
 
-When this changes none of the words, or drops all of them, the words are searched as written: a
-section matches when it contains every word; when no section does, a section that contains any
-word matches. Otherwise a section matches when it contains any of the terms.
+A section matches when it contains any of the terms. When this changes none of the words, or
+drops all of them, the words are searched as written, and sections that contain more of the words
+come first: every section that contains all of them, then the sections that contain fewer, by how
+many they contain. Otherwise the terms' scores alone set the order.
 
 A section is ranked by its best passage. A section longer than 2,000 characters is scored in
 passages of up to 2,000 characters, cut after a blank line, a line break, or other whitespace, so
@@ -132,7 +133,7 @@ section appears once however many of its passages match.
 
 The sections of a document whose status is `deprecated`, or that another document replaces by the
 config's [`supersedes` rules](../configuration/index.md#memory), come after every other result,
-ordered among themselves by score.
+ordered among themselves in the same way.
 
 The first line of the table form is the time of the last ingest, followed by one line per
 result:

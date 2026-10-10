@@ -72,7 +72,7 @@ const DOC_ID = 'notes/alpha';
 const SECTION_ID = 'notes/alpha#two';
 const UNKNOWN_ID = 'notes/nothing';
 const SHARED_QUERY = 'shared-term';
-/** Two words: `alpha` alone hits both alpha sections, the pair hits only the second. */
+/** Two words: `alpha` alone hits both alpha sections as `and`; only the second holds the pair. */
 const JOINED_QUERY = ['alpha', 'only'];
 const NO_HIT_QUERY = 'zz-no-such-term-491';
 /** A document the shared query hits whose `stale_after` has passed; written only where the marker is asserted. */
@@ -343,7 +343,10 @@ describe('pdks memory search', () => {
     ingested();
     const db = openIndex();
     const expected = await searchMemory({ db, query: JOINED_QUERY.join(' '), config: MEMORY });
-    expect(expected.map((r) => r.id)).toEqual([SECTION_ID]);
+    expect(expected.map((r) => [r.id, r.matchPath])).toEqual([
+      [SECTION_ID, 'and'],
+      [`${DOC_ID}#one`, 'or'],
+    ]);
     expect(
       await searchMemory({ db, query: JOINED_QUERY[0] as string, config: MEMORY }),
     ).toHaveLength(2);
@@ -1191,7 +1194,10 @@ describe('pdks memory usage and the memory log', () => {
     const shared = await searchMemory({ db, query: SHARED_QUERY, config: MEMORY });
     const joined = await searchMemory({ db, query: JOINED_QUERY.join(' '), config: MEMORY });
     expect(shared).toHaveLength(2);
-    expect(joined.map((r) => r.id)).toEqual([SECTION_ID]);
+    expect(joined.map((r) => [r.id, r.matchPath])).toEqual([
+      [SECTION_ID, 'and'],
+      [`${DOC_ID}#one`, 'or'],
+    ]);
     const asLogged = (hits: typeof shared) =>
       hits.map((r) => ({ id: r.id, matchPath: r.matchPath }));
 
