@@ -11,6 +11,23 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.15.0](https://github.com/huskyhoochu/polydeukes/compare/v0.14.0...v0.15.0) (2026-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk-rust:** SpawnOutcome gains a public `stdout` field. A spawn seam that builds SpawnOutcome with a struct literal adds `stdout: String::new()` (or the child's stdout).
+
+### Features
+
+* **polydeukes:** ship pdks as a single executable and let sdk-rust run it from PATH ([#216](https://github.com/huskyhoochu/polydeukes/issues/216)) ([ee7039b](https://github.com/huskyhoochu/polydeukes/commit/ee7039bb622b8a78d0f008c3e6e9027a93fce1aa))
+* **sdk-rust:** add memory_ingest and memory_search beside the covenant verbs ([#215](https://github.com/huskyhoochu/polydeukes/issues/215)) ([8cf8c17](https://github.com/huskyhoochu/polydeukes/commit/8cf8c17157c755c6d424689f46c1da58c786539b))
+
+
+### Bug Fixes
+
+* **memory:** fill literal searches with partial matches, most words first ([#213](https://github.com/huskyhoochu/polydeukes/issues/213)) ([1c8002d](https://github.com/huskyhoochu/polydeukes/commit/1c8002d92601b78745f3fe0e736ba83db8638982))
+
 ## [0.14.0](https://github.com/huskyhoochu/polydeukes/compare/v0.13.0...v0.14.0) (2026-10-06)
 
 
