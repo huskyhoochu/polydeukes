@@ -11,6 +11,17 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.17.0](https://github.com/b95labs/polydeukes/compare/v0.16.0...v0.17.0) (2026-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk-rust:** CheckCovenantSpec, CheckChangeSetSpec, MemoryIngestSpec and MemorySearchSpec gain a public `executable` field. A caller that builds a spec with a struct literal adds `executable: None` (or the path).
+
+### Features
+
+* **sdk-rust:** let a caller name the pdks executable each verb runs ([#223](https://github.com/b95labs/polydeukes/issues/223)) ([00932cb](https://github.com/b95labs/polydeukes/commit/00932cb4018eea89419394cbf1da4a88334e3bbe))
+
 ## [0.16.0](https://github.com/huskyhoochu/polydeukes/compare/v0.15.0...v0.16.0) (2026-10-10)
 
 
