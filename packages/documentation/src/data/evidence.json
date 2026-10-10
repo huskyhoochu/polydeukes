@@ -1,5 +1,5 @@
 {
-  "note": "Third-party measurements cited on the landing page. Each entry names its primary source and the condition the number was measured under, because every one of these is easy to misread out of context. Research note: _docs/research/agent-harness-evidence.md",
+  "note": "Third-party measurements cited on the landing page. Each entry names its primary source and the condition the number was measured under, because every one of these is easy to misread out of context. Research note: _docs/knowledge/foundation.research.agent-constraint-evidence.md",
   "findings": [
     {
       "id": "prompt-is-not-enforcement",
