@@ -6,14 +6,14 @@
 > `check_change_set`에 넘기면 `pdks covenant check`의 판정 결과를 값으로 받습니다.
 > `memory_ingest`와 `memory_search`로 프로젝트의 memory를 색인하고 검색해서 결과를 값으로 받습니다.
 >
-> 베타입니다. crates.io에 `polydeukes-sdk`로 출판되어 있습니다. 판정받는 프로젝트는 npm에서
-> `polydeukes`를 설치해야 하고, `PATH`에 `node`가 있어야 합니다.
+> 베타입니다. crates.io에 `polydeukes-sdk`로 출판되어 있습니다. 판정받는 프로젝트가 npm에서
+> `polydeukes`를 설치하고 `PATH`에 `node`를 두거나, 호스트가 단일 실행 파일 `pdks`를 `PATH`에 둡니다.
 
 <a id="ownership"></a>
 ## 이 crate가 맡는 일
 
-이 crate는 판정받는 프로젝트에서 `polydeukes`를 찾고, 그 bin을 `node`로 실행하면서 입력을
-stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉니다. 판정은 자식 프로세스가
+이 crate는 판정받는 프로젝트에서 `polydeukes`를 찾고, 그 bin을 `node`로 실행하면서(설치가 없으면
+`PATH`의 실행 파일 `pdks`를 실행하면서) 입력을 stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉니다. 판정은 자식 프로세스가
 합니다. 그래서 같은 규율(discipline)을 Rust에서 판정하든 Node에서 판정하든 판정 결과가 같습니다.
 
 | 단위 | 하는 일 |
@@ -23,7 +23,7 @@ stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉�
 | `CovenantInput`과 그 구성 타입 | `@polydeukes/core/covenant-input.schema.json`에서 생성한 입력 타입입니다 |
 | `memory_ingest` · `memory_search` | memory 루트에서 `pdks memory ingest`와 `pdks memory search --json`을 실행하고 결과를 돌려줍니다 |
 | `MemorySearchOutput`과 그 구성 타입 | `@polydeukes/core/memory-search-output.schema.json`에서 생성한 검색 출력 타입입니다 |
-| 우산 탐색 | Node와 같이 동사의 루트(`repo_root`, memory 동사는 `root`)에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다 |
+| 우산 탐색 | Node와 같이 동사의 루트(`repo_root`, memory 동사는 `root`)에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다. 가장 가까운 설치가 깨져 있으면 거기서 멈춥니다. 설치가 하나도 없으면 `PATH`의 절대 경로 항목 가운데 실행할 수 있는 `pdks`가 처음 나오는 것을 실행합니다(symlink는 따라갑니다) |
 | 판정 결과 변환 | 약속 동사에서는 exit `0`이 `Upheld`, exit `2`는 `Blocked`, 나머지는 모두 `Unjudged`입니다 |
 
 텔레메트리 행은 판정하는 자식 프로세스가 씁니다. 이 crate는 행을 따로 쓰지 않습니다.
@@ -123,7 +123,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `enforce` | 실행 전체에 적용되는 관측자의 기본 자세입니다. **`None`은 `Block`입니다** |
 | `config_layer` | 프로젝트 설정과 함께 판정되는 [설정 층](../configuration/index.ko.md#config-layer)이고, `--config-layer`로 전달됩니다. 상대 경로는 `repo_root` 기준입니다 |
 | `telemetry_path` | 이번 실행의 행을 덧붙일 파일이고, `--telemetry-path`로 전달됩니다. 상대 경로는 자식의 cwd인 `repo_root` 기준입니다 |
-| `spawn` | 주입하는 스폰 이음매입니다. `None`이면 `PATH`의 `node`를 실행합니다. 시그널로 끝난 자식의 `SpawnOutcome::status`는 `None`입니다 |
+| `spawn` | 주입하는 스폰 이음매입니다. `None`이면 해석된 명령, 즉 `PATH`의 `node`나 실행 파일 `pdks`를 실행합니다. 시그널로 끝난 자식의 `SpawnOutcome::status`는 `None`입니다 |
 
 **`enforce`의 기본값은 `Block`입니다.** `@polydeukes/sdk-ts`와 같습니다. 보호 경로와
 `enforce: block`을 단 항목이 호출을 막고, 그 밖의 위반은 exit 0의 `advised`로 기록됩니다.
@@ -277,7 +277,11 @@ pub enum MemorySearchOutcome {
 ## 선언된 한계
 
 - **API는 블로킹입니다.** 비동기 호스트는 이 호출을 블로킹 작업으로 감쌉니다.
-- **`node`는 `PATH`에서 찾습니다.** `node`가 없는 호스트는 스폰 오류를 담은 `Unjudged`를 받습니다.
+- **npm 설치일 때 `node`는 `PATH`에서 찾습니다.** Node가 없는 호스트는 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의
+  단일 실행 파일(`pdks-linux-x64`, `pdks-darwin-arm64`)을 `pdks`라는 이름으로 `PATH`에 두고, 루트 위에
+  `node_modules/polydeukes`를 두지 않습니다. 둘 다 없는 호스트는 그 사유를 담은 `Unjudged`를 받습니다.
+  macOS에서 브라우저로 받은 파일에는 격리 속성이 붙고, ad-hoc 서명으로는 풀리지 않습니다.
+  `xattr -d com.apple.quarantine pdks`로 지웁니다.
 - **이 crate는 우산의 버전을 확인하지 않습니다.** 설치된 우산이 파싱하지 못하는 입력은
   `Unjudged`가 아니라 `Blocked`(exit 2, 실패 시 차단)로 돌아옵니다. crate의 버전과 프로젝트의
   `polydeukes` 버전을 같은 minor 릴리스로 맞춰 두세요.

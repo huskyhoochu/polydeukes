@@ -12,8 +12,10 @@
 cargo add polydeukes-sdk
 ```
 
-판정받는 프로젝트는 npm에서 `polydeukes`를 설치해야 하고(`pnpm add -D polydeukes`), `PATH`에
-`node`가 있어야 합니다.
+판정받는 프로젝트는 npm에서 `polydeukes`를 설치하고(`pnpm add -D polydeukes`) `PATH`에 `node`를
+둡니다. Node가 없는 호스트는 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의
+단일 실행 파일 `pdks`를 `PATH`에 둡니다.
+설치를 찾지 못하면 crate가 그 실행 파일을 실행합니다.
 
 <a id="overview"></a>
 ## 개요

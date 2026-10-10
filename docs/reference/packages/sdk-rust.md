@@ -8,14 +8,15 @@
 > values.
 >
 > Beta. Published on crates.io as `polydeukes-sdk`. The judged project installs `polydeukes`
-> from npm, and `node` must be on `PATH`.
+> from npm with `node` on `PATH`, or the host puts the single `pdks` executable on `PATH`.
 
 <a id="ownership"></a>
 ## What this crate owns
 
-The crate finds `polydeukes` in the project being judged, runs its bin under `node` with the
-input on stdin, and converts the child process's exit status into a verdict. The child process
-performs the judgment, so a discipline judged from Rust and from Node gets the same verdict.
+The crate finds `polydeukes` in the project being judged and runs its bin under `node` — or,
+with no install there, the `pdks` executable on `PATH` — with the input on stdin, and converts
+the child process's exit status into a verdict. The child process performs the judgment, so a
+discipline judged from Rust and from Node gets the same verdict.
 
 | Unit | What it does |
 |---|---|
@@ -24,7 +25,7 @@ performs the judgment, so a discipline judged from Rust and from Node gets the s
 | `CovenantInput` and its parts | The input types, generated from `@polydeukes/core/covenant-input.schema.json` |
 | `memory_ingest` · `memory_search` | Spawn `pdks memory ingest` and `pdks memory search --json` in a memory root and return the outcome |
 | `MemorySearchOutput` and its parts | The search output types, generated from `@polydeukes/core/memory-search-output.schema.json` |
-| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks` |
+| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks`. A broken nearest install stops there. With no install at all, the first absolute `PATH` entry holding an executable `pdks` (a symlink is followed) runs instead |
 | Verdict translation | For the covenant verbs, exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
 
 The child process writes telemetry during judgment. The crate adds no rows of its own.
@@ -124,7 +125,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `enforce` | The observer's posture for the whole run. **`None` is `Block`** |
 | `config_layer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repo_root` |
 | `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path`. A relative path resolves against `repo_root`, the child's cwd |
-| `spawn` | An injected spawn seam. `None` runs `node` from `PATH`. `SpawnOutcome::status` is `None` when a signal ended the child |
+| `spawn` | An injected spawn seam. `None` runs the resolved command: `node` from `PATH`, or the `pdks` executable. `SpawnOutcome::status` is `None` when a signal ended the child |
 
 **`enforce` defaults to `Block`,** as it does in `@polydeukes/sdk-ts`: protected paths and
 entries carrying `enforce: block` stop the call, and every other break is recorded `advised` at
@@ -280,7 +281,12 @@ ones [`pdks memory search --json`](../cli/memory.md) prints, in snake case.
 ## Declared limits
 
 - **The API is blocking.** An async host wraps the call in a blocking task.
-- **`node` comes from `PATH`.** A host without it gets `Unjudged` with the spawn error.
+- **`node` comes from `PATH` for an npm install.** A host without Node puts the single executable
+  from a [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)
+  (`pdks-linux-x64`, `pdks-darwin-arm64`) on `PATH` as `pdks` and keeps no
+  `node_modules/polydeukes` above the root. A host with neither gets `Unjudged` with the reason.
+  On macOS, a file downloaded through a browser carries a quarantine attribute the ad-hoc
+  signature does not clear: remove it with `xattr -d com.apple.quarantine pdks`.
 - **The crate does not check the umbrella's version.** An input the installed umbrella cannot
   parse comes back `Blocked` (exit 2, fail-closed), not `Unjudged`. Keep the crate's version
   and the project's `polydeukes` version on the same minor release.

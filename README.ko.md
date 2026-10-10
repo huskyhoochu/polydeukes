@@ -32,6 +32,10 @@ pnpm add -D polydeukes @polydeukes/core
 승인하고, Grok는 Hooks 탭을 새로 고치세요. Git diff만 판정하려면 공통 패키지를 설치한 뒤
 `pnpm exec pdks init`을 실행하세요.
 
+Node 없이 쓰려면 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)에서 단일 실행
+파일 `pdks`(`pdks-linux-x64`, `pdks-darwin-arm64`)를 받아 실행 권한을 주고 `PATH`에 두세요. memory를
+포함한 모든 `pdks` 명령이 이 파일로 실행됩니다. 에이전트 어댑터는 여전히 Node에서 실행됩니다.
+
 ### 2. 첫 규율 설정하기
 
 생성된 `polydeukes.config.yaml`을 편집기에서 여세요. 생성된 `protectedPaths`와 `witness`

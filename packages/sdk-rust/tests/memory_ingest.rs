@@ -291,33 +291,6 @@ mod resolving_the_umbrella {
     use super::*;
 
     #[test]
-    fn no_install_anywhere_spawns_nothing_and_is_unavailable_naming_the_root_and_the_install() {
-        // With no bin there is nothing to spawn. `Ingested` here would let a host whose
-        // umbrella was uninstalled keep reporting a fresh index. The reason tells the operator where it looked and what to do. The system
-        // temp directory is assumed to have no `node_modules/polydeukes` in its ancestors.
-        let (_dir, root) = fixture_root();
-        fs::write(
-            root.join("package.json"),
-            "{\"name\":\"consumer\",\"private\":true}\n",
-        )
-        .expect("consumer manifest");
-        let seam = RecordingSeam::answering(Some(0), "", "");
-
-        let outcome = memory_ingest(spec(&root, &|s| seam.spawn(s)));
-
-        let reason = unavailable(outcome);
-        assert!(
-            reason.contains(&root.to_string_lossy().into_owned()),
-            "reason names the root: {reason}"
-        );
-        assert!(
-            reason.contains("install it"),
-            "reason says to install it: {reason}"
-        );
-        assert_eq!(seam.calls().len(), 0);
-    }
-
-    #[test]
     fn an_install_in_an_ancestor_of_root_is_found_and_cwd_stays_root() {
         // One probe that the verb walks the covenant verbs' path: a lookup of its own that
         // stops at `root` reads a workspace member as not installed, and a cwd moved to the

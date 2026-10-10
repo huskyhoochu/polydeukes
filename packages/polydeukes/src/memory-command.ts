@@ -6,6 +6,7 @@
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { isSea } from 'node:sea';
 import type * as Memory from '@polydeukes/memory';
 import { CONFIG_FILENAMES, loadConfig } from './load-config.ts';
 
@@ -81,13 +82,16 @@ function parseArgs(args: string[]): Command {
  * error code, and that message is the one a broken install needs to see.
  */
 async function loadMemory(): Promise<typeof Memory> {
-  try {
-    import.meta.resolve(MEMORY_PACKAGE);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') throw error;
-    throw new Error(
-      `${MEMORY_PACKAGE} is not installed — install it with \`pnpm add -D ${MEMORY_PACKAGE}\``,
-    );
+  // A single executable carries memory in its own bundle, so there is no install to look for.
+  if (!isSea()) {
+    try {
+      import.meta.resolve(MEMORY_PACKAGE);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') throw error;
+      throw new Error(
+        `${MEMORY_PACKAGE} is not installed — install it with \`pnpm add -D ${MEMORY_PACKAGE}\``,
+      );
+    }
   }
   return import('@polydeukes/memory');
 }

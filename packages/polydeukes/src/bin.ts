@@ -11,7 +11,8 @@
  * process never asks a human anything.
  */
 
-import { readFileSync, readSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -82,17 +83,47 @@ if (args.length === 1 && args[0] === 'init') {
   }
 }
 
+/**
+ * Where `pdks docs` reads its documents and the version it reports. The bundle ships beside
+ * this file, so the docs root comes from the module's own location — never from the working
+ * directory, which is whatever shell invoked us. Inside a single executable `import.meta.url`
+ * is a `data:` URL: the version comes from the manifest asset, and the document assets are
+ * written to a fresh private directory that `extracted` names for the caller to remove. A
+ * directory shared across calls would serve whatever another user or an older build left there.
+ */
+async function docsLocation(): Promise<{ docsRoot: string; version: string; extracted?: string }> {
+  const sea = await import('node:sea');
+  if (!sea.isSea()) {
+    const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
+    const manifest = JSON.parse(readFileSync(join(docsRoot, '../../package.json'), 'utf8'));
+    if (typeof manifest.version !== 'string') throw new Error('missing package version');
+    return { docsRoot, version: manifest.version };
+  }
+  const manifest = JSON.parse(sea.getAsset('package.json', 'utf8'));
+  if (typeof manifest.version !== 'string') throw new Error('missing package version');
+  const extracted = mkdtempSync(join(tmpdir(), 'polydeukes-docs-'));
+  const docsRoot = join(extracted, 'docs');
+  for (const key of sea.getAssetKeys()) {
+    if (!key.startsWith('docs/')) continue;
+    const target = join(extracted, key);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, new Uint8Array(sea.getRawAsset(key)));
+  }
+  return { docsRoot, version: manifest.version, extracted };
+}
+
 if (args[0] === 'docs') {
   try {
     // Imported inside the try for the same reason `init` is: the query core and the
     // markdown behind it have no business on `covenant check`'s load path.
     const { runDocs } = await import('./docs-library.ts');
-    // The bundle ships beside this file, so the docs root comes from the module's own
-    // location — never from the working directory, which is whatever shell invoked us.
-    const docsRoot = join(dirname(fileURLToPath(import.meta.url)), 'docs');
-    const manifest = JSON.parse(readFileSync(join(docsRoot, '../../package.json'), 'utf8'));
-    if (typeof manifest.version !== 'string') throw new Error('missing package version');
-    const { text } = runDocs({ docsRoot, args: args.slice(1), version: manifest.version });
+    const { docsRoot, version, extracted } = await docsLocation();
+    let text: string;
+    try {
+      ({ text } = runDocs({ docsRoot, args: args.slice(1), version }));
+    } finally {
+      if (extracted !== undefined) rmSync(extracted, { recursive: true, force: true });
+    }
     await emitAndExit(text);
   } catch (error) {
     // stdout stays at zero bytes on this path: what cannot be answered is never answered

@@ -33,6 +33,10 @@ registers the session hook. Reopen Claude Code, approve the generated hooks with
 Codex, or reload Grok's Hooks tab. For checks over a Git diff alone, run `pnpm exec pdks init`
 after installing the shared packages.
 
+Without Node, take the single `pdks` executable from a [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)
+(`pdks-linux-x64`, `pdks-darwin-arm64`), make it executable, and put it on `PATH`. It runs every
+`pdks` command, memory included. The agent adapters still run under Node.
+
 ### 2. Configure your first discipline
 
 Open the generated `polydeukes.config.yaml` in your editor. Keep the generated `protectedPaths`

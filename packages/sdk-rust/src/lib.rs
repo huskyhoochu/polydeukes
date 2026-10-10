@@ -2,8 +2,9 @@
 //! read the verdict as a value; ingest and search a project's memory through `pdks memory` and
 //! read the hits as values.
 //!
-//! The crate locates the `polydeukes` umbrella in the project's install graph, spawns its bin
-//! under `node`, and maps the child's exit status. It judges nothing and opens no index.
+//! The crate locates the `polydeukes` umbrella in the project's install graph and spawns its bin
+//! under `node`, or, with no install there, the first `pdks` executable on `PATH`, and maps the
+//! child's exit status. It judges nothing and opens no index.
 
 #[rustfmt::skip]
 mod ir;
@@ -61,7 +62,8 @@ pub struct CheckCovenantSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
-    /// Injected spawn seam — `None` runs `node` from `PATH` with every stream piped.
+    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
+    /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -77,20 +79,59 @@ pub enum CheckCovenantVerdict {
     Unjudged { reason: String },
 }
 
-/// The `pdks` bin of the nearest `node_modules/polydeukes` at or above `repo_root`.
-///
-/// The nearest `node_modules/polydeukes` directory is the one Node resolves, so one with an
-/// unreadable or missing manifest, or no string `bin.pdks`, answers `None` without looking
-/// further up.
-fn find_umbrella_bin(repo_root: &Path) -> Option<PathBuf> {
-    let manifest_dir = repo_root
+/// What the nearest `node_modules/polydeukes` at or above a root holds.
+enum Install {
+    /// No `node_modules/polydeukes` sits at or above the root.
+    None,
+    /// The nearest one has an unreadable or missing manifest, or no string `bin.pdks`.
+    Broken(PathBuf),
+    /// The nearest one's `pdks` bin.
+    Bin(PathBuf),
+}
+
+/// The nearest `node_modules/polydeukes` at or above `repo_root`. It is the one Node resolves,
+/// so a broken one answers without looking further up.
+fn find_umbrella_bin(repo_root: &Path) -> Install {
+    let Some(manifest_dir) = repo_root
         .ancestors()
         .map(|dir| dir.join("node_modules").join(UMBRELLA_PACKAGE))
-        .find(|dir| dir.is_dir())?;
-    let text = fs::read_to_string(manifest_dir.join("package.json")).ok()?;
-    let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
-    let pdks = manifest["bin"]["pdks"].as_str()?;
-    Some(manifest_dir.join(pdks))
+        .find(|dir| dir.is_dir())
+    else {
+        return Install::None;
+    };
+    let bin = || {
+        let text = fs::read_to_string(manifest_dir.join("package.json")).ok()?;
+        let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
+        let pdks = manifest["bin"]["pdks"].as_str()?;
+        Some(manifest_dir.join(pdks))
+    };
+    match bin() {
+        Some(bin) => Install::Bin(bin),
+        None => Install::Broken(manifest_dir),
+    }
+}
+
+/// The first `pdks` on `PATH` that is a regular file (after following symlinks) and, on unix,
+/// carries an exec bit. Relative and empty entries are skipped: only the process cwd could
+/// resolve them.
+fn find_pdks_on_path() -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .filter(|dir| dir.is_absolute())
+        .map(|dir| dir.join("pdks"))
+        .find(|candidate| {
+            fs::metadata(candidate).is_ok_and(|meta| {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    meta.is_file() && meta.permissions().mode() & 0o111 != 0
+                }
+                #[cfg(not(unix))]
+                {
+                    meta.is_file()
+                }
+            })
+        })
 }
 
 /// Run the spec's command with every stream piped and collect stdout and stderr.
@@ -133,19 +174,19 @@ fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
     })
 }
 
-/// What runs the umbrella from a root: the root made absolute as the child's cwd, `node`, and
-/// the bin path as the first argument.
+/// What runs the umbrella from a root: the root made absolute as the child's cwd, and either
+/// `node` with the bin path as the first argument or a `pdks` executable with no argument.
 struct Invocation {
     cwd: PathBuf,
     command: String,
     args: Vec<String>,
 }
 
-/// Why no invocation could be built: the root could not be made absolute, or the install graph
-/// above the absolute root holds no umbrella.
+/// Why no invocation could be built: the root could not be made absolute, or no umbrella was
+/// found, where `Missing` says what was missing ahead of what the verb needed it for.
 enum Unresolved {
     Path(io::Error),
-    NoUmbrella(PathBuf),
+    Missing(String),
 }
 
 /// Every verb's one way to decide what it runs.
@@ -153,14 +194,30 @@ fn resolve_umbrella(root: &Path) -> Result<Invocation, Unresolved> {
     // Absolute once, for the walk and the child's cwd alike: a relative root has no ancestors
     // above `.`, and a relative bin path would be read from the child's new cwd.
     let cwd = std::path::absolute(root).map_err(Unresolved::Path)?;
-    let Some(bin) = find_umbrella_bin(&cwd) else {
-        return Err(Unresolved::NoUmbrella(cwd));
-    };
-    Ok(Invocation {
-        command: "node".into(),
-        args: vec![bin.to_string_lossy().into_owned()],
-        cwd,
-    })
+    // An install in the graph wins: the project's lockfile pinned that version. A broken
+    // nearest install is still the project's, so it stops the lookup before `PATH`.
+    match find_umbrella_bin(&cwd) {
+        Install::Bin(bin) => Ok(Invocation {
+            command: "node".into(),
+            args: vec![bin.to_string_lossy().into_owned()],
+            cwd,
+        }),
+        Install::Broken(manifest_dir) => Err(Unresolved::Missing(format!(
+            "the {UMBRELLA_PACKAGE} install at {} has no readable bin",
+            manifest_dir.display()
+        ))),
+        Install::None => match find_pdks_on_path() {
+            Some(pdks) => Ok(Invocation {
+                command: pdks.to_string_lossy().into_owned(),
+                args: vec![],
+                cwd,
+            }),
+            None => Err(Unresolved::Missing(format!(
+                "no {UMBRELLA_PACKAGE} in the install graph of {} and no pdks on PATH",
+                cwd.display()
+            ))),
+        },
+    }
 }
 
 /// Spawn `invocation` with `args` after its own and `stdin`, through the seam when one is given.
@@ -196,7 +253,8 @@ pub struct CheckChangeSetSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
-    /// Injected spawn seam — `None` runs `node` from `PATH` with every stream piped.
+    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
+    /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -245,17 +303,14 @@ fn run_check(
                 reason: format!("the judge could not be spawned: {error}"),
             };
         }
-        Err(Unresolved::NoUmbrella(repo_root)) => {
+        Err(Unresolved::Missing(missing)) => {
             let subject = if diff_mode {
                 "this change set"
             } else {
                 "this input"
             };
             return CheckCovenantVerdict::Unjudged {
-                reason: format!(
-                    "no {UMBRELLA_PACKAGE} in the install graph of {}: install it to have {subject} judged",
-                    repo_root.display()
-                ),
+                reason: format!("{missing}: install it to have {subject} judged"),
             };
         }
     };
@@ -313,7 +368,8 @@ fn run_check(
 pub struct MemoryIngestSpec<'a> {
     /// The memory root — config discovery, the child's cwd, and where the umbrella lookup starts.
     pub root: &'a Path,
-    /// Injected spawn seam — `None` runs `node` from `PATH` with every stream piped.
+    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
+    /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -332,7 +388,8 @@ pub struct MemorySearchSpec<'a> {
     pub query: &'a str,
     /// The most hits the command returns; `None` is the command's own default.
     pub limit: Option<NonZeroU32>,
-    /// Injected spawn seam — `None` runs `node` from `PATH` with every stream piped.
+    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
+    /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -390,11 +447,8 @@ fn run_memory(
         Err(Unresolved::Path(error)) => {
             return Err(format!("pdks memory could not be spawned: {error}"));
         }
-        Err(Unresolved::NoUmbrella(root)) => {
-            return Err(format!(
-                "no {UMBRELLA_PACKAGE} in the install graph of {}: install it to use memory",
-                root.display()
-            ));
+        Err(Unresolved::Missing(missing)) => {
+            return Err(format!("{missing}: install it to use memory"));
         }
     };
     let mut all = vec!["memory".to_string()];

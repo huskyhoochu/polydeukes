@@ -261,30 +261,6 @@ mod resolving_the_umbrella {
     use super::*;
 
     #[test]
-    fn no_install_anywhere_spawns_nothing_and_is_unjudged_naming_this_change_set() {
-        // With no bin there is nothing to spawn: `Upheld` here passes every change set
-        // unjudged. The reason names what went unjudged — a change set, not an input — so a
-        // host logging both verbs can tell them apart. The system temp directory is assumed
-        // to have no `node_modules/polydeukes` in any of its ancestors.
-        let (_dir, root) = fixture_root();
-        fs::write(
-            root.join("package.json"),
-            "{\"name\":\"consumer\",\"private\":true}\n",
-        )
-        .expect("consumer manifest");
-        let seam = RecordingSeam::answering(Some(0), "");
-
-        let verdict = check_change_set(spec(&root, DIFF, &|s| seam.spawn(s)));
-
-        let reason = unjudged(verdict);
-        assert!(
-            reason.contains("this change set"),
-            "reason names the change set: {reason}"
-        );
-        assert_eq!(seam.calls().len(), 0);
-    }
-
-    #[test]
     fn an_install_in_an_ancestor_of_repo_root_is_found_and_cwd_stays_repo_root() {
         // One probe that the verb walks the same path as `check_covenant`: a verb with its own
         // lookup that stops at repo_root reads a workspace member as not installed.

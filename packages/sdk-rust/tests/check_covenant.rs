@@ -510,31 +510,6 @@ mod resolving_the_umbrella {
     }
 
     #[test]
-    fn no_manifest_anywhere_spawns_nothing_and_is_unjudged_naming_the_package() {
-        // With no bin there is nothing to spawn and no writer for a row. `Upheld` here is
-        // the cheapest bypass in the crate — an absent judge passing every call.
-        // The walk also climbs above the fixture; the system temp directory is assumed to
-        // have no `node_modules/polydeukes` in any of its ancestors.
-        let (_dir, root) = fixture_root();
-        fs::write(
-            root.join("package.json"),
-            "{\"name\":\"consumer\",\"private\":true}\n",
-        )
-        .expect("consumer manifest");
-        let input = write_input();
-        let seam = RecordingSeam::answering(Some(0), "");
-
-        let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
-
-        let reason = unjudged(verdict);
-        assert!(
-            reason.contains("polydeukes"),
-            "reason names the package: {reason}"
-        );
-        assert_eq!(seam.calls().len(), 0);
-    }
-
-    #[test]
     fn an_unparseable_manifest_spawns_nothing_and_is_unjudged() {
         // A half-written install is not an install; spawning `node <nothing>` or panicking on
         // the parse both leave the caller without the value it was promised.

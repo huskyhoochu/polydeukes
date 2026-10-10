@@ -13,8 +13,10 @@ no telemetry row is written here — the child process writes it.
 cargo add polydeukes-sdk
 ```
 
-The project being judged installs `polydeukes` from npm (`pnpm add -D polydeukes`), and `node`
-must be on `PATH`.
+The project being judged installs `polydeukes` from npm (`pnpm add -D polydeukes`) with `node` on
+`PATH`. A host without Node puts the single `pdks` executable from a
+[GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) on `PATH` instead; the crate runs
+it when no install is found.
 
 <a id="overview"></a>
 ## Overview

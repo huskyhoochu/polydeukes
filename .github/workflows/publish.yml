@@ -132,3 +132,74 @@ jobs:
         if: steps.published.outputs.exists == 'false'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+  # The umbrella as one executable per platform, built from the same tag: Node and the bundle
+  # in one file, for a host that has no Node. Each runner builds for its own platform, because
+  # the executable is a copy of the runner's node binary with the bundle injected. The suite
+  # runs against the built file before it is kept, and only a tag whose full suite passed and
+  # reached npm gets executables.
+  executables:
+    needs: publish
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            asset: pdks-linux-x64
+          - runner: macos-latest
+            asset: pdks-darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Verify HEAD is exactly the tagged release
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          test "$TAG" = "v$(node -p 'require("./package.json").version')"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      - run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/${{ matrix.asset }}"
+
+      - run: pnpm -F polydeukes exec vitest run __tests__/sea-executable.e2e.test.ts
+        env:
+          PDKS_SEA: ${{ runner.temp }}/${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ runner.temp }}/${{ matrix.asset }}
+          if-no-files-found: error
+
+  # Release objects do not cross the mirror, so the tag's GitHub Release is made here when it
+  # does not exist yet; the executables replace any earlier upload of the same name.
+  release-assets:
+    needs: executables
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Attach the executables to the tag's Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --notes "Single executables of pdks for this release."
+          gh release upload "$TAG" assets/pdks-linux-x64 assets/pdks-darwin-arm64 --clobber
