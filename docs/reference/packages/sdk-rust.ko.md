@@ -7,13 +7,15 @@
 > `memory_ingest`와 `memory_search`로 프로젝트의 memory를 색인하고 검색해서 결과를 값으로 받습니다.
 >
 > 베타입니다. crates.io에 `polydeukes-sdk`로 출판되어 있습니다. 판정받는 프로젝트가 npm에서
-> `polydeukes`를 설치하고 `PATH`에 `node`를 두거나, 호스트가 단일 실행 파일 `pdks`를 `PATH`에 둡니다.
+> `polydeukes`를 설치하고 `PATH`에 `node`를 두거나, 호스트가 단일 실행 파일 `pdks`를 `PATH`에 두거나
+> spec에 적습니다.
 
 <a id="ownership"></a>
 ## 이 crate가 맡는 일
 
 이 crate는 판정받는 프로젝트에서 `polydeukes`를 찾고, 그 bin을 `node`로 실행하면서(설치가 없으면
-`PATH`의 실행 파일 `pdks`를 실행하면서) 입력을 stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉니다. 판정은 자식 프로세스가
+`PATH`의 실행 파일 `pdks`를 실행하면서, spec에 `executable`을 적으면 그 파일을 실행하면서)
+입력을 stdin에 넣고, 자식 프로세스의 exit status를 판정 결과로 바꿉니다. 판정은 자식 프로세스가
 합니다. 그래서 같은 규율(discipline)을 Rust에서 판정하든 Node에서 판정하든 판정 결과가 같습니다.
 
 | 단위 | 하는 일 |
@@ -23,7 +25,7 @@
 | `CovenantInput`과 그 구성 타입 | `@polydeukes/core/covenant-input.schema.json`에서 생성한 입력 타입입니다 |
 | `memory_ingest` · `memory_search` | memory 루트에서 `pdks memory ingest`와 `pdks memory search --json`을 실행하고 결과를 돌려줍니다 |
 | `MemorySearchOutput`과 그 구성 타입 | `@polydeukes/core/memory-search-output.schema.json`에서 생성한 검색 출력 타입입니다 |
-| 우산 탐색 | Node와 같이 동사의 루트(`repo_root`, memory 동사는 `root`)에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다. 가장 가까운 설치가 깨져 있으면 거기서 멈춥니다. 설치가 하나도 없으면 `PATH`의 절대 경로 항목 가운데 실행할 수 있는 `pdks`가 처음 나오는 것을 실행합니다(symlink는 따라갑니다) |
+| 우산 탐색 | Node와 같이 동사의 루트(`repo_root`, memory 동사는 `root`)에서 위로 올라가며 가장 가까운 `node_modules/polydeukes` 디렉터리를 찾고, 그 매니페스트의 `bin.pdks`를 읽습니다. 가장 가까운 설치가 깨져 있으면 거기서 멈춥니다. 설치가 하나도 없으면 `PATH`의 절대 경로 항목 가운데 실행할 수 있는 `pdks`가 처음 나오는 것을 실행합니다(symlink는 따라갑니다). spec에 `executable`을 적으면 이 탐색을 모두 건너뛰고 그 파일을 실행합니다 |
 | 판정 결과 변환 | 약속 동사에서는 exit `0`이 `Upheld`, exit `2`는 `Blocked`, 나머지는 모두 `Unjudged`입니다 |
 
 텔레메트리 행은 판정하는 자식 프로세스가 씁니다. 이 crate는 행을 따로 쓰지 않습니다.
@@ -81,6 +83,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 
@@ -108,6 +111,7 @@ pub struct CheckCovenantSpec<'a> {
     pub enforce: Option<Enforce>,
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 
@@ -123,6 +127,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `enforce` | 실행 전체에 적용되는 관측자의 기본 자세입니다. **`None`은 `Block`입니다** |
 | `config_layer` | 프로젝트 설정과 함께 판정되는 [설정 층](../configuration/index.ko.md#config-layer)이고, `--config-layer`로 전달됩니다. 상대 경로는 `repo_root` 기준입니다 |
 | `telemetry_path` | 이번 실행의 행을 덧붙일 파일이고, `--telemetry-path`로 전달됩니다. 상대 경로는 자식의 cwd인 `repo_root` 기준입니다 |
+| `executable` | 실행할 `pdks` 실행 파일입니다. 첫 인자로 동사를 넘깁니다. 상대 경로는 이름만 적은 경우를 포함해 현재 디렉터리 기준이고, `PATH`에서 찾지 않습니다. 스폰 전에 파일을 검사하지 않으므로, 실행할 수 없는 파일은 스폰 실패 갈래를 거쳐 `Unjudged`가 됩니다. `None`이면 위의 우산 탐색을 거칩니다 |
 | `spawn` | 주입하는 스폰 이음매입니다. `None`이면 해석된 명령, 즉 `PATH`의 `node`나 실행 파일 `pdks`를 실행합니다. 시그널로 끝난 자식의 `SpawnOutcome::status`는 `None`입니다 |
 
 **`enforce`의 기본값은 `Block`입니다.** `@polydeukes/sdk-ts`와 같습니다. 보호 경로와
@@ -147,6 +152,7 @@ let verdict = check_change_set(CheckChangeSetSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 ```
@@ -158,6 +164,7 @@ pub struct CheckChangeSetSpec<'a> {
     pub enforce: Option<Enforce>,
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 ```
@@ -221,7 +228,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 let root = Path::new("/path/to/the/memory/root");
-if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, spawn: None }) {
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, spawn: None }) {
     eprintln!("{reason}");
 }
 
@@ -229,6 +236,7 @@ match memory_search(MemorySearchSpec {
     root,
     query: "session report",
     limit: NonZeroU32::new(5),
+    executable: None,
     spawn: None,
 }) {
     MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
@@ -240,6 +248,7 @@ match memory_search(MemorySearchSpec {
 ```rust
 pub struct MemoryIngestSpec<'a> {
     pub root: &'a Path,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
@@ -248,6 +257,7 @@ pub struct MemorySearchSpec<'a> {
     pub root: &'a Path,
     pub query: &'a str,
     pub limit: Option<NonZeroU32>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemorySearchOutcome {
@@ -259,7 +269,8 @@ pub enum MemorySearchOutcome {
 
 `root`는 자식의 cwd이고, 명령이 설정과 색인을 읽는 곳이며, 우산 탐색을 시작하는 디렉터리입니다.
 상대 경로는 현재 디렉터리 기준입니다. `query`는 인자 하나로 전달됩니다. `limit`은 `--limit`으로
-전달되고, `None`이면 명령의 기본값을 씁니다.
+전달되고, `None`이면 명령의 기본값을 씁니다. `executable`은 약속 동사의 spec에 있는 필드와
+같고, 실행할 수 없는 파일은 `Unavailable`이 됩니다.
 
 | 결과 | 나오는 경우 |
 |---|---|
@@ -279,12 +290,13 @@ pub enum MemorySearchOutcome {
 - **API는 블로킹입니다.** 비동기 호스트는 이 호출을 블로킹 작업으로 감쌉니다.
 - **npm 설치일 때 `node`는 `PATH`에서 찾습니다.** Node가 없는 호스트는 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의
   단일 실행 파일(`pdks-linux-x64`, `pdks-darwin-arm64`)을 `pdks`라는 이름으로 `PATH`에 두고, 루트 위에
-  `node_modules/polydeukes`를 두지 않습니다. 둘 다 없는 호스트는 그 사유를 담은 `Unjudged`를 받습니다.
+  `node_modules/polydeukes`를 두지 않습니다. 프로젝트에 `polydeukes`가 따로 설치되어 있는 호스트는
+  spec에 실행 파일을 적습니다. 둘 다 없는 호스트는 그 사유를 담은 `Unjudged`를 받습니다.
   macOS에서 브라우저로 받은 파일에는 격리 속성이 붙고, ad-hoc 서명으로는 풀리지 않습니다.
   `xattr -d com.apple.quarantine pdks`로 지웁니다.
 - **이 crate는 우산의 버전을 확인하지 않습니다.** 설치된 우산이 파싱하지 못하는 입력은
   `Unjudged`가 아니라 `Blocked`(exit 2, 실패 시 차단)로 돌아옵니다. crate의 버전과 프로젝트의
-  `polydeukes` 버전을 같은 minor 릴리스로 맞춰 두세요.
+  `polydeukes` 버전을 같은 minor 릴리스로 맞춰 두세요. spec에 적은 `executable`도 마찬가지입니다.
 - **`shell`이 비어 있지 않은데 `command_args`가 빈 도구 목록은 실행기가 거부합니다**(`Blocked`).
   스키마는 이 조합을 금지하지만, 생성된 `Tools` 타입은 그 제약을 표현하지 못합니다.
 - **`Unjudged`는 통과가 아닙니다.** 판정기가 없는 프로젝트에 무엇을 허용할지는 소비자가 정합니다.

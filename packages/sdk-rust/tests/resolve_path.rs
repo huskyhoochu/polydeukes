@@ -125,6 +125,7 @@ fn search(root: &Path, seam: &RecordingSeam) -> MemorySearchOutcome {
         root,
         query: QUERY,
         limit: None,
+        executable: None,
         spawn: Some(&|s| seam.spawn(s)),
     })
 }
@@ -230,6 +231,7 @@ fn assert_every_verb_resolves_nothing(root: &Path) {
         enforce: None,
         config_layer: None,
         telemetry_path: None,
+        executable: None,
         spawn: Some(&|s| seam.spawn(s)),
     }));
     assert!(
@@ -249,6 +251,7 @@ fn assert_every_verb_resolves_nothing(root: &Path) {
         enforce: None,
         config_layer: None,
         telemetry_path: None,
+        executable: None,
         spawn: Some(&|s| seam.spawn(s)),
     }));
     assert!(

@@ -98,6 +98,7 @@ fn spec<'a>(
 ) -> MemoryIngestSpec<'a> {
     MemoryIngestSpec {
         root,
+        executable: None,
         spawn: Some(spawn),
     }
 }

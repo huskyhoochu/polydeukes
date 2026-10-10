@@ -95,7 +95,11 @@ fn scaffold_consumer(root: &Path) {
 }
 
 fn ingested(root: &Path) {
-    match memory_ingest(MemoryIngestSpec { root, spawn: None }) {
+    match memory_ingest(MemoryIngestSpec {
+        root,
+        executable: None,
+        spawn: None,
+    }) {
         MemoryIngestOutcome::Ingested => {}
         MemoryIngestOutcome::Unavailable { reason } => {
             panic!("expected ingested, got unavailable: {reason}")
@@ -118,6 +122,7 @@ fn search(root: &Path, query: &str, limit: Option<NonZeroU32>) -> MemorySearchOu
         root,
         query,
         limit,
+        executable: None,
         spawn: None,
     })
 }

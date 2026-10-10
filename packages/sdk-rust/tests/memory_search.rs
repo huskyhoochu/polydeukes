@@ -143,6 +143,7 @@ fn spec<'a>(
         root,
         query: QUERY,
         limit: None,
+        executable: None,
         spawn: Some(spawn),
     }
 }

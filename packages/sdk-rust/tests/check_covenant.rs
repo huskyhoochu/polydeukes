@@ -146,6 +146,7 @@ fn spec<'a>(
         enforce: None,
         config_layer: None,
         telemetry_path: None,
+        executable: None,
         spawn: Some(spawn),
     }
 }

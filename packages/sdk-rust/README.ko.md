@@ -16,6 +16,8 @@ cargo add polydeukes-sdk
 둡니다. Node가 없는 호스트는 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의
 단일 실행 파일 `pdks`를 `PATH`에 둡니다.
 설치를 찾지 못하면 crate가 그 실행 파일을 실행합니다.
+프로젝트에 `polydeukes`가 설치되어 있어도 실행 파일을 쓰려는 호스트는 spec의 `executable` 필드에
+그 파일을 적습니다. 그러면 crate는 설치를 찾지 않고 그 파일을 실행합니다.
 
 <a id="overview"></a>
 ## 개요
@@ -56,6 +58,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 

@@ -16,7 +16,8 @@ cargo add polydeukes-sdk
 The project being judged installs `polydeukes` from npm (`pnpm add -D polydeukes`) with `node` on
 `PATH`. A host without Node puts the single `pdks` executable from a
 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) on `PATH` instead; the crate runs
-it when no install is found.
+it when no install is found. A host whose project also installs `polydeukes` names the executable
+in the spec's `executable` field, and the crate runs that file without looking for an install.
 
 <a id="overview"></a>
 ## Overview
@@ -57,6 +58,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 

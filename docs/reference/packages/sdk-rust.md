@@ -8,13 +8,15 @@
 > values.
 >
 > Beta. Published on crates.io as `polydeukes-sdk`. The judged project installs `polydeukes`
-> from npm with `node` on `PATH`, or the host puts the single `pdks` executable on `PATH`.
+> from npm with `node` on `PATH`, or the host puts the single `pdks` executable on `PATH` or names
+> it in the spec.
 
 <a id="ownership"></a>
 ## What this crate owns
 
 The crate finds `polydeukes` in the project being judged and runs its bin under `node` — or,
-with no install there, the `pdks` executable on `PATH` — with the input on stdin, and converts
+with no install there, the `pdks` executable on `PATH`; a spec that names an `executable` runs
+that file instead — with the input on stdin, and converts
 the child process's exit status into a verdict. The child process performs the judgment, so a
 discipline judged from Rust and from Node gets the same verdict.
 
@@ -25,7 +27,7 @@ discipline judged from Rust and from Node gets the same verdict.
 | `CovenantInput` and its parts | The input types, generated from `@polydeukes/core/covenant-input.schema.json` |
 | `memory_ingest` · `memory_search` | Spawn `pdks memory ingest` and `pdks memory search --json` in a memory root and return the outcome |
 | `MemorySearchOutput` and its parts | The search output types, generated from `@polydeukes/core/memory-search-output.schema.json` |
-| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks`. A broken nearest install stops there. With no install at all, the first absolute `PATH` entry holding an executable `pdks` (a symlink is followed) runs instead |
+| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks`. A broken nearest install stops there. With no install at all, the first absolute `PATH` entry holding an executable `pdks` (a symlink is followed) runs instead. A spec that names an `executable` skips all of this and runs that file |
 | Verdict translation | For the covenant verbs, exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
 
 The child process writes telemetry during judgment. The crate adds no rows of its own.
@@ -83,6 +85,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 
@@ -110,6 +113,7 @@ pub struct CheckCovenantSpec<'a> {
     pub enforce: Option<Enforce>,
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 
@@ -125,6 +129,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `enforce` | The observer's posture for the whole run. **`None` is `Block`** |
 | `config_layer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repo_root` |
 | `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path`. A relative path resolves against `repo_root`, the child's cwd |
+| `executable` | The `pdks` executable to run, with the verb as its first argument. A relative path, a bare name included, is taken from the current directory and never looked up on `PATH`. The file is not checked ahead of the spawn: one that cannot run is `Unjudged` through the failed-spawn branch. `None` resolves the umbrella as above |
 | `spawn` | An injected spawn seam. `None` runs the resolved command: `node` from `PATH`, or the `pdks` executable. `SpawnOutcome::status` is `None` when a signal ended the child |
 
 **`enforce` defaults to `Block`,** as it does in `@polydeukes/sdk-ts`: protected paths and
@@ -151,6 +156,7 @@ let verdict = check_change_set(CheckChangeSetSpec {
     enforce: None,
     config_layer: None,
     telemetry_path: None,
+    executable: None,
     spawn: None,
 });
 ```
@@ -162,6 +168,7 @@ pub struct CheckChangeSetSpec<'a> {
     pub enforce: Option<Enforce>,
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 ```
@@ -226,7 +233,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 let root = Path::new("/path/to/the/memory/root");
-if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, spawn: None }) {
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, spawn: None }) {
     eprintln!("{reason}");
 }
 
@@ -234,6 +241,7 @@ match memory_search(MemorySearchSpec {
     root,
     query: "session report",
     limit: NonZeroU32::new(5),
+    executable: None,
     spawn: None,
 }) {
     MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
@@ -245,6 +253,7 @@ match memory_search(MemorySearchSpec {
 ```rust
 pub struct MemoryIngestSpec<'a> {
     pub root: &'a Path,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
@@ -253,6 +262,7 @@ pub struct MemorySearchSpec<'a> {
     pub root: &'a Path,
     pub query: &'a str,
     pub limit: Option<NonZeroU32>,
+    pub executable: Option<&'a Path>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemorySearchOutcome {
@@ -265,6 +275,7 @@ pub enum MemorySearchOutcome {
 `root` is the child's cwd, where the command reads its config and index, and the directory the
 umbrella search starts from. A relative path is taken from the current directory. `query` is sent
 as one argument. `limit` is sent as `--limit`; `None` leaves the command's own default.
+`executable` is the same field as on the covenant specs; a file that cannot run is `Unavailable`.
 
 | Outcome | When |
 |---|---|
@@ -284,12 +295,14 @@ ones [`pdks memory search --json`](../cli/memory.md) prints, in snake case.
 - **`node` comes from `PATH` for an npm install.** A host without Node puts the single executable
   from a [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)
   (`pdks-linux-x64`, `pdks-darwin-arm64`) on `PATH` as `pdks` and keeps no
-  `node_modules/polydeukes` above the root. A host with neither gets `Unjudged` with the reason.
+  `node_modules/polydeukes` above the root. A host whose project installs `polydeukes` anyway names
+  the executable in the spec. A host with neither gets `Unjudged` with the reason.
   On macOS, a file downloaded through a browser carries a quarantine attribute the ad-hoc
   signature does not clear: remove it with `xattr -d com.apple.quarantine pdks`.
 - **The crate does not check the umbrella's version.** An input the installed umbrella cannot
   parse comes back `Blocked` (exit 2, fail-closed), not `Unjudged`. Keep the crate's version
-  and the project's `polydeukes` version on the same minor release.
+  and the project's `polydeukes` version on the same minor release; the same holds for an
+  `executable` a spec names.
 - **A roster with a non-empty `shell` and an empty `command_args` is refused by the runner**
   (`Blocked`). The schema forbids that pair, but the generated `Tools` type cannot express it.
 - **An `Unjudged` verdict is not a pass.** The consumer decides what a project without a judge

@@ -2,9 +2,10 @@
 //! read the verdict as a value; ingest and search a project's memory through `pdks memory` and
 //! read the hits as values.
 //!
-//! The crate locates the `polydeukes` umbrella in the project's install graph and spawns its bin
-//! under `node`, or, with no install there, the first `pdks` executable on `PATH`, and maps the
-//! child's exit status. It judges nothing and opens no index.
+//! The crate runs the `pdks` executable a caller names in the spec, or otherwise locates the
+//! `polydeukes` umbrella in the project's install graph and spawns its bin under `node`, or, with
+//! no install there, the first `pdks` executable on `PATH`, and maps the child's exit status. It
+//! judges nothing and opens no index.
 
 #[rustfmt::skip]
 mod ir;
@@ -62,6 +63,8 @@ pub struct CheckCovenantSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
+    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    pub executable: Option<&'a Path>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -182,18 +185,29 @@ struct Invocation {
     args: Vec<String>,
 }
 
-/// Why no invocation could be built: the root could not be made absolute, or no umbrella was
-/// found, where `Missing` says what was missing ahead of what the verb needed it for.
+/// Why no invocation could be built: the root or a named executable could not be made absolute,
+/// or no umbrella was found, where `Missing` says what was missing ahead of what the verb needed
+/// it for.
 enum Unresolved {
     Path(io::Error),
     Missing(String),
 }
 
 /// Every verb's one way to decide what it runs.
-fn resolve_umbrella(root: &Path) -> Result<Invocation, Unresolved> {
+fn resolve_umbrella(root: &Path, executable: Option<&Path>) -> Result<Invocation, Unresolved> {
     // Absolute once, for the walk and the child's cwd alike: a relative root has no ancestors
     // above `.`, and a relative bin path would be read from the child's new cwd.
     let cwd = std::path::absolute(root).map_err(Unresolved::Path)?;
+    // A named executable is resolved against the caller's cwd, not the child's, and is not
+    // canonicalized: a symlink stays the command as named.
+    if let Some(executable) = executable {
+        let command = std::path::absolute(executable).map_err(Unresolved::Path)?;
+        return Ok(Invocation {
+            command: command.to_string_lossy().into_owned(),
+            args: vec![],
+            cwd,
+        });
+    }
     // An install in the graph wins: the project's lockfile pinned that version. A broken
     // nearest install is still the project's, so it stops the lookup before `PATH`.
     match find_umbrella_bin(&cwd) {
@@ -253,6 +267,8 @@ pub struct CheckChangeSetSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
+    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    pub executable: Option<&'a Path>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -265,6 +281,7 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
         spec.enforce,
         spec.config_layer,
         spec.telemetry_path,
+        spec.executable,
         spec.spawn,
         false,
         || serde_json::to_string(spec.input).map_err(io::Error::other),
@@ -279,6 +296,7 @@ pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
         spec.enforce,
         spec.config_layer,
         spec.telemetry_path,
+        spec.executable,
         spec.spawn,
         true,
         || Ok(spec.diff.to_string()),
@@ -287,16 +305,18 @@ pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
 
 /// Resolve the umbrella, spawn `pdks covenant check` (with `--diff` under `diff_mode`), and map
 /// the child's status. `stdin` runs after resolution, so its error is `Unjudged`, never a panic.
+#[allow(clippy::too_many_arguments)]
 fn run_check(
     repo_root: &Path,
     enforce: Option<Enforce>,
     config_layer: Option<&Path>,
     telemetry_path: Option<&Path>,
+    executable: Option<&Path>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
     diff_mode: bool,
     stdin: impl FnOnce() -> io::Result<String>,
 ) -> CheckCovenantVerdict {
-    let invocation = match resolve_umbrella(repo_root) {
+    let invocation = match resolve_umbrella(repo_root, executable) {
         Ok(invocation) => invocation,
         Err(Unresolved::Path(error)) => {
             return CheckCovenantVerdict::Unjudged {
@@ -368,6 +388,8 @@ fn run_check(
 pub struct MemoryIngestSpec<'a> {
     /// The memory root — config discovery, the child's cwd, and where the umbrella lookup starts.
     pub root: &'a Path,
+    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    pub executable: Option<&'a Path>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -388,6 +410,8 @@ pub struct MemorySearchSpec<'a> {
     pub query: &'a str,
     /// The most hits the command returns; `None` is the command's own default.
     pub limit: Option<NonZeroU32>,
+    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    pub executable: Option<&'a Path>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -407,7 +431,12 @@ pub enum MemorySearchOutcome {
 
 /// Bring the memory index under `root` level with its documents.
 pub fn memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome {
-    match run_memory(spec.root, vec!["ingest".into()], spec.spawn) {
+    match run_memory(
+        spec.root,
+        vec!["ingest".into()],
+        spec.executable,
+        spec.spawn,
+    ) {
         Ok(_) => MemoryIngestOutcome::Ingested,
         Err(reason) => MemoryIngestOutcome::Unavailable { reason },
     }
@@ -420,7 +449,7 @@ pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
         args.push("--limit".into());
         args.push(limit.to_string());
     }
-    let stdout = match run_memory(spec.root, args, spec.spawn) {
+    let stdout = match run_memory(spec.root, args, spec.executable, spec.spawn) {
         Ok(stdout) => stdout,
         Err(reason) => return MemorySearchOutcome::Unavailable { reason },
     };
@@ -440,9 +469,10 @@ pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
 fn run_memory(
     root: &Path,
     args: Vec<String>,
+    executable: Option<&Path>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 ) -> Result<String, String> {
-    let invocation = match resolve_umbrella(root) {
+    let invocation = match resolve_umbrella(root, executable) {
         Ok(invocation) => invocation,
         Err(Unresolved::Path(error)) => {
             return Err(format!("pdks memory could not be spawned: {error}"));
