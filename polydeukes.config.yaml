@@ -82,7 +82,7 @@ disciplines:
           - { op: "lines" }
           - { op: "keyByPattern", re: '\b(guard|harness|kb|waiver?)\b' }
         added:
-          - { op: "onlyIn", of: "after", notIn: "before" }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
@@ -105,7 +105,7 @@ disciplines:
           - { op: "lines" }
           - { op: "keyByPattern", re: "([가-힣]+)" }
         added:
-          - { op: "onlyIn", of: "after", notIn: "before" }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
@@ -134,7 +134,7 @@ disciplines:
               re: '(\b(?:COVENANT|CORE|CONFIG|ADAPTER|DISPATCH|POSTURE|DIAG|LEDGER|ALGEBRA|EXTRACT|CLI|DIST|DOCS|STARLARK|VERIFY|MEMORY|SURFACE|CONTRACT)-\d|§|\bAC[ -]\d|\b[AB](?:1[0-9]|[1-9])\b|\.(?:dev-log|research|prd)\.|_docs/)',
             }
         coordinatesAdded:
-          - { op: "onlyIn", of: "coordinatesAfter", notIn: "coordinatesBefore" }
+          - { op: "onlyIn", of: "coordinatesAfter", notIn: "coordinatesBefore", count: true }
         gradesBefore:
           - { op: "source", of: "pre" }
           - { op: "lines" }
@@ -150,7 +150,7 @@ disciplines:
               re: '(\bP[01]\b|\b(?:RED|GREEN|AUDIT|VALIDATE) phase\b|Mutation caught|PR #\d)',
             }
         gradesAdded:
-          - { op: "onlyIn", of: "gradesAfter", notIn: "gradesBefore" }
+          - { op: "onlyIn", of: "gradesAfter", notIn: "gradesBefore", count: true }
       relate:
         - id: "no-wiki-coordinate"
           relation: { op: "empty", of: "coordinatesAdded" }
@@ -186,7 +186,7 @@ disciplines:
               re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)',
             }
         added:
-          - { op: "onlyIn", of: "after", notIn: "before" }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
@@ -215,7 +215,7 @@ disciplines:
               re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])",
             }
         added:
-          - { op: "onlyIn", of: "after", notIn: "before" }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
@@ -238,7 +238,7 @@ disciplines:
           - { op: "lines" }
           - { op: "keyByPattern", re: '\b(vitest|pytest|go test)\b' }
         added:
-          - { op: "onlyIn", of: "after", notIn: "before" }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
         - id: "nothing-added"
           relation: { op: "empty", of: "added" }
