@@ -23,6 +23,13 @@ const SELF_MOD_LABEL = 'self-mod';
 const CHECK_LABEL = 'covenant-check';
 /** The label a run that failed closed before judging writes its one blocked row under. */
 const FAIL_CLOSED_LABEL = 'covenant-check';
+/** The exit of a run that could not read its input — distinct from a verdict's 0 and 2. */
+const EXIT_INPUT_UNREAD = 3;
+
+/** The one stderr line an input-stage failure writes, the reason after the fixed prefix. */
+function failedClosedLine(reason: string): string {
+  return `covenant check failed closed: ${reason}\n`;
+}
 
 let projectRoot: string;
 let logDir: string;
@@ -79,7 +86,7 @@ function creationIr(path: string, post: string): CovenantInput {
 describe('--diff: a real git diff --cached on stdin', () => {
   it('one ordinary staged file exits 0 with exactly one telemetry row', () => {
     // The judged path — a bin that exits 0 without dispatching leaves no row; one that
-    // fails closed on the diff leaves a covenant-check row and exit 2.
+    // fails closed on the diff leaves a covenant-check row and exit 3.
     stage(ORDINARY_FILE, ORDINARY_TEXT);
 
     const result = spawnCheck(git('diff', '--cached'), '--diff');
@@ -112,10 +119,10 @@ describe('--diff: a real git diff --cached on stdin', () => {
     expect(telemetryRows(logPath)).toEqual(firstRows);
   });
 
-  it('a diff forced to color exits 2 with one blocked covenant-check row — never an empty pass', () => {
+  it('a diff forced to color exits 3 with one blocked covenant-check row — never an empty pass', () => {
     // `color.ui=always` pushes SGR escapes through the pipe. The translator recognizes no
-    // block and the run fails closed; a bin that landed exit 0 here would pass a whole
-    // commit, protected paths included, without a row.
+    // block and the run fails closed at the input stage; a bin that landed exit 0 here
+    // would pass a whole commit, protected paths included, without a row.
     stage(PROTECTED_ENTRY, 'sensitive\n');
     const colored = execFileSync('git', ['-c', 'color.ui=always', 'diff', '--cached'], {
       cwd: projectRoot,
@@ -125,7 +132,7 @@ describe('--diff: a real git diff --cached on stdin', () => {
 
     const result = spawnCheck(colored, '--diff');
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
     expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
@@ -153,9 +160,10 @@ describe('--diff: a real git diff --cached on stdin', () => {
     expect(telemetryRows(logPath)).toEqual([]);
   });
 
-  it('a combined diff on stdin exits 2 with one blocked covenant-check row', () => {
-    // The translator's throw must land as fail-closed, never as node's exit 1 crash and
-    // never as an empty pass.
+  it('a combined diff on stdin exits 3 with one blocked covenant-check row and the failed-closed line', () => {
+    // The translator's throw must land as fail-closed at the input-stage exit, never as
+    // node's exit 1 crash, never as an empty pass, and never as the 2 a verdict uses — a
+    // host reading 2 would report a covenant break over a diff nobody judged.
     const combined = [
       'diff --cc f.txt',
       '--- a/f.txt',
@@ -167,8 +175,8 @@ describe('--diff: a real git diff --cached on stdin', () => {
 
     const result = spawnCheck(combined, '--diff');
 
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain('failed closed');
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stderr).toMatch(/^covenant check failed closed: \S.*\n$/);
     expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 });
@@ -207,39 +215,76 @@ describe('IR mode: CovenantInput JSON on stdin', () => {
     expect(diffRows).toEqual([['blocked', SELF_MOD_LABEL, PROTECTED_ENTRY]]);
   });
 
-  it('zero bytes on stdin exit 2 — an empty payload is not an IR', () => {
+  it('zero bytes on stdin exit 3 under the not-JSON reason — an empty payload is not an IR', () => {
     // The two modes disagree on empty input by design: a diff of nothing is nothing,
-    // an IR of nothing is unparseable.
+    // an IR of nothing is unparseable. The reason quotes JSON.parse, so a bin that
+    // special-cases '' into its own message or into a usage error fails here.
     const result = spawnCheck('');
 
-    expect(result.status).toBe(2);
-    expect(result.stderr).not.toContain('usage:');
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stderr).toMatch(/^covenant check failed closed: input is not JSON: \S.*\n$/);
+    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 
   it.each([
-    ['text that is not JSON', 'not json'],
-    ['a top-level array', '[]'],
-    ['an object with no toolCalls', '{"subagentSpawns":[],"userMessages":[]}'],
+    ['a top-level array', '[]', 'input is not a JSON object'],
+    [
+      'an object with no toolCalls',
+      '{"subagentSpawns":[],"userMessages":[]}',
+      'input carries no toolCalls array',
+    ],
+    [
+      'an object with no subagentSpawns',
+      '{"toolCalls":[],"userMessages":[]}',
+      'input carries no subagentSpawns array',
+    ],
+    [
+      'an object with no userMessages',
+      '{"toolCalls":[],"subagentSpawns":[]}',
+      'input carries no userMessages array',
+    ],
+    [
+      'an actor that is a number',
+      '{"toolCalls":[],"subagentSpawns":[],"userMessages":[],"actor":5}',
+      'input carries a malformed actor',
+    ],
   ])(
-    '%s on stdin exits 2 with one blocked covenant-check row and no usage line',
-    (_name, payload) => {
-      // The shape check is the dispatcher's; what the bin owes is landing that refusal as
-      // exit 2 with a row, never as node's exit 1 crash and never as a usage error.
-      const result = spawnCheck(payload);
+    '%s on stdin exits 3 with exactly the failed-closed line naming the key and one blocked covenant-check row',
+    (_name, payload, reason) => {
+      // Each payload misses or breaks exactly one key, so the reason names that key and no
+      // other; what the bin owes is landing the refusal as exit 3 with the one line and a
+      // row, never as node's exit 1 crash, never as a usage error, and never as the 2 a
+      // host would read as a discipline's block over a call nobody judged.
+      const result = spawnCheck(payload, '--enforce', 'block');
 
-      expect(result.status).toBe(2);
-      expect(result.stderr).not.toContain('usage:');
+      expect(result.status).toBe(EXIT_INPUT_UNREAD);
+      expect(result.stderr).toBe(failedClosedLine(reason));
       expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
     },
   );
 
-  it('an IR carrying a top-level world key exits 2 with one blocked row', () => {
+  it('an IR carrying a top-level world key exits 3 with one blocked row', () => {
+    // The parser accepts a well-formed world; refusing it is the runner's, and that refusal
+    // still belongs to the input stage — a runner that lands it at 2 reports a verdict.
     const withWorld = { ...creationIr(ORDINARY_FILE, ORDINARY_TEXT), world: { files: {} } };
 
     const result = spawnCheck(JSON.stringify(withWorld));
 
-    expect(result.status).toBe(2);
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stderr).toMatch(/^covenant check failed closed: \S.*\n$/);
     expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it('a missing config exits 2, not 3 — the run never reached its input', () => {
+    // The config is loaded before the input is read. A bin that reads stdin first, or that
+    // folds every pre-judgment failure into 3, tells a host its IR was wrong when the
+    // project is what is unconfigured; the valid IR on stdin is what separates the two.
+    rmSync(join(projectRoot, 'polydeukes.config.json'));
+
+    const result = spawnCheck(JSON.stringify(creationIr(ORDINARY_FILE, ORDINARY_TEXT)));
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).not.toContain('usage:');
   });
 });
 
@@ -345,9 +390,10 @@ describe('IR mode: a session-shaped IR on stdin', () => {
     ]);
   });
 
-  it('a session whose toolCalls is an object exits 2 with one blocked covenant-check row', () => {
+  it('a session whose toolCalls is an object exits 3 with one blocked covenant-check row', () => {
     // A session the bin cannot read is a block before judgment, never a default: a bin
-    // folding the object into `[]` would judge and exit 0 on the ordinary write.
+    // folding the object into `[]` would judge and exit 0 on the ordinary write, and one
+    // landing the refusal at 2 reports a verdict the judge never reached.
     const malformed = {
       ...sessionWriteIr(ORDINARY_FILE, ORDINARY_TEXT),
       tools: SESSION_TOOLS,
@@ -356,8 +402,24 @@ describe('IR mode: a session-shaped IR on stdin', () => {
 
     const result = spawnCheck(JSON.stringify(malformed), '--enforce', 'block');
 
-    expect(result.status).toBe(2);
-    expect(result.stderr).not.toContain('usage:');
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stderr).toMatch(/^covenant check failed closed: \S.*\n$/);
+    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it('a tools roster whose mutating list is a string exits 3 with one blocked covenant-check row', () => {
+    // The roster is read by the runner, after the shared parser accepted the IR; a string
+    // in place of the list is the same input-stage refusal, and a bin that wraps it into a
+    // one-name roster would judge the protected write and block it at 2 as self-mod.
+    const malformed = {
+      ...sessionWriteIr(PROTECTED_ENTRY, 'sensitive'),
+      tools: { ...SESSION_TOOLS, mutating: SESSION_WRITE_TOOL },
+    };
+
+    const result = spawnCheck(JSON.stringify(malformed), '--enforce', 'block');
+
+    expect(result.status).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stderr).toMatch(/^covenant check failed closed: \S.*\n$/);
     expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
   });
 });

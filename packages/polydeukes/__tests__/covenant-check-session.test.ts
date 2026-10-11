@@ -861,10 +861,12 @@ describe('a malformed tools or session fails closed before any dispatch', () => 
       'session.channels.sidecar is an array, not text',
       { session: { userMessages: [], toolCalls: [], channels: { sidecar: [] } } as never },
     ],
-  ])('%s — exit 2, one blocked covenant-check row, nothing dispatched', async (_name, extra) => {
+  ])('%s — exit 3, one blocked covenant-check row, nothing dispatched', async (_name, extra) => {
     // A shape the runner cannot judge is a block, never a default: a runner that folds a
     // missing collection into `[]` or a string roster into a one-element list judges an
-    // input nobody wrote, and the recording module would see the dispatch.
+    // input nobody wrote, and the recording module would see the dispatch. The status is
+    // 3 — the input-stage code — so a host can tell its own malformed IR from a verdict;
+    // a runner that lands these at 2 reports a covenant break the judge never found.
     writeConfig({ protectedPaths: [PROTECTED_ENTRY] });
     const { covenant, calls } = recordingCovenant([]);
 
@@ -876,7 +878,7 @@ describe('a malformed tools or session fails closed before any dispatch', () => 
       covenant,
     });
 
-    expect(result.exitCode).toBe(2);
+    expect(result).toEqual({ exitCode: 3 });
     expect(rows()).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
     expect(dispatches(calls)).toEqual([]);
   });

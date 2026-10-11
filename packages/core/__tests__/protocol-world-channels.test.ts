@@ -74,7 +74,7 @@ describe('parseInput — channels is shape-checked, fail-closed', () => {
       expect(
         parseInput(payloadWith({ channels })),
         `channels: ${JSON.stringify(channels)}`,
-      ).toEqual({ ok: false, exitCode: 2 });
+      ).toEqual({ ok: false, exitCode: 2, reason: 'input carries a malformed world' });
     }
   });
 
@@ -84,6 +84,7 @@ describe('parseInput — channels is shape-checked, fail-closed', () => {
     expect(parseInput(payloadWith({ channels: { spawns: SPAWN_TEXT } }))).toEqual({
       ok: false,
       exitCode: 2,
+      reason: 'input carries a malformed world',
     });
   });
 
@@ -95,7 +96,7 @@ describe('parseInput — channels is shape-checked, fail-closed', () => {
       expect(
         parseInput(payloadWith({ channels: { sidecar } })),
         `sidecar: ${JSON.stringify(sidecar)}`,
-      ).toEqual({ ok: false, exitCode: 2 });
+      ).toEqual({ ok: false, exitCode: 2, reason: 'input carries a malformed world' });
     }
   });
 });

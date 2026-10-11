@@ -174,7 +174,7 @@ describe('checkChangeSet — configLayer and telemetryPath travel as flags', () 
 });
 
 describe('checkChangeSet — the fail-open branches', () => {
-  it("status 1 → { verdict: 'unjudged' } with a reason naming the status", async () => {
+  it("status 1 → { verdict: 'unjudged' } with the crash's stderr as the reason", async () => {
     // A crashed child is not a verdict. Mapping 1 onto `blocked` invents a break; mapping
     // it onto `upheld` is the fail-open hole an uninstalled dist would fall through.
     installStubPolydeukes();
@@ -186,7 +186,7 @@ describe('checkChangeSet — the fail-open branches', () => {
     const verdict = await checkChangeSet({ repoRoot, diff: creationDiff(TARGET, CONTENT), spawn });
 
     expect(verdict).toMatchObject({ verdict: 'unjudged' });
-    expect(verdict).toHaveProperty('reason', expect.stringMatching(/\b1\b/));
+    expect(verdict).toHaveProperty('reason', 'TypeError: covenant.x is not a function');
     expect(verdict).not.toHaveProperty('advisories');
   });
 

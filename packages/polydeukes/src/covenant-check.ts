@@ -6,9 +6,10 @@
  * runs the same judge bodies, so a change receives the verdict a session tool call would.
  * Each toolCall is dispatched as its own input so telemetry stays one row per file.
  *
- * fail-closed: a missing config, an input that could not be produced, or an input carrying its
- * own `world` exits 2 with one blocked record. An input with no toolCalls is an explicit pass
- * with no records.
+ * fail-closed: a missing config exits 2 with one blocked record; an input that could not be
+ * produced, carries its own `world`, or has a shape the judge cannot read exits 3 with the same
+ * record, so a caller can tell its own unreadable input from a verdict. An input with no
+ * toolCalls is an explicit pass with no records.
  */
 
 import { readFileSync } from 'node:fs';
@@ -39,7 +40,10 @@ import { sessionPreStateReader, unobservedPreStateReader } from './pre-state-rea
 import { worktreeReader } from './worktree-reader.ts';
 
 /** {@link runCovenantCheck} result — the exit code the check process leaves with. */
-export type CovenantCheckOutcome = { exitCode: 0 | 2 };
+export type CovenantCheckOutcome = { exitCode: 0 | 2 | 3 };
+
+/** The input stage's failure: the judge never read an observation, so no verdict exists. */
+const EXIT_INPUT_UNREADABLE = 3;
 
 /**
  * `CovenantSurface` — which observation unit the input is, and so which discipline list
@@ -215,18 +219,18 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * One stage's failure disposition: the stderr line, the recorded row, and exit 2. `suffix`
- * is appended to the message, for a caller that can name the one call which would clear the
- * failure.
+ * One stage's failure disposition: the stderr line, the recorded row, and the exit code —
+ * 2 unless the caller names another. `suffix` is appended to the message, for a caller that
+ * can name the one call which would clear the failure.
  */
 function failClosed(
   telemetryPath: string | undefined,
   error: unknown,
-  suffix?: string,
-): { exitCode: 2 } {
-  process.stderr.write(`covenant check failed closed: ${messageOf(error)}${suffix ?? ''}\n`);
+  { suffix = '', exitCode = 2 }: { suffix?: string; exitCode?: 2 | 3 } = {},
+): CovenantCheckOutcome {
+  process.stderr.write(`covenant check failed closed: ${messageOf(error)}${suffix}\n`);
   recordFailClosed(telemetryPath);
-  return { exitCode: 2 };
+  return { exitCode };
 }
 
 /** The observation, from the caller's value or from the thunk that produces it. */
@@ -563,8 +567,9 @@ function settleLoadFailure(
   let input: CovenantInput;
   try {
     input = readInput(spec);
-  } catch (inputError) {
-    return failClosed(telemetryPath, inputError);
+  } catch {
+    // The config failure is this run's disposition: no input could be judged without it.
+    return failClosed(telemetryPath, error);
   }
 
   const loaded = repairs(input, failure, spec.repoRoot);
@@ -589,11 +594,9 @@ function settleLoadFailure(
   // With a layer, the result can fail on the layer's entries, which the author of the
   // discovered file never sees — so the reason is named.
   const refused = loaded === null ? '' : ` (this call's result does not load ${loaded.refusal})`;
-  return failClosed(
-    telemetryPath,
-    error,
-    ` — fix ${configPath} in one Edit or Write whose result loads; every other call stays blocked until it does${refused}`,
-  );
+  return failClosed(telemetryPath, error, {
+    suffix: ` — fix ${configPath} in one Edit or Write whose result loads; every other call stays blocked until it does${refused}`,
+  });
 }
 
 /**
@@ -656,7 +659,7 @@ export async function runCovenantCheck(spec: CovenantCheckSpec): Promise<Covenan
     if (!Array.isArray(input.toolCalls)) throw new Error('input carries no toolCalls array');
     assertJudgeableShape(input);
   } catch (error) {
-    return failClosed(telemetryPath, error);
+    return failClosed(telemetryPath, error, { exitCode: EXIT_INPUT_UNREADABLE });
   }
   // The comparison reads and writes the log the judgment writes — the settled path, never
   // a second resolution — and observes the protected entries the settled config names.

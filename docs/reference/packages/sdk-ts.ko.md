@@ -121,7 +121,7 @@ type CheckCovenantVerdict =
 |---|---|---|
 | `upheld` | `0` | 호출이 판정을 받았고 아무것도 막지 않았습니다. `advisories`는 자식의 stderr 원문이며 그 실행이 낸 권고 줄을 싣습니다. 진행하면 됩니다 |
 | `blocked` | `2` | 호출이 판정을 받았고 무언가 막았습니다. `reason`은 자식의 stderr 원문입니다. 진행하지 않습니다 |
-| `unjudged` | 그 밖의 상태이거나 우산 패키지가 없음 | 판정이 일어나지 않았습니다. `reason`이 어느 쪽인지 말합니다. 이것을 통과로 읽으면 판정기가 설치되지 않은 프로젝트에서 모든 호출이 지나갑니다 |
+| `unjudged` | 그 밖의 상태이거나 우산 패키지가 없음 | 판정이 일어나지 않았습니다. `reason`이 어느 쪽인지 말합니다. 자식이 stderr를 썼으면 그 stderr이고(exit `3`의 `covenant check failed closed: input carries no subagentSpawns array` 등), 아니면 상태입니다. 이것을 통과로 읽으면 판정기가 설치되지 않은 프로젝트에서 모든 호출이 지나갑니다 |
 
 SDK는 `blocked.reason`과 `upheld.advisories`를 데이터로 반환합니다. 소비자는 이 내용을
 모델에게 전달하거나 이슈 또는 로그에 기록할 수 있습니다. SDK는 별도의 증인 인자를 받지 않습니다.

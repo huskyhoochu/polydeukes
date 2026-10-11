@@ -71,7 +71,7 @@ if let CheckCovenantVerdict::Blocked { reason } = verdict {
 이 호출은 판정기가 끝날 때까지 블로킹합니다. 비동기 호스트는 `tokio::task::spawn_blocking`으로
 실행합니다. `enforce`의 기본값은 `Block`입니다. 판정 결과는 `Upheld`, `Blocked`, `Unjudged`
 셋입니다. `Unjudged`는 `polydeukes`가 설치되지 않은 프로젝트, 스폰 실패, 판정 결과가 아닌 자식
-status를 모두 포함합니다.
+status를 모두 포함합니다. 자식이 stderr를 썼으면 그 stderr가 `reason`입니다.
 
 `check_change_set`은 `input` 대신 `diff`를 받고 `pdks covenant check --diff`를 실행합니다. diff의
 경로는 `git diff`가 출력하는 것처럼 `a/`·`b/` 뒤에 `repo_root` 기준으로 적힙니다. 돌려주는 판정

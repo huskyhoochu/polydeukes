@@ -77,62 +77,101 @@ describe('round-trip serialization', () => {
   });
 });
 
+/** What JSON.parse itself says about `text` — the reason quotes it after the fixed prefix. */
+function jsonParseMessage(text: string): string {
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    return (error as Error).message;
+  }
+  throw new Error(`fixture parses as JSON: ${text}`);
+}
+
 describe('fail-closed (security boundary — cannot judge = block)', () => {
   // Parsing failure, missing required fields, and empty input all mean "cannot judge" and
-  // must resolve to exit-2. The gate fails CLOSED by RETURNING 2, never by throwing — an
-  // unhandled throw could be caught upstream and treated as a pass.
+  // must resolve to exit-2 with a reason naming the branch that refused. The gate fails
+  // CLOSED by RETURNING 2, never by throwing — an unhandled throw could be caught upstream
+  // and treated as a pass. The reason is what a host that built the input by hand reads
+  // back: a refusal with no reason is indistinguishable from a discipline's block.
 
-  it('unparseable JSON yields fail-closed exit-2 without throwing', () => {
+  it('unparseable JSON yields fail-closed exit-2 without throwing, the reason quoting JSON.parse', () => {
+    // A reason that names only "not JSON" hides which byte broke; one that returns the raw
+    // JSON.parse message has no prefix a host can match on.
+    const text = '{ this is not json';
     let result: ReturnType<typeof parseInput> | undefined;
 
     expect(() => {
-      result = parseInput('{ this is not json');
+      result = parseInput(text);
     }).not.toThrow();
 
-    expect(result?.ok).toBe(false);
-    if (result && result.ok === false) {
-      expect(result.exitCode).toBe(2);
-      expect(result.exitCode).toBe(EXIT_BREAK_BLOCKING);
-    }
+    expect(result).toEqual({
+      ok: false,
+      exitCode: EXIT_BREAK_BLOCKING,
+      reason: `input is not JSON: ${jsonParseMessage(text)}`,
+    });
+    expect(result && result.ok === false && result.exitCode).toBe(2);
   });
 
-  it('an empty string yields fail-closed exit-2 without throwing', () => {
+  it('an empty string yields fail-closed exit-2 without throwing, under the not-JSON reason', () => {
     // Empty stdin, i.e. no payload piped. JSON.parse('') throws, and the gate must swallow
-    // that and block rather than special-case '' into a pass.
+    // that and block rather than special-case '' into a pass or into its own reason.
     let result: ReturnType<typeof parseInput> | undefined;
 
     expect(() => {
       result = parseInput('');
     }).not.toThrow();
 
-    expect(result?.ok).toBe(false);
-    if (result && result.ok === false) {
-      expect(result.exitCode).toBe(2);
+    expect(result).toEqual({
+      ok: false,
+      exitCode: 2,
+      reason: `input is not JSON: ${jsonParseMessage('')}`,
+    });
+  });
+
+  it.each([
+    ['toolCalls', { subagentSpawns: [], userMessages: [] }],
+    ['subagentSpawns', { toolCalls: [], userMessages: [] }],
+    ['userMessages', { toolCalls: [], subagentSpawns: [] }],
+  ])(
+    'JSON missing %s (parses, but violates the schema) is fail-closed to exit-2 naming that collection',
+    (name, payload) => {
+      // Valid JSON, invalid IR: a JSON.parse-only parser lets this through as a malformed
+      // CovenantInput, so schema validation must run after the parse succeeds. Each fixture
+      // omits exactly one collection, so a parser that names the wrong one — or names the
+      // first collection on every miss — fails here and not on an order coincidence.
+      const result = parseInput(JSON.stringify(payload));
+
+      expect(result).toEqual({
+        ok: false,
+        exitCode: 2,
+        reason: `input carries no ${name} array`,
+      });
+    },
+  );
+
+  it('a collection present but not an array is the same refusal as a missing one', () => {
+    // `{}` and `"x"` are the shapes a host writes when it serialises a map or a single
+    // message; a parser testing presence alone carries them into the dispatcher, where the
+    // first `.length` or iteration reads a value no judge was written for.
+    for (const subagentSpawns of [{}, 'spawn', 1]) {
+      expect(
+        parseInput(JSON.stringify({ toolCalls: [], subagentSpawns, userMessages: [] })),
+        `subagentSpawns: ${JSON.stringify(subagentSpawns)}`,
+      ).toEqual({ ok: false, exitCode: 2, reason: 'input carries no subagentSpawns array' });
     }
   });
 
-  it('JSON missing required fields (parses, but violates the schema) is fail-closed to exit-2', () => {
-    // Valid JSON, invalid IR: a JSON.parse-only parser lets this through as a malformed
-    // CovenantInput, so schema validation must run after the parse succeeds.
-    const validJsonInvalidSchema = JSON.stringify({ toolCalls: [] }); // missing the rest
-
-    const result = parseInput(validJsonInvalidSchema);
-
-    expect(result.ok).toBe(false);
-    if (result.ok === false) {
-      expect(result.exitCode).toBe(2);
-    }
-  });
-
-  it('JSON that is not an object (array/null/primitive) is fail-closed to exit-2', () => {
+  it('JSON that is not an object (array/null/primitive) is fail-closed to exit-2 as not-an-object', () => {
     // Every value here parses as valid JSON but is not a CovenantInput. `null` and `[]`
-    // are the ones a bare `typeof x === 'object'` check would wave through.
+    // are the ones a bare `typeof x === 'object'` check would wave through — and the ones
+    // a parser that reaches the collection check first would misreport as a missing
+    // toolCalls array.
     for (const hostile of ['null', '[]', '42', '"a string"', 'true']) {
-      const result = parseInput(hostile);
-      expect(result.ok).toBe(false);
-      if (result.ok === false) {
-        expect(result.exitCode).toBe(2);
-      }
+      expect(parseInput(hostile), `payload: ${hostile}`).toEqual({
+        ok: false,
+        exitCode: 2,
+        reason: 'input is not a JSON object',
+      });
     }
   });
 });

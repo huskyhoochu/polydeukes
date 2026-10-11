@@ -97,16 +97,21 @@ disciplines skip on this surface.
 | A break on a protected path or an entry set to `enforce: block`, default posture | exit `0`, one `advised` row — this surface has no valve a human could answer, and a staged gate-file change already passed the session surface |
 | The same break under `--enforce block` | exit `2`, one `blocked` row |
 | 0 bytes on stdin with `--diff` | exit `0`, no rows — nothing staged is nothing to judge |
-| 0 bytes on stdin without `--diff` | exit `2` — an empty payload is not an IR |
-| Unparseable JSON, a non-object, or a missing `toolCalls` array | exit `2`, one `blocked` `covenant-check` row |
-| An IR carrying its own `world` key | exit `2` — the world axis is the command's to fill |
-| A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays | exit `2`, one `blocked` `covenant-check` row — a shape the command cannot judge is a block, never a default |
+| 0 bytes on stdin without `--diff` | exit `3`, `covenant check failed closed: input is not JSON: …` on stderr — an empty payload is not an IR |
+| Unparseable JSON, a non-object, a missing `toolCalls`, `subagentSpawns`, or `userMessages` array, or a malformed `actor` | exit `3`, one `blocked` `covenant-check` row, and the reason on stderr (`covenant check failed closed: input carries no subagentSpawns array`) |
+| An IR carrying its own `world` key | exit `3` — the world axis is the command's to fill |
+| A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays | exit `3`, one `blocked` `covenant-check` row — a shape the command cannot judge is refused, never a default |
 | A `session` whose token message is fresh under the config's `witness` | the blocked verdict lands `witnessed`, exit `0` — the same valve the session surface opens |
-| A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line | exit `2`, one `blocked` `covenant-check` row |
+| A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line | exit `3`, one `blocked` `covenant-check` row |
 | Any other argument | exit `2` with the usage line on stderr, stdin unread |
 | Missing, ambiguous, or invalid config | exit `2` |
 | A `--config-layer` file that is missing, does not parse, carries a key outside the three discipline lists, or repeats an id of the config | exit `2`, one `blocked` `covenant-check` row — the run is never judged without the layer |
 | Judge body cannot load | exit `2` |
+
+Exit `3` means the command could not read its input, so no judgment happened. It is not a
+verdict, and a host that receives it still refuses the call; the stderr line names what could
+not be read. A config that does not load is checked first, so the same input under a broken
+config exits `2` with the config error.
 
 The posture lives on the command line, not in the config, and there is no prompt. The command
 answers success or failure; whether a commit proceeds is decided by the hook that spawned it. A
@@ -174,7 +179,7 @@ can change its text. Wire a hook with these flags so the judged text is the stag
 
 | Flag | What it prevents |
 |---|---|
-| `--no-color` | `color.ui=always` wraps every line in escape codes; the translator recognizes no block and the run fails closed (exit 2) |
+| `--no-color` | `color.ui=always` wraps every line in escape codes; the translator recognizes no block and the run fails closed (exit 3) |
 | `--no-ext-diff` / `--no-textconv` | `diff.external` or a `.gitattributes` textconv driver substitutes text that exists nowhere on disk, and the disciplines judge that text |
 | `--src-prefix=a/ --dst-prefix=b/` | `diff.mnemonicPrefix` prints `c/`, `i/`, `w/`; the translator strips exactly `a/` and `b/`, so any other prefix survives into the judged path |
 

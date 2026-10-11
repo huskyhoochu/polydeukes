@@ -93,7 +93,7 @@ call is unproven*, and no sibling call's evidence stands in for it.
 ```ts
 function parseInput(stdinJson: string):
   | { ok: true; value: CovenantInput }
-  | { ok: false; exitCode: 2 };
+  | { ok: false; exitCode: 2; reason: string };
 
 function verdictToExitCode(verdict: CovenantVerdict): 0 | 1;
 
@@ -101,8 +101,9 @@ function allFileChanges(input: CovenantInput): FileChange[];
 ```
 
 `parseInput` never throws. Unparseable JSON, an empty payload, a non-object, a missing
-required collection — each resolves to a blocking `{ ok: false, exitCode: 2 }`, so an
-unjudgeable input can never be mistaken for a valid one.
+required collection, a malformed `world` or `actor` — each resolves to a blocking
+`{ ok: false, exitCode: 2, reason }`, so an unjudgeable input can never be mistaken for a valid
+one. `reason` names what was refused, such as `input carries no subagentSpawns array`.
 
 `verdictToExitCode` returns `0` or `1` and never `2`. Translating a break into a block is
 the wrapper's policy, not the body's — see [exit codes](polydeukes.md#polydeukes-failure-boundaries).

@@ -89,7 +89,7 @@ type CovenantVerdict = { upheld: true } | { upheld: false; reason: string };
 ```ts
 function parseInput(stdinJson: string):
   | { ok: true; value: CovenantInput }
-  | { ok: false; exitCode: 2 };
+  | { ok: false; exitCode: 2; reason: string };
 
 function verdictToExitCode(verdict: CovenantVerdict): 0 | 1;
 
@@ -97,8 +97,9 @@ function allFileChanges(input: CovenantInput): FileChange[];
 ```
 
 `parseInput`은 예외를 던지지 않습니다. 파싱되지 않는 JSON, 빈 페이로드, 객체가 아닌 값,
-필수 컬렉션 누락은 모두 `{ ok: false, exitCode: 2 }`로 반환합니다. 판정할 수 없는
-입력이 유효한 입력으로 오인될 길이 없습니다.
+필수 컬렉션 누락, 잘못된 `world`·`actor`는 모두 `{ ok: false, exitCode: 2, reason }`으로
+반환합니다. 판정할 수 없는 입력이 유효한 입력으로 오인될 길이 없습니다. `reason`은 무엇을
+거부했는지 말합니다(예: `input carries no subagentSpawns array`).
 
 `verdictToExitCode`는 `0`이나 `1`을 반환하고 `2`는 결코 반환하지 않습니다. 위반을 차단으로
 번역하는 것은 본체가 아니라 래퍼의 정책입니다. [종료 코드](polydeukes.ko.md#polydeukes-failure-boundaries)를

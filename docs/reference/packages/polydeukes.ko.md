@@ -188,10 +188,10 @@ fail-open입니다.
 <a id="polydeukes-failure-boundaries"></a>
 ## 실패 경계
 
-- `runCovenantCheck()`는 예외를 던지지 않고 `{ exitCode: 0 \| 2 }`를 반환합니다.
+- `runCovenantCheck()`는 예외를 던지지 않고 `{ exitCode: 0 \| 2 \| 3 }`을 반환합니다.
 - 숫자 코드는 `@polydeukes/core`의 `EXIT_UPHOLD`(`0`), `EXIT_BREAK_NON_BLOCKING`(`1`),
-  `EXIT_BREAK_BLOCKING`(`2`)입니다. 우산 실행기는 `0` 또는 `2`만 노출하며 `1`을 반환하지 않습니다.
-- `pdks covenant check`는 사람에게 묻지 않습니다. 표준 입력을 읽고 종료 코드 0 또는 2를 내며, 그 종료 코드의 뜻은 호출한 쪽이 정합니다.
+  `EXIT_BREAK_BLOCKING`(`2`)입니다. 우산 실행기는 `0`, `2`, 그리고 입력을 읽지 못했다는 `3`을 노출하며 `1`을 반환하지 않습니다.
+- `pdks covenant check`는 사람에게 묻지 않습니다. 표준 입력을 읽고 종료 코드 0, 2, 3 중 하나를 내며, 그 종료 코드의 뜻은 호출한 쪽이 정합니다.
 - `pdks docs`, `pdks explain`, `pdks memory`는 실패 시 중간 출력 없이 끝납니다.
 
 <a id="polydeukes-see-also"></a>

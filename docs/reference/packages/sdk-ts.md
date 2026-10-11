@@ -123,7 +123,7 @@ type CheckCovenantVerdict =
 |---|---|---|
 | `upheld` | `0` | The call was judged and nothing blocked it. `advisories` is the child's stderr verbatim, carrying any advisory lines the run produced. Proceed |
 | `blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim. Do not proceed |
-| `unjudged` | anything else, or no umbrella | No judgment happened. `reason` says which. Reading it as an uphold would let an uninstalled judge pass every call |
+| `unjudged` | anything else, or no umbrella | No judgment happened. `reason` says which: the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
 
 The SDK returns `blocked.reason` and `upheld.advisories` as data. The consumer decides where
 to send them: to the model, an issue, or a log. The SDK accepts no separate witness argument.

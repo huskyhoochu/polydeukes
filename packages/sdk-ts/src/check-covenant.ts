@@ -42,7 +42,9 @@ export type CheckCovenantSpec = {
  * `advisories` and `reason` are the child's stderr verbatim: an unattended caller has no
  * terminal to read it on, so the text comes back as the value and the caller decides where
  * it goes. `unjudged` is every status that is not a verdict — no judgment happened, and
- * reading it as an uphold would let an uninstalled judge pass every call.
+ * reading it as an uphold would let an uninstalled judge pass every call. Its `reason` is the
+ * child's stderr when the child exited with some other status and wrote any, else a line
+ * naming the status or signal.
  */
 export type CheckCovenantVerdict =
   | { verdict: 'upheld'; advisories: string }
@@ -152,7 +154,7 @@ export async function runCheck(spec: RunCheckSpec): Promise<CheckCovenantVerdict
     reason:
       status === null
         ? 'the judge was killed by a signal before it answered'
-        : `the judge exited with status ${status} instead of a verdict`,
+        : stderr || `the judge exited with status ${status} instead of a verdict`,
   };
 }
 

@@ -71,7 +71,8 @@ if let CheckCovenantVerdict::Blocked { reason } = verdict {
 The call blocks until the judge exits; an async host runs it with
 `tokio::task::spawn_blocking`. `enforce` defaults to `Block`. The three verdicts are `Upheld`,
 `Blocked`, and `Unjudged`; `Unjudged` covers a project with no `polydeukes` installed, a failed
-spawn, and any child status that is not a verdict.
+spawn, and any child status that is not a verdict, with the child's stderr as its `reason` when
+the child wrote one.
 
 `check_change_set` takes `diff` in place of `input` and spawns `pdks covenant check --diff`; its
 paths are relative to `repo_root` behind `a/` and `b/`, as `git diff` prints them. It returns the

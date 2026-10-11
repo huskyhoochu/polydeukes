@@ -403,6 +403,26 @@ describe('config repair — the one call that passes while the config does not l
     expect(telemetryRows(telemetryPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
   });
 
+  it('an unreadable input under an invalid config exits 2 — the config failure is the disposition', async () => {
+    // The repair path reads the input only to look for the repair call. An input it cannot
+    // read is not that call, so the run ends on the config failure, not the input stage's 3.
+    writeValidationFailure();
+
+    const result = await runCovenantCheck({
+      surface: 'session',
+      repoRoot,
+      telemetryPath,
+      input: () => {
+        throw new Error('input is not JSON: Unexpected end of JSON input');
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(stderrText()).toContain(VALIDATION_MESSAGE);
+    expect(stderrText()).not.toContain('input is not JSON');
+    expect(telemetryRows(telemetryPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
+  });
+
   it('an empty toolCalls list under an invalid config still fails closed', async () => {
     // The degenerate form of condition three: a runner written as "no call other than the
     // repair" (`every`) is vacuously satisfied by zero calls and exits 0 with nothing judged.

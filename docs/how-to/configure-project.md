@@ -75,7 +75,8 @@ See [surface connection and witnesses](./connect-surfaces.md#witness-and-recover
 - `pdks explain` loads the configuration and shows registrations without judging a change.
 - `git diff HEAD | pdks covenant check --diff` judges everything not yet committed.
 - `git diff --cached | pdks covenant check --diff` observes staged changes — the pre-commit shape.
-  The command never prompts; it exits 0 or 2 and your hook wiring decides the commit's fate.
+  The command never prompts; it exits 0, 2, or 3 (an input it could not read) and your hook
+  wiring decides the commit's fate.
 
 Check stderr and telemetry as well as the exit code. Advice and some skipped observations exit 0.
 If assembly fails, diagnose the named configuration or missing package before testing a discipline.

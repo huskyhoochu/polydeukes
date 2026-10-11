@@ -176,38 +176,34 @@ function isActor(value: unknown): boolean {
  * fail-closed: this never throws. Any failure — unparseable JSON, an empty
  * payload, a parsed value that is not an object, a missing required collection, a
  * malformed world axis, or a malformed actor — resolves to a blocking
- * `{ ok: false, exitCode: 2 }`. "Cannot judge" means block, so an unjudgeable input can
- * never be mistaken for a valid one.
+ * `{ ok: false, exitCode: 2, reason }`, where `reason` names the one check that refused.
+ * "Cannot judge" means block, so an unjudgeable input can never be mistaken for a valid one.
  */
 export function parseInput(
   stdinJson: string,
-): { ok: true; value: CovenantInput } | { ok: false; exitCode: 2 } {
+): { ok: true; value: CovenantInput } | { ok: false; exitCode: 2; reason: string } {
+  const refuse = (reason: string) =>
+    ({ ok: false, exitCode: EXIT_BREAK_BLOCKING, reason }) as const;
   let parsed: unknown;
   try {
     parsed = JSON.parse(stdinJson);
-  } catch {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+  } catch (error) {
+    return refuse(`input is not JSON: ${(error as Error).message}`);
   }
 
-  if (!isPlainObject(parsed)) {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
-  }
+  if (!isPlainObject(parsed)) return refuse('input is not a JSON object');
 
   const candidate = parsed;
-  if (
-    !Array.isArray(candidate.toolCalls) ||
-    !Array.isArray(candidate.subagentSpawns) ||
-    !Array.isArray(candidate.userMessages)
-  ) {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+  for (const key of ['toolCalls', 'subagentSpawns', 'userMessages'] as const) {
+    if (!Array.isArray(candidate[key])) return refuse(`input carries no ${key} array`);
   }
 
   if (candidate.world !== undefined && !isWorld(candidate.world)) {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+    return refuse('input carries a malformed world');
   }
 
   if (candidate.actor !== undefined && !isActor(candidate.actor)) {
-    return { ok: false, exitCode: EXIT_BREAK_BLOCKING };
+    return refuse('input carries a malformed actor');
   }
 
   return { ok: true, value: candidate as CovenantInput };

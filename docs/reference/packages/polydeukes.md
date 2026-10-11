@@ -195,11 +195,11 @@ No import. The umbrella assembles the module for both surfaces.
 <a id="polydeukes-failure-boundaries"></a>
 ## Failure boundaries
 
-- `runCovenantCheck()` never throws; it resolves to `{ exitCode: 0 \| 2 }`.
+- `runCovenantCheck()` never throws; it resolves to `{ exitCode: 0 \| 2 \| 3 }`.
 - The numeric codes are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`), and
-  `EXIT_BREAK_BLOCKING` (`2`) from `@polydeukes/core`. The umbrella runners expose only `0` or
-  `2`; they never return `1`.
-- `pdks covenant check` never prompts. It reads stdin and exits 0 or 2; the caller decides what
+  `EXIT_BREAK_BLOCKING` (`2`) from `@polydeukes/core`. The umbrella runners expose `0`, `2`, and
+  `3`, an input they could not read; they never return `1`.
+- `pdks covenant check` never prompts. It reads stdin and exits 0, 2, or 3; the caller decides what
 that exit code means.
 - `pdks docs`, `pdks explain`, and `pdks memory` print nothing partial on failure.
 

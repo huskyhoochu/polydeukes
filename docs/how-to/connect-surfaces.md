@@ -131,7 +131,8 @@ If you use the plain hook, save it as `.git/hooks/pre-commit` and make it execut
 For lefthook, install it with your package manager and run its hook installer after saving the YAML.
 For husky, save `.husky/pre-commit` through husky's own installer so git can find it.
 
-The judge emits exit 0 or exit 2 and never prompts. By default every break on this surface — a
+The judge emits exit 0, 2, or 3 (an input it could not read) and never prompts. By default every
+break on this surface — a
 `protectedPaths` violation included — lands as a row with a diagnostic on stderr and exit 0: a
 staged gate-file change has already passed the session surface or was made by a human, and
 this surface has no valve a human could answer. Add `--enforce block` to the command when you

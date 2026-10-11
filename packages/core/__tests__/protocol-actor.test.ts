@@ -9,6 +9,9 @@ import { type CovenantInput, parseInput } from '../src/protocol.ts';
 
 // The agent name is a fixture value: the core carries the field, never a name.
 const SUBAGENT = 'tdd-implementer';
+/** The one reason every actor refusal carries — a host reads it back, so a `world` or
+ * collection reason here would send the host fixing the wrong key. */
+const MALFORMED_ACTOR = 'input carries a malformed actor';
 
 /** The three required collections, empty, with the caller's `actor` beside them. */
 function payloadWith(actor: unknown): string {
@@ -57,6 +60,7 @@ describe('parseInput — the actor is shape-checked, not merely carried', () => 
       expect(parseInput(payloadWith(actor)), `actor: ${JSON.stringify(actor)}`).toEqual({
         ok: false,
         exitCode: 2,
+        reason: MALFORMED_ACTOR,
       });
     }
   });
@@ -68,7 +72,7 @@ describe('parseInput — the actor is shape-checked, not merely carried', () => 
       expect(
         parseInput(payloadWith({ agentType })),
         `agentType: ${JSON.stringify(agentType)}`,
-      ).toEqual({ ok: false, exitCode: 2 });
+      ).toEqual({ ok: false, exitCode: 2, reason: MALFORMED_ACTOR });
     }
   });
 
@@ -76,10 +80,15 @@ describe('parseInput — the actor is shape-checked, not merely carried', () => 
     // The shape is closed at one key. A host writing `agent_type` (the payload spelling)
     // under `actor` supplies nothing while looking like a supply; a parser ignoring the
     // key lets the main-session reading stand for a subagent call.
-    expect(parseInput(payloadWith({ agent_type: SUBAGENT }))).toEqual({ ok: false, exitCode: 2 });
+    expect(parseInput(payloadWith({ agent_type: SUBAGENT }))).toEqual({
+      ok: false,
+      exitCode: 2,
+      reason: MALFORMED_ACTOR,
+    });
     expect(parseInput(payloadWith({ agentType: SUBAGENT, agentId: 'a-1' }))).toEqual({
       ok: false,
       exitCode: 2,
+      reason: MALFORMED_ACTOR,
     });
   });
 });

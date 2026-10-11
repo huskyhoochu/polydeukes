@@ -397,7 +397,7 @@ mod the_child_status_is_the_verdict {
     }
 
     #[test]
-    fn status_1_is_unjudged_with_a_reason_naming_the_status() {
+    fn status_1_is_unjudged_with_the_crash_stderr_as_the_reason() {
         // A crashed child is not a verdict. Mapping 1 onto `Blocked` invents a break;
         // mapping it onto `Upheld` is the fail-open hole an uninstalled dist would fall
         // through.
@@ -408,17 +408,15 @@ mod the_child_status_is_the_verdict {
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        let reason = unjudged(verdict);
-        assert!(
-            reason.contains("status 1"),
-            "reason names the status: {reason}"
-        );
+        assert_eq!(unjudged(verdict), "TypeError: covenant.x is not a function");
     }
 
     #[test]
-    fn a_status_outside_0_and_2_is_unjudged_not_blocked() {
+    fn a_status_outside_0_and_2_with_empty_stderr_is_unjudged_naming_the_status() {
         // Only 2 is a break. Reading every non-zero status as `Blocked` invents a violation
-        // the judge never found, and the caller retries a call nothing objected to.
+        // the judge never found, and the caller retries a call nothing objected to. With
+        // nothing on stderr the status is all there is to report; a mapping that forwards
+        // stderr unconditionally returns an empty reason.
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
@@ -426,7 +424,26 @@ mod the_child_status_is_the_verdict {
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
+        assert_eq!(
+            unjudged(verdict),
+            "the judge exited with status 3 instead of a verdict"
+        );
+    }
+
+    #[test]
+    fn status_3_with_stderr_is_unjudged_carrying_that_stderr_as_the_reason() {
+        // 3 is the judge saying it could not read the input, and its stderr names which
+        // key. Keeping the status line as the reason hands the caller "status 3" and drops
+        // the one sentence that says what to fix.
+        let (_dir, root) = fixture_root();
+        install_stub_polydeukes(&root, &pdks_manifest());
+        let input = write_input();
+        let stderr = "covenant check failed closed: input carries no subagentSpawns array\n";
+        let seam = RecordingSeam::answering(Some(3), stderr);
+
+        let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
+
+        assert_eq!(unjudged(verdict), stderr);
     }
 
     #[test]

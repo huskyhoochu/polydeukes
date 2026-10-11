@@ -127,7 +127,7 @@ git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-p
 관리자로 설치하고 YAML을 저장한 뒤 훅 설치 명령을 실행합니다. husky는 git이 찾을 수 있도록
 husky 설치기로 `.husky/pre-commit`을 저장하세요.
 
-판정기는 종료 코드 0 또는 2만 내고 사람에게 묻지 않습니다. 기본값에서는 `protectedPaths`
+판정기는 종료 코드 0, 2, 3(입력을 읽지 못함) 중 하나만 내고 사람에게 묻지 않습니다. 기본값에서는 `protectedPaths`
 위반을 포함한 이 표면의 모든 위반이 stderr에 진단 한 줄을 남기고 행으로 기록되며 종료
 코드 0입니다. 스테이징된 관문 파일 변경은 이미 세션 표면에서 판정을 받았거나 사람이 직접
 한 것이고, 이 표면에는 사람이 답할 밸브가 없기 때문입니다. `protectedPaths` 위반이나

@@ -13,6 +13,9 @@ import { allFileChanges, parseInput } from '../src/protocol.ts';
 const FILE_KO = 'locales/ko.json';
 const FILE_EN = 'locales/en.json';
 const TARGET = 'src/a.ts';
+/** The one reason every world refusal carries — distinct from the actor's and the
+ * collections', so a host supplying a bad `files` map is told which key to fix. */
+const MALFORMED_WORLD = 'input carries a malformed world';
 
 const worldInput: CovenantInput = {
   toolCalls: [{ name: 'edit', fileChange: { kind: 'create', path: TARGET, post: 'export {};\n' } }],
@@ -73,6 +76,7 @@ describe('parseInput — the world axis is shape-checked, not merely carried', (
       expect(parseInput(payloadWith(world)), `world: ${JSON.stringify(world)}`).toEqual({
         ok: false,
         exitCode: 2,
+        reason: MALFORMED_WORLD,
       });
     }
   });
@@ -85,6 +89,7 @@ describe('parseInput — the world axis is shape-checked, not merely carried', (
       expect(parseInput(payloadWith({ files })), `files: ${JSON.stringify(files)}`).toEqual({
         ok: false,
         exitCode: 2,
+        reason: MALFORMED_WORLD,
       });
     }
   });
@@ -97,6 +102,7 @@ describe('parseInput — the world axis is shape-checked, not merely carried', (
       expect(parseInput(payloadWith({ changes })), `changes: ${JSON.stringify(changes)}`).toEqual({
         ok: false,
         exitCode: 2,
+        reason: MALFORMED_WORLD,
       });
     }
   });
@@ -104,7 +110,11 @@ describe('parseInput — the world axis is shape-checked, not merely carried', (
   it('refuses a world carrying a key the axis does not define', () => {
     // The axis is closed at two fields. A supplier writing under a misspelt key supplies
     // nothing while looking like a supply; a parser that ignores the key lets it stand.
-    expect(parseInput(payloadWith({ extra: 1 }))).toEqual({ ok: false, exitCode: 2 });
+    expect(parseInput(payloadWith({ extra: 1 }))).toEqual({
+      ok: false,
+      exitCode: 2,
+      reason: MALFORMED_WORLD,
+    });
   });
 
   it('accepts the empty forms — {}, { files: {} }, { changes: [] } — and returns each verbatim', () => {

@@ -204,7 +204,7 @@ pub enum CheckCovenantVerdict {
 |---|---|---|
 | `Upheld` | `0` | The call was judged and nothing blocked it. `advisories` is the child's stderr verbatim |
 | `Blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim |
-| `Unjudged` | anything else, a signal, a failed spawn, or no umbrella | No judgment happened. `reason` says which. Reading it as an uphold would let an uninstalled judge pass every call |
+| `Unjudged` | anything else, a signal, a failed spawn, or no umbrella | No judgment happened. `reason` says which: for an exit status, the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
 
 Both verbs return a verdict, never a `Result`: every failure comes back as `Unjudged`.
 
@@ -300,7 +300,8 @@ ones [`pdks memory search --json`](../cli/memory.md) prints, in snake case.
   On macOS, a file downloaded through a browser carries a quarantine attribute the ad-hoc
   signature does not clear: remove it with `xattr -d com.apple.quarantine pdks`.
 - **The crate does not check the umbrella's version.** An input the installed umbrella cannot
-  parse comes back `Blocked` (exit 2, fail-closed), not `Unjudged`. Keep the crate's version
+  read comes back `Unjudged` with the umbrella's reason (exit 3); an umbrella older than this
+  contract answers it `Blocked` (exit 2). Keep the crate's version
   and the project's `polydeukes` version on the same minor release; the same holds for an
   `executable` a spec names.
 - **A roster with a non-empty `shell` and an empty `command_args` is refused by the runner**

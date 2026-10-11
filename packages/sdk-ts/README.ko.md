@@ -65,7 +65,7 @@ const verdict = await checkChangeSet({ repoRoot: process.cwd(), diff });
 
 두 동사 모두 `enforce`의 기본값은 `block`입니다. 판정 결과는 `upheld` · `blocked` · `unjudged` 셋이고,
 `unjudged`는 `polydeukes`가 설치되지 않은 프로젝트와 판정 결과가 아닌 모든 자식 상태를
-포괄합니다.
+포괄합니다. 자식이 stderr를 썼으면 그 stderr가 `reason`입니다.
 
 <a id="see-also"></a>
 ## 같이 보기

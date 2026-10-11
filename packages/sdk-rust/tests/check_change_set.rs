@@ -250,11 +250,7 @@ mod the_child_status_is_the_verdict {
 
         let verdict = check_change_set(spec(&root, DIFF, &|s| seam.spawn(s)));
 
-        let reason = unjudged(verdict);
-        assert!(
-            reason.contains("status 1"),
-            "reason names the status: {reason}"
-        );
+        assert_eq!(unjudged(verdict), "TypeError: covenant.x is not a function");
     }
 }
 

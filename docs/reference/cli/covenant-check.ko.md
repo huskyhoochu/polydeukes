@@ -92,16 +92,20 @@ hunk만으로 판정합니다. 그래서 표지 하나를 지운 diff는 통과�
 | 보호 경로 위반 또는 `enforce: block` 항목 위반, 기본 자세 | exit `0`, `advised` 행 하나. 이 표면에는 사람이 답할 밸브가 없고, 스테이징된 관문 파일 변경은 이미 세션 표면에서 판정을 받은 것입니다 |
 | 같은 위반, `--enforce block` | exit `2`, `blocked` 행 하나 |
 | `--diff`에 0바이트 stdin | exit `0`, 행 없음. 스테이징이 없으면 판정할 것도 없습니다 |
-| `--diff` 없이 0바이트 stdin | exit `2`. 빈 페이로드는 IR이 아닙니다 |
-| JSON 파싱 실패 · 객체가 아님 · `toolCalls` 배열 부재 | exit `2`, `covenant-check`의 `blocked` 행 하나 |
-| IR이 자체 `world` 키를 담은 경우 | exit `2`. 세계 축은 이 명령이 채웁니다 |
-| `tools`의 목록이 빠졌거나 문자열 아닌 이름을 담은 경우, `session`에 `userMessages`·`toolCalls` 배열이 없는 경우 | exit `2`, `blocked` `covenant-check` 행 1건. 판정할 수 없는 형상은 기본값이 아니라 차단입니다 |
+| `--diff` 없이 0바이트 stdin | exit `3`, stderr에 `covenant check failed closed: input is not JSON: …`. 빈 페이로드는 IR이 아닙니다 |
+| JSON 파싱 실패 · 객체가 아님 · `toolCalls`·`subagentSpawns`·`userMessages` 배열 부재 · 잘못된 `actor` | exit `3`, `covenant-check`의 `blocked` 행 하나, stderr에 사유(`covenant check failed closed: input carries no subagentSpawns array`) |
+| IR이 자체 `world` 키를 담은 경우 | exit `3`. 세계 축은 이 명령이 채웁니다 |
+| `tools`의 목록이 빠졌거나 문자열 아닌 이름을 담은 경우, `session`에 `userMessages`·`toolCalls` 배열이 없는 경우 | exit `3`, `blocked` `covenant-check` 행 1건. 판정할 수 없는 형상은 기본값으로 바꾸지 않고 거부합니다 |
 | `session`의 토큰 메시지가 설정의 `witness` 안에서 신선한 경우 | 차단 판정이 `witnessed`로 기록되고 exit `0`. 세션 표면이 여는 것과 같은 밸브입니다 |
-| 병합 diff(`diff --cc`) · 짝이 맞지 않는 `---`/`+++` · 미지의 hunk 줄 | exit `2`, `covenant-check`의 `blocked` 행 하나 |
+| 병합 diff(`diff --cc`) · 짝이 맞지 않는 `---`/`+++` · 미지의 hunk 줄 | exit `3`, `covenant-check`의 `blocked` 행 하나 |
 | 다른 인자 | exit `2`, stderr에 사용법 줄. stdin은 읽지 않습니다 |
 | 설정 부재 · 중복 · 무효 | exit `2` |
 | `--config-layer` 파일이 없거나, 파싱되지 않거나, 세 규율 목록 밖의 키를 담았거나, 설정의 id를 다시 쓴 경우 | exit `2`, `covenant-check`의 `blocked` 행 하나. 층을 빼고 판정하는 일은 없습니다 |
 | 판정 본체 로드 실패 | exit `2` |
+
+exit `3`은 이 명령이 입력을 읽지 못해 판정이 일어나지 않았다는 뜻입니다. 판정 결과가 아니며, 이
+상태를 받은 호스트도 호출을 거부합니다. stderr 줄은 읽지 못한 것을 알려 줍니다.
+설정 적재를 먼저 확인하므로, 설정이 깨진 상태에서는 같은 입력도 설정 오류와 함께 exit `2`로 끝납니다.
 
 자세는 설정이 아니라 명령줄에 있고, 프롬프트는 없습니다. 이 명령은 성공 또는 실패를 답하고,
 커밋을 진행할지는 이 명령을 스폰한 훅이 정합니다. 행은 판정만 기록하고, 커밋이 진행됐는지는
@@ -167,7 +171,7 @@ pdks covenant check < input.json                                   # 다른 프�
 
 | 플래그 | 막는 것 |
 |---|---|
-| `--no-color` | `color.ui=always`는 모든 줄을 이스케이프 코드로 감쌉니다. 번역기가 블록을 인식하지 못해 exit 2로 fail-closed됩니다 |
+| `--no-color` | `color.ui=always`는 모든 줄을 이스케이프 코드로 감쌉니다. 번역기가 블록을 인식하지 못해 exit 3으로 fail-closed됩니다 |
 | `--no-ext-diff` / `--no-textconv` | `diff.external`이나 `.gitattributes`의 textconv 드라이버는 디스크 어디에도 없는 텍스트를 내고, 규율은 그 텍스트를 판정하게 됩니다 |
 | `--src-prefix=a/ --dst-prefix=b/` | `diff.mnemonicPrefix`는 `c/`·`i/`·`w/`를 찍습니다. 번역기는 정확히 `a/`와 `b/`만 벗기므로 다른 접두는 판정 경로에 남습니다 |
 

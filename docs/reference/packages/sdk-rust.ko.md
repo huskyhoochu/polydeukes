@@ -200,7 +200,7 @@ pub enum CheckCovenantVerdict {
 |---|---|---|
 | `Upheld` | `0` | 판정을 받았고 막은 것이 없습니다. `advisories`는 자식의 stderr 원문입니다 |
 | `Blocked` | `2` | 판정을 받았고 무언가가 막았습니다. `reason`은 자식의 stderr 원문입니다 |
-| `Unjudged` | 그 밖의 값, 시그널, 스폰 실패, 우산 없음 | 판정이 일어나지 않았습니다. `reason`이 그 이유를 말합니다. 이것을 통과로 읽으면 설치되지 않은 판정기가 모든 호출을 통과시키게 됩니다 |
+| `Unjudged` | 그 밖의 값, 시그널, 스폰 실패, 우산 없음 | 판정이 일어나지 않았습니다. `reason`이 그 이유를 말합니다. 종료 상태가 있으면 자식이 쓴 stderr이고(exit `3`의 `covenant check failed closed: input carries no subagentSpawns array` 등), stderr가 비어 있으면 상태입니다. 이것을 통과로 읽으면 설치되지 않은 판정기가 모든 호출을 통과시키게 됩니다 |
 
 두 동사 모두 `Result`가 아니라 판정 결과를 돌려줍니다. 모든 실패는 `Unjudged`로 돌아옵니다.
 
@@ -294,8 +294,8 @@ pub enum MemorySearchOutcome {
   spec에 실행 파일을 적습니다. 둘 다 없는 호스트는 그 사유를 담은 `Unjudged`를 받습니다.
   macOS에서 브라우저로 받은 파일에는 격리 속성이 붙고, ad-hoc 서명으로는 풀리지 않습니다.
   `xattr -d com.apple.quarantine pdks`로 지웁니다.
-- **이 crate는 우산의 버전을 확인하지 않습니다.** 설치된 우산이 파싱하지 못하는 입력은
-  `Unjudged`가 아니라 `Blocked`(exit 2, 실패 시 차단)로 돌아옵니다. crate의 버전과 프로젝트의
+- **이 crate는 우산의 버전을 확인하지 않습니다.** 설치된 우산이 읽지 못하는 입력은
+  우산이 쓴 사유를 담은 `Unjudged`(exit 3)로 돌아옵니다. 이 계약보다 오래된 우산은 `Blocked`(exit 2)로 답합니다. crate의 버전과 프로젝트의
   `polydeukes` 버전을 같은 minor 릴리스로 맞춰 두세요. spec에 적은 `executable`도 마찬가지입니다.
 - **`shell`이 비어 있지 않은데 `command_args`가 빈 도구 목록은 실행기가 거부합니다**(`Blocked`).
   스키마는 이 조합을 금지하지만, 생성된 `Tools` 타입은 그 제약을 표현하지 못합니다.

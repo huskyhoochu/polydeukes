@@ -64,7 +64,7 @@ const verdict = await checkChangeSet({ repoRoot: process.cwd(), diff });
 
 `enforce` defaults to `block` for both verbs. The three verdicts are `upheld`, `blocked`, and
 `unjudged`; `unjudged` covers a project with no `polydeukes` installed and any child status
-that is not a verdict.
+that is not a verdict, with the child's stderr as its `reason` when the child wrote one.
 
 <a id="see-also"></a>
 ## See also

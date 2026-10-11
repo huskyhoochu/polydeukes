@@ -167,8 +167,9 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     stdin,
   });
   if (status !== EXIT_UPHOLD && status !== EXIT_BREAK_BLOCKING) {
-    // Not a verdict: the judge crashed or was signalled, so no row was written. Exit 2 is
-    // still right for the host; the line is what tells the operator this was not a break.
+    // Not a verdict: the judge could not read its input (3, one blocked row written) or
+    // crashed or was signalled (no row). Exit 2 is still right for the host; the line is
+    // what tells the operator this was not a break.
     process.stderr.write(
       `covenant hook failed closed: the judge exited with status ${String(status)} before a verdict\n`,
     );

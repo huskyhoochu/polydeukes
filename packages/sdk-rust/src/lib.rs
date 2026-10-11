@@ -74,7 +74,8 @@ pub struct CheckCovenantSpec<'a> {
 ///
 /// `advisories` and `reason` are the child's stderr verbatim. `Unjudged` is every outcome that
 /// is not a verdict: no judgment happened, and reading it as an uphold would let an absent judge
-/// pass every call.
+/// pass every call. Its `reason` is the child's stderr when the child exited with some other
+/// status and wrote any, else a line naming the status, the signal, or the spawn error.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CheckCovenantVerdict {
     Upheld { advisories: String },
@@ -371,9 +372,14 @@ fn run_check(
         }) => CheckCovenantVerdict::Blocked { reason: stderr },
         Ok(SpawnOutcome {
             status: Some(status),
+            stderr,
             ..
         }) => CheckCovenantVerdict::Unjudged {
-            reason: format!("the judge exited with status {status} instead of a verdict"),
+            reason: if stderr.is_empty() {
+                format!("the judge exited with status {status} instead of a verdict")
+            } else {
+                stderr
+            },
         },
         Ok(SpawnOutcome { status: None, .. }) => CheckCovenantVerdict::Unjudged {
             reason: "the judge was killed by a signal before it answered".into(),

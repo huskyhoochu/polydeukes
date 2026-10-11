@@ -231,13 +231,19 @@ try {
   // at the same exit 2 it answers everything else with.
   const { runCovenantCheck } = await import('./covenant-check.ts');
   const { covenantInputFromUnifiedDiff } = await import('./diff-ir.ts');
+  const { parseInput } = await import('@polydeukes/core');
   const text = readStdin();
   const { exitCode } = await runCovenantCheck({
     repoRoot: process.cwd(),
     // A thunk, not a value: the runner settles the telemetry path before calling it, so a
     // translation or parse failure lands as the same one blocked row every other
     // fail-closed branch leaves.
-    input: () => (diffMode ? covenantInputFromUnifiedDiff({ text }) : (JSON.parse(text) as never)),
+    input: () => {
+      if (diffMode) return covenantInputFromUnifiedDiff({ text });
+      const parsed = parseInput(text);
+      if (!parsed.ok) throw new Error(parsed.reason);
+      return parsed.value;
+    },
     // The input mode is the surface: a diff is a finished change set, anything else is one
     // call the caller observed.
     surface: diffMode ? 'changeSet' : 'session',

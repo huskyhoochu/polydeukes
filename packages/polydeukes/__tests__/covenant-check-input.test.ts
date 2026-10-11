@@ -257,10 +257,12 @@ describe('ordinary input passes, one row per toolCall', () => {
 });
 
 describe('an input carrying a world key fails closed', () => {
-  it('exits 2 with exactly one blocked covenant-check row and dispatches nothing', async () => {
+  it('exits 3 with exactly one blocked covenant-check row and dispatches nothing', async () => {
     // The world axis is the runner's to fill. An input that supplies its own would let a
     // client hand the judge the files it wants read; a runner that merges or overwrites it
-    // dispatches, and the recording module would see the call.
+    // dispatches, and the recording module would see the call. The exit is 3, not 2: a
+    // host reading 2 as a discipline's block would tell the model a covenant refused the
+    // call, when the host's own IR was what the runner could not read.
     writeConfigAt(repoRoot, telemetryPath, { protectedPaths: [PROTECTED_ENTRY] });
     const { covenant, calls } = recordingCovenant([]);
 
@@ -272,7 +274,7 @@ describe('an input carrying a world key fails closed', () => {
       covenant,
     });
 
-    expect(result.exitCode).toBe(2);
+    expect(result).toEqual({ exitCode: 3 });
     expect(telemetryRows(telemetryPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
     expect(dispatches(calls)).toEqual([]);
   });

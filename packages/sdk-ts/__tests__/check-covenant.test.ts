@@ -233,7 +233,7 @@ describe('checkCovenant — the child status is the verdict', () => {
     expect(verdict).toEqual({ verdict: 'blocked', reason: 'self-mod: .grok/hooks\n' });
   });
 
-  it("status 1 → { verdict: 'unjudged' } with a reason naming the status", async () => {
+  it("status 1 → { verdict: 'unjudged' } with the crash's stderr as the reason", async () => {
     // A crashed child is not a verdict. Mapping 1 onto `blocked` invents a break; mapping
     // it onto `upheld` is the fail-open hole an uninstalled dist would fall through.
     installStubPolydeukes();
@@ -245,8 +245,36 @@ describe('checkCovenant — the child status is the verdict', () => {
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
 
     expect(verdict).toMatchObject({ verdict: 'unjudged' });
-    expect(verdict).toHaveProperty('reason', expect.stringMatching(/\b1\b/));
+    expect(verdict).toHaveProperty('reason', 'TypeError: covenant.x is not a function');
     expect(verdict).not.toHaveProperty('advisories');
+  });
+
+  it("status 3 with stderr → { verdict: 'unjudged', reason: <that stderr> }", async () => {
+    // 3 is the judge saying it could not read the IR, and its stderr names which key. A
+    // mapping that keeps the status line as the reason hands the consumer "status 3" and
+    // drops the one sentence that says what to fix; one that reads 3 as `blocked` invents a
+    // covenant break for an input nobody judged.
+    installStubPolydeukes();
+    const stderr = 'covenant check failed closed: input carries no subagentSpawns array\n';
+    const { spawn } = recordingSpawn({ status: 3, stderr });
+
+    const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
+
+    expect(verdict).toEqual({ verdict: 'unjudged', reason: stderr });
+  });
+
+  it("status 3 with empty stderr → { verdict: 'unjudged' } with the status line as the reason", async () => {
+    // Nothing on stderr leaves only the status to report. A mapping that forwards stderr
+    // unconditionally returns `reason: ''`, an unjudged verdict with nothing to act on.
+    installStubPolydeukes();
+    const { spawn } = recordingSpawn({ status: 3, stderr: '' });
+
+    const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
+
+    expect(verdict).toEqual({
+      verdict: 'unjudged',
+      reason: 'the judge exited with status 3 instead of a verdict',
+    });
   });
 
   it("status null (signalled) → { verdict: 'unjudged' } with a reason naming the signal", async () => {
