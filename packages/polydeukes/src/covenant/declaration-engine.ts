@@ -23,8 +23,10 @@ import type {
 import { BINARY_COMBINATOR_NAMES } from '@polydeukes/core';
 import {
   type ConfigFault,
+  canonical,
   EXTRACT_STEPS,
   fault,
+  type Item,
   type Items,
   type PairedItems,
   SupplyFailure,
@@ -419,10 +421,35 @@ function sourceName(pipeline: CompiledPipeline): string {
 
 function combine(step: BinaryStep, left: Items, right: Items): Items {
   if (step.op === 'union') return [...left, ...right];
+  if (step.op === 'onlyIn' && step.count === true) return multisetDifference(left, right);
   const rightKeys = new Set(right.map((item) => item.key));
   return step.op === 'onlyIn'
     ? left.filter((item) => !rightKeys.has(item.key))
     : left.filter((item) => rightKeys.has(item.key));
+}
+
+/** Pairs equal values first, so an unchanged item is never left over in place of a new one. */
+function multisetDifference(left: Items, right: Items): Items {
+  const byKey = new Map<string, number>();
+  const byValue = new Map<string, number>();
+  const valueKey = (item: Item): string => JSON.stringify([item.key, canonical(item.value)]);
+  for (const item of right) {
+    byKey.set(item.key, (byKey.get(item.key) ?? 0) + 1);
+    const id = valueKey(item);
+    byValue.set(id, (byValue.get(id) ?? 0) + 1);
+  }
+  const consume = (counts: Map<string, number>, id: string): boolean => {
+    const n = counts.get(id) ?? 0;
+    if (n === 0) return false;
+    counts.set(id, n - 1);
+    return true;
+  };
+  const unpaired = left.filter((item) => {
+    if (!consume(byValue, valueKey(item))) return true;
+    consume(byKey, item.key);
+    return false;
+  });
+  return unpaired.filter((item) => !consume(byKey, item.key));
 }
 
 /** The paired path runs the whole pipeline over one state; the single path skips the source. */

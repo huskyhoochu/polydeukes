@@ -333,6 +333,25 @@ describe('validateAlgebraDeclaration — the combinator position is closed to th
   });
 });
 
+describe('validateAlgebraDeclaration — onlyIn count argument', () => {
+  const PIPELINE = 'onlyPre';
+
+  it('rejects onlyIn with count: "yes", naming the location and onlyIn', () => {
+    // A truthy string under a truthiness check silently turns a set filter into a multiset
+    // difference; the author has to be told which declaration and which step.
+    const error = expectRejection(
+      withExtract({
+        ...minimalExtract,
+        [PIPELINE]: [{ op: 'onlyIn', of: EXTRACT_A, notIn: EXTRACT_B, count: 'yes' }],
+      }),
+      'catalog/probe.json',
+    );
+
+    expect(error.message).toContain('catalog/probe.json');
+    expect(error.message).toContain('onlyIn');
+  });
+});
+
 describe('validateAlgebraDeclaration — references resolve inside the declaration', () => {
   it('rejects an entry whose `of` names no extract', () => {
     const error = expectRejection(withRelation({ op: 'empty', of: 'missing' }));

@@ -96,11 +96,15 @@ disciplines:
       extract:
         before: [{ op: 'source', of: 'pre' }, { op: 'lines' }, { op: 'keyByPattern', re: '(\.only\()' }]
         after: [{ op: 'source', of: 'post' }, { op: 'lines' }, { op: 'keyByPattern', re: '(\.only\()' }]
-        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }]
+        added: [{ op: 'onlyIn', of: 'after', notIn: 'before', count: true }]
       relate:
         - { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {key}: {value}' }
     enforce: advise
 ```
+
+The key here is the marker itself, so every `.only(` in a file has the same key. Without
+`count: true`, `onlyIn` compares keys as a set and a second `.only(` in a file that already
+has one adds nothing; with it, each added occurrence is reported.
 
 The frozen-path shape is the same block with `mechanism: 'self-absolution-ban'`
 and `extract` = `prior` (source `pre`) · `here` (source `target.path`) · `after` (source

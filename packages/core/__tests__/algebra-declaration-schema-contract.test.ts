@@ -89,6 +89,9 @@ const VALID_DECLARATIONS: readonly unknown[] = [
     extract: { ...minimalExtract, shared: [{ op: 'intersect', of: [EXTRACT_A, EXTRACT_B] }] },
     relate: [{ id: 'shared-nonempty', relation: { op: 'nonEmpty', of: 'shared' }, message: 'm' }],
   },
+  // onlyIn with its optional count flag, both values — `false` is legal, not only `true`.
+  withPipeline('onlyPre', [{ op: 'onlyIn', of: EXTRACT_A, notIn: EXTRACT_B, count: true }]),
+  withPipeline('onlyPre', [{ op: 'onlyIn', of: EXTRACT_A, notIn: EXTRACT_B, count: false }]),
 ];
 
 const INVALID_DECLARATIONS: readonly unknown[] = [
@@ -125,6 +128,10 @@ const INVALID_DECLARATIONS: readonly unknown[] = [
   withPipeline('both', [{ op: 'union', of: EXTRACT_A }]),
   // Unknown key on a combinator step (closed args).
   withPipeline('both', [{ op: 'union', of: [EXTRACT_A, EXTRACT_B], limit: 3 }]),
+  // onlyIn.count as a truthy string — boolean only.
+  withPipeline('onlyPre', [{ op: 'onlyIn', of: EXTRACT_A, notIn: EXTRACT_B, count: 'yes' }]),
+  // count belongs to onlyIn alone; union's key set stays closed to op + of.
+  withPipeline('both', [{ op: 'union', of: [EXTRACT_A, EXTRACT_B], count: true }]),
   // A combinator after the first step (prefixItems / items split).
   withPipeline('late', [
     { op: 'source', of: SOURCE_PRE },

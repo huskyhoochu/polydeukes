@@ -450,16 +450,18 @@ disciplines:
           - { op: 'lines' }
           - { op: 'keyByPattern', re: '(\.only\()' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
       relate:
         - id: 'nothing-added'
           relation: { op: 'empty', of: 'added' }
           message: 'adds {key}: {value}'
 ```
 
-The key is the match text, so a line carrying a word the file already has anywhere is
-forgiven. A line carrying two new words surfaces only the first match; the second appears
-on a later judgment **after that first match is removed**. Re-judging the same input yields
+The key is the match text. With `count: true`, `onlyIn` compares how many times each key
+occurs, so a second `.only(` in a file that already has one is reported; without it, a line
+carrying a match the file already has anywhere is forgiven. A line carrying two new words
+surfaces only the first match; the second appears on a later judgment **after that first
+match is removed**. Re-judging the same input yields
 the same first match.
 
 **A frozen path is a declaration too.** A file that may be created once and never modified

@@ -184,8 +184,37 @@ The operands are two distinct extraction names. `onlyIn` and `intersect` compare
 | Combinator | Syntax | Result |
 |---|---|---|
 | `union` | `{ op: 'union', of: ['a', 'b'] }` | All items from `a`, followed by all items from `b`, including duplicate keys. |
-| `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | Items from `a` whose keys do not occur in `b`. |
+| `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | Items from `a` whose keys do not occur in `b`. With `count: true`, a key that occurs n times in `b` and m times in `a` keeps m − n of its items from `a`, or none when m ≤ n. |
 | `intersect` | `{ op: 'intersect', of: ['a', 'b'] }` | Items from `a` whose keys occur in `b`, with values from `a`. |
+
+<a id="count-occurrences"></a>
+### Count each occurrence of a key
+
+Without `count`, `onlyIn` compares keys as a set. When the key is the matched text itself, every
+occurrence of the same marker has the same key, so once a file holds one skipped test a second
+one adds no new key and the declaration upholds. `count: true` compares how many times each key
+occurs:
+
+```yaml
+extract:
+  before:
+    - { op: 'source', of: 'pre' }
+    - { op: 'lines' }
+    - { op: 'keyByPattern', re: '(it\.skip|#\[ignore)' }
+  after:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'keyByPattern', re: '(it\.skip|#\[ignore)' }
+  added:
+    - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
+```
+
+To decide which items of a key remain, the items of `a` whose value equals an item of `b` with
+the same key are removed first, one for each such item of `b`; the rest of `b`'s count for that
+key then removes the earliest remaining items of `a`. A line kept unchanged is therefore never
+reported in place of an added one. When an existing line was also edited, its value matches
+nothing in `b`, and which of the edited and the added lines remains follows their order in `a`.
+The remaining items keep their order in `a`.
 
 <a id="drop-matching-lines"></a>
 ### Drop the lines another extraction matches

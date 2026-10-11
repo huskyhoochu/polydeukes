@@ -436,14 +436,16 @@ disciplines:
           - { op: 'lines' }
           - { op: 'keyByPattern', re: '(\.only\()' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
       relate:
         - id: 'nothing-added'
           relation: { op: 'empty', of: 'added' }
           message: 'adds {key}: {value}'
 ```
 
-키가 일치한 문자열이므로, 파일 어딘가에 이미 있는 낱말을 담은 줄은 새 위반으로 세지 않습니다. 새 낱말 둘을
+키는 일치한 문자열입니다. `count: true`를 쓰면 `onlyIn`이 키마다 나온 횟수를 비교하므로, 이미
+`.only(`가 있는 파일에 둘째 `.only(`를 더하면 위반으로 보고합니다. 이 필드가 없으면 파일 어딘가에
+이미 있는 일치를 담은 줄은 새 위반으로 세지 않습니다. 새 낱말 둘을
 담은 한 줄은 첫 일치만 드러내고, 둘째는 **그 첫 일치를 고친 다음** 판정에서 나옵니다. 같은
 입력을 다시 판정해도 둘째가 자동으로 나오지는 않습니다.
 

@@ -187,8 +187,35 @@ disciplines:
 | 조합 연산자 | 구문 | 결과 |
 |---|---|---|
 | `union` | `{ op: 'union', of: ['a', 'b'] }` | `a`의 모든 항목 뒤에 `b`의 모든 항목을 붙입니다. 중복 키도 유지합니다. |
-| `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | `a` 중 키가 `b`에 없는 항목입니다. |
+| `onlyIn` | `{ op: 'onlyIn', of: 'a', notIn: 'b' }` | `a` 중 키가 `b`에 없는 항목입니다. `count: true`이면 `b`에 n번, `a`에 m번 나오는 키는 `a`의 그 키 항목 중 m − n개를 남기고, m ≤ n이면 하나도 남기지 않습니다. |
 | `intersect` | `{ op: 'intersect', of: ['a', 'b'] }` | `a` 중 키가 `b`에도 있는 항목입니다. 값은 `a`의 것을 사용합니다. |
+
+<a id="count-occurrences"></a>
+### 키가 나온 횟수 세기
+
+`count`가 없으면 `onlyIn`은 키를 집합으로 비교합니다. 일치한 텍스트 자체가 키이면 같은 표지는
+몇 번 나와도 키가 같으므로, 파일에 건너뛴 테스트가 하나 있으면 두 번째 것은 새 키를 만들지 못하고
+선언은 위반 없이 판정됩니다. `count: true`는 키마다 나온 횟수를 비교합니다.
+
+```yaml
+extract:
+  before:
+    - { op: 'source', of: 'pre' }
+    - { op: 'lines' }
+    - { op: 'keyByPattern', re: '(it\.skip|#\[ignore)' }
+  after:
+    - { op: 'source', of: 'post' }
+    - { op: 'lines' }
+    - { op: 'keyByPattern', re: '(it\.skip|#\[ignore)' }
+  added:
+    - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
+```
+
+키마다 어느 항목을 남길지는 이렇게 정합니다. 먼저 키가 같은 `b`의 항목과 값까지 같은 `a`의 항목을,
+`b`의 그런 항목 하나에 하나씩 지웁니다. 그 키에 대해 `b`에 남은 개수만큼은 `a`에 남은 항목을 앞에서부터
+지웁니다. 그래서 바꾸지 않은 줄이 추가된 줄 대신 보고되는 일은 없습니다. 기존 줄도 함께 고쳤다면 그 값은
+`b`의 어느 항목과도 같지 않으므로, 고친 줄과 추가된 줄 중 어느 것이 남는지는 `a`에서의 순서로 정해집니다.
+남은 항목은 `a`에서의 순서를 유지합니다.
 
 <a id="drop-matching-lines"></a>
 ### 다른 추출이 고른 줄 빼기

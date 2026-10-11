@@ -75,7 +75,8 @@ export type RelationDecl =
 /** A binary world combinator — the closed step kind that joins two extractions. */
 export type BinaryStep =
   | { op: 'union'; of: [string, string] }
-  | { op: 'onlyIn'; of: string; notIn: string }
+  /** `count` — a `notIn` item removes one `of` item of its key, not every one. */
+  | { op: 'onlyIn'; of: string; notIn: string; count?: boolean }
   | { op: 'intersect'; of: [string, string] };
 
 /** Open vocabulary — a name outside the three combinators; its arguments pass through. */
@@ -199,7 +200,7 @@ const RELATION_KEYS: Record<RelationName, ReadonlySet<string>> = {
 
 const COMBINATOR_KEYS: Record<(typeof BINARY_COMBINATOR_NAMES)[number], ReadonlySet<string>> = {
   union: new Set(['op', 'of']),
-  onlyIn: new Set(['op', 'of', 'notIn']),
+  onlyIn: new Set(['op', 'of', 'notIn', 'count']),
   intersect: new Set(['op', 'of']),
 };
 
@@ -371,6 +372,9 @@ function validateStep(step: unknown, location: string): string[] {
       throw new ConfigValidationError(
         `${location} '${op}' takes a string 'of' and a string 'notIn'`,
       );
+    }
+    if (step.count !== undefined && typeof step.count !== 'boolean') {
+      throw new ConfigValidationError(`${location} '${op}' takes 'count' as a boolean`);
     }
     if (step.of === step.notIn) {
       throw new ConfigValidationError(

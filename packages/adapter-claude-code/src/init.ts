@@ -258,13 +258,17 @@ disciplines:
           - { op: 'lines' }
           - { op: 'keyByPattern', re: '(\\.only\\()' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
       relate:
         - id: 'nothing-added'
           relation: { op: 'empty', of: 'added' }
           message: 'adds {key}: {value}'
     enforce: advise
 \`\`\`
+
+The key here is the marker itself, so every \`.only(\` in a file has the same key. Without
+\`count: true\`, \`onlyIn\` compares keys as a set and a second \`.only(\` in a file that already
+has one adds nothing; with it, each added occurrence is reported.
 
 A command-line ban reads the fixed source \`command\` and scopes on it — the scope is part of
 the mechanism's shape, so a \`forbidden-command\` entry without it is refused at load time:

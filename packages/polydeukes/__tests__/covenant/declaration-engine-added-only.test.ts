@@ -292,6 +292,156 @@ describe('added-only over a whole file — allMatches sees past the first match'
   });
 });
 
+// The same promise with `count: true` on `onlyIn`: a key that `before` carries n times and
+// `after` m times yields the m − n surplus items instead of none. Every skip marker shares one
+// key, so the set filter forgives a second skip once the file carries one. Which items survive
+// is decided by pairing equal values first, then dropping the rest in `after` order.
+const SKIP_PATTERN = '(it\\.skip|describe\\.skip)';
+const OLD_SKIP = "it.skip('old')";
+const NEW_SKIP = "it.skip('new')";
+
+function skipCounted(count?: boolean): AlgebraDeclaration {
+  return {
+    ...addedOnly,
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: SKIP_PATTERN },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: SKIP_PATTERN },
+      ],
+      added: [
+        { op: 'onlyIn', of: 'after', notIn: 'before', ...(count !== undefined && { count }) },
+      ],
+    },
+  };
+}
+
+describe('added-only — onlyIn with count: true compares occurrences per key', () => {
+  it('count: false on the same input keeps the set filter — a repeated key passes', () => {
+    // The key's presence must not switch the mode on: an engine reading `'count' in step`
+    // counts here and breaks a declaration that wrote the flag out explicitly as off.
+    const pre = `${OLD_SKIP}\n`;
+    const post = `${OLD_SKIP}\n${NEW_SKIP}\n`;
+
+    expect(judge(skipCounted(false), world({ pre, post })).kind).toBe('pass');
+  });
+
+  it('n=1, m=3: the two surplus items survive, both kept even though their values are equal', () => {
+    // Exactly m − n, as items: an engine that reports every item of a key once m > n answers
+    // three, one that dedupes by value or by key answers one. The forgiven `old` is paired away.
+    const pre = `${OLD_SKIP}\n`;
+    const post = `${OLD_SKIP}\n${NEW_SKIP}\n${NEW_SKIP}\n`;
+
+    expect(witnessesOf(judge(skipCounted(true), world({ pre, post })), ENTRY)).toEqual([
+      { key: 'it.skip', value: NEW_SKIP },
+      { key: 'it.skip', value: NEW_SKIP },
+    ]);
+  });
+
+  it.each([
+    [
+      'm = n with no equal value — the second pass consumes by key alone',
+      `${OLD_SKIP}\n`,
+      `${NEW_SKIP}\n`,
+    ],
+    ['m = 0 — an `after` with no match', `${OLD_SKIP}\n`, "it('old')\n"],
+  ])('passes when m ≤ n: %s', (_label, pre, post) => {
+    // The first row is the one a value-pairing-only engine breaks on: `new` pairs with nothing,
+    // so only the key-count pass removes it. The others pin max(0, m − n) at its floor.
+    expect(judge(skipCounted(true), world({ pre, post })).kind).toBe('pass');
+  });
+
+  it('a key absent from before reports every one of its items', () => {
+    // n = 0 is the plain added case and must not read as "no count recorded": a lookup that
+    // yields undefined and compares with it drops or keeps the whole key by accident.
+    const pre = "it('a')\n";
+    const post = `${NEW_SKIP}\n${OLD_SKIP}\n`;
+
+    expect(witnessesOf(judge(skipCounted(true), world({ pre, post })), ENTRY)).toEqual([
+      { key: 'it.skip', value: NEW_SKIP },
+      { key: 'it.skip', value: OLD_SKIP },
+    ]);
+  });
+
+  it('one item of before removes one equal item of after, not every equal one', () => {
+    // A pasted duplicate of a forgiven line is a new occurrence: a first pass that tests value
+    // membership instead of consuming a partner drops both copies and passes.
+    const pre = `${OLD_SKIP}\n`;
+    const post = `${OLD_SKIP}\n${OLD_SKIP}\n`;
+
+    expect(witnessesOf(judge(skipCounted(true), world({ pre, post })), ENTRY)).toEqual([
+      { key: 'it.skip', value: OLD_SKIP },
+    ]);
+  });
+
+  it('a new skip written above the pre-existing one is the witness, not the old line', () => {
+    // Equal values pair first: dropping the first n items of the key in `after` order would
+    // break correctly but name `old` — the line the author did not touch — as the violation.
+    const pre = `${OLD_SKIP}\n`;
+    const post = `${NEW_SKIP}\n${OLD_SKIP}\n`;
+
+    expect(witnessesOf(judge(skipCounted(true), world({ pre, post })), ENTRY)).toEqual([
+      { key: 'it.skip', value: NEW_SKIP },
+    ]);
+  });
+
+  it('survivors of two keys come out in after order, not grouped by key', () => {
+    // `it.skip` is the first key met in `after`; a Map keyed by first sight emits its survivor
+    // before `describe.skip`'s, while the line order puts `describe.skip('new')` first.
+    const pre = `${OLD_SKIP}\ndescribe.skip('old')\n`;
+    const post = `${OLD_SKIP}\ndescribe.skip('new')\ndescribe.skip('old')\n${NEW_SKIP}\n`;
+
+    expect(witnessesOf(judge(skipCounted(true), world({ pre, post })), ENTRY)).toEqual([
+      { key: 'describe.skip', value: "describe.skip('new')" },
+      { key: 'it.skip', value: NEW_SKIP },
+    ]);
+  });
+});
+
+// The declaration from the outside report, verbatim: a test file already carrying one skipped
+// case gains a second skip. Under the set filter the row read `passed`.
+const TEST_PATH = 'test/a.test.ts';
+const REPORT_PRE = "it.skip('old', () => {})\nit('a', () => {})\n";
+const REPORT_POST = "it.skip('old', () => {})\nit.skip('a', () => {})\n";
+
+function reportCase(): AlgebraDeclaration {
+  return {
+    ...addedOnly,
+    scope: { source: PATH_SRC, include: ['^test/'] },
+    extract: {
+      before: [
+        { op: 'source', of: 'pre' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(it\\.skip)' },
+      ],
+      after: [
+        { op: 'source', of: 'post' },
+        { op: 'lines' },
+        { op: 'keyByPattern', re: '(it\\.skip)' },
+      ],
+      added: [{ op: 'onlyIn', of: 'after', notIn: 'before', count: true }],
+    },
+  };
+}
+
+describe('added-only — the reported second skip beside an existing one', () => {
+  it('breaks with count: true, naming the newly skipped case as the witness value', () => {
+    // The judgment the report asked for: the second skip is seen, and the message's `{value}`
+    // is the changed line rather than the one that was already skipped.
+    expect(
+      witnessesOf(
+        judge(reportCase(), world({ pre: REPORT_PRE, post: REPORT_POST }, TEST_PATH)),
+        ENTRY,
+      ),
+    ).toEqual([{ key: 'it.skip', value: "it.skip('a', () => {})" }]);
+  });
+});
+
 describe('added-only — scope', () => {
   it('a path outside the include list is not judged even when post adds a match', () => {
     // The scope stands before the pipelines; a declaration that judges every world blocks

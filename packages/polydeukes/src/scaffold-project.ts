@@ -107,7 +107,7 @@ witness:
 #           - { op: 'lines' }
 #           - { op: 'keyByPattern', re: '(TODO)' }
 #         added:
-#           - { op: 'onlyIn', of: 'after', notIn: 'before' }
+#           - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
 #       relate:
 #         - id: 'nothing-added'
 #           relation: { op: 'empty', of: 'added' }
@@ -131,7 +131,7 @@ witness:
 #           - { op: 'lines' }
 #           - { op: 'keyByPattern', re: '(TODO)' }
 #         added:
-#           - { op: 'onlyIn', of: 'after', notIn: 'before' }
+#           - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
 #       relate:
 #         - id: 'nothing-added'
 #           relation: { op: 'empty', of: 'added' }
