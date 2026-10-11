@@ -130,6 +130,7 @@ fn judge(root: &Path, input: &CovenantInput) -> CheckCovenantVerdict {
         config_layer: None,
         telemetry_path: None,
         executable: None,
+        timeout: None,
         spawn: None,
     })
 }
@@ -216,6 +217,7 @@ fn judge_change_set(root: &Path, diff: &str) -> CheckCovenantVerdict {
         config_layer: None,
         telemetry_path: Some(&root.join(CHANGE_SET_TELEMETRY_REL)),
         executable: None,
+        timeout: None,
         spawn: None,
     })
 }

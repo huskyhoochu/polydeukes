@@ -86,6 +86,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     config_layer: None,
     telemetry_path: None,
     executable: None,
+    timeout: None,
     spawn: None,
 });
 
@@ -96,8 +97,8 @@ match verdict {
 }
 ```
 
-The call blocks until the child exits. An async host runs it on a blocking thread, for example
-`tokio::task::spawn_blocking`.
+The call blocks until the child exits, or until `timeout` passes. An async host runs it on a
+blocking thread, for example `tokio::task::spawn_blocking`.
 
 The input is the caller's. The crate serializes it and sends it verbatim; it adds no `session`,
 no `actor`, and no roster of its own. `CovenantInput` has no `world` field: the runner reads
@@ -114,11 +115,12 @@ pub struct CheckCovenantSpec<'a> {
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 
 pub enum Enforce { Advise, Block }
-pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String }
+pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String, pub timeout: Option<Duration> }
 pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stderr: String }
 ```
 
@@ -130,6 +132,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `config_layer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repo_root` |
 | `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path`. A relative path resolves against `repo_root`, the child's cwd |
 | `executable` | The `pdks` executable to run, with the verb as its first argument. A relative path, a bare name included, is taken from the current directory and never looked up on `PATH`. The file is not checked ahead of the spawn: one that cannot run is `Unjudged` through the failed-spawn branch. `None` resolves the umbrella as above |
+| `timeout` | How long the child may run. When it passes, the default spawn kills and reaps the child, and the verb returns `Unjudged` (covenant verbs) or `Unavailable` (memory verbs) with `the judge did not answer within 60s` or `pdks memory did not answer within 60s`. The clock starts at the spawn. An injected `spawn` receives it as `SpawnSpec::timeout` and enforces it itself; an `Err` of kind `TimedOut` from it reads the same way. `None` waits for the child to exit. Only the spawned process is killed: a process it started itself, such as the `node` a version-manager shim runs, keeps running, and the call still returns at the deadline |
 | `spawn` | An injected spawn seam. `None` runs the resolved command: `node` from `PATH`, or the `pdks` executable. `SpawnOutcome::status` is `None` when a signal ended the child |
 
 **`enforce` defaults to `Block`,** as it does in `@polydeukes/sdk-ts`: protected paths and
@@ -157,6 +160,7 @@ let verdict = check_change_set(CheckChangeSetSpec {
     config_layer: None,
     telemetry_path: None,
     executable: None,
+    timeout: None,
     spawn: None,
 });
 ```
@@ -169,6 +173,7 @@ pub struct CheckChangeSetSpec<'a> {
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 ```
@@ -204,7 +209,7 @@ pub enum CheckCovenantVerdict {
 |---|---|---|
 | `Upheld` | `0` | The call was judged and nothing blocked it. `advisories` is the child's stderr verbatim |
 | `Blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim |
-| `Unjudged` | anything else, a signal, a failed spawn, or no umbrella | No judgment happened. `reason` says which: for an exit status, the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
+| `Unjudged` | anything else, a signal, a passed `timeout`, a failed spawn, or no umbrella | No judgment happened. `reason` says which: for an exit status, the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
 
 Both verbs return a verdict, never a `Result`: every failure comes back as `Unjudged`.
 
@@ -233,7 +238,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 let root = Path::new("/path/to/the/memory/root");
-if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, spawn: None }) {
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, timeout: None, spawn: None }) {
     eprintln!("{reason}");
 }
 
@@ -242,6 +247,7 @@ match memory_search(MemorySearchSpec {
     query: "session report",
     limit: NonZeroU32::new(5),
     executable: None,
+    timeout: None,
     spawn: None,
 }) {
     MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
@@ -254,6 +260,7 @@ match memory_search(MemorySearchSpec {
 pub struct MemoryIngestSpec<'a> {
     pub root: &'a Path,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
@@ -263,6 +270,7 @@ pub struct MemorySearchSpec<'a> {
     pub query: &'a str,
     pub limit: Option<NonZeroU32>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemorySearchOutcome {
@@ -282,7 +290,7 @@ as one argument. `limit` is sent as `--limit`; `None` leaves the command's own d
 | `Ingested` | `pdks memory ingest` exited `0`. Its stdout is not read |
 | `Found { hits }` | The search exited `0` and printed at least one result. `hits` keeps the command's order and count |
 | `Empty` | The search exited `0` and printed an empty `results` list |
-| `Unavailable { reason }` | No umbrella, a failed spawn, a signal, any non-zero exit, or a stdout the generated types cannot parse. On a non-zero exit `reason` is the child's stderr verbatim, which names a missing `@polydeukes/memory`, a missing index, or a refused query |
+| `Unavailable { reason }` | No umbrella, a failed spawn, a signal, a passed `timeout`, any non-zero exit, or a stdout the generated types cannot parse. On a non-zero exit `reason` is the child's stderr verbatim, which names a missing `@polydeukes/memory`, a missing index, or a refused query |
 
 `Empty` comes only from a search that ran and matched nothing, so a host can tell an owner that
 recall is broken instead of running on without it. The fields of `MemorySearchResult` are the

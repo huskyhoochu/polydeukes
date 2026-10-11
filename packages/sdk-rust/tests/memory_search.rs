@@ -144,6 +144,7 @@ fn spec<'a>(
         query: QUERY,
         limit: None,
         executable: None,
+        timeout: None,
         spawn: Some(spawn),
     }
 }

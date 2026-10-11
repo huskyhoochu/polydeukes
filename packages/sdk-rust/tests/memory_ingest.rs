@@ -99,6 +99,7 @@ fn spec<'a>(
     MemoryIngestSpec {
         root,
         executable: None,
+        timeout: None,
         spawn: Some(spawn),
     }
 }

@@ -84,6 +84,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     config_layer: None,
     telemetry_path: None,
     executable: None,
+    timeout: None,
     spawn: None,
 });
 
@@ -94,7 +95,7 @@ match verdict {
 }
 ```
 
-이 호출은 자식 프로세스가 끝날 때까지 블로킹합니다. 비동기 호스트는 이 호출을
+이 호출은 자식 프로세스가 끝나거나 `timeout`이 지날 때까지 블로킹합니다. 비동기 호스트는 이 호출을
 `tokio::task::spawn_blocking` 같은 블로킹 스레드에서 실행합니다.
 
 입력은 호출자가 만듭니다. 이 crate는 입력을 직렬화해 그대로 보내고, `session`이나 `actor`,
@@ -112,11 +113,12 @@ pub struct CheckCovenantSpec<'a> {
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 
 pub enum Enforce { Advise, Block }
-pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String }
+pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String, pub timeout: Option<Duration> }
 pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stderr: String }
 ```
 
@@ -128,6 +130,7 @@ pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stder
 | `config_layer` | 프로젝트 설정과 함께 판정되는 [설정 층](../configuration/index.ko.md#config-layer)이고, `--config-layer`로 전달됩니다. 상대 경로는 `repo_root` 기준입니다 |
 | `telemetry_path` | 이번 실행의 행을 덧붙일 파일이고, `--telemetry-path`로 전달됩니다. 상대 경로는 자식의 cwd인 `repo_root` 기준입니다 |
 | `executable` | 실행할 `pdks` 실행 파일입니다. 첫 인자로 동사를 넘깁니다. 상대 경로는 이름만 적은 경우를 포함해 현재 디렉터리 기준이고, `PATH`에서 찾지 않습니다. 스폰 전에 파일을 검사하지 않으므로, 실행할 수 없는 파일은 스폰 실패 갈래를 거쳐 `Unjudged`가 됩니다. `None`이면 위의 우산 탐색을 거칩니다 |
+| `timeout` | 자식 프로세스가 실행될 수 있는 시간입니다. 이 시간이 지나면 기본 spawn이 자식을 끝내고 회수하며, 동사는 `the judge did not answer within 60s` 또는 `pdks memory did not answer within 60s`를 사유로 담은 `Unjudged`(약속 동사)나 `Unavailable`(memory 동사)을 돌려줍니다. 시간은 스폰한 때부터 잽니다. 주입한 `spawn`은 이 값을 `SpawnSpec::timeout`으로 받아 직접 집행하고, 그 spawn이 `TimedOut` 종류의 `Err`를 돌려주면 같은 값이 됩니다. `None`이면 자식이 끝날 때까지 기다립니다. 끝내는 것은 스폰한 프로세스뿐입니다. 그 프로세스가 직접 띄운 프로세스(버전 관리자 shim이 실행하는 `node` 등)는 계속 실행되지만, 호출은 기한에 돌아옵니다 |
 | `spawn` | 주입하는 스폰 이음매입니다. `None`이면 해석된 명령, 즉 `PATH`의 `node`나 실행 파일 `pdks`를 실행합니다. 시그널로 끝난 자식의 `SpawnOutcome::status`는 `None`입니다 |
 
 **`enforce`의 기본값은 `Block`입니다.** `@polydeukes/sdk-ts`와 같습니다. 보호 경로와
@@ -153,6 +156,7 @@ let verdict = check_change_set(CheckChangeSetSpec {
     config_layer: None,
     telemetry_path: None,
     executable: None,
+    timeout: None,
     spawn: None,
 });
 ```
@@ -165,6 +169,7 @@ pub struct CheckChangeSetSpec<'a> {
     pub config_layer: Option<&'a Path>,
     pub telemetry_path: Option<&'a Path>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 ```
@@ -200,7 +205,7 @@ pub enum CheckCovenantVerdict {
 |---|---|---|
 | `Upheld` | `0` | 판정을 받았고 막은 것이 없습니다. `advisories`는 자식의 stderr 원문입니다 |
 | `Blocked` | `2` | 판정을 받았고 무언가가 막았습니다. `reason`은 자식의 stderr 원문입니다 |
-| `Unjudged` | 그 밖의 값, 시그널, 스폰 실패, 우산 없음 | 판정이 일어나지 않았습니다. `reason`이 그 이유를 말합니다. 종료 상태가 있으면 자식이 쓴 stderr이고(exit `3`의 `covenant check failed closed: input carries no subagentSpawns array` 등), stderr가 비어 있으면 상태입니다. 이것을 통과로 읽으면 설치되지 않은 판정기가 모든 호출을 통과시키게 됩니다 |
+| `Unjudged` | 그 밖의 값, 시그널, 지난 `timeout`, 스폰 실패, 우산 없음 | 판정이 일어나지 않았습니다. `reason`이 그 이유를 말합니다. 종료 상태가 있으면 자식이 쓴 stderr이고(exit `3`의 `covenant check failed closed: input carries no subagentSpawns array` 등), stderr가 비어 있으면 상태입니다. 이것을 통과로 읽으면 설치되지 않은 판정기가 모든 호출을 통과시키게 됩니다 |
 
 두 동사 모두 `Result`가 아니라 판정 결과를 돌려줍니다. 모든 실패는 `Unjudged`로 돌아옵니다.
 
@@ -228,7 +233,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 let root = Path::new("/path/to/the/memory/root");
-if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, spawn: None }) {
+if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, timeout: None, spawn: None }) {
     eprintln!("{reason}");
 }
 
@@ -237,6 +242,7 @@ match memory_search(MemorySearchSpec {
     query: "session report",
     limit: NonZeroU32::new(5),
     executable: None,
+    timeout: None,
     spawn: None,
 }) {
     MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
@@ -249,6 +255,7 @@ match memory_search(MemorySearchSpec {
 pub struct MemoryIngestSpec<'a> {
     pub root: &'a Path,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
@@ -258,6 +265,7 @@ pub struct MemorySearchSpec<'a> {
     pub query: &'a str,
     pub limit: Option<NonZeroU32>,
     pub executable: Option<&'a Path>,
+    pub timeout: Option<Duration>,
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
 }
 pub enum MemorySearchOutcome {
@@ -277,7 +285,7 @@ pub enum MemorySearchOutcome {
 | `Ingested` | `pdks memory ingest`가 exit `0`으로 끝났습니다. stdout은 읽지 않습니다 |
 | `Found { hits }` | 검색이 exit `0`으로 끝났고 결과를 하나 이상 출력했습니다. `hits`의 순서와 개수는 명령이 출력한 그대로입니다 |
 | `Empty` | 검색이 exit `0`으로 끝났고 빈 `results` 목록을 출력했습니다 |
-| `Unavailable { reason }` | 우산이 없거나, 스폰이 실패했거나, 시그널로 끝났거나, exit가 `0`이 아니거나, stdout을 생성 타입으로 파싱하지 못했습니다. exit가 `0`이 아니면 `reason`은 자식의 stderr 그대로이고, `@polydeukes/memory`가 없는지, 색인이 없는지, 질의가 거부됐는지를 알려 줍니다 |
+| `Unavailable { reason }` | 우산이 없거나, 스폰이 실패했거나, 시그널로 끝났거나, `timeout`이 지났거나, exit가 `0`이 아니거나, stdout을 생성 타입으로 파싱하지 못했습니다. exit가 `0`이 아니면 `reason`은 자식의 stderr 그대로이고, `@polydeukes/memory`가 없는지, 색인이 없는지, 질의가 거부됐는지를 알려 줍니다 |
 
 `Empty`는 검색을 실제로 실행해서 맞는 절이 없을 때만 나옵니다. 그래서 호스트는 회상이 없는 채로
 계속 실행하는 대신, 회상이 동작하지 않는다는 사실을 소유자에게 알릴 수 있습니다.

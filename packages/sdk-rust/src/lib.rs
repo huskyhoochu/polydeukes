@@ -23,6 +23,7 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
+use std::time::{Duration, Instant};
 
 const UMBRELLA_PACKAGE: &str = "polydeukes";
 
@@ -33,13 +34,16 @@ pub enum Enforce {
     Block,
 }
 
-/// What the spawn seam is handed: the executable, its arguments, its cwd, and its stdin.
+/// What the spawn seam is handed: the executable, its arguments, its cwd, its stdin, and how
+/// long the child may run. A seam that enforces `timeout` and kills the child answers an
+/// `io::ErrorKind::TimedOut` error, which the verbs report as the deadline.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpawnSpec {
     pub command: String,
     pub args: Vec<String>,
     pub cwd: PathBuf,
     pub stdin: String,
+    pub timeout: Option<Duration>,
 }
 
 /// What the spawned child left: its exit status (`None` when a signal ended it), its stdout, and
@@ -65,6 +69,8 @@ pub struct CheckCovenantSpec<'a> {
     pub telemetry_path: Option<&'a Path>,
     /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
     pub executable: Option<&'a Path>,
+    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    pub timeout: Option<Duration>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -75,7 +81,8 @@ pub struct CheckCovenantSpec<'a> {
 /// `advisories` and `reason` are the child's stderr verbatim. `Unjudged` is every outcome that
 /// is not a verdict: no judgment happened, and reading it as an uphold would let an absent judge
 /// pass every call. Its `reason` is the child's stderr when the child exited with some other
-/// status and wrote any, else a line naming the status, the signal, or the spawn error.
+/// status and wrote any, else a line naming the status, the signal, the deadline the child
+/// outlived, or the spawn error.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CheckCovenantVerdict {
     Upheld { advisories: String },
@@ -138,8 +145,11 @@ fn find_pdks_on_path() -> Option<PathBuf> {
         })
 }
 
-/// Run the spec's command with every stream piped and collect stdout and stderr.
+/// Run the spec's command with every stream piped and collect stdout and stderr. Past the spec's
+/// `timeout` the child is killed and reaped, and the answer is a `TimedOut` error. Only the child
+/// is killed: a process it started itself keeps running.
 fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
+    let started = Instant::now();
     let mut child = Command::new(&spec.command)
         .args(&spec.args)
         .current_dir(&spec.cwd)
@@ -159,14 +169,42 @@ fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         let mut out = Vec::new();
         stdout.read_to_end(&mut out).map(|_| out)
     });
-    let mut collected = Vec::new();
-    // The child is reaped even when reading its stderr fails.
-    let read = stderr.read_to_end(&mut collected);
-    let status = child.wait();
+    // Read on its own thread too, so the deadline wait below overlaps it.
+    let errors = thread::spawn(move || {
+        let mut collected = Vec::new();
+        stderr.read_to_end(&mut collected).map(|_| collected)
+    });
+    let status = match spec.timeout {
+        None => child.wait()?,
+        Some(timeout) => loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break status,
+                Ok(None) if started.elapsed() < timeout => {
+                    // The polling interval bounds how far past the deadline the kill can land.
+                    thread::sleep(Duration::from_millis(10));
+                }
+                // Killed and reaped, then returned without joining the threads: a process the
+                // child started can hold its pipes open past the kill, and a join would wait on
+                // it. The detached threads end when those pipes close.
+                stopped => {
+                    // A child that exited since the last poll makes `kill` fail; `wait` reaps
+                    // it either way.
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(match stopped {
+                        Err(error) => error,
+                        _ => io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "the child did not exit before its timeout",
+                        ),
+                    });
+                }
+            }
+        },
+    };
     let _ = writer.join();
     let out = drain.join().expect("the stdout drain does not panic");
-    read?;
-    let status = status?;
+    let collected = errors.join().expect("the stderr reader does not panic")?;
     Ok(SpawnOutcome {
         status: status.code(),
         // A failed stdout read leaves it empty: the covenant verbs read the status alone, and an
@@ -240,6 +278,7 @@ fn spawn_invocation(
     invocation: Invocation,
     args: Vec<String>,
     stdin: String,
+    timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 ) -> io::Result<SpawnOutcome> {
     let mut all = invocation.args;
@@ -249,6 +288,7 @@ fn spawn_invocation(
         args: all,
         cwd: invocation.cwd,
         stdin,
+        timeout,
     };
     match spawn {
         Some(spawn) => spawn(spawn_spec),
@@ -270,6 +310,8 @@ pub struct CheckChangeSetSpec<'a> {
     pub telemetry_path: Option<&'a Path>,
     /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
     pub executable: Option<&'a Path>,
+    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    pub timeout: Option<Duration>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -283,6 +325,7 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
         spec.config_layer,
         spec.telemetry_path,
         spec.executable,
+        spec.timeout,
         spec.spawn,
         false,
         || serde_json::to_string(spec.input).map_err(io::Error::other),
@@ -298,6 +341,7 @@ pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
         spec.config_layer,
         spec.telemetry_path,
         spec.executable,
+        spec.timeout,
         spec.spawn,
         true,
         || Ok(spec.diff.to_string()),
@@ -313,6 +357,7 @@ fn run_check(
     config_layer: Option<&Path>,
     telemetry_path: Option<&Path>,
     executable: Option<&Path>,
+    timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
     diff_mode: bool,
     stdin: impl FnOnce() -> io::Result<String>,
@@ -357,7 +402,8 @@ fn run_check(
         args.push(path.to_string_lossy().into_owned());
     }
 
-    let outcome = stdin().and_then(|stdin| spawn_invocation(invocation, args, stdin, spawn));
+    let outcome =
+        stdin().and_then(|stdin| spawn_invocation(invocation, args, stdin, timeout, spawn));
 
     match outcome {
         Ok(SpawnOutcome {
@@ -385,7 +431,12 @@ fn run_check(
             reason: "the judge was killed by a signal before it answered".into(),
         },
         Err(error) => CheckCovenantVerdict::Unjudged {
-            reason: format!("the judge could not be spawned: {error}"),
+            reason: match timeout {
+                Some(timeout) if error.kind() == io::ErrorKind::TimedOut => {
+                    format!("the judge did not answer within {timeout:?}")
+                }
+                _ => format!("the judge could not be spawned: {error}"),
+            },
         },
     }
 }
@@ -396,6 +447,8 @@ pub struct MemoryIngestSpec<'a> {
     pub root: &'a Path,
     /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
     pub executable: Option<&'a Path>,
+    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    pub timeout: Option<Duration>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -418,6 +471,8 @@ pub struct MemorySearchSpec<'a> {
     pub limit: Option<NonZeroU32>,
     /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
     pub executable: Option<&'a Path>,
+    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    pub timeout: Option<Duration>,
     /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
     /// executable) with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
@@ -441,6 +496,7 @@ pub fn memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome {
         spec.root,
         vec!["ingest".into()],
         spec.executable,
+        spec.timeout,
         spec.spawn,
     ) {
         Ok(_) => MemoryIngestOutcome::Ingested,
@@ -455,7 +511,7 @@ pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
         args.push("--limit".into());
         args.push(limit.to_string());
     }
-    let stdout = match run_memory(spec.root, args, spec.executable, spec.spawn) {
+    let stdout = match run_memory(spec.root, args, spec.executable, spec.timeout, spec.spawn) {
         Ok(stdout) => stdout,
         Err(reason) => return MemorySearchOutcome::Unavailable { reason },
     };
@@ -476,6 +532,7 @@ fn run_memory(
     root: &Path,
     args: Vec<String>,
     executable: Option<&Path>,
+    timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 ) -> Result<String, String> {
     let invocation = match resolve_umbrella(root, executable) {
@@ -489,7 +546,7 @@ fn run_memory(
     };
     let mut all = vec!["memory".to_string()];
     all.extend(args);
-    match spawn_invocation(invocation, all, String::new(), spawn) {
+    match spawn_invocation(invocation, all, String::new(), timeout, spawn) {
         Ok(SpawnOutcome {
             status: Some(0),
             stdout,
@@ -510,6 +567,11 @@ fn run_memory(
         Ok(SpawnOutcome { status: None, .. }) => {
             Err("pdks memory was killed by a signal before it answered".into())
         }
-        Err(error) => Err(format!("pdks memory could not be spawned: {error}")),
+        Err(error) => Err(match timeout {
+            Some(timeout) if error.kind() == io::ErrorKind::TimedOut => {
+                format!("pdks memory did not answer within {timeout:?}")
+            }
+            _ => format!("pdks memory could not be spawned: {error}"),
+        }),
     }
 }

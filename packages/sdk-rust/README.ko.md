@@ -59,6 +59,7 @@ let verdict = check_covenant(CheckCovenantSpec {
     config_layer: None,
     telemetry_path: None,
     executable: None,
+    timeout: None,
     spawn: None,
 });
 
@@ -68,9 +69,9 @@ if let CheckCovenantVerdict::Blocked { reason } = verdict {
 }
 ```
 
-이 호출은 판정기가 끝날 때까지 블로킹합니다. 비동기 호스트는 `tokio::task::spawn_blocking`으로
+이 호출은 판정기가 끝나거나 `timeout`이 지나 자식을 끝낼 때까지 블로킹합니다. 비동기 호스트는 `tokio::task::spawn_blocking`으로
 실행합니다. `enforce`의 기본값은 `Block`입니다. 판정 결과는 `Upheld`, `Blocked`, `Unjudged`
-셋입니다. `Unjudged`는 `polydeukes`가 설치되지 않은 프로젝트, 스폰 실패, 판정 결과가 아닌 자식
+셋입니다. `Unjudged`는 `polydeukes`가 설치되지 않은 프로젝트, 스폰 실패, 지난 `timeout`, 판정 결과가 아닌 자식
 status를 모두 포함합니다. 자식이 stderr를 썼으면 그 stderr가 `reason`입니다.
 
 `check_change_set`은 `input` 대신 `diff`를 받고 `pdks covenant check --diff`를 실행합니다. diff의

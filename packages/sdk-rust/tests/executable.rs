@@ -111,6 +111,7 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         config_layer: None,
         telemetry_path: None,
         executable: Some(executable),
+        timeout: None,
         spawn: Some(&spawn),
     });
     check_change_set(CheckChangeSetSpec {
@@ -120,11 +121,13 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         config_layer: None,
         telemetry_path: None,
         executable: Some(executable),
+        timeout: None,
         spawn: Some(&spawn),
     });
     memory_ingest(MemoryIngestSpec {
         root,
         executable: Some(executable),
+        timeout: None,
         spawn: Some(&spawn),
     });
     memory_search(MemorySearchSpec {
@@ -132,6 +135,7 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         query: QUERY,
         limit: None,
         executable: Some(executable),
+        timeout: None,
         spawn: Some(&spawn),
     });
     seam.calls.into_inner()
@@ -250,6 +254,7 @@ fn an_executable_that_cannot_be_spawned_is_unjudged_or_unavailable_through_the_s
         config_layer: None,
         telemetry_path: None,
         executable: Some(&missing),
+        timeout: None,
         spawn: None,
     }));
     assert!(
@@ -262,6 +267,7 @@ fn an_executable_that_cannot_be_spawned_is_unjudged_or_unavailable_through_the_s
         query: QUERY,
         limit: None,
         executable: Some(&missing),
+        timeout: None,
         spawn: None,
     }));
     assert!(
@@ -309,6 +315,7 @@ fn an_empty_executable_spawns_nothing_rather_than_falling_back_to_the_install() 
         config_layer: None,
         telemetry_path: None,
         executable: Some(empty),
+        timeout: None,
         spawn: Some(&spawn),
     }));
     assert!(
@@ -320,6 +327,7 @@ fn an_empty_executable_spawns_nothing_rather_than_falling_back_to_the_install() 
         query: QUERY,
         limit: None,
         executable: Some(empty),
+        timeout: None,
         spawn: Some(&spawn),
     }));
     assert!(

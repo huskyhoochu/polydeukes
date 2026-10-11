@@ -98,6 +98,7 @@ fn ingested(root: &Path) {
     match memory_ingest(MemoryIngestSpec {
         root,
         executable: None,
+        timeout: None,
         spawn: None,
     }) {
         MemoryIngestOutcome::Ingested => {}
@@ -123,6 +124,7 @@ fn search(root: &Path, query: &str, limit: Option<NonZeroU32>) -> MemorySearchOu
         query,
         limit,
         executable: None,
+        timeout: None,
         spawn: None,
     })
 }
