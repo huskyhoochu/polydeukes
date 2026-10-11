@@ -11,6 +11,21 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.18.0](https://github.com/huskyhoochu/polydeukes/compare/v0.17.0...v0.18.0) (2026-10-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk-rust:** CheckCovenantSpec, CheckChangeSetSpec, MemoryIngestSpec, MemorySearchSpec and SpawnSpec gain a timeout field; struct literals must add `timeout: None` to keep the current behavior.
+* **polydeukes:** an input pdks covenant check cannot read exits 3, not 2. A host that reads only status 2 as a block must treat every status other than 0 as a refusal.
+
+### Features
+
+* **polydeukes:** exit 3 with the reason when covenant check cannot read its input ([#230](https://github.com/huskyhoochu/polydeukes/issues/230)) ([0a8bff7](https://github.com/huskyhoochu/polydeukes/commit/0a8bff7b9f2bbe2fdeceb452bb5b8f73ff691f77))
+* **polydeukes:** let onlyIn count occurrences of a key with count: true ([9fcd283](https://github.com/huskyhoochu/polydeukes/commit/9fcd283fbd5eb35d87c657a6a143046acf69d7fb))
+* **polydeukes:** let onlyIn count occurrences of a key with count: true ([#228](https://github.com/huskyhoochu/polydeukes/issues/228)) ([9fcd283](https://github.com/huskyhoochu/polydeukes/commit/9fcd283fbd5eb35d87c657a6a143046acf69d7fb))
+* **sdk-rust:** give each verb a timeout that kills a child past it ([#231](https://github.com/huskyhoochu/polydeukes/issues/231)) ([92a86b2](https://github.com/huskyhoochu/polydeukes/commit/92a86b2441da3e94437f6eb33dbd57703cb0e93d))
+
 ## [0.17.0](https://github.com/huskyhoochu/polydeukes/compare/v0.16.0...v0.17.0) (2026-10-10)
 
 
