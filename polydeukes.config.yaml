@@ -318,7 +318,7 @@ disciplines:
           relation: { op: "equal", of: ["entryNames", "grammarNames"] }
           message: "mechanism enum differs: {value}"
   - id: "agent-models-in-tiers"
-    why: "an agent file names a model tier only from the allowlist in model-tiers.md; a fable seat is a one-line change to that file that a reviewer sees."
+    why: "an agent file names a model tier only from the allowlist in model-tiers.md; moving a seat is a one-line change to that file that a reviewer sees."
     declare:
       mechanism: "companion"
       scope: { source: "target.path", include: ['^\.claude/agents/[^/]+\.md$'] }
