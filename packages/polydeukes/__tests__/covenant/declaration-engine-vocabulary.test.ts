@@ -10,7 +10,7 @@ import {
 } from '../../src/covenant/declaration-engine.ts';
 import { extracted, isConfigFault, judge, witnessesOf } from './declaration-engine-helpers.ts';
 
-// The extract registry: nineteen unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: twenty unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -90,7 +90,7 @@ function snapshot(parts: { userMessages?: Turn[]; toolCalls?: Call[]; observedAt
 }
 
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the nineteen unary steps and no combinator', () => {
+  it('lists exactly the twenty unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
@@ -99,6 +99,7 @@ describe('extract registry — the closed set of unary steps', () => {
         'ageMs',
         'agentType',
         'allMatches',
+        'drop',
         'field',
         'filter',
         'first',
@@ -154,6 +155,7 @@ describe('extract registry — the closed set of unary steps', () => {
       items: positioned([[{ agentType: WRITER }]]),
     },
     first: { step: { op: 'first' }, items: positioned(['a', 'b']) },
+    drop: { step: { op: 'drop', n: 1 }, items: positioned(['a', 'b']) },
     ageMs: { step: { op: 'ageMs' }, items: positioned([turn(0, 'x', NOW - 1)]) },
   };
 
@@ -1431,6 +1433,100 @@ describe('first — the first item only', () => {
     const bad = stepFault({ op: 'first', n: 1 });
     expect(bad.location).toContain(EXTRACT);
     expect(bad.reason).toContain("'n'");
+  });
+});
+
+describe('drop — remove the first n items and keep the rest', () => {
+  // With `empty` after it, this step states "at most n": whatever survives is past the bound
+  // and becomes the witness. The step reads positions only, never values.
+
+  it('an empty input yields no items', () => {
+    expect(run({ op: 'drop', n: 3 }, [])).toEqual([]);
+  });
+
+  it('n: 0 keeps every item, keys and values unchanged', () => {
+    // A step that reads 0 as "absent" and falls back to a default, or a `slice(n - 1)`,
+    // answers a shorter list here.
+    const items = positioned(['a', 'b']);
+    expect(run({ op: 'drop', n: 0 }, items)).toEqual([
+      { key: '0', value: 'a' },
+      { key: '1', value: 'b' },
+    ]);
+  });
+
+  it('more items than n keeps the items after the first n, in input order with their own keys', () => {
+    // The survivors' keys (k9, k2, k2) and values (c, a, c) are unsorted and repeat, so a
+    // renumbering, a sort by either, or a dedup by either answers differently; `slice(-n)`
+    // keeps the last two instead of the last three.
+    const items: Items = [
+      { key: 'k5', value: 'a' },
+      { key: 'k1', value: 'b' },
+      { key: 'k9', value: 'c' },
+      { key: 'k2', value: 'a' },
+      { key: 'k2', value: 'c' },
+    ];
+    expect(run({ op: 'drop', n: 2 }, items)).toEqual([
+      { key: 'k9', value: 'c' },
+      { key: 'k2', value: 'a' },
+      { key: 'k2', value: 'c' },
+    ]);
+  });
+
+  it('exactly n items yields no items', () => {
+    // The bound is inclusive: n items are within "at most n". An off-by-one that drops
+    // n − 1 leaves the last item and breaks a session that kept to the bound.
+    expect(run({ op: 'drop', n: 3 }, positioned(['a', 'b', 'c']))).toEqual([]);
+  });
+
+  it('fewer than n items yields no items', () => {
+    // A step that hands the input back when n exceeds its length reports every item of a
+    // short session as over the bound.
+    expect(run({ op: 'drop', n: 5 }, positioned(['a', 'b']))).toEqual([]);
+  });
+
+  it('rejects a missing, negative, fractional, string, or unsafe `n`', () => {
+    // Compilation refuses an unregistered name and a bad argument at the same `location`,
+    // so the reason is what tells the two apart. A negative `n` handed to `slice` would keep
+    // the tail; `'3'` would be coerced; 2^53 is an integer but not a safe one.
+    for (const bad of [
+      { op: 'drop' },
+      { op: 'drop', n: -1 },
+      { op: 'drop', n: 1.5 },
+      { op: 'drop', n: '3' },
+      { op: 'drop', n: 2 ** 53 },
+    ]) {
+      const raised = stepFault(bad);
+      expect(raised.location).toContain(EXTRACT);
+      expect(raised.reason).toBe("'drop' needs 'n' as a non-negative integer");
+    }
+  });
+
+  it('after `source`, both ends of the admitted range compile: 0 and the largest safe integer', () => {
+    // The `run` cases bypass validation, so a validator demanding `n > 0`, or comparing
+    // against the safe bound with `<`, would refuse a valid declaration unseen.
+    for (const n of [0, Number.MAX_SAFE_INTEGER]) {
+      expect(
+        compileDeclaration({
+          declaration: {
+            discipline: 'probe',
+            mechanism: 'scoped-valve',
+            extract: {
+              [EXTRACT]: [
+                { op: 'source', of: SRC },
+                { op: 'drop', n },
+              ],
+            },
+            relate: [{ id: ENTRY, relation: { op: 'empty', of: EXTRACT }, message: 'm' }],
+          },
+        }),
+      ).not.toSatisfy(isConfigFault);
+    }
+  });
+
+  it('rejects an argument key outside `n`', () => {
+    const raised = stepFault({ op: 'drop', n: 1, count: 1 });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'drop' does not take the argument 'count'");
   });
 });
 

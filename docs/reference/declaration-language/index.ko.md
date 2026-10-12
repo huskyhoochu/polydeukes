@@ -123,7 +123,7 @@ disciplines:
 <a id="extract-steps"></a>
 ## 추출 단계
 
-지원하는 단항 단계 19개입니다. 인자 예제에 표시한 키를 사용하며, 지원하지 않는 인자는
+지원하는 단항 단계 20개입니다. 인자 예제에 표시한 키를 사용하며, 지원하지 않는 인자는
 컴파일 오류가 됩니다. 별도 설명이 없으면 항목 순서를 유지합니다.
 
 | 단계 | 인자 | 결과 |
@@ -146,6 +146,7 @@ disciplines:
 | `userTexts` | `re: '^approved$'` 필수, `i: true` 선택·기본값 `false` | 일치하는 사용자 메시지를 관측 순번 키로 추출합니다. 값에 스냅샷의 `observedAtMs`도 추가합니다. |
 | `agentType` | `is: 'reviewer'` 필수 | 파싱한 생성 기록 중 종류가 일치하는 항목을 위치 키로 추출합니다. 기록 배열이나 객체 하나를 받습니다. |
 | `first` | 없음 | 첫 항목과 그 키를 유지합니다. 빈 입력은 빈 상태로 남으며 정렬하지 않습니다. |
+| `drop` | `n: 3` (필수, 음이 아닌 정수) | 앞의 항목 `n`개를 버리고 나머지를 키와 함께 유지합니다. 항목이 `n`개 이하이면 아무것도 남지 않습니다. |
 | `ageMs` | 없음 | 객체 값에 `ageMs = observedAtMs - timestampMs`를 추가합니다. 시간이 없거나 숫자가 아니거나 미래 관측이면 제외합니다. |
 
 `items`와 배열을 반환하는 `select`는 배열마다 별도로 번호를 매깁니다. 여러 배열을 펼치면
@@ -158,6 +159,44 @@ disciplines:
 먼저 `lines`를 쓰세요. `keyByPattern`에는 캡처 그룹이 필요하며 첫 일치만 사용합니다.
 그래서 파일 전체에 쓰면 파일 하나에서 키가 하나만 나오고, 첫 일치 뒤의 일치는 키를 받지
 못합니다. `allMatches`는 일치마다 항목을 하나씩 만들며, 일치가 줄바꿈을 넘을 수 있습니다.
+
+<a id="bound-the-count"></a>
+### 추출이 담는 항목 수에 상한 두기
+
+`drop` 뒤에 `empty`를 두면 "최대 `n`개"를 선언합니다. 앞의 `n`개를 버리고 남은 항목이 상한을
+넘은 항목이며, 이 항목들이 위반 항목으로 보고됩니다. 다음 세션 규율은 마지막 편집 뒤의 넷째
+테스트 실행을 거부합니다. `afterLast`는 셸 호출이 아니면서 성공한 마지막 호출에서 이력을
+자릅니다. 세션에 그런 편집이 없으면 모든 실행을 셉니다. 판정 중인 호출도 이력에 들어 있으므로
+넷째 실행이 거부됩니다.
+
+```yaml
+sessionDisciplines:
+  - id: 'few-test-runs-per-edit'
+    why: 'several test runs without an edit between them repeat the same check; read the first failure.'
+    enforce: block
+    declare:
+      mechanism: 'scoped-valve'
+      scope: { source: 'command', include: ['\bcargo\s+(test|nextest)\b'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        excessRuns:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit'] }
+          - { op: 'afterLast', when: [{ field: 'name', ne: 'Bash' }, { field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\bcargo\s+(test|nextest)\b' }
+          - { op: 'drop', n: 3 }
+      relate:
+        - { id: 'few-runs', relation: { op: 'empty', of: 'excessRuns' }, message: 'more than three test runs since the last edit' }
+      witness:
+        relate:
+          - { id: 'few-runs-valve', relation: { op: 'empty', of: 'excessRuns' }, message: 'more than three test runs since the last edit' }
+```
+
+이력 소스 위의 `empty`는 `scoped-valve`에서만 컴파일되며, 이 기전은 `witness` 블록을 요구합니다.
+`witness` 블록은 본체와 같은 비교를 하므로, 본체가 위반하면 이 블록의 비교도 성립하지 않아 위반을 허용하지 않습니다. `command` 적용 범위는 테스트
+실행만 판정하므로, 상한에 이른 뒤에도 다른 셸 호출은 거부되지 않습니다.
 
 <a id="filter-predicates"></a>
 ## 필터 조건

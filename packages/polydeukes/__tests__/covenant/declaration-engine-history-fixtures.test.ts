@@ -208,3 +208,78 @@ describe('no merge after the last edit · judge', () => {
     ]);
   });
 });
+
+describe('at most three test runs after the last edit · judge', () => {
+  // "At most three" is "after dropping the first three, nothing is left": the runs past the
+  // bound are the witnesses. Every call is cut at the last edit, so a run before it never
+  // counts. `scoped-valve` admits `empty` over the history axis, and its valve relates the
+  // same check, so it never opens the verdict.
+  const SHELL = 'Bash';
+  const EDITORS = ['Edit', 'MultiEdit', 'Write', 'NotebookEdit'];
+  const RUNS = 'testRunsSinceEdit';
+  const ENTRY = 'at-most-three-runs';
+  const decl: AlgebraDeclaration = {
+    discipline: 'test-runs-per-edit',
+    mechanism: 'scoped-valve',
+    sources: { [SESSION]: { transcript: true } },
+    supply: { [SESSION]: 'pass' },
+    extract: {
+      [RUNS]: [
+        { op: 'source', of: SESSION },
+        { op: 'toolUses', names: [SHELL, ...EDITORS] },
+        {
+          op: 'afterLast',
+          when: [
+            { field: 'name', ne: SHELL },
+            { field: 'succeeded', eq: true },
+          ],
+        },
+        { op: 'select', path: 'args.command' },
+        { op: 'matches', re: '\\bcargo\\s+(test|nextest)\\b' },
+        { op: 'drop', n: 3 },
+      ],
+    },
+    relate: [{ id: ENTRY, relation: { op: 'empty', of: RUNS }, message: 'm' }],
+    witness: {
+      relate: [{ id: `${ENTRY}-valve`, relation: { op: 'empty', of: RUNS }, message: 'w' }],
+    },
+  };
+
+  function run(index: number, crate: string): Call {
+    return { index, name: SHELL, args: { command: `cargo test -p ${crate}` } };
+  }
+  function edit(index: number): Call {
+    return { index, name: EDITORS[0], args: { file_path: 'a.rs' }, succeeded: true };
+  }
+
+  it('an edit, then three runs → pass', () => {
+    // Three runs are within the bound; dropping one too few breaks here.
+    const calls = [edit(2), run(4, 'a'), run(7, 'b'), run(9, 'c')];
+    expect(judge(decl, world([], calls)).kind).toBe('pass');
+  });
+
+  it('an edit, then five runs → broken, the fourth and fifth runs are the witnesses', () => {
+    // The witnesses carry the call ordinals 11 and 15, not their positions after the cut
+    // (3, 4) or after the drop (0, 1), so a renumbering step reads differently; keeping the
+    // first runs instead of the last names the crates a and b.
+    const calls = [edit(2), run(4, 'a'), run(7, 'b'), run(9, 'c'), run(11, 'd'), run(15, 'e')];
+    expect(witnessesOf(judge(decl, world([], calls)), ENTRY)).toEqual([
+      { key: '11', value: 'cargo test -p d' },
+      { key: '15', value: 'cargo test -p e' },
+    ]);
+  });
+
+  it('four runs, an edit, two runs → pass', () => {
+    // The runs before the edit are cut away; a count over the whole session breaks here.
+    const calls = [
+      run(1, 'a'),
+      run(3, 'b'),
+      run(5, 'c'),
+      run(6, 'd'),
+      edit(8),
+      run(10, 'e'),
+      run(12, 'f'),
+    ];
+    expect(judge(decl, world([], calls)).kind).toBe('pass');
+  });
+});

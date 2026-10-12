@@ -122,7 +122,7 @@ combine a paired extraction from `state`. Further steps transform the result in 
 <a id="extract-steps"></a>
 ## Extraction steps
 
-The table lists all 19 unary steps. Example arguments show their exact keys; an unknown argument
+The table lists all 20 unary steps. Example arguments show their exact keys; an unknown argument
 causes a compilation error. Unless stated otherwise, steps preserve item order.
 
 | Step | Arguments | Result |
@@ -145,6 +145,7 @@ causes a compilation error. Unless stated otherwise, steps preserve item order.
 | `userTexts` | `re: '^approved$'` (required), `i: true` (optional, default `false`) | Extract matching user messages, keyed by ordinal. Each value also receives the snapshot's `observedAtMs`. |
 | `agentType` | `is: 'reviewer'` (required) | Keep matching parsed sidecar records, keyed by position. Accepts a record array or a single object. |
 | `first` | None | Keep the first item and its key. An empty input stays empty. Does not sort. |
+| `drop` | `n: 3` (required, a non-negative integer) | Remove the first `n` items and keep the rest with their keys. With `n` or fewer items, keep none. |
 | `ageMs` | None | Add `ageMs = observedAtMs - timestampMs` to object values. Drop missing/non-numeric timestamps and future observations. |
 
 `items` and array-valued `select` number each array separately. If several arrays are expanded,
@@ -157,6 +158,45 @@ argument. A regex over whole file text anchors `^` at the start of that text. Pu
 match each trimmed line. `keyByPattern` requires a capturing group, and uses only its first match.
 Over a whole file that is one key per file, and every match after the first gets no key.
 `allMatches` gives each match its own item, and a match may cross a line break.
+
+<a id="bound-the-count"></a>
+### Bound how many items an extraction holds
+
+`drop` followed by `empty` states "at most `n`": the items left after the first `n` are the ones
+past the bound, and they are reported as the violating items. This session discipline refuses a
+fourth test run after the last edit. `afterLast` cuts the history at the last successful call that
+is not a shell call; when the session has no such edit, every run counts. The call being judged is
+in the history, so the fourth run is the one refused:
+
+```yaml
+sessionDisciplines:
+  - id: 'few-test-runs-per-edit'
+    why: 'several test runs without an edit between them repeat the same check; read the first failure.'
+    enforce: block
+    declare:
+      mechanism: 'scoped-valve'
+      scope: { source: 'command', include: ['\bcargo\s+(test|nextest)\b'] }
+      sources: { session: { transcript: true } }
+      supply: { session: 'pass' }
+      extract:
+        excessRuns:
+          - { op: 'source', of: 'session' }
+          - { op: 'toolUses', names: ['Bash', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit'] }
+          - { op: 'afterLast', when: [{ field: 'name', ne: 'Bash' }, { field: 'succeeded', eq: true }] }
+          - { op: 'select', path: 'args.command' }
+          - { op: 'matches', re: '\bcargo\s+(test|nextest)\b' }
+          - { op: 'drop', n: 3 }
+      relate:
+        - { id: 'few-runs', relation: { op: 'empty', of: 'excessRuns' }, message: 'more than three test runs since the last edit' }
+      witness:
+        relate:
+          - { id: 'few-runs-valve', relation: { op: 'empty', of: 'excessRuns' }, message: 'more than three test runs since the last edit' }
+```
+
+`empty` over a history source compiles only under `scoped-valve`, which requires a `witness`
+block. The block relates the same check, so it never holds while the body is violated and never
+lets a violation through. The `command` scope judges only test runs, so other shell calls are not
+refused once the bound is reached.
 
 <a id="filter-predicates"></a>
 ## Filter predicates
