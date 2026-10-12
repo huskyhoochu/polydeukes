@@ -122,7 +122,7 @@ combine a paired extraction from `state`. Further steps transform the result in 
 <a id="extract-steps"></a>
 ## Extraction steps
 
-The table lists all 18 unary steps. Example arguments show their exact keys; an unknown argument
+The table lists all 19 unary steps. Example arguments show their exact keys; an unknown argument
 causes a compilation error. Unless stated otherwise, steps preserve item order.
 
 | Step | Arguments | Result |
@@ -136,6 +136,7 @@ causes a compilation error. Unless stated otherwise, steps preserve item order.
 | `allMatches` | `re: '"([^"]*)"'` (required), `i: true` (optional, default `false`) | Emit one item per non-overlapping match in each stringified value, in match order. The key is capture group 1, or the whole match when the regex has no group; the value is the whole match. Drop matches whose group 1 is unbound. Equal keys are not merged. |
 | `field` | `name: 'version'` (required) | Keep the key and replace the value with that object property. An absent property yields `undefined`; a non-object is dropped. |
 | `filter` | `when: [{ field: 'succeeded', eq: true }]` (required) | Keep items satisfying every predicate. `when: []` keeps all items. See the predicate table below. |
+| `afterLast` | `when: [{ field: 'name', ne: 'Bash' }]` (required) | Keep the items after the last one satisfying every predicate (the same predicates as `filter`), with their keys. When no item satisfies them, keep all items; `when: []` keeps none. Does not sort. |
 | `flattenKeys` | None | List nested leaf paths, such as `home.title`, as both keys and values. Translation text is discarded. |
 | `sort` | None | Stable ascending sort by value: numeric if all values are numbers, otherwise by string comparison. |
 | `lines` | None | Split stringified values on newline, trim each line, and drop empty lines. Keys are original one-based line numbers. |

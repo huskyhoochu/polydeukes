@@ -10,7 +10,7 @@ import {
 } from '../../src/covenant/declaration-engine.ts';
 import { extracted, isConfigFault, judge, witnessesOf } from './declaration-engine-helpers.ts';
 
-// The extract registry: eighteen unary steps, each a (closed argument keys, validator, runner)
+// The extract registry: nineteen unary steps, each a (closed argument keys, validator, runner)
 // triple. `compileDeclaration` turns an argument outside the closed keys or of the wrong
 // type into a config fault whose `location` names the pipeline; `run` maps `Items` to
 // `Items` and nothing else — no step can answer a boolean. Each step below is exercised at
@@ -90,11 +90,12 @@ function snapshot(parts: { userMessages?: Turn[]; toolCalls?: Call[]; observedAt
 }
 
 describe('extract registry — the closed set of unary steps', () => {
-  it('lists exactly the eighteen unary steps and no combinator', () => {
+  it('lists exactly the nineteen unary steps and no combinator', () => {
     // A combinator registered as a unary entry could be placed mid-pipeline, where its
     // two-extraction reading is undefined; a missing entry fails every pipeline naming it.
     expect([...UNARY_STEP_NAMES].sort()).toEqual(
       [
+        'afterLast',
         'ageMs',
         'agentType',
         'allMatches',
@@ -131,6 +132,10 @@ describe('extract registry — the closed set of unary steps', () => {
     filter: {
       step: { op: 'filter', when: [{ field: 'n', eq: 1 }] },
       items: positioned([{ n: 1 }]),
+    },
+    afterLast: {
+      step: { op: 'afterLast', when: [{ field: 'n', eq: 1 }] },
+      items: positioned([{ n: 1 }, { n: 2 }]),
     },
     flattenKeys: { step: { op: 'flattenKeys' }, items: positioned([{ a: { b: 1 } }]) },
     sort: { step: { op: 'sort' }, items: positioned(['b', 'a']) },
@@ -371,6 +376,180 @@ describe('filter — keep items every constant predicate admits', () => {
       EXTRACT,
     );
     expect(stepFault({ op: 'filter', when: [], path: 'x' }).location).toContain(EXTRACT);
+  });
+
+  it('names `filter` in every predicate fault reason', () => {
+    // The validator is shared with `afterLast` and takes the step name; these are the exact
+    // reasons a `filter` author has always read.
+    const reasons: [unknown, string][] = [
+      [{ field: 'n', eq: 1 }, "'filter' needs 'when' as an array of predicates"],
+      [[{ eq: 1 }], "each 'filter' predicate needs a string 'field'"],
+      [
+        [{ field: 'n', lt: 1 }],
+        "each 'filter' predicate takes exactly one of eq, ne, size, notIn, lte, gte",
+      ],
+      [[{ field: 'n', gte: '1' }], "'filter' predicate 'gte' compares against a number"],
+      [[{ field: 'n', notIn: 'x' }], "'filter' predicate 'notIn' takes an array of values"],
+    ];
+    for (const [when, reason] of reasons) {
+      expect(stepFault({ op: 'filter', when }).reason).toBe(reason);
+    }
+  });
+});
+
+describe('afterLast — keep only the items after the last one every predicate admits', () => {
+  // The predicates are `filter`'s, but the step cuts rather than sieves: where `filter` keeps
+  // the admitted items, this step keeps what FOLLOWS the last admitted one. The fixtures
+  // interleave hits and non-hits so a `filter`, a "before the first hit", or an "after the
+  // first hit" reading each answers differently.
+  const step: UnaryStep = { op: 'afterLast', when: [{ field: 'kind', eq: 'edit' }] };
+
+  it('an empty input yields no items', () => {
+    // An implementation that reads the last item before checking there is one throws here.
+    expect(run(step, [])).toEqual([]);
+  });
+
+  it('no item admitted → the whole input, order and keys unchanged', () => {
+    // The step that answers `[]` here is the one that drops a merge-only session from the
+    // judgment entirely; a `filter` reading also answers `[]`.
+    const items = positioned([{ kind: 'merge' }, { kind: 'test' }]);
+    expect(run(step, items)).toEqual([
+      { key: '0', value: { kind: 'merge' } },
+      { key: '1', value: { kind: 'test' } },
+    ]);
+  });
+
+  it('several admitted items → only the items after the LAST one', () => {
+    // A `findIndex` in place of `findLastIndex` keeps everything from the first edit on,
+    // including the second edit and the merge between them.
+    const items = positioned([
+      { kind: 'edit' },
+      { kind: 'merge' },
+      { kind: 'edit' },
+      { kind: 'merge' },
+      { kind: 'test' },
+    ]);
+    expect(run(step, items)).toEqual([
+      { key: '3', value: { kind: 'merge' } },
+      { key: '4', value: { kind: 'test' } },
+    ]);
+  });
+
+  it('the last item admitted → no items', () => {
+    // An off-by-one that slices from the hit itself answers the edit, and a step that hands
+    // the whole input back when the cut leaves nothing answers both items.
+    const items = positioned([{ kind: 'merge' }, { kind: 'edit' }]);
+    expect(run(step, items)).toEqual([]);
+  });
+
+  it('keeps the surviving items in input order with their own keys and values', () => {
+    // After the hit, neither the keys (k9, k2, k2) nor the values (b, a, b) are in order, and
+    // each repeats once: a renumbering, a sort by key or by value, or a dedup by either one
+    // gives a different answer.
+    const items: Items = [
+      { key: 'k1', value: { kind: 'edit' } },
+      { key: 'k9', value: 'b' },
+      { key: 'k2', value: 'a' },
+      { key: 'k2', value: 'b' },
+    ];
+    expect(run(step, items)).toEqual([
+      { key: 'k9', value: 'b' },
+      { key: 'k2', value: 'a' },
+      { key: 'k2', value: 'b' },
+    ]);
+  });
+
+  it('judges each item with the same operators `filter` does — `lte` and `notIn` here', () => {
+    // Only the first item satisfies both; the second fails `lte` alone and the third fails
+    // `notIn` alone. A step that skips an operator it does not know cuts at one of them, and
+    // one that admits nothing on an unknown operator hands the whole input back.
+    const items = positioned([
+      { n: 1, tag: 'a' },
+      { n: 5, tag: 'a' },
+      { n: 2, tag: 'x' },
+    ]);
+    const when = [
+      { field: 'n', lte: 2 },
+      { field: 'tag', notIn: ['x'] },
+    ];
+    expect(run({ op: 'afterLast', when }, items)).toEqual([
+      { key: '1', value: { n: 5, tag: 'a' } },
+      { key: '2', value: { n: 2, tag: 'x' } },
+    ]);
+  });
+
+  it('a non-object value never satisfies a predicate — and is kept when it follows the hit', () => {
+    // A `String(value)` or a `value?.kind` read that admits `'edit'` the string would cut at
+    // position 2 and lose the merge; a throw on the null would crash the pipeline.
+    const items = positioned([{ kind: 'edit' }, 'edit', null, { kind: 'merge' }]);
+    expect(run(step, items)).toEqual([
+      { key: '1', value: 'edit' },
+      { key: '2', value: null },
+      { key: '3', value: { kind: 'merge' } },
+    ]);
+  });
+
+  it('two predicates conjoin — the cut is at the last item satisfying both', () => {
+    // `some` in place of `every` cuts at the failed edit (position 2) and answers `[]`.
+    const items = positioned([
+      { kind: 'edit', ok: true },
+      { kind: 'merge', ok: true },
+      { kind: 'edit', ok: false },
+    ]);
+    const when = [
+      { field: 'kind', eq: 'edit' },
+      { field: 'ok', eq: true },
+    ];
+    expect(run({ op: 'afterLast', when }, items)).toEqual([
+      { key: '1', value: { kind: 'merge', ok: true } },
+      { key: '2', value: { kind: 'edit', ok: false } },
+    ]);
+  });
+
+  it('an empty `when` admits every item, so the output is empty', () => {
+    // The degenerate predicate list: `every` over nothing is true, as it is for `filter`.
+    // A step that reads "no predicates" as "no hit" hands the whole input back.
+    expect(run({ op: 'afterLast', when: [] }, positioned([{ kind: 'merge' }]))).toEqual([]);
+  });
+
+  it('rejects a missing `when` and a non-array `when`', () => {
+    // Compilation refuses an unregistered name and a bad argument at the same `location`,
+    // so the reason is what tells the two apart — asserting the location alone would pass
+    // while the step does not exist at all. The reason names this step, not `filter`: the
+    // location names only the pipeline, which may hold both.
+    for (const bad of [{ op: 'afterLast' }, { op: 'afterLast', when: { field: 'kind', eq: 1 } }]) {
+      const raised = stepFault(bad);
+      expect(raised.location).toContain(EXTRACT);
+      expect(raised.reason).toBe("'afterLast' needs 'when' as an array of predicates");
+    }
+  });
+
+  it('rejects a predicate without a field', () => {
+    const raised = stepFault({ op: 'afterLast', when: [{ eq: 1 }] });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("each 'afterLast' predicate needs a string 'field'");
+  });
+
+  it('rejects a predicate with two operators and one with an unknown operator', () => {
+    for (const when of [[{ field: 'n', eq: 1, ne: 2 }], [{ field: 'n', lt: 1 }]]) {
+      const raised = stepFault({ op: 'afterLast', when });
+      expect(raised.location).toContain(EXTRACT);
+      expect(raised.reason).toBe(
+        "each 'afterLast' predicate takes exactly one of eq, ne, size, notIn, lte, gte",
+      );
+    }
+  });
+
+  it('rejects `lte` against a non-number', () => {
+    const raised = stepFault({ op: 'afterLast', when: [{ field: 'n', lte: '1' }] });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'afterLast' predicate 'lte' compares against a number");
+  });
+
+  it('rejects an argument key outside `when`', () => {
+    const raised = stepFault({ op: 'afterLast', when: [], path: 'x' });
+    expect(raised.location).toContain(EXTRACT);
+    expect(raised.reason).toBe("'afterLast' does not take the argument 'path'");
   });
 });
 

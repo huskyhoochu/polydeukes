@@ -1,3 +1,4 @@
+import type { AlgebraDeclaration } from '@polydeukes/core';
 import { describe, expect, it } from 'vitest';
 import type { World } from '../../src/covenant/declaration-engine.ts';
 import { judge, loadDeclaration, witnessesOf } from './declaration-engine-helpers.ts';
@@ -16,7 +17,7 @@ const WRITER = 'tdd-test-writer';
 const IMPLEMENTER = 'tdd-implementer';
 
 type Turn = { index: number; text: string; timestampMs?: number };
-type Call = { index: number; name: string; args: Record<string, unknown> };
+type Call = { index: number; name: string; args: Record<string, unknown>; succeeded?: boolean };
 
 function turn(index: number, text: string, offsetMs?: number): Turn {
   return offsetMs === undefined ? { index, text } : { index, text, timestampMs: NOW + offsetMs };
@@ -143,5 +144,67 @@ describe('stated-ground-plan-before-edit · judge', () => {
   it('the session absent → supply-error naming the source (supply: error)', () => {
     // This fixture refuses absence: a `pass` here would let every commit through unjudged.
     expect(judge(decl, {})).toMatchObject({ kind: 'supply-error', source: SESSION });
+  });
+});
+
+describe('no merge after the last edit · judge', () => {
+  // "The calls after the last successful edit carry no merge" — the same fact as "every
+  // merge is followed by an edit". The boundary is the tool name (an edit is any successful
+  // call that is not the shell), and whether a shell call is a merge is decided after the
+  // cut. `scoped-valve` is the one mechanism admitting `empty` over the history axis; its
+  // valve relates the same check, so it never opens the verdict.
+  const SHELL = 'Bash';
+  const EDITORS = ['Edit', 'Write', 'NotebookEdit'];
+  const MERGES = 'mergesSinceEdit';
+  const ENTRY = 'no-merge-since-edit';
+  const decl: AlgebraDeclaration = {
+    discipline: 'no-merge-after-last-edit',
+    mechanism: 'scoped-valve',
+    sources: { [SESSION]: { transcript: true } },
+    supply: { [SESSION]: 'pass' },
+    extract: {
+      [MERGES]: [
+        { op: 'source', of: SESSION },
+        { op: 'toolUses', names: [SHELL, ...EDITORS] },
+        { op: 'filter', when: [{ field: 'succeeded', eq: true }] },
+        { op: 'afterLast', when: [{ field: 'name', ne: SHELL }] },
+        { op: 'select', path: 'args.command' },
+        { op: 'matches', re: '\\bgit\\s+(cherry-pick|merge|pull)\\b' },
+      ],
+    },
+    relate: [{ id: ENTRY, relation: { op: 'empty', of: MERGES }, message: 'm' }],
+    witness: {
+      relate: [{ id: `${ENTRY}-valve`, relation: { op: 'empty', of: MERGES }, message: 'w' }],
+    },
+  };
+
+  function shell(index: number, command: string): Call {
+    return { index, name: SHELL, args: { command }, succeeded: true };
+  }
+  function edit(index: number): Call {
+    return { index, name: EDITORS[0], args: { file_path: 'a.ts' }, succeeded: true };
+  }
+
+  it('a merge, then a test run with no edit between → broken on the merge', () => {
+    // The incident this declaration exists for: a `cargo test` right after a cherry-pick.
+    // A step that answers `[]` when nothing is admitted drops this session from judgment.
+    const verdict = judge(
+      decl,
+      world([], [shell(0, 'git cherry-pick main..x'), shell(1, 'cargo test')]),
+    );
+    expect(witnessesOf(verdict, ENTRY)).toEqual([{ key: '0', value: 'git cherry-pick main..x' }]);
+  });
+
+  it('a merge followed by an edit → pass', () => {
+    expect(judge(decl, world([], [shell(0, 'git merge x'), edit(1)])).kind).toBe('pass');
+  });
+
+  it('edit, merge, edit, merge → broken on the last merge only', () => {
+    // A cut at the FIRST edit keeps both merges. The witness sits at output position 0 but
+    // carries ordinal '3', so a key renumbered by the cut or by `select` reads differently.
+    const calls = [edit(0), shell(1, 'git merge a'), edit(2), shell(3, 'git merge b')];
+    expect(witnessesOf(judge(decl, world([], calls)), ENTRY)).toEqual([
+      { key: '3', value: 'git merge b' },
+    ]);
   });
 });
