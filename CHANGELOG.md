@@ -11,6 +11,14 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.19.0](https://github.com/huskyhoochu/polydeukes/compare/v0.18.0...v0.19.0) (2026-10-12)
+
+
+### Features
+
+* **polydeukes:** bound an extraction's size with a drop extract step ([#236](https://github.com/huskyhoochu/polydeukes/issues/236)) ([bd3b981](https://github.com/huskyhoochu/polydeukes/commit/bd3b981c08b5eb6eed5843248f4ad4f6c07f6ae7))
+* **polydeukes:** keep the items after the last admitted one with an afterLast extract step ([#234](https://github.com/huskyhoochu/polydeukes/issues/234)) ([0a58ef3](https://github.com/huskyhoochu/polydeukes/commit/0a58ef3ff83fc0f97d6ba07e9f6830b8814874e4))
+
 ## [0.18.0](https://github.com/huskyhoochu/polydeukes/compare/v0.17.0...v0.18.0) (2026-10-11)
 
 
