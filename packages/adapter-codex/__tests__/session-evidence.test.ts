@@ -288,19 +288,21 @@ describe('runHook — lifecycle evidence failures', () => {
 
   it('fails closed before judgment when one evidence line is malformed', () => {
     // Folding a corrupt file into empty arrays turns provider failure into absence and can
-    // let a history discipline pass. The spawned non-IR keeps the single telemetry writer.
+    // let a history discipline pass. The explicit failure keeps the single telemetry writer.
     installStubPolydeukes();
     mkdirSync(dirname(evidencePath()), { recursive: true });
     writeFileSync(evidencePath(), '{not-json}\n');
-    const { calls, spawn } = recordingSpawn(2);
+    const { calls, spawn } = recordingSpawn(3);
 
     const outcome = invoke(preToolPayload(), spawn);
 
     expect(outcome).toEqual({ exitCode: 2 });
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.stdin).toMatch(new RegExp(`^${FAILURE_PREFIX}`));
-    expect(() => JSON.parse(calls[0]?.stdin ?? '')).toThrow();
-    expect(stderr.join('')).toMatch(/session evidence|jsonl|record/i);
+    const failure = JSON.parse(calls[0]?.stdin ?? '') as { reason: string };
+    expect(failure.reason).toMatch(new RegExp(`^${FAILURE_PREFIX}`));
+    expect(failure.reason).toMatch(/session evidence|jsonl|record/i);
+    expect(calls[0]?.args).toContain('--input-failure');
+    expect(stderr.join('')).toBe('');
     expect(stderr.join('')).not.toMatch(/user terminal/i);
   });
 });

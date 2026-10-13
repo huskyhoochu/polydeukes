@@ -11,10 +11,10 @@
 ## 구문
 
 ```sh
-pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
+pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
-`--diff`가 없으면 stdin은 약속(covenant) 입력 IR입니다. `@polydeukes/core`가 정의하는 JSON
+입력 모드 플래그가 없으면 stdin은 약속(covenant) 입력 IR입니다. `@polydeukes/core`가 정의하는 JSON
 문서(`toolCalls` · `subagentSpawns` · `userMessages`, 그리고 호스트가 더하는 선택 키 둘,
 도구 명부 `tools`와 살아 있는 에이전트 세션의 증거 `session`)입니다. `--diff`를 주면 stdin은
 unified diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이 실행의 관측자 자세이며
@@ -25,6 +25,13 @@ unified diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce
 덧붙일 파일을 가리키며, `POLYDEUKES_TELEMETRY_PATH`와 설정의 `telemetry.logPath`보다 앞섭니다.
 플래그는 각각 한 번씩, 순서는 무관하고, 플래그의 값은 비어 있거나 `--`로 시작할 수 없습니다. 그 밖의 인자는
 사용법 오류입니다. stdin은 EOF까지 읽습니다.
+
+`--input-failure`는 어댑터가 관측을 만들지 못한 사유를 전달합니다. stdin은 비어 있지 않은
+문자열 `reason`을 가진 JSON 객체입니다. 예를 들면
+`{"reason":"adapter-codex failed before spawn: the patch targets a path outside the project"}`입니다.
+명령은 사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록하며, 호출을 판정하지
+않고 종료 코드 `3`을 돌려줍니다. 설정과 기록 경로는 기존 방식으로 해석하고 설정 오류가
+우선합니다. `--input-failure`와 `--diff`는 함께 사용할 수 없습니다.
 
 <a id="covenant-check-boundaries"></a>
 ## 관측 경계
@@ -92,7 +99,9 @@ hunk만으로 판정합니다. 그래서 표지 하나를 지운 diff는 통과�
 | 보호 경로 위반 또는 `enforce: block` 항목 위반, 기본 자세 | exit `0`, `advised` 행 하나. 이 표면에는 사람이 답할 밸브가 없고, 스테이징된 관문 파일 변경은 이미 세션 표면에서 판정을 받은 것입니다 |
 | 같은 위반, `--enforce block` | exit `2`, `blocked` 행 하나 |
 | `--diff`에 0바이트 stdin | exit `0`, 행 없음. 스테이징이 없으면 판정할 것도 없습니다 |
-| `--diff` 없이 0바이트 stdin | exit `3`, stderr에 `covenant check failed closed: input is not JSON: …`. 빈 페이로드는 IR이 아닙니다 |
+| 입력 모드 플래그 없이 0바이트 stdin | exit `3`, stderr에 `covenant check failed closed: input is not JSON: …`. 빈 페이로드는 IR이 아닙니다 |
+| `--input-failure`에 비어 있지 않은 문자열 `reason` | exit `3`, stderr에 사유 한 번, `blocked covenant-check` 행 하나 |
+| `--input-failure`에 잘못된 JSON 또는 없거나 비었거나 문자열이 아닌 `reason` | exit `3`, stderr에 입력 오류, `blocked covenant-check` 행 하나 |
 | JSON 파싱 실패 · 객체가 아님 · `toolCalls`·`subagentSpawns`·`userMessages` 배열 부재 · 잘못된 `actor` | exit `3`, `covenant-check`의 `blocked` 행 하나, stderr에 사유(`covenant check failed closed: input carries no subagentSpawns array`) |
 | IR이 자체 `world` 키를 담은 경우 | exit `3`. 세계 축은 이 명령이 채웁니다 |
 | `tools`의 목록이 빠졌거나 문자열 아닌 이름을 담은 경우, `session`에 `userMessages`·`toolCalls` 배열이 없는 경우 | exit `3`, `blocked` `covenant-check` 행 1건. 판정할 수 없는 형상은 기본값으로 바꾸지 않고 거부합니다 |

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -301,11 +302,12 @@ describe('the generated delegator judges real payloads', () => {
     // that registered only PreToolUse never delivers the human message at all. The row
     // distinguishes a witnessed verdict from a crash or an unrouted pass at the same exit 0.
     expect(installIntoFixture().status).toBe(0);
-
+    const payload = patchPayload(addHunk(`${PROTECTED_ENTRY}/witnessed.mjs`, 'export {};'));
+    const first = spawnGeneratedHook(payload);
+    expect(first.status, first.stderr).toBe(2);
+    expect(rows()).toContainEqual(['blocked', 'self-mod', PROTECTED_ENTRY]);
     const prompt = spawnGeneratedHook(userPromptPayload(DEFAULT_WITNESS_TOKEN));
-    const retried = spawnGeneratedHook(
-      patchPayload(addHunk(`${PROTECTED_ENTRY}/witnessed.mjs`, 'export {};')),
-    );
+    const retried = spawnGeneratedHook(payload);
 
     expect(prompt.status, prompt.stderr).toBe(0);
     expect(prompt.stdout).toBe('');
@@ -315,6 +317,34 @@ describe('the generated delegator judges real payloads', () => {
     expect(
       rows().filter(([event, label]) => event === 'witnessed' && label === 'self-mod'),
     ).toHaveLength(1);
+    // The same generated entry point must preserve the observed tool and delete only at SessionEnd.
+    const post = spawnGeneratedHook({
+      hook_event_name: 'PostToolUse',
+      session_id: 'sess-e2e',
+      tool_name: BASH,
+      tool_input: { command: 'pwd' },
+    });
+    expect(post.status, post.stderr).toBe(0);
+    expect(post.stdout).toBe('');
+    const evidence = join(
+      projectRoot,
+      '.polydeukes',
+      'codex-sessions',
+      `${createHash('sha256').update('sess-e2e').digest('hex')}.jsonl`,
+    );
+    expect(
+      readFileSync(evidence, 'utf-8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line)),
+    ).toEqual([
+      { kind: 'user', text: DEFAULT_WITNESS_TOKEN, timestampMs: expect.any(Number) },
+      { kind: 'tool', name: BASH, args: { command: 'pwd' } },
+    ]);
+    const end = spawnGeneratedHook({ hook_event_name: 'SessionEnd', session_id: 'sess-e2e' });
+    expect(end.status, end.stderr).toBe(0);
+    expect(end.stdout).toBe('');
+    expect(existsSync(evidence)).toBe(false);
   });
 
   it('blocks a patch mixing a protected and an unprotected file, on the protected one', () => {
@@ -385,6 +415,21 @@ describe('the generated delegator judges real payloads', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(rows()).toContainEqual(['blocked', 'shell-mod', PROTECTED_ENTRY]);
+  });
+
+  it('reports an outside-project patch refusal once with exactly one blocked row', () => {
+    // The reproduced refusal must not expose the parser error manufactured by non-JSON delivery.
+    expect(installIntoFixture().status).toBe(0);
+    const outside = `${projectRoot}-outside.md`;
+    const result = spawnGeneratedHook(patchPayload(addHunk(outside, 'probe')));
+    expect(result.status, result.stderr).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr.split(FAILURE_PREFIX)).toHaveLength(2);
+    expect(result.stderr).toContain(outside);
+    expect(result.stderr).toContain('outside the project');
+    expect(result.stderr).not.toMatch(/input is not JSON|Unexpected token|before a verdict/);
+    expect(rows()).toEqual([['blocked', RUNNER_LABEL, '-']]);
+    expect(existsSync(outside)).toBe(false);
   });
 
   it('fails closed on a patch the grammar refuses: exit 2, the adapter’s reason on stderr, no passed row', () => {

@@ -34,6 +34,10 @@ Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch`라는 이름 
 싣고, `SessionEnd`는 세션 파일을 지웁니다. 증거는 `.polydeukes/codex-sessions/` 아래에
 SHA-256 이름으로 저장되며, 원본 세션 ID는 경로가 되지 않습니다.
 
+번역에 실패하면 어댑터는 JSON `reason`을 `pdks covenant check --input-failure`에 보냅니다.
+그 프로세스가 원래 거부 사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록합니다.
+훅은 stdout을 비우고 종료 코드 2로 호출을 거부합니다.
+
 공개 계약 심볼은 다음과 같습니다.
 
 - `runHook`
@@ -48,7 +52,7 @@ SHA-256 이름으로 저장되며, 원본 세션 ID는 경로가 되지 않습�
 import { runHook } from '@polydeukes/adapter-codex';
 
 // 페이로드를 stdin에서 읽고, repoRoot에서 `pdks covenant check --enforce block`을 스폰한 뒤
-// 그 자식 프로세스의 종료 코드를 돌려줍니다. 생성된 훅 위임자가 호출하는 것이 이 함수입니다.
+// 통과하면 0, 거부하면 2를 돌려줍니다. 생성된 훅 위임자가 이 함수를 호출합니다.
 const { exitCode } = runHook({ repoRoot: process.cwd() });
 ```
 

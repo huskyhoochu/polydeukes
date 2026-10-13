@@ -35,6 +35,10 @@ messages, `PostToolUse` appends the tool name and object-shaped input, `PreToolU
 evidence into `session`, and `SessionEnd` removes the session file. Evidence lives under
 `.polydeukes/codex-sessions/` with a SHA-256 name; the raw session id never becomes a path.
 
+When translation fails, the adapter sends a JSON `reason` to
+`pdks covenant check --input-failure`. That process reports the original refusal once and
+records one `blocked covenant-check` row. The hook refuses the call with exit 2 and empty stdout.
+
 Public contract symbols include:
 
 - `runHook`
@@ -49,7 +53,7 @@ Public contract symbols include:
 import { runHook } from '@polydeukes/adapter-codex';
 
 // Reads the payload from stdin, spawns `pdks covenant check --enforce block` in repoRoot,
-// and returns that child's exit code. This is what the generated hook delegator calls.
+// and returns 0 for a pass or 2 for a refusal. The generated hook delegator calls this function.
 const { exitCode } = runHook({ repoRoot: process.cwd() });
 ```
 

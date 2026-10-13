@@ -11,10 +11,10 @@ caller produces the observation, the command judges it and answers with an exit 
 ## Syntax
 
 ```sh
-pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
+pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
-Without `--diff`, stdin is the covenant input IR — the JSON document `@polydeukes/core` defines
+Without an input-mode flag, stdin is the covenant input IR — the JSON document `@polydeukes/core` defines
 (`toolCalls`, `subagentSpawns`, `userMessages`, and the two optional keys a host adds:
 `tools`, its tool roster, and `session`, the evidence a live agent session carries). With
 `--diff`, stdin is a unified diff and the command translates it into that IR first.
@@ -27,6 +27,13 @@ alongside the project's config; a relative path resolves against the working dir
 `POLYDEUKES_TELEMETRY_PATH` and the config's `telemetry.logPath`. Each flag at most once, in any
 order, and a flag's value may not be empty or start with `--`; any other argument is a usage error.
 stdin is read to EOF.
+
+`--input-failure` lets an adapter report why it could not produce an observation. stdin is
+a JSON object with a non-empty string `reason`, such as
+`{"reason":"adapter-codex failed before spawn: the patch targets a path outside the project"}`.
+The command prints that reason once, records one `blocked covenant-check` row, and exits `3`
+without judging a call. Config and telemetry-path resolution apply as usual; a config error
+takes precedence. `--input-failure` and `--diff` are mutually exclusive.
 
 <a id="covenant-check-boundaries"></a>
 ## Observation boundaries
@@ -97,7 +104,9 @@ disciplines skip on this surface.
 | A break on a protected path or an entry set to `enforce: block`, default posture | exit `0`, one `advised` row — this surface has no valve a human could answer, and a staged gate-file change already passed the session surface |
 | The same break under `--enforce block` | exit `2`, one `blocked` row |
 | 0 bytes on stdin with `--diff` | exit `0`, no rows — nothing staged is nothing to judge |
-| 0 bytes on stdin without `--diff` | exit `3`, `covenant check failed closed: input is not JSON: …` on stderr — an empty payload is not an IR |
+| 0 bytes on stdin without an input-mode flag | exit `3`, `covenant check failed closed: input is not JSON: …` on stderr — an empty payload is not an IR |
+| `--input-failure` with a non-empty string `reason` | exit `3`, the reason once on stderr, and one `blocked covenant-check` row |
+| `--input-failure` with malformed JSON or a missing, empty, or non-string `reason` | exit `3`, the input error on stderr, and one `blocked covenant-check` row |
 | Unparseable JSON, a non-object, a missing `toolCalls`, `subagentSpawns`, or `userMessages` array, or a malformed `actor` | exit `3`, one `blocked` `covenant-check` row, and the reason on stderr (`covenant check failed closed: input carries no subagentSpawns array`) |
 | An IR carrying its own `world` key | exit `3` — the world axis is the command's to fill |
 | A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays | exit `3`, one `blocked` `covenant-check` row — a shape the command cannot judge is refused, never a default |

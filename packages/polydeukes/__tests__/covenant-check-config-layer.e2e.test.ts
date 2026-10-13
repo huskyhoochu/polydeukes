@@ -96,6 +96,44 @@ function spawnCheck(input: string, ...extra: string[]) {
   });
 }
 
+describe('--input-failure: config and telemetry resolution', () => {
+  it('uses the telemetry override with a loaded layer and does not judge its declarations', () => {
+    // Dropping the runner flags loses the configured destination or routes a refusal as IR.
+    writeFlushBanLayer();
+    const reason = 'adapter translation refused';
+    const result = spawnCheck(
+      JSON.stringify({ reason }),
+      '--input-failure',
+      '--config-layer',
+      layerPath,
+      '--telemetry-path',
+      flagLogPath,
+    );
+    expect(result.status, result.stderr).toBe(3);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(`covenant check failed closed: ${reason}\n`);
+    expect(telemetryRows(flagLogPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
+    expect(telemetryRows(configLogPath)).toEqual([]);
+  });
+
+  it('preserves the configuration failure when the requested layer cannot load', () => {
+    // Reading the reason before resolving config hides a broken installation as adapter failure.
+    const result = spawnCheck(
+      '{"reason":"adapter translation refused"}',
+      '--input-failure',
+      '--config-layer',
+      layerPath,
+      '--telemetry-path',
+      flagLogPath,
+    );
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain(layerPath);
+    expect(result.stderr).not.toContain('adapter translation refused');
+    expect(telemetryRows(flagLogPath)).toEqual([['blocked', CHECK_LABEL, NO_SUBJECT]]);
+  });
+});
+
 describe('--config-layer: the layer’s entry judges the call', () => {
   it('the forbidden command under the layer exits 0 with an advised row under the layer id at the --telemetry-path file', () => {
     // Three defects, one spawn: a bin that ignores `--config-layer` leaves no row under the

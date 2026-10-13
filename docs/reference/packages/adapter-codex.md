@@ -26,11 +26,14 @@ by design, so that they never reach the core.
 `PostToolUse` append strict JSONL records under `.polydeukes/codex-sessions/`; `SessionEnd`
 removes only that session's file. `PreToolUse` builds the IR with the `tools` roster and a
 `session` sourced from those records, but no synthesized `actor` or `channels`, then spawns
-`pdks covenant check --enforce block` in `repoRoot` and returns the child's exit code. The
-judging happens in that child process; this package carries no judgment logic.
+`pdks covenant check --enforce block` in `repoRoot` and maps every nonzero child status to
+hook exit 2. The judging happens in that child process; this package carries no judgment logic.
 
 **`pdks` writes the telemetry.** The adapter sends failures that occur before spawning to
-`pdks` on stdin, so those failures are recorded through the same path.
+`pdks covenant check --input-failure` as a JSON `reason` on stdin. The judge prints the
+original refusal once and records one `blocked covenant-check` row, exiting 3 because no
+observation could be judged. The hook exits 2 with empty stdout. Actual malformed input and
+abnormal child exits retain their diagnostics.
 
 <a id="apply-patch"></a>
 ## Why this adapter parses text where its siblings read arguments

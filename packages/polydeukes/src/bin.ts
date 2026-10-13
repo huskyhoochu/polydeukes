@@ -7,8 +7,8 @@
  * silently (fail-closed, the same posture as an unjudgeable payload).
  *
  * `covenant check` reads its observation from stdin and nothing else: the IR JSON by
- * default, a unified diff under `--diff`. No other file descriptor is opened, so the
- * process never asks a human anything.
+ * default, a unified diff under `--diff`, or a refusal reason under `--input-failure`.
+ * No other file descriptor is opened, so the process never asks a human anything.
  */
 
 import { mkdirSync, mkdtempSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
@@ -168,25 +168,32 @@ if (args.length === 1 && args[0] === 'explain') {
 }
 
 /**
- * Read the `covenant check` flags, or null for any argv outside the finite table: `--diff`
- * at most once, `--enforce` at most once with `advise` or `block`, `--config-layer` and
- * `--telemetry-path` at most once each with a non-empty path, in any order, and nothing else.
+ * Read the `covenant check` flags, or null for any argv outside the finite table: one of
+ * `--diff` or `--input-failure` at most once, `--enforce` at most once with `advise` or `block`,
+ * `--config-layer` and `--telemetry-path` at most once each with a non-empty path, in any order,
+ * and nothing else.
  * A path that starts with `--` is a missing value followed by a flag.
  */
 function parseCheckFlags(flags: string[]): {
   diffMode: boolean;
+  inputFailureMode: boolean;
   enforce?: 'advise' | 'block';
   configLayer?: string;
   telemetryPath?: string;
 } | null {
   let diffMode = false;
+  let inputFailureMode = false;
   let enforce: 'advise' | 'block' | undefined;
   let configLayer: string | undefined;
   let telemetryPath: string | undefined;
   for (let i = 0; i < flags.length; i += 1) {
     const flag = flags[i];
-    if (flag === '--diff' && !diffMode) {
+    if (flag === '--diff' && !diffMode && !inputFailureMode) {
       diffMode = true;
+      continue;
+    }
+    if (flag === '--input-failure' && !inputFailureMode && !diffMode) {
+      inputFailureMode = true;
       continue;
     }
     if (flag === '--enforce' && enforce === undefined) {
@@ -209,18 +216,18 @@ function parseCheckFlags(flags: string[]): {
     }
     return null;
   }
-  return { diffMode, enforce, configLayer, telemetryPath };
+  return { diffMode, inputFailureMode, enforce, configLayer, telemetryPath };
 }
 
 const check = args[0] === 'covenant' && args[1] === 'check' ? parseCheckFlags(args.slice(2)) : null;
 
 if (check === null) {
   process.stderr.write(
-    'usage: pdks covenant check [--diff] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> [--limit <n>] | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
+    'usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks docs [topic | search <query> | show <document-id>] | pdks memory (ingest [--rebuild] | search <query> [--limit <n>] | show <id> | obligations <key> | supersession <doc> | lint | stats | usage)\n',
   );
   process.exit(2);
 }
-const { diffMode, enforce, configLayer, telemetryPath } = check;
+const { diffMode, inputFailureMode, enforce, configLayer, telemetryPath } = check;
 
 try {
   // Loaded here rather than at the top of the file. This runner statically pulls in the
@@ -239,6 +246,26 @@ try {
     // translation or parse failure lands as the same one blocked row every other
     // fail-closed branch leaves.
     input: () => {
+      if (inputFailureMode) {
+        let failure: unknown;
+        try {
+          failure = JSON.parse(text);
+        } catch (error) {
+          throw new Error(
+            `input failure is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+        if (
+          failure === null ||
+          typeof failure !== 'object' ||
+          !('reason' in failure) ||
+          typeof failure.reason !== 'string' ||
+          failure.reason.length === 0
+        ) {
+          throw new Error('input failure reason must be a non-empty string');
+        }
+        throw new Error(failure.reason);
+      }
       if (diffMode) return covenantInputFromUnifiedDiff({ text });
       const parsed = parseInput(text);
       if (!parsed.ok) throw new Error(parsed.reason);

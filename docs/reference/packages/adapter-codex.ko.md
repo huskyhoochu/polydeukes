@@ -27,11 +27,14 @@ Codex의 입력을 공통 형식으로 번역합니다. 에이전트와 도구�
 `PostToolUse`는 `.polydeukes/codex-sessions/` 아래에 엄격한 JSONL 레코드를 추가하고,
 `SessionEnd`는 그 세션 파일만 지웁니다. `PreToolUse`는 `tools` 명부와 이 레코드에서 만든
 `session`을 싣되 `actor`나 `channels`를 합성하지 않은 뒤, `repoRoot`에서
-`pdks covenant check --enforce block`을 스폰하고 그 자식 프로세스의 종료 코드를 그대로
-돌려줍니다. 판정은 그 자식 프로세스가 하며, 이 패키지에는 판정 코드가 없습니다.
+`pdks covenant check --enforce block`을 스폰하고 자식 프로세스의 0이 아닌 종료 상태를
+훅 종료 코드 2로 변환합니다. 판정은 그 자식 프로세스가 하며, 이 패키지에는 판정 코드가 없습니다.
 
 **텔레메트리는 `pdks`가 기록합니다.** 어댑터는 스폰 전에 발생한 실패도 `pdks`의 stdin으로
-보내 같은 경로로 기록합니다.
+JSON `reason`으로 `pdks covenant check --input-failure`에 보냅니다. 판정기는 원래 거부
+사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록하며, 판정할 관측이 없어
+종료 코드 3을 돌려줍니다. 훅은 stdout을 비우고 종료 코드 2로 차단합니다. 실제 입력 오류와
+자식 프로세스의 비정상 종료 진단은 유지합니다.
 
 <a id="apply-patch"></a>
 ## 형제 어댑터는 인자를 읽는데 이 어댑터가 텍스트를 해석하는 이유

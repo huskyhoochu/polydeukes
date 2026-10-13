@@ -26,7 +26,7 @@ const PRE_STATE = 'locked: yes\n';
 const STUB_BIN_REL = './dist/bin.js';
 /** What the child must be asked to run, after the bin path. */
 const CHECK_ARGS = ['covenant', 'check', '--enforce', 'block'];
-/** The stdin line a pre-spawn failure travels in — the judge fails closed on it as non-JSON. */
+/** The reason a translation refusal carries to the judge's failure input mode. */
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
 /** The stderr line the not-installed case leaves — the one outcome that has no row anywhere. */
 const NOT_INSTALLED_PREFIX = 'covenant hook failed closed:';
@@ -377,31 +377,32 @@ describe('runHook — the child’s status is the exit code', () => {
 });
 
 describe('runHook — a failure before the spawn still spawns', () => {
-  // Each case pins three facts: exactly one spawn happened, its stdin is the failure line
-  // rather than an IR, and the exit code is the child's. An adapter that returns 2 without
-  // spawning leaves no row anywhere; one that swallows the failure and spawns an IR built
-  // from nothing lands a pass.
+  // Returning without spawning loses the row; fabricating an IR can turn refusal into a pass.
 
   /** Runs one failing payload through the seam and returns the reason text after the prefix. */
   function expectFailureSpawn(rawPayload: string): string {
-    const { calls, spawn } = recordingSpawn(2);
+    const { calls, spawn } = recordingSpawn(3);
 
     const outcome = runHook({ repoRoot, rawPayload, spawn });
 
     expect(outcome).toEqual({ exitCode: 2 });
     expect(calls).toHaveLength(1);
-    const stdin = calls[0]?.stdin ?? '';
-    expect(stdin.startsWith(FAILURE_PREFIX)).toBe(true);
-    expect(calls[0]?.args).toEqual([expect.stringMatching(/bin\.js$/), ...CHECK_ARGS]);
+    const failure = JSON.parse(calls[0]?.stdin ?? '') as { reason: string };
+    expect(failure.reason.startsWith(FAILURE_PREFIX)).toBe(true);
+    expect(calls[0]?.args).toEqual([
+      expect.stringMatching(/bin\.js$/),
+      ...CHECK_ARGS,
+      '--input-failure',
+    ]);
     expect(calls[0]?.cwd).toBe(repoRoot);
-    // The child's stderr names only its parse failure, so the reason must also leave here.
-    expect(stderr.join('')).toContain(stdin);
-    return stdin.slice(FAILURE_PREFIX.length).trim();
+    expect(stderr.join('')).toBe('');
+    return failure.reason.slice(FAILURE_PREFIX.length).trim();
   }
 
   it('an unparseable payload', () => {
+    // A generic refusal loses the payload parser's actual cause.
     installStubPolydeukes();
-    expectFailureSpawn('{');
+    expect(expectFailureSpawn('{')).toMatch(/payload|JSON/i);
   });
 
   it('a camelCase envelope — this host has one spelling and the other is refused', () => {
@@ -442,7 +443,7 @@ describe('runHook — a failure before the spawn still spawns', () => {
     const payload = envelope(APPLY_PATCH, { command: patchText(addHunk(OTHER_FILE, 'x')) });
     delete payload[key];
 
-    expectFailureSpawn(JSON.stringify(payload));
+    expect(expectFailureSpawn(JSON.stringify(payload))).toContain(key);
   });
 
   it('a patch the grammar refuses — the reason names the patch, not the envelope', () => {
@@ -561,43 +562,70 @@ describe('runHook — a tool name outside the roster is refused before the spawn
       // a `passed` row under the runner's label.
       installStubPolydeukes();
       writeFixture(TARGET_FILE);
-      const { calls, spawn } = recordingSpawn(2);
+      const { calls, spawn } = recordingSpawn(3);
 
       const outcome = runHook({ repoRoot, rawPayload: unknownNamePayload(toolName), spawn });
 
       expect(outcome).toEqual({ exitCode: 2 });
       expect(calls).toHaveLength(1);
-      const stdin = calls[0]?.stdin ?? '';
-      expect(stdin.startsWith(FAILURE_PREFIX)).toBe(true);
+      const failure = JSON.parse(calls[0]?.stdin ?? '') as { reason: string };
+      expect(failure.reason.startsWith(FAILURE_PREFIX)).toBe(true);
       // The whole sentence: the received name, the roster in vocabulary order, and the one
       // pointer to the README's declared-limits section. The message says only what the
       // adapter knows — which name arrived and which it translates — and leaves the cause
       // (Code Mode, a hosted tool, a widened matcher) to the README, per name.
-      expect(stdin).toContain(
+      expect(failure.reason).toContain(
         `this adapter does not translate tool '${toolName}'; the roster is ${APPLY_PATCH}, ${BASH} — see the package README, What this surface does not observe`,
       );
-      expect(calls[0]?.args).toEqual([expect.stringMatching(/bin\.js$/), ...CHECK_ARGS]);
+      expect(calls[0]?.args).toEqual([
+        expect.stringMatching(/bin\.js$/),
+        ...CHECK_ARGS,
+        '--input-failure',
+      ]);
       expect(calls[0]?.cwd).toBe(repoRoot);
-      expect(stderr.join('')).toContain(stdin);
+      expect(stderr.join('')).toBe('');
       expect(stdoutWrites).toBe(0);
     },
   );
 
-  it('hands the judge no IR at all for such a name — the stdin is not JSON', () => {
-    // The fail-closed path works because the judge cannot parse the line. An adapter that
-    // prefixes a valid IR with the failure text, or that spawns an IR whose single element
-    // carries the unknown name on no axis, gives the judge something to route — and a call
-    // routed to no discipline is recorded `passed`, not `blocked`.
+  it('keeps a refused unknown name blocked without witness recovery on child status 2', () => {
     installStubPolydeukes();
     writeFixture(TARGET_FILE);
-    const { calls, spawn } = recordingSpawn(2);
+    const { spawn } = recordingSpawn(2);
 
-    runHook({ repoRoot, rawPayload: unknownNamePayload(EXEC), spawn });
-
-    expect(calls).toHaveLength(1);
-    expect(() => JSON.parse(calls[0]?.stdin ?? '')).toThrow();
-    expect(parseInput(calls[0]?.stdin ?? '').ok).toBe(false);
+    expect(runHook({ repoRoot, rawPayload: unknownNamePayload(EXEC), spawn })).toEqual({
+      exitCode: 2,
+    });
+    expect(stderr.join('')).toBe('');
+    expect(stdoutWrites).toBe(0);
   });
+});
+
+describe('runHook — refusal and abnormal child states', () => {
+  it.each([0, 1, null] as const)(
+    'refusal never passes on child status %s and abnormal exits retain diagnostics',
+    (status) => {
+      // A child success cannot manufacture the missing IR; crashes still need an execution diagnostic.
+      installStubPolydeukes();
+      const { calls, spawn } = recordingSpawn(status);
+      expect(runHook({ repoRoot, rawPayload: '{', spawn })).toEqual({ exitCode: 2 });
+      expect(calls[0]?.stdio).toEqual(['pipe', 'ignore', 'inherit']);
+      expect(stdoutWrites).toBe(0);
+      if (status === 1 || status === null) expect(stderr.join('')).toMatch(/before a verdict/);
+      else expect(stderr.join('')).toBe('');
+    },
+  );
+
+  it.each([3, 1, null] as const)(
+    'normal IR preserves the generic failure diagnostic on child status %s',
+    (status) => {
+      // Removing the wrapper for every status 3 hides an actual judge input or execution failure.
+      installStubPolydeukes();
+      const { spawn } = recordingSpawn(status);
+      expect(runHook({ repoRoot, rawPayload: bashPayload('pwd'), spawn })).toEqual({ exitCode: 2 });
+      expect(stderr.join('')).toMatch(/before a verdict/);
+    },
+  );
 });
 
 describe('runHook — nothing reaches stdout', () => {

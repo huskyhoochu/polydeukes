@@ -83,6 +83,45 @@ function creationIr(path: string, post: string): CovenantInput {
   };
 }
 
+describe('--input-failure: an explicit refusal on stdin', () => {
+  it('reports the supplied reason once, exits 3, and writes only one blocked runner row', () => {
+    // Routing the object as IR or judging an empty input could manufacture a passed row.
+    const reason = 'the adapter cannot translate this outside-project patch';
+    const result = spawnCheck(JSON.stringify({ reason }), '--input-failure');
+    expect(result.status, result.stderr).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(failedClosedLine(reason));
+    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it.each([
+    ['malformed JSON', '{', /JSON/i],
+    ['missing reason', '{}', /reason/i],
+    ['empty reason', '{"reason":""}', /reason/i],
+    ['numeric reason', '{"reason":7}', /reason/i],
+  ])('refuses %s with its actual input error and one blocked row', (_name, input, diagnostic) => {
+    // Invalid failure input must remain an input failure, never a normal empty judgment.
+    const result = spawnCheck(input as string, '--input-failure');
+    expect(result.status, result.stderr).toBe(EXIT_INPUT_UNREAD);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(diagnostic as RegExp);
+    expect(telemetryRows(logPath)).toEqual([['blocked', FAIL_CLOSED_LABEL, '-']]);
+  });
+
+  it.each([
+    ['--input-failure', '--diff'],
+    ['--diff', '--input-failure'],
+    ['--input-failure', '--input-failure'],
+  ])('rejects incompatible or repeated input modes %j before judging', (...flags) => {
+    // Silently choosing one mode can judge a refusal payload as an empty diff.
+    const result = spawnCheck('{"reason":"refusal"}', ...flags);
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/usage/i);
+    expect(telemetryRows(logPath)).toEqual([]);
+  });
+});
+
 describe('--diff: a real git diff --cached on stdin', () => {
   it('one ordinary staged file exits 0 with exactly one telemetry row', () => {
     // The judged path — a bin that exits 0 without dispatching leaves no row; one that

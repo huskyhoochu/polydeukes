@@ -7,10 +7,9 @@
  * and session history — and hands it to the umbrella's bin on stdin. Every verdict, and
  * every row, is the child's.
  *
- * A failure before the spawn travels IN the spawn: the failure sentence replaces the IR on
- * stdin, the child fails closed on it as non-JSON, and the one row that call earns is
- * written by the one writer. Only an unresolvable `polydeukes` skips the spawn, because
- * then there is no writer at all.
+ * A failure before the spawn travels as JSON containing its reason under `--input-failure`.
+ * The child reports that reason and writes the blocked row. Only an unresolvable
+ * `polydeukes` skips the spawn, because then there is no writer at all.
  *
  * Nothing this module runs writes to stdout, the child included. The host parses a hook's
  * stdout as a decision document and treats a field it does not accept as a failed hook,
@@ -35,7 +34,7 @@ import { COMMAND_ARG, COMMAND_ARGS, MUTATING_TOOLS, SHELL_TOOLS } from './sessio
 
 /** The subcommand and posture the session surface always spawns with. */
 const CHECK_ARGS = ['covenant', 'check', '--enforce', 'block'];
-/** The prefix a pre-spawn failure travels under, so an operator can find it in the log. */
+/** The prefix identifying the adapter's refusal in the judge's diagnostic. */
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
 /** Every name this adapter translates, mutating first — the order the refusal lists them in. */
 const ROSTER: readonly string[] = [...MUTATING_TOOLS, ...SHELL_TOOLS];
@@ -84,7 +83,7 @@ export type RunHookOutcome = { exitCode: 0 | 2 };
  * Any other read failure (permissions, a directory target, fd exhaustion) throws: `null` is
  * the parser's absence answer, and reading a refused file as absent would mark a deletion
  * pre-less and let a discipline over the deleted text see nothing. The caller turns the
- * throw into a failure sentence the child fails closed on.
+ * throw into a failure reason the child fails closed on.
  */
 function readPreStateFromDisk(filePath: string): string | null {
   try {
@@ -292,9 +291,9 @@ function spawnCovenantCheck(spec: RunHookSpawnSpec): { status: number | null } {
 /**
  * Judge one PreToolUse payload by spawning the umbrella's judge over its IR.
  *
- * Only a child status of 0 passes through as 0. A crashed child (1) or a signalled one
- * (null) is not a verdict, and forwarding either as-is would let the host read a non-2 as
- * "not blocked".
+ * Only a valid IR with child status 0 passes through as 0. A crashed child (1) or a signalled
+ * one (null) is not a verdict, and forwarding either as-is would let the host read a non-2
+ * as "not blocked".
  */
 export function runHook(spec: RunHookSpec): RunHookOutcome {
   const rawPayload = spec.rawPayload ?? readFileSync(0, 'utf-8');
@@ -332,24 +331,22 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
     validIr = true;
     hasUserEvidence = built.hasUserEvidence;
   } catch (error) {
-    stdin = `${FAILURE_PREFIX} ${error instanceof Error ? error.message : String(error)}\n`;
-    // The child fails closed on this line as non-JSON, but its own stderr names only the
-    // parse failure. The reason reaches the operator from here.
-    process.stderr.write(stdin);
+    stdin = JSON.stringify({
+      reason: `${FAILURE_PREFIX} ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 
   const spawn = spec.spawn ?? spawnCovenantCheck;
   const { status } = spawn({
     command: process.execPath,
-    args: [bin, ...CHECK_ARGS],
+    args: [bin, ...CHECK_ARGS, ...(!validIr ? ['--input-failure'] : [])],
     cwd: spec.repoRoot,
     stdin,
     stdio: CHILD_STDIO,
   });
-  if (status !== EXIT_UPHOLD && status !== EXIT_BREAK_BLOCKING) {
-    // Not a verdict: the judge could not read its input (3, one blocked row written) or
-    // crashed or was signalled (no row). Exit 2 is still right for the host; the line is
-    // what tells the operator this was not a break.
+  if (status !== EXIT_UPHOLD && status !== EXIT_BREAK_BLOCKING && (validIr || status !== 3)) {
+    // An expected refusal already has the judge's diagnostic; other non-verdict statuses
+    // need this execution diagnostic so the operator can distinguish them from a break.
     process.stderr.write(
       `covenant hook failed closed: the judge exited with status ${String(status)} before a verdict\n`,
     );
@@ -357,5 +354,5 @@ export function runHook(spec: RunHookSpec): RunHookOutcome {
   if (status === EXIT_BREAK_BLOCKING && validIr) {
     writeBlockedRecovery(hasUserEvidence);
   }
-  return { exitCode: status === EXIT_UPHOLD ? EXIT_UPHOLD : EXIT_BREAK_BLOCKING };
+  return { exitCode: validIr && status === EXIT_UPHOLD ? EXIT_UPHOLD : EXIT_BREAK_BLOCKING };
 }
