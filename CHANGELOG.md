@@ -11,6 +11,15 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.19.1](https://github.com/huskyhoochu/polydeukes/compare/v0.19.0...v0.19.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **adapter-claude-code:** judge a subagent call by that subagent's own tool calls ([#241](https://github.com/huskyhoochu/polydeukes/issues/241)) ([332504b](https://github.com/huskyhoochu/polydeukes/commit/332504bd143af2068e17c29248dfb30421093b10))
+* **adapter-codex:** describe measured Code Mode coverage by version ([f1de7e6](https://github.com/huskyhoochu/polydeukes/commit/f1de7e6e213580787a0e174fbe9e9ef27df54fca))
+* **adapter-codex:** report translation refusals once ([843ebff](https://github.com/huskyhoochu/polydeukes/commit/843ebff329d1c8da5c874e18f2bd3c659b017d2a))
+
 ## [0.19.0](https://github.com/huskyhoochu/polydeukes/compare/v0.18.0...v0.19.0) (2026-10-12)
 
 
