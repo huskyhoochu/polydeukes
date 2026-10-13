@@ -49,3 +49,39 @@ export function transcriptPathFromPayload(spec: TranscriptPathFromPayloadSpec): 
   }
   return parsed.transcript_path;
 }
+
+/** {@link callerFromPayload} input — one raw PreToolUse payload as a JSON string. */
+export type CallerFromPayloadSpec = { rawPayload: string };
+
+/**
+ * Who made the call: the main session, a subagent with a usable id, or a subagent whose
+ * id cannot name a file.
+ */
+export type CallerOutcome =
+  | { kind: 'main' }
+  | { kind: 'subagent'; agentId: string }
+  | { kind: 'unusable' };
+
+/**
+ * Read the caller out of a raw PreToolUse payload's top-level `agent_id`.
+ *
+ * A missing key or `''` is the main session. A string of letters, digits, `_` and `-` is a
+ * subagent id that can be joined into a file name. Any other value (a number, `null`, an
+ * array, a string with other characters) still marks a subagent call, but one whose id must
+ * not reach a path. An unparseable payload narrows to the main session, never a throw.
+ */
+export function callerFromPayload(spec: CallerFromPayloadSpec): CallerOutcome {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(spec.rawPayload);
+  } catch {
+    return { kind: 'main' };
+  }
+  if (!isPlainObject(parsed) || !('agent_id' in parsed) || parsed.agent_id === '') {
+    return { kind: 'main' };
+  }
+  const id = parsed.agent_id;
+  return typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id)
+    ? { kind: 'subagent', agentId: id }
+    : { kind: 'unusable' };
+}

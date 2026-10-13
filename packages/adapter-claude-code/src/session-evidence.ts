@@ -5,11 +5,17 @@
  * payload's `transcript_path`, and the spawn sidecar derived from that same location. It
  * opens the files those readers open and spawns nothing, so the runner receives the host's
  * session evidence as data and needs no knowledge of the format it was read from.
+ *
+ * `transcript_path` always names the main session's transcript, so user messages and the
+ * evidence path come from it. A call made inside a subagent carries an `agent_id`, and that
+ * subagent's tool calls are recorded in `<session>/subagents/agent-<id>.jsonl` beside the
+ * parent file; its tool calls are read from there.
  */
 
+import { basename, dirname, join } from 'node:path';
 import type { CovenantInput } from '@polydeukes/core';
 import { sessionChannelReader } from './session-channel-reader.ts';
-import { transcriptPathFromPayload } from './session-vocabulary.ts';
+import { callerFromPayload, transcriptPathFromPayload } from './session-vocabulary.ts';
 import { transcriptFromJsonlFile } from './transcript.ts';
 
 /** {@link sessionEvidenceFromPayload} input — one raw PreToolUse payload as a JSON string. */
@@ -31,10 +37,13 @@ export type SessionEvidenceOutcome = CovenantInput['session'];
  * witness and every history declaration see an empty session and stay shut.
  *
  * An unparseable payload narrows to `undefined`, leaving the parse failure to the
- * translator's own verdict, and an unreadable transcript narrows to empty lists. A permission
- * refusal on the sidecar directory propagates, as the channel reader's own rule has it —
- * swallowing it would report a session that never spawned — so the caller composing this
- * into a hook keeps it inside its fail-closed catch.
+ * translator's own verdict, and an unreadable transcript narrows to empty lists. Inside a
+ * subagent the tool calls are that subagent's alone: an unreadable subagent file, or an
+ * `agent_id` that cannot be joined into a file name, gives an empty tool-call list and never
+ * falls back to the main session's calls. A permission refusal on the sidecar directory
+ * propagates, as the channel reader's own rule has it — swallowing it would report a session
+ * that never spawned — so the caller composing this into a hook keeps it inside its
+ * fail-closed catch.
  */
 export function sessionEvidenceFromPayload(
   spec: SessionEvidenceFromPayloadSpec,
@@ -44,6 +53,20 @@ export function sessionEvidenceFromPayload(
 
   const transcript = transcriptFromJsonlFile({ path: evidencePath });
   const sidecar = sessionChannelReader({ transcriptPath: evidencePath })('sidecar');
+  const caller = callerFromPayload({ rawPayload: spec.rawPayload });
+  const callTranscript =
+    transcript === undefined || caller.kind === 'main'
+      ? transcript
+      : caller.kind === 'subagent'
+        ? transcriptFromJsonlFile({
+            path: join(
+              dirname(evidencePath),
+              basename(evidencePath, '.jsonl'),
+              'subagents',
+              `agent-${caller.agentId}.jsonl`,
+            ),
+          })
+        : undefined;
 
   return {
     evidencePath,
@@ -51,7 +74,7 @@ export function sessionEvidenceFromPayload(
       text: message.text,
       ...(message.timestampMs === undefined ? {} : { timestampMs: message.timestampMs }),
     })),
-    toolCalls: (transcript?.findToolCalls() ?? []).map((call) => ({
+    toolCalls: (callTranscript?.findToolCalls() ?? []).map((call) => ({
       name: call.name,
       args: call.args,
       ...(call.succeeded === undefined ? {} : { succeeded: call.succeeded }),

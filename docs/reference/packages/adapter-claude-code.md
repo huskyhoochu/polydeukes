@@ -64,6 +64,14 @@ witness valve human-only: an AI cannot synthesize its own witness. A read failur
 judged, an unreadable one is no evidence channel at all and is skipped. Either way the
 valve turns off, never open.
 
+**A call made inside a subagent is judged by that subagent's own tool calls.** The host leaves
+`transcript_path` on the main session's file even there, so the adapter reads the envelope's
+`agent_id` and takes the tool calls from `<session>/subagents/agent-<agent_id>.jsonl` beside
+that file. Human messages and the evidence path stay the main session's, so the witness valve
+opens a subagent's blocked call the same way it opens any other. A subagent file that cannot be
+read, or an `agent_id` that is not a string of letters, digits, `_` and `-`, gives an empty list
+and never falls back to the main session's calls.
+
 **Precedent is a declaration, not an adapter evaluator.** This adapter supplies the
 transcript snapshot. The declaration engine extracts succeeded `toolUses` and matches them;
 there is no separate precedent evaluator in this package. The grammar is in
@@ -96,6 +104,10 @@ No configuration namespace of its own.
   calls*. A command that spawns a process which then writes files — a test runner, a build
   — is judged on the command, not on what the child did. The change-set surface is the second
   observation that covers the same ground for tracked files.
+- **A subagent's own transcript file is not a protected path.** The transcript axis protects the
+  one file the envelope names, which is the main session's. A shell command or a file edit that
+  rewrites a subagent's `agent-<agent_id>.jsonl` is not judged, and changes only the history
+  that subagent's own disciplines read.
 - **Evidence exists only where a post-state can be computed.** All four mutating tools
   contribute one, notebooks included — a `NotebookEdit` yields cell-level `modify` evidence.
   What yields nothing is a payload this adapter cannot resolve: an unreadable or unparseable

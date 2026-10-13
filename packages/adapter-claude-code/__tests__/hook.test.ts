@@ -1,4 +1,12 @@
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -229,6 +237,83 @@ describe('runHook — the spawn it makes', () => {
     expect(outcome).toEqual({ exitCode: 0 });
     const ir = parsedStdin(calls[0] as SpawnCall);
     expect(ir.session).toEqual({ evidencePath: missing, userMessages: [], toolCalls: [] });
+  });
+});
+
+describe('runHook — a call made inside a subagent', () => {
+  it('hands the child the subagent’s own tool calls, not the parent’s', () => {
+    // The builder can read the subagent file and the hook still spawn an IR built another
+    // way; only the stdin the seam received shows which history the judge is given.
+    const agentId = 'a7b52c110d65a4668';
+    const SUBAGENT_SHELL = 'Bash';
+    installStubPolydeukes();
+    writeTarget();
+    const transcript = writeTranscript();
+    appendFileSync(
+      transcript,
+      `${JSON.stringify({
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_p',
+              name: SUBAGENT_SHELL,
+              input: { command: 'parent-run' },
+            },
+          ],
+        },
+        uuid: 'a-parent',
+      })}\n`,
+    );
+    const record = join(outside, SESSION_ID, 'subagents', `agent-${agentId}.jsonl`);
+    mkdirSync(dirname(record), { recursive: true });
+    writeFileSync(
+      record,
+      `${[
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'toolu_s',
+                name: SUBAGENT_SHELL,
+                input: { command: 'subagent-run' },
+              },
+            ],
+          },
+          uuid: 'a-sub',
+        },
+        {
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'toolu_s', content: 'ok' }],
+          },
+          uuid: 'u-sub',
+        },
+      ]
+        .map((entry) => JSON.stringify(entry))
+        .join('\n')}\n`,
+    );
+    const { calls, spawn } = recordingSpawn(0);
+
+    runHook({
+      repoRoot,
+      rawPayload: editPayload({ transcript_path: transcript, agent_id: agentId }),
+      spawn,
+    });
+
+    const session = parsedStdin(calls[0] as SpawnCall).session as
+      | { evidencePath: string; toolCalls: unknown[] }
+      | undefined;
+    expect(session?.evidencePath).toBe(transcript);
+    expect(session?.toolCalls).toEqual([
+      { name: SUBAGENT_SHELL, args: { command: 'subagent-run' }, succeeded: true },
+    ]);
   });
 });
 

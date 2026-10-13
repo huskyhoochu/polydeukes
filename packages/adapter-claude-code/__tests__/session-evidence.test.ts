@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -169,5 +169,197 @@ describe('sessionEvidenceFromPayload — a readable transcript', () => {
 
     expect(session?.channels?.sidecar).toBeDefined();
     expect(JSON.parse(session?.channels?.sidecar as string)).toEqual([WRITER_META]);
+  });
+});
+
+describe('sessionEvidenceFromPayload — a call made inside a subagent', () => {
+  // The host sends a subagent's call with the parent's `transcript_path` and a top-level
+  // `agent_id`; the subagent's own record sits at `<dir>/<session>/subagents/agent-<id>.jsonl`.
+  // The parent and subagent files carry different calls so every assertion says which file
+  // was read.
+  const AGENT_ID = 'a7b52c110d65a4668';
+  const PARENT_CALLS = [
+    { name: SHELL_TOOL, args: { command: 'fake-probe' }, succeeded: true },
+    { name: READ_TOOL, args: { file_path: '/repo/x' }, succeeded: false },
+  ];
+  const PARENT_HUMAN = [{ text: 'please run the probe', timestampMs: Date.parse(SENT_AT) }];
+  const SUBAGENT_CALLS = [
+    { name: SHELL_TOOL, args: { command: 'subagent-probe' }, succeeded: true },
+  ];
+
+  function subagentsDir(): string {
+    return join(dir, SESSION_ID, 'subagents');
+  }
+
+  /** A subagent record: the prompt it was given (no `origin` — no human typed it), one call. */
+  function writeSubagentRecord(path: string, command = 'subagent-probe'): void {
+    mkdirSync(join(path, '..'), { recursive: true });
+    writeFileSync(
+      path,
+      toJsonl([
+        {
+          type: 'user',
+          isSidechain: true,
+          message: { role: 'user', content: 'subagent prompt text' },
+          timestamp: '2026-07-21T04:02:00.000Z',
+          uuid: 'u-sub',
+        },
+        assistantEntry([
+          { type: 'tool_use', id: 'toolu_s1', name: SHELL_TOOL, input: { command } },
+        ]),
+        resultEntry([{ type: 'tool_result', tool_use_id: 'toolu_s1', content: 'ok' }]),
+      ]),
+    );
+  }
+
+  function evidence(overrides: Record<string, unknown>) {
+    return sessionEvidenceFromPayload({
+      rawPayload: rawPayload({ transcript_path: transcriptPath, ...overrides }),
+    });
+  }
+
+  /** The session without `channels`: a `subagents/` directory on disk makes the sidecar `'[]'`, which the last case covers. */
+  function lists(overrides: Record<string, unknown>) {
+    const session = evidence(overrides);
+    return {
+      evidencePath: session?.evidencePath,
+      userMessages: session?.userMessages,
+      toolCalls: session?.toolCalls,
+    };
+  }
+
+  it.each([AGENT_ID, 'Agent_x-1'])(
+    'agent_id %s: tool calls from the subagent file, human messages and evidencePath from the parent',
+    (id) => {
+      // Reading tool calls from `transcript_path` judges a subagent on the parent's runs and
+      // merges; reading human messages from the subagent file leaves the witness nothing to
+      // read, and its plain prompt must not count as a human line. The second id carries
+      // uppercase, `_` and `-`, which a pattern narrowed to the observed hex form refuses.
+      writeTranscript();
+      writeSubagentRecord(join(subagentsDir(), `agent-${id}.jsonl`));
+
+      expect(lists({ agent_id: id })).toEqual({
+        evidencePath: transcriptPath,
+        userMessages: PARENT_HUMAN,
+        toolCalls: SUBAGENT_CALLS,
+      });
+    },
+  );
+
+  it.each([
+    ['absent', {}],
+    ['the empty string', { agent_id: '' }],
+  ] as const)(
+    'agent_id %s reads both lists from the parent even with subagent files on disk',
+    (_label, overrides) => {
+      // The main session must be untouched. A record under `agent-.jsonl` is where an
+      // implementation that treats '' as an id would read; one that picks any subagent file
+      // whenever one exists reads the other.
+      writeTranscript();
+      writeSubagentRecord(join(subagentsDir(), `agent-${AGENT_ID}.jsonl`));
+      writeSubagentRecord(join(subagentsDir(), 'agent-.jsonl'), 'empty-id-decoy');
+
+      expect(lists(overrides)).toEqual({
+        evidencePath: transcriptPath,
+        userMessages: PARENT_HUMAN,
+        toolCalls: PARENT_CALLS,
+      });
+    },
+  );
+
+  it('a subagent file that does not exist yields no tool calls, never the parent’s', () => {
+    // Falling back to the parent's calls restores the reported defect: a subagent blocked on
+    // the parent's history. The human messages and evidencePath stay the parent's.
+    writeTranscript();
+
+    expect(lists({ agent_id: AGENT_ID })).toEqual({
+      evidencePath: transcriptPath,
+      userMessages: PARENT_HUMAN,
+      toolCalls: [],
+    });
+  });
+
+  it('a subagent path that is a directory yields no tool calls and no throw', () => {
+    // An EISDIR escaping the reader fails the hook closed on every call of that subagent;
+    // treating it as absent-and-fall-back reads the parent's calls.
+    writeTranscript();
+    mkdirSync(join(subagentsDir(), `agent-${AGENT_ID}.jsonl`), { recursive: true });
+
+    expect(lists({ agent_id: AGENT_ID })).toEqual({
+      evidencePath: transcriptPath,
+      userMessages: PARENT_HUMAN,
+      toolCalls: [],
+    });
+  });
+
+  it('a parent transcript that cannot be read empties both lists even when the subagent file exists', () => {
+    // A missing parent is a supplier fault for the whole session. Filling tool calls from the
+    // subagent file alone hands a history declaration a session with no human line, and the
+    // evidencePath must stay so transcript-mod still registers over the parent.
+    writeSubagentRecord(join(subagentsDir(), `agent-${AGENT_ID}.jsonl`));
+
+    expect(lists({ agent_id: AGENT_ID })).toEqual({
+      evidencePath: transcriptPath,
+      userMessages: [],
+      toolCalls: [],
+    });
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    'a subagent file refused by permissions yields no tool calls and no throw',
+    () => {
+      // An EACCES escaping the reader fails the hook closed on every call of that subagent;
+      // treating it as absent-and-fall-back reads the parent's calls. Skipped as root, which
+      // no mode can refuse.
+      writeTranscript();
+      const record = join(subagentsDir(), `agent-${AGENT_ID}.jsonl`);
+      writeSubagentRecord(record);
+      chmodSync(record, 0o000);
+      try {
+        expect(lists({ agent_id: AGENT_ID })).toEqual({
+          evidencePath: transcriptPath,
+          userMessages: PARENT_HUMAN,
+          toolCalls: [],
+        });
+      } finally {
+        chmodSync(record, 0o600);
+      }
+    },
+  );
+
+  it.each([
+    ['a number', 42],
+    ['null', null],
+    ['an array', ['a']],
+    ['a parent-directory hop', '../x'],
+    ['a path separator', 'a/b'],
+    ['a space', 'a b'],
+    ['a bare ..', '..'],
+  ] as const)('an agent_id that is %s opens no file and yields no tool calls', (_label, id) => {
+    // A decoy sits where `agent-${String(id)}.jsonl` lands, so string coercion (42, null,
+    // ['a'] → 'a') or a path built before validation reads it. Treating the value as no
+    // agent_id reads the parent's calls instead; both leaks fail the empty list.
+    writeTranscript();
+    writeSubagentRecord(join(subagentsDir(), `agent-${String(id)}.jsonl`), 'decoy-probe');
+
+    expect(lists({ agent_id: id })).toEqual({
+      evidencePath: transcriptPath,
+      userMessages: PARENT_HUMAN,
+      toolCalls: [],
+    });
+  });
+
+  it('keeps channels.sidecar what the parent session carries', () => {
+    // The sidecar hangs off the parent's location. Re-deriving it from the subagent file
+    // looks under `agent-<id>/subagents` and drops the spawn records.
+    writeTranscript();
+    writeSubagentRecord(join(subagentsDir(), `agent-${AGENT_ID}.jsonl`));
+    writeFileSync(join(subagentsDir(), `agent-${AGENT_ID}.meta.json`), JSON.stringify(WRITER_META));
+
+    const main = evidence({});
+    const sub = evidence({ agent_id: AGENT_ID });
+
+    expect(JSON.parse(sub?.channels?.sidecar as string)).toEqual([WRITER_META]);
+    expect(sub?.channels).toEqual(main?.channels);
   });
 });
