@@ -71,12 +71,25 @@ Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch` 하나로 정
 않습니다. 패치 하나가 여러 파일을 건드리면 파일마다 IR 원소 하나가 실리고, 그중 하나라도
 차단되면 호출 전체가 차단됩니다.
 
-**승인된 훅도 Code Mode는 덮지 못합니다.** codex-cli 0.154에서 Code Mode `exec` 호출과 그
-JavaScript 안에 중첩된 도구 호출은 `PreToolUse`에 도달하지 않으므로
-([openai/codex#23411](https://github.com/openai/codex/issues/23411)), 그 경로로 이루어진 편집은
-`/hooks`에 훅이 Active로 표시되는 동안에도 판정되지도 기록되지도 않습니다. `init`이 이 사실을
-`note:` 줄로 출력하고, [패키지 레퍼런스](../reference/packages/adapter-codex.ko.md#limits)가
-다른 선언된 한계와 함께 나열합니다.
+**Code Mode의 관측 범위는 CLI 버전에 따라 달라집니다.** 2026-10-13 macOS/zsh에서
+codex-cli **0.162.1**을 측정할 때는 개발 중인 `code_mode`와 `code_mode_only` 옵션을
+명시적으로 켰습니다. 세션 두 개에서 workspace 0.19.0 패키지와 기존에 승인된 훅을 사용해
+중첩 호출 세 개를 측정했습니다. `tools.exec_command`, 일반 파일의 동일 내용
+`tools.apply_patch`, 보호 설정의 동일 내용 `tools.apply_patch`입니다. 셸 호출은 `Bash`
+경로로, 패치는 `apply_patch` 경로로 판정됐습니다. 앞의 두 호출은 판정 행을 남겼고,
+보호 패치는 실행 전에 `PreToolUse`에서 거부돼 `blocked self-mod`로 기록됐습니다.
+
+로컬 **0.156.1** 측정에서도 중첩 셸 호출이 관측되고 보호 패치가 차단됐습니다.
+**0.154.0** 측정에서는 바깥 `exec`와 중첩 호출 모두 관측되지 않았습니다
+([원본 보고와 버전별 후속](https://github.com/huskyhoochu/polydeukes/issues/64)).
+바깥 `exec`는 어댑터의 도구 명부 밖에 있으며, 이후 측정도 바깥 `exec`의 훅 페이로드를
+확인한 것은 아닙니다. [호스트의 훅 문서](https://learn.chatgpt.com/docs/hooks)는 중첩된
+Code Mode 호출에 훅 결정이 적용된다고 설명합니다.
+
+훅을 승인한 뒤 설치된 호스트에서 `.polydeukes/roi.log`의 실제 판정을 확인하세요.
+`/hooks`의 Active 표시만으로 관측 범위를 보장하지 않습니다. `init`은 버전별 관측 범위와
+확인 방법을 `note:` 줄로 안내합니다. [패키지 레퍼런스](../reference/packages/adapter-codex.ko.md#code-mode-coverage)는
+선언된 한계와 함께 측정 결과를 설명합니다.
 
 Codex의 대화 기록 형식은 계속 불안정하므로 해석하지 않습니다. 대신 `UserPromptSubmit`이
 시각을 붙인 사람 메시지를, `PostToolUse`가 완료된 도구 호출을 `.polydeukes/codex-sessions/`

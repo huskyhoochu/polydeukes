@@ -74,12 +74,27 @@ the patch text rather than a path argument. `Edit` and `Write` are matcher alias
 write in the hooks file; they never arrive as the tool name. One patch that touches several
 files carries one IR element per file, and any one of them blocking blocks the whole call.
 
-**An approved hook does not cover Code Mode.** In codex-cli 0.154 a Code Mode `exec` dispatch,
-and the tool calls nested in its JavaScript, do not reach `PreToolUse`
-([openai/codex#23411](https://github.com/openai/codex/issues/23411)), so an edit made that way
-is neither judged nor logged even while `/hooks` shows the hook Active. `init` prints this as a
-`note:` line; the [package reference](../reference/packages/adapter-codex.md#limits)
-lists it with the other declared limits.
+**Code Mode coverage varies by CLI version.** On 2026-10-13, a macOS/zsh measurement of
+codex-cli **0.162.1** explicitly enabled the under-development `code_mode` and `code_mode_only`
+options in two sessions using workspace 0.19.0 packages and existing approved hooks. Three
+nested calls were measured: `tools.exec_command`, an ordinary-file same-content
+`tools.apply_patch`, and a protected-config same-content `tools.apply_patch`. The shell call
+was judged through `Bash` and the patches through `apply_patch`. The first two produced
+judgment rows; the protected patch was rejected by `PreToolUse` before execution and logged
+as `blocked self-mod`.
+
+A local **0.156.1** measurement also observed nested shell calls and blocked a protected
+patch. The **0.154.0** measurement observed neither the outer `exec` dispatch nor its nested
+calls ([original report and version follow-up](https://github.com/huskyhoochu/polydeukes/issues/64)).
+The outer `exec` is outside the adapter's tool roster; the later measurements do not establish
+an outer `exec` hook payload. The [host's hook documentation](https://learn.chatgpt.com/docs/hooks)
+describes hook decisions applying to nested Code Mode calls.
+
+After approving the hook, verify actual judgments in `.polydeukes/roi.log` on your installed
+host. `/hooks` showing Active alone does not establish coverage. `init` prints this
+version-dependent scope and verification advice as a `note:` line; the
+[package reference](../reference/packages/adapter-codex.md#code-mode-coverage) describes the
+measurements alongside the declared limits.
 
 Codex's transcript format remains unstable and is never parsed. Instead, `UserPromptSubmit`
 records timestamped human messages and `PostToolUse` records completed tool calls in an

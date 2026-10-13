@@ -77,19 +77,34 @@ Installing this adapter beside `@polydeukes/adapter-claude-code` or
 No configuration namespace of its own. The scaffold `pdks init` writes protects `.codex/hooks`
 by default, so the registration this installer creates is covered by the config it creates.
 
+<a id="code-mode-coverage"></a>
+## Code Mode coverage by version
+
+Code Mode hook coverage varies by CLI version. On 2026-10-13, a macOS/zsh measurement of
+codex-cli **0.162.1** explicitly enabled the under-development `code_mode` and `code_mode_only`
+options in two sessions using workspace 0.19.0 packages and existing approved hooks. Three
+nested calls were measured: `tools.exec_command`, an ordinary-file same-content
+`tools.apply_patch`, and a protected-config same-content `tools.apply_patch`. The shell call
+was judged through `Bash` and the patches through `apply_patch`. The first two produced
+judgment rows; the protected patch was rejected by `PreToolUse` before execution and logged
+as `blocked self-mod`.
+
+A local **0.156.1** measurement also observed nested shell calls and blocked a protected
+patch. The **0.154.0** measurement observed neither the outer `exec` dispatch nor its nested
+calls ([original report and version follow-up](https://github.com/huskyhoochu/polydeukes/issues/64)).
+The outer `exec` is outside the adapter's tool roster; the later measurements do not establish
+an outer `exec` hook payload. The [host's hook documentation](https://learn.chatgpt.com/docs/hooks)
+describes hook decisions applying to nested Code Mode calls.
+
+After approving the hook, verify actual judgments in `.polydeukes/roi.log` on your installed
+host. `/hooks` showing Active alone does not establish coverage. `pdks-codex init` prints this
+version-dependent scope and verification advice as a `note:` line.
+
 <a id="limits"></a>
 ## Declared limits
 
-The first four are the host's own, and no adapter can narrow them. The first is measured
-rather than documented; the next three are stated in the host's hook documentation.
+The adapter's roster and the host's tool paths set these limits:
 
-- **A Code Mode `exec` dispatch is not observed.** In codex-cli 0.154 the host does not emit
-  `PreToolUse` for a Code Mode `exec` call, nor for the `tools.apply_patch` and
-  `tools.exec_command` calls nested in its JavaScript
-  ([openai/codex#23411](https://github.com/openai/codex/issues/23411),
-  [#38850](https://github.com/openai/codex/issues/38850)). A hook that `/hooks` lists as
-  Active still sees nothing on that surface, and a protected path edited there leaves no
-  telemetry row. `pdks-codex init` prints this as a `note:` line.
 - **The roster, not the matcher, decides what is judged.** The adapter translates
   `apply_patch` and `Bash`; every other name — a Code Mode name, an MCP tool, `write_stdin` —
   is refused with exit 2 and a `blocked` runner row before the judge runs. Widening the

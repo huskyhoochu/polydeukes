@@ -25,13 +25,10 @@ if (args.length === 1 && args[0] === 'init') {
     process.stdout.write(
       'next: run /hooks in Codex and approve the covenant PreToolUse hook — until then it is skipped\n',
     );
-    // Measured 2026-09-17 on codex-cli 0.154.0, not documented by the host: an approved hook
-    // shows Active while that surface fires no event. Only this bin's stdout changes —
-    // `hooks.json` and the delegator keep their bytes, so the host's trust hash holds.
     process.stdout.write(
-      'note: Code Mode exec dispatches, and the tool calls nested in them, do not reach ' +
-        'PreToolUse in codex-cli 0.154 (openai/codex#23411); an approved hook does not ' +
-        'observe that surface\n',
+      'note: Code Mode coverage varies by version; codex-cli 0.162.1 with code_mode and ' +
+        'code_mode_only enabled observed nested exec_command and apply_patch calls; ' +
+        'verify judgments in .polydeukes/roi.log on your installed host\n',
     );
     process.exit(0);
   } catch (error) {

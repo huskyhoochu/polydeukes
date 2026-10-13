@@ -52,17 +52,33 @@ import { runHook } from '@polydeukes/adapter-codex';
 const { exitCode } = runHook({ repoRoot: process.cwd() });
 ```
 
+<a id="code-mode-coverage"></a>
+## Code Mode의 버전별 관측 범위
+
+Code Mode의 훅 관측 범위는 CLI 버전에 따라 달라집니다. 2026-10-13 macOS/zsh에서
+codex-cli **0.162.1**을 측정할 때는 개발 중인 `code_mode`와 `code_mode_only` 옵션을
+명시적으로 켰습니다. 세션 두 개에서 workspace 0.19.0 패키지와 기존에 승인된 훅을 사용해
+중첩 호출 세 개를 측정했습니다. `tools.exec_command`, 일반 파일의 동일 내용
+`tools.apply_patch`, 보호 설정의 동일 내용 `tools.apply_patch`입니다. 셸 호출은 `Bash`
+경로로, 패치는 `apply_patch` 경로로 판정됐습니다. 앞의 두 호출은 판정 행을 남겼고,
+보호 패치는 실행 전에 `PreToolUse`에서 거부돼 `blocked self-mod`로 기록됐습니다.
+
+로컬 **0.156.1** 측정에서도 중첩 셸 호출이 관측되고 보호 패치가 차단됐습니다.
+**0.154.0** 측정에서는 바깥 `exec`와 중첩 호출 모두 관측되지 않았습니다
+([원본 보고와 버전별 후속](https://github.com/huskyhoochu/polydeukes/issues/64)).
+바깥 `exec`는 어댑터의 도구 명부 밖에 있으며, 이후 측정도 바깥 `exec`의 훅 페이로드를
+확인한 것은 아닙니다. [호스트의 훅 문서](https://learn.chatgpt.com/docs/hooks)는 중첩된
+Code Mode 호출에 훅 결정이 적용된다고 설명합니다.
+
+훅을 승인한 뒤 설치된 호스트에서 `.polydeukes/roi.log`의 실제 판정을 확인하세요.
+`/hooks`의 Active 표시만으로 관측 범위를 보장하지 않습니다. `pdks-codex init`은
+버전별 관측 범위와 확인 방법을 `note:` 줄로 안내합니다.
+
 <a id="limits"></a>
 ## 이 표면이 관측하지 못하는 것
 
-첫째는 실제 측정으로 확인한 사항이고 나머지는 호스트 문서가 밝힌 사항입니다. 어떤 어댑터도
-이 범위를 좁힐 수 없습니다.
+어댑터의 명부와 호스트의 도구 경로가 다음 한계를 정합니다.
 
-- Code Mode의 `exec` 호출과 그 JavaScript 안에 중첩된 `tools.apply_patch` · `tools.exec_command`
-  호출은 codex-cli 0.154에서 `PreToolUse`에 도달하지 않습니다
-  ([openai/codex#23411](https://github.com/openai/codex/issues/23411),
-  [#38850](https://github.com/openai/codex/issues/38850)). 승인된 훅이 `/hooks`에 Active로
-  표시되더라도 그 표면은 관측하지 못합니다.
 - 무엇을 판정하는지는 matcher가 아니라 명부가 정합니다. 이 어댑터는 `apply_patch`와 `Bash`만
   번역하고, 그 밖의 이름(Code Mode 이름, MCP 도구, `write_stdin`)은 판정기를 띄우기 전에
   exit 2로 거부합니다. 따라서 `.codex/hooks.json`의 matcher를 그런 이름까지 넓히면 그 아래의

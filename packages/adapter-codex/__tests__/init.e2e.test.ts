@@ -48,11 +48,8 @@ const APPLY_PATCH = 'apply_patch';
 const BASH = 'Bash';
 const FAILURE_PREFIX = 'adapter-codex failed before spawn:';
 const DEFAULT_WITNESS_TOKEN = 'pdks witness';
-/** The Code Mode dispatch name — a tool the host never routes through PreToolUse. */
+/** The Code Mode dispatch name — outside the adapter's tool roster. */
 const EXEC = 'exec';
-/** The fixed notice the installer prints after the /hooks line. */
-const UNOBSERVED_SURFACE_NOTE =
-  'note: Code Mode exec dispatches, and the tool calls nested in them, do not reach PreToolUse in codex-cli 0.154 (openai/codex#23411); an approved hook does not observe that surface';
 
 let projectRoot: string;
 
@@ -220,21 +217,31 @@ describe('pdks-codex init on a real install graph', () => {
     expect(readFileSync(join(projectRoot, JSON_REL), 'utf-8')).toBe(registration);
   });
 
-  it('tells the user, after the /hooks line, that Code Mode exec dispatches do not reach PreToolUse', () => {
-    // An approved hook shows "Active" in /hooks, and the user reads that as coverage of
-    // every edit the agent makes. On codex-cli 0.154 a Code Mode `exec` dispatch, and the
-    // `tools.apply_patch` nested in it, fire no PreToolUse event, so the session surface
-    // never sees them. The line must be the fixed sentence (a paraphrase drifts from the
-    // README's declared limit) and must follow the `next:` line, so the approval step is
-    // read first and the notice is not mistaken for a step to perform.
+  it('reports measured versioned Code Mode coverage and how to verify it after the /hooks line', () => {
+    // Hook approval and measured coverage are separate facts: the notice follows the
+    // approval step and names the measurement conditions and the user's judgment log.
     const first = installIntoFixture();
 
     expect(first.status, first.stderr).toBe(0);
     const lines = first.stdout.split('\n');
     const nextIndex = lines.findIndex((line) => line.startsWith('next: run /hooks'));
-    const noteIndex = lines.indexOf(UNOBSERVED_SURFACE_NOTE);
+    const notes = lines.filter((line) => line.startsWith('note:'));
+    expect(notes).toHaveLength(1);
+    const note = notes[0] ?? '';
+    const noteIndex = lines.indexOf(note);
     expect(nextIndex).toBeGreaterThanOrEqual(0);
     expect(noteIndex).toBeGreaterThan(nextIndex);
+    expect(note).toMatch(/version/i);
+    expect(note).toContain('0.162.1');
+    expect(note).toMatch(/\bcode_mode\b/);
+    expect(note).toMatch(/\bcode_mode_only\b/);
+    expect(note).toMatch(/nested/i);
+    expect(note).toContain('exec_command');
+    expect(note).toContain('apply_patch');
+    expect(note).toMatch(/judg/i);
+    expect(note).toMatch(/verify|check/i);
+    expect(note).toMatch(/installed|your host/i);
+    expect(note).toContain('.polydeukes/roi.log');
   });
 
   it('refuses any argv but `init` with usage on stderr and exit 2', () => {
