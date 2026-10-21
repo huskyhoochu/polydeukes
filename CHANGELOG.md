@@ -11,6 +11,20 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
+## [0.20.0](https://github.com/huskyhoochu/polydeukes/compare/v0.19.1...v0.20.0) (2026-10-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **adapter:** adapter-specific installers and runHook are replaced by pdks adapter init and hook commands. SDKs use the standalone executable protocol. Resolves ISSUE-84c; source report huskyhoochu/polydeukes#84.
+* **sdk:** TS and Rust use an explicit executable or pdks on PATH instead of discovering npm installations. Injected process seams carry bytes. TS CheckCovenantSpawnSpec becomes SpawnSpec.
+
+### Features
+
+* **adapter:** unify host hooks in the standalone pdks executable ([dee9cfd](https://github.com/huskyhoochu/polydeukes/commit/dee9cfdd893a65fd70b51af3da582b93c559ff1f))
+* **sdk-python:** add standalone pdks process client ([edfa095](https://github.com/huskyhoochu/polydeukes/commit/edfa0955251e80a9191253aa91cb466e8d0fc151))
+* **sdk:** align TypeScript and Rust with the standalone process contract ([4fa026b](https://github.com/huskyhoochu/polydeukes/commit/4fa026b5a13c7b9ac7d65fafd9336bd39d94d625))
+
 ## [0.19.1](https://github.com/huskyhoochu/polydeukes/compare/v0.19.0...v0.19.1) (2026-10-13)
 
 
