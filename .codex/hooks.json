@@ -2,11 +2,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|apply_patch",
+        "matcher": "apply_patch|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import { existsSync } from 'node:fs'; import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; let dir = process.cwd(); while (!existsSync(join(dir, '.codex/hooks/covenant-pretooluse.mjs'))) { const parent = dirname(dir); if (parent === dir) throw new Error('Codex covenant hook not found'); dir = parent; } await import(pathToFileURL(join(dir, '.codex/hooks/covenant-pretooluse.mjs')).href);\"",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
             "timeout": 60
           }
         ]
@@ -17,20 +17,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import { existsSync } from 'node:fs'; import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; let dir = process.cwd(); while (!existsSync(join(dir, '.codex/hooks/covenant-pretooluse.mjs'))) { const parent = dirname(dir); if (parent === dir) throw new Error('Codex covenant hook not found'); dir = parent; } await import(pathToFileURL(join(dir, '.codex/hooks/covenant-pretooluse.mjs')).href);\"",
-            "timeout": 60
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 30
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|apply_patch",
+        "matcher": "apply_patch|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import { existsSync } from 'node:fs'; import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; let dir = process.cwd(); while (!existsSync(join(dir, '.codex/hooks/covenant-pretooluse.mjs'))) { const parent = dirname(dir); if (parent === dir) throw new Error('Codex covenant hook not found'); dir = parent; } await import(pathToFileURL(join(dir, '.codex/hooks/covenant-pretooluse.mjs')).href);\"",
-            "timeout": 60
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 30
           }
         ]
       }
@@ -40,8 +40,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import { existsSync } from 'node:fs'; import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; let dir = process.cwd(); while (!existsSync(join(dir, '.codex/hooks/covenant-pretooluse.mjs'))) { const parent = dirname(dir); if (parent === dir) throw new Error('Codex covenant hook not found'); dir = parent; } await import(pathToFileURL(join(dir, '.codex/hooks/covenant-pretooluse.mjs')).href);\"",
-            "timeout": 3
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 5
           }
         ]
       }

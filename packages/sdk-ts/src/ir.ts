@@ -62,6 +62,10 @@ export interface ToolCall {
     [k: string]: unknown;
   };
   fileChange?: FileChange;
+  /**
+   * Project-relative shell working directory; absence means the project root.
+   */
+  cwd?: string;
 }
 /**
  * One subagent spawn; `kind` is the subagent name the adapter fills in.

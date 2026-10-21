@@ -2,9 +2,9 @@
 
 **English** · [한국어](./first-judgment.ko.md)
 
-Use an empty example project to install Polydeukes and check a protected write without changing
-the protected file. You need Node.js 24 or later, pnpm, and git. Claude Code is needed to observe
-live session calls, but not to run the hook probe below.
+Use an empty example project to check protected and ordinary writes. Place the installed single
+`pdks` executable on PATH. No separate Node or npm is required. Claude Code is needed for live
+session observations, but not for the direct probes below.
 
 <a id="claude-code"></a>
 
@@ -16,22 +16,16 @@ Run these commands in your own terminal, outside an existing protected project:
 mkdir pdks-example
 cd pdks-example
 git init
-printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-claude-code   # project dependencies, not a one-off npx run
-pnpm exec pdks-claude-code init
+pdks adapter claude-code init
 ```
 
-The installer reports `created` or `skipped` for each artifact. It creates a starter config,
-the hook delegator (`.claude/hooks/covenant-pretooluse.mjs`), the Claude Code registration
-(`.claude/settings.json`), a documentation discovery file (`.claude/rules/polydeukes.md`), the
-`discipline-draft` skill, and a telemetry ignore entry. Existing user files are preserved;
-settings are merged rather than replaced.
-
-Now send the generated hook an observation of a proposed write to its settings file:
+The installer creates starter configuration, `.claude/settings.json` registrations, documentation
+discovery, the `discipline-draft` skill, and a telemetry ignore entry. Existing settings and other
+handlers are preserved. Send an observation of a proposed settings write:
 
 ```sh
-printf '%s\n' '{"tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
-  | node .claude/hooks/covenant-pretooluse.mjs
+printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
+  | pdks adapter claude-code hook --project-root "$PWD"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
@@ -43,8 +37,8 @@ settings file stays unchanged and there is no destructive edit to undo.
 Repeat with a path outside the protection list:
 
 ```sh
-printf '%s\n' '{"tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
-  | node .claude/hooks/covenant-pretooluse.mjs
+printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
+  | pdks adapter claude-code hook --project-root "$PWD"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```

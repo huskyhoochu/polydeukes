@@ -50,7 +50,10 @@
   },
   "dependencies": {
     "@polydeukes/core": "workspace:^",
-    "yaml": "catalog:"
+    "yaml": "catalog:",
+    "@polydeukes/adapter-claude-code": "workspace:^",
+    "@polydeukes/adapter-codex": "workspace:^",
+    "@polydeukes/adapter-grok": "workspace:^"
   },
   "devDependencies": {
     "@polydeukes/memory": "workspace:^",

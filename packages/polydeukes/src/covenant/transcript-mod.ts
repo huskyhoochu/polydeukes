@@ -10,6 +10,7 @@
  * tool axis judges proven `fileChange` targets and falls back to the `args` traversal.
  */
 
+import { posix } from 'node:path';
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.ts';
 import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.ts';
@@ -29,6 +30,7 @@ import {
   matchesReadOnlyEntry,
   usesDefaultReadOnlyCommands,
 } from './shell-mod.ts';
+import { shellPath } from './shell-path.ts';
 
 /**
  * `TranscriptModificationSpec` — the injected axes of the judge. Empty-string entries in
@@ -37,6 +39,8 @@ import {
 export type TranscriptModificationSpec = {
   /** the one file this covenant owns */
   transcriptPath: string;
+  /** Project root used to resolve a call's relative shell working directory. */
+  rootDir?: string;
   /** directory whose spellings are closed; absent or malformed leaves them open */
   home?: string;
   shellToolNames: string[];
@@ -60,6 +64,7 @@ type ResolvedTranscript = {
   homeSegments: string[];
   /** The canonical absolute path: the only spelling a break reason or a match ever reports. */
   path: string;
+  cwd?: string;
   readOnlyEntries: string[][];
   conditionalReadersEnabled: boolean;
 };
@@ -116,7 +121,7 @@ function namesTranscript(candidate: string, transcript: ResolvedTranscript): boo
   const expanded =
     head !== undefined && transcript.homePrefixes.includes(head)
       ? [...transcript.homeSegments, ...segments.slice(1)]
-      : segments;
+      : pathSegments(shellPath(candidate, transcript.cwd));
   return segmentsEqual(resolveDotSegments(expanded), transcript.target);
 }
 
@@ -269,7 +274,8 @@ export function judgeTranscriptModification(
 
   for (const call of input.toolCalls) {
     if (shellToolNames.includes(call.name)) {
-      const reason = judgeShellCall(call, commandArgNames, transcript);
+      const cwd = spec.rootDir === undefined ? call.cwd : posix.join(spec.rootDir, call.cwd ?? '.');
+      const reason = judgeShellCall(call, commandArgNames, { ...transcript, cwd });
       if (reason !== null) return { upheld: false, reason };
       continue;
     }
@@ -285,6 +291,8 @@ export function judgeTranscriptModification(
 /** `TranscriptModRegistrationSpec` — the assembly values baked into the registration. */
 export type TranscriptModRegistrationSpec = {
   transcriptPath: string;
+  /** Project root used to resolve a call's relative shell working directory. */
+  rootDir?: string;
   home?: string;
   shellTools: string[];
   commandArgs: string[];
@@ -307,6 +315,7 @@ export function transcriptModRegistration(
 ): MetaCovenantRegistration {
   const judgeSpec: TranscriptModificationSpec = {
     transcriptPath: spec.transcriptPath,
+    rootDir: spec.rootDir,
     home: spec.home,
     shellToolNames: spec.shellTools,
     commandArgNames: spec.commandArgs,
@@ -329,8 +338,29 @@ export function transcriptModRegistration(
   return {
     label: 'transcript-mod',
     protectedPaths: [],
-    matches: (input) =>
-      judgeTranscriptModification(input, judgeSpec).upheld ? null : spec.transcriptPath,
+    matches: (input) => {
+      if (!judgeTranscriptModification(input, judgeSpec).upheld) return spec.transcriptPath;
+      const transcript = resolveTranscript(judgeSpec);
+      if (transcript === null) return null;
+      for (const call of input.toolCalls) {
+        if (!spec.shellTools.includes(call.name) || call.cwd === undefined) continue;
+        const cwd = spec.rootDir === undefined ? call.cwd : posix.join(spec.rootDir, call.cwd);
+        for (const arg of spec.commandArgs) {
+          const line = call.args?.[arg];
+          if (typeof line !== 'string') continue;
+          const { commands } = tokenizeCommandLine(line);
+          if (
+            commands.some((command) =>
+              [...command.words, ...command.redirects.map((redirect) => redirect.target)].some(
+                (token) => tokenNamesTranscript(token.text, { ...transcript, cwd }),
+              ),
+            )
+          )
+            return spec.transcriptPath;
+        }
+      }
+      return null;
+    },
     body: async (input) => {
       try {
         return outcomeFromVerdict(judgeTranscriptModification(input, judgeSpec));

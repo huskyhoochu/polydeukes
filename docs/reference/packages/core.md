@@ -50,9 +50,14 @@ IR cannot — message freshness and call outcome. `transcriptFromSession` wraps 
 the transcript a witness or a precedent consumer reads, the way `transcriptFromInput` wraps
 the bare IR without those two facts.
 
+`toolCalls[].cwd` supplies the project-relative working directory for shell paths. It defaults
+to the project root when absent. Command text stays unchanged, and `fileChange.path` always
+remains relative to the project root. Routing, shell protection, transcript protection, and
+shell-derived declaration evidence share this path context.
+
 ```ts
 type CovenantInput = {
-  toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
+  toolCalls: { name: string; args?: Record<string, unknown>; cwd?: string; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
   actor?: { agentType?: string };

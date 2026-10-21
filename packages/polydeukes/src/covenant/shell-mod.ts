@@ -12,10 +12,15 @@
 
 import type { CovenantInput, CovenantVerdict } from '@polydeukes/core';
 import { isNestedShellCommand, type SimpleCommand, tokenizeCommandLine } from './bash-line.ts';
-import type { CovenantRegistration, MetaCovenantRegistration } from './dispatch.ts';
-import { mentionsPath, untokenizableLineCandidates } from './mention.ts';
+import {
+  type CovenantRegistration,
+  type MetaCovenantRegistration,
+  matchRegistrations,
+} from './dispatch.ts';
+import { untokenizableLineCandidates } from './mention.ts';
 import { commandBasename, redirectWriteRule, sedInPlaceRule, teeRule } from './mutation-rules.ts';
 import { outcomeFromVerdict, UNJUDGEABLE_OUTCOME } from './run-covenant.ts';
+import { mentionsShellPath, shellWordCwd } from './shell-path.ts';
 
 /**
  * `ShellModificationSpec` — the injected axes of the judge.
@@ -157,11 +162,12 @@ function judgeCommand(
   readOnlyEntries: string[][],
   conditionalReadersEnabled: boolean,
   lineFullyRead: boolean,
+  cwd?: string,
 ): string | null {
   // (a) Precise rules: a detected mutation whose target carries a protected path breaks.
   for (const rule of MUTATION_RULES) {
     for (const target of rule.detect(command)) {
-      const hit = protectedPaths.find((path) => mentionsPath(target.path, path));
+      const hit = protectedPaths.find((path) => mentionsShellPath(target.path, path, cwd));
       if (hit !== undefined) return `${target.rule} targets protected path ${hit}`;
     }
   }
@@ -171,8 +177,14 @@ function judgeCommand(
   const tokens = [...command.words, ...command.redirects.map((redirect) => redirect.target)];
   let mentioned: string | undefined;
   let mentionIsOpaque = false;
-  for (const token of tokens) {
-    const hit = protectedPaths.find((path) => mentionsPath(token.text, path));
+  for (const [index, token] of tokens.entries()) {
+    const hit = protectedPaths.find((path) =>
+      mentionsShellPath(
+        token.text,
+        path,
+        index < command.words.length ? shellWordCwd(command, index, cwd) : cwd,
+      ),
+    );
     if (hit === undefined) continue;
     mentioned ??= hit;
     if (token.opaque) mentionIsOpaque = true;
@@ -259,7 +271,7 @@ export function judgeShellModification(
       for (const span of unread) {
         const candidates = untokenizableLineCandidates(span.text.replace(/['"\\]/g, ''));
         const hit = protectedPaths.find((path) =>
-          candidates.some((candidate) => mentionsPath(candidate, path)),
+          candidates.some((candidate) => mentionsShellPath(candidate, path, call.cwd)),
         );
         if (hit !== undefined) {
           return {
@@ -275,6 +287,7 @@ export function judgeShellModification(
           readOnlyEntries,
           conditionalReadersEnabled,
           unread.length === 0,
+          call.cwd,
         );
         if (reason !== null) return { upheld: false, reason };
       }
@@ -321,6 +334,66 @@ export function shellModRegistration(spec: ShellModRegistrationSpec): MetaCovena
   return {
     label: 'shell-mod',
     protectedPaths: spec.protectedPaths,
+    matches: (input) => {
+      const legacy = matchRegistrations(
+        {
+          ...input,
+          toolCalls: input.toolCalls.filter(
+            (call) => !spec.shellTools.includes(call.name) || call.cwd === undefined,
+          ),
+        },
+        [
+          {
+            label: 'shell-mod',
+            protectedPaths: spec.protectedPaths,
+            body: async () => UNJUDGEABLE_OUTCOME,
+          },
+        ],
+      )[0];
+      if (legacy !== undefined) return legacy.mentionedPath;
+      for (const path of spec.protectedPaths.filter((entry) => entry !== '')) {
+        for (const call of input.toolCalls) {
+          if (!spec.shellTools.includes(call.name)) continue;
+          for (const arg of spec.commandArgs ?? []) {
+            const line = call.args?.[arg];
+            if (typeof line !== 'string') continue;
+            const { commands, unread } = tokenizeCommandLine(line);
+            if (
+              unread.some((span) =>
+                untokenizableLineCandidates(span.text.replace(/['"\\]/g, '')).some((candidate) =>
+                  mentionsShellPath(candidate, path, call.cwd),
+                ),
+              )
+            )
+              return path;
+            for (const command of commands) {
+              if (
+                MUTATION_RULES.some((rule) =>
+                  rule
+                    .detect(command)
+                    .some((target) => mentionsShellPath(target.path, path, call.cwd)),
+                )
+              )
+                return path;
+              if (
+                [...command.words, ...command.redirects.map((redirect) => redirect.target)].some(
+                  (token, index) =>
+                    mentionsShellPath(
+                      token.text,
+                      path,
+                      index < command.words.length
+                        ? shellWordCwd(command, index, call.cwd)
+                        : call.cwd,
+                    ),
+                )
+              )
+                return path;
+            }
+          }
+        }
+      }
+      return null;
+    },
     body: async (input) => {
       if (
         judgeSpec.protectedPaths.filter((path) => path !== '').length === 0 ||

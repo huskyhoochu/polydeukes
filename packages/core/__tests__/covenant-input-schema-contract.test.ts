@@ -387,3 +387,24 @@ describe('covenant-input schema export', () => {
     );
   });
 });
+
+describe('tool-call working-directory wire contract', () => {
+  it.each(['.', 'nested'])('accepts optional string cwd %s in both parser and schema', (cwd) => {
+    // A closed schema must admit the same neutral context the runtime consumes.
+    const call = {
+      name: SHELL_TOOL,
+      args: { [COMMAND_ARG]: 'echo text' },
+      cwd,
+    };
+    const input = { ...MINIMAL, toolCalls: [call] };
+    expect(parserAccepts(input)).toBe(true);
+    expect(schemaAccepts(input)).toBe(true);
+  });
+
+  it.each([null, 7])('refuses consumed cwd of the wrong type: %s', (cwd) => {
+    // A non-string context must not be silently judged against the root instead.
+    const input = { ...MINIMAL, toolCalls: [{ name: SHELL_TOOL, cwd }] };
+    expect(parserAccepts(input)).toBe(false);
+    expect(schemaAccepts(input)).toBe(false);
+  });
+});

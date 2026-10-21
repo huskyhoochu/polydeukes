@@ -46,7 +46,9 @@ jobs:
           command -v cargo >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - run: cargo test --manifest-path packages/sdk-rust/Cargo.toml
+      # Script-fixture creation must not overlap another test's fork on Linux: an inherited
+      # writable descriptor can make exec return ETXTBSY before the deadline is exercised.
+      - run: cargo test --manifest-path packages/sdk-rust/Cargo.toml -- --test-threads=1
 
       - uses: https://github.com/astral-sh/setup-uv@v10.3.0
         with:
@@ -54,6 +56,9 @@ jobs:
 
       - name: Build the Linux executable for Python consumers
         run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/pdks-linux-x64"
+
+      - name: Verify standalone adapter registration and judgments
+        run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
 
       - run: uv sync --project packages/sdk-python --locked --python 3.14
 

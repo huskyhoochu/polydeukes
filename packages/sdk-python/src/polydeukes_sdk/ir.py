@@ -65,6 +65,7 @@ class ToolCall(TypedDict):
     name: str
     args: NotRequired[dict[str, Any]]
     fileChange: NotRequired[FileChange]
+    cwd: NotRequired[str]
 
 
 class Session(TypedDict):

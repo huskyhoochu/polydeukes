@@ -2,82 +2,62 @@
 
 **English** · [한국어](adapter-grok.ko.md)
 
-> **The Grok install unit** — PreToolUse payloads become the covenant input IR, with the
-> file-change evidence the judge reads, and the package installs the session surface into a
-> project.
->
-> Beta. Install it next to `polydeukes`, which it names as a `peerDependency`.
-
 <a id="ownership"></a>
-## What this package owns
+## Ownership
 
-The boundary where Grok's vocabulary is translated away. Agent and tool literals live *here*
-by design, so that they never reach the core.
+This module translates host events and tool names into the common covenant input IR. All three
+adapters expose the same three functions.
 
-| Unit | What it does |
+| Function | Input and result |
 |---|---|
-| `pdks-grok` bin | One subcommand, `pdks-grok init`, which registers the session surface in a project |
-| `runHook` | Translates one PreToolUse payload into the input IR and spawns the judge |
-| Payload up-translation | A raw PreToolUse payload becomes a `CovenantInput` |
-| Virtual post-state | Computes what a file *would* contain after a write or substitution applies, without touching disk |
-| File-change evidence | Pairs the disk pre-state with the virtual post-state into union evidence |
+| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable` |
+| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr |
 
-`runHook({ repoRoot })` is what the generated hook delegator imports. It builds the IR — the
-`tools` roster included, with no `session` or `actor` key — then spawns
-`pdks covenant check --enforce block` in `repoRoot` and returns the child's exit code. The
-judging happens in that child process; this package carries no judgment logic.
+The common `pdks` runtime reads stdin and sends IR to `covenant check --enforce block` through the
+current executable. Stdin EOF and child communication each have a 10-second deadline. Registered
+host deadlines are 60 seconds for PreToolUse, 30 for prompt/post events, and 5 for session end.
 
-**This package writes no telemetry rows.** A failure before the spawn is sent to `pdks` on
-stdin as a plain line, and `pdks` records the fail-closed row, so one call still leaves one
-row. It never imports the judge: `polydeukes` and `@polydeukes/core` are both
-`peerDependencies`, so the vocabulary and the judge are shared rather than installed a second
-time here.
+Untranslatable, truncated, or invalid UTF-8 input reaches `--input-failure`. The shared judge
+reports the cause once and writes one `blocked covenant-check` row. Child launch failures, signals,
+unexpected statuses, and deadlines also refuse the call; a failure before the judge starts can leave
+no telemetry row.
 
-The roster this adapter puts on the IR is Grok-native: `write` and `search_replace` mutate a
-file; `run_terminal_command` carries a shell line.
+The adapter translates Grok’s `write`, `search_replace`, and `run_terminal_command` tools and
+camelCase event fields, accepting snake_case aliases. It supplies file pre/post states and shell
+commands; it currently supplies no session history, human provenance, or actor. Receiving lifecycle
+events does not establish a history channel. Perform changes requiring the witness valve from your
+own terminal.
 
 <a id="consumer-contract"></a>
-## Where the consumer touches it
-
-Two lines install the Grok session surface, run from the project root:
+## Connection and migration
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
-npx pdks-grok init
+pdks adapter grok init
 ```
 
-`pdks-grok init` resolves `polydeukes` from the project, spawns `pdks init` for the
-agent-neutral scaffold, then writes the two Grok artifacts non-destructively. A re-run
-reports each existing artifact as skipped and overwrites nothing. The full artifact list is in
-[`pdks init`](../cli/init.md#init-grok).
+Run from the project root. The single executable includes all three adapters and requires no
+separate Node or npm installation. Registration pins absolute paths to the current executable and
+project root. Rerun from the new location after moving either.
 
-Installing both this adapter and `@polydeukes/adapter-claude-code` in one project can run the
-judge twice per call.
+The installer updates its own registrations while preserving other handlers and owner settings. It
+removes an old generated `.mjs` only when its contents match the original and preserves modified
+files. Existing configuration is retained; compare the reported required protected paths with
+`protectedPaths`.
 
-- **The generated hook** imports `runHook` from this package. Upgrading the package upgrades
-  what runs; the hook file itself never changes.
-
-No configuration namespace of its own.
+Grok responds with stdout JSON containing `decision: allow|deny`; Claude and Codex use empty stdout
+and exit 0 or 2. Observe-only lifecycle events exit 0 without a tool-decision JSON document.
 
 <a id="limits"></a>
 ## Declared limits
 
-- **A child process's writes are outside observation.** This surface judges *declared tool
-  calls*. A command that spawns a process which then writes files is judged on the command,
-  not on what the child did.
-- **Evidence exists only where a post-state can be computed.** `write` and `search_replace`
-  contribute one. A substitution that matches nothing, or that matches more than once without
-  `replace_all`, yields no evidence — the host tool refuses those calls.
-- **An evidence-free call falls back to the conservative judgment** — the call's arguments
-  are compared for a mention rather than a proven target.
-- **There is no transcript channel.** The IR omits `session` and `actor`. Grok's ACP history
-  does not supply the human-message evidence the session witness valve needs. For an
-  intentional blocked edit, use your own terminal.
-- **An unresolvable `polydeukes` leaves no row.** When the umbrella cannot be resolved from the
-  project there is no process to spawn and no log path to write to, so the hook exits `2` with
-  one line on stderr and the telemetry log gains nothing. Every other pre-spawn failure does
-  reach `pdks` and does leave a row.
-- **Other hosts install through their own adapters.** Claude Code through
-  `@polydeukes/adapter-claude-code`, Codex through `@polydeukes/adapter-codex`. Each package
-  writes its own delegator and roster. Installing more than one session adapter in a project
-  can run the judge more than once per call.
+The hook judges tool calls delivered by the host. It does not separately observe each file write
+performed by a child process. Missing evidence follows the declaration’s supply policy; missing
+history is not invented to produce `passed`. If the host has not trusted the hook or has disabled
+it, this judgment path does not start.
+
+When Claude and Grok are registered together, the Claude compatibility callback is skipped when
+`GROK_WORKSPACE_ROOT` is present; Grok’s own registration owns that judgment. Grok still needs its
+own `init`. Global host settings are unchanged.
+
+[Installation reference](../cli/init.md#init-grok)

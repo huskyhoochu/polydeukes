@@ -10,94 +10,46 @@
 <a id="claude-code"></a>
 ## Claude Code 세션 표면
 
-Claude Code에서 AI 파트너와 함께 개발할 때 씁니다.
+```sh
+pdks adapter claude-code init
+```
 
-1. 세 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes
-   @polydeukes/core @polydeukes/adapter-claude-code`. 일회성 `npx` 실행만으로는 부족합니다. 두 표면 모두
-   프로젝트에 설치된 패키지에서 판정기를 불러옵니다.
-2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-claude-code init`. 이 실행 파일은 어댑터가
-   제공하며, 먼저 `pdks init`으로 초기 파일을 만든 뒤 Claude Code 등록 산출물을 씁니다.
-3. 생성된 훅, 병합된 설정, 초기 설정 파일, 문서 안내와 `discipline-draft` 스킬을 확인합니다.
-4. 훅이 바뀌면 프로젝트를 다시 엽니다. 생성된 훅은 패키지에 판정을 위임하므로 패키지를
-   갱신할 때 훅 파일까지 다시 쓸 필요는 없습니다.
+설치한 단일 실행 파일을 프로젝트 루트에서 실행합니다. 별도 Node·npm·어댑터 설치가 필요하지 않습니다. 현재 실행 파일과 프로젝트 루트의 절대 경로를 등록하며 다른
+handler와 설정을 보존합니다. 위치가 바뀌면 다시 실행하세요.
 
-설치기는 `.claude/settings.json`을 덮어쓰지 않고 병합합니다. 기존 훅과 권한은 보존합니다.
-`.claude/rules/polydeukes.md`에는 웹 검색 대신 설치된 `pdks docs`를 조회하도록 안내하고,
-`.claude/skills/discipline-draft/SKILL.md`에는 문제를 선언이나 초안으로 등록하는 절차를
-제공합니다.
+프로젝트를 다시 열고 실제 호출의 telemetry를 확인하세요. `origin.kind: human`으로 확인한 사람 메시지만 증인(witness) 밸브에 쓰입니다.
+
+[등록 상세](../reference/cli/init.ko.md#init-claude-code)
 
 <a id="grok"></a>
 ## Grok 세션 표면
 
-Grok에서 개발할 때 씁니다.
+```sh
+pdks adapter grok init
+```
 
-1. 세 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-grok`.
-2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-grok init`. 어댑터가 이 실행 파일을
-   제공합니다. 먼저 `pdks init`으로 초기 파일을 만든 뒤 Grok 등록 산출물을 씁니다.
-3. 설치가 끝나면 Hooks 탭을 다시 불러오거나 새 세션을 엽니다.
+설치한 단일 실행 파일을 프로젝트 루트에서 실행합니다. 별도 Node·npm·어댑터 설치가 필요하지 않습니다. 현재 실행 파일과 프로젝트 루트의 절대 경로를 등록하며 다른
+handler와 설정을 보존합니다. 위치가 바뀌면 다시 실행하세요.
 
-Grok 프로젝트에는 `.grok/hooks/` 아래에 훅 JSON과 위임자가 생깁니다. 새 등록의 제한 시간은
-60초입니다. Grok 호스트의 기본값은 5초이며, 훅 실행이 시간 초과로 끝나면 해당 호출을
-차단하지 않습니다(fail-open). 세션 어댑터를 한 프로젝트에 둘 이상 설치하면 호출마다
-판정기가 두 번 실행될 수 있습니다.
+프로젝트 신뢰를 승인하고 Hooks 탭을 다시 불러오세요. Grok 자체 등록이 필요합니다. `GROK_WORKSPACE_ROOT`가 있는 Grok 실행에서는 Claude 호환
+callback을 건너뛰어 중복 판정을 피합니다. 현재 세션 기록·사람 출처가 없어 증인 밸브를 열 수 없으므로 보호 변경은 사용자 터미널에서 수행하세요.
 
-Grok는 세션 증인(witness) 밸브에 필요한 Claude 형식의 인간 메시지를 공급하지 않습니다. 대화
-기록은 Claude JSONL이 아니라 ACP `updates.jsonl`입니다.
-의도한 편집이 차단되면 자신의 터미널에서 수행하세요. 변경 집합 표면에는 증인 프롬프트가 없으므로
-차단된 Grok 도구 호출을 커밋 쪽에서 허용할 방법도 없습니다.
+[등록 상세](../reference/cli/init.ko.md#init-grok)
 
 <a id="codex"></a>
 ## Codex 세션 표면
 
-Codex에서 개발할 때 씁니다.
+```sh
+pdks adapter codex init
+```
 
-1. 세 패키지를 프로젝트 의존성으로 설치합니다. `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-codex`.
-2. 프로젝트 루트에서 배선합니다. `pnpm exec pdks-codex init`. 어댑터가 이 실행 파일을
-   제공합니다. 먼저 `pdks init`으로 초기 파일을 만든 뒤 Codex 등록 산출물을 씁니다.
-3. Codex에서 `/hooks`로 생성된 훅을 승인합니다. 승인하기 전까지는 훅을 건너뜁니다.
+설치한 단일 실행 파일을 프로젝트 루트에서 실행합니다. 별도 Node·npm·어댑터 설치가 필요하지 않습니다. 현재 실행 파일과 프로젝트 루트의 절대 경로를 등록하며 다른
+handler와 설정을 보존합니다. 위치가 바뀌면 다시 실행하세요.
 
-Codex 프로젝트에는 `.codex/hooks/covenant-pretooluse.mjs` 위임자와 `.codex/hooks.json`의
-`PreToolUse`, `UserPromptSubmit`, `PostToolUse`, `SessionEnd` 항목이 생깁니다. 이 JSON은
-덮어쓰지 않고 병합합니다. 사용자 항목, 같은 항목의 다른 handler, 다른 이벤트, 설치기가 모르는
-키는 그대로 둡니다. 초기 설정은 기본적으로 `.codex/hooks`를 보호합니다.
+`/hooks`에서 정의를 승인하세요. Code Mode 관측은 버전에 따라 달라지므로 실제 중첩 호출로 확인합니다. 대화 기록 파일은 읽지 않으며 현재 prompt는 사람 출처를
+증명하지 않습니다. 보호 변경은 사용자 터미널에서 수행하세요.
 
-**승인은 선택이 아닙니다.** Codex는 훅 정의의 해시로 신뢰를 기록하므로, 새로 쓴 훅은 검토
-대상으로 표시되고 누군가 승인하기 전까지 건너뛰어집니다. 그때까지는 아무것도 판정되지
-않습니다. `init`은 실행할 때마다 바이트가 같은 명령 문자열을 쓰므로, 다시 설치해도 이미 받은
-승인이 무효가 되지 않습니다.
-
-Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch` 하나로 정규화하고, 경로 인자가 아니라 패치 텍스트를
-보냅니다. `Edit`과 `Write`는 훅 파일에 적을 수 있는 matcher 별칭이며 도구 이름으로 도착하지
-않습니다. 패치 하나가 여러 파일을 건드리면 파일마다 IR 원소 하나가 실리고, 그중 하나라도
-차단되면 호출 전체가 차단됩니다.
-
-**Code Mode의 관측 범위는 CLI 버전에 따라 달라집니다.** 2026-10-13 macOS/zsh에서
-codex-cli **0.162.1**을 측정할 때는 개발 중인 `code_mode`와 `code_mode_only` 옵션을
-명시적으로 켰습니다. 세션 두 개에서 workspace 0.19.0 패키지와 기존에 승인된 훅을 사용해
-중첩 호출 세 개를 측정했습니다. `tools.exec_command`, 일반 파일의 동일 내용
-`tools.apply_patch`, 보호 설정의 동일 내용 `tools.apply_patch`입니다. 셸 호출은 `Bash`
-경로로, 패치는 `apply_patch` 경로로 판정됐습니다. 앞의 두 호출은 판정 행을 남겼고,
-보호 패치는 실행 전에 `PreToolUse`에서 거부돼 `blocked self-mod`로 기록됐습니다.
-
-로컬 **0.156.1** 측정에서도 중첩 셸 호출이 관측되고 보호 패치가 차단됐습니다.
-**0.154.0** 측정에서는 바깥 `exec`와 중첩 호출 모두 관측되지 않았습니다
-([원본 보고와 버전별 후속](https://github.com/huskyhoochu/polydeukes/issues/64)).
-바깥 `exec`는 어댑터의 도구 명부 밖에 있으며, 이후 측정도 바깥 `exec`의 훅 페이로드를
-확인한 것은 아닙니다. [호스트의 훅 문서](https://learn.chatgpt.com/docs/hooks)는 중첩된
-Code Mode 호출에 훅 결정이 적용된다고 설명합니다.
-
-훅을 승인한 뒤 설치된 호스트에서 `.polydeukes/roi.log`의 실제 판정을 확인하세요.
-`/hooks`의 Active 표시만으로 관측 범위를 보장하지 않습니다. `init`은 버전별 관측 범위와
-확인 방법을 `note:` 줄로 안내합니다. [패키지 레퍼런스](../reference/packages/adapter-codex.ko.md#code-mode-coverage)는
-선언된 한계와 함께 측정 결과를 설명합니다.
-
-Codex의 대화 기록 형식은 계속 불안정하므로 해석하지 않습니다. 대신 `UserPromptSubmit`이
-시각을 붙인 사람 메시지를, `PostToolUse`가 완료된 도구 호출을 `.polydeukes/codex-sessions/`
-아래의 어댑터 소유 파일에 기록하고 `SessionEnd`가 지웁니다. 의도한 차단을 풀려면 설정된 증인
-토큰을 첫 줄에 단독으로 보낸 뒤 호출을 다시 시도합니다. 복구 메시지가
-`UserPromptSubmit` 증거가 없다고 알리면 재시도가 증인 밸브에 닿지 못하므로 자신의 터미널을
-사용합니다. 세션 어댑터를 한 프로젝트에 둘 이상 설치하면 호출마다 판정기가 두 번 실행될 수
-있습니다.
+[등록 상세](../reference/cli/init.ko.md#init-codex)
 
 <a id="change-set-surface"></a>
 ## 변경 집합 표면
@@ -106,7 +58,7 @@ Codex의 대화 기록 형식은 계속 불안정하므로 해석하지 않습�
 
 1. 프로젝트 루트에 `polydeukes.config.yaml`을 만듭니다.
 2. pre-commit 훅을 추가합니다.
-3. 필요할 때는 `git diff HEAD | pnpm exec pdks covenant check --diff`를 직접 돌려 같은
+3. 필요할 때는 `git diff HEAD | pdks covenant check --diff`를 직접 돌려 같은
    판정을 봅니다.
 
 lefthook 예시는 다음과 같습니다. `git diff`의 플래그는 판정기가 받는 것을 고정합니다. 색 코드
@@ -118,21 +70,21 @@ pre-commit:
   commands:
     covenant:
       priority: 1
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 husky 예시는 다음과 같습니다.
 
 ```sh
 # .husky/pre-commit
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 일반 git 훅으로 연결해도 됩니다.
 
 ```sh
 #!/bin/sh
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 일반 훅은 `.git/hooks/pre-commit`으로 저장한 뒤 `chmod +x .git/hooks/pre-commit`으로
@@ -149,20 +101,13 @@ husky 설치기로 `.husky/pre-commit`을 저장하세요.
 언제나 종료 코드 2입니다.
 
 <a id="witness-and-recovery"></a>
-## 증인과 회복
+## 증인과 복구
 
-증인 토큰은 두 표면에서 같은 뜻이지만 전달 방식은 다릅니다.
+사람 출처를 증명하는 Claude 세션에서는 설정된 토큰을 메시지 첫 줄에 단독으로 보낸 뒤 의도한 변경을 재시도할 수 있습니다. 증인 밸브는 차단 결과 뒤에 확인하며 TTL
+안에서만 적용됩니다. 현재 Codex·Grok prompt는 이 출처를 증명하지 못하므로 사용자 터미널에서 보호 변경을 수행하세요. 변경 집합 표면에는 증인 프롬프트가 없으며 훅이
+exit code에 따라 커밋을 처리합니다.
 
-- 세션 표면에서는 대화 메시지 첫 줄에 토큰만 단독으로 넣습니다.
-- 변경 집합 표면에는 프롬프트가 없습니다. 판정은 종료 코드로 전달되고, 그것으로 무엇을 할지는
-  훅 배선이 정합니다.
-
-밸브는 판정 결과가 차단일 때 확인합니다. 의도한 편집 전에 토큰을 입력해도 되며, 먼저
-실패하는 요청을 보낼 필요는 없습니다. 정상 판정은 바꾸지 않고, 현재 Grok 대화 기록
-형식에서는 세션 밸브를 사용할 수 없습니다.
-
-Grok가 훅을 아직 읽지 못했다면 Hooks 탭을 다시 불러오거나 새 세션을 여세요. 판정기를 적재할 수 없다면 패키지를 다시 설치하거나 워크스페이스를 다시 빌드한 뒤
-시도하세요.
+실행 파일 부재·신뢰 미승인·비활성 훅은 증인으로 복구하지 못합니다. 경로와 호스트 승인을 고친 뒤 실제 호출·telemetry를 다시 확인하세요.
 
 <a id="what-to-check"></a>
 ## 배선한 뒤 확인할 것

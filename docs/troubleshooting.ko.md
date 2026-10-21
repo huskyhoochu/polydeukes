@@ -11,8 +11,8 @@
 
 프로젝트 루트 바로 아래에 `polydeukes.config.yaml`, `polydeukes.config.yml`,
 `polydeukes.config.json` 중 하나도 없으면 설정이 필요한 명령은 종료 코드 2를 반환합니다.
-Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks-claude-code init`,
-`pdks-grok init`, `pdks-codex init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다.
+Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks adapter claude-code init`,
+`pdks adapter grok init`, `pdks adapter codex init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다.
 설정이 없다고 기본 정책으로 대신 실행하지는 않습니다.
 
 <a id="multiple-config"></a>
@@ -48,33 +48,21 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 
 훅을 아직 읽지 않은 문제와 증인(witness) 밸브를 사용할 수 없는 문제는 구별해야 합니다.
 
-- `pdks-grok init` 실행 뒤 Hooks 탭을 다시 불러오거나 새 세션을 시작하세요. 실제 도구를
+- `pdks adapter grok init` 실행 뒤 Hooks 탭을 다시 불러오거나 새 세션을 시작하세요. 실제 도구를
   호출하고 텔레메트리를 확인합니다. 설치기가 성공했다고 해서 열린 세션에 훅이 적용됐다는
   뜻은 아닙니다.
 - Grok의 ACP 대화 기록에는 현재 세션 증인 밸브가 요구하는 Claude 형식의 인간 메시지가
   없습니다. 다시 불러와도 이 기능이 생기지는 않습니다. 복구가 필요하면 Grok에 Claude용
   증인 토큰을 보내려 하지 말고 본인의 터미널에서 작업하세요.
 
-커밋 증인은 해당 스테이징 검사만 허용합니다. 차단된 Grok 도구 호출까지 허용하지 않습니다.
+변경 집합 표면에는 증인 프롬프트가 없으며 차단된 Grok 도구 호출을 허용하지 않습니다.
 
 <a id="codex-witness"></a>
 ## Codex 증인
 
-여기서도 두 문제는 구별해야 하며, 첫 번째는 원인이 다릅니다.
-
-- `pdks-codex init` 실행 뒤 훅 신뢰는 훅 정의의 해시에 묶입니다. `.codex/hooks.json`이
-  바뀌면 `/hooks`에서 승인하기 전까지 신뢰하지 않으므로, 설치기가 성공해도 실행되는 훅이
-  없을 수 있습니다. 실제 도구를 호출하고 텔레메트리를 확인하세요.
-- Codex는 대화 기록 경로를 알려 주지만 그 형식을 안정된 것으로 문서화하지 않으므로 어떤
-  판정도 읽지 않습니다. 대신 어댑터가 `UserPromptSubmit`과 `PostToolUse`를 자기 세션 증거
-  파일에 기록하고 `SessionEnd`에서 지웁니다. IR은 이 `session`을 싣되 `actor`를 합성하지
-  않습니다.
-- 의도한 차단 뒤에는 설정된 증인 토큰을 첫 줄에 단독으로 보내고 다시 시도합니다. stderr가
-  `UserPromptSubmit` 증거가 없다고 알리면 생명주기 항목 넷이 모두 승인됐는지 확인합니다.
-  그래도 증거가 없다면 토큰을 반복해도 관측되지 않은 호출을 풀 수 없으므로 본인의 터미널에서
-  작업합니다.
-
-커밋 증인은 스테이징 검사만 허용하며 Codex 세션 증인을 대신하지 않습니다.
+`/hooks`에서 등록을 승인한 뒤 실제 호출과 telemetry를 확인하세요. 신뢰는 정의의 hash에 연결되므로 경로가 바뀌면 재승인이 필요할 수 있습니다. 현재
+`UserPromptSubmit`은 사람 출처를 증명하지 않으므로 토큰을 보내도 증인(witness) 밸브를 열지 않습니다. `PostToolUse` 증거는 세션·하위 에이전트별로
+분리하고 `SessionEnd`에 정리합니다. 불안정한 대화 기록 파일은 읽지 않습니다. 필요한 보호 변경은 사용자 터미널에서 수행하세요.
 
 <a id="config-fault"></a>
 ## 선언을 판정으로 구성하지 못할 때
@@ -86,28 +74,15 @@ Git에서 원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, 
 항목, 그리고 사유를 알립니다. 지목된 선언을 고친 뒤 `pdks explain`을 다시 실행하세요.
 
 <a id="judge-cannot-be-loaded"></a>
-## 판정기를 불러올 수 없을 때
+## 판정기를 실행할 수 없음
 
-패키지나 판정 모듈이 빠져 있으면 작업을 차단합니다. 본인의 터미널에서 패키지를 다시
-설치하거나 워크스페이스 전체를 빌드하세요. 생성된 훅은 설치된 패키지에 판정을 맡기며,
-판정기를 별도로 복사해 가지고 있지 않습니다. 복구 뒤 실제 호출로 다시 확인합니다.
-텔레메트리를 불러오기 전에 실패했다면 기록이 전혀 남지 않을 수도 있습니다.
+등록된 절대 경로의 `pdks`가 존재하고 실행 가능한지 확인하세요. 실행 파일이나 프로젝트를 옮겼다면 사용자 터미널에서 새 위치의 `pdks adapter <host>
+init`을 실행하고 호스트 신뢰를 다시 확인합니다. 단일 실행 파일에는 판정기와 세 어댑터가 들어 있습니다. 소스 체크아웃의 npm 설치를 사용한다면 의존성 설치와 전체
+workspace build를 복구해야 합니다.
 
-판정기 자신이 거부하는 실패(설정 없음 · 잘못된 설정 · 빌드되지 않은 판정기)는 두 표면 모두
-`covenant check failed closed:`를 붙입니다. 훅이 `pdks covenant check`에 판정을 맡기고 그 메시지를
-그대로 전달하기 때문입니다. 판정기를 스폰하기 *전에* 실패한 경우 — 어댑터가 `polydeukes`를
-찾지 못하거나 자식이 판정 없이 종료한 경우 — 만 `covenant hook failed closed:`를 붙입니다.
-실제로 보게 되는 두 형태는 다음과 같습니다.
-
-```text
-covenant hook failed closed: Cannot find package 'polydeukes' imported from …
-covenant check failed closed: the covenant judges could not be loaded from … — run 'pnpm build' to rebuild them: Cannot find module './self-mod.js' …
-covenant check failed closed: invalid config in polydeukes.config.yaml: … — fix polydeukes.config.yaml in one Edit or Write whose result loads; every other call stays blocked until it does
-```
-
-첫째는 설치된 패키지가 없는 경우이고, 둘째는 소스 체크아웃에서 판정기 빌드 산출물이 없거나
-일부만 있는 경우이며, 셋째는 세션 표면에서 설정이 로드되지 않는 경우로 그 줄이 설정을 고칠
-호출 하나를 알려 줍니다.
+훅이 시작되기 전의 실패는 telemetry를 남기지 못할 수 있습니다. 시작된 훅이 잘못된 입력을 받으면 공통 판정기에 `--input-failure`를 보내 원인 한 번과
+`blocked covenant-check` 행 한 건을 기록합니다. 입력 EOF와 자식 통신의 내부 기한은 각각 10초입니다. 호스트 자체의 신뢰·비활성화·시간 초과 처리는
+별개이므로 실제 거부와 로그를 함께 확인하세요.
 
 <a id="reading-verdict"></a>
 ## 판정 결과 읽기

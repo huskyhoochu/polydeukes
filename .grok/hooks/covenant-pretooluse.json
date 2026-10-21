@@ -6,8 +6,42 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$GROK_WORKSPACE_ROOT\"/.grok/hooks/covenant-pretooluse.mjs",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'grok' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
             "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'grok' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "write|search_replace|run_terminal_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'grok' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'grok' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "timeout": 5
           }
         ]
       }

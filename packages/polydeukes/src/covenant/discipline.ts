@@ -193,16 +193,17 @@ export function worldsFromInput(spec: WorldsFromInputSpec): SuppliedWorld[] {
 
 /** The one shell-surface filter: named args of shell-tool calls, whatever the source. */
 function filterShellCalls(
-  calls: readonly { name: string; args?: Record<string, unknown> }[],
+  calls: readonly { name: string; args?: Record<string, unknown>; cwd?: string }[],
   shellTools: string[],
   commandArgs: string[],
-): { toolName: string; command: string }[] {
-  const found: { toolName: string; command: string }[] = [];
+): { toolName: string; command: string; cwd?: string }[] {
+  const found: { toolName: string; command: string; cwd?: string }[] = [];
   for (const call of calls) {
     if (!shellTools.includes(call.name)) continue;
     for (const argName of commandArgs) {
       const value = call.args?.[argName];
-      if (typeof value === 'string') found.push({ toolName: call.name, command: value });
+      if (typeof value === 'string')
+        found.push({ toolName: call.name, command: value, cwd: call.cwd });
     }
   }
   return found;
@@ -210,7 +211,7 @@ function filterShellCalls(
 
 /** The command strings of shell-tool calls, whatever the source. */
 function filterShellCommands(
-  calls: readonly { name: string; args?: Record<string, unknown> }[],
+  calls: readonly { name: string; args?: Record<string, unknown>; cwd?: string }[],
   shellTools: string[],
   commandArgs: string[],
 ): string[] {
@@ -234,9 +235,18 @@ function deriveShellSignals(input: CovenantInput, opts: ShellSurface): ShellSign
   for (const call of filterShellCalls(input.toolCalls, opts.shellTools, opts.commandArgs)) {
     const derived = deriveShellChanges(call.command);
     for (const change of derived.evidence) {
-      signals.evidence.push({ toolName: call.toolName, change });
+      signals.evidence.push({
+        toolName: call.toolName,
+        change: { ...change, path: resolve(opts.rootDir, call.cwd ?? '.', change.path) },
+      });
     }
-    signals.unjudgeable.push(...derived.unjudgeable);
+    signals.unjudgeable.push(
+      ...derived.unjudgeable.map((signal) =>
+        signal.path === undefined
+          ? signal
+          : { ...signal, path: resolve(opts.rootDir, call.cwd ?? '.', signal.path) },
+      ),
+    );
   }
   return signals;
 }

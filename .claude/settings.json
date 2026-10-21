@@ -9,7 +9,74 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/covenant-pretooluse.mjs"
+            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
+            "args": [
+              "adapter",
+              "claude-code",
+              "hook",
+              "--project-root",
+              "/Users/funes/Documents/personal/polydeukes"
+            ],
+            "timeout": 60,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
+            "args": [
+              "adapter",
+              "claude-code",
+              "hook",
+              "--project-root",
+              "/Users/funes/Documents/personal/polydeukes"
+            ],
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
+            "args": [
+              "adapter",
+              "claude-code",
+              "hook",
+              "--project-root",
+              "/Users/funes/Documents/personal/polydeukes"
+            ],
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
+            "args": [
+              "adapter",
+              "claude-code",
+              "hook",
+              "--project-root",
+              "/Users/funes/Documents/personal/polydeukes"
+            ],
+            "timeout": 5,
+            "onFailure": "block"
           }
         ]
       }

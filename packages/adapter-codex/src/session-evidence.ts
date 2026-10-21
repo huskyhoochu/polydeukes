@@ -7,7 +7,12 @@ import type { CovenantInput } from '@polydeukes/core';
 import { isPlainObject } from '@polydeukes/core';
 
 type UserRecord = { kind: 'user'; text: string; timestampMs: number };
-type ToolRecord = { kind: 'tool'; name: string; args?: Record<string, unknown> };
+type ToolRecord = {
+  kind: 'tool';
+  name: string;
+  args?: Record<string, unknown>;
+  succeeded?: boolean;
+};
 type EvidenceRecord = UserRecord | ToolRecord;
 
 /** The stable local path for host evidence, without exposing the host session id as a path. */
@@ -48,13 +53,21 @@ function parseRecord(value: unknown, lineNumber: number): EvidenceRecord {
   }
   if (
     value.kind === 'tool' &&
-    (hasOnlyKeys(value, ['kind', 'name']) || hasOnlyKeys(value, ['kind', 'name', 'args'])) &&
+    (hasOnlyKeys(value, ['kind', 'name']) ||
+      hasOnlyKeys(value, ['kind', 'name', 'args']) ||
+      hasOnlyKeys(value, ['kind', 'name', 'args', 'succeeded'])) &&
     typeof value.name === 'string' &&
-    (value.args === undefined || isPlainObject(value.args))
+    (value.args === undefined || isPlainObject(value.args)) &&
+    (value.succeeded === undefined || typeof value.succeeded === 'boolean')
   ) {
     return value.args === undefined
       ? { kind: 'tool', name: value.name }
-      : { kind: 'tool', name: value.name, args: value.args };
+      : {
+          kind: 'tool',
+          name: value.name,
+          args: value.args,
+          ...(typeof value.succeeded === 'boolean' ? { succeeded: value.succeeded } : {}),
+        };
   }
   throw new Error(`session evidence record ${lineNumber} has an invalid ${value.kind} shape`);
 }
@@ -96,6 +109,10 @@ export function readSessionEvidence(path: string): NonNullable<CovenantInput['se
       .map(({ text, timestampMs }) => ({ text, timestampMs })),
     toolCalls: records
       .filter((record): record is ToolRecord => record.kind === 'tool')
-      .map(({ name, args }) => (args === undefined ? { name } : { name, args })),
+      .map(({ name, args, succeeded }) => ({
+        name,
+        ...(args === undefined ? {} : { args }),
+        ...(succeeded === undefined ? {} : { succeeded }),
+      })),
   };
 }

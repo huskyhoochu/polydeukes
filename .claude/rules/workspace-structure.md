@@ -21,14 +21,13 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella /
   `pdks` CLI entry point — since ADAPTER-git the bin is real. Subcommands:
   `covenant check` (the judgment runner over an input IR or a unified diff on stdin),
-  `init` (the agent-neutral project scaffold — config file and telemetry ignore line — since
-  SURFACE-03b; the Claude Code registration moved to the adapter's own `pdks-claude-code init`;
-  the Grok registration is `pdks-grok init` on `@polydeukes/adapter-grok`, since SURFACE-03c;
-  the Codex registration is `pdks-codex init` on `@polydeukes/adapter-codex`),
+  `init` (the agent-neutral project scaffold — config file and telemetry ignore line),
+  `adapter <claude-code|codex|grok> init | hook` (native registration and host events),
   `docs [topic]`
   (the offline reader over the docs bundled into `dist/docs` at build time, since
   DOCS-02), `explain` (the assembled-registration renderer, since CLI-01), and
-  `memory ingest | search | show | obligations | supersession | lint | stats | usage` (since MEMORY-15,
+  `memory ingest | search | show | obligations | supersession | lint | stats | usage` (since
+  MEMORY-15,
   `lint` · `stats` since MEMORY-05, `obligations` since MEMORY-14, `usage` since MEMORY-10,
   `supersession` since MEMORY-08:
   `src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`, by dynamic
@@ -56,29 +55,21 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   deliberately held asset — never delete or rename it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**.
   The covenant protocol (CORE-01) and `defineConfig()` loader (CONFIG-01) land here first.
-- **`packages/adapter-grok`** (`@polydeukes/adapter-grok`) is the Grok session-surface install
-  unit: bin `pdks-grok init`, `runHook` (Grok roster as IR `tools` values, camelCase envelope),
-  no judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it.
-- **`packages/adapter-codex`** (`@polydeukes/adapter-codex`) is the Codex session-surface
-  install unit: bin `pdks-codex init`, `runHook` (Codex roster as IR `tools` values), no
-  judgment logic. Peer on `core` and `polydeukes`. The umbrella does not depend on it. Two
-  facts separate it from the other two adapters: every file edit that reaches the hook arrives
-  normalized as one `apply_patch` call whose input is patch text (`Edit` and `Write` are
-  matcher aliases only and never arrive as tool names; a name outside the roster is refused
-  with exit 2 rather than judged), and the IR carries adapter-owned `session` evidence from
-  `UserPromptSubmit` and `PostToolUse` while omitting `actor` and `channels`. The host transcript
-  stays unread because its format is unstable; `SessionEnd` removes the hashed evidence file.
-  In codex-cli 0.154.0 the Code Mode `exec` dispatch and its nested calls fired no
-  `PreToolUse`. Local 0.156.1 and 0.162.1 measurements observed nested `exec_command` and
-  `apply_patch` calls and blocked a protected patch. The 0.162.1 measurement explicitly
-  enabled `code_mode` and `code_mode_only` in two macOS/zsh sessions using workspace 0.19.0
-  packages. `pdks-codex init` describes that versioned scope and asks the user to verify
-  judgment rows on the installed host. The outer `exec` dispatch is outside the adapter
-  roster; the later measurements do not establish its hook payload.
-  A host version's behavior is established by an actual call, not by the hook's Active label.
-  It writes `.codex/hooks/covenant-pretooluse.mjs` and merges four lifecycle entries into
-  `.codex/hooks.json`. Hook trust is bound to the definition hash, so a changed definition
-  needs `/hooks` approval before it runs.
+- **`packages/adapter-claude-code`**, **`packages/adapter-grok`**, and
+  **`packages/adapter-codex`** share three public verbs: `prepareHook`, `registerHook`, and
+  `renderHookResponse`. Each owns its host payload, evidence, native registration, and
+  response format. They peer on core and have no bin. The umbrella depends on all three and
+  bundles them into its single executable; `adapter-command.ts` owns their common execution
+  path and `adapter-process.ts` owns process communication and deadlines.
+  Registration pins the executable and project root. Moving the executable requires init
+  from its new location. Existing project config remains owner-controlled; init reports the
+  required protected paths. Native registration replaces owned legacy commands, removes an
+  exact generated mjs, and preserves user-modified files and sibling handlers.
+  Codex translates `apply_patch` into file changes and keeps session/subagent evidence from
+  lifecycle events, leaving its unstable transcript unread. Prompt text enters witness
+  evidence only with explicit human provenance. A changed `.codex/hooks.json` definition
+  needs `/hooks` approval. Code Mode coverage must be measured on the installed host version:
+  an Active label alone is not execution evidence.
 - **`packages/sdk-ts`** (`@polydeukes/sdk-ts`) exposes four asynchronous process clients:
   `checkCovenant`, `checkChangeSet`, `memoryIngest`, and `memorySearch`. They share one resolver
   and binary process transport. An explicit executable resolves against the caller's cwd;
@@ -162,18 +153,14 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
 - **Dependency direction:** a scoped package (`ledger`, `memory`, `verify`, `adapter-*`,
   `sdk-ts`) takes vocabulary only from `core` — `memory` uses none and has no workspace
   dependency (its runtime dependencies are `yaml` and `garu-ko`) — and never depends on a
-  sibling; core depends on nothing. An agent
-  adapter additionally takes the umbrella `polydeukes` as a peer (SURFACE-03b) — it spawns the
-  `pdks` bin and ships its own bin (`pdks-claude-code`, `pdks-grok`, `pdks-codex`). SDKs consume
-  the process protocol with generated types and have no runtime core/umbrella dependency.
-  The umbrella takes `memory` as an
-  optional peer for `pdks memory` alone. The umbrella names no
-  adapter, so the graph runs one way and a consumer installs the umbrella plus whichever
-  adapters its agents need. Enforce this when adding packages.
+  sibling; core depends on nothing. SDKs consume the process protocol with generated types
+  and have no runtime core/umbrella dependency. The umbrella depends on core and all three
+  adapters, and takes memory as an optional peer for `pdks memory` alone. A consumer can use
+  the bundled executable for all three hosts. Enforce this direction when adding packages.
 - **The kind of the core dependency is `peerDependencies`** (ALGEBRA-03c) for the adapters,
   paired with a `devDependencies` entry so each package still builds and tests alone.
   The umbrella takes core as an ordinary dependency, and that is what satisfies the peer in a
-  consumer tree that installs the umbrella and one adapter. The reason is runtime identity
+  consumer tree that installs the umbrella. The reason is runtime identity
   rather than types: a
   value tuple like `SOURCE_KINDS` and the `parseInput` validation have to be ONE copy for the
   validator and the engine to agree, and two copies would disagree silently instead of failing

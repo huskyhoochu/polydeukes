@@ -178,7 +178,10 @@ function schemaDirective(projectRoot: string): string {
  * judge whose every call fails closed. The throw lands before any write, so a human deleting
  * one config is all it takes to reopen the path.
  */
-export function scaffoldProject(projectRoot: string): ScaffoldReport {
+export function scaffoldProject(
+  projectRoot: string,
+  ownedPaths: readonly string[] = [],
+): ScaffoldReport {
   const report: ScaffoldReport = { created: [], skipped: [] };
 
   const found = CONFIG_FILENAMES.filter((name) => existsSync(join(projectRoot, name)));
@@ -193,7 +196,20 @@ export function scaffoldProject(projectRoot: string): ScaffoldReport {
   } else {
     writeFileSync(
       join(projectRoot, CONFIG_FILENAMES[0]),
-      schemaDirective(projectRoot) + GENERATED_CONFIG,
+      schemaDirective(projectRoot) +
+        GENERATED_CONFIG.replace(
+          "  - '.codex/hooks'\n",
+          "  - '.codex/hooks'\n" +
+            [...new Set(ownedPaths)]
+              .filter(
+                (path) =>
+                  !['.claude/hooks', '.claude/settings.json', '.grok/hooks', '.codex/hooks'].some(
+                    (parent) => path === parent || path.startsWith(`${parent}/`),
+                  ),
+              )
+              .map((path) => `  - ${JSON.stringify(path)}\n`)
+              .join(''),
+        ),
     );
     report.created.push(CONFIG_FILENAMES[0]);
   }

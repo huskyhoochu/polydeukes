@@ -3,11 +3,14 @@ paths:
   - ".claude/hooks/**"
   - ".claude/settings.json"
   - ".grok/hooks/**"
+  - ".codex/hooks/**"
+  - ".codex/hooks.json"
   - "polydeukes.config.yaml"
   - "lefthook.yml"
   - "packages/polydeukes/src/covenant/**"
   - "packages/adapter-claude-code/**"
   - "packages/adapter-grok/**"
+  - "packages/adapter-codex/**"
 ---
 
 # How the two surfaces judge
@@ -69,8 +72,9 @@ things hang off it: the witness valve (it reads human utterances, so with no ses
 none to read), the transcript axis, and the completion of shell-write evidence into the file
 world, which needs a pre-state channel.
 
-The Grok adapter proves no session — that host's PreToolUse payload carries no transcript
-path — so on that surface a shell write lands `skipped` with reason `no-observation` rather
+The Grok adapter supplies no session history. Grok 1.0.62 names a transcript path in its
+payload, but this adapter uses the call's own arguments; on that surface a shell write lands
+`skipped` with reason `no-observation` rather
 than being judged against the file it targets. The tool axis and the path-mention judgment are
 unaffected: they read the call's own arguments. A discipline scoped on `command` is unaffected
 too, for the same reason.

@@ -2,7 +2,7 @@
 // hook spawn and a real bin spawn — so the stderr expectations hold regardless of how
 // the judges write their reasons internally.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import type { TelemetryRecord } from '@polydeukes/core';
@@ -10,8 +10,6 @@ import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BASELINE_FIRST_RUN_ROW, telemetryRows } from './helpers.ts';
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
-const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
 const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 // Injected fixture values. The protected entry is nested so the telemetry subject
@@ -166,13 +164,10 @@ function transcriptWithPrecedent(): string {
   return path;
 }
 
-/** Copy the real hook into a fixture tree carrying the parity config, spawn it on `payload`. */
+/** Run the adapter command against an isolated parity config. */
 function runHook(payload: Record<string, unknown>, lists: Record<string, unknown> = PARITY_LISTS) {
   const fixtureRoot = join(tmpRoot, 'fixture-tree');
-  mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
-  cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
-  symlinkSync(join(repoRoot, 'packages'), join(fixtureRoot, 'packages'), 'dir');
-  symlinkSync(join(repoRoot, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
+  mkdirSync(fixtureRoot, { recursive: true });
   writeFileSync(
     join(fixtureRoot, 'polydeukes.config.json'),
     JSON.stringify(
@@ -188,7 +183,7 @@ function runHook(payload: Record<string, unknown>, lists: Record<string, unknown
   );
   return spawnSync(
     process.execPath,
-    [join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs')],
+    [BIN, 'adapter', 'claude-code', 'hook', '--project-root', fixtureRoot],
     {
       cwd: fixtureRoot,
       input: JSON.stringify({ cwd: fixtureRoot, ...payload }),
@@ -198,7 +193,7 @@ function runHook(payload: Record<string, unknown>, lists: Record<string, unknown
   );
 }
 
-describe('① session surface, passing payload (measured pre-conversion)', () => {
+describe('① session surface, passing payload', () => {
   it('a scoped Write mentioning the protected entry passes every matched registration: exit 0, four passed rows in registration order', () => {
     // Order, labels, and subjects are all load-bearing here.
     const transcript = transcriptWithPrecedent();
@@ -248,7 +243,7 @@ describe('① session surface, passing payload (measured pre-conversion)', () =>
   });
 });
 
-describe('② session surface, blocking payload (measured pre-conversion)', () => {
+describe('② session surface, blocking payload', () => {
   it('a Write targeting a protected file blocks: exit 2, blocked self-mod then passed shell-mod, the reason verbatim on stderr', () => {
     // The reason reaches stderr verbatim — never reformatted, dropped, or written twice.
     // The transcript rides along because the baseline comparison is what a session call
@@ -311,7 +306,7 @@ function runCommitCheck(config: Record<string, unknown>, editedContent: string) 
   });
 }
 
-describe('③ change-set surface advise translation (the domain W1 never measured)', () => {
+describe('③ change-set surface advise translation', () => {
   it('a staged delta violation lands advised: exit 0, ONE advised row, the why line and the advisory summary verbatim on stderr', () => {
     // Advise is not mute: the reason line, the entry's `why`, and one advisory summary
     // all reach stderr.

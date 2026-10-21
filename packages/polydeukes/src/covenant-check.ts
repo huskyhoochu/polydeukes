@@ -170,6 +170,7 @@ export function assembleCheckRegistrations(spec: CheckAssemblySpec): CovenantReg
       : [
           covenant.transcriptModRegistration({
             transcriptPath: evidencePath,
+            rootDir,
             // The env value first, since that is what the judged shell expands `~` and
             // `$HOME` from; `homedir()` reads the same passwd entry bash falls back to when
             // HOME is unset.

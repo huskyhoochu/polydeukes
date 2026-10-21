@@ -12,98 +12,53 @@ is about to be written.
 <a id="claude-code"></a>
 ## Claude Code session surface
 
-Use this when the project is developed alongside an AI partner in Claude Code.
+```sh
+pdks adapter claude-code init
+```
 
-1. Install the three packages as project dependencies: `pnpm add -D polydeukes
-   @polydeukes/core @polydeukes/adapter-claude-code`. A one-off `npx` run is not enough —
-   both surfaces load the judge from the project's own installed package.
-2. Wire the project from its root: `pnpm exec pdks-claude-code init`. The adapter ships this bin;
-   it runs `pdks init` for the scaffold, then writes the Claude Code registration artifacts.
-3. Keep the generated hook file, settings merge, starter config, discovery rule, and
-discipline-draft skill.
-4. Reopen the project when the hook changes. The generated hook is a delegator, so upgrading the
-package upgrades the judge without rewriting the hook file.
+Run the installed single executable from the project root. No separate Node, npm, or adapter
+installation is required. Registration pins the absolute executable and project-root paths while
+preserving other handlers and settings. Rerun after moving either.
 
-The installer writes `.claude/settings.json` only by merging. Existing hooks and permissions stay in
-place. It also writes `.claude/rules/polydeukes.md`, which tells the agent to use `pdks docs`
-instead of searching the web, and `.claude/skills/discipline-draft/SKILL.md`, which turns a
-described problem into either a judged entry or a draft entry.
+Reopen the project and check telemetry for an actual call. Only messages identified by `origin.kind:
+human` can support the witness valve.
+
+[Registration details](../reference/cli/init.md#init-claude-code)
 
 <a id="grok"></a>
 ## Grok session surface
 
-Use this when the project is developed in Grok.
+```sh
+pdks adapter grok init
+```
 
-1. Install the three packages as project dependencies: `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-grok`.
-2. Wire the project from its root: `pnpm exec pdks-grok init`. The adapter ships this bin; it
-   runs `pdks init` for the scaffold, then writes the Grok registration artifacts.
-3. Reload the Hooks tab or open a new session after the installer finishes.
+Run the installed single executable from the project root. No separate Node, npm, or adapter
+installation is required. Registration pins the absolute executable and project-root paths while
+preserving other handlers and settings. Rerun after moving either.
 
-A Grok tree gets its own hook JSON and delegator under `.grok/hooks/`. Generated registrations
-use a timeout of 60 seconds. The Grok host default is 5 seconds, and a timed-out hook fails
-open. Installing more than one session adapter in one project can run the judge twice per call.
+Approve project trust and reload the Hooks tab. Grok needs its own registration. Under Grok’s
+`GROK_WORKSPACE_ROOT`, the Claude compatibility callback is skipped to avoid duplicate judgment.
+Current events supply no session history or human provenance, so protected changes requiring the
+witness valve belong in your own terminal.
 
-Grok does not supply the Claude-format human message needed by the session witness valve. The
-session log is ACP `updates.jsonl`, not Claude's JSONL.
-For an intentional blocked edit, use your own terminal. The change-set surface has no prompt, so
-there is no way to authorize a blocked Grok tool call from that side either.
+[Registration details](../reference/cli/init.md#init-grok)
 
 <a id="codex"></a>
 ## Codex session surface
 
-Use this when the project is developed in Codex.
+```sh
+pdks adapter codex init
+```
 
-1. Install the three packages as project dependencies: `pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-codex`.
-2. Wire the project from its root: `pnpm exec pdks-codex init`. The adapter ships this bin; it
-   runs `pdks init` for the scaffold, then writes the Codex registration artifacts.
-3. Approve the generated hook with `/hooks` in Codex. Until you do, it is skipped.
+Run the installed single executable from the project root. No separate Node, npm, or adapter
+installation is required. Registration pins the absolute executable and project-root paths while
+preserving other handlers and settings. Rerun after moving either.
 
-A Codex tree gets a delegator at `.codex/hooks/covenant-pretooluse.mjs` and entries for
-`PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and `SessionEnd` in `.codex/hooks.json`.
-That JSON is merged, not overwritten: user entries, sibling handlers, other events, and keys
-the installer does not know stay where they are. The scaffold config protects `.codex/hooks`
-by default.
+Approve the definition through `/hooks`. Code Mode coverage varies by version; verify actual nested
+calls. Transcript files are never read, and current prompts do not establish human provenance.
+Perform protected changes from your own terminal.
 
-**Approval is not optional.** Codex records trust against the hash of a hook's definition, so a
-newly written hook is listed for review and skipped until someone approves it — until then
-nothing is judged. `init` writes a byte-identical command string on every run, so a re-install
-does not invalidate an approval you already gave.
-
-Codex normalises every file edit that reaches the hook into one tool, `apply_patch`, and sends
-the patch text rather than a path argument. `Edit` and `Write` are matcher aliases you may
-write in the hooks file; they never arrive as the tool name. One patch that touches several
-files carries one IR element per file, and any one of them blocking blocks the whole call.
-
-**Code Mode coverage varies by CLI version.** On 2026-10-13, a macOS/zsh measurement of
-codex-cli **0.162.1** explicitly enabled the under-development `code_mode` and `code_mode_only`
-options in two sessions using workspace 0.19.0 packages and existing approved hooks. Three
-nested calls were measured: `tools.exec_command`, an ordinary-file same-content
-`tools.apply_patch`, and a protected-config same-content `tools.apply_patch`. The shell call
-was judged through `Bash` and the patches through `apply_patch`. The first two produced
-judgment rows; the protected patch was rejected by `PreToolUse` before execution and logged
-as `blocked self-mod`.
-
-A local **0.156.1** measurement also observed nested shell calls and blocked a protected
-patch. The **0.154.0** measurement observed neither the outer `exec` dispatch nor its nested
-calls ([original report and version follow-up](https://github.com/huskyhoochu/polydeukes/issues/64)).
-The outer `exec` is outside the adapter's tool roster; the later measurements do not establish
-an outer `exec` hook payload. The [host's hook documentation](https://learn.chatgpt.com/docs/hooks)
-describes hook decisions applying to nested Code Mode calls.
-
-After approving the hook, verify actual judgments in `.polydeukes/roi.log` on your installed
-host. `/hooks` showing Active alone does not establish coverage. `init` prints this
-version-dependent scope and verification advice as a `note:` line; the
-[package reference](../reference/packages/adapter-codex.md#code-mode-coverage) describes the
-measurements alongside the declared limits.
-
-Codex's transcript format remains unstable and is never parsed. Instead, `UserPromptSubmit`
-records timestamped human messages and `PostToolUse` records completed tool calls in an
-adapter-owned file under `.polydeukes/codex-sessions/`; `SessionEnd` removes it. To release an
-intentional block, send the configured witness token alone on the first line, then retry the
-call. If the recovery message says no `UserPromptSubmit` evidence was recorded, use your own
-terminal because the retry cannot reach the witness valve. Installing more than one session
-adapter in one project can run the judge twice per call.
-
+[Registration details](../reference/cli/init.md#init-codex)
 
 <a id="change-set-surface"></a>
 ## Change-set surface
@@ -112,7 +67,7 @@ Use this when you want git to judge staged changes before they become history.
 
 1. Create `polydeukes.config.yaml` at the project root.
 2. Add the pre-commit hook.
-3. Run `git diff HEAD | pnpm exec pdks covenant check --diff` when you want the same judgment
+3. Run `git diff HEAD | pdks covenant check --diff` when you want the same judgment
    on demand.
 
 A minimal lefthook entry looks like this. The `git diff` flags pin what the judge receives:
@@ -124,21 +79,21 @@ pre-commit:
   commands:
     covenant:
       priority: 1
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 A husky hook looks like this:
 
 ```sh
 # .husky/pre-commit
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 A plain git hook works too:
 
 ```sh
 #!/bin/sh
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 If you use the plain hook, save it as `.git/hooks/pre-commit` and make it executable with
@@ -157,18 +112,14 @@ stops is your hook wiring: the entries above honour the exit code. Assembly erro
 <a id="witness-and-recovery"></a>
 ## Witness and recovery
 
-The witness token is the same idea on both surfaces, but the delivery is different.
+In a Claude session that proves human provenance, send the configured token alone on the first line,
+then retry the intentional change within its TTL. The witness valve is consulted after a blocking
+result. Current Codex and Grok prompts do not establish that provenance; perform protected changes
+from your own terminal. The change-set surface has no witness prompt; your hook acts on the exit
+code.
 
-- On the session surface, type the token on its own first line in a conversation message.
-- The change-set surface has no prompt. Its judgment reaches you as an exit code, and your hook
-  wiring decides what to do with it.
-
-The valve is consulted after the judgment returns a block. You can supply the token before an
-intentional edit; a previous failed attempt is not required. It does not change a passing verdict
-and the session valve does not work with Grok's current transcript format.
-
-If the hook was not picked up in Grok, reload the Hooks tab or start a new session. If the judge
-cannot be loaded, reinstall the package or rebuild the workspace and try again.
+A witness cannot repair a missing executable, unapproved trust, or a disabled hook. Repair the path
+or host approval and verify another real call and its telemetry.
 
 <a id="what-to-check"></a>
 ## What to check after wiring

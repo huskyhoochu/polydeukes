@@ -124,6 +124,7 @@ fn write_input(path: &str, content: &str) -> CovenantInput {
     args.insert("content".into(), Value::String(content.into()));
     CovenantInput {
         tool_calls: vec![ToolCall {
+            cwd: None,
             name: WRITE_FILE.into(),
             args,
             file_change: Some(FileChange::Create {

@@ -47,9 +47,14 @@ const RETIRED_PACKAGE_PATH = ['packages', 'covenant'].join('/');
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', join('src', 'content', 'docs')]);
 /**
  * Umbrella modules whose text may contain `import(`: bin.ts defers the subcommand bodies,
- * and the memory command module loads the optional memory package on the call alone.
+ * the memory command loads its optional package, and the adapter command selects a host leaf.
  */
-const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'memory-command.ts']);
+const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'memory-command.ts', 'adapter-command.ts']);
+const ADAPTER_SPECIFIERS = [
+  '@polydeukes/adapter-claude-code',
+  '@polydeukes/adapter-codex',
+  '@polydeukes/adapter-grok',
+];
 /** The words the `explain` module may no longer spell: host, VCS, and hook names. */
 const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook', 'grok'];
 /** The seven verbs the composition roots call on the judge module. */
@@ -148,15 +153,18 @@ describe('the judge is a static module of the umbrella', () => {
     expect(existsSync(join(umbrellaSrc, 'index.ts'))).toBe(false);
   });
 
-  // A dynamic `import(` anywhere but the listed modules is a judge loaded by path at run
-  // time — the shape whose failure lands as a fail-closed exit instead of a build-time error.
-  it('no umbrella module outside bin.ts contains a dynamic import', () => {
+  // Composition roots defer optional commands and host leaves; judgment remains static.
+  it('only command composition roots import dynamically, with exactly the three adapter leaves in the host registry', () => {
     const offenders = umbrellaSources().filter(
       (rel) =>
         !DYNAMIC_IMPORT_MODULES.has(rel) &&
         /\bimport\(/.test(stripComments(readFileSync(join(umbrellaSrc, rel), 'utf-8'))),
     );
     expect(offenders).toEqual([]);
+    const registry = stripComments(readFileSync(join(umbrellaSrc, 'adapter-command.ts'), 'utf-8'));
+    const imports = [...registry.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)];
+    expect(imports.map((match) => match[1]).sort()).toEqual(ADAPTER_SPECIFIERS);
+    expect(registry.match(/\bimport\(/g)).toHaveLength(ADAPTER_SPECIFIERS.length);
   });
 });
 

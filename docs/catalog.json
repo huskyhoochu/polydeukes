@@ -139,12 +139,12 @@
       "en": {
         "path": "reference/cli/init.md",
         "title": "pdks init",
-        "summary": "Create the project scaffold, and find the Claude Code, Grok, and Codex installers."
+        "summary": "Create project configuration and register Claude Code, Grok, or Codex with pdks adapter <host> init."
       },
       "ko": {
         "path": "reference/cli/init.ko.md",
         "title": "pdks init",
-        "summary": "프로젝트 초기 파일을 만들고, Claude Code, Grok, Codex 설치기를 찾습니다."
+        "summary": "프로젝트 설정을 만들고 pdks adapter <host> init으로 Claude Code, Grok, Codex를 등록합니다."
       }
     },
     {
@@ -267,12 +267,12 @@
       "en": {
         "path": "reference/packages/adapter-claude-code.md",
         "title": "@polydeukes/adapter-claude-code",
-        "summary": "Install the Claude Code session surface, and consult the adapter package contract and its limits."
+        "summary": "Connect claude-code through the standalone pdks executable and inspect its translation, registration, and response contract."
       },
       "ko": {
         "path": "reference/packages/adapter-claude-code.ko.md",
         "title": "@polydeukes/adapter-claude-code",
-        "summary": "Claude Code 세션 표면을 설치하고, 어댑터 패키지의 계약과 한계를 확인합니다."
+        "summary": "단일 pdks 실행 파일로 claude-code를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
     {
@@ -283,12 +283,12 @@
       "en": {
         "path": "reference/packages/adapter-grok.md",
         "title": "@polydeukes/adapter-grok",
-        "summary": "Install the Grok session surface, and consult the adapter package contract and its limits."
+        "summary": "Connect grok through the standalone pdks executable and inspect its translation, registration, and response contract."
       },
       "ko": {
         "path": "reference/packages/adapter-grok.ko.md",
         "title": "@polydeukes/adapter-grok",
-        "summary": "Grok 세션 표면을 설치하고, 어댑터 패키지의 계약과 한계를 확인합니다."
+        "summary": "단일 pdks 실행 파일로 grok를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
     {
@@ -299,12 +299,12 @@
       "en": {
         "path": "reference/packages/adapter-codex.md",
         "title": "@polydeukes/adapter-codex",
-        "summary": "Install the Codex session surface, and consult how patch text becomes file-change evidence."
+        "summary": "Connect codex through the standalone pdks executable and inspect its translation, registration, and response contract."
       },
       "ko": {
         "path": "reference/packages/adapter-codex.ko.md",
         "title": "@polydeukes/adapter-codex",
-        "summary": "Codex 세션 표면을 설치하고, 패치 텍스트가 파일 변경 증거가 되는 방식을 확인합니다."
+        "summary": "단일 pdks 실행 파일로 codex를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
     {

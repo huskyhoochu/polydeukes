@@ -58,6 +58,25 @@ async function emitAndExit(text: string, exitCode = 0): Promise<never> {
 
 const args = process.argv.slice(2);
 
+if (args[0] === 'adapter') {
+  try {
+    const { isSea } = await import('node:sea');
+    const { runAdapterCommand } = await import('./adapter-command.ts');
+    const command = {
+      executable: process.execPath,
+      args: isSea() ? [] : [fileURLToPath(import.meta.url)],
+    };
+    const result = await runAdapterCommand({ args: args.slice(1), command });
+    if (result.stderr) process.stderr.write(result.stderr);
+    await emitAndExit(result.stdout, result.exitCode);
+  } catch (error) {
+    process.stderr.write(
+      `pdks adapter: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exit(2);
+  }
+}
+
 if (args.length === 1 && args[0] === 'init') {
   try {
     // Imported inside the try, not above it: ESM imports are eager, so the scaffold stays

@@ -2,80 +2,50 @@
 
 [English](adapter-grok.md) · **한국어**
 
-> **Grok의 설치 단위**입니다. PreToolUse 페이로드가 약속(covenant) 입력 IR이 되고,
-> 판정기가 읽는 파일 변경 증거가 함께 실립니다. 세션 표면을 프로젝트에 설치하는 것도 이
-> 패키지가 합니다.
->
-> 베타입니다. `polydeukes`와 함께 설치하며, `polydeukes`는 이 패키지의 `peerDependency`입니다.
-
 <a id="ownership"></a>
-## 담당하는 기능
+## 소유 범위
 
-Grok의 입력을 공통 형식으로 번역합니다. 에이전트와 도구의 구체적인 이름은 이 패키지에서
-처리하고 코어에는 넣지 않습니다.
+호스트의 이벤트·도구 이름은 이 모듈에서 공통 약속(covenant) 입력 IR로 바뀝니다. 세 어댑터 모두 같은 세 함수를 제공합니다.
 
-| 단위 | 하는 일 |
+| 함수 | 입력과 결과 |
 |---|---|
-| `pdks-grok` 실행 파일 | 하위 명령 하나 `pdks-grok init`으로 프로젝트에 세션 표면을 등록합니다 |
-| `runHook` | PreToolUse 페이로드 하나를 입력 IR로 바꾸고 판정기를 스폰합니다 |
-| 페이로드 상향 번역 | 원본 PreToolUse 페이로드가 `CovenantInput`이 됩니다 |
-| 예상 변경 후 상태 | 쓰기나 치환이 적용되면 파일이 무엇을 담을지 디스크를 건드리지 않고 계산합니다 |
-| 파일 변경 증거 | 디스크의 변경 전 상태와 예상 변경 후 상태를 짝지어 변경 증거를 만듭니다 |
+| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`·`recorded`·`unavailable` |
+| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: 생성·갱신·변경 없음·보존 경로와 보호 경로 |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code·stdout·stderr |
 
-생성된 훅 위임자가 불러오는 것이 `runHook({ repoRoot })`입니다. `tools` 명부를 실은 입력 IR을
-만든 뒤 — `session`과 `actor` 키는 없습니다 — `repoRoot`에서
-`pdks covenant check --enforce block`을 스폰하고 그 자식 프로세스의 종료 코드를 그대로
-돌려줍니다. 판정은 그 자식 프로세스가 하며, 이 패키지에는 판정 코드가 없습니다.
+공통 `pdks` 실행 경로가 stdin을 받고 현재 실행 파일의 `covenant check --enforce block`에 IR을 전달합니다. 입력 EOF 기한과 자식 통신
+기한은 각각 10초입니다. 등록된 PreToolUse 기한은 60초, prompt/post는 30초, 종료는 5초입니다.
 
-**이 패키지는 텔레메트리 행을 쓰지 않습니다.** 스폰 전에 실패하면 그 사실을 한 줄로 만들어
-`pdks`의 표준 입력으로 보내고, `pdks`가 fail-closed 행을 기록합니다. 호출 하나에 행 하나는
-그대로입니다. 판정기를 불러오지도 않습니다. `polydeukes`와 `@polydeukes/core` 모두
-`peerDependencies`이므로 어휘와 판정기를 공유할 뿐 사본을 따로 설치하지 않습니다.
+번역 불가·잘린 입력·잘못된 UTF-8은 `--input-failure`로 전달합니다. 공통 판정기가 원인을 한 번 출력하고 `blocked covenant-check` 행 한
+건을 기록합니다. 자식 실행 실패·시그널·예상 밖 status·기한 초과도 거부하며, 판정기가 시작되지 못하면 telemetry 행이 없을 수 있습니다.
 
-이 어댑터가 IR에 실는 명부는 Grok 원어입니다. `write`와 `search_replace`는 파일을 바꾸고,
-`run_terminal_command`는 셸 한 줄을 실습니다.
+Grok의 `write`·`search_replace`·`run_terminal_command` 이름과 camelCase 이벤트 필드를 번역하며 snake_case 별칭도
+받습니다. 파일의 이전·이후 상태와 셸 명령은 공급하지만 현재 세션 대화 기록·사람 출처·actor는 공급하지 않습니다. 생명주기 이벤트를 받았다는 사실이 대화 기록을 관측했다는
+뜻은 아닙니다. 증인 밸브가 필요한 변경은 사용자 터미널에서 수행하세요.
 
 <a id="consumer-contract"></a>
-## 소비자가 닿는 곳
-
-프로젝트 루트에서 두 줄이면 Grok 세션 표면이 설치됩니다.
+## 연결과 이전
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
-npx pdks-grok init
+pdks adapter grok init
 ```
 
-`pdks-grok init`은 프로젝트에서 `polydeukes`를 찾고, 에이전트와 무관한 초기 파일을 위해
-`pdks init`을 스폰한 뒤, Grok 산출물 둘을 덮어쓰지 않고 씁니다. 다시 실행하면 이미 있는
-산출물은 `skipped`로 보고하고 내용을 바꾸지 않습니다. 산출물 목록은
-[`pdks init`](../cli/init.ko.md#init-grok)에 있습니다.
+프로젝트 루트에서 실행하세요. 단일 실행 파일에 세 어댑터가 포함되며 별도 Node·npm 설치가 필요하지 않습니다. 등록에는 현재 실행 파일과 프로젝트 루트의 절대 경로가
+고정됩니다. 실행 파일이나 프로젝트를 옮기면 새 위치에서 다시 실행하세요.
 
-이 어댑터와 `@polydeukes/adapter-claude-code`를 한 프로젝트에 함께 설치하면 호출마다
-판정기가 두 번 실행될 수 있습니다.
+설치기는 자체 등록을 갱신하고 다른 handler와 사용자 설정을 보존합니다. 구형 생성 `.mjs`는 원본과 일치할 때 제거하고 사용자가 수정한 파일은 보존합니다. 기존 설정을
+덮어쓰지 않으므로 출력한 필수 보호 경로를 설정의 `protectedPaths`와 대조하세요.
 
-- **생성된 훅**은 이 패키지의 `runHook`을 불러옵니다. 패키지를 올리면 실행되는 코드가
-  올라가고, 훅 파일 자체는 바뀌지 않습니다.
-
-자체 설정 네임스페이스는 없습니다.
+Grok은 stdout JSON의 `decision: allow|deny`로 응답하고 Claude·Codex는 빈 stdout과 exit 0·2로 응답합니다. 관측 전용 생명주기
+이벤트는 도구 판정 JSON 없이 exit 0으로 끝납니다.
 
 <a id="limits"></a>
-## 선언된 한계
+## 관측 한계
 
-- **자식 프로세스의 쓰기는 관측 밖입니다.** 이 표면은 *선언된 도구 호출*을 판정합니다. 파일을
-  쓰는 프로세스를 띄우는 명령은 그 명령 줄로 판정되며, 자식이 한 일로 판정되지 않습니다.
-- **증거는 변경 후 상태를 계산할 수 있을 때만 있습니다.** `write`와 `search_replace`가 하나를
-  만듭니다. 치환이 한 번도 맞지 않거나, `replace_all` 없이 두 번 이상 맞으면 증거가 없습니다.
-  호스트 도구가 그 호출을 거부하기 때문입니다.
-- **증거 없는 호출은 보수적으로 판정합니다.** 증명된 대상이 없으므로 호출 인자에 보호 경로가
-  언급됐는지 대조합니다.
-- **대화 기록(transcript) 통로가 없습니다.** IR은 `session`과 `actor`를 생략합니다. Grok의
-  ACP 대화 기록은 세션 증인(witness) 밸브가 필요로 하는 인간 메시지 증거를 공급하지 않습니다.
-  의도한 편집이 차단되면 본인 터미널에서 수행하세요.
-- **`polydeukes`를 찾지 못하면 행이 남지 않습니다.** 프로젝트에서 우산 패키지를 찾지 못하면
-  스폰할 프로세스도, 기록할 로그 경로도 없습니다. 훅은 stderr에 한 줄을 남기고 종료 코드
-  `2`를 내며 텔레메트리 로그에는 아무것도 추가되지 않습니다. 스폰 전 실패 가운데 이 경우만
-  그렇고, 나머지는 모두 `pdks`에 도달해 행을 남깁니다.
-- **다른 호스트는 각자의 어댑터로 설치합니다.** Claude Code는
-  `@polydeukes/adapter-claude-code`로, Codex는 `@polydeukes/adapter-codex`로 설치합니다.
-  각 패키지가 자기 위임자와 명부를 씁니다. 한 프로젝트에 세션 어댑터를 둘 이상 설치하면
-  호출마다 판정기가 여러 번 실행될 수 있습니다.
+훅은 호스트가 전달한 도구 호출을 판정합니다. 자식 프로세스의 개별 파일 쓰기를 별도로 관측하지 않습니다. 증거가 없으면 해당 선언의 공급 정책을 따르며 없는 기록을 합성해
+`passed`로 만들지 않습니다. 호스트가 훅을 신뢰하지 않거나 비활성화했다면 이 경로의 판정이 시작되지 않습니다.
+
+Claude와 Grok을 함께 등록한 프로젝트에서는 Grok의 호환 Claude callback을 `GROK_WORKSPACE_ROOT`가 있을 때 건너뛰고 Grok 자체 등록으로
+판정합니다. Grok 연결에도 자체 `init`이 필요합니다. 전역 호스트 설정은 변경하지 않습니다.
+
+[설치 참조](../cli/init.ko.md#init-grok)

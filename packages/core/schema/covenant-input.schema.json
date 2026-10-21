@@ -54,6 +54,10 @@
         },
         "fileChange": {
           "$ref": "#/$defs/FileChange"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Project-relative shell working directory; absence means the project root."
         }
       }
     },

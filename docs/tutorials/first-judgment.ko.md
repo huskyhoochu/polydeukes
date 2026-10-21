@@ -2,9 +2,8 @@
 
 [English](./first-judgment.md) · **한국어**
 
-빈 예제 프로젝트에 Polydeukes를 설치하고 보호된 파일을 바꾸지 않은 채 쓰기 요청의 판정
-결과를 확인합니다. Node.js 24 이상, pnpm, git이 필요합니다. 실제 세션 호출을 확인하려면
-Claude Code도 필요하지만, 아래 훅 검사 명령은 Claude Code 없이 실행할 수 있습니다.
+빈 예제 프로젝트에서 보호된 쓰기와 일반 쓰기의 판정 결과를 확인합니다. 설치한 단일 `pdks`를 PATH에 두세요. 별도 Node·npm은 필요하지 않습니다. 실제 세션
+관측에는 Claude Code가 필요하지만 아래 직접 확인 명령에는 필요하지 않습니다.
 
 <a id="claude-code"></a>
 
@@ -16,22 +15,15 @@ Claude Code도 필요하지만, 아래 훅 검사 명령은 Claude Code 없이 �
 mkdir pdks-example
 cd pdks-example
 git init
-printf '{"name":"pdks-example","private":true}\n' > package.json
-pnpm add -D polydeukes @polydeukes/core @polydeukes/adapter-claude-code   # 프로젝트 의존성. 일회성 npx 실행이 아님
-pnpm exec pdks-claude-code init
+pdks adapter claude-code init
 ```
 
-설치기는 각 파일을 만들었으면 `created`, 이미 있어서 보존했으면 `skipped`로 보고합니다.
-초기 설정, 훅 위임 파일(`.claude/hooks/covenant-pretooluse.mjs`), Claude Code 등록 설정
-(`.claude/settings.json`), 문서 조회 안내(`.claude/rules/polydeukes.md`), `discipline-draft` 스킬과
-텔레메트리 제외 항목을 만듭니다. 기존 사용자 파일은 보존하고, 설정은 통째로 덮지 않고
-병합합니다.
-
-생성된 훅에 설정 파일을 쓰려는 요청을 전달합니다.
+설치기는 초기 설정·`.claude/settings.json` 등록·문서 안내·`discipline-draft` 스킬·telemetry ignore 항목을 만듭니다. 기존 설정과
+다른 handler를 보존합니다. 아래 명령으로 설정 파일 쓰기를 관측해 봅니다.
 
 ```sh
-printf '%s\n' '{"tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
-  | node .claude/hooks/covenant-pretooluse.mjs
+printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
+  | pdks adapter claude-code hook --project-root "$PWD"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
@@ -43,8 +35,8 @@ tail -n 5 .polydeukes/roi.log
 이번에는 보호 목록 밖의 경로로 같은 검사를 합니다.
 
 ```sh
-printf '%s\n' '{"tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
-  | node .claude/hooks/covenant-pretooluse.mjs
+printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
+  | pdks adapter claude-code hook --project-root "$PWD"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```

@@ -36,8 +36,9 @@ takes it as a peer dependency rather than importing it.
 | `pdks memory lint` | Report unresolved links, unlinked documents, and untyped documents; exit `1` when any is found |
 | `pdks memory stats` | Count the indexed documents, sections, links, unresolved links, and isolated documents |
 
-Session-surface installers live on the adapters: `pdks-claude-code init`, `pdks-grok init`, and
-`pdks-codex init`.
+The same executable installs each session surface with `pdks adapter <claude-code|grok|codex> init`.
+Its three adapter modules translate host payloads, maintain native registrations, and render
+host responses; the common runtime owns input collection, judgment execution, and deadlines.
 
 <a id="surface-from-input-mode"></a>
 ### The input mode is the surface

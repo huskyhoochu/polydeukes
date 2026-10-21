@@ -11,8 +11,8 @@ or the judging packages, provided its own installed documentation bundle is inta
 
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root.
-Restore the intended file from Git, or use `pdks init` / `pdks-claude-code init` /
-`pdks-grok init` / `pdks-codex init` for a new project. Then run `pdks explain`. No
+Restore the intended file from Git, or use `pdks init` / `pdks adapter claude-code init` /
+`pdks adapter grok init` / `pdks adapter codex init` for a new project. Then run `pdks explain`. No
 configuration means no silent default policy.
 
 <a id="multiple-config"></a>
@@ -49,32 +49,23 @@ error.
 
 A hook not yet loaded and an unavailable witness valve are different problems:
 
-- After `pdks-grok init`, reload the Hooks tab or start a new session. Verify an actual call and
+- After `pdks adapter grok init`, reload the Hooks tab or start a new session. Verify an actual call
+  and
   its telemetry; a successful installer run does not prove the open host loaded the hook.
 - Grok's ACP history does not supply the Claude-format human message required by the current
   session witness valve. Reloading does not add that capability. Perform a necessary repair
   from your own terminal rather than trying to send a Claude witness token through Grok.
 
-A commit witness authorizes its staged check only. It cannot release a blocked Grok tool call.
+The change-set surface has no witness prompt and cannot release a blocked Grok tool call.
 
 <a id="codex-witness"></a>
 ## Codex witness
 
-The same two problems are distinct here, and the first has its own cause:
-
-- After `pdks-codex init`, hook trust is bound to the hash of the hook definition. A changed
-  `.codex/hooks.json` is not trusted until you approve it through `/hooks`, so an installer that
-  succeeded can still leave no hook running. Verify an actual call and its telemetry.
-- Codex names a transcript path but documents the format as unstable, so no judgment reads it.
-  The adapter records `UserPromptSubmit` and `PostToolUse` into its own session evidence file
-  and removes it at `SessionEnd`; the IR carries that `session` without synthesizing `actor`.
-- After an intentional block, send the configured witness token alone on the first line and
-  retry. If stderr says no `UserPromptSubmit` evidence was recorded, confirm all four lifecycle
-  entries are approved. If evidence is still unavailable, perform the repair from your own
-  terminal; repeating the token cannot release an unobserved call.
-
-A commit witness authorizes only its staged check; it does not substitute for the Codex session
-witness.
+Approve the registration through `/hooks`, then verify an actual call and its telemetry. Trust is
+tied to the definition hash, so moving paths may require approval again. Current `UserPromptSubmit`
+events do not establish human provenance: sending a token cannot open the witness valve.
+`PostToolUse` evidence is isolated by session and subagent and removed at `SessionEnd`. The unstable
+transcript file is never read. Perform necessary protected changes from your own terminal.
 
 <a id="config-fault"></a>
 ## Config-fault
@@ -87,28 +78,17 @@ the message names the entry, the pipeline or relate entry, and the reason. Fix t
 declaration and run `pdks explain` again.
 
 <a id="judge-cannot-be-loaded"></a>
-## The judge cannot be loaded
+## The judge cannot be started
 
-A missing package or judging module fails closed. Reinstall the package or run the complete
-workspace build from your own terminal. The generated hook delegates to the installed package;
-it is not an independent copy of the judge. Verify another real call after repair. A failure
-before telemetry can load may leave no row at all.
+Check that `pdks` exists and is executable at the registered absolute path. If the executable or
+project moved, run `pdks adapter <host> init` from your own terminal at the new location and check
+host trust again. The single executable contains the judge and all three adapters. A source checkout
+using npm packages needs its dependencies and complete workspace build restored.
 
-A failure the judge itself refuses — a missing or invalid config, an unbuilt judge — carries
-`covenant check failed closed:` on both surfaces, because the hook delegates to
-`pdks covenant check` and passes its message through. Only a failure *before* the judge could be
-spawned — the adapter cannot find `polydeukes`, or the child exited without a verdict — carries
-`covenant hook failed closed:`. The two shapes you will see:
-
-```text
-covenant hook failed closed: Cannot find package 'polydeukes' imported from …
-covenant check failed closed: the covenant judges could not be loaded from … — run 'pnpm build' to rebuild them: Cannot find module './self-mod.js' …
-covenant check failed closed: invalid config in polydeukes.config.yaml: … — fix polydeukes.config.yaml in one Edit or Write whose result loads; every other call stays blocked until it does
-```
-
-The first is the installed package missing; the second is a source checkout whose judge
-build output is missing or partial; the third is a config that does not load, on the session
-surface, where the line names the one call that would repair it.
+A failure before the hook starts may leave no telemetry. A started hook with invalid input sends
+`--input-failure` to the shared judge, producing one diagnostic and one `blocked covenant-check`
+row. Stdin EOF and child communication each have a 10-second internal deadline. Host trust,
+disabling, and timeout handling are separate: check both actual refusal and telemetry.
 
 <a id="reading-verdict"></a>
 ## Reading a verdict

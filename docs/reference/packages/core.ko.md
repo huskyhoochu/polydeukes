@@ -46,9 +46,13 @@ IR만으로는 증명하지 못하는 두 사실, 메시지의 신선도와 호�
 `transcriptFromSession`은 그 키에서 증인이나 선행 조건 소비자가 읽는 대화 기록을 만들고,
 `transcriptFromInput`은 그 두 사실 없이 IR에서 같은 대화 기록을 만듭니다.
 
+`toolCalls[].cwd`는 셸 경로의 기준인 프로젝트 루트 상대 작업 디렉터리입니다. 생략하면
+프로젝트 루트를 사용합니다. 명령 원문은 유지하고 `fileChange.path`도 계속 프로젝트 루트
+기준입니다. 라우팅·셸 보호·대화 기록 보호·셸에서 얻는 선언 증거가 같은 경로 기준을 사용합니다.
+
 ```ts
 type CovenantInput = {
-  toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
+  toolCalls: { name: string; args?: Record<string, unknown>; cwd?: string; fileChange?: FileChange }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
   actor?: { agentType?: string };

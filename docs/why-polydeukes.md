@@ -26,14 +26,15 @@ better verification.
 
 ## What exists now
 
-Seven packages provide a shared input vocabulary, three session adapters, a TypeScript client
+Seven packages provide a shared input vocabulary, three session adapters, TypeScript, Rust, and
+Python clients
 for programs, an optional markdown index, and the `polydeukes` umbrella, which carries the judge
 and the `pdks` command.
 Two observation surfaces serve different purposes:
 
 - The **session surface** judges one call before it runs — an input IR on stdin. Claude Code,
   Grok, and Codex have installers, and a program reaches the same surface through
-  `@polydeukes/sdk-ts`;
+  the TypeScript, Rust, or Python SDK;
   what history and witness each host can prove differs. An adapter uses stable host events to
   assemble that evidence rather than treating an undocumented transcript format as a contract.
 - The **change-set surface** judges a unified diff read from stdin — a staged diff piped by a
@@ -61,7 +62,8 @@ and the [configuration reference](./reference/configuration/index.md).
 `pdks memory` indexes the project's markdown documents into `.polydeukes/memory.db` and searches
 their sections. The documents stay the record and the index is derived from them: nothing is
 written to the index alone, so deleting it and running `pdks memory ingest` restores it, and how
-the file is kept is the project's choice. The index lives in the optional package
+the file is kept is the project's choice. The single executable includes the index implementation.
+In npm installations it lives in the optional package
 `@polydeukes/memory`, which the judge never loads — a verdict is the same with or without it.
 Links between documents are stored as rows, and a link whose target does not exist is recorded
 rather than refused: an ingest that refused a document would leave the index disagreeing with
@@ -81,7 +83,8 @@ a built-in behavior; protecting other source files depends on the configured pat
 A human witness can allow a blocking judgment without rewriting the policy. In a supported session,
 the token must stand alone on the first line of a human message and remain within its TTL. The
 change-set surface has no prompt: the valve is the session surface's TTL witness, and the
-change-set surface only emits an exit code that the user's hook consumes. The valve is consulted after
+change-set surface only emits an exit code that the user's hook consumes. The valve is consulted
+after
 judgment and does not repair a broken assembly.
 
 ### Deterministic judgment, explicit enforcement
@@ -101,6 +104,12 @@ One call leaves one row, and one component writes it. An agent adapter translate
 payload into the judge's input and hands it over; it decides nothing and records nothing. That
 holds on the failure path too: when an adapter cannot build the input, it sends the reason to
 the judge instead of recording the failure itself, so the writer never changes with the outcome.
+
+A shared layer structure does not imply identical evidence. The three language SDKs call the
+executable and return values for the same four operations. The three host adapters own event
+translation, registration, and responses; the common runtime invokes the judge through the same
+executable. Execution and failure handling are shared while each host supplies only what it can
+prove. An unknown prompt origin is not promoted to a human message to make capabilities match.
 
 ### Evidence with a stated boundary
 

@@ -2,21 +2,15 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// The umbrella after this repository moved onto the delegators its adapters generate, checked
-// as source text and manifest: the in-process session path is gone, the umbrella depends on
-// no adapter, and its sources carry no agent's tool roster or payload keys. Source text ONLY —
-// this file must never rebuild dist: a rebuild while the tree is mid-change locks the session
-// behind the fail-closed hook.
+// Source-only architecture checks never rebuild the active session's dist.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaDir = resolve(import.meta.dirname, '..');
 const umbrellaSrc = join(umbrellaDir, 'src');
-const claudeAdapterSrc = join(repoRoot, 'packages/adapter-claude-code/src');
+const ADAPTERS = ['adapter-claude-code', 'adapter-codex', 'adapter-grok'];
 
 /** The umbrella files that carried the in-process session path. */
 const OLD_SESSION_PATH_FILES = ['claude-code-hook.ts', 'claude-code.ts'];
-/** The adapter that path depended on. */
-const CLAUDE_ADAPTER = '@polydeukes/adapter-claude-code';
 /** The adapter's in-process entry the old path called, and the file that defined it. */
 const OLD_ADAPTER_ENTRY = 'runAdapterPath';
 const OLD_ADAPTER_ENTRY_FILE = 'run-adapter-path.ts';
@@ -69,11 +63,14 @@ const identifier = (name: string): RegExp => new RegExp(`\\b${escapeRegExp(name)
 type Manifest = {
   exports?: Record<string, unknown>;
   dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  bin?: unknown;
 };
 
 const manifest = JSON.parse(readFileSync(join(umbrellaDir, 'package.json'), 'utf-8')) as Manifest;
 
-describe('the old in-process session path is gone', () => {
+describe('one-way umbrella, adapter and vocabulary ownership', () => {
   it('has neither old session file under the umbrella src', () => {
     // A file left behind is a second session entry that still rewrites Grok names and
     // writes rows beside the adapter's spawn.
@@ -81,18 +78,45 @@ describe('the old in-process session path is gone', () => {
     expect(left).toEqual([]);
   });
 
-  it('depends on no adapter', () => {
-    // The adapter takes the umbrella as a peer; the umbrella depending back on the adapter
-    // is the cycle the peer declaration exists to avoid, and the old path's only reason.
-    expect(manifest.dependencies ?? {}).not.toHaveProperty(CLAUDE_ADAPTER);
+  it('depends on all three adapter leaves, each pointing only to core', () => {
+    for (const adapter of ADAPTERS) {
+      expect(manifest.dependencies?.[`@polydeukes/${adapter}`]).toBe('workspace:^');
+      const leaf = JSON.parse(
+        readFileSync(join(repoRoot, 'packages', adapter, 'package.json'), 'utf8'),
+      ) as Manifest;
+      expect(Object.keys(leaf.dependencies ?? {})).toEqual([]);
+      expect(Object.keys(leaf.peerDependencies ?? {})).toEqual(['@polydeukes/core']);
+      expect(leaf.devDependencies).toHaveProperty('@polydeukes/core');
+      expect(leaf.bin).toBeUndefined();
+    }
+    const core = JSON.parse(
+      readFileSync(join(repoRoot, 'packages/core/package.json'), 'utf8'),
+    ) as Manifest;
+    const coreEdges = [
+      ...Object.keys(core.dependencies ?? {}),
+      ...Object.keys(core.peerDependencies ?? {}),
+    ];
+    expect(
+      coreEdges.filter((name) => name === 'polydeukes' || name.startsWith('@polydeukes/adapter-')),
+    ).toEqual([]);
   });
 
-  it('names the adapter in-process entry nowhere under the adapter src or its barrel', () => {
-    // A barrel entry with no definition fails the build; a definition with no barrel entry
-    // is dead code that still writes a row under the old label. Both fail here by name.
-    expect(existsSync(join(claudeAdapterSrc, OLD_ADAPTER_ENTRY_FILE))).toBe(false);
-    const found = carriers(claudeAdapterSrc, identifier(OLD_ADAPTER_ENTRY));
-    expect(found, `old entry references in adapter src:\n${found.join('\n')}`).toEqual([]);
+  it('keeps process execution, executable resolution, judgment and telemetry out of adapter leaves', () => {
+    for (const adapter of ADAPTERS) {
+      const src = join(repoRoot, 'packages', adapter, 'src');
+      expect(existsSync(join(src, OLD_ADAPTER_ENTRY_FILE))).toBe(false);
+      for (const name of [OLD_ADAPTER_ENTRY, 'resolveUmbrellaBin']) {
+        expect(carriers(src, identifier(name)), `${adapter}: ${name}`).toEqual([]);
+      }
+      expect(carriers(src, /\b(?:function|const|let)\s+runHook\b/g), adapter).toEqual([]);
+      expect(
+        carriers(
+          src,
+          /\b(?:from|import)\s*(?:\(\s*)?['"](?:node:child_process|polydeukes(?:\/[^'"]*)?|@polydeukes\/(?:sdk-[^'"]+|adapter-[^'"]+))['"]|\b(?:appendRecord|dispatchCovenants|runCovenantCheck)\s*\(/g,
+        ),
+        adapter,
+      ).toEqual([]);
+    }
   });
 
   it('names the Grok name rewrite nowhere under the umbrella src', () => {
@@ -104,7 +128,7 @@ describe('the old in-process session path is gone', () => {
   });
 });
 
-describe('the umbrella knows no agent tool roster or payload key', () => {
+describe('host translation stays outside the common runtime and judgment', () => {
   // Path strings (`.claude/hooks`, `.grok/hooks`) are outside this check: the scaffolded
   // default protected list names those directories on purpose, whichever agent is installed.
 
@@ -119,7 +143,7 @@ describe('the umbrella knows no agent tool roster or payload key', () => {
 
   it('carries none of the agent payload keys as an identifier under src, comments stripped', () => {
     // These are spellings a host envelope carries, so one under src means the umbrella
-    // still reads a payload the adapter translates before spawning it. `toolName` is not
+    // still reads a payload the adapter owns. `toolName` is not
     // among them: the shell judge names a field of its own evidence record that way, and
     // that field's value comes from the IR's `call.name`, never from an envelope.
     const found = AGENT_PAYLOAD_KEYS.flatMap((key) =>

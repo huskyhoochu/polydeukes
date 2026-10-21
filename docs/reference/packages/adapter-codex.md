@@ -2,135 +2,77 @@
 
 **English** · [한국어](adapter-codex.ko.md)
 
-> **The Codex install unit** — lifecycle events become adapter-owned session evidence, and
-> `PreToolUse` payloads become covenant input IR with one element per file the patch touches.
->
-> Beta. Install it next to `polydeukes`, which it names as a `peerDependency`.
-
 <a id="ownership"></a>
-## What this package owns
+## Ownership
 
-The boundary where Codex's vocabulary is translated away. Agent and tool literals live *here*
-by design, so that they never reach the core.
+This module translates host events and tool names into the common covenant input IR. All three
+adapters expose the same three functions.
 
-| Unit | What it does |
+| Function | Input and result |
 |---|---|
-| `pdks-codex` bin | One subcommand, `pdks-codex init`, which registers the session surface in a project |
-| `runHook` | Records lifecycle evidence, or translates one `PreToolUse` payload into the input IR and spawns the judge |
-| Session evidence | Stores timestamped human messages and completed tool calls under a SHA-256 session filename, then removes it at `SessionEnd` |
-| Payload validation | Demands every key the host's generated schema marks required, in the one spelling that host sends |
-| Patch parsing | Turns the raw patch text of an `apply_patch` call into one file change per file it touches |
-| Path rebasing | Resolves a patch path against the call's working directory and carries it relative to the project root |
+| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable` |
+| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr |
 
-`runHook({ repoRoot })` is what the generated hook delegator imports. `UserPromptSubmit` and
-`PostToolUse` append strict JSONL records under `.polydeukes/codex-sessions/`; `SessionEnd`
-removes only that session's file. `PreToolUse` builds the IR with the `tools` roster and a
-`session` sourced from those records, but no synthesized `actor` or `channels`, then spawns
-`pdks covenant check --enforce block` in `repoRoot` and maps every nonzero child status to
-hook exit 2. The judging happens in that child process; this package carries no judgment logic.
+The common `pdks` runtime reads stdin and sends IR to `covenant check --enforce block` through the
+current executable. Stdin EOF and child communication each have a 10-second deadline. Registered
+host deadlines are 60 seconds for PreToolUse, 30 for prompt/post events, and 5 for session end.
 
-**`pdks` writes the telemetry.** The adapter sends failures that occur before spawning to
-`pdks covenant check --input-failure` as a JSON `reason` on stdin. The judge prints the
-original refusal once and records one `blocked covenant-check` row, exiting 3 because no
-observation could be judged. The hook exits 2 with empty stdout. Actual malformed input and
-abnormal child exits retain their diagnostics.
+Untranslatable, truncated, or invalid UTF-8 input reaches `--input-failure`. The shared judge
+reports the cause once and writes one `blocked covenant-check` row. Child launch failures, signals,
+unexpected statuses, and deadlines also refuse the call; a failure before the judge starts can leave
+no telemetry row.
 
 <a id="apply-patch"></a>
-## Why this adapter parses text where its siblings read arguments
+## Patches and session evidence
 
-Codex normalises every file edit that reaches the hook into a single tool name, `apply_patch`,
-and puts the patch itself in `tool_input.command` — the same field a shell call uses for its
-command line. There is no path argument to read. `Edit` and `Write` exist as matcher aliases
-you may write in `.codex/hooks.json`, but the payload always names the tool `apply_patch`, so
-a roster or a branch keyed on the aliases matches nothing that ever arrives.
-
-One patch can create, update, delete and rename files in one call. The adapter carries each as
-its own element of one IR, on one spawn: every file is judged, and any one of them blocking
-blocks the whole call. A rename contributes two elements, because it changes the path it
-leaves as well as the one it takes.
+The adapter splits `apply_patch` text into one IR element per file. Paths from a nested cwd are
+rebased to the registered project root; targets outside it are refused. Observed `PostToolUse`
+evidence is isolated by session and subagent and removed at `SessionEnd`. The unstable Codex
+transcript file is never read. Current prompt events do not establish human provenance, so they
+cannot open the witness valve. Perform protected changes from your own terminal.
 
 <a id="consumer"></a>
-## Where the consumer touches it
-
-Two lines install the Codex session surface, run from the project root:
+## Connection and migration
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-codex
-npx pdks-codex init
+pdks adapter codex init
 ```
 
-`pdks-codex init` resolves `polydeukes` from the project, spawns `pdks init` for the
-agent-neutral scaffold, then writes the delegator and merges its entries for `PreToolUse`,
-`UserPromptSubmit`, `PostToolUse`, and `SessionEnd` into
-`.codex/hooks.json` non-destructively — other events, other matchers and keys it does not know
-are left alone. A re-run reports each existing artifact as skipped and overwrites nothing. The
-full artifact list is in [`pdks init`](../cli/init.md#init-codex).
+Run from the project root. The single executable includes all three adapters and requires no
+separate Node or npm installation. Registration pins absolute paths to the current executable and
+project root. Rerun from the new location after moving either.
 
-**Writing the registration is not the end of the install.** Codex records trust against the
-hash of a hook's definition, so the generated hook is listed for review and skipped until you
-approve it with `/hooks`. This is why `init` writes a byte-identical command string on every
-run: a changed one needs approving again, and until someone does, nothing is judged.
-
-Installing this adapter beside `@polydeukes/adapter-claude-code` or
-`@polydeukes/adapter-grok` in one project can run the judge twice per call.
-
-- **The generated hook** imports `runHook` from this package. Upgrading the package upgrades
-  what runs; the hook file itself never changes.
-
-No configuration namespace of its own. The scaffold `pdks init` writes protects `.codex/hooks`
-by default, so the registration this installer creates is covered by the config it creates.
+The installer updates its own registrations while preserving other handlers and owner settings. It
+removes an old generated `.mjs` only when its contents match the original and preserves modified
+files. Existing configuration is retained; compare the reported required protected paths with
+`protectedPaths`.
 
 <a id="code-mode-coverage"></a>
-## Code Mode coverage by version
+## Code Mode coverage
 
-Code Mode hook coverage varies by CLI version. On 2026-10-13, a macOS/zsh measurement of
-codex-cli **0.162.1** explicitly enabled the under-development `code_mode` and `code_mode_only`
-options in two sessions using workspace 0.19.0 packages and existing approved hooks. Three
-nested calls were measured: `tools.exec_command`, an ordinary-file same-content
-`tools.apply_patch`, and a protected-config same-content `tools.apply_patch`. The shell call
-was judged through `Bash` and the patches through `apply_patch`. The first two produced
-judgment rows; the protected patch was rejected by `PreToolUse` before execution and logged
-as `blocked self-mod`.
+Approve the registration through Codex `/hooks`. Trust is tied to the definition hash and may need
+renewing after a path changes. Nested Code Mode coverage varies by version: verify real file and
+shell calls and telemetry with your installed CLI. `Active` is not execution evidence.
 
-A local **0.156.1** measurement also observed nested shell calls and blocked a protected
-patch. The **0.154.0** measurement observed neither the outer `exec` dispatch nor its nested
-calls ([original report and version follow-up](https://github.com/huskyhoochu/polydeukes/issues/64)).
-The outer `exec` is outside the adapter's tool roster; the later measurements do not establish
-an outer `exec` hook payload. The [host's hook documentation](https://learn.chatgpt.com/docs/hooks)
-describes hook decisions applying to nested Code Mode calls.
+Grok responds with stdout JSON containing `decision: allow|deny`; Claude and Codex use empty stdout
+and exit 0 or 2. Observe-only lifecycle events exit 0 without a tool-decision JSON document.
 
-After approving the hook, verify actual judgments in `.polydeukes/roi.log` on your installed
-host. `/hooks` showing Active alone does not establish coverage. `pdks-codex init` prints this
-version-dependent scope and verification advice as a `note:` line.
+Shell paths use the event's cwd. In Codex CLI 0.163.0, one nested `exec_command` with a
+`workdir` override did not block a protected file's mtime change. The raw hook payload was not
+captured, so coverage of per-tool directory overrides remains unverified. Recheck it when
+that payload can be inspected.
 
 <a id="limits"></a>
 ## Declared limits
 
-The adapter's roster and the host's tool paths set these limits:
+The hook judges tool calls delivered by the host. It does not separately observe each file write
+performed by a child process. Missing evidence follows the declaration’s supply policy; missing
+history is not invented to produce `passed`. If the host has not trusted the hook or has disabled
+it, this judgment path does not start.
 
-- **The roster, not the matcher, decides what is judged.** The adapter translates
-  `apply_patch` and `Bash`; every other name — a Code Mode name, an MCP tool, `write_stdin` —
-  is refused with exit 2 and a `blocked` runner row before the judge runs. Widening the
-  matcher in `.codex/hooks.json` to such a name blocks every call under it rather than
-  judging it, and the edit changes the trust hash, so the hook is skipped until `/hooks`
-  approves it again.
-- **`write_stdin` is not judged again.** It delivers input to a unified-exec session that
-  already passed `PreToolUse`. A shell left open for input is judged once, at the call that
-  opened it.
-- **Hosted tools do not take this path.** Web search and its kind do not run through the local
-  function-tool hooks, so they reach no covenant.
-- **The host calls its tool hooks a guardrail rather than a complete enforcement boundary.**
-  Some specialized tool paths can opt out of the default hook path.
-- **The unstable transcript is not a channel.** The payload names a transcript path, but the
-  host documents that format as unstable, so no judgment reads it. The adapter instead builds
-  `session` from `UserPromptSubmit` and `PostToolUse`. A fresh configured token, alone on the
-  first line of a human message, can release the retried protected call. If no human evidence
-  was recorded, or evidence storage failed, the recovery message directs the repair to the user
-  terminal. `actor`, `channels`, and tool success are never synthesized.
-- **A patch resolving outside the project is refused rather than judged.** Such a path has no
-  project-relative form, and an element carrying one would land in no scope — judged over
-  nothing, and passed.
-- **An unresolvable `polydeukes` leaves no row.** When the umbrella cannot be resolved from the
-  project there is no process to spawn and no log path to write to, so the hook exits `2` with
-  one line on stderr and the telemetry log gains nothing. Every other pre-spawn failure does
-  reach `pdks` and does leave a row.
+When Claude and Grok are registered together, the Claude compatibility callback is skipped when
+`GROK_WORKSPACE_ROOT` is present; Grok’s own registration owns that judgment. Grok still needs its
+own `init`. Global host settings are unchanged.
+
+[Installation reference](../cli/init.md#init-codex)

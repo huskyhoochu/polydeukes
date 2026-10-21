@@ -2,133 +2,63 @@
 
 [English](adapter-codex.md) · **한국어**
 
-> **Codex의 설치 단위**입니다. 생명주기 이벤트는 어댑터 소유 세션 증거가 되고,
-> `PreToolUse` 페이로드는 패치가 건드리는 파일마다 원소 하나를 실은 약속(covenant) 입력 IR이
-> 됩니다.
->
-> 베타입니다. `polydeukes`와 함께 설치하며, `polydeukes`는 이 패키지의 `peerDependency`입니다.
-
 <a id="ownership"></a>
-## 담당하는 기능
+## 소유 범위
 
-Codex의 입력을 공통 형식으로 번역합니다. 에이전트와 도구의 구체적인 이름은 이 패키지에서
-처리하고 코어에는 넣지 않습니다.
+호스트의 이벤트·도구 이름은 이 모듈에서 공통 약속(covenant) 입력 IR로 바뀝니다. 세 어댑터 모두 같은 세 함수를 제공합니다.
 
-| 단위 | 하는 일 |
+| 함수 | 입력과 결과 |
 |---|---|
-| `pdks-codex` 실행 파일 | 하위 명령 하나 `pdks-codex init`으로 프로젝트에 세션 표면을 등록합니다 |
-| `runHook` | 생명주기 증거를 기록하거나, `PreToolUse` 페이로드 하나를 입력 IR로 바꾸고 판정기를 스폰합니다 |
-| 세션 증거 | 시각을 붙인 사람 메시지와 완료된 도구 호출을 SHA-256 세션 파일에 저장하고 `SessionEnd`에서 지웁니다 |
-| 페이로드 검증 | 호스트의 생성 스키마가 필수로 지정한 키를 모두 요구하며, 그 호스트가 보내는 한 가지 표기만 받습니다 |
-| 패치 해석 | `apply_patch` 호출의 원본 패치 텍스트를 건드리는 파일마다 변경 하나로 풉니다 |
-| 경로 기준 변환 | 패치 경로를 호출의 작업 디렉터리 기준으로 해석한 뒤 프로젝트 루트 기준으로 실습니다 |
+| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`·`recorded`·`unavailable` |
+| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: 생성·갱신·변경 없음·보존 경로와 보호 경로 |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code·stdout·stderr |
 
-생성된 훅 위임자가 불러오는 것이 `runHook({ repoRoot })`입니다. `UserPromptSubmit`과
-`PostToolUse`는 `.polydeukes/codex-sessions/` 아래에 엄격한 JSONL 레코드를 추가하고,
-`SessionEnd`는 그 세션 파일만 지웁니다. `PreToolUse`는 `tools` 명부와 이 레코드에서 만든
-`session`을 싣되 `actor`나 `channels`를 합성하지 않은 뒤, `repoRoot`에서
-`pdks covenant check --enforce block`을 스폰하고 자식 프로세스의 0이 아닌 종료 상태를
-훅 종료 코드 2로 변환합니다. 판정은 그 자식 프로세스가 하며, 이 패키지에는 판정 코드가 없습니다.
+공통 `pdks` 실행 경로가 stdin을 받고 현재 실행 파일의 `covenant check --enforce block`에 IR을 전달합니다. 입력 EOF 기한과 자식 통신
+기한은 각각 10초입니다. 등록된 PreToolUse 기한은 60초, prompt/post는 30초, 종료는 5초입니다.
 
-**텔레메트리는 `pdks`가 기록합니다.** 어댑터는 스폰 전에 발생한 실패도 `pdks`의 stdin으로
-JSON `reason`으로 `pdks covenant check --input-failure`에 보냅니다. 판정기는 원래 거부
-사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록하며, 판정할 관측이 없어
-종료 코드 3을 돌려줍니다. 훅은 stdout을 비우고 종료 코드 2로 차단합니다. 실제 입력 오류와
-자식 프로세스의 비정상 종료 진단은 유지합니다.
+번역 불가·잘린 입력·잘못된 UTF-8은 `--input-failure`로 전달합니다. 공통 판정기가 원인을 한 번 출력하고 `blocked covenant-check` 행 한
+건을 기록합니다. 자식 실행 실패·시그널·예상 밖 status·기한 초과도 거부하며, 판정기가 시작되지 못하면 telemetry 행이 없을 수 있습니다.
 
 <a id="apply-patch"></a>
-## 형제 어댑터는 인자를 읽는데 이 어댑터가 텍스트를 해석하는 이유
+## 패치와 세션 증거
 
-Codex는 훅에 도달하는 모든 파일 편집을 `apply_patch`라는 이름 하나로 정규화하고, 패치 자체를
-`tool_input.command`에 담습니다. 셸 호출이 명령줄을 싣는 것과 같은 자리입니다. 읽을 경로
-인자가 없습니다. `Edit`과 `Write`는 `.codex/hooks.json`에 적을 수 있는 matcher 별칭이지만,
-페이로드는 언제나 도구 이름을 `apply_patch`로 보냅니다. 그래서 별칭을 기준으로 삼은 명부나
-분기는 실제로 도착하는 어떤 호출과도 일치하지 않습니다.
-
-패치 하나가 한 호출에서 파일을 만들고 고치고 지우고 이름을 바꿀 수 있습니다. 이 어댑터는
-각각을 IR 하나의 원소로 실어 한 번만 스폰합니다. 모든 파일이 판정되고, 그중 하나라도
-차단되면 호출 전체가 차단됩니다. 이름 변경은 원소를 둘 만듭니다. 떠나는 경로와 도착하는
-경로를 모두 바꾸기 때문입니다.
+`apply_patch` 텍스트를 파일별 IR로 나눕니다. 하위 cwd의 경로는 등록한 프로젝트 루트 기준으로 바뀌며 프로젝트 밖 대상은 거부합니다. `PostToolUse`로
+관측한 도구 증거는 세션·하위 에이전트별로 분리하고 `SessionEnd`에 정리합니다. 불안정한 Codex 대화 기록 파일은 읽지 않습니다. 현재 prompt 이벤트가 사람
+출처를 증명하지 않으므로 자동 증인 밸브를 열지 않습니다. 보호된 변경은 사용자 터미널에서 수행하세요.
 
 <a id="consumer"></a>
-## 사용자가 다루는 부분
-
-프로젝트 루트에서 두 줄이면 Codex 세션 표면이 설치됩니다.
+## 연결과 이전
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-codex
-npx pdks-codex init
+pdks adapter codex init
 ```
 
-`pdks-codex init`은 프로젝트에서 `polydeukes`를 찾아 확인한 뒤, 에이전트 중립 초기 구성을
-위해 `pdks init`을 스폰하고, 위임자를 쓴 뒤 `PreToolUse`, `UserPromptSubmit`, `PostToolUse`,
-`SessionEnd` 항목을 `.codex/hooks.json`에 병합합니다.
-병합은 기존 내용을 지우지 않습니다. 다른 이벤트, 다른 matcher, 이 패키지가 모르는 키는 그대로
-둡니다. 다시 실행하면 이미 있는 산출물을 건너뛴 것으로 보고하고 아무것도 덮어쓰지 않습니다.
-전체 산출물 목록은 [`pdks init`](../cli/init.ko.md#init-codex)에 있습니다.
+프로젝트 루트에서 실행하세요. 단일 실행 파일에 세 어댑터가 포함되며 별도 Node·npm 설치가 필요하지 않습니다. 등록에는 현재 실행 파일과 프로젝트 루트의 절대 경로가
+고정됩니다. 실행 파일이나 프로젝트를 옮기면 새 위치에서 다시 실행하세요.
 
-**등록 파일을 쓰는 것으로 설치가 끝나지 않습니다.** Codex는 훅 정의의 해시로 신뢰를
-기록하므로, 생성된 훅은 검토 대상으로 표시되고 `/hooks`에서 승인하기 전까지 건너뛰어집니다.
-`init`이 실행할 때마다 바이트가 같은 명령 문자열을 쓰는 이유가 이것입니다. 문자열이 바뀌면
-다시 승인해야 하고, 누군가 승인하기 전까지는 아무것도 판정되지 않습니다.
-
-이 어댑터를 `@polydeukes/adapter-claude-code`나 `@polydeukes/adapter-grok`과 한 프로젝트에
-함께 설치하면 호출마다 판정기가 두 번 실행될 수 있습니다.
-
-- **생성된 훅**은 이 패키지에서 `runHook`을 불러옵니다. 패키지를 올리면 실행되는 내용이
-  올라가며, 훅 파일 자체는 다시 만들 필요가 없습니다.
-
-자체 설정 이름 공간은 없습니다. `pdks init`이 쓰는 초기 설정은 기본적으로 `.codex/hooks`를
-보호하므로, 이 설치기가 만드는 등록 파일은 같은 설치가 만든 설정이 지킵니다.
+설치기는 자체 등록을 갱신하고 다른 handler와 사용자 설정을 보존합니다. 구형 생성 `.mjs`는 원본과 일치할 때 제거하고 사용자가 수정한 파일은 보존합니다. 기존 설정을
+덮어쓰지 않으므로 출력한 필수 보호 경로를 설정의 `protectedPaths`와 대조하세요.
 
 <a id="code-mode-coverage"></a>
-## Code Mode의 버전별 관측 범위
+## Code Mode 관측 범위
 
-Code Mode의 훅 관측 범위는 CLI 버전에 따라 달라집니다. 2026-10-13 macOS/zsh에서
-codex-cli **0.162.1**을 측정할 때는 개발 중인 `code_mode`와 `code_mode_only` 옵션을
-명시적으로 켰습니다. 세션 두 개에서 workspace 0.19.0 패키지와 기존에 승인된 훅을 사용해
-중첩 호출 세 개를 측정했습니다. `tools.exec_command`, 일반 파일의 동일 내용
-`tools.apply_patch`, 보호 설정의 동일 내용 `tools.apply_patch`입니다. 셸 호출은 `Bash`
-경로로, 패치는 `apply_patch` 경로로 판정됐습니다. 앞의 두 호출은 판정 행을 남겼고,
-보호 패치는 실행 전에 `PreToolUse`에서 거부돼 `blocked self-mod`로 기록됐습니다.
+Codex에서 `/hooks`로 등록을 승인하세요. 신뢰는 정의의 hash에 연결되며 경로 변경 뒤 재승인이 필요할 수 있습니다. Code Mode 중첩 호출 관측은 버전에 따라
+달라지므로 설치한 버전으로 실제 파일·셸 호출과 telemetry를 확인하세요. `Active` 표시는 실행 증거가 아닙니다.
 
-로컬 **0.156.1** 측정에서도 중첩 셸 호출이 관측되고 보호 패치가 차단됐습니다.
-**0.154.0** 측정에서는 바깥 `exec`와 중첩 호출 모두 관측되지 않았습니다
-([원본 보고와 버전별 후속](https://github.com/huskyhoochu/polydeukes/issues/64)).
-바깥 `exec`는 어댑터의 도구 명부 밖에 있으며, 이후 측정도 바깥 `exec`의 훅 페이로드를
-확인한 것은 아닙니다. [호스트의 훅 문서](https://learn.chatgpt.com/docs/hooks)는 중첩된
-Code Mode 호출에 훅 결정이 적용된다고 설명합니다.
+Grok은 stdout JSON의 `decision: allow|deny`로 응답하고 Claude·Codex는 빈 stdout과 exit 0·2로 응답합니다. 관측 전용 생명주기
+이벤트는 도구 판정 JSON 없이 exit 0으로 끝납니다.
 
-훅을 승인한 뒤 설치된 호스트에서 `.polydeukes/roi.log`의 실제 판정을 확인하세요.
-`/hooks`의 Active 표시만으로 관측 범위를 보장하지 않습니다. `pdks-codex init`은
-버전별 관측 범위와 확인 방법을 `note:` 줄로 안내합니다.
+셸 경로는 이벤트의 cwd를 기준으로 읽습니다. Codex CLI 0.163.0에서 `workdir`를 지정한 중첩
+`exec_command` 한 건은 보호 파일의 mtime 변경을 막지 못했습니다. 원시 훅 payload를 수집하지
+않았으므로 도구별 작업 디렉터리 지정의 관측 범위는 미확인입니다. 해당 payload를 확보하면 다시 확인합니다.
 
 <a id="limits"></a>
-## 선언된 한계
+## 관측 한계
 
-어댑터의 명부와 호스트의 도구 경로가 다음 한계를 정합니다.
+훅은 호스트가 전달한 도구 호출을 판정합니다. 자식 프로세스의 개별 파일 쓰기를 별도로 관측하지 않습니다. 증거가 없으면 해당 선언의 공급 정책을 따르며 없는 기록을 합성해
+`passed`로 만들지 않습니다. 호스트가 훅을 신뢰하지 않거나 비활성화했다면 이 경로의 판정이 시작되지 않습니다.
 
-- **무엇을 판정하는지는 matcher가 아니라 명부가 정합니다.** 어댑터는 `apply_patch`와 `Bash`만
-  번역하고, 그 밖의 이름(Code Mode 이름, MCP 도구, `write_stdin`)은 판정기를 띄우기 전에
-  exit 2와 `blocked` 러너 행으로 거부합니다. `.codex/hooks.json`의 matcher를 그런 이름까지
-  넓히면 그 아래의 모든 호출이 판정 대신 차단되고, 그 편집은 신뢰 해시를 바꾸므로 `/hooks`에서
-  다시 승인하기 전까지 훅이 건너뛰어집니다.
-- **`write_stdin`은 다시 판정되지 않습니다.** 이미 `PreToolUse`를 통과한 unified-exec 세션에
-  입력을 전달합니다. 입력을 받으려고 열어 둔 셸은 그것을 연 호출에서 한 번 판정됩니다.
-- **호스트가 제공하는 도구는 이 경로를 지나지 않습니다.** 웹 검색 같은 도구는 로컬 함수 도구
-  훅을 거치지 않으므로 어떤 약속에도 닿지 않습니다.
-- **호스트는 자기 도구 훅을 완전한 차단 경계가 아니라 보조 장치라고 밝힙니다.** 일부 특수한
-  도구 경로는 기본 훅 경로를 지나지 않을 수 있습니다.
-- **불안정한 대화 기록은 채널로 쓰지 않습니다.** 페이로드가 대화 기록 경로를 지목하지만
-  호스트가 그 형식을 안정된 인터페이스가 아니라고 밝혔으므로 어떤 판정도 그것을 읽지
-  않습니다. 대신 어댑터가 `UserPromptSubmit`과 `PostToolUse`로 `session`을 만듭니다. 설정된
-  토큰을 사람 메시지의 첫 줄에 단독으로 보내면 다시 시도한 보호 호출을 허용할 수 있습니다.
-  사람 증거가 기록되지 않았거나 저장에 실패했다면 복구 메시지가 사용자 터미널을 안내합니다.
-  `actor`, `channels`, 도구 성공 여부는 합성하지 않습니다.
-- **프로젝트 밖으로 해석되는 패치는 판정하지 않고 거부합니다.** 그런 경로는 프로젝트 기준
-  상대 경로가 없고, 그것을 실은 원소는 어떤 관측 범위에도 들어가지 않아 판정 없이 지나가게
-  됩니다.
-- **`polydeukes`를 찾지 못하면 행이 남지 않습니다.** 프로젝트에서 통합 패키지를 찾을 수 없으면
-  스폰할 프로세스도 기록할 로그 경로도 없으므로, 훅은 stderr에 한 줄을 남기고 `2`로 끝나며
-  텔레메트리 로그에는 아무것도 추가되지 않습니다. 그 밖의 모든 스폰 전 실패는 `pdks`에 도달해
-  행을 남깁니다.
+Claude와 Grok을 함께 등록한 프로젝트에서는 Grok의 호환 Claude callback을 `GROK_WORKSPACE_ROOT`가 있을 때 건너뛰고 Grok 자체 등록으로
+판정합니다. Grok 연결에도 자체 `init`이 필요합니다. 전역 호스트 설정은 변경하지 않습니다.
+
+[설치 참조](../cli/init.ko.md#init-codex)

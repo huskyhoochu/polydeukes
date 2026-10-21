@@ -10,31 +10,22 @@
 <a id="quick-start"></a>
 ## 빠른 시작 (Quick start)
 
-**Node.js 24 이상**, pnpm, `package.json`이 있는 Git 프로젝트가 필요합니다.
-아래 명령은 프로젝트 루트에서 직접 터미널로 실행하세요.
+프로젝트 루트의 사용자 터미널에서 실행하세요. [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의
+운영체제에 맞는 실행 파일(`pdks-linux-x64`·`pdks-darwin-arm64`)을 받아 실행 권한을 주고 `pdks`라는 이름으로 `PATH`에 두세요.
+Node·npm·`package.json` 없이 세 어댑터와 memory를 포함한 명령을 실행합니다.
 
-### 1. 설치하고 에이전트 연결하기
-
-공통 패키지를 설치한 뒤, 사용하는 AI 코딩 파트너의 행을 골라 실행하세요.
+### 1. 에이전트 연결하기
 
 ```sh
-pnpm add -D polydeukes @polydeukes/core
+pdks adapter claude-code init
+# 또는
+pdks adapter codex init
+pdks adapter grok init
 ```
 
-| 에이전트 | 어댑터 설치 | 초기화 |
-|---|---|---|
-| Claude Code | `pnpm add -D @polydeukes/adapter-claude-code` | `pnpm exec pdks-claude-code init` |
-| Codex | `pnpm add -D @polydeukes/adapter-codex` | `pnpm exec pdks-codex init` |
-| Grok | `pnpm add -D @polydeukes/adapter-grok` | `pnpm exec pdks-grok init` |
-
-각 어댑터의 `init`은 `polydeukes.config.yaml`을 만들고, `.gitignore`에 `.polydeukes/`를
-추가하며, 세션 훅을 등록합니다. Claude Code는 다시 열고, Codex는 `/hooks`에서 생성된 훅을
-승인하고, Grok는 Hooks 탭을 새로 고치세요. Git diff만 판정하려면 공통 패키지를 설치한 뒤
-`pnpm exec pdks init`을 실행하세요.
-
-Node 없이 쓰려면 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)에서 단일 실행
-파일 `pdks`(`pdks-linux-x64`, `pdks-darwin-arm64`)를 받아 실행 권한을 주고 `PATH`에 두세요. memory를
-포함한 모든 `pdks` 명령이 이 파일로 실행됩니다. 에이전트 어댑터는 여전히 Node에서 실행됩니다.
+설치기는 설정을 만들고 프로젝트 훅을 병합합니다. Claude Code는 다시 열고, Codex는 `/hooks`에서 승인하고, Grok은 프로젝트 신뢰 승인 뒤 Hooks 탭을
+다시 불러오세요. 실제 호출과 `.polydeukes/roi.log`로 연결을 확인하세요. 실행 파일·프로젝트 위치가 바뀌면 `init`을 다시 실행합니다. Git diff만
+사용하려면 `pdks init`을 실행하세요.
 
 ### 2. 첫 규율 설정하기
 
@@ -80,8 +71,8 @@ Claude Code에서는 설치된 `discipline-draft` 스킬에 문제를 설명하�
 ### 3. 결과 확인하기
 
 ```sh
-pnpm exec pdks explain
-git diff HEAD | pnpm exec pdks covenant check --diff
+pdks explain
+git diff HEAD | pdks covenant check --diff
 ```
 
 `explain`은 두 표면 모두에서 `no-new-todo-lines`를 `declare`로 표시해야 합니다.
@@ -92,12 +83,12 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 
 이어서 [다른 규율 예제](./docs/how-to/write-disciplines.ko.md),
 [pre-commit 연결](./docs/how-to/connect-surfaces.ko.md#change-set-surface)을 읽거나,
-`pnpm exec pdks docs`로 설치된 판본의 문서를 확인하세요.
+`pdks docs`로 설치된 판본의 문서를 확인하세요.
 
 <a id="status-and-cli"></a>
 ## 현재 상태와 CLI
 
-**상태: 베타(beta)** (v0.7.0부터, 2026-09-16). npm 패키지 일곱 개와 Rust crate 하나가 발행되어
+npm 패키지 일곱 개와 Rust crate 하나가 발행되어
 있으며 Python SDK도 제공합니다. `@polydeukes/core`(약속(covenant)
 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 약속 판정과 memory의 네 비동기 동사를 제공하는
 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 네 동사를 Rust 호스트에 제공하는 crate
@@ -108,16 +99,16 @@ TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 네 동사를 Rust 호�
 
 ```sh
 pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
-pdks-claude-code init    # Claude Code 세션 표면을 배선 (@polydeukes/adapter-claude-code가 제공)
-pdks-grok init           # Grok 세션 표면을 배선 (@polydeukes/adapter-grok가 제공)
-pdks-codex init          # Codex 세션 표면을 배선 (@polydeukes/adapter-codex가 제공)
+pdks adapter claude-code init  # Claude Code
+pdks adapter grok init         # Grok
+pdks adapter codex init        # Codex
 git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
 git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에
 git diff main...HEAD | pdks covenant check --diff   # ... 또는 ref 범위(PR의 범위)에
 pdks covenant check < input.json                    # 또는 다른 프로그램이 만든 입력 IR에
 pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 출력 — 판정 없음
 pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
-pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db에 색인 (@polydeukes/memory 필요)
+pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db에 색인 (단일 실행 파일에 포함)
 pdks memory search <query> | show <id>             # 그 색인을 검색하거나 문서·절을 조회
 pdks memory lint | stats                           # 깨진 링크를 보고하거나 문서·링크·고립 문서 수를 출력
 pdks memory obligations <key>                      # 설정 규칙이 한 키로 추출한 의무를 전부 나열
@@ -157,7 +148,7 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 <a id="thin-core-and-packages"></a>
 ## 구성. 얇은 코어와 독립 패키지
 
-모두 설치할 필요 없이 필요한 부분만 골라 쓰는 구조를 지향합니다. 각 패키지는 코어에만 의존하고 서로를 모릅니다.
+실행 파일이 판정기와 세 호스트 어댑터를 조합합니다. 각 어댑터는 호스트 이벤트를 공통 core 어휘로 번역하고 판정기는 그 어휘를 소비합니다.
 
 | 패키지 | 역할 |
 |--------|------|
@@ -180,19 +171,12 @@ Polydeukes는 개발자가 스스로 지켜 온 규율을 AI 에이전트(Claude
 코어를 향하며 되돌아 나오는 의존은 없습니다. 코어는 특정 제품도, 특정 AI 런타임도 모릅니다.
 
 ```text
-@polydeukes/core            도메인·에이전트에 무지한 패턴 (covenant 프로토콜·ledger 엔진·메타-covenant·memory 엔진)
-        △
-        │ depends on (단방향)
-@polydeukes/adapter-*        런타임/인프라 결합을 코어 뒤로 숨김
-        │                   · adapter-claude-code  (PreToolUse 페이로드 ↔ canonical)
-        │                   · adapter-grok         (PreToolUse 페이로드 ↔ canonical)
-        │                   · adapter-codex        (PreToolUse 페이로드 ↔ canonical)
-        │                   · adapter-pi 등
-        │                   · sync(선택): 로컬 기본, s3/git/gcs/nfs는 어댑터
-        △
-        │ scaffolds into
-create-polydeukes           도메인 고유값을 템플릿·config로 외부화
-                            (ticket regex, 경로 glob, scope→명령 매핑 등)
+pdks (CLI · 공통 실행 · 판정기)
+  ├── adapter-claude-code ──┐
+  ├── adapter-codex ────────┼── core (공통 어휘 · 스키마)
+  └── adapter-grok ─────────┘
+
+sdk-ts / sdk-rust / sdk-python ── 실행 파일 호출 ── pdks
 ```
 
 분리 원칙은 셋입니다.

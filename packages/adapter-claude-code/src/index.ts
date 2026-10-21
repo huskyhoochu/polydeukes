@@ -1,29 +1,9 @@
-/**
- * @polydeukes/adapter-claude-code — up-translates Claude Code PreToolUse hook
- * payloads into the agent-neutral covenant input IR.
- *
- * Pre-alpha. Translation plus this surface's supply bodies — the readers a composition root
- * injects, which open files and spawn nothing. Agent and tool literals live here by design:
- * this package is the boundary where Claude Code's vocabulary is translated away before it
- * reaches the core.
- */
+/** Host event preparation, registration, and response translation for the pdks runtime. */
 
-export { type RunHookOutcome, type RunHookSpec, runHook } from './hook.ts';
+export { type PrepareHookOutcome, type PrepareHookSpec, prepareHook } from './prepare-hook.ts';
+export { type RegisterHookOutcome, type RegisterHookSpec, registerHook } from './register-hook.ts';
 export {
-  type SessionChannelReaderSpec,
-  sessionChannelReader,
-} from './session-channel-reader.ts';
-export {
-  type SessionEvidenceFromPayloadSpec,
-  type SessionEvidenceOutcome,
-  sessionEvidenceFromPayload,
-} from './session-evidence.ts';
-export { type SessionSourceReaderSpec, sessionSourceReader } from './session-source-reader.ts';
-export {
-  COMMAND_ARGS,
-  MUTATING_TOOLS,
-  SHELL_TOOLS,
-  type TranscriptPathFromPayloadSpec,
-  transcriptPathFromPayload,
-} from './session-vocabulary.ts';
-export { type TranscriptFromJsonlFileSpec, transcriptFromJsonlFile } from './transcript.ts';
+  type RenderHookResponseOutcome,
+  type RenderHookResponseSpec,
+  renderHookResponse,
+} from './render-hook-response.ts';

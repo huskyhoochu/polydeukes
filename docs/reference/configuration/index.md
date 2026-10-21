@@ -9,7 +9,8 @@ discipline fires is its
 [What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block)
 section.
 
-For the complete syntax of relations and extraction steps, see the [Declaration language reference](../declaration-language/index.md).
+For the complete syntax of relations and extraction steps, see the [Declaration language
+reference](../declaration-language/index.md).
 
 <a id="languages"></a>
 ## `languages`
@@ -85,7 +86,8 @@ lists](#three-lists).
 
 A declaration's `supply` policy still governs a channel the surface registers but the host
 does not prove. A host that carries no session (the Grok adapter) leaves a
-`sources: { session: { transcript: true } }` entry's source absent, and `supply: { session: 'pass' }`
+`sources: { session: { transcript: true } }` entry's source absent, and `supply: { session: 'pass'
+}`
 records a `skipped` telemetry event carrying the reason token `supply-pass` and lets the call
 proceed. Without that policy a missing source is unjudgeable (exit 2), not an automatic skip.
 
@@ -147,7 +149,10 @@ command shape. Only its placement is constrained.
 
 The adapter must identify the token's message as human input before it can open the valve.
 Knowing the token alone is insufficient. Every judgment allowed through the valve is recorded
-as `witnessed`.
+as `witnessed`. Claude Code and Codex accept prompt text for this purpose only when its
+origin explicitly identifies a human. An ordinary prompt event without that provenance
+does not open the valve. Grok supplies no human-message evidence. Recover a protected
+change from your own terminal when the host cannot prove that origin.
 
 <a id="memory"></a>
 ## `memory`

@@ -55,7 +55,13 @@ export type Actor = { agentType?: string };
  * means "this call is unproven", and no sibling call's evidence can stand in for it.
  */
 export type CovenantInput = {
-  toolCalls: { name: string; args?: Record<string, unknown>; fileChange?: FileChange }[];
+  toolCalls: {
+    name: string;
+    args?: Record<string, unknown>;
+    /** Project-relative shell working directory; absence means the project root. */
+    cwd?: string;
+    fileChange?: FileChange;
+  }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
   /**
@@ -196,6 +202,12 @@ export function parseInput(
   const candidate = parsed;
   for (const key of ['toolCalls', 'subagentSpawns', 'userMessages'] as const) {
     if (!Array.isArray(candidate[key])) return refuse(`input carries no ${key} array`);
+  }
+
+  for (const call of candidate.toolCalls as unknown[]) {
+    if (isPlainObject(call) && 'cwd' in call && typeof call.cwd !== 'string') {
+      return refuse('input carries a malformed tool-call cwd');
+    }
   }
 
   if (candidate.world !== undefined && !isWorld(candidate.world)) {

@@ -44,33 +44,18 @@ const exportedNames = (text: string): Set<string> => {
 };
 
 /**
- * The consumer contract of the `.` entry point: the verbs the generated delegator and the
- * init generators call, and the spec ingredients they hand those verbs.
+ * The consumer contract of the `.` entry point consumed by the common CLI composition.
  */
 const KEPT_EXPORTS: readonly string[] = [
-  'transcriptFromJsonlFile',
-  'TranscriptFromJsonlFileSpec',
-  'transcriptPathFromPayload',
-  'TranscriptPathFromPayloadSpec',
-  // this surface's supply bodies — the readers the session root injects into the supply
-  // layer — each with the spec type its signature names
-  'sessionSourceReader',
-  'SessionSourceReaderSpec',
-  'sessionChannelReader',
-  'SessionChannelReaderSpec',
-  // the session evidence the umbrella lifts into the IR's `session` key
-  'sessionEvidenceFromPayload',
-  'SessionEvidenceFromPayloadSpec',
-  'SessionEvidenceOutcome',
-  // spec ingredients the composition root and the init generators both read
-  'COMMAND_ARGS',
-  'MUTATING_TOOLS',
-  'SHELL_TOOLS',
-  // the session entry point the generated delegator calls: builds the IR and spawns
-  // `pdks covenant check`, with the spec and outcome types its signature names
-  'runHook',
-  'RunHookSpec',
-  'RunHookOutcome',
+  'prepareHook',
+  'PrepareHookSpec',
+  'PrepareHookOutcome',
+  'registerHook',
+  'RegisterHookSpec',
+  'RegisterHookOutcome',
+  'renderHookResponse',
+  'RenderHookResponseSpec',
+  'RenderHookResponseOutcome',
 ];
 
 /**

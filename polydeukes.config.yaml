@@ -42,6 +42,8 @@ protectedPaths:
   - ".claude/settings.json"
   - ".grok/hooks"
   - ".codex/hooks"
+  - ".codex/hooks.json"
+  - ".polydeukes/bin/pdks"
   - "lefthook.yml"
   - "lefthook-local.yml"
   - ".lefthook-local"

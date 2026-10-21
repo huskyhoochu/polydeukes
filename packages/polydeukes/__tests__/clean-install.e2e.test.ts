@@ -55,8 +55,6 @@ const { packageManager } = JSON.parse(readFileSync(join(repoRoot, 'package.json'
   packageManager: string;
 };
 
-/** The artifacts `pdks-claude-code init` generates, as consumer-root-relative paths. */
-const HOOK_REL = '.claude/hooks/covenant-pretooluse.mjs';
 const CONFIG_REL = 'polydeukes.config.yaml';
 /** On the GENERATED config's protection list — the block/witness cases' target. */
 const SETTINGS_REL = '.claude/settings.json';
@@ -68,10 +66,8 @@ const NEAR_MISS_TARGET = '.claude/settings.json.bak';
 const TELEMETRY_REL = '.polydeukes/roi.log';
 /** The runner's label — the one writer of every row a generated delegator's call leaves. */
 const RUNNER_LABEL = 'covenant-check';
-/** The adapter's package directory — the install unit the consumer wires the hook through. */
-const ADAPTER_DIR = 'adapter-claude-code';
 
-/** The vocabulary package — the umbrella's one workspace dependency, which the consumer must name directly (below). */
+/** The vocabulary package used by the umbrella and its adapter leaves. */
 const CORE_DIR = 'core';
 /** The memory package — the umbrella's optional peer, which a consumer installs itself. */
 const MEMORY_DIR = 'memory';
@@ -105,14 +101,7 @@ beforeAll(() => {
     tarballs.set(dir, packOne(dir));
   }
 
-  // The consumer: a fresh tree in OS tmp, outside this repository. The umbrella, the
-  // adapter, and core arrive as direct file: dependencies, and every scoped package is also
-  // pinned through pnpm.overrides to its tarball. Both are needed: measured on pnpm 10.32,
-  // an override alone (file:, link:, or range-keyed) does not catch the umbrella's rewritten
-  // `^` range on core — pnpm still resolves that edge from the registry, where the current
-  // version is absent between a release merge and its publish, and where an older release
-  // would otherwise answer with a judge that predates the exports this build's hook imports.
-  // With core also a direct file: dependency the edge resolves to the tarball.
+  // Direct local dependencies and overrides keep every transitive package on this build.
   consumerRoot = mkdtempSync(join(tmpdir(), 'pdks-clean-install-consumer-'));
   const overrides = Object.fromEntries(
     PACKAGE_DIRS.filter((dir) => dir !== UMBRELLA_DIR).map((dir) => [
@@ -129,7 +118,6 @@ beforeAll(() => {
         packageManager,
         dependencies: {
           [packageNameOf(UMBRELLA_DIR)]: `file:${tarballOf(UMBRELLA_DIR)}`,
-          [packageNameOf(ADAPTER_DIR)]: `file:${tarballOf(ADAPTER_DIR)}`,
           [packageNameOf(CORE_DIR)]: `file:${tarballOf(CORE_DIR)}`,
           [packageNameOf(MEMORY_DIR)]: `file:${tarballOf(MEMORY_DIR)}`,
         },
@@ -142,7 +130,9 @@ beforeAll(() => {
 
   const install = spawnSync('pnpm', ['install'], { cwd: consumerRoot, encoding: 'utf-8' });
   if (install.status !== 0) {
-    throw new Error(`pnpm install failed in the consumer tree: ${install.stderr}`);
+    throw new Error(
+      `pnpm install failed in the consumer tree: ${install.stdout}\n${install.stderr}`,
+    );
   }
 
   // The overrides are load-bearing, and a resolution that ignores them still exits 0: the
@@ -166,10 +156,14 @@ beforeAll(() => {
 
   // Run once and asserted in its own case below: subsequent cases spawn the artifacts this
   // command generates.
-  initResult = spawnSync(join(consumerRoot, 'node_modules', '.bin', 'pdks-claude-code'), ['init'], {
-    cwd: consumerRoot,
-    encoding: 'utf-8',
-  });
+  initResult = spawnSync(
+    join(consumerRoot, 'node_modules', '.bin', 'pdks'),
+    ['adapter', 'claude-code', 'init'],
+    {
+      cwd: consumerRoot,
+      encoding: 'utf-8',
+    },
+  );
 }, 600_000);
 
 afterAll(() => {
@@ -183,10 +177,14 @@ afterAll(() => {
 function packOne(dir: string): string {
   const destination = join(packRoot, dir);
   mkdirSync(destination, { recursive: true });
-  const result = spawnSync('pnpm', ['pack', '--pack-destination', destination], {
-    cwd: join(repoRoot, 'packages', dir),
-    encoding: 'utf-8',
-  });
+  const result = spawnSync(
+    'pnpm',
+    ['--config.ignore-scripts=true', 'pack', '--pack-destination', destination],
+    {
+      cwd: join(repoRoot, 'packages', dir),
+      encoding: 'utf-8',
+    },
+  );
   if (result.status !== 0) {
     throw new Error(`pnpm pack failed for ${dir}: ${result.stderr}`);
   }
@@ -222,7 +220,9 @@ function packageNameOf(dir: string): string {
  */
 function spawnConsumerHook(payload: unknown): SpawnSyncReturns<string> {
   rmSync(join(consumerRoot, '.polydeukes'), { recursive: true, force: true });
-  return spawnSync(process.execPath, [join(consumerRoot, HOOK_REL)], {
+  const settings = JSON.parse(readFileSync(join(consumerRoot, SETTINGS_REL), 'utf8'));
+  const handler = settings.hooks.PreToolUse[0].hooks[0] as { command: string; args: string[] };
+  return spawnSync(handler.command, handler.args, {
     cwd: consumerRoot,
     input: JSON.stringify(payload),
     encoding: 'utf-8',
@@ -270,14 +270,16 @@ function generatedToken(): string {
 }
 
 describe('tarball install, init, and two real judgments', () => {
-  it('pdks-claude-code init exits 0 from the tarball install and writes the hook and config', () => {
+  it('pdks adapter claude-code init exits 0 from the tarball install and writes the registration and config', () => {
     // A packaging defect anywhere in the chain — either bin not shipped or not executable,
     // the adapter unable to resolve the umbrella it spawns, a scoped tarball the umbrella
     // cannot resolve — surfaces as a non-zero exit on the first command a consumer ever
     // runs. The symlink trees of the adapter's init e2e pass all of those; only a real
     // install graph reaches them.
     expect(initResult.status, `init stderr: ${initResult.stderr}`).toBe(0);
-    expect(existsSync(join(consumerRoot, HOOK_REL))).toBe(true);
+    const settings = JSON.parse(readFileSync(join(consumerRoot, SETTINGS_REL), 'utf8'));
+    expect(settings.hooks.PreToolUse[0].hooks[0].args).toContain('claude-code');
+    expect(settings.hooks.PreToolUse[0].hooks[0].args).toContain('hook');
     expect(existsSync(join(consumerRoot, CONFIG_REL))).toBe(true);
   }, 60_000);
 
@@ -348,6 +350,8 @@ describe('the witness valve spawns live in the generated tree', () => {
       `${JSON.stringify({
         type: 'user',
         origin: { kind: 'human' },
+        promptSource: 'typed',
+        uuid: 'human-witness-1',
         timestamp: new Date().toISOString(),
         message: {
           role: 'user',
@@ -561,9 +565,8 @@ describe('the bundled docs answer from the installed tree', () => {
     const configPath = join(consumerRoot, CONFIG_REL);
     const savedConfig = readFileSync(configPath);
     // Everything the umbrella depends on, stashed so the docs reader answers with the
-    // judging code absent. The session adapters are not here: a consumer installs those
-    // itself, and the umbrella names none of them.
-    const dependencies = ['core'];
+    // judging code absent, including the adapter leaves the umbrella installs.
+    const dependencies = ['core', 'adapter-codex', 'adapter-claude-code', 'adapter-grok'];
     const moved: [string, string][] = [];
     const offline = join(packRoot, 'offline-docs.mjs');
     writeFileSync(

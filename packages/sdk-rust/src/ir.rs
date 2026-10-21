@@ -109,6 +109,9 @@ pub struct ToolCall {
     ///The call's arguments as the host passed them.
     #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
     pub args: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+    ///Project-relative shell working directory; absence means the project root.
+    #[serde(skip_serializing_if = "::std::option::Option::is_none")]
+    pub cwd: ::std::option::Option<::std::string::String>,
     #[serde(
         rename = "fileChange",
         skip_serializing_if = "::std::option::Option::is_none"

@@ -36,8 +36,8 @@ import하지 않고 peer 의존으로 선언합니다.
 | `pdks memory lint` | 해소되지 않은 링크, 링크 없는 문서, type 없는 문서를 보고. 하나라도 있으면 `1`로 종료 |
 | `pdks memory stats` | 색인된 문서 · 절 · 링크 · 미해소 링크 · 고립 문서의 수를 출력 |
 
-세션 표면 설치기는 어댑터에 있습니다. `pdks-claude-code init`, `pdks-grok init`,
-`pdks-codex init`입니다.
+같은 실행 파일의 `pdks adapter <claude-code|grok|codex> init`으로 세션 표면을 설치합니다.
+세 어댑터 모듈은 호스트 입력 번역·고유 등록·응답을 맡고, 공통 실행층은 입력 수집·판정 실행·기한을 맡습니다.
 
 <a id="surface-from-input-mode"></a>
 ### 입력 방식이 곧 표면이다

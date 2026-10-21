@@ -16,19 +16,20 @@ config schema, the algebra declaration schema, the input IR schema, and the memo
 output schema), the three adapters
 `adapter-claude-code`, `adapter-grok` and `adapter-codex` (each one agent's session payload
 onto the
-input IR and its own `init` bin; the change-set surface is a unified diff on stdin that the
+input IR, registration, and host response; the change-set surface is a unified diff on stdin that
+the
 umbrella translates itself), and the `polydeukes` umbrella (the `pdks` bin, `loadConfig`, both
 surfaces' composition roots, the disk they need — and the judge itself as its `src/covenant/`
 module: Bash analysis, path-routing dispatcher, meta-covenants, TTL witness, discipline
-library, and the declaration engine — extract steps, seven relations, witness lists). An
-adapter is one agent's install unit: `pdks-claude-code init` / `pdks-grok init` /
-`pdks-codex init` registers the
-hook, and `runHook` builds the IR and spawns `pdks covenant check`. Each takes `core` as a
-`peerDependency` so one copy of the vocabulary is shared rather than duplicated, and
-`polydeukes` as a `peerDependency` for the bin it spawns. `adapter-codex` carries one thing the
-others do not: that host normalises every file edit that reaches the hook into `apply_patch`,
-whose input is the patch text rather than a path, so the adapter parses it into one IR element
-per file. The three SDKs provide the same four process verbs: covenant input, change set,
+library, and the declaration engine — extract steps, seven relations, witness lists).
+The umbrella depends on all three adapters; each adapter peers on core and exposes the same
+three verbs: `prepareHook`, `registerHook`, and `renderHookResponse`. The common CLI owns
+stdin, executable identity, process deadlines, and the single `pdks covenant check` child.
+`pdks adapter <claude-code|grok|codex> init` pins the current executable and project root in
+native host registrations. The adapters own payload translation, evidence, and host responses.
+Codex normalises file edits that reach its hook into `apply_patch`, whose input is patch text;
+the adapter translates it into one IR element per file. The three SDKs provide the same four process
+verbs: covenant input, change set,
 memory ingest, and memory search. Each language shares one executable resolver and byte
 transport across its verbs: an explicit executable resolves against the caller's cwd;
 otherwise the first executable `pdks` in an absolute PATH directory runs. The root sets the
@@ -60,10 +61,11 @@ in `pdks memory ingest | search | show | obligations | supersession | lint | sta
 dynamically; the judgment
 chain never imports it, and without it that command prints an install hint and exits 2. One
 more directory, `packages/documentation`, is `private` and publishes nothing: it builds the
-public site at <https://polydeukes.vercel.app> from `docs/` at build time and carries no judgment logic.
-Nothing depends the other way:
-the umbrella names no adapter, so a consumer installs the umbrella and whichever adapters
-its agents need. The judge module opens no file at all, and core's only file I/O is the
+public site at <https://polydeukes.vercel.app> from `docs/` at build time and carries no judgment
+logic.
+The single executable bundles the three adapters. Their source packages depend on core;
+the judgment module consumes their IR without knowing host payload fields. The judge module opens no
+file at all, and core's only file I/O is the
 telemetry log it appends every judgment to.
 Details live in the code and the archived PRDs (the merged contracts).
 The design docs own everything not yet implemented; when a design doc and shipped code disagree,
@@ -139,34 +141,33 @@ milestone's Exit Criteria verbatim.
 
 ## Self-dogfooding (ON since 2026-07-14)
 
-A PreToolUse hook judges every Edit/Write/MultiEdit/NotebookEdit/Bash call, and lefthook's
-pre-commit pipes `git diff --cached` into `pdks covenant check --diff` — two observations of
-the same promises. Each hook is a thin delegator importing its adapter's `runHook`, which
-builds the IR and spawns `pdks covenant check` — the judgment lives in the installed packages,
-so the delegator never needs regenerating. This repository is developed from Claude Code, Grok,
-and Codex, so it carries all three delegators. The three files here are what
-`pdks-claude-code init`, `pdks-grok init`, and `pdks-codex init` write into a consumer's tree —
-regenerate them by running those installers, never by hand — which makes the verdicts we meet
-every day a measurement of the shipped install units rather than a private arrangement.
-The Grok registration matches on that host's own names
-(`write` · `search_replace` · `run_terminal_command`) and spawns its own delegator, so no name rewrite
-stands between a Grok call and its judgment. Codex Code Mode coverage is version-dependent:
-in codex-cli 0.154.0, `exec` and its nested calls left no hook event; in a local 0.156.1
-session, nested `exec_command` calls reached the hook and a nested `apply_patch` against the
-config was blocked as `self-mod`. On 2026-10-13, codex-cli 0.162.1 with `code_mode` and
-`code_mode_only` enabled repeated this result in two macOS/zsh sessions using workspace
-0.19.0 packages: a nested shell call and an ordinary same-content patch left judgment rows,
-and a protected-config same-content patch was blocked. The outer `exec` dispatch is not an
-adapter tool name; these later measurements do not establish its hook payload.
+Native PreToolUse registrations translate the supported file and shell calls, while lefthook's
+pre-commit pipes `git diff --cached` into `pdks covenant check --diff`. Each registration pins
+`.polydeukes/bin/pdks` and the project root; this executable bundles all three adapters and the
+judge. Regenerate registrations with `pdks adapter <claude-code|grok|codex> init`, using the
+installed executable, rather than editing generated handlers. Grok uses its native tool names
+(`write`, `search_replace`, `run_terminal_command`); under Grok's runtime, the Claude
+compatibility registration is silent and the Grok registration owns the judgment.
+
+Measured on 2026-10-21 on macOS arm64: Claude Code 2.1.306 and Grok 1.0.62 allowed ordinary
+file operations and blocked a protected write in scratch projects. Both registrations together
+in Grok produced one self-mod block for that write. A missing executable blocked the Claude
+write with `onFailure: block`; Grok proceeded without a judgment row. After this repository's
+native cutover, Codex CLI 0.163.0 nested `apply_patch` allowed an ordinary file, blocked a
+same-content protected-config patch, and refused a directory pre-state read failure with one
+`blocked covenant-check` row. These observations cover those calls and versions; the outer
+Code Mode dispatch itself has no established adapter payload.
 Do not infer host-wide coverage from `/hooks` showing Active; remeasure the released host
 version before claiming it.
 Codex session evidence comes only from the registered `UserPromptSubmit` and `PostToolUse`
-lifecycle events, is removed at `SessionEnd`, and never comes from the unstable transcript. If
-that evidence is absent, a blocked intentional edit must be recovered from the user's terminal.
+lifecycle events, is removed at `SessionEnd`, and never comes from the unstable transcript.
+Claude and Codex admit prompt text as human evidence only with explicit human origin; Grok
+supplies no human-message evidence. Without proven human evidence, perform a protected
+intentional change from the user's terminal.
 
 Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
 `biome.json`, `.git/hooks`), the packages' gitignored `dist`, and the root config. This includes
-the Codex hook directory and adapter dist alongside the other two adapters. The
+the Codex hook directory, `.codex/hooks.json`, `.polydeukes/bin/pdks`, and adapter dist. The
 change-set surface has no list of its own and no prompt: it judges the piped diff and lands every
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
 line does not — a staged gate-file change has already passed the session surface). Disciplines
@@ -186,34 +187,18 @@ The recovery procedures below stay here because no `paths` glob can predict when
 
 ### Recovery and rewiring
 
-- Fail-closed means an unbuilt `dist` blocks edits too; recovery is `pnpm build` (never itself
-  blocked). When the hook gains a reference to a NEW dist symbol: build first, rewire second —
-  the reverse order crashes assembly and blocks every call, including the recovery build. The
-  same order applies when the root config introduces a key that current core dist does not
-  validate: typecheck sources, build core and umbrella dist, then edit the config.
-- **A RENAME of anything the hook or config names has no safe build order** — dist, hook, and
-  config must land together: package sources first (session-free), then swap the hook and root
-  config in one witness window, then build. Root `pnpm test` rebuilds dist before starting
-  tests: run it while the source tree is mid-change — a rename, or any cross-package contract
-  change — and the session locks, every mutating call refused, until a human runs the recovery
-  in their own terminal. A PARTIAL rebuild is the same lockout with a cheaper recovery: one
-  package's dist
-  rebuilt against sources the sibling dist has not seen crashes assembly on every call, and
-  `pnpm build` (run by a human — the locked session cannot) clears it only if the whole tree
-  already typechecks, so gate any dist-touching command on `tsc --noEmit` first. A third shape
-  leaves a COMPLETE dist behind: a source edit that makes one member of the judge object
-  (`src/covenant/module.ts`) undefined, then a rebuild — the hook fails with
-  `covenant.<verb> is not a function` on every call. A review agent probing the seam did
-  exactly this (2026-09-07). Recovery is `git checkout -- <file> && pnpm build` in a human
-  terminal; the built module is asserted by `surface-fold-contract.test.ts` when dist exists.
-- **Rewiring the hook cuts your own valve** — the delegator and the dist it loads are two links
-  of one protected chain. Verify a rewired hook against real payloads *before* relying on it,
-  and never remove the current valve until the replacement is proven; otherwise recovery is a
-  human `git checkout`.
-- **A dist SYMBOL rename has a window-free path — take it**: export the new name AND keep the
-  old as an alias, build, swap the hook, drop the alias, build again. Any other order leaves an
-  interval where the hook names something dist does not carry, and the witness valve cannot
-  rescue it — an assembly crash lands before any verdict, so the valve is never consulted.
+- The session hook runs the pinned executable independently of workspace `dist` and
+  `node_modules`. Typecheck sources before building. Rebuilding the workspace updates the
+  development CLI and lefthook's judgment; the pinned session executable is updated separately.
+- Build a replacement executable at a temporary path and run
+  `node scripts/verify-adapter-executable.mjs --executable <absolute-path>` before replacing the
+  protected installed file. Keep the current executable available until its replacement is
+  proven. Root configuration and hook definitions remain protected owner changes.
+- If the installed executable or configuration cannot load, recover from the user's terminal.
+  An assembly failure occurs before the witness valve can run. Preserve the witness token and
+  TTL while repairing the executable, config, or wiring.
+- A changed Codex hook definition needs user review through CLI `/hooks`. After init and trust
+  approval, measure ordinary and protected calls and inspect telemetry; an Active label alone
+  does not establish that the host invoked the hook.
 
-The measured history behind these rules — narrowing decisions, bypass profiles, per-ticket
-evolution — lives in the local knowledge store.
+The measured history behind these rules lives in the local knowledge store.

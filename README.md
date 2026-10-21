@@ -11,31 +11,25 @@
 <a id="quick-start"></a>
 ## Quick start
 
-You need **Node.js 24+**, pnpm, and a Git project with a `package.json`. Run the commands below
-from the project root in your own terminal.
+Run from the project root in your own terminal. Download the executable for your system
+(`pdks-linux-x64` or `pdks-darwin-arm64`) from a [GitHub
+Release](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and place it on
+`PATH` as `pdks`. It includes all three adapters and memory commands and runs without Node, npm, or
+a `package.json`.
 
-### 1. Install and connect your agent
-
-Install the shared packages, then choose the row for your AI coding partner:
+### 1. Connect your agent
 
 ```sh
-pnpm add -D polydeukes @polydeukes/core
+pdks adapter claude-code init
+# or
+pdks adapter codex init
+pdks adapter grok init
 ```
 
-| Agent | Install the adapter | Initialize |
-|---|---|---|
-| Claude Code | `pnpm add -D @polydeukes/adapter-claude-code` | `pnpm exec pdks-claude-code init` |
-| Codex | `pnpm add -D @polydeukes/adapter-codex` | `pnpm exec pdks-codex init` |
-| Grok | `pnpm add -D @polydeukes/adapter-grok` | `pnpm exec pdks-grok init` |
-
-Each adapter's `init` creates `polydeukes.config.yaml`, adds `.polydeukes/` to `.gitignore`, and
-registers the session hook. Reopen Claude Code, approve the generated hooks with `/hooks` in
-Codex, or reload Grok's Hooks tab. For checks over a Git diff alone, run `pnpm exec pdks init`
-after installing the shared packages.
-
-Without Node, take the single `pdks` executable from a [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)
-(`pdks-linux-x64`, `pdks-darwin-arm64`), make it executable, and put it on `PATH`. It runs every
-`pdks` command, memory included. The agent adapters still run under Node.
+The installer creates configuration and merges project hooks. Reopen Claude Code, approve Codex
+hooks through `/hooks`, or approve Grok project trust and reload its Hooks tab. Verify the
+connection with a real call and `.polydeukes/roi.log`. Rerun init after moving the executable or
+project. For Git diff checks alone, use `pdks init`.
 
 ### 2. Configure your first discipline
 
@@ -82,8 +76,8 @@ describe into an entry.
 ### 3. Check the result
 
 ```sh
-pnpm exec pdks explain
-git diff HEAD | pnpm exec pdks covenant check --diff
+pdks explain
+git diff HEAD | pdks covenant check --diff
 ```
 
 `explain` should list `no-new-todo-lines` as `declare` on both surfaces. To see a violation, add
@@ -93,12 +87,12 @@ and exit code 0. Remove the line and rerun; that diagnostic should disappear.
 
 Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
 [pre-commit integration](./docs/how-to/connect-surfaces.md#change-set-surface), or
-`pnpm exec pdks docs` for the installed documentation.
+`pdks docs` for the installed documentation.
 
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-**Status: beta** (since v0.7.0, 2026-09-16). Seven npm packages and one Rust crate ship; a Python
+Seven npm packages and one Rust crate ship; a Python
 SDK is also available —
 `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
@@ -112,16 +106,16 @@ ledger and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line
-pdks-claude-code init    # wire the Claude Code session surface (ships with @polydeukes/adapter-claude-code)
-pdks-grok init           # wire the Grok session surface (ships with @polydeukes/adapter-grok)
-pdks-codex init          # wire the Codex session surface (ships with @polydeukes/adapter-codex)
+pdks adapter claude-code init  # Claude Code
+pdks adapter grok init         # Grok
+pdks adapter codex init        # Codex
 git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
 git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree
 git diff main...HEAD | pdks covenant check --diff   # ... or over a ref range (a PR's scope)
 pdks covenant check < input.json                    # or an input IR another program built
 pdks explain             # print what each surface judges, skips, and excludes — no judgment
 pdks docs [topic]        # read the bundled documentation, offline
-pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (needs @polydeukes/memory)
+pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (included in the single executable)
 pdks memory search <query> | show <id>             # search that index, or show a document or section
 pdks memory lint | stats                           # report broken links, or count documents, links, and isolated documents
 pdks memory obligations <key>                      # list every obligation the config's rules extracted for one key
@@ -163,8 +157,8 @@ and from an analysis of whether that tooling can be extracted into a general dis
 <a id="thin-core-and-packages"></a>
 ## Structure — a thin core plus independent packages
 
-Not all-or-nothing: install only the pieces you need. Each package depends only on the core and
-knows nothing of the others.
+The executable composes the judge and three host adapters. Each adapter translates its host’s
+events into the shared core vocabulary; the judge consumes that vocabulary.
 
 | Package | Role |
 |---------|------|
@@ -189,19 +183,12 @@ outward**, with every dependency pointing inward at the core and none pointing b
 knows nothing of any specific product or AI runtime.
 
 ```text
-@polydeukes/core            domain- and agent-agnostic patterns
-        △                   (covenant protocol, ledger engine, meta-covenant, memory engine)
-        │ depends on (one direction)
-@polydeukes/adapter-*        hides runtime/infra coupling behind the core
-        │                   · adapter-claude-code  (PreToolUse payload ↔ canonical)
-        │                   · adapter-grok         (PreToolUse payload ↔ canonical)
-        │                   · adapter-codex        (PreToolUse payload ↔ canonical)
-        │                   · adapter-pi, etc.
-        │                   · sync (optional): local by default; s3/git/gcs/nfs as adapters
-        △
-        │ scaffolds into
-create-polydeukes           externalizes domain-specific values into templates/config
-                            (ticket regex, path globs, scope→command mapping, etc.)
+pdks (CLI · common runtime · judge)
+  ├── adapter-claude-code ──┐
+  ├── adapter-codex ────────┼── core (shared vocabulary · schemas)
+  └── adapter-grok ─────────┘
+
+sdk-ts / sdk-rust / sdk-python ── process calls ── pdks
 ```
 
 Three separations:

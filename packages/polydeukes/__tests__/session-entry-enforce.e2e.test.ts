@@ -1,19 +1,11 @@
-// The session surface honours an entry's `enforce`, and an entry that omits it lands at
-// advise — proven by spawning the REAL PreToolUse hook (the shipped delegator, the real
-// built dist, a real discipline body) against a fixture tree carrying a config the test
-// authors. A green unit suite does not substitute for the spawn: the unit tests cover the
-// branch that was written, the spawn covers the branch that runs. The hook is copied into
-// a temp tree whose `packages` and `node_modules` link back to the real install graph, so
-// the delegator's bare-specifier imports resolve.
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-const repoRoot = resolve(import.meta.dirname, '../../..');
-const hookPath = join(repoRoot, '.claude/hooks/covenant-pretooluse.mjs');
+const BIN = resolve(import.meta.dirname, '../dist/bin.js');
 
 // Injected fixture values. The forbidden command is synthetic and never a real tool, the
 // protected entry is the git-untracked directory only the session surface can watch, and
@@ -41,13 +33,10 @@ afterEach(() => {
   rmSync(tmpRoot, { recursive: true, force: true });
 });
 
-/** Copy the real hook into a fixture tree carrying `sessionDisciplines`, then spawn it on `payload`. */
+/** Run the adapter command with a real session-discipline assembly. */
 function runHookWithDisciplines(disciplines: unknown[], payload: unknown) {
   const fixtureRoot = join(tmpRoot, 'fixture-tree');
-  mkdirSync(join(fixtureRoot, '.claude', 'hooks'), { recursive: true });
-  cpSync(hookPath, join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs'));
-  symlinkSync(join(repoRoot, 'packages'), join(fixtureRoot, 'packages'), 'dir');
-  symlinkSync(join(repoRoot, 'node_modules'), join(fixtureRoot, 'node_modules'), 'dir');
+  mkdirSync(fixtureRoot, { recursive: true });
   writeFileSync(
     join(fixtureRoot, 'polydeukes.config.json'),
     JSON.stringify(
@@ -64,8 +53,9 @@ function runHookWithDisciplines(disciplines: unknown[], payload: unknown) {
   );
   return spawnSync(
     process.execPath,
-    [join(fixtureRoot, '.claude', 'hooks', 'covenant-pretooluse.mjs')],
+    [BIN, 'adapter', 'claude-code', 'hook', '--project-root', fixtureRoot],
     {
+      cwd: fixtureRoot,
       input: JSON.stringify(payload),
       encoding: 'utf-8',
       env: { ...process.env, POLYDEUKES_TELEMETRY_PATH: telemetryPath },

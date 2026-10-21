@@ -2,44 +2,47 @@
 
 **English** · [한국어](./README.ko.md)
 
-This adapter is the install unit for the Grok session surface. It translates Grok PreToolUse
-payloads into covenant input IR, spawns the judge, and ships the `pdks-grok` bin that registers
-the surface in a project.
-
-Install it next to `polydeukes`, which it names as a `peerDependency`:
+Translates Grok events into covenant input IR. It is included in the installed `pdks` executable.
+Connect a project with:
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-grok
-npx pdks-grok init
+pdks adapter grok init
 ```
 
-Installing both this adapter and `@polydeukes/adapter-claude-code` in one project can run the
-judge twice per call.
+The single executable includes all three adapters and the Node runtime. It works without a separate
+Node, npm, or adapter installation. The npm package supports JavaScript module integrations.
 
 <a id="overview"></a>
 ## Overview
 
-Public contract symbols include:
+All three adapters provide the same three functions. Each accepts one spec object and returns a
+named outcome.
 
-- `runHook`
-- `COMMAND_ARGS`
-- `MUTATING_TOOLS`
-- `SHELL_TOOLS`
+| Function | Role |
+|---|---|
+| `prepareHook` | Translate host events and collect available evidence |
+| `registerHook` | Merge project hook registrations |
+| `renderHookResponse` | Render the host’s allow or deny response |
+
+The common `pdks` runtime invokes `covenant check` through the current executable. The shared judge
+owns judgment and telemetry; the adapter owns translation and registration.
 
 <a id="examples"></a>
 ## Examples
 
 ```ts
-import { runHook } from '@polydeukes/adapter-grok';
+import { prepareHook } from '@polydeukes/adapter-grok';
 
-// Reads the payload from stdin, spawns `pdks covenant check --enforce block` in repoRoot,
-// and returns that child's exit code. This is what the generated hook delegator calls.
-const { exitCode } = runHook({ repoRoot: process.cwd() });
+const outcome = prepareHook({
+  repoRoot: process.cwd(),
+  rawPayload: JSON.stringify(event),
+});
 ```
+
+`event` is the complete event received from the host. The outcome is `check`, `recorded`, or
+`unavailable`; this call does not execute the tool.
 
 <a id="see-also"></a>
 ## See also
 
-- [`@polydeukes/adapter-grok` package
-reference](../../docs/reference/packages/adapter-grok.md)
-- [The judge (`covenant` module)](../../docs/reference/packages/polydeukes.md#covenant-module)
+- [Package reference](../../docs/reference/packages/adapter-grok.md)

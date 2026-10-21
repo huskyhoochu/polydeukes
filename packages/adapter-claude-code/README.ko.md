@@ -2,48 +2,43 @@
 
 [English](./README.md) · **한국어**
 
-이 어댑터는 Claude Code 세션 표면의 설치 단위입니다. Claude Code PreToolUse 페이로드를
-약속(covenant) 입력 IR로 변환하고, 판정기를 스폰하며, 프로젝트에 세션 표면을 등록하는
-`pdks-claude-code` 실행 파일을 제공합니다. 우산 패키지가 세션 표면에 주입할 읽기 함수를
-만드는 팩터리도 제공합니다.
-
-`polydeukes`와 함께 설치합니다. `polydeukes`는 이 패키지의 `peerDependency`입니다.
+Claude Code의 이벤트를 약속(covenant) 입력 IR로 번역하는 모듈입니다. 설치된 `pdks`에 포함되며 프로젝트 연결은 다음 명령으로 수행합니다.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/core @polydeukes/adapter-claude-code
-npx pdks-claude-code init
+pdks adapter claude-code init
 ```
+
+단일 실행 파일에는 세 어댑터와 Node 런타임이 포함됩니다. 별도 Node·npm·어댑터 설치 없이 사용할 수 있습니다. npm 배포본은 JavaScript 모듈 통합용입니다.
 
 <a id="overview"></a>
 ## 개요
 
-공개 계약 심볼은 다음과 같습니다.
+세 어댑터는 같은 세 함수를 제공합니다. 각 함수는 하나의 spec 객체를 받고 명명된 outcome을 반환합니다.
 
-- `runHook`
-- `sessionSourceReader`
-- `sessionChannelReader`
-- `sessionEvidenceFromPayload`
-- `transcriptPathFromPayload`
-- `transcriptFromJsonlFile`
-- `COMMAND_ARGS`
-- `MUTATING_TOOLS`
-- `SHELL_TOOLS`
+| 함수 | 역할 |
+|---|---|
+| `prepareHook` | 호스트 이벤트 번역과 사용 가능한 증거 수집 |
+| `registerHook` | 프로젝트 훅 등록 병합 |
+| `renderHookResponse` | 호스트의 허용·거부 응답 생성 |
+
+공통 `pdks` 실행 경로가 현재 실행 파일로 `covenant check`를 호출합니다. 판정과 telemetry는 공통 판정기가 소유합니다. 어댑터는 실행 파일 탐색이나
+판정을 수행하지 않습니다.
 
 <a id="examples"></a>
 ## 예제
 
 ```ts
-import { runHook } from '@polydeukes/adapter-claude-code';
+import { prepareHook } from '@polydeukes/adapter-claude-code';
 
-// 표준 입력에서 페이로드를 읽어 repoRoot에서 `pdks covenant check --enforce block`을 스폰하고
-// 그 자식 프로세스의 종료 코드를 돌려줍니다. 생성된 훅 위임자가 부르는 함수입니다.
-const { exitCode } = runHook({ repoRoot: process.cwd() });
+const outcome = prepareHook({
+  repoRoot: process.cwd(),
+  rawPayload: JSON.stringify(event),
+});
 ```
 
-<a id="see-also"></a>
-## 같이 보기
+`event`는 호스트에서 받은 완전한 이벤트입니다. 번역 결과는 `check`·`recorded`·`unavailable` 중 하나이며, 이 호출은 도구를 실행하지 않습니다.
 
-- [`@polydeukes/adapter-claude-code` 패키지
-레퍼런스](../../docs/reference/packages/adapter-claude-code.ko.md)
-- [우산의 진입점](../../docs/reference/packages/polydeukes.ko.md#polydeukes-entry-points)
-- [판정기(`covenant` 모듈)](../../docs/reference/packages/polydeukes.ko.md#covenant-module)
+<a id="see-also"></a>
+## 관련 문서
+
+- [패키지 참조](../../docs/reference/packages/adapter-claude-code.ko.md)
