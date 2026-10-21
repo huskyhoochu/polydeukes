@@ -1,0 +1,213 @@
+{
+  "format": 1,
+  "rootFiles": {
+    "notes/alpha.md": "---\ntitle: Alpha\n---\n## Topic\n\nneedleword here.\n",
+    "lib/sample.ts": "export const x = 1;\n"
+  },
+  "config": {
+    "protectedPaths": [],
+    "memory": {
+      "include": ["notes/**/*.md"]
+    },
+    "disciplines": [
+      {
+        "id": "sdk-no-todo",
+        "why": "The fixture exercises file-change evidence on both surfaces.",
+        "enforce": "block",
+        "declare": {
+          "mechanism": "added-only",
+          "scope": {
+            "source": "target.path",
+            "include": ["^lib/.*\\.ts$"]
+          },
+          "supply": {
+            "pre": "empty",
+            "post": "empty"
+          },
+          "extract": {
+            "before": [
+              {
+                "op": "source",
+                "of": "pre"
+              },
+              {
+                "op": "lines"
+              },
+              {
+                "op": "keyByPattern",
+                "re": "(TODO)"
+              }
+            ],
+            "after": [
+              {
+                "op": "source",
+                "of": "post"
+              },
+              {
+                "op": "lines"
+              },
+              {
+                "op": "keyByPattern",
+                "re": "(TODO)"
+              }
+            ],
+            "added": [
+              {
+                "op": "onlyIn",
+                "of": "after",
+                "notIn": "before"
+              }
+            ]
+          },
+          "relate": [
+            {
+              "id": "nothing-added",
+              "relation": {
+                "op": "empty",
+                "of": "added"
+              },
+              "message": "adds {key}"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "input": {
+    "toolCalls": [
+      {
+        "name": "fixture-edit",
+        "args": {
+          "file_path": "lib/sample.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "lib/sample.ts",
+          "pre": "export const x = 1;\n",
+          "post": "export const x = 1;\n// TODO fix later\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["fixture-edit"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "diff": "diff --git a/lib/sample.ts b/lib/sample.ts\n--- a/lib/sample.ts\n+++ b/lib/sample.ts\n@@ -1 +1,2 @@\n export const x = 1;\n+// TODO fix later\n",
+  "query": "needleword",
+  "hit": {
+    "id": "notes/alpha#topic",
+    "conceptId": "notes/alpha",
+    "docTitle": "Alpha",
+    "sectionTitle": "Topic",
+    "status": "stable",
+    "trust": "unverified",
+    "stale": false,
+    "matchPath": "and",
+    "supersededBy": []
+  },
+  "processCases": [
+    {
+      "id": "upheld",
+      "verb": "check_covenant",
+      "args": ["covenant", "check", "--enforce", "block"],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "result": "Upheld"
+    },
+    {
+      "id": "advised",
+      "verb": "check_covenant",
+      "args": ["covenant", "check", "--enforce", "block"],
+      "status": 0,
+      "stdout": "",
+      "stderr": "advice\n",
+      "result": "Upheld"
+    },
+    {
+      "id": "ir-blocked",
+      "verb": "check_covenant",
+      "args": ["covenant", "check", "--enforce", "block"],
+      "status": 2,
+      "stdout": "",
+      "stderr": "adds TODO\n",
+      "result": "Blocked"
+    },
+    {
+      "id": "diff-blocked",
+      "verb": "check_change_set",
+      "args": ["covenant", "check", "--diff", "--enforce", "block"],
+      "status": 2,
+      "stdout": "",
+      "stderr": "adds TODO\n",
+      "result": "Blocked"
+    },
+    {
+      "id": "ingested",
+      "verb": "memory_ingest",
+      "args": ["memory", "ingest"],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "result": "Ingested"
+    },
+    {
+      "id": "empty",
+      "verb": "memory_search",
+      "args": ["memory", "search", "needleword", "--json"],
+      "status": 0,
+      "stdout": "{\"ingestedAt\":\"fixture-time\",\"results\":[]}",
+      "stderr": "",
+      "result": "Empty"
+    },
+    {
+      "id": "not-a-verdict",
+      "verb": "check_covenant",
+      "args": ["covenant", "check", "--enforce", "block"],
+      "status": 1,
+      "stdout": "",
+      "stderr": "failed\n",
+      "result": "Unjudged"
+    },
+    {
+      "id": "json-error",
+      "verb": "memory_search",
+      "args": ["memory", "search", "needleword", "--json"],
+      "status": 0,
+      "stdout": "{",
+      "stderr": "",
+      "result": "Unavailable"
+    },
+    {
+      "id": "missing-fields",
+      "verb": "memory_search",
+      "args": ["memory", "search", "needleword", "--json"],
+      "status": 0,
+      "stdout": "{\"results\":[]}",
+      "stderr": "",
+      "result": "Unavailable"
+    },
+    {
+      "id": "found",
+      "verb": "memory_search",
+      "args": ["memory", "search", "needleword", "--json"],
+      "status": 0,
+      "stdout": "{\"ingestedAt\": \"fixture-time\", \"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": []}]}",
+      "stderr": "",
+      "result": "Found"
+    },
+    {
+      "id": "additional-fields",
+      "verb": "memory_search",
+      "args": ["memory", "search", "needleword", "--json"],
+      "status": 0,
+      "stdout": "{\"ingestedAt\": \"fixture-time\", \"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": [], \"futureField\": \"future\"}], \"futureRoot\": true}",
+      "stderr": "",
+      "result": "Found"
+    }
+  ]
+}

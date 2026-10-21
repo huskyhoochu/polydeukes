@@ -102,6 +102,11 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` rewrites both. Forgejo CI runs
   `cargo test` after the build (the e2e test spawns the built `pdks`); `publish.yml`'s
   `publish-crate` job uploads it through crates.io trusted publishing.
+- **`packages/sdk-python`** is the PyPI distribution `polydeukes-sdk`, imported as
+  `polydeukes_sdk`: four synchronous verbs over a standalone `pdks` executable, with one
+  resolver and process runner. It uses Python 3.12+, zero runtime dependencies, and generated
+  TypedDict types from core's input and memory output schemas. It has no `package.json`;
+  explicit uv steps own its checks, build, and installed-distribution tests.
 - **`packages/documentation`** (`@polydeukes/documentation`) is **`private`** and publishes
   nothing: it builds the public site at <https://polydeukes.vercel.app> from `docs/`. It carries
   no judgment logic and no internal dependency, so `workspace:^` and the catalog do not apply,
@@ -229,6 +234,19 @@ A cargo crate under `packages/` takes its own three registrations instead: a `to
 publisher (repository `huskyhoochu/polydeukes`, workflow `publish.yml`) on the crate's settings
 page. The last one, like npm's, can only be registered once the crate exists, so the first
 version is published by hand from the tagged tree with a `publish-new` token.
+
+A Python package under `packages/` takes a `toml` extra-file registration for
+`$.project.version` in its `pyproject.toml` and the SDK version in `uv.lock`, explicit uv
+checks in Forgejo CI, and a PyPI
+OIDC publish job after the standalone executable builds. Commit its uv lockfile and include
+`py.typed` in the wheel. Runtime dependencies remain declared in `project.dependencies`;
+code generation and checking tools belong to the development dependency group. Its first
+release requires the owner to configure a PyPI pending publisher for `huskyhoochu/polydeukes`,
+workflow `publish.yml`, environment `pypi`, and confirm the matching GitHub environment.
+The pinned TOML updater exposes parsed scalar nodes as `{value, start, end}`, so the lockfile
+JSONPath filters by `@.name.value` before selecting `.version`. Recheck that path against the
+actual updater when upgrading the action.
+The npm alias, workspace dependency, and npm first-publication steps above apply to npm packages.
 
 ## Shared dependency versions go through the pnpm catalog
 

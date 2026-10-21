@@ -26,8 +26,8 @@ const PACKAGE_DIRS = [
 ];
 /** Workspace members that are not published; they carry no copy of the judge. */
 const PRIVATE_PACKAGE_DIRS = ['documentation'];
-/** Directories that carry no `package.json`: the Rust SDK is a cargo crate, not a workspace member. */
-const NON_NPM_DIRS = ['sdk-rust'];
+/** SDK distributions managed by Cargo or uv rather than the npm workspace. */
+const NON_NPM_DIRS = ['sdk-python', 'sdk-rust'];
 /** The two specifiers the judgment chain never reaches: the memory package and its store. */
 const MEMORY_SPECIFIERS = ['@polydeukes/memory', 'node:sqlite'];
 /** A specifier the judgment chain does reach — the walk found edges if this is present. */

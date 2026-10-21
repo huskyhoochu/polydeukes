@@ -98,11 +98,14 @@ Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-**Status: beta** (since v0.7.0, 2026-09-16). Seven npm packages and one Rust crate ship —
+**Status: beta** (since v0.7.0, 2026-09-16). Seven npm packages and one Rust crate ship; a Python
+SDK is also available —
 `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
 `@polydeukes/sdk-ts` (the TypeScript client that hands an input IR or a unified diff to the judge
 from a program), the crate `polydeukes-sdk` (the same client for a Rust host),
+[the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (four verbs over the
+standalone executable),
 `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and the `polydeukes`
 umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The
 ledger and verify packages are still blueprint. The CLI today:
@@ -171,7 +174,8 @@ knows nothing of the others.
 | `@polydeukes/memory` | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, `show`, `lint`, and `stats`. The documents stay the record; the index is rebuilt from them |
 | `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
 
-`core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, `sdk-rust`, and `memory` ship
+`core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, `sdk-rust`, `sdk-python`, and
+`memory` ship
 today. The
 planned adoption order once the rest exists is `covenant` → `memory` → `ledger` → `verify`:
 `covenant` and `memory` are expected to pay off regardless of project size, while `ledger` and

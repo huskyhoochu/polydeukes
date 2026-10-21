@@ -9,7 +9,8 @@ replaces the shared instructions here.
 A development *discipline* framework for building alongside an AI coding partner — deterministic
 covenants, a verifiable ledger, local memory, and adversarial verification on one thin core.
 
-**This repo is beta** (since v0.7.0). Seven npm packages and one Rust crate ship today:
+**This repo is beta** (since v0.7.0). Seven npm packages and one Rust crate ship today, alongside a
+Python SDK:
 `core` (the covenant protocol — stdin-JSON in, exit code out — with file-change evidence, the
 config schema, the algebra declaration schema, the input IR schema, and the memory search
 output schema), the three adapters
@@ -42,6 +43,11 @@ which may be the umbrella's single executable: Node and the bundle in one file, 
 `packages/polydeukes/scripts/build-sea.mjs` and attached to each GitHub Release by
 `publish.yml`. It has no `package.json`, so pnpm, turbo, and `pnpm test` do not see it; CI runs
 `cargo test` after the build.
+`sdk-python` (PyPI `polydeukes-sdk`, import `polydeukes_sdk`) offers the same four verbs
+for Python 3.12+ with no runtime dependencies. One resolver selects an explicit executable or
+the first executable `pdks` in an absolute PATH directory; all four verbs use that one process
+contract. Its TypedDict wire types are generated from core’s two schemas. Python checks and
+builds run through uv in explicit CI steps; pnpm and Turbo do not enumerate this package.
 `memory` (`@polydeukes/memory`) splits markdown documents into section rows and
 keeps them in a `node:sqlite` index (FTS5, trigram) at `.polydeukes/memory.db` that can always
 be rebuilt from the documents. The umbrella declares it as an optional peer and loads it only
@@ -69,11 +75,13 @@ it is a discoverability index; the `description` field is NOT exempt.
 
 ## Conventions
 
-- **Docs are bilingual:** English is the default; Korean mirrors live in `*.ko.md`. Keep them in
+- **Public docs are bilingual:** English is the default; Korean mirrors live in `*.ko.md`. Keep them
+in
   sync when editing either — the change-set surface judges the pair (`docs-stay-bilingual`, advised
   when one side is staged without the other). In Korean docs, use translation + English gloss
   for the vocabulary (`약속(covenant)`), never transliteration. The repository instruction files
-  `AGENTS.md` and `AGENTS.local.md` are exceptions and have no Korean mirrors.
+  `AGENTS.md` and `AGENTS.local.md` are exceptions and have no Korean mirrors. Internal
+  documents under `_docs/`, including PRDs, are written in Korean only.
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
 - Root `pnpm test` completes workspace builds using Turbo's cache, then runs every package's
   test suite in parallel on each invocation. For a focused

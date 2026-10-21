@@ -340,6 +340,22 @@
       }
     },
     {
+      "id": "package-sdk-python",
+      "category": "reference",
+      "order": 26,
+      "bundled": true,
+      "en": {
+        "path": "reference/packages/sdk-python.md",
+        "title": "polydeukes-sdk (Python)",
+        "summary": "Call the covenant and memory commands from Python through a standalone pdks executable."
+      },
+      "ko": {
+        "path": "reference/packages/sdk-python.ko.md",
+        "title": "polydeukes-sdk (Python)",
+        "summary": "Python에서 단일 pdks 실행 파일로 약속과 기억 명령을 호출합니다."
+      }
+    },
+    {
       "id": "package-memory",
       "category": "reference",
       "order": 27,

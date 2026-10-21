@@ -8,7 +8,11 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "extra-files": [
-        { "type": "json", "path": "packages/core/package.json", "jsonpath": "$.version" },
+        {
+          "type": "json",
+          "path": "packages/core/package.json",
+          "jsonpath": "$.version"
+        },
         {
           "type": "json",
           "path": "packages/adapter-claude-code/package.json",
@@ -34,11 +38,25 @@
           "path": "packages/memory/package.json",
           "jsonpath": "$.version"
         },
-        { "type": "json", "path": "packages/polydeukes/package.json", "jsonpath": "$.version" },
+        {
+          "type": "json",
+          "path": "packages/polydeukes/package.json",
+          "jsonpath": "$.version"
+        },
         {
           "type": "toml",
           "path": "packages/sdk-rust/Cargo.toml",
           "jsonpath": "$.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "packages/sdk-python/pyproject.toml",
+          "jsonpath": "$.project.version"
+        },
+        {
+          "type": "toml",
+          "path": "packages/sdk-python/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='polydeukes-sdk')].version"
         }
       ]
     }

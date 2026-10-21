@@ -181,6 +181,71 @@ jobs:
           path: ${{ runner.temp }}/${{ matrix.asset }}
           if-no-files-found: error
 
+  publish-python:
+    needs: executables
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.14'
+
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.1'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pdks-linux-x64
+          path: executable
+
+      - run: chmod +x executable/pdks-linux-x64
+
+      - name: Verify tag, source and Python package versions
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
+          test "$TAG" = "v$VERSION"
+          test "$VERSION" = "$(python -c 'import json; print(json.load(open("package.json"))["version"])')"
+
+      - run: uv sync --project packages/sdk-python --locked --python 3.14
+
+      - run: uv run --project packages/sdk-python --locked ruff check packages/sdk-python
+
+      - run: uv run --project packages/sdk-python --locked ruff format --check packages/sdk-python
+
+      - name: Verify installed distributions against the executable artifact
+        run: >-
+          uv run --project packages/sdk-python --locked python
+          packages/sdk-python/scripts/verify.py
+          --executable "$PWD/executable/pdks-linux-x64"
+          --python 3.12 --python 3.14 --python 3.15
+
+      - run: uv build --project packages/sdk-python --out-dir dist
+
+      - name: Skip a version PyPI already has
+        id: published
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
+          STATUS="$(curl --retry 3 -sS -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/polydeukes-sdk/$VERSION/json")"
+          case "$STATUS" in
+            200) echo 'exists=true' >> "$GITHUB_OUTPUT" ;;
+            404) echo 'exists=false' >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unexpected PyPI status $STATUS" >&2; exit 1 ;;
+          esac
+
+      - uses: pypa/gh-action-pypi-publish@v1.14.3
+        if: steps.published.outputs.exists == 'false'
+
   # Release objects do not cross the mirror, so the tag's GitHub Release is made here when it
   # does not exist yet; the executables replace any earlier upload of the same name.
   release-assets:
