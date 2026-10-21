@@ -29,6 +29,11 @@ on:
     types:
       - published
   workflow_dispatch:
+    inputs:
+      python_only:
+        description: 'Publish only Python, using the matching released pdks executable'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +41,7 @@ permissions:
 
 jobs:
   publish:
+    if: ${{ !inputs.python_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -183,6 +189,7 @@ jobs:
 
   publish-python:
     needs: executables
+    if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -202,19 +209,41 @@ jobs:
           version: '0.13.1'
 
       - uses: actions/download-artifact@v4
+        if: ${{ !inputs.python_only }}
         with:
           name: pdks-linux-x64
           path: executable
 
-      - run: chmod +x executable/pdks-linux-x64
-
       - name: Verify tag, source and Python package versions
+        env:
+          PYTHON_ONLY: ${{ inputs.python_only || false }}
         run: |
           set -euo pipefail
-          TAG="$(git describe --tags --exact-match)"
           VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
-          test "$TAG" = "v$VERSION"
+          if [ "$PYTHON_ONLY" = true ]; then
+            TAG="$(git describe --tags --exact-match --match 'sdk-python-v*')"
+            test "$TAG" = "sdk-python-v$VERSION"
+            # Python-only publication requires the other packages to match the released sources.
+            git diff --exit-code "v$VERSION" HEAD -- 'packages/*/src/**' 'packages/*/schema/**' 'packages/*/scripts/**' 'packages/*/package.json' 'packages/sdk-rust/Cargo.toml' 'packages/sdk-rust/Cargo.lock' 'packages/sdk-rust/build.rs' ':!packages/sdk-python/**'
+          else
+            TAG="$(git describe --tags --exact-match --match 'v*')"
+            test "$TAG" = "v$VERSION"
+          fi
           test "$VERSION" = "$(python -c 'import json; print(json.load(open("package.json"))["version"])')"
+
+      - name: Fetch the released executable for Python-only publication
+        if: ${{ inputs.python_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
+          gh release download "v$VERSION" --pattern pdks-linux-x64 --dir executable
+          DIGEST="$(gh api "repos/$GH_REPO/releases/tags/v$VERSION" --jq '.assets[] | select(.name == "pdks-linux-x64") | .digest')"
+          echo "${DIGEST#sha256:}  executable/pdks-linux-x64" | sha256sum --check
+
+      - run: chmod +x executable/pdks-linux-x64
 
       - run: uv sync --project packages/sdk-python --locked --python 3.14
 

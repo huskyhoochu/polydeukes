@@ -102,3 +102,10 @@ uv build --project packages/sdk-python
 `huskyhoochu`, 저장소 `polydeukes`, 워크플로 `publish.yml`, 환경 `pypi`를 등록하고 일치하는
 GitHub 환경을 확인해야 합니다. 첫 릴리스의 선행 조건이며 저장소 배선만으로 외부 설정의
 존재가 확인되지는 않습니다.
+
+기존 릴리스 버전으로 Python만 출판할 때는 SDK가 들어 있는 커밋에 annotated
+`sdk-python-v<version>` 태그를 만들고, 그 태그의 `publish.yml`을 `python_only=true`로
+실행합니다. 다른 패키지의 소스와 manifest가 `v<version>`과 같은지 확인하고, 해당 릴리스의
+Linux 실행 파일을 받아 digest를 대조한 뒤 같은 Python 배포물 검사와 PyPI 업로드를 수행합니다.
+npm/crate와 실행 파일 릴리스 작업은 건너뜁니다. 일반 통합 릴리스는 `v<version>`과
+`python_only=false`를 사용합니다.

@@ -106,3 +106,10 @@ Before the first release, the owner must configure a PyPI pending trusted publis
 `polydeukes-sdk`, owner `huskyhoochu`, repository `polydeukes`, workflow `publish.yml`, environment
 `pypi`, and confirm the matching GitHub environment. This is a first-release prerequisite;
 repository wiring alone does not establish that these external settings exist.
+
+For a Python-only publication at an existing release version, create an annotated
+`sdk-python-v<version>` tag containing the SDK and dispatch `publish.yml` from that tag with
+`python_only=true`. This path verifies that the other packages' sources and manifests match
+`v<version>`, downloads that release's Linux executable and checks its digest, then runs the
+same Python distribution checks and PyPI upload. The npm/crate and executable release jobs are
+skipped. Normal unified releases continue to use `v<version>` with `python_only=false`.
