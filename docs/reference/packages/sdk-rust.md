@@ -2,35 +2,18 @@
 
 **English** · [한국어](sdk-rust.ko.md)
 
-> **Call the judge from Rust.** Pass a covenant input to `check_covenant`, or a unified diff to
-> `check_change_set`, and receive the verdict from `pdks covenant check` as a value. Ingest and
-> search a project's memory with `memory_ingest` and `memory_search`, and receive the hits as
-> values.
->
-> Beta. Published on crates.io as `polydeukes-sdk`. The judged project installs `polydeukes`
-> from npm with `node` on `PATH`, or the host puts the single `pdks` executable on `PATH` or names
-> it in the spec.
-
 <a id="ownership"></a>
 ## What this crate owns
 
-The crate finds `polydeukes` in the project being judged and runs its bin under `node` — or,
-with no install there, the `pdks` executable on `PATH`; a spec that names an `executable` runs
-that file instead — with the input on stdin, and converts
-the child process's exit status into a verdict. The child process performs the judgment, so a
-discipline judged from Rust and from Node gets the same verdict.
+Four blocking verbs execute a separately installed `pdks`: `check_covenant`, `check_change_set`,
+`memory_ingest`, and `memory_search`. The CLI owns judgment, configuration, telemetry, and
+indexing. The crate sends caller-built inputs and returns results as values.
 
-| Unit | What it does |
-|---|---|
-| `check_covenant` | Spawns `pdks covenant check` in the judged project and returns the verdict |
-| `check_change_set` | The same for a finished change set: spawns `pdks covenant check --diff` with the diff on stdin |
-| `CovenantInput` and its parts | The input types, generated from `@polydeukes/core/covenant-input.schema.json` |
-| `memory_ingest` · `memory_search` | Spawn `pdks memory ingest` and `pdks memory search --json` in a memory root and return the outcome |
-| `MemorySearchOutput` and its parts | The search output types, generated from `@polydeukes/core/memory-search-output.schema.json` |
-| Umbrella resolution | Walks up from the verb's root (`repo_root`, or `root` for the memory verbs) to the nearest `node_modules/polydeukes` directory, as Node does, and reads its manifest's `bin.pdks`. A broken nearest install stops there. With no install at all, the first absolute `PATH` entry holding an executable `pdks` (a symlink is followed) runs instead. A spec that names an `executable` skips all of this and runs that file |
-| Verdict translation | For the covenant verbs, exit `0` is `Upheld`, exit `2` is `Blocked`, everything else is `Unjudged` |
-
-The child process writes telemetry during judgment. The crate adds no rows of its own.
+Every verb shares one resolver and process runner. A root becomes absolute relative to the
+caller's cwd and becomes the child's cwd. An explicit `executable` is a file path relative to the
+caller's cwd, even for a bare filename, and preserves symlink spelling. Otherwise the first
+executable regular file `pdks` in an absolute `PATH` directory is selected. Empty and relative
+entries are skipped. Failure of the selected file never triggers another candidate.
 
 <a id="install"></a>
 ## Install
@@ -39,30 +22,25 @@ The child process writes telemetry during judgment. The crate adds no rows of it
 cargo add polydeukes-sdk
 ```
 
-In the project being judged:
-
-```sh
-pnpm add -D polydeukes
-pnpm exec pdks init
-```
+Install the standalone `pdks` for Linux x64 or macOS arm64 from
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), give it execute permission,
+and name it in `executable` or put it on `PATH` as `pdks`. The crate runs that file directly and
+needs neither Node nor an npm installation. Memory verbs require a CLI with memory support;
+missing memory dependencies, configuration, or an index return `Unavailable`.
 
 <a id="verb"></a>
 ## `check_covenant`
 
 ```rust
 use polydeukes_sdk::{
-    check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, FileChange, ToolCall,
-    Tools,
+    check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, FileChange, ToolCall, Tools,
 };
-use std::path::Path;
-
-let mut args = serde_json::Map::new();
-args.insert("path".into(), "src/index.ts".into());
+use std::{path::Path, time::Duration};
 
 let input = CovenantInput {
     tool_calls: vec![ToolCall {
         name: "writeFile".into(),
-        args,
+        args: Default::default(),
         file_change: Some(FileChange::Create {
             path: "src/index.ts".into(),
             post: "export const answer = 42;\n".into(),
@@ -71,258 +49,162 @@ let input = CovenantInput {
     subagent_spawns: vec![],
     user_messages: vec![],
     tools: Some(Tools {
-        mutating: vec!["writeFile".into(), "rm".into()],
+        mutating: vec!["writeFile".into()],
         shell: vec!["exec".into()],
         command_args: vec!["command".into()],
     }),
     actor: None,
     session: None,
 };
-
 let verdict = check_covenant(CheckCovenantSpec {
-    repo_root: Path::new("/path/to/the/project"),
+    repo_root: Path::new("/path/to/project"),
     input: &input,
     enforce: None,
     config_layer: None,
     telemetry_path: None,
-    executable: None,
-    timeout: None,
+    executable: Some(Path::new("/opt/tools/pdks")),
+    timeout: Some(Duration::from_secs(2)),
     spawn: None,
 });
-
 match verdict {
-    CheckCovenantVerdict::Upheld { advisories } => { /* proceed */ }
-    CheckCovenantVerdict::Blocked { reason } => { /* do not proceed */ }
-    CheckCovenantVerdict::Unjudged { reason } => { /* no judgment happened */ }
+    CheckCovenantVerdict::Upheld { .. } => { /* Perform the proposed action here. */ }
+    CheckCovenantVerdict::Blocked { reason } | CheckCovenantVerdict::Unjudged { reason } => {
+        eprintln!("{reason}");
+    }
 }
 ```
 
-The call blocks until the child exits, or until `timeout` passes. An async host runs it on a
-blocking thread, for example `tokio::task::spawn_blocking`.
-
-The input is the caller's. The crate serializes it and sends it verbatim; it adds no `session`,
-no `actor`, and no roster of its own. `CovenantInput` has no `world` field: the runner reads
-the world from the project on disk and refuses an input that carries one.
+The host supplies each call's evidence. `FileChange::Create` has `path` and `post`, `Modify` has
+`path`, `pre`, and `post`, and `Delete` has `path` and optional `pre`. Missing evidence stays
+missing; the SDK adds no actor, session, or tool roster. `CovenantInput` and its parts are
+generated from core's input schema. The CLI supplies `world`, which is absent from this input.
 
 <a id="spec"></a>
 ## The spec
 
-```rust
-pub struct CheckCovenantSpec<'a> {
-    pub repo_root: &'a Path,
-    pub input: &'a CovenantInput,
-    pub enforce: Option<Enforce>,
-    pub config_layer: Option<&'a Path>,
-    pub telemetry_path: Option<&'a Path>,
-    pub executable: Option<&'a Path>,
-    pub timeout: Option<Duration>,
-    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
-}
+| Field | `CheckCovenantSpec` | `CheckChangeSetSpec` |
+|---|---|---|
+| `repo_root: &Path` | Project root and child cwd | Same |
+| `input: &CovenantInput` | Caller-built IR | Replaced by `diff: &str` |
+| `enforce: Option<Enforce>` | `None` means `Enforce::Block` | Same |
+| `config_layer: Option<&Path>` | `--config-layer`; relative paths use child cwd | Same |
+| `telemetry_path: Option<&Path>` | `--telemetry-path`; relative paths use child cwd | Same |
+| `executable: Option<&Path>` | Explicit executable ahead of `PATH` | Same |
+| `timeout: Option<Duration>` | `None` means no deadline | Same |
+| `spawn` | Optional `&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>` | Same |
 
-pub enum Enforce { Advise, Block }
-pub struct SpawnSpec { pub command: String, pub args: Vec<String>, pub cwd: PathBuf, pub stdin: String, pub timeout: Option<Duration> }
-pub struct SpawnOutcome { pub status: Option<i32>, pub stdout: String, pub stderr: String }
-```
+`MemoryIngestSpec` takes `root: &Path`, `executable`, `timeout`, and `spawn`.
+`MemorySearchSpec` also takes `query: &str` and `limit: Option<NonZeroU32>`; `None` uses the CLI
+default. Memory commands receive no enforcement, config-layer, or telemetry flags.
 
-| Field | What it is |
-|---|---|
-| `repo_root` | The project being judged: config discovery, the world axis, the child's cwd, and the directory the umbrella search starts from. A relative path is taken from the current directory |
-| `input` | The caller's input, serialized as the child's stdin |
-| `enforce` | The observer's posture for the whole run. **`None` is `Block`** |
-| `config_layer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repo_root` |
-| `telemetry_path` | The file this run's rows are appended to, sent as `--telemetry-path`. A relative path resolves against `repo_root`, the child's cwd |
-| `executable` | The `pdks` executable to run, with the verb as its first argument. A relative path, a bare name included, is taken from the current directory and never looked up on `PATH`. The file is not checked ahead of the spawn: one that cannot run is `Unjudged` through the failed-spawn branch. `None` resolves the umbrella as above |
-| `timeout` | How long the child may run. When it passes, the default spawn kills and reaps the child, and the verb returns `Unjudged` (covenant verbs) or `Unavailable` (memory verbs) with `the judge did not answer within 60s` or `pdks memory did not answer within 60s`. The clock starts at the spawn. An injected `spawn` receives it as `SpawnSpec::timeout` and enforces it itself; an `Err` of kind `TimedOut` from it reads the same way. `None` waits for the child to exit. Only the spawned process is killed: a process it started itself, such as the `node` a version-manager shim runs, keeps running, and the call still returns at the deadline |
-| `spawn` | An injected spawn seam. `None` runs the resolved command: `node` from `PATH`, or the `pdks` executable. `SpawnOutcome::status` is `None` when a signal ended the child |
-
-**`enforce` defaults to `Block`,** as it does in `@polydeukes/sdk-ts`: protected paths and
-entries carrying `enforce: block` stop the call, and every other break is recorded `advised` at
-exit 0.
-
-The default spawn pipes all three standard streams and inherits none, and collects stdout and
-stderr. The covenant verbs read no stdout, because the judge writes no verdict there.
+The timeout measures communication after spawn: writing stdin and draining both output pipes,
+including descendant-held pipes after the direct child exits. Zero expires after spawn. Expiry
+kills and reaps the direct child and ends pipe collection; descendants remain the host's
+responsibility. Resolution, serialization, and OS spawn delay precede the deadline. An injected
+spawn must enforce its supplied timeout and return `io::ErrorKind::TimedOut` on expiry.
 
 <a id="change-set"></a>
 ## `check_change_set`
 
-`check_change_set` judges a finished change set rather than one call. It spawns
-`pdks covenant check --diff --enforce <level>` in `repo_root` with the unified diff on stdin and
-returns the same three verdicts as `check_covenant`, through the same resolution, spawn, and
-status mapping.
-
-```rust
-use polydeukes_sdk::{check_change_set, CheckChangeSetSpec};
-
-let verdict = check_change_set(CheckChangeSetSpec {
-    repo_root: Path::new("/path/to/the/project"),
-    diff: &git_diff_output, // see below for a `git diff` that keeps the a/ b/ form
-    enforce: None,
-    config_layer: None,
-    telemetry_path: None,
-    executable: None,
-    timeout: None,
-    spawn: None,
-});
-```
-
-```rust
-pub struct CheckChangeSetSpec<'a> {
-    pub repo_root: &'a Path,
-    pub diff: &'a str,
-    pub enforce: Option<Enforce>,
-    pub config_layer: Option<&'a Path>,
-    pub telemetry_path: Option<&'a Path>,
-    pub executable: Option<&'a Path>,
-    pub timeout: Option<Duration>,
-    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
-}
-```
-
-`diff` is sent verbatim as the child's stdin. Its paths are relative to `repo_root` behind `a/`
-and `b/`, as `git diff` prints them from a repository whose top is `repo_root`; the crate neither
-runs `git` nor checks the text. A user's git config can change that form — `diff.mnemonicPrefix`
-writes `c/` and `w/`, `color.diff = always` adds escape codes, `diff.external` replaces the
-output — and a path the translation cannot strip routes to no protected entry. Pin the form on
-the command line:
+`check_change_set(CheckChangeSetSpec { ... })` takes `diff` in place of `input` and runs
+`pdks covenant check --diff --enforce <level>`. It preserves UTF-8 diff text and newlines.
+The `a/` and `b/` paths are relative to `repo_root`. Produce a stable git format with:
 
 ```sh
 git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
 ```
 
-`git diff` leaves out untracked files until `git add -N` marks them.
-
-The other fields mean what they mean for `check_covenant`, and
-`enforce` again defaults to `Block` — unlike the CLI, whose `--diff` default is `advise`.
+Untracked files need `git add -N` to appear. Both covenant verbs default to blocking enforcement,
+including this change-set command. The crate does not run git.
 
 <a id="verdicts"></a>
 ## The three verdicts
 
-```rust
-pub enum CheckCovenantVerdict {
-    Upheld { advisories: String },
-    Blocked { reason: String },
-    Unjudged { reason: String },
-}
-```
+`CheckCovenantVerdict` has `Upheld { advisories: String }`, `Blocked { reason: String }`, and
+`Unjudged { reason: String }`. Status `0` means `Upheld`, `2` means `Blocked`, and every other
+status or signal means `Unjudged`. Resolution, serialization, execution, and timeout failures
+also return `Unjudged`. Only `Upheld` authorizes the proposed action. Status `2` is not
+reclassified using stderr.
 
-| Verdict | Child status | What it means for the caller |
-|---|---|---|
-| `Upheld` | `0` | The call was judged and nothing blocked it. `advisories` is the child's stderr verbatim |
-| `Blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim |
-| `Unjudged` | anything else, a signal, a passed `timeout`, a failed spawn, or no umbrella | No judgment happened. `reason` says which: for an exit status, the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
-
-Both verbs return a verdict, never a `Result`: every failure comes back as `Unjudged`.
-
-`reason` and `advisories` are text for a person. To read which paths and disciplines a run
-judged as values, pass `telemetry_path` and read its rows as
-[`pdks covenant check`](../cli/covenant-check.md#reading-rows) describes: a new file per change
-set, one file for the whole session for session inputs. The verdict still comes from the exit
-status.
+Valid stderr is preserved with its whitespace; invalid UTF-8 uses replacement decoding.
+`advisories` and completed nonzero responses expose stderr, with a generated status explanation
+where appropriate when stderr is absent. Covenant stdout is drained without determining the
+verdict. The CLI writes telemetry; `telemetry_path` selects its destination.
 
 <a id="memory"></a>
 ## `memory_ingest` and `memory_search`
 
-The memory verbs run `pdks memory` in a memory root, through the same umbrella resolution and
-spawn seam as the covenant verbs. `memory_ingest` spawns `pdks memory ingest`. `memory_search`
-spawns `pdks memory search <query> --json`, adds `--limit <n>` when `limit` is set, and parses
-stdout into the types generated from `@polydeukes/core/memory-search-output.schema.json`. The
-child loads the optional peer `@polydeukes/memory`, which the memory root installs beside
-`polydeukes`.
-
 ```rust
-use polydeukes_sdk::{
-    memory_ingest, memory_search, MemoryIngestOutcome, MemoryIngestSpec, MemorySearchOutcome,
-    MemorySearchSpec,
-};
-use std::num::NonZeroU32;
-use std::path::Path;
+use polydeukes_sdk::{memory_search, MemorySearchOutcome, MemorySearchSpec};
+use std::{num::NonZeroU32, path::Path};
 
-let root = Path::new("/path/to/the/memory/root");
-if let MemoryIngestOutcome::Unavailable { reason } = memory_ingest(MemoryIngestSpec { root, executable: None, timeout: None, spawn: None }) {
-    eprintln!("{reason}");
-}
-
-match memory_search(MemorySearchSpec {
-    root,
+let result = memory_search(MemorySearchSpec {
+    root: Path::new("/path/to/project"),
     query: "session report",
     limit: NonZeroU32::new(5),
-    executable: None,
+    executable: Some(Path::new("/opt/tools/pdks")),
     timeout: None,
     spawn: None,
-}) {
-    MemorySearchOutcome::Found { hits } => { /* hits[0].id, hits[0].section_title, … */ }
-    MemorySearchOutcome::Empty => { /* the index was searched and nothing matched */ }
-    MemorySearchOutcome::Unavailable { reason } => { /* recall is broken: tell the owner */ }
+});
+match result {
+    MemorySearchOutcome::Found { hits } => { /* Consume ranked hits. */ }
+    MemorySearchOutcome::Empty => { /* Search succeeded with no matching sections. */ }
+    MemorySearchOutcome::Unavailable { reason } => { /* Report the retrieval failure. */ }
 }
 ```
+
+`memory_ingest` runs `pdks memory ingest` and returns `MemoryIngestOutcome::Ingested` only at
+status `0`; otherwise it returns `Unavailable { reason }`. Ingest stdout is ignored.
+`memory_search` sends the query as one literal argument to `pdks memory search <query> --json`
+and adds `--limit <n>` when supplied. Both memory commands send empty stdin.
+
+Search success requires strict UTF-8 JSON with string `ingestedAt` and array `results`.
+Every hit needs string `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, boolean `stale`,
+string-array `supersededBy`, `trust` (`human-reviewed`, `machine-verified`, `unverified`), and
+`matchPath` (`and`, `or`, `like`). Extra object fields are accepted. Generated Rust fields use
+snake case: `concept_id`, `doc_title`, `section_title`, `match_path`, `superseded_by`.
+`Found { hits }` preserves CLI ranking and is nonempty. A valid empty results array alone means
+`Empty`; invalid JSON, UTF-8, fields, enums, and execution failures mean `Unavailable`.
+
+<a id="migration"></a>
+## Process boundary and migration
+
+Consumers that previously relied on npm discovery should install a standalone `pdks` and select
+it via `executable` or an absolute `PATH` directory. Existing npm installs do not select the CLI.
+Custom spawns now receive and return bytes rather than strings:
 
 ```rust
-pub struct MemoryIngestSpec<'a> {
-    pub root: &'a Path,
-    pub executable: Option<&'a Path>,
-    pub timeout: Option<Duration>,
-    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
+pub struct SpawnSpec {
+    pub command: String,
+    pub args: Vec<String>,
+    pub cwd: std::path::PathBuf,
+    pub stdin: Vec<u8>,
+    pub timeout: Option<std::time::Duration>,
 }
-pub enum MemoryIngestOutcome { Ingested, Unavailable { reason: String } }
-
-pub struct MemorySearchSpec<'a> {
-    pub root: &'a Path,
-    pub query: &'a str,
-    pub limit: Option<NonZeroU32>,
-    pub executable: Option<&'a Path>,
-    pub timeout: Option<Duration>,
-    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> std::io::Result<SpawnOutcome>>,
-}
-pub enum MemorySearchOutcome {
-    Found { hits: Vec<MemorySearchResult> },
-    Empty,
-    Unavailable { reason: String },
+pub struct SpawnOutcome {
+    pub status: Option<i32>,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
 }
 ```
 
-`root` is the child's cwd, where the command reads its config and index, and the directory the
-umbrella search starts from. A relative path is taken from the current directory. `query` is sent
-as one argument. `limit` is sent as `--limit`; `None` leaves the command's own default.
-`executable` is the same field as on the covenant specs; a file that cannot run is `Unavailable`.
-
-| Outcome | When |
-|---|---|
-| `Ingested` | `pdks memory ingest` exited `0`. Its stdout is not read |
-| `Found { hits }` | The search exited `0` and printed at least one result. `hits` keeps the command's order and count |
-| `Empty` | The search exited `0` and printed an empty `results` list |
-| `Unavailable { reason }` | No umbrella, a failed spawn, a signal, a passed `timeout`, any non-zero exit, or a stdout the generated types cannot parse. On a non-zero exit `reason` is the child's stderr verbatim, which names a missing `@polydeukes/memory`, a missing index, or a refused query |
-
-`Empty` comes only from a search that ran and matched nothing, so a host can tell an owner that
-recall is broken instead of running on without it. The fields of `MemorySearchResult` are the
-ones [`pdks memory search --json`](../cli/memory.md) prints, in snake case.
+`None` status means signal termination. Preserve output bytes until the SDK decodes them;
+converting search stdout with lossy decoding would conceal invalid UTF-8. All four verbs use
+this same boundary. Ordinary I/O errors become failure values; host termination and Rust panics
+are not caught.
 
 <a id="limits"></a>
 ## Declared limits
 
-- **The API is blocking.** An async host wraps the call in a blocking task.
-- **`node` comes from `PATH` for an npm install.** A host without Node puts the single executable
-  from a [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)
-  (`pdks-linux-x64`, `pdks-darwin-arm64`) on `PATH` as `pdks` and keeps no
-  `node_modules/polydeukes` above the root. A host whose project installs `polydeukes` anyway names
-  the executable in the spec. A host with neither gets `Unjudged` with the reason.
-  On macOS, a file downloaded through a browser carries a quarantine attribute the ad-hoc
-  signature does not clear: remove it with `xattr -d com.apple.quarantine pdks`.
-- **The crate does not check the umbrella's version.** An input the installed umbrella cannot
-  read comes back `Unjudged` with the umbrella's reason (exit 3); an umbrella older than this
-  contract answers it `Blocked` (exit 2). Keep the crate's version
-  and the project's `polydeukes` version on the same minor release; the same holds for an
-  `executable` a spec names.
-- **A roster with a non-empty `shell` and an empty `command_args` is refused by the runner**
-  (`Blocked`). The schema forbids that pair, but the generated `Tools` type cannot express it.
-- **An `Unjudged` verdict is not a pass.** The consumer decides what a project without a judge
-  is allowed to do.
-- **`trust` and `matchPath` are closed enums.** A value a newer CLI prints that this crate does
-  not know makes the whole search `Unavailable`. The same minor release keeps them in step.
+The API blocks. An async host runs it in a blocking task. The crate does not negotiate the CLI
+version: select a CLI that understands its input schema and memory enums. Generated transport
+types cannot express every semantic constraint, such as a nonempty shell roster needing command
+argument names; the CLI checks those constraints. Memory retrieval is not action authorization.
 
 <a id="see-also"></a>
 ## See also
 
-- [`@polydeukes/sdk-ts`](sdk-ts.md)
+- [TypeScript SDK](sdk-ts.md)
+- [Python SDK](sdk-python.md)
 - [`pdks covenant check`](../cli/covenant-check.md)
 - [`pdks memory`](../cli/memory.md)
-- [`@polydeukes/core`](core.md#consumer-contract)

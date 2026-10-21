@@ -1,10 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // This package's contract, checked as source text and manifest: the SDK carries no
 // judgment, writes no row, builds no IR, loads no sibling, and its barrel carries exactly
-// the six names a consumer reads. Source text ONLY — this file must never rebuild dist: a
+// the names a consumer reads. Source text ONLY — this file must never rebuild dist: a
 // rebuild while the tree is mid-change locks the session behind the fail-closed hook.
 
 const pkgDir = resolve(import.meta.dirname, '..');
@@ -12,6 +13,7 @@ const sdkSrc = join(pkgDir, 'src');
 
 /** The umbrella and adapter imports the SDK must not carry — it spawns the bin instead. */
 const FORBIDDEN_IMPORTS = [
+  '@polydeukes/core',
   'polydeukes',
   '@polydeukes/adapter-claude-code',
   '@polydeukes/adapter-grok',
@@ -19,19 +21,39 @@ const FORBIDDEN_IMPORTS = [
 ];
 /** The judge's verbs: naming one here is judging or recording in-process. */
 const FORBIDDEN_VERBS = ['appendRecord', 'dispatchCovenants', 'compileDisciplineRegistrations'];
-/** IR keys the host proves; the SDK forwarding an IR must not construct them. */
+/** IR keys the host proves; their type declarations are vocabulary, not evidence. */
 const FORBIDDEN_IR_KEYS = ['session:', 'tools:'];
 /** One host's tool roster, matched as quoted literals: the roster is the consumer's value. */
 const FORBIDDEN_TOOL_LITERALS = ['Write', 'Edit', 'Bash'];
 
-/** The consumer contract of the `.` entry point: two verbs and the types their specs need. */
+/** The consumer contract: four verbs, byte transport and generated wire vocabulary. */
 const KEPT_EXPORTS: readonly string[] = [
   'checkCovenant',
   'CheckCovenantSpec',
-  'CheckCovenantSpawnSpec',
   'CheckCovenantVerdict',
   'checkChangeSet',
   'CheckChangeSetSpec',
+  'memoryIngest',
+  'MemoryIngestSpec',
+  'MemoryIngestOutcome',
+  'memorySearch',
+  'MemorySearchSpec',
+  'MemorySearchOutcome',
+  'Spawn',
+  'SpawnSpec',
+  'SpawnOutcome',
+  'CovenantInput',
+  'ToolCall',
+  'FileChange',
+  'SubagentSpawn',
+  'UserMessage',
+  'Actor',
+  'Tools',
+  'Session',
+  'SessionUserMessage',
+  'SessionToolCall',
+  'Channels',
+  'MemorySearchResult',
 ];
 
 const IDENT = '[A-Za-z_][A-Za-z0-9_]*';
@@ -100,9 +122,8 @@ describe('the SDK source judges nothing, records nothing, and builds no IR', () 
     expect(text).toContain('checkCovenant');
   });
 
-  it('imports neither the umbrella nor any adapter', () => {
-    // The umbrella is reached through its bin in the consumer's install graph; an import
-    // loads the judge in-process and the peer declaration stops meaning what it says.
+  it('imports no runtime package from the judgment chain', () => {
+    // An SDK import must not load the judge or require a separately installed vocabulary package.
     const text = allSrcText();
     for (const name of FORBIDDEN_IMPORTS) {
       expect(text, name).not.toMatch(
@@ -127,7 +148,11 @@ describe('the SDK source judges nothing, records nothing, and builds no IR', () 
     // The IR is the caller's; a `session:` or `tools:` written here is evidence the host
     // never proved, and a `Write` · `Edit` · `Bash` literal is one host's roster inside a
     // package meant for every host.
-    const text = allSrcText();
+    const text = walkTs(sdkSrc)
+      .map((file) =>
+        stripComments(stripTypeScriptTypes(readFileSync(file, 'utf8'), { mode: 'transform' })),
+      )
+      .join('\n');
     for (const key of FORBIDDEN_IR_KEYS) expect(text, key).not.toContain(key);
     for (const name of FORBIDDEN_TOOL_LITERALS) {
       expect(text, name).not.toMatch(new RegExp(`['"\`]${name}['"\`]`));
@@ -136,7 +161,7 @@ describe('the SDK source judges nothing, records nothing, and builds no IR', () 
 });
 
 describe('the barrel export set', () => {
-  it('is exactly the six consumer names, no more and no less', () => {
+  it('contains exactly the consumer verbs and spec vocabulary', () => {
     // A leaked helper widens the contract one release at a time; a dropped name strands a
     // consumer import. `export *` would defeat this check by carrying nothing to parse.
     const barrel = readFileSync(join(sdkSrc, 'index.ts'), 'utf-8');
@@ -153,10 +178,8 @@ describe('the SDK manifest', () => {
     expect(manifest.bin).toBeUndefined();
   });
 
-  it('takes the umbrella and core as peers only — no dependencies, and the umbrella never as a devDependency', () => {
-    expect(Object.keys(manifest.peerDependencies ?? {}).sort()).toEqual(
-      ['@polydeukes/core', 'polydeukes'].sort(),
-    );
+  it('carries no runtime or peer dependencies on core or the umbrella', () => {
+    expect(manifest.peerDependencies ?? {}).toEqual({});
     expect(manifest.dependencies ?? {}).toEqual({});
     expect(manifest.devDependencies ?? {}).not.toHaveProperty('polydeukes');
   });

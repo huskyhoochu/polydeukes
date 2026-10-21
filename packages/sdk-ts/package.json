@@ -1,7 +1,7 @@
 {
   "name": "@polydeukes/sdk-ts",
   "version": "0.19.1",
-  "description": "Polydeukes SDK for TypeScript — hands a covenant input IR or a unified diff to `pdks covenant check` and returns the verdict as a value. Beta.",
+  "description": "Polydeukes SDK for TypeScript — runs four covenant and memory verbs through a standalone pdks executable and returns results as values. Beta.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
   "repository": {
@@ -26,7 +26,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate-types": "node scripts/generate-types.mjs"
   },
   "engines": {
     "node": ">=24"
@@ -37,11 +38,8 @@
   "devDependencies": {
     "@polydeukes/core": "workspace:^",
     "@types/node": "catalog:",
+    "json-schema-to-typescript": "16.0.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "@polydeukes/core": "workspace:^",
-    "polydeukes": "workspace:^"
   }
 }

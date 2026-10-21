@@ -99,8 +99,8 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 
 **상태: 베타(beta)** (v0.7.0부터, 2026-09-16). npm 패키지 일곱 개와 Rust crate 하나가 발행되어
 있으며 Python SDK도 제공합니다. `@polydeukes/core`(약속(covenant)
-프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 프로그램에서 입력 IR이나 통합 diff를 판정기에
-넘기는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 일을 Rust 호스트에서 하는 crate
+프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`, `adapter-codex`), 약속 판정과 memory의 네 비동기 동사를 제공하는
+TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 네 동사를 Rust 호스트에 제공하는 crate
 `polydeukes-sdk`, 단일 실행 파일 위의 네 동사를 제공하는
 [Python 패키지 `polydeukes-sdk`](./packages/sdk-python/README.ko.md), `pdks memory`가 쓰는 선택 설치 마크다운 색인
 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella)

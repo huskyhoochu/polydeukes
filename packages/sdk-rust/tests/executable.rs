@@ -91,8 +91,8 @@ impl RecordingSeam {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
             status: Some(0),
-            stdout: EMPTY_OUTPUT.into(),
-            stderr: String::new(),
+            stdout: EMPTY_OUTPUT.as_bytes().to_vec(),
+            stderr: Vec::new(),
         })
     }
 }
@@ -169,9 +169,7 @@ fn unavailable(outcome: MemorySearchOutcome) -> String {
 
 #[test]
 fn an_absolute_executable_is_the_command_and_the_verb_its_first_argument_over_an_install() {
-    // The install above the root is what the lookup would otherwise choose, so a resolution
-    // that still prefers the install spawns `node <bin>` here; one that keeps the bin path
-    // in front of the verb hands the executable an argument it reads as a file to judge.
+    // npm discovery would select another executable; a launcher prefix would move the verb.
     let (_root_dir, root) = bare_root();
     install_polydeukes(&root, &pdks_manifest());
     let (_bin_dir, bin_dir) = fixture_dir("pdks-sdk-rust-executable-bin-");
@@ -201,9 +199,7 @@ fn an_absolute_executable_is_the_command_and_the_verb_its_first_argument_over_an
 
 #[test]
 fn a_broken_nearest_install_does_not_stop_a_named_executable() {
-    // With no `executable`, a manifest that does not parse stops the walk and nothing is
-    // spawned. A resolution that reads the install before honouring the field carries that
-    // stop over and leaves the caller unjudged with a runnable file in hand.
+    // Inspecting npm metadata before honoring executable would reject this usable selection.
     let (_root_dir, root) = bare_root();
     install_polydeukes(&root, BROKEN_MANIFEST);
     let (_bin_dir, bin_dir) = fixture_dir("pdks-sdk-rust-executable-bin-");
@@ -298,9 +294,7 @@ fn a_symlinked_executable_is_the_command_as_named_not_its_target() {
 
 #[test]
 fn an_empty_executable_spawns_nothing_rather_than_falling_back_to_the_install() {
-    // An empty path is the one input that cannot be made absolute. Reading it as "not named"
-    // would hand the call to the valid install above the root, so the caller's mistake would
-    // come back as a verdict from a judge it did not choose.
+    // Reading an empty explicit path as absent would execute a judge the caller did not select.
     let (_root_dir, root) = bare_root();
     install_polydeukes(&root, &pdks_manifest());
     let seam = RecordingSeam::new();

@@ -209,5 +209,8 @@
       "stderr": "",
       "result": "Found"
     }
-  ]
+  ],
+  "rankingFiles": {
+    "notes/beta.md": "---\ntitle: Beta\n---\n## Topic\n\nneedleword appears here with a different surrounding passage.\n"
+  }
 }

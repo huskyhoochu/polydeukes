@@ -315,12 +315,12 @@
       "en": {
         "path": "reference/packages/sdk-ts.md",
         "title": "@polydeukes/sdk-ts",
-        "summary": "Call checkCovenant or checkChangeSet from TypeScript and handle their three verdicts."
+        "summary": "Use four TypeScript verbs over a standalone pdks executable and handle closed results."
       },
       "ko": {
         "path": "reference/packages/sdk-ts.ko.md",
         "title": "@polydeukes/sdk-ts",
-        "summary": "TypeScript에서 checkCovenant나 checkChangeSet을 호출하고 세 가지 판정 결과를 처리합니다."
+        "summary": "TypeScript의 네 동사로 단일 pdks 실행 파일을 호출하고 닫힌 결과를 처리합니다."
       }
     },
     {
@@ -331,12 +331,12 @@
       "en": {
         "path": "reference/packages/sdk-rust.md",
         "title": "polydeukes-sdk (Rust)",
-        "summary": "Call check_covenant or check_change_set from Rust and handle the three verdicts."
+        "summary": "Use four Rust verbs over a standalone pdks executable and handle closed results."
       },
       "ko": {
         "path": "reference/packages/sdk-rust.ko.md",
         "title": "polydeukes-sdk (Rust)",
-        "summary": "Rust에서 check_covenant나 check_change_set을 호출하고 세 가지 판정 결과를 처리합니다."
+        "summary": "Rust의 네 동사로 단일 pdks 실행 파일을 호출하고 닫힌 결과를 처리합니다."
       }
     },
     {

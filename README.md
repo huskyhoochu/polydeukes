@@ -102,8 +102,8 @@ Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
 SDK is also available —
 `@polydeukes/core` (the covenant
 protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
-`@polydeukes/sdk-ts` (the TypeScript client that hands an input IR or a unified diff to the judge
-from a program), the crate `polydeukes-sdk` (the same client for a Rust host),
+`@polydeukes/sdk-ts` (four asynchronous verbs for covenant checks and memory), the crate
+`polydeukes-sdk` (the same four verbs for a Rust host),
 [the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (four verbs over the
 standalone executable),
 `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and the `polydeukes`

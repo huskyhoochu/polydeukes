@@ -113,3 +113,15 @@ For a Python-only publication at an existing release version, create an annotate
 `v<version>`, downloads that release's Linux executable and checks its digest, then runs the
 same Python distribution checks and PyPI upload. The npm/crate and executable release jobs are
 skipped. Normal unified releases continue to use `v<version>` with `python_only=false`.
+
+<a id="sdk-contract"></a>
+## Shared SDK contract
+
+The TS, Rust, and Python SDKs share explicit-executable → absolute-PATH selection, four
+verbs, closed results, and communication-deadline semantics. TS uses promises and milliseconds;
+Rust uses synchronous functions and Duration; Python uses synchronous functions and seconds.
+Core’s two schemas supply the generated wire types, separately from search-response validation.
+
+From the checkout, `node scripts/verify-sdk-contract.mjs --executable <absolute-pdks>` compares
+all three SDKs’ fixture observations, real judgments, telemetry, and search order. See the
+[TS contract](sdk-ts.md) and [Rust contract](sdk-rust.md).

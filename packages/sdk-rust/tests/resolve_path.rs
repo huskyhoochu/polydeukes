@@ -1,9 +1,6 @@
-//! When no `node_modules/polydeukes` sits at or above the root, the verbs run the first
-//! `pdks` regular file on `PATH` directly — the single executable a host without Node
-//! installs — with the verb as the first argument and no bin path. An install in the graph
-//! still wins, a broken nearest install stops the walk before `PATH`, and with nothing to
-//! run the verbs spawn nothing. `PATH` is process-wide, so every case that sets it takes one
-//! lock and the original is restored when the case ends.
+//! Every verb selects the first executable pdks in an absolute PATH directory.
+//! npm metadata does not affect the selection. Environment mutations are serialized
+//! and restored after each test.
 
 use std::cell::RefCell;
 use std::ffi::OsString;
@@ -103,8 +100,8 @@ impl RecordingSeam {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
             status: Some(0),
-            stdout: EMPTY_OUTPUT.into(),
-            stderr: String::new(),
+            stdout: EMPTY_OUTPUT.as_bytes().to_vec(),
+            stderr: Vec::new(),
         })
     }
 
@@ -157,16 +154,12 @@ fn strings(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| s.to_string()).collect()
 }
 
-/// The reason's fixed head when neither an install nor a `PATH` entry is found.
-fn no_umbrella_head(root: &Path) -> String {
-    format!(
-        "no polydeukes in the install graph of {} and no pdks on PATH",
-        root.display()
-    )
+/// The executable named by every unavailable-selection diagnostic.
+fn no_umbrella_head(_root: &Path) -> String {
+    "pdks".to_string()
 }
 
-/// `PATH` is one value for the whole process, so the tests that set it take this lock first
-/// and the harness's threads never see each other's fixture directories.
+/// Tests share a process-wide PATH, so each mutation holds this lock.
 static PATH_LOCK: Mutex<()> = Mutex::new(());
 
 /// Restores the original `PATH` when dropped, so a failed assertion leaves none of the
@@ -203,17 +196,17 @@ fn path_lock() -> MutexGuard<'static, ()> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-/// Every verb spawns nothing from `root` and answers the shared reason head with its own tail.
+/// Every verb fails without spawning when no PATH candidate can run.
 fn assert_every_verb_resolves_nothing(root: &Path) {
     let seam = RecordingSeam::new();
     let reason = unavailable(search(root, &seam));
     assert!(
-        reason.starts_with(&no_umbrella_head(root)),
-        "memory reason starts with the shared head: {reason}"
+        reason.contains(&no_umbrella_head(root)),
+        "memory reason names pdks: {reason}"
     );
     assert!(
-        reason.ends_with("install it to use memory"),
-        "memory reason keeps its tail: {reason}"
+        reason.contains("PATH"),
+        "memory reason names PATH: {reason}"
     );
     assert_eq!(seam.calls().len(), 0);
 
@@ -237,12 +230,12 @@ fn assert_every_verb_resolves_nothing(root: &Path) {
         spawn: Some(&|s| seam.spawn(s)),
     }));
     assert!(
-        reason.starts_with(&no_umbrella_head(root)),
-        "covenant reason starts with the shared head: {reason}"
+        reason.contains(&no_umbrella_head(root)),
+        "covenant reason names pdks: {reason}"
     );
     assert!(
-        reason.ends_with("install it to have this input judged"),
-        "covenant reason keeps its tail: {reason}"
+        reason.contains("PATH"),
+        "covenant reason names PATH: {reason}"
     );
     assert_eq!(seam.calls().len(), 0);
 
@@ -258,12 +251,12 @@ fn assert_every_verb_resolves_nothing(root: &Path) {
         spawn: Some(&|s| seam.spawn(s)),
     }));
     assert!(
-        reason.starts_with(&no_umbrella_head(root)),
-        "change-set reason starts with the shared head: {reason}"
+        reason.contains(&no_umbrella_head(root)),
+        "change-set reason names pdks: {reason}"
     );
     assert!(
-        reason.ends_with("install it to have this change set judged"),
-        "change-set reason keeps its tail: {reason}"
+        reason.contains("PATH"),
+        "change-set reason names PATH: {reason}"
     );
     assert_eq!(seam.calls().len(), 0);
 }
@@ -289,29 +282,21 @@ fn the_first_pdks_regular_file_on_path_runs_when_no_install_is_above_root() {
     assert_eq!(calls[0].cwd, root);
     drop(calls);
 
-    // An install in the graph wins over `PATH`: the project's lockfile pinned that
-    // version. A lookup that consults `PATH` first runs a different umbrella than the one
-    // the project installed.
+    // Even a valid nearest npm installation cannot override the selected PATH executable.
     let (_installed_dir, installed_root) = bare_root();
-    let bin = install_polydeukes(&installed_root, &pdks_manifest());
+    install_polydeukes(&installed_root, &pdks_manifest());
     let seam = RecordingSeam::new();
 
     search(&installed_root, &seam);
 
     let calls = seam.calls();
     assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0].command, "node");
-    assert_eq!(
-        Path::new(&calls[0].args[0])
-            .canonicalize()
-            .expect("the bin path names a file"),
-        bin
-    );
-    assert_eq!(&calls[0].args[1..], strings(&SEARCH_TAIL).as_slice());
+    assert_eq!(calls[0].command, pdks.to_string_lossy());
+    assert_eq!(calls[0].args, strings(&SEARCH_TAIL));
 }
 
 #[test]
-fn neither_an_install_nor_a_path_entry_spawns_nothing_and_names_both_in_the_reason() {
+fn no_path_entry_spawns_nothing_and_names_pdks_and_path() {
     // Spawning nothing is the fail-closed answer: an `Empty` or `Upheld` here reads a
     // host with no umbrella as one that answered. The reason tells the operator both
     // places it looked, each of the three verbs keeping its own tail, whether `PATH` holds
@@ -360,7 +345,7 @@ fn a_pdks_without_the_exec_bit_or_a_pdks_directory_is_skipped_and_the_first_exec
     let reason = unavailable(search(&root, &seam));
 
     assert!(
-        reason.starts_with(&no_umbrella_head(&root)),
+        reason.contains(&no_umbrella_head(&root)),
         "reason starts with the shared head: {reason}"
     );
     assert_eq!(seam.calls().len(), 0);
@@ -412,20 +397,15 @@ fn a_relative_or_empty_path_entry_is_skipped_for_the_first_absolute_one() {
 }
 
 #[test]
-fn a_broken_nearest_install_stops_the_walk_before_path() {
-    // The nearest `node_modules/polydeukes` is the one the project installed; a manifest
-    // that does not parse is still that install. A lookup that falls through to `PATH`
-    // judges the project with an umbrella the project does not use.
+fn a_broken_nearest_install_does_not_prevent_path_selection() {
+    // Broken npm metadata must not prevent selection of a valid PATH executable.
     let _lock = path_lock();
     let (_root_dir, root) = bare_root();
     install_polydeukes(&root, "{\"name\":\"polydeukes\",\"bin\":{");
-    let (_path_dir, path_dir, _) = dir_with_pdks(true);
+    let (_path_dir, path_dir, pdks) = dir_with_pdks(true);
     let _path = PathRestore::set(&[&path_dir]);
     let seam = RecordingSeam::new();
 
-    let reason = unavailable(search(&root, &seam));
-
-    assert_eq!(seam.calls().len(), 0);
-    // The walk never reached `PATH`, so the reason does not claim it looked there.
-    assert!(!reason.contains("PATH"), "reason: {reason}");
+    assert!(matches!(search(&root, &seam), MemorySearchOutcome::Empty));
+    assert_eq!(seam.only_command(), pdks.to_string_lossy());
 }

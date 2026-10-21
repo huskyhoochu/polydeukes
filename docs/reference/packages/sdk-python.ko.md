@@ -109,3 +109,15 @@ GitHub 환경을 확인해야 합니다. 첫 릴리스의 선행 조건이며 �
 Linux 실행 파일을 받아 digest를 대조한 뒤 같은 Python 배포물 검사와 PyPI 업로드를 수행합니다.
 npm/crate와 실행 파일 릴리스 작업은 건너뜁니다. 일반 통합 릴리스는 `v<version>`과
 `python_only=false`를 사용합니다.
+
+<a id="sdk-contract"></a>
+## 세 언어의 공통 계약
+
+TS·Rust·Python SDK는 명시 실행 파일 → 절대 PATH의 pdks, 네 동사와 닫힌 결과,
+기한의 같은 의미를 사용합니다. TS는 Promise와 밀리초, Rust는 동기 함수와 Duration,
+Python은 동기 함수와 초를 사용합니다. 두 core schema가 전송 타입의 원본이며
+언어별 생성 타입과 검색 응답 검증을 구분합니다.
+
+저장소에서 `node scripts/verify-sdk-contract.mjs --executable <absolute-pdks>`를 실행하면
+세 SDK가 같은 fixture를 관측한 결과·실제 판정·telemetry·검색 순서를 비교합니다.
+[TS 계약](sdk-ts.ko.md)과 [Rust 계약](sdk-rust.ko.md)을 참고하세요.

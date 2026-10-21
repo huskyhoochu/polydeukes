@@ -2,110 +2,100 @@
 
 [English](sdk-ts.md) · **한국어**
 
-> **TypeScript에서 판정기를 호출합니다.** `checkCovenant`에 약속(covenant) 입력 IR을,
-> `checkChangeSet`에 통합 diff를 전달하면 `pdks covenant check`의 판정 결과를 값으로
-> 반환합니다.
->
-> 베타입니다. `polydeukes` · `@polydeukes/core`와 함께 설치하며, 둘 다 이 패키지의
-> `peerDependencies`입니다.
+Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일을 호출합니다. SDK는 호출자의 입력을
+보내고 약속(covenant)의 판정 결과나 기억(memory) 결과를 값으로 돌려줍니다. 판정, 설정, 텔레메트리,
+색인은 CLI가 맡습니다.
 
 <a id="ownership"></a>
 ## 담당하는 기능
 
-판정받는 프로젝트에서 `polydeukes`를 찾고, 실행 파일의 표준 입력으로 IR을 전달한 뒤
-자식 프로세스의 종료 코드를 판정 결과로 변환합니다. 실제 판정은 자식 프로세스가 수행합니다.
+| 동사 | 명령 | 결과 |
+|---|---|---|
+| `checkCovenant` | `pdks covenant check` | `CheckCovenantVerdict` |
+| `checkChangeSet` | `pdks covenant check --diff` | `CheckCovenantVerdict` |
+| `memoryIngest` | `pdks memory ingest` | `MemoryIngestOutcome` |
+| `memorySearch` | `pdks memory search <query> --json` | `MemorySearchOutcome` |
 
-| 단위 | 하는 일 |
-|---|---|
-| `checkCovenant` | 판정받는 프로젝트에서 `pdks covenant check`를 스폰하고 판정 결과를 돌려줍니다 |
-| `checkChangeSet` | 판정받는 프로젝트에서 `pdks covenant check --diff`를 스폰하고 판정 결과를 돌려줍니다 |
-| 우산 패키지 찾기 | `repoRoot`의 설치 그래프에서 `polydeukes`를 찾아 `pdks` 실행 파일을 읽습니다 |
-| 판정 결과 변환 | 종료 코드 `0`은 `upheld`, `2`는 `blocked`, 그 밖은 모두 `unjudged`입니다 |
-
-텔레메트리는 자식 프로세스가 판정 중에 기록합니다. SDK는 중복 행을 추가하지 않습니다.
+네 동사는 실행 파일 선택과 바이트 단위 프로세스 통신을 공유합니다. 루트는 호출자의 현재 디렉터리
+기준으로 절대화되어 자식의 cwd가 됩니다. 명시한 `executable`도 이름만 적었더라도 호출자의 cwd
+기준으로 해석하며 symlink 경로 표기를 보존합니다. 미지정이면 `PATH`의 절대 디렉터리에서 실행할 수
+있는 일반 파일 `pdks`를 처음 선택합니다. 빈 항목과 상대 항목은 건너뜁니다. 선택한 실행 파일이
+실패하면 다른 후보를 재시도하지 않고 실패 값을 돌려줍니다.
 
 <a id="install"></a>
 ## 설치
 
 ```sh
-pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
+pnpm add @polydeukes/sdk-ts
 ```
 
-별도의 초기화 명령은 필요하지 않습니다. 우산 패키지가 SDK가 스폰할 판정기를 공급하고, 코어가
-호출자가 채우는 `CovenantInput` 타입을 공급합니다.
+SDK 호스트에는 Node >=24가 필요합니다.
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
+파일 `pdks`를 설치하고 실행 권한을 준 다음, 경로를 지정하거나 `PATH`에 `pdks`라는 이름으로 둡니다.
+지원 실행 플랫폼은 Linux x64와 macOS arm64입니다. SDK는 npm 설치를 탐색하거나 별도 Node 자식을
+띄우지 않고 그 파일을 직접 실행합니다. `@polydeukes/core`와 `polydeukes`에 대한 런타임·peer 의존성이
+없습니다. 생성한 전송 타입은 패키지에 포함됩니다.
+
+기억 동사에는 기억 기능을 제공하는 CLI가 필요합니다. 기억 의존성, 설정, 색인이 없으면
+`unavailable`로 돌아옵니다.
 
 <a id="동사"></a>
 <a id="verb"></a>
 ## `checkCovenant`
 
-이 패키지는 ESM 전용입니다(`"type": "module"`, `import` 조건만 있고 `require`는 없음).
-호출하는 파일이 `.mjs`이거나 그 `package.json`이 `"type": "module"`을 선언해야 합니다.
-
 ```ts
-import { checkCovenant } from '@polydeukes/sdk-ts';
+import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
 
+const input: CovenantInput = {
+  toolCalls: [{
+    name: 'writeFile',
+    args: { path: 'src/index.ts' },
+    fileChange: {
+      kind: 'create',
+      path: 'src/index.ts',
+      post: 'export const answer = 42;\n',
+    },
+  }],
+  subagentSpawns: [],
+  userMessages: [],
+  tools: { mutating: ['writeFile'], shell: ['exec'], commandArgs: ['command'] },
+};
 const verdict = await checkCovenant({
-  repoRoot: '/path/to/the/project',
-  input: {
-    toolCalls: [
-      {
-        name: 'writeFile',
-        args: { path: 'src/index.ts', content: 'export const answer = 42;\n' },
-        fileChange: {
-          kind: 'modify',
-          path: 'src/index.ts',
-          pre: 'export const answer = 41;\n',
-          post: 'export const answer = 42;\n',
-        },
-      },
-    ],
-    subagentSpawns: [],
-    userMessages: [],
-    tools: { mutating: ['writeFile', 'rm'], shell: ['exec'], commandArgs: ['command'] },
-  },
+  repoRoot: '/path/to/project', input, executable: '/opt/tools/pdks', timeoutMs: 2000,
 });
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
+// upheld 판정 결과를 받은 뒤 이곳에서 제안한 작업을 실행합니다.
 ```
 
-IR은 호출자의 것입니다. 이 패키지는 IR을 읽지도 채우지도 않습니다. `session`도 `actor`도
-자기 명부도 더하지 않으며, 위의 `tools` 값도 호출자 자신의 도구 이름입니다. `subagentSpawns`와
-`userMessages`는 필수 배열이므로 둘 다 없는 호출자는 빈 배열을 보냅니다. `world` 키는 판정기가
-거부합니다. 러너가 세계를 디스크의 프로젝트에서 읽으며, 클라이언트가 세계를 고르면 무엇을
-판정할지를 고르는 것이 되기 때문입니다.
+호스트가 도구 호출마다 증거를 제공합니다. `fileChange`는 `create`(`path`, `post`),
+`modify`(`path`, `pre`, `post`), `delete`(`path`, 선택 `pre`) 중 하나입니다. `fileChange`가 없으면
+그 호출에는 입증된 파일 변경이 없으며 다른 호출의 증거가 대신하지 않습니다. SDK는 입력을 UTF-8
+JSON으로 그대로 보내고 actor, session, 도구 목록을 합성하지 않습니다. `CovenantInput`에는 `world`
+필드가 없고, CLI가 프로젝트에서 그 축을 공급합니다.
 
 <a id="spec"></a>
 ## 스펙
 
-```ts
-type CheckCovenantSpec = {
-  repoRoot: string;
-  input: CovenantInput;
-  enforce?: 'advise' | 'block';
-  configLayer?: string;
-  telemetryPath?: string;
-  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
-};
+| 필드 | `CheckCovenantSpec` | `CheckChangeSetSpec` |
+|---|---|---|
+| `repoRoot: string` | 프로젝트 루트와 자식 cwd | 같음 |
+| `input: CovenantInput` | 호출자가 만든 필수 IR | `diff: string`으로 대체 |
+| `enforce?: 'advise' \| 'block'` | 기본값 `block` | 같음 |
+| `configLayer?: string` | `--config-layer`로 전달, 상대 경로는 자식 cwd 기준 | 같음 |
+| `telemetryPath?: string` | `--telemetry-path`로 전달, 상대 경로는 자식 cwd 기준 | 같음 |
+| `executable?: string` | `PATH`보다 먼저 선택할 실행 파일 | 같음 |
+| `timeoutMs?: number` | 유한한 0 이상 밀리초, 미지정이면 기한 없음 | 같음 |
+| `spawn?: Spawn` | 주입할 프로세스 경계 | 같음 |
 
-type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; stdin: string };
-```
+`MemoryIngestSpec`은 `root: string`과 `executable`, `timeoutMs`, `spawn`을 받습니다.
+`MemorySearchSpec`은 여기에 `query: string`과 선택 `limit: number`를 받습니다.
+limit은 양의 안전 정수여야 합니다. 잘못된 limit과 기한은 스폰 전에 실패 값이 됩니다.
+기억 명령에는 강제 수준, config-layer, telemetry 플래그를 보내지 않습니다.
 
-| 필드 | 무엇인가 |
-|---|---|
-| `repoRoot` | 판정받는 프로젝트입니다. 설정 발견, 세계 축, 자식의 cwd, 우산 패키지를 찾는 설치 그래프가 모두 여기 걸립니다 |
-| `input` | 호출자 자신의 IR이며 자식의 표준 입력으로 원문 그대로 갑니다 |
-| `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
-| `spawn` | 자식 프로세스 실행 함수를 지정합니다. 생략하면 현재 프로세스의 Node.js 실행 파일을 사용합니다 |
-| `configLayer` | 프로젝트 설정과 함께 판정할 [설정 층](../configuration/index.ko.md#config-layer)이며 `--config-layer`로 넘어갑니다. 상대 경로는 `repoRoot` 기준입니다 |
-| `telemetryPath` | 이 실행의 행을 덧붙일 파일이며 `--telemetry-path`로 넘어갑니다 |
-
-**`enforce`의 기본값은 `block`입니다.** 이것은 표면의 강제 수준이지 항목의 것이 아닙니다.
-보호 경로와 `enforce: block`을 단 항목이 호출을 멈추고, 나머지 위반은 종료 코드 0에
-`advised`로 기록됩니다. 항목 자신의 강제 수준은 다른 표면에서와 같이 느슨한 쪽이 이기도록
-조합됩니다. `@polydeukes/adapter-claude-code`, `@polydeukes/adapter-grok`,
-`@polydeukes/adapter-codex`도 같은 수준으로 판정기를 스폰합니다.
-
-기본 스폰은 파일 서술자를 하나도 상속하지 않습니다. 호출자가 자기 서술자를 갖지 않을 수 있고,
-상속한 stdout이 닫혀 있으면 자식이 답하기 전에 EPIPE로 죽기 때문입니다. stderr는 모아서
-돌려주고, 판정기가 stdout에는 판정 결과를 쓰지 않으므로 stdout은 흘려보내고 버립니다.
+통신 기한은 프로세스가 생성된 뒤 시작합니다. stdin 쓰기와 두 출력 파이프 수집을 포함하고,
+직접 자식이 먼저 끝난 뒤 후손이 파이프를 잡고 있는 시간에도 적용됩니다. 0은 스폰 직후 만료됩니다.
+만료 시 직접 자식을 종료·회수하고 파이프를 닫으며 후손은 종료하지 않습니다. 실행 파일 해석,
+직렬화, OS 스폰 지연은 기한 전에 일어납니다. 주입한 spawn은 직접 기한을 집행해야 합니다.
 
 <a id="verdicts"></a>
 ## 판정 결과 셋
@@ -117,101 +107,106 @@ type CheckCovenantVerdict =
   | { verdict: 'unjudged'; reason: string };
 ```
 
-| 판정 결과 | 자식의 상태 | 호출자에게 뜻하는 것 |
-|---|---|---|
-| `upheld` | `0` | 호출이 판정을 받았고 아무것도 막지 않았습니다. `advisories`는 자식의 stderr 원문이며 그 실행이 낸 권고 줄을 싣습니다. 진행하면 됩니다 |
-| `blocked` | `2` | 호출이 판정을 받았고 무언가 막았습니다. `reason`은 자식의 stderr 원문입니다. 진행하지 않습니다 |
-| `unjudged` | 그 밖의 상태이거나 우산 패키지가 없음 | 판정이 일어나지 않았습니다. `reason`이 어느 쪽인지 말합니다. 자식이 stderr를 썼으면 그 stderr이고(exit `3`의 `covenant check failed closed: input carries no subagentSpawns array` 등), 아니면 상태입니다. 이것을 통과로 읽으면 판정기가 설치되지 않은 프로젝트에서 모든 호출이 지나갑니다 |
+status `0`은 `upheld`, `2`는 `blocked`, 나머지 status와 시그널은 `unjudged`입니다.
+실행 파일 해석, 직렬화, 스폰, 기한 실패도 `unjudged`입니다. 제안한 작업은 `upheld`일 때만 실행합니다.
+SDK는 stderr를 근거로 status `2`를 재해석하지 않습니다. 순환 참조, BigInt, 유한하지 않은 JSON 수치는
+직렬화에 실패합니다.
 
-SDK는 `blocked.reason`과 `upheld.advisories`를 데이터로 반환합니다. 소비자는 이 내용을
-모델에게 전달하거나 이슈 또는 로그에 기록할 수 있습니다. SDK는 별도의 증인 인자를 받지 않습니다.
-무인 루프에서 결과를 처리하는 방법은
-[규율 작성하기](../../how-to/write-disciplines.ko.md#posture)를 참고하세요.
-
-두 텍스트는 사람이 읽는 것입니다. 한 실행이 판정한 경로와 규율을 값으로 읽으려면 `telemetryPath`를
-주고, 그 행을 [`pdks covenant check`](../cli/covenant-check.ko.md#reading-rows)의 설명대로 읽습니다.
-변경 집합은 실행마다 새 파일을, 세션 입력은 세션 전체에 파일 하나를 씁니다.
+유효한 stderr 텍스트는 공백을 포함해 보존하고, 잘못된 UTF-8은 대체 디코딩합니다. `advisories`와
+차단 응답의 `reason`은 자식의 stderr입니다. 다른 비정상 종료 상태는 stderr가 있으면 이를 쓰고,
+없으면 상태 설명을 씁니다. 약속 stdout은 비우지만 판정 결과를 정하지 않습니다. 텔레메트리 행은 CLI가
+쓰며 `telemetryPath`로 목적지를 고릅니다.
 
 <a id="change-set"></a>
 ## `checkChangeSet`
-
-`checkChangeSet`은 호출 하나가 아니라 끝난 변경 집합을 판정합니다. `repoRoot`에서 통합 diff를
-표준 입력에 넣어 `pdks covenant check --diff --enforce <level>`을 스폰하고, `checkCovenant`와
-같은 판정 결과 셋을 돌려줍니다.
 
 ```ts
 import { checkChangeSet } from '@polydeukes/sdk-ts';
 
 const verdict = await checkChangeSet({
-  repoRoot: '/path/to/the/project',
-  diff: gitDiffOutput, // 예: 새 파일은 `git add -N .` 뒤, repoRoot에서 실행한 `git diff HEAD`
+  repoRoot: '/path/to/project', diff, executable: '/opt/tools/pdks',
 });
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 ```
+
+diff는 줄바꿈을 보존한 UTF-8로 stdin에 들어갑니다. `a/`와 `b/` 뒤의 경로는 `repoRoot` 기준입니다.
+SDK는 git을 실행하지 않습니다. 생산 명령의 형식은 다음처럼 고정합니다.
+
+```sh
+git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
+```
+
+추적하지 않은 파일은 `git add -N`을 해야 나타납니다. SDK의 강제 수준 기본값은 변경 집합 명령을 포함한
+두 약속 동사에서 모두 `block`입니다.
+
+<a id="memory"></a>
+## `memoryIngest`와 `memorySearch`
 
 ```ts
-type CheckChangeSetSpec = {
-  repoRoot: string;
-  diff: string;
-  enforce?: 'advise' | 'block';
-  configLayer?: string;
-  telemetryPath?: string;
-  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
-};
+import { memoryIngest, memorySearch } from '@polydeukes/sdk-ts';
+
+const shared = { root: '/path/to/project', executable: '/opt/tools/pdks', timeoutMs: 2000 };
+const ingest = await memoryIngest(shared);
+if (ingest.outcome === 'unavailable') throw new Error(ingest.reason);
+const result = await memorySearch({ ...shared, query: 'session report', limit: 5 });
+switch (result.outcome) {
+  case 'found': console.log(result.hits); break;
+  case 'empty': console.log('일치하는 절 없음'); break;
+  case 'unavailable': throw new Error(result.reason);
+}
 ```
 
-| 필드 | 무엇인가 |
-|---|---|
-| `repoRoot` | 판정받는 프로젝트입니다. 설정 발견, `file` 소스가 읽는 작업 트리, 자식의 cwd, 우산 패키지를 찾는 설치 그래프가 모두 여기 걸립니다 |
-| `diff` | 호출자의 통합 diff이며 자식의 표준 입력으로 원문 그대로 갑니다. 경로는 `a/`·`b/` 뒤에 `repoRoot` 기준으로 적혀 있어야 하며, `repoRoot`가 최상위인 저장소에서 `git diff`가 출력하는 형식이 이것입니다. 이 형식이면 어떤 생산자의 diff든 되고, SDK는 `git`을 실행하지도 텍스트를 검사하지도 않습니다. `git diff`는 `git add -N`으로 표시하기 전까지 추적되지 않은 파일을 빼놓습니다 |
-| `enforce` | 실행 전체에 대한 관측자의 기본 자세입니다. **적지 않으면 `block`입니다** |
-| `spawn` | `checkCovenant`와 같은 자식 프로세스 실행 함수입니다 |
-| `configLayer` | 프로젝트 설정과 함께 판정할 [설정 층](../configuration/index.ko.md#config-layer)이며 `--config-layer`로 넘어갑니다. 상대 경로는 `repoRoot` 기준입니다 |
-| `telemetryPath` | 이 실행의 행을 덧붙일 파일이며 `--telemetry-path`로 넘어갑니다 |
+`MemoryIngestOutcome`은 `{ outcome: 'ingested' }` 또는
+`{ outcome: 'unavailable'; reason: string }`입니다. ingest는 status `0`에서만 성공하며 stdout은
+무시합니다. `MemorySearchOutcome`은 비어 있지 않은 `hits` 목록을 가진 `found`, `empty`, 또는
+`reason`이 있는 `unavailable`입니다. 검색은 query를 인자 하나로, limit을 `--limit <n>`으로
+전달합니다. 기억 stdin은 빈 바이트입니다.
 
-**기본값이 CLI와 다릅니다.** `--enforce` 없이 실행한 `pdks covenant check --diff`는 모든 판정
-결과를 종료 코드 0의 `advised`로 기록하므로, diff에 보호 경로가 있어도 `blocked`가 돌아오지
-않습니다. `checkChangeSet`은 따로 정하지 않으면 `checkCovenant`처럼 `--enforce block`을
-넘깁니다. 보호 경로와 `enforce: block`을 단 항목은 `blocked`로 돌아오고, 나머지 위반은
-`upheld.advisories`에 담겨 돌아옵니다.
-
-변경 집합은 변경 집합 표면이 컴파일하는 `disciplines`와 `changeSetDisciplines`로 판정됩니다.
-어느 목록에 어떤 항목이 드는지는
-[설정 참조](../configuration/index.ko.md#placement-rule)를 참고하세요.
+성공한 검색 stdout은 `ingestedAt: string`과 `results`가 있는 엄격한 UTF-8 JSON이어야 합니다.
+각 결과에는 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`(문자열), `stale`(불리언),
+`supersededBy`(문자열 배열), `trust`(`human-reviewed`, `machine-verified`, `unverified`),
+`matchPath`(`and`, `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다.
+`MemorySearchResult`는 core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 유효한 빈 `results`
+배열만 `empty`입니다. 잘못된 응답과 실행 실패는 `unavailable`입니다.
 
 <a id="failure"></a>
-## 실패 예제
+## 실패와 전환
 
-프로젝트에 `polydeukes`가 설치돼 있지 않으면 `checkCovenant`는 `unjudged`를 반환합니다.
+실행 파일을 쓸 수 없으면 약속 명령은 `unjudged`, 기억 명령은 `unavailable`을 반환합니다.
+위 예제처럼 각 갈래를 명시적으로 처리합니다.
+
+npm peer를 설치하던 소비자는 단일 실행 파일 `pdks`를 설치하고 `executable`이나 `PATH`의 절대
+디렉터리로 선택합니다. `@polydeukes/core`의 입력 타입 import를 `@polydeukes/sdk-ts`로 옮깁니다.
+기존 `CheckCovenantSpawnSpec`은 `SpawnSpec`이 됩니다. 프로세스 경계는 네 동사를 처리하고 stdin,
+stdout, stderr를 바이트로 전달합니다.
 
 ```ts
-const verdict = await checkCovenant({ repoRoot: '/tmp/project-without-polydeukes', input });
-
-// {
-//   verdict: 'unjudged',
-//   reason: 'no polydeukes in the install graph of /tmp/project-without-polydeukes:
-//            install it to have this input judged',
-// }
+type SpawnSpec = {
+  command: string;
+  args: string[];
+  cwd: string;
+  stdin: Uint8Array;
+  timeoutMs?: number;
+};
+type SpawnOutcome = { status: number | null; stdout: Uint8Array; stderr: Uint8Array };
+type Spawn = (spec: SpawnSpec) => Promise<SpawnOutcome>;
 ```
 
-자식 프로세스는 돌지 않고 텔레메트리 로그에도 아무것도 더해지지 않습니다. 행은 판정이
-일어나는 자리에 쓰이는데, 판정이 일어나지 않았기 때문입니다.
+stderr는 대체 디코딩하되 stdout은 검색을 해석할 때까지 바이트로 보존합니다. 이름이 `TimeoutError`인
+주입 `Error`는 기한 실패 갈래가 되고, 그 밖의 예외도 실패 값이 됩니다.
 
 <a id="limits"></a>
 ## 선언된 한계
 
-- **IR은 호출자가 만듭니다.** 도구 명부와 변경 전 상태와 봉투는 호스트가 아는 사실이므로,
-  그것을 아는 소비자가 채웁니다. 이 패키지는 그중 무엇도 공급하지 않습니다.
-- **변경 집합은 `repoRoot`의 작업 트리를 기준으로 판정됩니다.** diff는 바뀐 파일마다 hunk의
-  줄을 `pre`와 `post`로 공급하지만, `file` 소스는 디스크에서 읽습니다. diff를 넘기면서
-  `repoRoot`를 다른 상태의 트리로 두면 그 항목들은 그 트리를 판정합니다.
-- **여기서는 텔레메트리 행을 쓰지 않습니다.** 행은 모두 자식이 씁니다.
-- **`unjudged`는 통과가 아닙니다.** 판정기가 답하지 않았다는 사실을 기록하며, 판정기가 없는
-  프로젝트에서 무엇을 허용할지는 소비자가 정합니다.
+SDK는 CLI 버전을 협상하지 않습니다. SDK가 요구하는 입력 스키마와 기억 열거형을 이해하는 CLI를
+사용합니다. 생성한 TypeScript 타입은 전송 형태를 나타내며, shell 목록이 비어 있지 않으면 명령 인자
+이름이 필요하다는 의미 제약은 CLI가 검사합니다. 선택한 강제 수준이 작업을 허용하면 `upheld`에도
+stderr 조언이 있을 수 있습니다. 기억 결과는 검색 결과이며 작업 허가가 아닙니다.
 
 <a id="see-also"></a>
 ## 함께 보기
 
+- [Rust SDK](sdk-rust.ko.md)
+- [Python SDK](sdk-python.ko.md)
 - [`pdks covenant check`](../cli/covenant-check.ko.md)
-- [`polydeukes`](polydeukes.ko.md)
-- [`@polydeukes/core`](core.ko.md)
-- [설정 참조](../configuration/index.ko.md)
+- [`pdks memory`](../cli/memory.ko.md)

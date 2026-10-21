@@ -1,13 +1,14 @@
 //! `memory_ingest` and `memory_search` against the BUILT `pdks`: a throwaway tree
 //! scaffolded by `pdks init`, wired to the checkout's install graph by symlink, with one
 //! markdown document its memory settings include. Only a real spawn proves that the crate
-//! finds the umbrella from the memory root, that the child reads that root's config and
+//! invokes the selected executable, that the child reads the memory root's config and
 //! writes its index there, and that the generated hit type parses what the real command
 //! prints. `memory_ingest.rs` and `memory_search.rs` pin the same contract through the
 //! injected seam.
 
 use std::fs;
 use std::num::NonZeroU32;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -59,6 +60,26 @@ fn project_root() -> (TempDir, PathBuf) {
 /// and the document that glob reaches. The document's first section holds only ordinary
 /// words; the second holds `HIT_WORD` alone, so a hit names exactly one section.
 fn scaffold_consumer(root: &Path) {
+    let node = Command::new("/bin/sh")
+        .args(["-c", "command -v node"])
+        .output()
+        .expect("find test Node");
+    assert!(node.status.success());
+    let node = String::from_utf8(node.stdout).unwrap();
+    let node = node.trim();
+    assert!(Path::new(node).is_absolute());
+    let quote = |value: &str| format!("'{}'", value.replace("'", "'\\''"));
+    let wrapper = root.join("pdks-test");
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\nexec {} {} \"$@\"\n",
+            quote(node),
+            quote(umbrella_bin().to_str().unwrap())
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
     std::os::unix::fs::symlink(
         checkout_root().join("node_modules"),
         root.join("node_modules"),
@@ -69,7 +90,7 @@ fn scaffold_consumer(root: &Path) {
         "{\"name\":\"consumer\",\"private\":true}\n",
     )
     .expect("consumer manifest");
-    let init = Command::new("node")
+    let init = Command::new(node)
         .arg(umbrella_bin())
         .arg("init")
         .current_dir(root)
@@ -97,7 +118,7 @@ fn scaffold_consumer(root: &Path) {
 fn ingested(root: &Path) {
     match memory_ingest(MemoryIngestSpec {
         root,
-        executable: None,
+        executable: Some(&root.join("pdks-test")),
         timeout: None,
         spawn: None,
     }) {
@@ -123,7 +144,7 @@ fn search(root: &Path, query: &str, limit: Option<NonZeroU32>) -> MemorySearchOu
         root,
         query,
         limit,
-        executable: None,
+        executable: Some(&root.join("pdks-test")),
         timeout: None,
         spawn: None,
     })

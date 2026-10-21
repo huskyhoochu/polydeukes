@@ -1,17 +1,24 @@
-/**
- * @polydeukes/sdk-ts — hand a covenant input or a change set to `pdks covenant check` from
- * TypeScript.
- *
- * Beta. Two verbs: `checkCovenant` takes one input, `checkChangeSet` one unified diff. Each
- * locates the `polydeukes` install of the project being judged, spawns its bin, and returns
- * the verdict as a value. No judgment logic lives here.
- * See https://github.com/huskyhoochu/polydeukes
- */
-
+/** Four standalone pdks process verbs and their transport types. */
 export { type CheckChangeSetSpec, checkChangeSet } from './check-change-set.ts';
 export {
-  type CheckCovenantSpawnSpec,
   type CheckCovenantSpec,
   type CheckCovenantVerdict,
   checkCovenant,
 } from './check-covenant.ts';
+export type {
+  Actor,
+  Channels,
+  CovenantInput,
+  FileChange,
+  Session,
+  SessionToolCall,
+  SessionUserMessage,
+  SubagentSpawn,
+  ToolCall,
+  Tools,
+  UserMessage,
+} from './ir.ts';
+export type { MemorySearchResult } from './memory.ts';
+export { type MemoryIngestOutcome, type MemoryIngestSpec, memoryIngest } from './memory-ingest.ts';
+export { type MemorySearchOutcome, type MemorySearchSpec, memorySearch } from './memory-search.ts';
+export type { Spawn, SpawnOutcome, SpawnSpec } from './process.ts';

@@ -1,14 +1,23 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { type CovenantInput, readRecords } from '@polydeukes/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readRecords } from '@polydeukes/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkCovenant } from '../src/check-covenant.ts';
+import type { CovenantInput } from '../src/ir.ts';
 
 // `checkCovenant` against the BUILT `pdks`: a throwaway tree scaffolded by `pdks init`,
 // wired to the real install graph by symlink, with one protected path of its own. Only a
-// real spawn proves that the SDK finds the umbrella from the consumer's repoRoot, that the
+// real spawn proves that the SDK invokes the selected executable, that the
 // child reads the consumer's config, and that the row the child writes is the judge's own.
 // check-covenant.test.ts pins the same contract through the injected seam.
 
@@ -30,11 +39,13 @@ const SELF_MOD_LABEL = 'self-mod';
 let projectRoot: string;
 
 beforeEach(() => {
+  vi.stubEnv('PATH', '');
   projectRoot = realpathSync(mkdtempSync(join(tmpdir(), 'pdks-sdk-ts-e2e-')));
 });
 
 afterEach(() => {
   // rmSync removes symlinks themselves, never what they point at.
+  vi.unstubAllEnvs();
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
@@ -44,6 +55,13 @@ afterEach(() => {
  * path inside the fixture, so the rows this suite reads are this tree's alone.
  */
 function scaffoldConsumer(): void {
+  const executable = join(projectRoot, 'pdks');
+  writeFileSync(
+    executable,
+    `#!/bin/sh\nexec '${process.execPath.replaceAll("'", "'\\''")}' '${UMBRELLA_BIN.replaceAll("'", "'\\''")}' "$@"\n`,
+  );
+  chmodSync(executable, 0o755);
+  vi.stubEnv('PATH', projectRoot);
   symlinkSync(join(checkoutRoot, 'node_modules'), join(projectRoot, 'node_modules'), 'dir');
   writeFileSync(join(projectRoot, 'package.json'), '{"name":"consumer","private":true}\n');
   const init = spawnSync(process.execPath, [UMBRELLA_BIN, 'init'], {
@@ -122,8 +140,8 @@ describe('checkCovenant on a real install graph', () => {
     expect(rows().filter(([event]) => event === 'blocked')).toEqual([]);
   });
 
-  it('a tree with no polydeukes in its install graph → unjudged, and no row anywhere', async () => {
-    // No symlink, no config: nothing to spawn and no writer for a row. `upheld` here is
+  it('a tree with no executable on PATH → unjudged, and no row anywhere', async () => {
+    // No executable, no config: nothing to spawn and no writer for a row. `upheld` here is
     // an absent judge passing every call.
     writeFileSync(join(projectRoot, 'package.json'), '{"name":"consumer","private":true}\n');
 

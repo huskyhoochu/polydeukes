@@ -32,6 +32,8 @@ jobs:
       # each sibling's dist/index.d.ts, which a fresh checkout does not have.
       - run: pnpm -r typecheck
 
+      - run: node packages/sdk-ts/scripts/generate-types.mjs --check
+
       - run: pnpm -r test
 
       - run: node scripts/check-docs.mjs
@@ -65,3 +67,9 @@ jobs:
           packages/sdk-python/scripts/verify.py
           --executable "$RUNNER_TEMP/pdks-linux-x64"
           --python 3.12 --python 3.14 --python 3.15
+
+      - name: Compare the three SDK process contracts
+        run: node scripts/verify-sdk-contract.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
+
+      - name: Verify isolated SDK distributions and TypeScript consumer types
+        run: node scripts/verify-sdk-distributions.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"

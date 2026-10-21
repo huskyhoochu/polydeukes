@@ -2,112 +2,102 @@
 
 **English** · [한국어](sdk-ts.ko.md)
 
-> **Call the judge from TypeScript.** Pass a covenant input IR to `checkCovenant`, or a
-> unified diff to `checkChangeSet`, and receive the verdict from `pdks covenant check` as a
-> value.
->
-> Beta. Install it next to `polydeukes` and `@polydeukes/core`, which it names as
-> `peerDependencies`.
+Four Promise-returning verbs run a separately installed `pdks` executable. The SDK sends the
+caller's input and returns a judgment or memory result as a value. The CLI owns judgment,
+configuration, telemetry, and indexing.
 
 <a id="ownership"></a>
 ## What this package owns
 
-The package finds `polydeukes` in the project being judged, runs its bin with the input on
-stdin, and converts the child process's exit status into a verdict. The child process performs
-the judgment.
+| Verb | Command | Result |
+|---|---|---|
+| `checkCovenant` | `pdks covenant check` | `CheckCovenantVerdict` |
+| `checkChangeSet` | `pdks covenant check --diff` | `CheckCovenantVerdict` |
+| `memoryIngest` | `pdks memory ingest` | `MemoryIngestOutcome` |
+| `memorySearch` | `pdks memory search <query> --json` | `MemorySearchOutcome` |
 
-| Unit | What it does |
-|---|---|
-| `checkCovenant` | Spawns `pdks covenant check` in the judged project and returns the verdict |
-| `checkChangeSet` | Spawns `pdks covenant check --diff` in the judged project and returns the verdict |
-| Umbrella resolution | Finds `polydeukes` in the install graph of `repoRoot` and reads its `pdks` bin |
-| Verdict translation | Exit `0` is `upheld`, exit `2` is `blocked`, everything else is `unjudged` |
-
-The child process writes telemetry during judgment. The SDK does not add duplicate rows.
+All four verbs share executable resolution and byte-oriented process communication. Roots become
+absolute relative to the caller's current directory and become the child's cwd. An explicit
+`executable` is also resolved relative to the caller's cwd, even when it is a bare filename;
+symlink spelling is preserved. Otherwise, the first executable regular file named `pdks` in an
+absolute `PATH` directory is selected. Empty and relative entries are skipped. A selected
+executable's failure returns a failure value without retrying another candidate.
 
 <a id="install"></a>
 ## Install
 
 ```sh
-pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
+pnpm add @polydeukes/sdk-ts
 ```
 
-No separate initialization command is needed. The umbrella supplies the judge the SDK spawns, and the
-core supplies the `CovenantInput` type the caller fills in.
+The SDK host needs Node >=24. Install a standalone `pdks` for your platform from
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
+supply its path or put it on `PATH` as `pdks`. The supported executable platforms are Linux x64
+and macOS arm64. The SDK executes that file directly, without npm installation discovery or a
+separate Node child. The SDK has no runtime or peer dependency on `@polydeukes/core` or
+`polydeukes`. Its generated transport types ship with the package.
+
+The selected CLI must provide memory support for the memory verbs; a missing memory dependency,
+configuration, or index is reported as `unavailable`.
 
 <a id="the-verb"></a>
 <a id="verb"></a>
 ## `checkCovenant`
 
-The package is ESM only (`"type": "module"`, an `import` condition and no `require`): the calling
-file is a `.mjs`, or its `package.json` declares `"type": "module"`.
-
 ```ts
-import { checkCovenant } from '@polydeukes/sdk-ts';
+import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
 
+const input: CovenantInput = {
+  toolCalls: [{
+    name: 'writeFile',
+    args: { path: 'src/index.ts' },
+    fileChange: {
+      kind: 'create',
+      path: 'src/index.ts',
+      post: 'export const answer = 42;\n',
+    },
+  }],
+  subagentSpawns: [],
+  userMessages: [],
+  tools: { mutating: ['writeFile'], shell: ['exec'], commandArgs: ['command'] },
+};
 const verdict = await checkCovenant({
-  repoRoot: '/path/to/the/project',
-  input: {
-    toolCalls: [
-      {
-        name: 'writeFile',
-        args: { path: 'src/index.ts', content: 'export const answer = 42;\n' },
-        fileChange: {
-          kind: 'modify',
-          path: 'src/index.ts',
-          pre: 'export const answer = 41;\n',
-          post: 'export const answer = 42;\n',
-        },
-      },
-    ],
-    subagentSpawns: [],
-    userMessages: [],
-    tools: { mutating: ['writeFile', 'rm'], shell: ['exec'], commandArgs: ['command'] },
-  },
+  repoRoot: '/path/to/project', input, executable: '/opt/tools/pdks', timeoutMs: 2000,
 });
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
+// Perform the proposed action here, after an upheld verdict.
 ```
 
-The IR is the caller's. This package neither reads it nor completes it: it adds no `session`,
-no `actor`, and no roster of its own, and the `tools` values above are the caller's own tool
-names. `subagentSpawns` and `userMessages` are required collections, so a caller with neither
-sends the empty arrays. A `world` key is refused by the judge — the runner reads the world from
-the project on disk, and a client choosing the world would be choosing what is judged.
+The host supplies evidence for each tool call. `fileChange` is `create` (`path`, `post`),
+`modify` (`path`, `pre`, `post`), or `delete` (`path`, optional `pre`). An absent `fileChange`
+means that call has no proven file mutation; another call's evidence does not fill it in.
+The SDK sends the input unchanged as UTF-8 JSON and synthesizes no actor, session, or tool roster.
+`CovenantInput` has no `world` field: the CLI supplies that axis from the project.
 
 <a id="spec"></a>
 ## The spec
 
-```ts
-type CheckCovenantSpec = {
-  repoRoot: string;
-  input: CovenantInput;
-  enforce?: 'advise' | 'block';
-  configLayer?: string;
-  telemetryPath?: string;
-  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
-};
+| Field | `CheckCovenantSpec` | `CheckChangeSetSpec` |
+|---|---|---|
+| `repoRoot: string` | Project root and child cwd | Same |
+| `input: CovenantInput` | Required caller-built IR | Replaced by `diff: string` |
+| `enforce?: 'advise' \| 'block'` | Defaults to `block` | Same |
+| `configLayer?: string` | Passed as `--config-layer`; relative to child cwd | Same |
+| `telemetryPath?: string` | Passed as `--telemetry-path`; relative to child cwd | Same |
+| `executable?: string` | Explicit executable, ahead of `PATH` | Same |
+| `timeoutMs?: number` | Finite nonnegative milliseconds; absent means no deadline | Same |
+| `spawn?: Spawn` | Optional process boundary | Same |
 
-type CheckCovenantSpawnSpec = { command: string; args: string[]; cwd: string; stdin: string };
-```
+`MemoryIngestSpec` takes `root: string` plus `executable`, `timeoutMs`, and `spawn`.
+`MemorySearchSpec` takes those fields plus `query: string` and optional `limit: number`.
+The limit must be a positive safe integer. Invalid limits and deadlines return failure values
+before spawning. Memory commands receive no enforcement, config-layer, or telemetry flags.
 
-| Field | What it is |
-|---|---|
-| `repoRoot` | The project being judged: config discovery, the world axis, the child's cwd, and the install graph the umbrella is found in |
-| `input` | The caller's own IR, sent verbatim as the child's stdin |
-| `enforce` | The observer's posture for the whole run. **Absent is `block`** |
-| `spawn` | An injected spawn seam. Absent, the child runs under this process's node executable |
-| `configLayer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repoRoot` |
-| `telemetryPath` | The file this run's rows are appended to, sent as `--telemetry-path` |
-
-**`enforce` defaults to `block`.** That is the surface's level, not an entry's: protected paths
-and entries carrying `enforce: block` stop the call, and every other break is recorded
-`advised` at exit 0. An entry's own level composes with it lenient-side-wins, as on every other
-surface. `@polydeukes/adapter-claude-code`, `@polydeukes/adapter-grok`, and
-`@polydeukes/adapter-codex` spawn the judge at the same level.
-
-The default spawn inherits no file descriptor. A caller may hold none of its own, and an
-inherited stdout that is closed would kill the child with EPIPE before it answered. stderr is
-collected and returned; stdout is drained and dropped, because the judge writes no verdict
-there.
+The communication deadline starts after the process is spawned. It includes writing stdin and
+collecting both output pipes, including pipes held by descendants after the direct child exits.
+Zero expires immediately after spawn. Expiry kills and reaps the direct child and closes the
+pipes; it does not kill descendants. Resolution, serialization, and OS spawn delay precede the
+deadline. Injected spawns enforce the deadline themselves.
 
 <a id="verdicts"></a>
 ## The three verdicts
@@ -119,105 +109,111 @@ type CheckCovenantVerdict =
   | { verdict: 'unjudged'; reason: string };
 ```
 
-| Verdict | Child status | What it means for the caller |
-|---|---|---|
-| `upheld` | `0` | The call was judged and nothing blocked it. `advisories` is the child's stderr verbatim, carrying any advisory lines the run produced. Proceed |
-| `blocked` | `2` | The call was judged and something blocked it. `reason` is the child's stderr verbatim. Do not proceed |
-| `unjudged` | anything else, or no umbrella | No judgment happened. `reason` says which: the child's stderr when it wrote one, such as `covenant check failed closed: input carries no subagentSpawns array` at exit `3`, otherwise the status. Reading it as an uphold would let an uninstalled judge pass every call |
+Status `0` means `upheld`, `2` means `blocked`, and every other status or signal means
+`unjudged`. Resolution, serialization, spawn, and deadline failures also return `unjudged`.
+Only `upheld` authorizes the proposed action. The SDK does not reinterpret status `2` using
+stderr. Cycles, BigInt, and non-finite JSON numbers fail serialization.
 
-The SDK returns `blocked.reason` and `upheld.advisories` as data. The consumer decides where
-to send them: to the model, an issue, or a log. The SDK accepts no separate witness argument.
-See [write disciplines](../../how-to/write-disciplines.md#posture) for handling these results
-in an unattended loop.
-
-Both texts are for a person. To read which paths and disciplines a run judged as values, pass
-`telemetryPath` and read its rows as
-[`pdks covenant check`](../cli/covenant-check.md#reading-rows) describes: a new file per change
-set, one file for the whole session for session inputs.
+Valid stderr text is preserved, including whitespace; malformed UTF-8 uses replacement decoding.
+`advisories` and a blocked response's `reason` are the child's stderr. Other completed nonzero
+statuses use stderr when present, with a status explanation when absent. Covenant stdout is
+drained but does not determine the verdict. Telemetry rows are written by the CLI; pass
+`telemetryPath` to select their destination.
 
 <a id="change-set"></a>
 ## `checkChangeSet`
-
-`checkChangeSet` judges a finished change set rather than one call. It spawns
-`pdks covenant check --diff --enforce <level>` in `repoRoot` with the unified diff on stdin,
-and returns the same three verdicts as `checkCovenant`.
 
 ```ts
 import { checkChangeSet } from '@polydeukes/sdk-ts';
 
 const verdict = await checkChangeSet({
-  repoRoot: '/path/to/the/project',
-  diff: gitDiffOutput, // e.g. `git diff HEAD` in repoRoot, after `git add -N .` for new files
+  repoRoot: '/path/to/project', diff, executable: '/opt/tools/pdks',
 });
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 ```
+
+The diff goes to stdin as UTF-8 with its newlines preserved. Its `a/` and `b/` paths are relative
+to `repoRoot`. The SDK does not run git. For a stable producer format use:
+
+```sh
+git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
+```
+
+Untracked files need `git add -N` before they appear. SDK enforcement defaults to `block` for
+both covenant verbs, including the change-set command.
+
+<a id="memory"></a>
+## `memoryIngest` and `memorySearch`
 
 ```ts
-type CheckChangeSetSpec = {
-  repoRoot: string;
-  diff: string;
-  enforce?: 'advise' | 'block';
-  configLayer?: string;
-  telemetryPath?: string;
-  spawn?: (spec: CheckCovenantSpawnSpec) => Promise<{ status: number | null; stderr: string }>;
-};
+import { memoryIngest, memorySearch } from '@polydeukes/sdk-ts';
+
+const shared = { root: '/path/to/project', executable: '/opt/tools/pdks', timeoutMs: 2000 };
+const ingest = await memoryIngest(shared);
+if (ingest.outcome === 'unavailable') throw new Error(ingest.reason);
+const result = await memorySearch({ ...shared, query: 'session report', limit: 5 });
+switch (result.outcome) {
+  case 'found': console.log(result.hits); break;
+  case 'empty': console.log('No matching sections'); break;
+  case 'unavailable': throw new Error(result.reason);
+}
 ```
 
-| Field | What it is |
-|---|---|
-| `repoRoot` | The project being judged: config discovery, the working tree that `file` sources read, the child's cwd, and the install graph the umbrella is found in |
-| `diff` | The caller's unified diff, sent verbatim as the child's stdin. Paths are relative to `repoRoot` behind `a/` and `b/`, as `git diff` prints them from a repository whose top is `repoRoot`. Any producer of that form works; the SDK neither runs `git` nor checks the text. `git diff` leaves out untracked files until `git add -N` marks them |
-| `enforce` | The observer's posture for the whole run. **Absent is `block`** |
-| `spawn` | The same injected spawn seam as `checkCovenant`'s |
-| `configLayer` | A [config layer](../configuration/index.md#config-layer) judged alongside the project's config, sent as `--config-layer`. A relative path resolves against `repoRoot` |
-| `telemetryPath` | The file this run's rows are appended to, sent as `--telemetry-path` |
+`MemoryIngestOutcome` is `{ outcome: 'ingested' }` or
+`{ outcome: 'unavailable'; reason: string }`. Ingest succeeds only at status `0`; stdout is ignored.
+`MemorySearchOutcome` is `found` with a nonempty `hits` list, `empty`, or `unavailable` with a
+`reason`. Search passes the query as one literal argument and `limit` as `--limit <n>`.
+Memory stdin is empty.
 
-**The default differs from the CLI's.** `pdks covenant check --diff` without `--enforce` lands
-every verdict `advised` at exit 0, so a protected path in the diff never comes back `blocked`.
-`checkChangeSet` passes `--enforce block` unless told otherwise, as `checkCovenant` does:
-protected paths and entries carrying `enforce: block` come back `blocked`, and every other
-break comes back in `upheld.advisories`.
-
-The change set is judged with `disciplines` plus `changeSetDisciplines`, the lists the
-change-set surface compiles. See the
-[configuration reference](../configuration/index.md#placement-rule) for which entries each
-list holds.
+Successful search stdout must be strict UTF-8 JSON with `ingestedAt: string` and `results`.
+Each result requires `id`, `conceptId`, `docTitle`, `sectionTitle`, `status` (strings), `stale`
+(boolean), `supersededBy` (string array), `trust` (`human-reviewed`, `machine-verified`, or
+`unverified`), and `matchPath` (`and`, `or`, or `like`). Additional object fields are allowed.
+`MemorySearchResult` is generated from core's memory output schema. Ranking order is preserved.
+Only a valid empty `results` array means `empty`; invalid responses and execution failures mean
+`unavailable`.
 
 <a id="failure"></a>
-## A failure example
+## Failure and migration
 
-If the project has no `polydeukes` installed, `checkCovenant` returns `unjudged`:
+An unavailable executable returns `unjudged` for covenant commands and `unavailable` for memory.
+Handle those branches explicitly, as the examples above do.
+
+Consumers that previously installed npm peers should install a standalone `pdks` and select it
+through `executable` or an absolute `PATH` directory. Import input types from
+`@polydeukes/sdk-ts`, replacing imports from `@polydeukes/core`.
+The old `CheckCovenantSpawnSpec` name becomes `SpawnSpec`. The process boundary now handles four
+verbs and carries binary stdin, stdout, and stderr:
 
 ```ts
-const verdict = await checkCovenant({ repoRoot: '/tmp/project-without-polydeukes', input });
-
-// {
-//   verdict: 'unjudged',
-//   reason: 'no polydeukes in the install graph of /tmp/project-without-polydeukes:
-//            install it to have this input judged',
-// }
+type SpawnSpec = {
+  command: string;
+  args: string[];
+  cwd: string;
+  stdin: Uint8Array;
+  timeoutMs?: number;
+};
+type SpawnOutcome = { status: number | null; stdout: Uint8Array; stderr: Uint8Array };
+type Spawn = (spec: SpawnSpec) => Promise<SpawnOutcome>;
 ```
 
-No child process runs, and the telemetry log gains nothing: the row is written where the
-judgment happens, and no judgment happened.
+Decode stderr with replacement semantics, but retain stdout bytes until search decoding.
+An injected `Error` named `TimeoutError` maps to the deadline failure branch; ordinary thrown
+errors also become failure values.
 
 <a id="limits"></a>
 ## Declared limits
 
-- **The caller builds the IR.** The tool roster, the pre-state, and the envelope are the
-  host's facts, so a consumer that knows them fills them in. This package supplies none of
-  them.
-- **A change set is judged against the working tree in `repoRoot`.** The diff supplies each
-  changed file's `pre` and `post` as its hunk lines, but a `file` source is read from disk. A
-  caller that passes a diff while `repoRoot` holds a different tree has those entries judge
-  that tree.
-- **No telemetry row is written here.** Every row comes from the child.
-- **An `unjudged` verdict is not a pass.** It records that the judge did not answer, and the
-  consumer decides what a project without a judge is allowed to do.
+The SDK does not negotiate CLI versions. Use a CLI that understands the input schema and memory
+enums required by the SDK. Generated TypeScript types describe transport shapes; semantic
+constraints such as a nonempty shell roster needing command argument names are checked by the
+CLI. A valid stderr advisory can accompany `upheld` when the chosen enforcement posture permits
+an action. Memory results describe retrieval, not authorization.
 
 <a id="see-also"></a>
 ## See also
 
+- [Rust SDK](sdk-rust.md)
+- [Python SDK](sdk-python.md)
 - [`pdks covenant check`](../cli/covenant-check.md)
-- [`polydeukes`](polydeukes.md)
-- [`@polydeukes/core`](core.md)
-- [Configuration reference](../configuration/index.md)
+- [`pdks memory`](../cli/memory.md)

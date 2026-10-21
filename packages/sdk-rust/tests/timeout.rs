@@ -65,8 +65,8 @@ impl RecordingSeam {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
             status: Some(0),
-            stdout: EMPTY_OUTPUT.into(),
-            stderr: String::new(),
+            stdout: EMPTY_OUTPUT.as_bytes().to_vec(),
+            stderr: Vec::new(),
         })
     }
 }

@@ -2,72 +2,74 @@
 
 **English** · [한국어](./README.ko.md)
 
-This package hands a covenant input IR or a unified diff to the judge from TypeScript. It
-locates the `polydeukes` install of the project being judged, spawns `pdks covenant check`
-with the input on stdin, and returns the verdict as a value. No judgment logic lives here, and
-no telemetry row is written here — the child process writes it.
-
-Install it next to `polydeukes` and `@polydeukes/core`, which it names as `peerDependencies`:
+Four TypeScript verbs send caller-built inputs to a standalone `pdks` and return results as
+values. The CLI owns judgment, configuration, telemetry, and memory indexing.
 
 ```sh
-pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
+pnpm add @polydeukes/sdk-ts
 ```
 
-There is no bin and no install step.
+The SDK host needs Node >=24. Install a platform-specific standalone `pdks` from
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
+select it through `executable` or an absolute `PATH` directory. Existing npm installations do
+not select the CLI; the SDK runs the executable directly. Runtime and peer dependencies on
+`@polydeukes/core` and `polydeukes` are unnecessary. Transport types ship in the SDK.
 
 <a id="overview"></a>
 ## Overview
 
-Public contract symbols include:
+- `checkCovenant(CheckCovenantSpec)` sends a `CovenantInput` as UTF-8 JSON.
+- `checkChangeSet(CheckChangeSetSpec)` sends a unified diff verbatim.
+- Both return `CheckCovenantVerdict`: `upheld`, `blocked`, or `unjudged`.
+- `memoryIngest(MemoryIngestSpec)` returns `MemoryIngestOutcome`: `ingested` or `unavailable`.
+- `memorySearch(MemorySearchSpec)` returns `MemorySearchOutcome`: `found` with ranked
+  `MemorySearchResult` hits, `empty`, or `unavailable`.
+- All four accept `executable`, `timeoutMs`, and `spawn: Spawn`, using `SpawnSpec` and
+  `SpawnOutcome` byte transport.
 
-- `checkCovenant`
-- `CheckCovenantSpec`
-- `CheckCovenantSpawnSpec`
-- `CheckCovenantVerdict`
-- `checkChangeSet`
-- `CheckChangeSetSpec`
+Explicit executable paths and roots resolve from the caller's cwd; symlink spelling is
+preserved. Otherwise the first executable file named `pdks` in an absolute `PATH` directory is
+selected. Failure never retries another candidate. `timeoutMs` is finite nonnegative
+milliseconds; absent means no deadline, and zero expires after spawn. The deadline covers pipe
+communication, including descendant-held pipes; expiry kills and reaps the direct child and
+closes the pipes without killing descendants.
 
 <a id="examples"></a>
 ## Examples
 
 ```ts
-import { checkCovenant } from '@polydeukes/sdk-ts';
+import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
 
-// Spawns `pdks covenant check --enforce block` in repoRoot with the IR on stdin.
-// The IR is the caller's: this package adds nothing to it.
+const input: CovenantInput = {
+  toolCalls: [{
+    name: 'writeFile',
+    fileChange: { kind: 'create', path: 'src/index.ts', post: 'export const answer = 42;\n' },
+  }],
+  subagentSpawns: [],
+  userMessages: [],
+  tools: { mutating: ['writeFile'], shell: [], commandArgs: [] },
+};
 const verdict = await checkCovenant({
-  repoRoot: process.cwd(),
-  input: {
-    toolCalls: [{ name: 'writeFile', args: { path: 'src/index.ts' } }],
-    subagentSpawns: [],
-    userMessages: [],
-    tools: { mutating: ['writeFile', 'rm'], shell: ['exec'], commandArgs: ['command'] },
-  },
+  repoRoot: process.cwd(), input, executable: '/opt/tools/pdks', timeoutMs: 2000,
 });
-
-if (verdict.verdict === 'blocked') {
-  // `reason` is the judge's own stderr — the caller decides where it goes.
-  console.error(verdict.reason);
-}
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
+// Perform the proposed action here.
 ```
 
-`checkChangeSet` judges a finished change set instead of one call. It spawns
-`pdks covenant check --diff` with the unified diff on stdin and returns the same verdicts:
+Only `upheld` authorizes the action. Status `0` is `upheld`, `2` is `blocked`, and all other
+statuses, signals, and execution failures are `unjudged`. Enforcement defaults to `block`.
+`checkChangeSet` takes `diff` instead of `input`, with `a/` and `b/` paths relative to `repoRoot`.
 
-```ts
-import { checkChangeSet } from '@polydeukes/sdk-ts';
+Memory specs use `root`; search adds `query` and optional positive safe-integer `limit`.
+Only a valid empty search response means `empty`. Missing memory support, malformed responses,
+and execution failures mean `unavailable`.
 
-// The diff is the caller's, with paths relative to repoRoot: `git diff HEAD` (after
-// `git add -N .`, so new files appear), or any producer of the same form.
-const verdict = await checkChangeSet({ repoRoot: process.cwd(), diff });
-```
-
-`enforce` defaults to `block` for both verbs. The three verdicts are `upheld`, `blocked`, and
-`unjudged`; `unjudged` covers a project with no `polydeukes` installed and any child status
-that is not a verdict, with the child's stderr as its `reason` when the child wrote one.
+For migration, import input types from this SDK instead of core. Custom process implementations
+use `SpawnSpec` with `Uint8Array` stdin, stdout, and stderr, and enforce `timeoutMs` themselves.
+Preserve stdout bytes for strict search decoding.
 
 <a id="see-also"></a>
 ## See also
 
-- [`@polydeukes/sdk-ts` package reference](../../docs/reference/packages/sdk-ts.md)
-- [The judge (`covenant` module)](../../docs/reference/packages/polydeukes.md#covenant-module)
+- [Complete API, memory examples, and migration](../../docs/reference/packages/sdk-ts.md)
+- [Rust SDK](../../docs/reference/packages/sdk-rust.md)

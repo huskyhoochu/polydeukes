@@ -3,8 +3,7 @@
 //! read the hits as values.
 //!
 //! The crate runs the `pdks` executable a caller names in the spec, or otherwise locates the
-//! `polydeukes` umbrella in the project's install graph and spawns its bin under `node`, or, with
-//! no install there, the first `pdks` executable on `PATH`, and maps the child's exit status. It
+//! first `pdks` executable in an absolute `PATH` directory, and maps the child's exit status. It
 //! judges nothing and opens no index.
 
 #[rustfmt::skip]
@@ -22,10 +21,9 @@ use std::io::{self, Read, Write};
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-
-const UMBRELLA_PACKAGE: &str = "polydeukes";
 
 /// The observer's posture for the run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,15 +32,15 @@ pub enum Enforce {
     Block,
 }
 
-/// What the spawn seam is handed: the executable, its arguments, its cwd, its stdin, and how
-/// long the child may run. A seam that enforces `timeout` and kills the child answers an
-/// `io::ErrorKind::TimedOut` error, which the verbs report as the deadline.
+/// The executable, literal arguments, cwd, stdin bytes, and communication deadline.
+/// A seam enforces `timeout` after spawning through completion of all piped streams,
+/// returning `io::ErrorKind::TimedOut` after killing and reaping the direct child.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpawnSpec {
     pub command: String,
     pub args: Vec<String>,
     pub cwd: PathBuf,
-    pub stdin: String,
+    pub stdin: Vec<u8>,
     pub timeout: Option<Duration>,
 }
 
@@ -51,13 +49,13 @@ pub struct SpawnSpec {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpawnOutcome {
     pub status: Option<i32>,
-    pub stdout: String,
-    pub stderr: String,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
 }
 
 /// `check_covenant` input.
 pub struct CheckCovenantSpec<'a> {
-    /// The project being judged — config discovery, the child's cwd, and the install graph.
+    /// The project being judged — config discovery and the child's cwd.
     pub repo_root: &'a Path,
     /// The caller's own input, sent verbatim.
     pub input: &'a CovenantInput,
@@ -67,18 +65,17 @@ pub struct CheckCovenantSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
-    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    /// The `pdks` executable to run. `None` selects the first executable in an absolute `PATH` directory.
     pub executable: Option<&'a Path>,
-    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    /// The communication deadline after spawn; `None` waits for exit and all piped streams.
     pub timeout: Option<Duration>,
-    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
-    /// executable) with every stream piped.
+    /// Injected spawn seam — `None` runs the selected executable with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
 /// What the judge answered.
 ///
-/// `advisories` and `reason` are the child's stderr verbatim. `Unjudged` is every outcome that
+/// `advisories` and `reason` preserve valid UTF-8 stderr; malformed bytes use replacement characters. `Unjudged` is every outcome that
 /// is not a verdict: no judgment happened, and reading it as an uphold would let an absent judge
 /// pass every call. Its `reason` is the child's stderr when the child exited with some other
 /// status and wrote any, else a line naming the status, the signal, the deadline the child
@@ -88,38 +85,6 @@ pub enum CheckCovenantVerdict {
     Upheld { advisories: String },
     Blocked { reason: String },
     Unjudged { reason: String },
-}
-
-/// What the nearest `node_modules/polydeukes` at or above a root holds.
-enum Install {
-    /// No `node_modules/polydeukes` sits at or above the root.
-    None,
-    /// The nearest one has an unreadable or missing manifest, or no string `bin.pdks`.
-    Broken(PathBuf),
-    /// The nearest one's `pdks` bin.
-    Bin(PathBuf),
-}
-
-/// The nearest `node_modules/polydeukes` at or above `repo_root`. It is the one Node resolves,
-/// so a broken one answers without looking further up.
-fn find_umbrella_bin(repo_root: &Path) -> Install {
-    let Some(manifest_dir) = repo_root
-        .ancestors()
-        .map(|dir| dir.join("node_modules").join(UMBRELLA_PACKAGE))
-        .find(|dir| dir.is_dir())
-    else {
-        return Install::None;
-    };
-    let bin = || {
-        let text = fs::read_to_string(manifest_dir.join("package.json")).ok()?;
-        let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
-        let pdks = manifest["bin"]["pdks"].as_str()?;
-        Some(manifest_dir.join(pdks))
-    };
-    match bin() {
-        Some(bin) => Install::Bin(bin),
-        None => Install::Broken(manifest_dir),
-    }
 }
 
 /// The first `pdks` on `PATH` that is a regular file (after following symlinks) and, on unix,
@@ -149,7 +114,6 @@ fn find_pdks_on_path() -> Option<PathBuf> {
 /// `timeout` the child is killed and reaped, and the answer is a `TimedOut` error. Only the child
 /// is killed: a process it started itself keeps running.
 fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
-    let started = Instant::now();
     let mut child = Command::new(&spec.command)
         .args(&spec.args)
         .current_dir(&spec.cwd)
@@ -157,75 +121,93 @@ fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
+    let started = Instant::now();
     let mut stdin = child.stdin.take().expect("stdin is piped");
     let mut stdout = child.stdout.take().expect("stdout is piped");
     let mut stderr = child.stderr.take().expect("stderr is piped");
-    // A child that exits before draining stdin breaks the pipe; the exit status is the answer.
-    let writer = thread::spawn(move || {
-        let _ = stdin.write_all(spec.stdin.as_bytes());
+    enum Completed {
+        Stdin,
+        Stdout(io::Result<Vec<u8>>),
+        Stderr(io::Result<Vec<u8>>),
+    }
+    let (sender, receiver) = mpsc::channel();
+    let written = sender.clone();
+    thread::spawn(move || {
+        // Early child exit can break stdin; the child's exit status remains the answer.
+        let _ = stdin.write_all(&spec.stdin);
+        drop(stdin);
+        let _ = written.send(Completed::Stdin);
     });
-    // Drained on its own thread: an unread pipe fills and stalls the child.
-    let drain = thread::spawn(move || {
-        let mut out = Vec::new();
-        stdout.read_to_end(&mut out).map(|_| out)
+    let drained = sender.clone();
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stdout.read_to_end(&mut bytes).map(|_| bytes);
+        let _ = drained.send(Completed::Stdout(result));
     });
-    // Read on its own thread too, so the deadline wait below overlaps it.
-    let errors = thread::spawn(move || {
-        let mut collected = Vec::new();
-        stderr.read_to_end(&mut collected).map(|_| collected)
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stderr.read_to_end(&mut bytes).map(|_| bytes);
+        let _ = sender.send(Completed::Stderr(result));
     });
-    let status = match spec.timeout {
-        None => child.wait()?,
-        Some(timeout) => loop {
-            match child.try_wait() {
-                Ok(Some(status)) => break status,
-                Ok(None) if started.elapsed() < timeout => {
-                    // The polling interval bounds how far past the deadline the kill can land.
-                    thread::sleep(Duration::from_millis(10));
-                }
-                // Killed and reaped, then returned without joining the threads: a process the
-                // child started can hold its pipes open past the kill, and a join would wait on
-                // it. The detached threads end when those pipes close.
-                stopped => {
-                    // A child that exited since the last poll makes `kill` fail; `wait` reaps
-                    // it either way.
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return Err(match stopped {
-                        Err(error) => error,
-                        _ => io::Error::new(
+    let result = (|| {
+        let mut status = None;
+        let mut written = false;
+        let mut out = None;
+        let mut errors = None;
+        loop {
+            let interval = match spec.timeout {
+                Some(timeout) => {
+                    let remaining = timeout.saturating_sub(started.elapsed());
+                    if remaining.is_zero() {
+                        return Err(io::Error::new(
                             io::ErrorKind::TimedOut,
-                            "the child did not exit before its timeout",
-                        ),
+                            "the child's communication did not finish within its deadline",
+                        ));
+                    }
+                    remaining.min(Duration::from_millis(10))
+                }
+                None => Duration::from_millis(10),
+            };
+            if status.is_none() {
+                status = child.try_wait()?;
+            }
+            if written {
+                if let (Some(status), Some(stdout), Some(stderr)) =
+                    (status, out.as_mut(), errors.as_mut())
+                {
+                    return Ok(SpawnOutcome {
+                        status: status.code(),
+                        stdout: std::mem::take(stdout),
+                        stderr: std::mem::take(stderr),
                     });
                 }
             }
-        },
-    };
-    let _ = writer.join();
-    let out = drain.join().expect("the stdout drain does not panic");
-    let collected = errors.join().expect("the stderr reader does not panic")?;
-    Ok(SpawnOutcome {
-        status: status.code(),
-        // A failed stdout read leaves it empty: the covenant verbs read the status alone, and an
-        // empty search stdout fails to parse, so no outcome turns on it.
-        stdout: out
-            .map(|out| String::from_utf8_lossy(&out).into_owned())
-            .unwrap_or_default(),
-        stderr: String::from_utf8_lossy(&collected).into_owned(),
-    })
+            match receiver.recv_timeout(interval) {
+                Ok(Completed::Stdin) => written = true,
+                Ok(Completed::Stdout(bytes)) => out = Some(bytes?),
+                Ok(Completed::Stderr(bytes)) => errors = Some(bytes?),
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => thread::sleep(interval),
+            }
+        }
+    })();
+    if result.is_err() {
+        // Descendants can retain pipes after the child exits. Readers detach so they cannot
+        // extend the caller's deadline; only the direct child is killed and reaped.
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    result
 }
 
-/// What runs the umbrella from a root: the root made absolute as the child's cwd, and either
-/// `node` with the bin path as the first argument or a `pdks` executable with no argument.
+/// The selected executable and the absolute project root used as its cwd.
 struct Invocation {
     cwd: PathBuf,
     command: String,
-    args: Vec<String>,
 }
 
 /// Why no invocation could be built: the root or a named executable could not be made absolute,
-/// or no umbrella was found, where `Missing` says what was missing ahead of what the verb needed
+/// or no executable was found, where `Missing` says what was missing ahead of what the verb needed
 /// it for.
 enum Unresolved {
     Path(io::Error),
@@ -233,59 +215,32 @@ enum Unresolved {
 }
 
 /// Every verb's one way to decide what it runs.
-fn resolve_umbrella(root: &Path, executable: Option<&Path>) -> Result<Invocation, Unresolved> {
-    // Absolute once, for the walk and the child's cwd alike: a relative root has no ancestors
-    // above `.`, and a relative bin path would be read from the child's new cwd.
+fn resolve_executable(root: &Path, executable: Option<&Path>) -> Result<Invocation, Unresolved> {
     let cwd = std::path::absolute(root).map_err(Unresolved::Path)?;
-    // A named executable is resolved against the caller's cwd, not the child's, and is not
-    // canonicalized: a symlink stays the command as named.
-    if let Some(executable) = executable {
-        let command = std::path::absolute(executable).map_err(Unresolved::Path)?;
-        return Ok(Invocation {
-            command: command.to_string_lossy().into_owned(),
-            args: vec![],
-            cwd,
-        });
-    }
-    // An install in the graph wins: the project's lockfile pinned that version. A broken
-    // nearest install is still the project's, so it stops the lookup before `PATH`.
-    match find_umbrella_bin(&cwd) {
-        Install::Bin(bin) => Ok(Invocation {
-            command: "node".into(),
-            args: vec![bin.to_string_lossy().into_owned()],
-            cwd,
-        }),
-        Install::Broken(manifest_dir) => Err(Unresolved::Missing(format!(
-            "the {UMBRELLA_PACKAGE} install at {} has no readable bin",
-            manifest_dir.display()
-        ))),
-        Install::None => match find_pdks_on_path() {
-            Some(pdks) => Ok(Invocation {
-                command: pdks.to_string_lossy().into_owned(),
-                args: vec![],
-                cwd,
-            }),
-            None => Err(Unresolved::Missing(format!(
-                "no {UMBRELLA_PACKAGE} in the install graph of {} and no pdks on PATH",
-                cwd.display()
-            ))),
-        },
-    }
+    // Resolve against the caller's cwd without canonicalizing the caller's symlink spelling.
+    let command = match executable {
+        Some(executable) => std::path::absolute(executable).map_err(Unresolved::Path)?,
+        None => find_pdks_on_path().ok_or_else(|| {
+            Unresolved::Missing("no executable pdks in an absolute PATH directory".into())
+        })?,
+    };
+    Ok(Invocation {
+        command: command.to_string_lossy().into_owned(),
+        cwd,
+    })
 }
 
-/// Spawn `invocation` with `args` after its own and `stdin`, through the seam when one is given.
+/// Spawn the selected executable with literal arguments and bytes through the shared seam.
 fn spawn_invocation(
     invocation: Invocation,
     args: Vec<String>,
-    stdin: String,
+    stdin: Vec<u8>,
     timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 ) -> io::Result<SpawnOutcome> {
-    let mut all = invocation.args;
-    all.extend(args);
     let spawn_spec = SpawnSpec {
         command: invocation.command,
-        args: all,
+        args,
         cwd: invocation.cwd,
         stdin,
         timeout,
@@ -298,7 +253,7 @@ fn spawn_invocation(
 
 /// `check_change_set` input.
 pub struct CheckChangeSetSpec<'a> {
-    /// The project being judged — config discovery, the child's cwd, and the install graph.
+    /// The project being judged — config discovery and the child's cwd.
     pub repo_root: &'a Path,
     /// A unified diff, sent verbatim.
     pub diff: &'a str,
@@ -308,12 +263,11 @@ pub struct CheckChangeSetSpec<'a> {
     pub config_layer: Option<&'a Path>,
     /// Where the child writes its telemetry rows, ahead of the config's own log path.
     pub telemetry_path: Option<&'a Path>,
-    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    /// The `pdks` executable to run. `None` selects the first executable in an absolute `PATH` directory.
     pub executable: Option<&'a Path>,
-    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    /// The communication deadline after spawn; `None` waits for exit and all piped streams.
     pub timeout: Option<Duration>,
-    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
-    /// executable) with every stream piped.
+    /// Injected spawn seam — `None` runs the selected executable with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -328,7 +282,7 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
         spec.timeout,
         spec.spawn,
         false,
-        || serde_json::to_string(spec.input).map_err(io::Error::other),
+        || serde_json::to_vec(spec.input).map_err(io::Error::other),
     )
 }
 
@@ -344,11 +298,11 @@ pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
         spec.timeout,
         spec.spawn,
         true,
-        || Ok(spec.diff.to_string()),
+        || Ok(spec.diff.as_bytes().to_vec()),
     )
 }
 
-/// Resolve the umbrella, spawn `pdks covenant check` (with `--diff` under `diff_mode`), and map
+/// Resolve the executable, spawn `pdks covenant check` (with `--diff` under `diff_mode`), and map
 /// the child's status. `stdin` runs after resolution, so its error is `Unjudged`, never a panic.
 #[allow(clippy::too_many_arguments)]
 fn run_check(
@@ -360,9 +314,9 @@ fn run_check(
     timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
     diff_mode: bool,
-    stdin: impl FnOnce() -> io::Result<String>,
+    stdin: impl FnOnce() -> io::Result<Vec<u8>>,
 ) -> CheckCovenantVerdict {
-    let invocation = match resolve_umbrella(repo_root, executable) {
+    let invocation = match resolve_executable(repo_root, executable) {
         Ok(invocation) => invocation,
         Err(Unresolved::Path(error)) => {
             return CheckCovenantVerdict::Unjudged {
@@ -410,12 +364,16 @@ fn run_check(
             status: Some(0),
             stderr,
             ..
-        }) => CheckCovenantVerdict::Upheld { advisories: stderr },
+        }) => CheckCovenantVerdict::Upheld {
+            advisories: String::from_utf8_lossy(&stderr).into_owned(),
+        },
         Ok(SpawnOutcome {
             status: Some(2),
             stderr,
             ..
-        }) => CheckCovenantVerdict::Blocked { reason: stderr },
+        }) => CheckCovenantVerdict::Blocked {
+            reason: String::from_utf8_lossy(&stderr).into_owned(),
+        },
         Ok(SpawnOutcome {
             status: Some(status),
             stderr,
@@ -424,7 +382,7 @@ fn run_check(
             reason: if stderr.is_empty() {
                 format!("the judge exited with status {status} instead of a verdict")
             } else {
-                stderr
+                String::from_utf8_lossy(&stderr).into_owned()
             },
         },
         Ok(SpawnOutcome { status: None, .. }) => CheckCovenantVerdict::Unjudged {
@@ -443,14 +401,13 @@ fn run_check(
 
 /// `memory_ingest` input.
 pub struct MemoryIngestSpec<'a> {
-    /// The memory root — config discovery, the child's cwd, and where the umbrella lookup starts.
+    /// The memory root — config discovery and the child's cwd.
     pub root: &'a Path,
-    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    /// The `pdks` executable to run. `None` selects the first executable in an absolute `PATH` directory.
     pub executable: Option<&'a Path>,
-    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    /// The communication deadline after spawn; `None` waits for exit and all piped streams.
     pub timeout: Option<Duration>,
-    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
-    /// executable) with every stream piped.
+    /// Injected spawn seam — `None` runs the selected executable with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -463,18 +420,17 @@ pub enum MemoryIngestOutcome {
 
 /// `memory_search` input.
 pub struct MemorySearchSpec<'a> {
-    /// The memory root — config discovery, the child's cwd, and where the umbrella lookup starts.
+    /// The memory root — config discovery and the child's cwd.
     pub root: &'a Path,
     /// The query, sent as one argument.
     pub query: &'a str,
     /// The most hits the command returns; `None` is the command's own default.
     pub limit: Option<NonZeroU32>,
-    /// The `pdks` executable to run. `None` resolves it from the install graph, then `PATH`.
+    /// The `pdks` executable to run. `None` selects the first executable in an absolute `PATH` directory.
     pub executable: Option<&'a Path>,
-    /// How long the child may run, measured from the spawn; `None` waits for it to exit.
+    /// The communication deadline after spawn; `None` waits for exit and all piped streams.
     pub timeout: Option<Duration>,
-    /// Injected spawn seam — `None` runs the resolved command (`node` from `PATH`, or a `pdks`
-    /// executable) with every stream piped.
+    /// Injected spawn seam — `None` runs the selected executable with every stream piped.
     pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
 }
 
@@ -515,7 +471,14 @@ pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
         Ok(stdout) => stdout,
         Err(reason) => return MemorySearchOutcome::Unavailable { reason },
     };
-    match serde_json::from_str::<MemorySearchOutput>(&stdout) {
+    // Serde can skip unknown fields without decoding their string bytes. Validate the whole
+    // response first so malformed UTF-8 in an open object's future field also fails.
+    if let Err(error) = std::str::from_utf8(&stdout) {
+        return MemorySearchOutcome::Unavailable {
+            reason: format!("pdks memory search printed invalid UTF-8: {error}"),
+        };
+    }
+    match serde_json::from_slice::<MemorySearchOutput>(&stdout) {
         Ok(output) if output.results.is_empty() => MemorySearchOutcome::Empty,
         Ok(output) => MemorySearchOutcome::Found {
             hits: output.results,
@@ -526,7 +489,7 @@ pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
     }
 }
 
-/// Resolve the umbrella, spawn `pdks memory` with `args` and an empty stdin, and return the
+/// Resolve the executable, spawn `pdks memory` with `args` and an empty stdin, and return the
 /// child's stdout at status 0. Every other outcome is the reason it is unavailable.
 fn run_memory(
     root: &Path,
@@ -534,8 +497,8 @@ fn run_memory(
     executable: Option<&Path>,
     timeout: Option<Duration>,
     spawn: Option<&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
-) -> Result<String, String> {
-    let invocation = match resolve_umbrella(root, executable) {
+) -> Result<Vec<u8>, String> {
+    let invocation = match resolve_executable(root, executable) {
         Ok(invocation) => invocation,
         Err(Unresolved::Path(error)) => {
             return Err(format!("pdks memory could not be spawned: {error}"));
@@ -546,7 +509,7 @@ fn run_memory(
     };
     let mut all = vec!["memory".to_string()];
     all.extend(args);
-    match spawn_invocation(invocation, all, String::new(), timeout, spawn) {
+    match spawn_invocation(invocation, all, Vec::new(), timeout, spawn) {
         Ok(SpawnOutcome {
             status: Some(0),
             stdout,
@@ -563,7 +526,7 @@ fn run_memory(
             status: Some(_),
             stderr,
             ..
-        }) => Err(stderr),
+        }) => Err(String::from_utf8_lossy(&stderr).into_owned()),
         Ok(SpawnOutcome { status: None, .. }) => {
             Err("pdks memory was killed by a signal before it answered".into())
         }

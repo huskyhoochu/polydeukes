@@ -1,20 +1,26 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CovenantInput } from '@polydeukes/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CheckCovenantSpawnSpec } from '../src/check-covenant.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkCovenant } from '../src/check-covenant.ts';
+import type { CovenantInput } from '../src/ir.ts';
+import type { SpawnSpec } from '../src/process.ts';
 
-// `checkCovenant` is the whole package: one IR in, one `pdks covenant check` spawn, the
+// `checkCovenant` forwards one IR in, one `pdks covenant check` spawn, the
 // child's status and stderr back as a verdict value. It judges nothing, writes no row, and
 // neither adds to nor removes from the IR. Every case injects the `spawn` seam and reads
 // what the seam was handed — command, args, cwd, stdin — because those four values are the
 // contract between this package and the judge process, and the status → verdict table.
 //
-// `polydeukes` is located from the caller's repoRoot: a stub package under the fixture's
-// own `node_modules` carrying `bin.pdks` is what resolution finds, and a tree without it is
-// the not-installed case. The runner's cwd never enters the lookup.
+// PATH is fixture-owned so a machine-wide pdks cannot make an unavailable case pass.
 
 /** Injected fixture values — the consumer's own tool roster and a target it writes. */
 const WRITE_FILE = 'writeFile';
@@ -24,7 +30,7 @@ const COMMAND_ARG = 'command';
 const TARGET = 'src/answer.ts';
 const CONTENT = 'export const answer = 42;\n';
 const STUB_BIN_REL = './dist/bin.js';
-/** What the child must be asked to run, after the bin path, under each posture. */
+/** What the child must be asked to run, under each posture. */
 const BLOCK_ARGS = ['covenant', 'check', '--enforce', 'block'];
 const ADVISE_ARGS = ['covenant', 'check', '--enforce', 'advise'];
 /** The row file the child would write under a default config — this package never does. */
@@ -37,33 +43,45 @@ let repoRoot: string;
 beforeEach(() => {
   // Realpath'd: macOS hands out `/var/...` for a tmpdir whose real location is
   // `/private/var/...`, and the bin path resolution and the cwd assertion must agree.
+  vi.stubEnv('PATH', '');
   repoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'pdks-sdk-ts-')));
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   rmSync(repoRoot, { recursive: true, force: true });
 });
 
-/** A stub `polydeukes` install under the fixture root; returns the absolute bin path. */
-function installStubPolydeukes(
+/** A PATH executable beside npm metadata that must not affect executable selection. */
+function installExecutableAndNpmFixture(
   manifest: Record<string, unknown> = { bin: { pdks: STUB_BIN_REL } },
 ): string {
   const pkgDir = join(repoRoot, 'node_modules', 'polydeukes');
   mkdirSync(join(pkgDir, 'dist'), { recursive: true });
   writeFileSync(join(repoRoot, 'package.json'), '{"name":"consumer","private":true}\n');
   writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: 'polydeukes', ...manifest }));
-  writeFileSync(join(pkgDir, 'dist', 'bin.js'), '');
-  return join(pkgDir, 'dist', 'bin.js');
+  writeFileSync(join(pkgDir, 'dist', 'bin.js'), '#!/bin/sh\nexit 0\n');
+  const bin = join(pkgDir, 'dist', 'bin.js');
+  chmodSync(bin, 0o755);
+  const pathBin = join(repoRoot, 'pdks');
+  writeFileSync(pathBin, '#!/bin/sh\nexit 0\n');
+  chmodSync(pathBin, 0o755);
+  vi.stubEnv('PATH', repoRoot);
+  return pathBin;
 }
 
 /** A recording seam answering `result` for every spawn. */
 function recordingSpawn(result: SpawnResult) {
-  const calls: CheckCovenantSpawnSpec[] = [];
+  const calls: SpawnSpec[] = [];
   return {
     calls,
-    spawn: async (spec: CheckCovenantSpawnSpec): Promise<SpawnResult> => {
+    spawn: async (spec: SpawnSpec) => {
       calls.push({ ...spec, args: [...spec.args] });
-      return result;
+      return {
+        status: result.status,
+        stdout: new Uint8Array(),
+        stderr: new TextEncoder().encode(result.stderr),
+      };
     },
   };
 }
@@ -85,53 +103,52 @@ function writeInput(): CovenantInput {
 }
 
 describe('checkCovenant — what the seam is handed', () => {
-  it('spawns the resolved bin with `covenant check --enforce block` by default, cwd = repoRoot, stdin = the IR verbatim', async () => {
+  it('spawns the selected executable with `covenant check --enforce block` by default, cwd = repoRoot, stdin = the IR verbatim', async () => {
     // Four values, each its own defect: another bin is another project's judge; `advise`
     // by default turns every break into exit 0 with no one reading stderr; a cwd off the
     // repoRoot reads another config; a re-serialised IR is an IR this package edited.
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const input = writeInput();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input, spawn });
 
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS]);
+    expect(calls[0]?.args).toEqual([...BLOCK_ARGS]);
     expect(calls[0]?.cwd).toBe(repoRoot);
-    expect(calls[0]?.stdin).toBe(JSON.stringify(input));
+    expect(new TextDecoder().decode(calls[0]?.stdin)).toBe(JSON.stringify(input));
   });
 
   it("`enforce: 'advise'` swaps only the level", async () => {
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input: writeInput(), enforce: 'advise', spawn });
 
-    expect(calls[0]?.args).toEqual([bin, ...ADVISE_ARGS]);
+    expect(calls[0]?.args).toEqual([...ADVISE_ARGS]);
   });
 
-  it('runs the bin under the current node executable', async () => {
-    // `node` from PATH is whatever the consumer's shell resolves; the executable this
-    // process runs under is the one the install graph was built for.
-    installStubPolydeukes();
+  it('runs the selected executable directly', async () => {
+    // Spawning Node here would add an unwanted executable argument before the verb.
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input: writeInput(), spawn });
 
-    expect(calls[0]?.command).toBe(process.execPath);
+    expect(calls[0]?.command).toBe(join(repoRoot, 'pdks'));
   });
 
   it('forwards an IR with no `session`, `actor`, or `tools` key without adding one', async () => {
     // The host proves session evidence; this package is not a host. An SDK that fills in
     // `session: { userMessages: [], toolCalls: [] }` or an `actor` makes the judge read a
     // proof nobody gave.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const input: CovenantInput = { toolCalls: [], subagentSpawns: [], userMessages: [] };
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input, spawn });
 
-    expect(JSON.parse(calls[0]?.stdin ?? 'null')).toEqual(input);
+    expect(JSON.parse(new TextDecoder().decode(calls[0]?.stdin))).toEqual(input);
   });
 });
 
@@ -151,27 +168,27 @@ describe('checkCovenant — configLayer and telemetryPath travel as flags', () =
   it('`configLayer` appends `--config-layer <path>` after the fixed argv, verbatim', async () => {
     // The path is the host's, resolved by the umbrella against repoRoot; an SDK that
     // resolves it here, or drops it, hands the child another file or none.
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input: writeInput(), configLayer: LAYER_PATH, spawn });
 
-    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--config-layer', LAYER_PATH]);
+    expect(calls[0]?.args).toEqual([...BLOCK_ARGS, '--config-layer', LAYER_PATH]);
   });
 
   it('`telemetryPath` appends `--telemetry-path <path>` after the fixed argv, verbatim', async () => {
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({ repoRoot, input: writeInput(), telemetryPath: TELEMETRY_PATH, spawn });
 
-    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS, '--telemetry-path', TELEMETRY_PATH]);
+    expect(calls[0]?.args).toEqual([...BLOCK_ARGS, '--telemetry-path', TELEMETRY_PATH]);
   });
 
   it('both fields together send both pairs, each flag beside its own value', async () => {
     // One field overwriting the other's slot, or the two values swapped under the wrong
     // flag, sends the row file as the layer and fails every call closed.
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({
@@ -184,8 +201,8 @@ describe('checkCovenant — configLayer and telemetryPath travel as flags', () =
     });
 
     const args = calls[0]?.args ?? [];
-    expect(args.slice(0, ADVISE_ARGS.length + 1)).toEqual([bin, ...ADVISE_ARGS]);
-    expect(flagPairs(args, ADVISE_ARGS.length + 1)).toEqual({
+    expect(args.slice(0, ADVISE_ARGS.length)).toEqual([...ADVISE_ARGS]);
+    expect(flagPairs(args, ADVISE_ARGS.length)).toEqual({
       '--config-layer': LAYER_PATH,
       '--telemetry-path': TELEMETRY_PATH,
     });
@@ -194,7 +211,7 @@ describe('checkCovenant — configLayer and telemetryPath travel as flags', () =
   it('fields present with the value undefined add nothing — the argv is the one without them', async () => {
     // A presence check (`'configLayer' in spec`) pushes the flag with `undefined` as its
     // value, which the bin's argv table reads as a missing value and refuses as usage.
-    const bin = installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     await checkCovenant({
@@ -205,7 +222,7 @@ describe('checkCovenant — configLayer and telemetryPath travel as flags', () =
       spawn,
     });
 
-    expect(calls[0]?.args).toEqual([bin, ...BLOCK_ARGS]);
+    expect(calls[0]?.args).toEqual([...BLOCK_ARGS]);
   });
 });
 
@@ -213,7 +230,7 @@ describe('checkCovenant — the child status is the verdict', () => {
   it("status 0 → { verdict: 'upheld', advisories: <stderr> }", async () => {
     // Advisory lines travel on stderr at exit 0; a consumer with no TTY decides whether
     // the model sees them, so they must come back as the value, not be swallowed.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({ status: 0, stderr: 'advised: no-todo adds TODO\n' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
@@ -225,7 +242,7 @@ describe('checkCovenant — the child status is the verdict', () => {
     // The reason is the valve's replacement on an unattended surface: the consumer writes
     // it where a human later reads and stops. A `blocked` with no reason is a stop nobody
     // can act on.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({ status: 2, stderr: 'self-mod: .grok/hooks\n' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
@@ -236,7 +253,7 @@ describe('checkCovenant — the child status is the verdict', () => {
   it("status 1 → { verdict: 'unjudged' } with the crash's stderr as the reason", async () => {
     // A crashed child is not a verdict. Mapping 1 onto `blocked` invents a break; mapping
     // it onto `upheld` is the fail-open hole an uninstalled dist would fall through.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({
       status: 1,
       stderr: 'TypeError: covenant.x is not a function',
@@ -254,7 +271,7 @@ describe('checkCovenant — the child status is the verdict', () => {
     // mapping that keeps the status line as the reason hands the consumer "status 3" and
     // drops the one sentence that says what to fix; one that reads 3 as `blocked` invents a
     // covenant break for an input nobody judged.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const stderr = 'covenant check failed closed: input carries no subagentSpawns array\n';
     const { spawn } = recordingSpawn({ status: 3, stderr });
 
@@ -266,7 +283,7 @@ describe('checkCovenant — the child status is the verdict', () => {
   it("status 3 with empty stderr → { verdict: 'unjudged' } with the status line as the reason", async () => {
     // Nothing on stderr leaves only the status to report. A mapping that forwards stderr
     // unconditionally returns `reason: ''`, an unjudged verdict with nothing to act on.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({ status: 3, stderr: '' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
@@ -278,7 +295,7 @@ describe('checkCovenant — the child status is the verdict', () => {
   });
 
   it("status null (signalled) → { verdict: 'unjudged' } with a reason naming the signal", async () => {
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({ status: null, stderr: '' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
@@ -290,7 +307,7 @@ describe('checkCovenant — the child status is the verdict', () => {
   it('writes no row of its own: the fixture tree has no telemetry file after a blocked verdict', async () => {
     // The child writes the row; a second writer here would double every break and make
     // the ledger count two judgments for one call.
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const { spawn } = recordingSpawn({ status: 2, stderr: 'blocked\n' });
 
     await checkCovenant({ repoRoot, input: writeInput(), spawn });
@@ -299,8 +316,8 @@ describe('checkCovenant — the child status is the verdict', () => {
   });
 });
 
-describe('checkCovenant — polydeukes is not installed under repoRoot', () => {
-  it('spawns nothing and returns unjudged with a reason naming the package', async () => {
+describe('checkCovenant — executable availability', () => {
+  it('spawns nothing when PATH has no executable and returns unjudged', async () => {
     // With no bin there is nothing to spawn and no writer for a row. `upheld` here is the
     // cheapest bypass in the package — an absent judge passing every call.
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
@@ -309,25 +326,24 @@ describe('checkCovenant — polydeukes is not installed under repoRoot', () => {
 
     expect(calls).toEqual([]);
     expect(verdict).toMatchObject({ verdict: 'unjudged' });
-    expect(verdict).toHaveProperty('reason', expect.stringContaining('polydeukes'));
+    expect(verdict).toHaveProperty('reason', expect.stringContaining('pdks'));
   });
 
-  it('treats an installed manifest with no `bin.pdks` as not installed', async () => {
-    // A manifest found but carrying no bin would otherwise be spawned as `node undefined`,
-    // a crash the status table turns into `unjudged` without saying why.
-    installStubPolydeukes({ version: '0.0.0' });
+  it('ignores a manifest without bin.pdks when PATH provides an executable', async () => {
+    // npm metadata must not conceal a separately installed executable.
+    installExecutableAndNpmFixture({ version: '0.0.0' });
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
 
-    expect(calls).toEqual([]);
-    expect(verdict).toMatchObject({ verdict: 'unjudged' });
+    expect(calls).toHaveLength(1);
+    expect(verdict).toMatchObject({ verdict: 'upheld' });
   });
 });
 
 describe('the spawn itself failing is a verdict value, never a throw', () => {
   it('a seam that rejects resolves to unjudged carrying the failure', async () => {
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const verdict = await checkCovenant({
       repoRoot,
       input: writeInput(),
@@ -337,7 +353,7 @@ describe('the spawn itself failing is a verdict value, never a throw', () => {
     expect((verdict as { reason: string }).reason).toContain('spawn EACCES');
   });
 
-  it('an input that cannot be serialized resolves to unjudged, and an absent umbrella still says so', async () => {
+  it('an input that cannot be serialized resolves to unjudged, and remains unjudged without an executable', async () => {
     // `args` is `Record<string, unknown>`, so a BigInt typechecks. Serializing before the
     // umbrella resolves, or outside the spawn's failure branch, rejects the promise instead.
     const unserializable = {
@@ -347,11 +363,11 @@ describe('the spawn itself failing is a verdict value, never a throw', () => {
     const { calls, spawn } = recordingSpawn({ status: 0, stderr: '' });
 
     const absent = await checkCovenant({ repoRoot, input: unserializable, spawn });
-    installStubPolydeukes();
+    installExecutableAndNpmFixture();
     const installed = await checkCovenant({ repoRoot, input: unserializable, spawn });
 
     expect(absent).toMatchObject({ verdict: 'unjudged' });
-    expect(absent).toHaveProperty('reason', expect.stringContaining('polydeukes'));
+    expect(absent).toHaveProperty('reason', expect.any(String));
     expect(installed).toMatchObject({ verdict: 'unjudged' });
     expect(installed).toHaveProperty('reason', expect.stringContaining('BigInt'));
     expect(calls).toEqual([]);
@@ -360,8 +376,11 @@ describe('the spawn itself failing is a verdict value, never a throw', () => {
   it('the default spawn returns the child status when the child exits before reading a large stdin', async () => {
     // A child that fails fast leaves the parent's in-flight stdin write to raise EPIPE on
     // the stream; unhandled, that is an uncaughtException in the caller's process.
-    const bin = installStubPolydeukes();
-    writeFileSync(bin, "process.stderr.write('fast fail\\n'); process.exit(2);\n");
+    installExecutableAndNpmFixture();
+    writeFileSync(
+      join(repoRoot, 'pdks'),
+      `#!${process.execPath}\nprocess.stderr.write('fast fail\\n'); process.exit(2);\n`,
+    );
     const large = { ...writeInput(), userMessages: [{ text: 'x'.repeat(4 * 1024 * 1024) }] };
 
     const verdict = await checkCovenant({ repoRoot, input: large });

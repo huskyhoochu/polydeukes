@@ -2,73 +2,72 @@
 
 [English](./README.md) · **한국어**
 
-이 패키지는 TypeScript에서 약속(covenant) 입력 IR이나 통합 diff를 판정기에 건넵니다. 판정받는 프로젝트의
-`polydeukes` 설치를 찾고, 입력을 표준 입력에 넣어 `pdks covenant check`를 스폰하며, 판정
-결과를 값으로 돌려줍니다. 판정 코드는 여기에 없고 텔레메트리 행도 여기서 쓰지 않습니다. 행은
-자식 프로세스가 씁니다.
-
-`polydeukes` · `@polydeukes/core`와 함께 설치합니다. 둘 다 이 패키지의
-`peerDependencies`입니다.
+네 TypeScript 동사가 호출자가 만든 입력을 단일 실행 파일 `pdks`에 보내고 결과를 값으로 돌려줍니다.
+약속(covenant) 판정, 설정, 텔레메트리, 기억(memory) 색인은 CLI가 맡습니다.
 
 ```sh
-pnpm add @polydeukes/sdk-ts polydeukes @polydeukes/core
+pnpm add @polydeukes/sdk-ts
 ```
 
-실행 파일도 설치 단계도 없습니다.
+SDK 호스트에는 Node >=24가 필요합니다.
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
+파일 `pdks`를 설치하고 실행 권한을 준 뒤 `executable`이나 `PATH`의 절대 디렉터리로 선택합니다.
+기존 npm 설치는 CLI를 선택하지 않으며 SDK는 실행 파일을 직접 실행합니다. `@polydeukes/core`와
+`polydeukes`에 대한 런타임·peer 의존성이 필요하지 않습니다. 전송 타입은 SDK에 포함됩니다.
 
 <a id="overview"></a>
 ## 개요
 
-공개 계약 심볼은 다음과 같습니다.
+- `checkCovenant(CheckCovenantSpec)`은 `CovenantInput`을 UTF-8 JSON으로 보냅니다.
+- `checkChangeSet(CheckChangeSetSpec)`은 unified diff를 그대로 보냅니다.
+- 둘 다 `CheckCovenantVerdict`인 `upheld`, `blocked`, `unjudged`를 반환합니다.
+- `memoryIngest(MemoryIngestSpec)`은 `MemoryIngestOutcome`인 `ingested`, `unavailable`을 반환합니다.
+- `memorySearch(MemorySearchSpec)`은 `MemorySearchOutcome`인 순위가 있는 `MemorySearchResult` 목록의
+  `found`, `empty`, `unavailable`을 반환합니다.
+- 네 동사는 `executable`, `timeoutMs`, `spawn: Spawn`을 받고 `SpawnSpec`, `SpawnOutcome`으로 바이트를
+  전송합니다.
 
-- `checkCovenant`
-- `CheckCovenantSpec`
-- `CheckCovenantSpawnSpec`
-- `CheckCovenantVerdict`
-- `checkChangeSet`
-- `CheckChangeSetSpec`
+명시한 실행 파일과 루트는 호출자의 cwd 기준이며 symlink 경로 표기를 보존합니다. 미지정이면 `PATH`의
+절대 디렉터리에서 실행할 수 있는 파일 `pdks`를 처음 선택하고 실패해도 다른 후보를 재시도하지 않습니다.
+`timeoutMs`는 유한한 0 이상 밀리초이고 미지정이면 기한이 없으며 0은 스폰 뒤 만료됩니다. 기한은 후손이
+잡은 파이프를 포함한 통신에 적용됩니다. 만료 시 직접 자식을 종료·회수하고 파이프를 닫으며 후손은
+종료하지 않습니다.
 
 <a id="examples"></a>
 ## 예제
 
 ```ts
-import { checkCovenant } from '@polydeukes/sdk-ts';
+import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
 
-// repoRoot에서 IR을 표준 입력에 넣어 `pdks covenant check --enforce block`을 스폰합니다.
-// IR은 호출자의 것이며 이 패키지는 거기에 아무것도 더하지 않습니다.
+const input: CovenantInput = {
+  toolCalls: [{
+    name: 'writeFile',
+    fileChange: { kind: 'create', path: 'src/index.ts', post: 'export const answer = 42;\n' },
+  }],
+  subagentSpawns: [],
+  userMessages: [],
+  tools: { mutating: ['writeFile'], shell: [], commandArgs: [] },
+};
 const verdict = await checkCovenant({
-  repoRoot: process.cwd(),
-  input: {
-    toolCalls: [{ name: 'writeFile', args: { path: 'src/index.ts' } }],
-    subagentSpawns: [],
-    userMessages: [],
-    tools: { mutating: ['writeFile', 'rm'], shell: ['exec'], commandArgs: ['command'] },
-  },
+  repoRoot: process.cwd(), input, executable: '/opt/tools/pdks', timeoutMs: 2000,
 });
-
-if (verdict.verdict === 'blocked') {
-  // `reason`은 판정기 자신의 stderr입니다. 그 텍스트를 어디에 둘지는 호출자가 정합니다.
-  console.error(verdict.reason);
-}
+if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
+// 이곳에서 제안한 작업을 실행합니다.
 ```
 
-`checkChangeSet`은 호출 하나가 아니라 끝난 변경 집합을 판정합니다. 통합 diff를 표준 입력에
-넣어 `pdks covenant check --diff`를 스폰하고, 같은 판정 결과를 돌려줍니다.
+작업은 `upheld`일 때만 실행합니다. status `0`은 `upheld`, `2`는 `blocked`, 나머지 상태, 시그널,
+실행 실패는 `unjudged`입니다. 강제 수준 기본값은 `block`입니다. `checkChangeSet`은 `input` 대신
+`diff`를 받고, `a/`, `b/` 뒤의 경로는 `repoRoot` 기준입니다.
 
-```ts
-import { checkChangeSet } from '@polydeukes/sdk-ts';
+기억 spec은 `root`를 받고 검색에는 `query`와 선택 양의 안전 정수 `limit`을 더합니다. 유효한 빈 검색
+응답만 `empty`입니다. 기억 기능 부재, 잘못된 응답, 실행 실패는 `unavailable`입니다.
 
-// diff는 호출자의 것이며 경로는 repoRoot 기준입니다. `git diff HEAD`(새 파일이 보이도록
-// `git add -N .` 뒤)든 같은 형식의 다른 생산자든 됩니다.
-const verdict = await checkChangeSet({ repoRoot: process.cwd(), diff });
-```
-
-두 동사 모두 `enforce`의 기본값은 `block`입니다. 판정 결과는 `upheld` · `blocked` · `unjudged` 셋이고,
-`unjudged`는 `polydeukes`가 설치되지 않은 프로젝트와 판정 결과가 아닌 모든 자식 상태를
-포괄합니다. 자식이 stderr를 썼으면 그 stderr가 `reason`입니다.
+전환 시 입력 타입을 core 대신 이 SDK에서 import합니다. 사용자 프로세스 구현은 기존
+`SpawnSpec`을 쓰고 stdin, stdout, stderr를 `Uint8Array`로 전달하며
+`timeoutMs`를 직접 집행합니다. 검색을 엄격히 해석할 수 있도록 stdout 바이트를 보존합니다.
 
 <a id="see-also"></a>
 ## 같이 보기
 
-- [`@polydeukes/sdk-ts` 패키지 레퍼런스](../../docs/reference/packages/sdk-ts.ko.md)
-- [판정기(`covenant` 모듈)](../../docs/reference/packages/polydeukes.ko.md#covenant-module)
+- [전체 API, 기억 예제, 전환](../../docs/reference/packages/sdk-ts.ko.md)
+- [Rust SDK](../../docs/reference/packages/sdk-rust.ko.md)

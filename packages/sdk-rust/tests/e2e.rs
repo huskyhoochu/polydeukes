@@ -1,11 +1,12 @@
 //! `check_covenant` and `check_change_set` against the BUILT `pdks`: a throwaway tree
 //! scaffolded by `pdks init`, wired to the checkout's install graph by symlink, with one
-//! protected path of its own. Only a real spawn proves that the crate finds the umbrella from
+//! protected path of its own. Only a real spawn proves that the crate invokes the selected executable from
 //! the consumer's repo_root, that the child reads the consumer's config, and that the row the
 //! child writes is the judge's own. `check_covenant.rs` and `check_change_set.rs` pin the same
 //! contract through the injected seam.
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -68,6 +69,26 @@ fn project_root() -> (TempDir, PathBuf) {
 /// consumer's own config over the scaffolded one: one protected directory and a telemetry
 /// path inside the fixture, so the rows this suite reads are this tree's alone.
 fn scaffold_consumer(root: &Path) {
+    let node = Command::new("/bin/sh")
+        .args(["-c", "command -v node"])
+        .output()
+        .expect("find test Node");
+    assert!(node.status.success());
+    let node = String::from_utf8(node.stdout).unwrap();
+    let node = node.trim();
+    assert!(Path::new(node).is_absolute());
+    let quote = |value: &str| format!("'{}'", value.replace("'", "'\\''"));
+    let wrapper = root.join("pdks-test");
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\nexec {} {} \"$@\"\n",
+            quote(node),
+            quote(umbrella_bin().to_str().unwrap())
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
     std::os::unix::fs::symlink(
         checkout_root().join("node_modules"),
         root.join("node_modules"),
@@ -78,7 +99,7 @@ fn scaffold_consumer(root: &Path) {
         "{\"name\":\"consumer\",\"private\":true}\n",
     )
     .expect("consumer manifest");
-    let init = Command::new("node")
+    let init = Command::new(node)
         .arg(umbrella_bin())
         .arg("init")
         .current_dir(root)
@@ -129,7 +150,7 @@ fn judge(root: &Path, input: &CovenantInput) -> CheckCovenantVerdict {
         enforce: None,
         config_layer: None,
         telemetry_path: None,
-        executable: None,
+        executable: Some(&root.join("pdks-test")),
         timeout: None,
         spawn: None,
     })
@@ -216,7 +237,7 @@ fn judge_change_set(root: &Path, diff: &str) -> CheckCovenantVerdict {
         enforce: None,
         config_layer: None,
         telemetry_path: Some(&root.join(CHANGE_SET_TELEMETRY_REL)),
-        executable: None,
+        executable: Some(&root.join("pdks-test")),
         timeout: None,
         spawn: None,
     })

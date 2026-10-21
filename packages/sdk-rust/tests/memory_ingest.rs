@@ -18,7 +18,7 @@ use tempfile::TempDir;
 
 /// The umbrella's own manifest spells the bin with a leading `./`, so the stub does too.
 const STUB_BIN_REL: &str = "./dist/bin.js";
-/// What the child must be asked to run, after the bin path.
+/// What the child must be asked to run, as the full argv.
 const INGEST_ARGS: [&str; 2] = ["memory", "ingest"];
 
 /// A fixture tree whose path is canonical, so a bin path and a cwd computed from it agree
@@ -77,8 +77,8 @@ impl RecordingSeam {
         match self.outcome {
             Some((status, stdout, stderr)) => Ok(SpawnOutcome {
                 status,
-                stdout: stdout.to_string(),
-                stderr: stderr.to_string(),
+                stdout: stdout.as_bytes().to_vec(),
+                stderr: stderr.as_bytes().to_vec(),
             }),
             None => Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
@@ -98,7 +98,7 @@ fn spec<'a>(
 ) -> MemoryIngestSpec<'a> {
     MemoryIngestSpec {
         root,
-        executable: None,
+        executable: Some(Path::new("/fixture/pdks")),
         timeout: None,
         spawn: Some(spawn),
     }
@@ -111,46 +111,35 @@ fn unavailable(outcome: MemoryIngestOutcome) -> String {
     }
 }
 
-/// `args` with the bin path canonicalized, so `./dist/bin.js` and `dist/bin.js` read alike.
-fn argv_with_canonical_bin(spec: &SpawnSpec) -> Vec<String> {
-    let mut args = spec.args.clone();
-    let bin = Path::new(&args[0])
-        .canonicalize()
-        .expect("the bin path names a file");
-    args[0] = bin.to_string_lossy().into_owned();
-    args
+fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
+    spec.args.clone()
 }
 
-fn expected_argv(bin: &Path, fixed: &[&str]) -> Vec<String> {
-    std::iter::once(bin.to_string_lossy().into_owned())
-        .chain(fixed.iter().map(|s| s.to_string()))
-        .collect()
+fn expected_argv(fixed: &[&str]) -> Vec<String> {
+    fixed.iter().map(|s| s.to_string()).collect()
 }
 
 mod what_the_seam_is_handed {
     use super::*;
 
     #[test]
-    fn spawns_node_on_the_resolved_bin_with_memory_ingest_cwd_root_and_an_empty_stdin() {
-        // Four values, each its own defect: `node` from anywhere else is another runtime; an
+    fn spawns_selected_executable_with_memory_ingest_cwd_root_and_an_empty_stdin() {
+        // Four values, each its own defect: a different executable is another judge; an
         // argv carrying `--json`, `--rebuild`, or the covenant verb's flags is one the CLI
         // refuses as usage (exit 2); a cwd off `root` reads another config and writes
         // another index; a non-empty stdin is input the CLI never asked for.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root);
+        install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), "", "");
 
         memory_ingest(spec(&root, &|s| seam.spawn(s)));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].command, "node");
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &INGEST_ARGS)
-        );
+        assert_eq!(calls[0].command, "/fixture/pdks");
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&INGEST_ARGS));
         assert_eq!(calls[0].cwd, root);
-        assert_eq!(calls[0].stdin, "");
+        assert!(calls[0].stdin.is_empty());
     }
 
     #[test]
@@ -159,7 +148,7 @@ mod what_the_seam_is_handed {
         // child against whatever the host's cwd is; the fixture is reached through `..`
         // from the test's own cwd so no test changes the process-wide current directory.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace);
+        install_stub_polydeukes(&workspace);
         let root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&root).expect("nested root");
         let cwd = std::env::current_dir()
@@ -177,12 +166,9 @@ mod what_the_seam_is_handed {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert!(Path::new(&calls[0].args[0]).is_absolute());
+        assert!(Path::new(&calls[0].command).is_absolute());
         assert!(calls[0].cwd.is_absolute());
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &INGEST_ARGS)
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&INGEST_ARGS));
         assert_eq!(calls[0].cwd.canonicalize().expect("cwd exists"), root);
     }
 }
@@ -293,12 +279,10 @@ mod resolving_the_umbrella {
     use super::*;
 
     #[test]
-    fn an_install_in_an_ancestor_of_root_is_found_and_cwd_stays_root() {
-        // One probe that the verb walks the covenant verbs' path: a lookup of its own that
-        // stops at `root` reads a workspace member as not installed, and a cwd moved to the
-        // install's directory indexes the workspace's documents instead of the member's.
+    fn an_ancestor_npm_install_does_not_change_root_cwd() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace);
+        install_stub_polydeukes(&workspace);
         let root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&root).expect("nested root");
         let seam = RecordingSeam::answering(Some(0), "", "");
@@ -307,10 +291,7 @@ mod resolving_the_umbrella {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &INGEST_ARGS)
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&INGEST_ARGS));
         assert_eq!(calls[0].cwd, root);
     }
 }

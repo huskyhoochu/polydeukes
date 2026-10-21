@@ -2,89 +2,78 @@
 
 **English** · [한국어](./README.ko.md)
 
-This crate hands a covenant input, or a finished change set as a unified diff, to the
-Polydeukes judge from Rust. It locates the `polydeukes` install of the project being judged,
-spawns `pdks covenant check` under `node` with the input or the diff on stdin, and returns the
-verdict as a value. It also ingests and searches a project's memory through `pdks memory` and
-returns the hits as values. No judgment logic lives here, and
-no telemetry row is written here — the child process writes it.
+Four blocking Rust verbs run a standalone `pdks` and return results as values. The CLI owns
+judgment, configuration, telemetry, and memory indexing.
 
 ```sh
 cargo add polydeukes-sdk
 ```
 
-The project being judged installs `polydeukes` from npm (`pnpm add -D polydeukes`) with `node` on
-`PATH`. A host without Node puts the single `pdks` executable from a
-[GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) on `PATH` instead; the crate runs
-it when no install is found. A host whose project also installs `polydeukes` names the executable
-in the spec's `executable` field, and the crate runs that file without looking for an install.
+Install the standalone `pdks` for Linux x64 or macOS arm64 from
+[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), give it execute permission,
+and select it via `executable` or an absolute `PATH` directory. The crate runs it directly;
+Node and npm installations are unnecessary.
 
 <a id="overview"></a>
 ## Overview
 
-Public items include:
+- `check_covenant(CheckCovenantSpec)` sends generated `CovenantInput` as UTF-8 JSON.
+- `check_change_set(CheckChangeSetSpec)` sends a unified diff verbatim.
+- Both return `CheckCovenantVerdict`: `Upheld`, `Blocked`, or `Unjudged`.
+- `memory_ingest(MemoryIngestSpec)` returns `MemoryIngestOutcome`: `Ingested` or `Unavailable`.
+- `memory_search(MemorySearchSpec)` returns `MemorySearchOutcome`: ranked `Found` hits,
+  `Empty`, or `Unavailable`.
+- All four accept `executable`, `timeout`, and `spawn`, using `SpawnSpec` and `SpawnOutcome`
+  with `Vec<u8>` stdin, stdout, and stderr.
 
-- `check_covenant` and `check_change_set`
-- `CheckCovenantSpec` and `CheckChangeSetSpec`
-- `CheckCovenantVerdict`
-- `Enforce`
-- `memory_ingest` and `memory_search`, with `MemoryIngestSpec`, `MemorySearchSpec`,
-  `MemoryIngestOutcome`, and `MemorySearchOutcome`
-- `SpawnSpec` and `SpawnOutcome`
-- `CovenantInput` and its parts, generated from `@polydeukes/core/covenant-input.schema.json`
-- `MemorySearchOutput` and its parts, generated from
-  `@polydeukes/core/memory-search-output.schema.json`
+Roots and explicit executable paths resolve from the caller's cwd, preserving executable
+symlink spelling. Otherwise the first executable file `pdks` in an absolute `PATH` directory is
+selected; empty and relative entries are skipped. A selected file's failure never retries
+another candidate. `timeout: Option<Duration>` covers communication after spawn, including
+pipes retained by descendants after child exit. `None` means no deadline; zero expires after
+spawn. Expiry kills and reaps the direct child and ends the caller's pipe collection.
+Descendants keep their own lifetimes; detached readers finish when their pipes close.
 
 <a id="examples"></a>
 ## Examples
 
 ```rust
-use polydeukes_sdk::{check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, ToolCall};
-use std::path::Path;
+use polydeukes_sdk::{check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput};
+use std::{path::Path, time::Duration};
 
 let input = CovenantInput {
-    tool_calls: vec![ToolCall { name: "exec".into(), args: Default::default(), file_change: None }],
-    subagent_spawns: vec![],
-    user_messages: vec![],
-    tools: None,
-    actor: None,
-    session: None,
+    tool_calls: vec![], subagent_spawns: vec![], user_messages: vec![],
+    tools: None, actor: None, session: None,
 };
-
-// Spawns `node <bin> covenant check --enforce block` in repo_root with the input on stdin.
 let verdict = check_covenant(CheckCovenantSpec {
-    repo_root: Path::new("."),
-    input: &input,
-    enforce: None,
-    config_layer: None,
-    telemetry_path: None,
-    executable: None,
-    timeout: None,
-    spawn: None,
+    repo_root: Path::new("."), input: &input, enforce: None,
+    config_layer: None, telemetry_path: None,
+    executable: Some(Path::new("/opt/tools/pdks")),
+    timeout: Some(Duration::from_secs(2)), spawn: None,
 });
-
-if let CheckCovenantVerdict::Blocked { reason } = verdict {
-    // `reason` is the judge's own stderr — the caller decides where it goes.
-    eprintln!("{reason}");
+match verdict {
+    CheckCovenantVerdict::Upheld { .. } => { /* Perform the proposed action here. */ }
+    CheckCovenantVerdict::Blocked { reason } | CheckCovenantVerdict::Unjudged { reason } => {
+        eprintln!("{reason}");
+    }
 }
 ```
 
-The call blocks until the judge exits or `timeout` passes, when the child is killed; an async
-host runs it with `tokio::task::spawn_blocking`. `enforce` defaults to `Block`. The three
-verdicts are `Upheld`, `Blocked`, and `Unjudged`; `Unjudged` covers a project with no
-`polydeukes` installed, a failed spawn, a passed `timeout`, and any child status that is not a
-verdict, with the child's stderr as its `reason` when the child wrote one.
+Only `Upheld` authorizes the action. Status `0` is `Upheld`, `2` is `Blocked`, and every other
+status, signal, or execution failure is `Unjudged`. Enforcement defaults to `Enforce::Block`.
+`check_change_set` takes `diff` in place of `input`, with `a/` and `b/` paths relative to
+`repo_root`. The API blocks; async hosts use a blocking task.
 
-`check_change_set` takes `diff` in place of `input` and spawns `pdks covenant check --diff`; its
-paths are relative to `repo_root` behind `a/` and `b/`, as `git diff` prints them. It returns the
-same three verdicts.
+Memory specs use `root`; search adds `query` and optional `limit: NonZeroU32`. Only a valid
+empty search response is `Empty`. Missing memory support, malformed responses, and execution
+failures are `Unavailable`; found hits preserve CLI ranking.
 
-`memory_search` spawns `pdks memory search <query> --json` in a memory root and returns `Found`,
-`Empty`, or `Unavailable`. `Empty` is a search that ran and matched nothing; a missing
-`@polydeukes/memory`, a missing index, and every other failure are `Unavailable`.
+For migration, replace reliance on npm discovery with a standalone executable. Custom spawns
+use `Vec<u8>` instead of strings for all three streams, preserve stdout bytes for strict search
+decoding, and enforce the supplied timeout with `io::ErrorKind::TimedOut` on expiry.
 
 <a id="see-also"></a>
 ## See also
 
-- [`polydeukes-sdk` reference](https://github.com/huskyhoochu/polydeukes/blob/main/docs/reference/packages/sdk-rust.md)
-- [`@polydeukes/sdk-ts`, the TypeScript SDK](https://github.com/huskyhoochu/polydeukes/blob/main/docs/reference/packages/sdk-ts.md)
+- [Complete API, evidence, and migration](../../docs/reference/packages/sdk-rust.md)
+- [TypeScript SDK](../../docs/reference/packages/sdk-ts.md)

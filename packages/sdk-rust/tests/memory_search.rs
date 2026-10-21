@@ -21,7 +21,7 @@ use tempfile::TempDir;
 
 /// The umbrella's own manifest spells the bin with a leading `./`, so the stub does too.
 const STUB_BIN_REL: &str = "./dist/bin.js";
-/// What the child must be asked to run, after the bin path, around the query.
+/// What the child must be asked to run, around the query.
 const SEARCH_VERB: [&str; 2] = ["memory", "search"];
 const JSON_FLAG: &str = "--json";
 const LIMIT_FLAG: &str = "--limit";
@@ -120,8 +120,8 @@ impl RecordingSeam {
         match &self.outcome {
             Some((status, stdout, stderr)) => Ok(SpawnOutcome {
                 status: *status,
-                stdout: stdout.clone(),
-                stderr: stderr.clone(),
+                stdout: stdout.as_bytes().to_vec(),
+                stderr: stderr.as_bytes().to_vec(),
             }),
             None => Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
@@ -143,7 +143,7 @@ fn spec<'a>(
         root,
         query: QUERY,
         limit: None,
-        executable: None,
+        executable: Some(Path::new("/fixture/pdks")),
         timeout: None,
         spawn: Some(spawn),
     }
@@ -169,19 +169,14 @@ fn unavailable(outcome: MemorySearchOutcome) -> String {
     }
 }
 
-/// `args` with the bin path canonicalized, so `./dist/bin.js` and `dist/bin.js` read alike.
-fn argv_with_canonical_bin(spec: &SpawnSpec) -> Vec<String> {
-    let mut args = spec.args.clone();
-    let bin = Path::new(&args[0])
-        .canonicalize()
-        .expect("the bin path names a file");
-    args[0] = bin.to_string_lossy().into_owned();
-    args
+fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
+    spec.args.clone()
 }
 
-fn expected_argv(bin: &Path, tail: &[&str]) -> Vec<String> {
-    std::iter::once(bin.to_string_lossy().into_owned())
-        .chain(SEARCH_VERB.iter().map(|s| s.to_string()))
+fn expected_argv(tail: &[&str]) -> Vec<String> {
+    SEARCH_VERB
+        .iter()
+        .map(|s| s.to_string())
         .chain(tail.iter().map(|s| s.to_string()))
         .collect()
 }
@@ -190,26 +185,23 @@ mod what_the_seam_is_handed {
     use super::*;
 
     #[test]
-    fn spawns_node_on_the_resolved_bin_with_the_query_as_one_arg_then_json_cwd_root_empty_stdin() {
+    fn spawns_selected_executable_with_the_query_as_one_arg_then_json_cwd_root_empty_stdin() {
         // The query travels as ONE argument: split on spaces it still joins back on the CLI
         // side, but a query starting with `--` or holding a flag word would be reparsed. The
         // CLI without `--json` prints the table form, which the parse step refuses — every
         // search would come back `Unavailable`. A cwd off `root` reads another index.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root);
+        install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
 
         memory_search(spec(&root, &|s| seam.spawn(s)));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].command, "node");
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &[QUERY, JSON_FLAG])
-        );
+        assert_eq!(calls[0].command, "/fixture/pdks");
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&[QUERY, JSON_FLAG]));
         assert_eq!(calls[0].cwd, root);
-        assert_eq!(calls[0].stdin, "");
+        assert!(calls[0].stdin.is_empty());
     }
 
     #[test]
@@ -218,7 +210,7 @@ mod what_the_seam_is_handed {
         // the CLI refuses as usage; a limit rendered through `Debug` (`5` is fine, but a
         // non-zero wrapper could print its type) is one too.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root);
+        install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
         let spawn = |s| seam.spawn(s);
         let mut s = spec(&root, &spawn);
@@ -227,8 +219,8 @@ mod what_the_seam_is_handed {
         memory_search(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&bin, &[QUERY, JSON_FLAG, LIMIT_FLAG, "5"])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&[QUERY, JSON_FLAG, LIMIT_FLAG, "5"])
         );
     }
 
@@ -238,7 +230,7 @@ mod what_the_seam_is_handed {
         // host's own cwd. The fixture is reached through `..` from the test's cwd so no test
         // changes the process-wide current directory.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace);
+        install_stub_polydeukes(&workspace);
         let root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&root).expect("nested root");
         let cwd = std::env::current_dir()
@@ -256,12 +248,9 @@ mod what_the_seam_is_handed {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert!(Path::new(&calls[0].args[0]).is_absolute());
+        assert!(Path::new(&calls[0].command).is_absolute());
         assert!(calls[0].cwd.is_absolute());
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &[QUERY, JSON_FLAG])
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&[QUERY, JSON_FLAG]));
         assert_eq!(calls[0].cwd.canonicalize().expect("cwd exists"), root);
     }
 }
@@ -453,12 +442,10 @@ mod resolving_the_umbrella {
     use super::*;
 
     #[test]
-    fn an_install_in_an_ancestor_of_root_is_found_and_cwd_stays_root() {
-        // One probe that the verb walks the covenant verbs' path: a lookup of its own that
-        // stops at `root` reads a workspace member as not installed, and a cwd moved to the
-        // install's directory searches the workspace's index instead of the member's.
+    fn an_ancestor_npm_install_does_not_change_root_cwd() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace);
+        install_stub_polydeukes(&workspace);
         let root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&root).expect("nested root");
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
@@ -467,10 +454,7 @@ mod resolving_the_umbrella {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &[QUERY, JSON_FLAG])
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&[QUERY, JSON_FLAG]));
         assert_eq!(calls[0].cwd, root);
     }
 }

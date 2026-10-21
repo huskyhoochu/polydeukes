@@ -4,9 +4,7 @@
 //! what the seam was handed — command, args, cwd, stdin — because those four values are the
 //! contract between this crate and the judge process, and the status → verdict table.
 //!
-//! `polydeukes` is located from the caller's `repo_root` upward: a stub package under a
-//! fixture's `node_modules` carrying `bin.pdks` is what resolution finds, and a tree without
-//! it is the not-installed case. The test process's own cwd never enters the lookup.
+//! Executable selection is explicit; npm metadata alongside the root cannot change it.
 
 use std::cell::RefCell;
 use std::fs;
@@ -29,7 +27,7 @@ const TARGET: &str = "src/answer.ts";
 const CONTENT: &str = "export const answer = 42;\n";
 /// The umbrella's own manifest spells the bin with a leading `./`, so the stub does too.
 const STUB_BIN_REL: &str = "./dist/bin.js";
-/// What the child must be asked to run, after the bin path, under each posture.
+/// What the child must be asked to run, under each posture.
 const BLOCK_ARGS: [&str; 4] = ["covenant", "check", "--enforce", "block"];
 const ADVISE_ARGS: [&str; 4] = ["covenant", "check", "--enforce", "advise"];
 /// Injected fixture values — a host layer and a row file, both outside the judged tree.
@@ -119,8 +117,8 @@ impl RecordingSeam {
         match self.outcome {
             Some((status, stderr)) => Ok(SpawnOutcome {
                 status,
-                stdout: String::new(),
-                stderr: stderr.to_string(),
+                stdout: Vec::new(),
+                stderr: stderr.as_bytes().to_vec(),
             }),
             None => Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
@@ -146,7 +144,7 @@ fn spec<'a>(
         enforce: None,
         config_layer: None,
         telemetry_path: None,
-        executable: None,
+        executable: Some(Path::new("/fixture/pdks")),
         timeout: None,
         spawn: Some(spawn),
     }
@@ -188,19 +186,14 @@ fn unjudged(verdict: CheckCovenantVerdict) -> String {
     }
 }
 
-/// `args` with the bin path canonicalized, so `./dist/bin.js` and `dist/bin.js` read alike.
-fn argv_with_canonical_bin(spec: &SpawnSpec) -> Vec<String> {
-    let mut args = spec.args.clone();
-    let bin = Path::new(&args[0])
-        .canonicalize()
-        .expect("the bin path names a file");
-    args[0] = bin.to_string_lossy().into_owned();
-    args
+fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
+    spec.args.clone()
 }
 
-fn expected_argv(bin: &Path, fixed: &[&str], tail: &[&str]) -> Vec<String> {
-    std::iter::once(bin.to_string_lossy().into_owned())
-        .chain(fixed.iter().map(|s| s.to_string()))
+fn expected_argv(fixed: &[&str], tail: &[&str]) -> Vec<String> {
+    fixed
+        .iter()
+        .map(|s| s.to_string())
         .chain(tail.iter().map(|s| s.to_string()))
         .collect()
 }
@@ -209,13 +202,13 @@ mod what_the_seam_is_handed {
     use super::*;
 
     #[test]
-    fn default_posture_spawns_node_on_the_resolved_bin_with_block_cwd_repo_root_stdin_the_input() {
-        // Four values, each its own defect: `node` from anywhere else is another runtime;
+    fn default_posture_spawns_selected_executable_with_block_cwd_repo_root_stdin_the_input() {
+        // Four values, each its own defect: a different executable is another judge;
         // `advise` by default turns every break into exit 0 with no one reading stderr; a cwd
         // off the repo_root reads another config; a stdin that is not the input's own JSON is
         // an input this crate edited.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
@@ -223,13 +216,10 @@ mod what_the_seam_is_handed {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].command, "node");
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &[])
-        );
+        assert_eq!(calls[0].command, "/fixture/pdks");
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&BLOCK_ARGS, &[]));
         assert_eq!(calls[0].cwd, root);
-        let sent: Value = serde_json::from_str(&calls[0].stdin).expect("stdin is JSON");
+        let sent: Value = serde_json::from_slice(&calls[0].stdin).expect("stdin is JSON");
         assert_eq!(sent, serde_json::to_value(&input).unwrap());
     }
 
@@ -238,7 +228,7 @@ mod what_the_seam_is_handed {
         // `Some(Block)` rendered through a derived name (`Block`) or a numeric level is an
         // argv the bin refuses as usage — exit 2 with no judgment on every call.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
         let spawn = |s| seam.spawn(s);
@@ -248,15 +238,15 @@ mod what_the_seam_is_handed {
         check_covenant(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &[])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&BLOCK_ARGS, &[])
         );
     }
 
     #[test]
     fn advise_swaps_only_the_level() {
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
         let spawn = |s| seam.spawn(s);
@@ -266,8 +256,8 @@ mod what_the_seam_is_handed {
         check_covenant(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&bin, &ADVISE_ARGS, &[])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&ADVISE_ARGS, &[])
         );
     }
 
@@ -276,7 +266,7 @@ mod what_the_seam_is_handed {
         // The path is the host's, resolved by the umbrella against repo_root; a crate that
         // resolves it here, or drops it, hands the child another file or none.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
         let spawn = |s| seam.spawn(s);
@@ -286,15 +276,15 @@ mod what_the_seam_is_handed {
         check_covenant(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &["--config-layer", LAYER_PATH])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&BLOCK_ARGS, &["--config-layer", LAYER_PATH])
         );
     }
 
     #[test]
     fn telemetry_path_appends_its_flag_after_the_fixed_argv_verbatim() {
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
         let spawn = |s| seam.spawn(s);
@@ -304,8 +294,8 @@ mod what_the_seam_is_handed {
         check_covenant(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &["--telemetry-path", TELEMETRY_PATH])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&BLOCK_ARGS, &["--telemetry-path", TELEMETRY_PATH])
         );
     }
 
@@ -314,7 +304,7 @@ mod what_the_seam_is_handed {
         // One field overwriting the other's slot, or the two values swapped under the wrong
         // flag, sends the row file as the layer and fails every call closed.
         let (_dir, root) = fixture_root();
-        let bin = install_stub_polydeukes(&root, &pdks_manifest());
+        install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
         let spawn = |s| seam.spawn(s);
@@ -326,9 +316,8 @@ mod what_the_seam_is_handed {
         check_covenant(s);
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
+            literal_argv(&seam.calls()[0]),
             expected_argv(
-                &bin,
                 &ADVISE_ARGS,
                 &[
                     "--config-layer",
@@ -359,7 +348,7 @@ mod what_the_seam_is_handed {
 
         check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        let sent: Value = serde_json::from_str(&seam.calls()[0].stdin).expect("stdin is JSON");
+        let sent: Value = serde_json::from_slice(&seam.calls()[0].stdin).expect("stdin is JSON");
         let keys: Vec<&String> = sent.as_object().expect("an object").keys().collect();
         assert_eq!(keys, ["subagentSpawns", "toolCalls", "userMessages"]);
     }
@@ -487,12 +476,10 @@ mod resolving_the_umbrella {
     use super::*;
 
     #[test]
-    fn an_install_in_an_ancestor_of_repo_root_is_found_and_cwd_stays_repo_root() {
-        // A workspace installs once at its top and judges a nested project. Looking only in
-        // repo_root reads a monorepo member as not installed; setting cwd to the manifest's
-        // directory makes the child read the workspace's config instead of the member's.
+    fn an_ancestor_npm_install_does_not_change_repo_root_cwd() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace, &pdks_manifest());
+        install_stub_polydeukes(&workspace, &pdks_manifest());
         let repo_root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&repo_root).expect("nested repo_root");
         let input = write_input();
@@ -502,36 +489,31 @@ mod resolving_the_umbrella {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &[])
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&BLOCK_ARGS, &[]));
         assert_eq!(calls[0].cwd, repo_root);
     }
 
     #[test]
-    fn the_nearest_install_wins_over_an_ancestors() {
-        // Two installs on the walk: the one the judged project would itself resolve is the
-        // nearest. A walk that starts at the top, or keeps the last hit, spawns the other.
+    fn nested_npm_installs_do_not_change_explicit_selection() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
         install_stub_polydeukes(&workspace, &pdks_manifest());
         let repo_root = workspace.join("apps").join("consumer");
-        let near_bin = install_stub_polydeukes(&repo_root, &pdks_manifest());
+        install_stub_polydeukes(&repo_root, &pdks_manifest());
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
         check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s)));
 
         assert_eq!(
-            argv_with_canonical_bin(&seam.calls()[0]),
-            expected_argv(&near_bin, &BLOCK_ARGS, &[])
+            literal_argv(&seam.calls()[0]),
+            expected_argv(&BLOCK_ARGS, &[])
         );
     }
 
     #[test]
-    fn an_unparseable_manifest_spawns_nothing_and_is_unjudged() {
-        // A half-written install is not an install; spawning `node <nothing>` or panicking on
-        // the parse both leave the caller without the value it was promised.
+    fn an_unparseable_manifest_does_not_prevent_explicit_execution() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root, "{\"name\":\"polydeukes\",\"bin\":{");
         let input = write_input();
@@ -539,14 +521,14 @@ mod resolving_the_umbrella {
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
-        assert_eq!(seam.calls().len(), 0);
+        upheld(verdict);
+        assert_eq!(seam.calls().len(), 1);
+        assert_eq!(seam.calls()[0].command, "/fixture/pdks");
     }
 
     #[test]
-    fn a_manifest_with_no_bin_pdks_spawns_nothing_and_is_unjudged() {
-        // A manifest found but carrying no bin would otherwise be spawned on an empty path, a
-        // crash the status table turns into `Unjudged` without saying why.
+    fn a_manifest_without_bin_pdks_does_not_prevent_explicit_execution() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root, "{\"name\":\"polydeukes\",\"version\":\"0.0.0\"}");
         let input = write_input();
@@ -554,14 +536,14 @@ mod resolving_the_umbrella {
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
-        assert_eq!(seam.calls().len(), 0);
+        upheld(verdict);
+        assert_eq!(seam.calls().len(), 1);
+        assert_eq!(seam.calls()[0].command, "/fixture/pdks");
     }
 
     #[test]
-    fn a_broken_nearest_install_stops_the_walk_rather_than_using_an_ancestors() {
-        // The nearest manifest is the install the judged project resolves. Skipping past a
-        // broken one to a healthy ancestor judges with an umbrella the project does not use.
+    fn a_broken_nearest_install_does_not_change_explicit_execution() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
         install_stub_polydeukes(&workspace, &pdks_manifest());
         let repo_root = workspace.join("apps").join("consumer");
@@ -571,17 +553,16 @@ mod resolving_the_umbrella {
 
         let verdict = check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
-        assert_eq!(seam.calls().len(), 0);
+        upheld(verdict);
+        assert_eq!(seam.calls().len(), 1);
+        assert_eq!(seam.calls()[0].command, "/fixture/pdks");
     }
 
     #[test]
     fn a_relative_repo_root_resolves_from_the_current_directory_and_spawns_absolute_paths() {
-        // A relative root has no ancestors above `.`, and a relative bin would be read again
-        // from the child's cwd. The fixture is reached through `..` from the test's own cwd,
-        // so no test changes the process-wide current directory.
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
-        let bin = install_stub_polydeukes(&workspace, &pdks_manifest());
+        install_stub_polydeukes(&workspace, &pdks_manifest());
         let repo_root = workspace.join("apps").join("consumer");
         fs::create_dir_all(&repo_root).expect("nested repo_root");
         let cwd = std::env::current_dir()
@@ -600,19 +581,15 @@ mod resolving_the_umbrella {
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
-        assert!(Path::new(&calls[0].args[0]).is_absolute());
+        assert!(Path::new(&calls[0].command).is_absolute());
         assert!(calls[0].cwd.is_absolute());
-        assert_eq!(
-            argv_with_canonical_bin(&calls[0]),
-            expected_argv(&bin, &BLOCK_ARGS, &[])
-        );
+        assert_eq!(literal_argv(&calls[0]), expected_argv(&BLOCK_ARGS, &[]));
         assert_eq!(calls[0].cwd.canonicalize().expect("cwd exists"), repo_root);
     }
 
     #[test]
-    fn an_install_directory_without_a_manifest_stops_the_walk() {
-        // Node resolves the nearest `node_modules/polydeukes` directory whether or not its
-        // manifest survived; passing over a half-pruned one judges with an ancestor's umbrella.
+    fn an_install_directory_without_a_manifest_does_not_change_explicit_execution() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, workspace) = fixture_root();
         install_stub_polydeukes(&workspace, &pdks_manifest());
         let repo_root = workspace.join("apps").join("consumer");
@@ -622,14 +599,14 @@ mod resolving_the_umbrella {
 
         let verdict = check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
-        assert_eq!(seam.calls().len(), 0);
+        upheld(verdict);
+        assert_eq!(seam.calls().len(), 1);
+        assert_eq!(seam.calls()[0].command, "/fixture/pdks");
     }
 
     #[test]
-    fn a_bin_written_as_a_plain_string_is_not_bin_pdks() {
-        // npm's string shorthand names the bin after the package, so there is no `pdks`
-        // entry to spawn; reading the string as if it were `bin.pdks` runs another file.
+    fn a_plain_string_npm_bin_does_not_change_explicit_execution() {
+        // npm metadata must not redirect the explicitly selected executable or its cwd.
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root, "{\"name\":\"polydeukes\",\"bin\":\"./dist/bin.js\"}");
         let input = write_input();
@@ -637,7 +614,8 @@ mod resolving_the_umbrella {
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        unjudged(verdict);
-        assert_eq!(seam.calls().len(), 0);
+        upheld(verdict);
+        assert_eq!(seam.calls().len(), 1);
+        assert_eq!(seam.calls()[0].command, "/fixture/pdks");
     }
 }

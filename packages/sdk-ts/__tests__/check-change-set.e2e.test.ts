@@ -1,9 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readRecords } from '@polydeukes/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkChangeSet } from '../src/check-change-set.ts';
 
 // `checkChangeSet` against the BUILT `pdks`: a throwaway tree scaffolded by `pdks init`,
@@ -27,11 +35,13 @@ const SELF_MOD_LABEL = 'self-mod';
 let projectRoot: string;
 
 beforeEach(() => {
+  vi.stubEnv('PATH', '');
   projectRoot = realpathSync(mkdtempSync(join(tmpdir(), 'pdks-sdk-ts-diff-e2e-')));
 });
 
 afterEach(() => {
   // rmSync removes symlinks themselves, never what they point at.
+  vi.unstubAllEnvs();
   rmSync(projectRoot, { recursive: true, force: true });
 });
 
@@ -41,6 +51,13 @@ afterEach(() => {
  * path inside the fixture, so the rows this suite reads are this tree's alone.
  */
 function scaffoldConsumer(): void {
+  const executable = join(projectRoot, 'pdks');
+  writeFileSync(
+    executable,
+    `#!/bin/sh\nexec '${process.execPath.replaceAll("'", "'\\''")}' '${UMBRELLA_BIN.replaceAll("'", "'\\''")}' "$@"\n`,
+  );
+  chmodSync(executable, 0o755);
+  vi.stubEnv('PATH', projectRoot);
   symlinkSync(join(checkoutRoot, 'node_modules'), join(projectRoot, 'node_modules'), 'dir');
   writeFileSync(join(projectRoot, 'package.json'), '{"name":"consumer","private":true}\n');
   const init = spawnSync(process.execPath, [UMBRELLA_BIN, 'init'], {
