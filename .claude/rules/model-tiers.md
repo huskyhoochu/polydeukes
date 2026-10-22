@@ -13,6 +13,13 @@ file that a reviewer sees.
 | `sonnet` | `tdd-implementer` | writes the minimum code that turns audited tests green; the tests are the target |
 | `sonnet` | scope and other fixed-procedure steps | running `git diff` and listing files gains nothing from a higher tier |
 
+## Inside the ticket loop
+
+`/ticket` runs RED, AUDIT and GREEN as `pi` processes on
+`openrouter/deepseek/deepseek-v4.1-flash-1017` (`.claude/skills/ticket/SKILL.md` §3), so the
+three `tdd-*` rows above apply when `/tdd` runs outside that loop. In both cases the agent
+files' bodies are the role prompts.
+
 ## How it is enforced
 
 - `.claude/settings.json` sets `CLAUDE_CODE_SUBAGENT_MODEL` to `opus`. A subagent that names no

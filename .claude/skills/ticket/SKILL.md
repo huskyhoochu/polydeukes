@@ -89,6 +89,48 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Invoke the `tdd` skill with the PRD as the feature description. It owns
   PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE; do not re-implement its phases here.
+- **Inside this loop the three delegated phases run on pi with DeepSeek, not as `Agent`
+  spawns.** RED, AUDIT and GREEN each start one `pi` process from Bash in the repository root;
+  PRE-FLIGHT, the DELETE decisions, REVIEW and VALIDATE stay in the main session as the `tdd`
+  skill describes. Files go under the gitignored `.polydeukes/tmp/` (a Write outside the
+  project is refused by this repository's session hook):
+
+  ```sh
+  awk 'BEGIN{n=0} /^---$/ && n<2 {n++; next} n>=2' .claude/agents/tdd-<role>.md \
+    > .polydeukes/tmp/<role>.role.md
+  pi -p --no-session --mode json \
+    --model openrouter/deepseek/deepseek-v4.1-flash-1017 --thinking medium \
+    --tools <tools> \
+    --append-system-prompt .polydeukes/tmp/<role>.role.md \
+    @.polydeukes/tmp/<role>.task.md < /dev/null > .polydeukes/tmp/<role>.jsonl 2>&1
+  ```
+
+  - `<tools>` is `read,bash,edit,write` for `test-writer` and `implementer`, and
+    `read,grep,find,ls` for `test-auditor`, which keeps the auditor without a shell or an
+    editor as its agent file intends.
+  - Run it with `run_in_background`. A few seconds after the start, check that the `.jsonl` has
+    events; a process with an open stdin or a session directory waits without calling the model.
+  - The task file is the phase's instruction, the shared rules below, and the PRD's contract,
+    pseudocode and acceptance list quoted from the file. It ends with the delegation line the
+    `tdd` skill gives verbatim.
+  - The shared rules: work only inside the repository root; do not touch the protected paths
+    (`.claude/`, `.codex/`, `.grok/`, `.git/`, `lefthook*.yml`, `biome.json`,
+    `polydeukes.config.yaml`, `.polydeukes/bin/`, `packages/*/dist/`), because pi's tool calls
+    never reach this session's hook; run only the changed test files with
+    `pnpm -F <pkg> exec vitest run <file>`, never `pnpm test` or `pnpm build`; never cut a
+    command's output with `head` or `tail`; run no git command that writes (`add`, `commit`,
+    `push`, `stash`, `checkout`, `reset`), since commits belong to the main session; a rule the
+    contract does not state is not made — stop and report it.
+  - Read the result from the log: the final report is the text of the last assistant
+    `message_end` event, and the cost is the sum of its `usage.cost.total` values. The exit
+    code alone does not show success.
+  - After every run, the main session reads `git status --short` and the diff, and removes the
+    `.pi-lens-probe-home/` directory the pi-lens extension leaves in the root. After AUDIT, the
+    main session stages the surviving test files; after GREEN, an unstaged change under
+    `__tests__/` means the implementer edited a test, and the run is rejected.
+  - Read the RED output down to each fixture's premise before AUDIT. The model implements an
+    instruction literally, including a detail the task file states wrongly, so a wrong
+    fixture reaches GREEN as a wrong implementation.
 - The loop does not proceed until VALIDATE passes (tests + typecheck + `pnpm check`).
 - A knowledge document the loop writes besides the PRD (dev-log · ADR · research) carries
   `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to
