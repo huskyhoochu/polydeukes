@@ -1,7 +1,7 @@
 {
   "name": "polydeukes",
   "version": "0.20.1",
-  "description": "A development discipline framework for building alongside an AI coding partner — deterministic covenants, a verifiable work ledger, local memory, and adversarial verification. Beta.",
+  "description": "A development discipline framework for building alongside an AI coding partner — deterministic covenants, a verifiable work ledger, local memory, and adversarial verification.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "keywords": [
     "harness",

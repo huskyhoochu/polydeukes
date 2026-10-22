@@ -16,7 +16,7 @@ paths:
 # How the two surfaces judge
 
 What each axis actually compares when this repo judges itself. Vocabulary for the terms below
-is in `domain-terms.md`; the recovery procedures for a locked session are in `AGENTS.md`.
+is in `domain-terms.md`; the recovery procedures for a locked session are in `self-dogfooding.md`.
 
 All protection-policy data lives in `polydeukes.config.yaml`, which documents each entry's why
 inline — read it for the live protected paths and disciplines. Both surfaces fail **closed** on

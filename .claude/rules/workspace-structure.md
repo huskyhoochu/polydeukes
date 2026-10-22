@@ -177,6 +177,17 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   re-export-only consumer contracts, the executor/vocabulary skeletons) — it auto-loads for
   barrels, manifests, and READMEs.
 
+## The single executable and the SDK cross-check
+
+The umbrella's single executable contains Node and its bundle (the umbrella plus the three
+adapters), built by `packages/polydeukes/scripts/build-sea.mjs <output path>` and attached to each
+GitHub Release by `publish.yml` (`pdks-linux-x64`, `pdks-darwin-arm64`). The three SDKs share one
+process contract: an explicit executable resolves against the caller's cwd, otherwise the first
+executable `pdks` in an absolute PATH directory runs, the root sets the child's cwd, and results
+are closed values with an optional communication deadline; judgment, telemetry, and indexing stay
+in `pdks`. `node scripts/verify-sdk-contract.mjs --executable <absolute-pdks>` compares all three
+SDKs' observations of the shared fixture, real judgments, telemetry, and ranked searches.
+
 ## New-package scaffold checklist
 
 Three registrations are enumerated, not inferred, so a new package silently misses them. All

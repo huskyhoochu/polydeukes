@@ -1,7 +1,7 @@
 {
   "name": "@polydeukes/adapter-claude-code",
   "version": "0.20.1",
-  "description": "Polydeukes adapter for Claude Code — up-translates PreToolUse hook payloads into the agent-neutral covenant input IR. Beta.",
+  "description": "Polydeukes adapter for Claude Code — up-translates PreToolUse hook payloads into the agent-neutral covenant input IR.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
   "repository": {

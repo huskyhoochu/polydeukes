@@ -6,7 +6,7 @@
 > into sections, records the links between them, and keeps both in a local SQLite database
 > that `pdks memory` reads.
 >
-> Beta and optional. Install it next to `polydeukes`, which names it as an optional peer
+> Optional. Install it next to `polydeukes`, which names it as an optional peer
 > dependency. It needs Node.js 24.15 or later.
 
 <a id="ownership"></a>

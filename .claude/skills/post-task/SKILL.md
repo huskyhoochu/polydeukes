@@ -26,9 +26,10 @@ Record what it did (files touched, or "no exported symbols changed").
 
 Ask: **did this change make any written description stale?** Check the changed files against:
 
-- `AGENTS.md` — commands, structure, conventions it states (e.g. a renamed script or tsconfig
-  invalidates its Commands section);
-- `.claude/rules/*.md` — workspace structure, domain terms;
+- `AGENTS.md` — a routing table only: does every file it names still exist and still hold what
+  the table says it holds;
+- `.claude/rules/*.md` — the always-on rules (`conventions.md` for commands, `development-process.md`,
+  `self-dogfooding.md`) and the path-scoped ones (workspace structure, domain terms);
 - `README.md` / `STORY.md` and their `*.ko.md` mirrors — **bilingual docs must move together**;
 - the affected package's own README, if any.
 
