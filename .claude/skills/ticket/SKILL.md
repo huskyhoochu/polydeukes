@@ -29,8 +29,8 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   and stop. The issue is the ticket's only record; no wiki document lists tickets.
 - Re-read the issue body (검증기준 = acceptance criteria) and its `why`, and the milestone
   description when the issue has one (its goal and Exit Criteria).
-- **If the ticket creates a package, read the new-package scaffold checklist in
-  `.claude/rules/workspace-structure.md` NOW and put each of its registrations into the PRD
+- **If the ticket creates a package, read `.claude/rules/new-package-checklist.md` NOW and put
+  each of its registrations into the PRD
   as an acceptance criterion.** The rule auto-loads for the files it names, but the files a
   new package is made of are written by subagents in WORK — so the main session, which owns
   the PRD and the release, never triggers it. `ISSUE-63` shipped a sixth package with the

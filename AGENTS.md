@@ -31,9 +31,11 @@ rule loading (Codex, Grok) do this routing by hand. The rules most often reached
 
 | To learn | Rule |
 |---|---|
-| package roles, dependency direction, the single executable, new-package and release registrations | `workspace-structure.md` |
+| package roles, dependency direction, the single executable | `workspace-structure.md` |
+| adding a package, release and publishing registrations | `new-package-checklist.md` |
 | a package's public contract and barrel shape | `package-contract.md` |
-| the ubiquitous language and every closed name list | `domain-terms.md` (concepts in the root `CONTEXT.md`) |
+| the ubiquitous language and the banned words | `domain-terms.md` (concepts in the root `CONTEXT.md`) |
+| the declaration grammar's closed lists | `algebra-vocabulary.md` |
 | what the two surfaces and three axes compare, the witness valve | `dogfooding-axes.md` |
 | how adapters build the input IR and what counts as evidence | `evidence-and-ir.md` |
 | how an acceptance criterion or a measured number must be written | `claims-and-criteria.md` |

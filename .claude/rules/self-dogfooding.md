@@ -30,14 +30,10 @@ change-set surface has no list of its own and no prompt: it judges the piped dif
 verdict `advised` at exit 0 unless the command carries `--enforce block` (this repo's lefthook
 line does not — a staged gate-file change has already passed the session surface).
 
-Disciplines sit in three lists — `disciplines:` (both surfaces), `sessionDisciplines:` (one live
-call), `changeSetDisciplines:` (a finished change set) — and the loader refuses an entry written
-in a list whose surface cannot observe its channels; each surface compiles the shared list plus
-its own. A break lands `advised` (exit 0, the `why` on stderr) unless the entry says
-`enforce: block`. The session-protected list is a separate list, not an override applied to those
-entries: nothing promotes a discipline's own `advise` to a block, and since POSTURE-01 the
-protected list above is the only thing that blocks unasked — on the session surface. Every
-judgment appends one row to `.polydeukes/roi.log` (local, gitignored).
+The protected list above is the only thing that blocks unasked, and only on the session surface;
+nothing promotes a discipline's own `advise` to a block. How the three discipline lists are placed
+and judged is in `dogfooding-axes.md`. Every judgment appends a row to `.polydeukes/roi.log`
+(local, gitignored).
 
 ## Recovery and rewiring
 

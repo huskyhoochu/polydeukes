@@ -15,8 +15,7 @@ binary combinators (`union` · `onlyIn` · `intersect`) are closed and are not r
 Adding one step is one S-sized ticket, and the ticket delivers all six of these.
 
 1. **One measured demand.** A roadmap row, or a discipline someone tried to write that the
-   current steps cannot express. The answer to "can the 4-family syntax do it?" is sought in a
-   declaration first (`COVENANT-12`'s standing disposition).
+   current steps cannot express.
 2. **One registry entry** — `{ args, validate, run }`. `args` is the closed set of argument
    keys; `validate` rejects a wrong type or an unknown key with a config fault that names the
    location; `run` has the signature `Items → Items` and no other. A step that compares two
@@ -30,8 +29,8 @@ Adding one step is one S-sized ticket, and the ticket delivers all six of these.
    and an input whose order the output must preserve. Then ask which axis still has no fixture;
    that question is the criterion, not the assertion count.
 5. **One line in the registry's table comment.** The registry file's own doc comment is the
-   vocabulary's single list; the glossary in `domain-terms.md` names the *kinds* (unary,
-   combinator, relation) and stays untouched.
+   vocabulary's single list; `algebra-vocabulary.md` names the *kinds* (unary, combinator,
+   relation) and stays untouched.
 6. **Zero schema lines.** `algebra-declaration.schema.json` leaves the unary position open, so
    a new step changes nothing there. The registry is the only source, and the refusal of a name
    outside it is a runtime check at compile time — TypeScript's closed union is erased, so the
