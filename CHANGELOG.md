@@ -11,12 +11,12 @@ everything not yet implemented.
 
 <!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
 
-## [0.20.1](https://github.com/b95labs/polydeukes/compare/v0.20.0...v0.20.1) (2026-10-22)
+## [0.20.1](https://github.com/huskyhoochu/polydeukes/compare/v0.20.0...v0.20.1) (2026-10-22)
 
 
 ### Bug Fixes
 
-* **adapter:** block only PreToolUse when a hook cannot start; judge worktrees and outside files ([35c8e31](https://github.com/b95labs/polydeukes/commit/35c8e314a229e16f8bafa3b032de294bcf74b734))
+* **adapter:** block only PreToolUse when a hook cannot start; judge worktrees and outside files ([35c8e31](https://github.com/huskyhoochu/polydeukes/commit/35c8e314a229e16f8bafa3b032de294bcf74b734))
 
 ## [0.20.0](https://github.com/huskyhoochu/polydeukes/compare/v0.19.1...v0.20.0) (2026-10-21)
 
