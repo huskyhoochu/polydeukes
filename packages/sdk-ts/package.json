@@ -1,6 +1,6 @@
 {
   "name": "@polydeukes/sdk-ts",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "description": "Polydeukes SDK for TypeScript — runs four covenant and memory verbs through a standalone pdks executable and returns results as values. Beta.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",
