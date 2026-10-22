@@ -1,4 +1,6 @@
-import { isAbsolute } from 'node:path';
+import { realpathSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
+import { isSea } from 'node:sea';
 import { runAdapterProcess } from './adapter-process.ts';
 import { scaffoldProject } from './scaffold-project.ts';
 
@@ -16,6 +18,37 @@ export type RunAdapterCommandSpec = {
 
 /** Output intended for the host, with the host's allow or deny exit status. */
 export type RunAdapterCommandOutcome = { stdout: string; stderr: string; exitCode: 0 | 2 };
+
+/** The pinned project root and the command this process was started with. */
+export type RegistrationCommandSpec = {
+  projectRoot: string;
+  command: { executable: string; args: readonly string[] };
+};
+
+/**
+ * Prefer the stable unversioned package path when the running script is that same file.
+ *
+ * A pnpm install links `node_modules/polydeukes` at the versioned store, so pinning the
+ * versioned path breaks the registration on the next version bump. Any other script — or no
+ * script at all, or a link that does not resolve — keeps the path this process was started
+ * with.
+ */
+export function registrationCommand(spec: RegistrationCommandSpec): {
+  executable: string;
+  args: readonly string[];
+} {
+  const [script, ...rest] = spec.command.args;
+  if (isSea() || script === undefined) return spec.command;
+  const link = join(spec.projectRoot, 'node_modules', 'polydeukes', 'dist', 'bin.js');
+  try {
+    if (realpathSync(link) === realpathSync(script)) {
+      return { ...spec.command, args: [link, ...rest] };
+    }
+  } catch {
+    // A missing or dangling link is not the running script.
+  }
+  return spec.command;
+}
 
 async function readPayload(): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -72,9 +105,10 @@ export async function runAdapterCommand(
   const adapter = await hosts[host as keyof typeof hosts]();
   if (verb === 'init') {
     try {
+      const command = registrationCommand({ projectRoot: root, command: spec.command });
       const result = adapter.registerHook({
         projectRoot: root,
-        command: spec.command,
+        command,
         beforeWrite: (ownedPaths: readonly string[]) => scaffoldProject(root, ownedPaths),
       });
       const stdout = [
@@ -99,7 +133,8 @@ export async function runAdapterCommand(
   }
   let prepared: ReturnType<typeof adapter.prepareHook>;
   try {
-    prepared = adapter.prepareHook({ repoRoot: root, rawPayload: await readPayload() });
+    const rawPayload = await readPayload();
+    prepared = adapter.prepareHook({ repoRoot: root, rawPayload });
   } catch (error) {
     prepared = {
       outcome: 'unavailable' as const,

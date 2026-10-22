@@ -115,7 +115,7 @@ export function registerHook(spec: RegisterHookSpec): RegisterHookOutcome {
       command: spec.command.executable,
       args,
       timeout,
-      onFailure: 'block',
+      ...(event === 'PreToolUse' ? { onFailure: 'block' } : {}),
     };
     retained.push(
       event === 'PreToolUse' || event === 'PostToolUse'

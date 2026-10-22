@@ -9,6 +9,11 @@ The two surfaces share the same config vocabulary, but they answer different mom
 session surface when an AI partner is making edits, and use the change-set surface when history
 is about to be written.
 
+A write in a linked git worktree of the registered project is judged with the registered project's
+config, by the file's absolute path: protected entries still match, while disciplines scoped by a
+project-relative `target.path` pattern do not apply there. Its rows land in the registered
+project's telemetry.
+
 <a id="claude-code"></a>
 ## Claude Code session surface
 

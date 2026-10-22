@@ -148,10 +148,13 @@ try {
       if (host === 'claude-code') {
         assert.equal(handler.command, executable);
         assert.deepEqual(handler.args, ['adapter', host, 'hook', '--project-root', project]);
-        assert.equal(handler.onFailure, 'block');
+        if (event === 'PreToolUse') assert.equal(handler.onFailure, 'block');
+        else assert.equal(handler.onFailure, undefined);
       } else {
         assert(handler.command.includes(project.replaceAll("'", "'\"'\"'")));
         assert(!handler.command.includes('covenant-pretooluse.mjs'));
+        if (event === 'PreToolUse') assert(handler.command.endsWith(' || exit 2'));
+        else assert(!handler.command.includes('|| exit 2'));
       }
     }
     writeFileSync(

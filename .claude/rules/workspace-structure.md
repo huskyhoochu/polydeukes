@@ -62,7 +62,15 @@ facts — pnpm/turbo/Biome/Node 24 — are in `package.json`/`turbo.json`; not r
   bundles them into its single executable; `adapter-command.ts` owns their common execution
   path and `adapter-process.ts` owns process communication and deadlines.
   Registration pins the executable and project root. Moving the executable requires init
-  from its new location. Existing project config remains owner-controlled; init reports the
+  from its new location; from a pnpm install, init pins `node_modules/polydeukes/dist/bin.js`
+  rather than the versioned store path. The pinned root is never replaced: a file in a
+  worktree or anywhere outside the root is judged by its absolute path. Each adapter carries a
+  file target under its spelled name and, when it differs, again under its real
+  (`realpathSync.native`) name, so a protected entry that is itself a symlink and a link that
+  leads to one both stay judged; a dangling link on the way refuses the call. Only the
+  PreToolUse registration turns a hook that cannot start into a refusal (Claude
+  `onFailure: block`, Codex and Grok `|| exit 2`); the other events never block on failure.
+  Existing project config remains owner-controlled; init reports the
   required protected paths. Native registration replaces owned legacy commands, removes an
   exact generated mjs, and preserves user-modified files and sibling handlers.
   Codex translates `apply_patch` into file changes and keeps session/subagent evidence from

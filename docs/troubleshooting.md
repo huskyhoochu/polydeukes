@@ -85,6 +85,11 @@ project moved, run `pdks adapter <host> init` from your own terminal at the new 
 host trust again. The single executable contains the judge and all three adapters. A source checkout
 using npm packages needs its dependencies and complete workspace build restored.
 
+While the registered executable cannot start, all three hosts refuse every file-changing or shell
+tool call and the session itself continues: prompts are still submitted, and reading tools still
+run, so you can read the refusal and repair the path. A
+registration committed from another machine names that machine's paths; run init on yours.
+
 A failure before the hook starts may leave no telemetry. A started hook with invalid input sends
 `--input-failure` to the shared judge, producing one diagnostic and one `blocked covenant-check`
 row. Stdin EOF and child communication each have a 10-second internal deadline. Host trust,

@@ -30,7 +30,7 @@ stdin is read to EOF.
 
 `--input-failure` lets an adapter report why it could not produce an observation. stdin is
 a JSON object with a non-empty string `reason`, such as
-`{"reason":"adapter-codex failed before spawn: the patch targets a path outside the project"}`.
+`{"reason":"payload must be an object"}`.
 The command prints that reason once, records one `blocked covenant-check` row, and exits `3`
 without judging a call. Config and telemetry-path resolution apply as usual; a config error
 takes precedence. `--input-failure` and `--diff` are mutually exclusive.

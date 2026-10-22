@@ -111,6 +111,12 @@ translation, registration, and responses; the common runtime invokes the judge t
 executable. Execution and failure handling are shared while each host supplies only what it can
 prove. An unknown prompt origin is not promoted to a human message to make capabilities match.
 
+When the judge cannot start, every host refuses the file-changing or shell call about to run, and
+nothing else stops.
+A missed judgment would let a protected write through with no row to show it, so that call is
+refused; a refused prompt or session end would lock a session that cannot be repaired from inside,
+so those events go on.
+
 ### Evidence with a stated boundary
 
 `passed`, `blocked`, `witnessed`, `advised`, and `skipped` describe judgment outcomes.

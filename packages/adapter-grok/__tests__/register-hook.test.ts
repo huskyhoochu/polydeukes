@@ -226,3 +226,105 @@ describe('registerHook write ordering and command prefix', () => {
     ]);
   });
 });
+
+const EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
+const TOOL_EVENT = 'PreToolUse';
+const OBSERVE_ONLY_EVENTS = ['UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
+
+function ownedHandlersFor(event: string): Record<string, unknown>[] {
+  const groups = (JSON.parse(settings()) as { hooks?: Record<string, unknown> }).hooks?.[event];
+  if (!Array.isArray(groups)) return [];
+  const result: Record<string, unknown>[] = [];
+  for (const group of groups) {
+    const handlers = (group as { hooks?: unknown }).hooks;
+    if (!Array.isArray(handlers)) continue;
+    for (const handler of handlers) {
+      if (!handler || typeof handler !== 'object') continue;
+      const record = handler as Record<string, unknown>;
+      const command = typeof record.command === 'string' ? record.command : '';
+      const args = Array.isArray(record.args) ? record.args : [];
+      const owned =
+        command.includes('pdks') ||
+        args.some((argument) => typeof argument === 'string' && argument.includes('pdks'));
+      if (owned && !command.includes(FOREIGN)) result.push(record);
+    }
+  }
+  return result;
+}
+
+describe('registerHook failure conversion through the registered shell command', () => {
+  function ownedCommand(event: string): string {
+    const handler = ownedHandlersFor(event)[0];
+    if (!handler || typeof handler.command !== 'string') throw new Error('missing owned command');
+    return handler.command;
+  }
+  function run(command: string) {
+    return spawnSync('/bin/sh', ['-c', command], { input: '{}' });
+  }
+  function writeExitScript(code: number): string {
+    const executable = join(projectRoot, `exit-${code}.sh`);
+    writeFileSync(executable, `#!/bin/sh\nexit ${code}\n`);
+    chmodSync(executable, 0o755);
+    return executable;
+  }
+
+  it('turns a missing executable into status 2 for PreToolUse and leaves an observe-only event non-2', () => {
+    // A launch failure before the judge runs must stop the tool call, but the same failure
+    // on a prompt event must not lock the session; a shared suffix or none at all breaks
+    // one side of that split.
+    install(join(projectRoot, 'missing', 'pdks'));
+
+    const pre = run(ownedCommand(TOOL_EVENT));
+    expect(pre.status, String(pre.stderr)).toBe(2);
+
+    const observe = run(ownedCommand('UserPromptSubmit'));
+    expect(observe.status, String(observe.stderr)).not.toBe(2);
+  });
+
+  it.each([
+    [0, 0],
+    [2, 2],
+    [3, 2],
+  ])('maps executable exit %i through PreToolUse to status %i', (code, expected) => {
+    // The wrapper must preserve the judge's pass and block (0, 2) and fold every other
+    // failure (3, signals) into 2; a bare command would leave exit 3 unconverted.
+    install(writeExitScript(code));
+
+    const result = run(ownedCommand(TOOL_EVENT));
+    expect(result.status, String(result.stderr)).toBe(expected);
+  });
+});
+
+describe('registerHook failure conversion', () => {
+  it('blocks a failed PreToolUse launch while leaving observe-only events unblocked', () => {
+    // A judge that cannot start must still stop the tool call, but converting a failed
+    // prompt or session-end event into a block locks a session nobody can recover inside.
+    install();
+    const pre = ownedHandlersFor(TOOL_EVENT);
+    expect(pre).toHaveLength(1);
+    expect(pre[0]?.command).toMatch(/ \|\| exit 2$/);
+    for (const event of OBSERVE_ONLY_EVENTS) {
+      const handlers = ownedHandlersFor(event);
+      expect(handlers).toHaveLength(1);
+      expect(handlers[0]?.command).not.toMatch(/\|\| exit 2/);
+    }
+  });
+
+  it('migrates a previously owned PreToolUse handler without stacking a second one', () => {
+    // The older registration form has no failure exit; re-running init must replace it, or
+    // the owned handler count grows by one on every install.
+    install();
+    const value = JSON.parse(settings());
+    for (const group of value.hooks[TOOL_EVENT] ?? []) {
+      for (const handler of group.hooks ?? []) {
+        if (typeof handler.command === 'string') {
+          handler.command = handler.command.replace(/ \|\| exit 2$/, '');
+        }
+      }
+    }
+    writeFileSync(join(projectRoot, SETTINGS), JSON.stringify(value));
+    install();
+    for (const event of EVENTS) expect(ownedHandlersFor(event)).toHaveLength(1);
+    expect(ownedHandlersFor(TOOL_EVENT)[0]?.command).toMatch(/ \|\| exit 2$/);
+  });
+});

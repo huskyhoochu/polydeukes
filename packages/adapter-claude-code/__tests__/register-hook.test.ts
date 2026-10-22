@@ -226,3 +226,60 @@ describe('registerHook write ordering and command prefix', () => {
     ]);
   });
 });
+
+const EVENTS = ['PreToolUse', 'UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
+const TOOL_EVENT = 'PreToolUse';
+const OBSERVE_ONLY_EVENTS = ['UserPromptSubmit', 'PostToolUse', 'SessionEnd'] as const;
+
+function ownedHandlersFor(event: string): Record<string, unknown>[] {
+  const groups = (JSON.parse(settings()) as { hooks?: Record<string, unknown> }).hooks?.[event];
+  if (!Array.isArray(groups)) return [];
+  const result: Record<string, unknown>[] = [];
+  for (const group of groups) {
+    const handlers = (group as { hooks?: unknown }).hooks;
+    if (!Array.isArray(handlers)) continue;
+    for (const handler of handlers) {
+      if (!handler || typeof handler !== 'object') continue;
+      const record = handler as Record<string, unknown>;
+      const command = typeof record.command === 'string' ? record.command : '';
+      const args = Array.isArray(record.args) ? record.args : [];
+      const owned =
+        command.includes('pdks') ||
+        args.some((argument) => typeof argument === 'string' && argument.includes('pdks'));
+      if (owned && !command.includes(FOREIGN)) result.push(record);
+    }
+  }
+  return result;
+}
+
+describe('registerHook failure handling scope', () => {
+  it('confines the failure block to the tool-use handler', () => {
+    // A failed prompt submission that blocks locks the session; only a tool call whose judge
+    // could not start must be refused.
+    install();
+    for (const event of EVENTS) expect(ownedHandlersFor(event)).toHaveLength(1);
+    expect(ownedHandlersFor(TOOL_EVENT)[0]).toMatchObject({ onFailure: 'block' });
+    for (const event of OBSERVE_ONLY_EVENTS) {
+      expect(Object.hasOwn(ownedHandlersFor(event)[0] ?? {}, 'onFailure')).toBe(false);
+    }
+  });
+
+  it('migrates a registration that blocks every lifecycle failure without stacking handlers', () => {
+    // The previous form put onFailure on all four events; re-running init must reduce it to
+    // the tool-use handler and leave exactly one owned handler per event.
+    install();
+    const value = JSON.parse(settings());
+    for (const event of EVENTS) {
+      for (const group of value.hooks[event] ?? []) {
+        for (const handler of group.hooks ?? []) handler.onFailure = 'block';
+      }
+    }
+    writeFileSync(join(projectRoot, SETTINGS), JSON.stringify(value));
+    install();
+    for (const event of EVENTS) expect(ownedHandlersFor(event)).toHaveLength(1);
+    expect(ownedHandlersFor(TOOL_EVENT)[0]).toMatchObject({ onFailure: 'block' });
+    for (const event of OBSERVE_ONLY_EVENTS) {
+      expect(Object.hasOwn(ownedHandlersFor(event)[0] ?? {}, 'onFailure')).toBe(false);
+    }
+  });
+});

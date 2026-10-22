@@ -1,5 +1,5 @@
-import { readFileSync, realpathSync } from 'node:fs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { type CovenantInput, isPlainObject } from '@polydeukes/core';
 import { COMMAND_ARGS, MUTATING_TOOLS, SHELL_TOOLS } from './session-vocabulary.ts';
 /** One raw host event and the project it belongs to. */
@@ -13,7 +13,8 @@ function readPre(path: string): string | null {
   try {
     return readFileSync(path, 'utf8');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return null;
     throw error;
   }
 }
@@ -29,41 +30,76 @@ import {
 
 function canonicalDir(path: string): string {
   try {
-    return realpathSync(path);
+    return realpathSync.native(path);
   } catch {
     return resolve(path);
   }
 }
 
+function isDanglingLink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve an absolute path through the nearest ancestor that exists. */
+function canonicalTarget(path: string): string | null {
+  const missing: string[] = [];
+  let current = resolve(path);
+  for (;;) {
+    try {
+      return join(realpathSync.native(current), ...missing.reverse());
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOTDIR') return null;
+      if (code !== 'ENOENT') {
+        throw new Error(`cannot resolve the real path of ${path}: ${code}`);
+      }
+      if (isDanglingLink(current)) {
+        throw new Error(`target path crosses a dangling symbolic link: ${path}`);
+      }
+      const parent = dirname(current);
+      if (parent === current) return resolve(path);
+      missing.push(basename(current));
+      current = parent;
+    }
+  }
+}
+
+function nameBelow(path: string, root: string): string {
+  const inside = relative(root, path);
+  return inside === '' || inside === '..' || inside.startsWith('../') || isAbsolute(inside)
+    ? path
+    : inside;
+}
+
 /**
- * The repoRoot-relative form of a patch path, which the patch spelled relative to the
- * call's `cwd`.
+ * The repoRoot-relative forms of a patch path, which the patch spelled relative to the
+ * call's `cwd`, and its real path when that differs.
  *
  * Two bases meet here: a patch path is resolved against `cwd`, and the judge reads
  * `fileChange.path` against the project root. Carried verbatim, a subdirectory call's
  * `inner.txt` is compared against the protection list as `inner.txt` rather than as
- * `gate/inner.txt`. A path resolving outside the root has no repo-relative form at all, and
- * an element carrying one lands in no scope — judged over nothing, and passed.
+ * `gate/inner.txt`. An outside path stays absolute so the protection list's segment match
+ * still sees a host configuration file under the home directory.
  */
-function relativizeToRepoRoot(patchPath: string, cwd: string, repoRoot: string): string {
+function patchTargetPaths(patchPath: string, cwd: string, repoRoot: string): string[] {
+  const realRoot = canonicalDir(repoRoot);
   const absolute = isAbsolute(patchPath)
     ? resolve(patchPath)
     : resolve(canonicalDir(cwd), patchPath);
-  const repoRelative = relative(canonicalDir(repoRoot), absolute);
-  if (
-    repoRelative === '' ||
-    repoRelative === '..' ||
-    repoRelative.startsWith('../') ||
-    isAbsolute(repoRelative)
-  ) {
-    throw new Error(`the patch targets '${patchPath}', which is outside the project`);
-  }
-  return repoRelative;
+  const spelled = nameBelow(absolute, realRoot);
+  const real = canonicalTarget(absolute);
+  if (real === null) return [spelled];
+  const realName = nameBelow(real, realRoot);
+  return realName === spelled ? [spelled] : [spelled, realName];
 }
 
 /**
- * The file changes one `apply_patch` command proves, each carrying its repoRoot-relative
- * path.
+ * The file changes one `apply_patch` command proves, each carrying the paths
+ * `patchTargetPaths` gives it.
  *
  * The parser reads a pre-state at the cwd-resolved absolute path and answers with the path
  * the patch spelled; the rebasing happens after, so the two bases never cross.
@@ -83,18 +119,15 @@ function patchFileChanges(command: string, cwd: string, repoRoot: string): FileC
   if (parsed.ok !== true) {
     throw new Error(`the patch text is not one this adapter can read: ${parsed.reason}`);
   }
-  return parsed.value.map((change) => {
+  return parsed.value.flatMap((change) => {
+    let resolved: FileChange = change;
     if (change.kind === 'create') {
       const pre = readPre(resolve(canonicalDir(cwd), change.path));
-      if (pre !== null)
-        return {
-          kind: 'modify',
-          path: relativizeToRepoRoot(change.path, cwd, repoRoot),
-          pre,
-          post: change.post,
-        };
+      if (pre !== null) {
+        resolved = { kind: 'modify', path: change.path, pre, post: change.post };
+      }
     }
-    return { ...change, path: relativizeToRepoRoot(change.path, cwd, repoRoot) };
+    return patchTargetPaths(change.path, cwd, repoRoot).map((path) => ({ ...resolved, path }));
   });
 }
 

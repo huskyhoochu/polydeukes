@@ -42,6 +42,17 @@ const SCHEMA_LINE =
  * than failing a call.
  */
 const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json', '.grok/hooks'];
+/** The generated protection list — every host registration and host configuration file. */
+const GENERATED_PROTECTED_PATHS = [
+  '.claude/hooks',
+  '.claude/settings.json',
+  '.claude/settings.local.json',
+  '.grok/hooks',
+  '.grok/config.toml',
+  '.codex/hooks',
+  '.codex/hooks.json',
+  '.codex/config.toml',
+];
 /** A minimal valid sibling config, deliberately unlike anything the scaffold generates. */
 const VALID_SIBLING_YML = [
   'languages:',
@@ -104,6 +115,18 @@ describe('generated config — valid by construction', () => {
 
     const { config } = loadConfig({ rootDir: projectRoot });
     expect(config.protectedPaths).toEqual(expect.arrayContaining(MINIMUM_PROTECTED_PATHS));
+  });
+
+  it('carries exactly the eight protected paths that cover every host registration and config', () => {
+    // A missing host registration or config entry leaves that host's gate editable, and
+    // a substituted list means the generated minimum drifted from the surface consumers
+    // are promised. Order is not part of the contract, so the comparison sorts both sides.
+    // Asserted on the document because the loader adds the config's own path to the list
+    // it reports.
+    scaffoldProject(projectRoot);
+
+    const document = parseYaml(read(CONFIG_CANONICAL)) as { protectedPaths: string[] };
+    expect([...document.protectedPaths].sort()).toEqual([...GENERATED_PROTECTED_PATHS].sort());
   });
 
   it('carries no languages key — the generated document declares nothing no judgment reads', () => {

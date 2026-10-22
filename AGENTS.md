@@ -157,6 +157,12 @@ native cutover, Codex CLI 0.163.0 nested `apply_patch` allowed an ordinary file,
 same-content protected-config patch, and refused a directory pre-state read failure with one
 `blocked covenant-check` row. These observations cover those calls and versions; the outer
 Code Mode dispatch itself has no established adapter payload.
+Measured on 2026-10-22 with the registration `init` now writes (`|| exit 2` on the Codex and Grok
+PreToolUse command, `onFailure: block` on Claude's PreToolUse handler only) on Claude Code 2.1.308,
+codex-cli 0.163.0, and Grok 1.0.62: a missing executable blocked a protected write on all three
+hosts while prompts were still submitted. A write inside a linked worktree is judged by its
+absolute path under the registered project's config. This repository's own registrations follow
+once the owner regenerates them.
 Do not infer host-wide coverage from `/hooks` showing Active; remeasure the released host
 version before claiming it.
 Codex session evidence comes only from the registered `UserPromptSubmit` and `PostToolUse`

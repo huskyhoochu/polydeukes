@@ -28,7 +28,7 @@ unified diff이고, 명령이 먼저 그것을 IR로 번역합니다. `--enforce
 
 `--input-failure`는 어댑터가 관측을 만들지 못한 사유를 전달합니다. stdin은 비어 있지 않은
 문자열 `reason`을 가진 JSON 객체입니다. 예를 들면
-`{"reason":"adapter-codex failed before spawn: the patch targets a path outside the project"}`입니다.
+`{"reason":"payload must be an object"}`입니다.
 명령은 사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록하며, 호출을 판정하지
 않고 종료 코드 `3`을 돌려줍니다. 설정과 기록 경로는 기존 방식으로 해석하고 설정 오류가
 우선합니다. `--input-failure`와 `--diff`는 함께 사용할 수 없습니다.

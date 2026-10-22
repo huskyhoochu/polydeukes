@@ -1,6 +1,6 @@
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { type CovenantInput, parseInput } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { prepareHook } from '../src/prepare-hook.ts';
@@ -75,6 +75,20 @@ function patchPayload(patch: string, overrides: Record<string, unknown> = {}): s
 
 function bashPayload(command: string): string {
   return JSON.stringify(envelope(BASH, { command }));
+}
+
+/** The real path a target resolves to when the target itself does not exist yet. */
+function realTargetPath(target: string): string {
+  const rest: string[] = [];
+  let existing = target;
+  for (;;) {
+    try {
+      return join(realpathSync(existing), ...rest);
+    } catch {
+      rest.unshift(basename(existing));
+      existing = dirname(existing);
+    }
+  }
 }
 
 describe('prepareHook — observed input', () => {
@@ -173,6 +187,29 @@ describe('prepareHook — apply_patch evidence, one element per file', () => {
   });
 });
 
+describe('prepareHook — file targets outside repoRoot', () => {
+  it.each([
+    ['a relative path climbing out of the root', () => '../outside.txt'],
+    ['an absolute path beside the root', () => `${repoRoot}-sibling/outside.txt`],
+  ])('carries the target as its absolute real path — %s', (_title, targetName) => {
+    // Refusing an outside target, or relativizing it instead of carrying the absolute
+    // real path, would turn ordinary writes into unavailable evidence.
+    const target = resolve(repoRoot, targetName());
+
+    const result = prepareHook({
+      repoRoot,
+      rawPayload: patchPayload(patchText(addHunk(target, 'x'))),
+    });
+
+    expect(result.outcome).toBe('check');
+    expect(checkedInput(result).toolCalls[0]?.fileChange).toEqual({
+      kind: 'create',
+      path: realTargetPath(target),
+      post: 'x\n',
+    });
+  });
+});
+
 describe('prepareHook — Bash rides the shell axis', () => {
   it('carries the command in args, no fileChange, and the Bash name on the shell roster', () => {
     const result = prepareHook({ repoRoot, rawPayload: bashPayload(`rm ${TARGET_FILE}`) });
@@ -237,13 +274,6 @@ describe('prepareHook — unavailable evidence', () => {
     } finally {
       chmodSync(target, 0o600);
     }
-  });
-
-  it.each([
-    ['a relative path climbing out of the root', () => '../outside.txt'],
-    ['an absolute path beside the root', () => `${repoRoot}-sibling/outside.txt`],
-  ])('a patch path resolving outside repoRoot — %s', (_title, outside) => {
-    expectFailureSpawn(patchPayload(patchText(addHunk(outside(), 'x'))));
   });
 
   it('a `Delete File` whose target the reader does not find', () => {

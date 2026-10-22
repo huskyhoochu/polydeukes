@@ -52,10 +52,9 @@ function shellWords(command: string): string[] | undefined {
 }
 function isOwned(handler: unknown): boolean {
   if (!isPlainObject(handler) || typeof handler.command !== 'string') return false;
-  if (handler.command === HOOK_COMMAND || handler.command === `node ${LEGACY}`) return true;
-  const words = Array.isArray(handler.args)
-    ? [handler.command, ...handler.args]
-    : shellWords(handler.command);
+  const command = handler.command.replace(/ \|\| exit 2$/, '');
+  if (command === HOOK_COMMAND || command === `node ${LEGACY}`) return true;
+  const words = Array.isArray(handler.args) ? [command, ...handler.args] : shellWords(command);
   if (
     words === undefined ||
     words.length < 6 ||
@@ -108,9 +107,10 @@ export function registerHook(spec: RegisterHookSpec): RegisterHookOutcome {
         retained.push({ ...entry, hooks: siblings });
     }
     const timeout = event === 'PreToolUse' ? 60 : event === 'SessionEnd' ? 5 : 30;
+    const command = [spec.command.executable, ...args].map(quote).join(' ');
     const handler = {
       type: 'command',
-      command: [spec.command.executable, ...args].map(quote).join(' '),
+      command: event === 'PreToolUse' ? `${command} || exit 2` : command,
       timeout,
     };
     retained.push(
