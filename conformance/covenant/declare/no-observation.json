@@ -1,0 +1,64 @@
+{
+  "description": "A shell write in scope on an input with no session has no pre-state channel, so it records a skipped row with the no-observation reason.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-forbidden-text",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "forbidden"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "writes forbidden text"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "echo forbidden > lib/a.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "no-forbidden-text", "lib/a.txt", "no-observation"]]
+  }
+}

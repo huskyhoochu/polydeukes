@@ -1,0 +1,15 @@
+{
+  "description": "A created file under a protected directory blocks under enforce block.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/new.txt b/gate/new.txt\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/gate/new.txt\n@@ -0,0 +1 @@\n+hello\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/new.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

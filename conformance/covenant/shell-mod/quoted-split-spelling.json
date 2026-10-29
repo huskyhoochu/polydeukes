@@ -1,0 +1,31 @@
+{
+  "description": "A redirect target whose protected name is split by quotes is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo x > di\"st\"/a"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["redirect-write targets protected path dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

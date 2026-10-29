@@ -1,0 +1,30 @@
+{
+  "description": "An advised row older than the stored cut leaves the changed entry unattributed.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {
+        "gate": "stale-hash"
+      },
+      "cutAt": "2021-01-01T00:00:00.000Z"
+    },
+    ".polydeukes/roi.log": "2020-01-01T00:00:00.000Z\tadvised\tself-mod\tgate\n"
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["unattributed", "baseline", "gate"]]
+  }
+}

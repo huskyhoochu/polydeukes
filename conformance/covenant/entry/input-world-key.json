@@ -1,0 +1,27 @@
+{
+  "description": "An input that carries its own world key is refused at the input stage with exit 3.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "world": {
+      "files": {}
+    }
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": ["input carries a world key"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

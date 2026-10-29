@@ -1,0 +1,15 @@
+{
+  "description": "A C-quoted path with octal escapes decodes to its UTF-8 name and matches the protected file.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/café.txt"]
+    }
+  },
+  "stdin": "diff --git \"a/gate/caf\\303\\251.txt\" \"b/gate/caf\\303\\251.txt\"\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ \"b/gate/caf\\303\\251.txt\"\n@@ -0,0 +1 @@\n+x\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/café.txt"],
+    "rows": [["blocked", "self-mod", "gate/café.txt"]]
+  }
+}

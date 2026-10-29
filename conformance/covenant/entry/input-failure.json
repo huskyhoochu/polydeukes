@@ -1,0 +1,15 @@
+{
+  "description": "An explicit input failure exits 3 and carries the supplied reason on stderr.",
+  "args": ["--input-failure"],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "reason": "the adapter cannot translate this patch"
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: the adapter cannot translate this patch"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

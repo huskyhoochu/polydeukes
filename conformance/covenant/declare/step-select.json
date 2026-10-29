@@ -1,0 +1,79 @@
+{
+  "description": "The select step follows a dot path and projects nothing for a path the object lacks.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-select",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "select",
+                  "path": "a.b"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "{\"a\":{\"c\":1}}"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "{\"a\":{\"b\":7}}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-select' broken on src/broken.txt: found '0'",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-select", "src/held.txt"],
+      [
+        "advised",
+        "step-select",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"0\",\"value\":7}],\"total\":1}]"
+      ]
+    ]
+  }
+}

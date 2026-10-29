@@ -1,0 +1,20 @@
+{
+  "description": "An input with no session has no valve, so the block stands.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"gate/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"gate/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]],
+    "stderrExcludes": ["witness"]
+  }
+}

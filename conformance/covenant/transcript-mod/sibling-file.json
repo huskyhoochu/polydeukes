@@ -1,0 +1,18 @@
+{
+  "description": "A write to a different file in the evidence file's directory passes.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"@@HOME@@/.claude/projects/p/other.jsonl\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"@@HOME@@/.claude/projects/p/other.jsonl\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@HOME@@/.claude/projects/p/other.jsonl"]]
+  }
+}

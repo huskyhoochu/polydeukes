@@ -1,0 +1,18 @@
+{
+  "description": "The same break with no enforce argument is recorded as advised and exits 0 with the reason on stderr.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist/x.js\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"dist/x.js\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "session-write would modify protected path dist/x.js",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [["advised", "self-mod", "dist"]]
+  }
+}

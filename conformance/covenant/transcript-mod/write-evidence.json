@@ -1,0 +1,18 @@
+{
+  "description": "A mutating call whose proven target is the session evidence file breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"@@HOME@@/.claude/projects/p/session.jsonl\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"@@HOME@@/.claude/projects/p/session.jsonl\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["would modify the session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"]]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "description": "A write whose target cannot be decided from the text is recorded as skipped.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo x > $OUT"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "shell-unjudgeable", "-", "no-observation"]]
+  }
+}

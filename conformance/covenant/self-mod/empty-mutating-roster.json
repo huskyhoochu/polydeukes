@@ -1,0 +1,15 @@
+{
+  "description": "An empty mutating roster registers no self-mod covenant, so a write to a protected path is routed nowhere.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist/x.js\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"dist/x.js\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "dist/x.js"]]
+  }
+}

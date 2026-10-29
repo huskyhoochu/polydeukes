@@ -1,0 +1,32 @@
+{
+  "description": "The telemetry environment variable wins over the config log path when no flag is given.",
+  "args": [],
+  "env": {
+    "POLYDEUKES_TELEMETRY_PATH": "@@ROOT@@/env-out/env.log"
+  },
+  "tree": {
+    "polydeukes.config.yaml": {
+      "telemetry": {
+        "logPath": "config.log"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "log": "env-out/env.log",
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

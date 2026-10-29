@@ -1,0 +1,13 @@
+{
+  "description": "An argument outside the flag table prints usage and exits 2 without judging.",
+  "args": ["--bogus"],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": "",
+  "expect": {
+    "exit": 2,
+    "stderr": ["usage: pdks covenant check"],
+    "rows": []
+  }
+}

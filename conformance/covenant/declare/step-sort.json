@@ -1,0 +1,81 @@
+{
+  "description": "The sort step orders numbers numerically and keeps each item under its own key.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-sort",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "sort"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[10,9,2]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-sort' broken on src/broken.txt: found '2' (+2)",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-sort", "src/held.txt"],
+      [
+        "advised",
+        "step-sort",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"2\",\"value\":2},{\"key\":\"1\",\"value\":9},{\"key\":\"0\",\"value\":10}],\"total\":3}]"
+      ]
+    ]
+  }
+}

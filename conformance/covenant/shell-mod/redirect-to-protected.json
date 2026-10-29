@@ -1,0 +1,31 @@
+{
+  "description": "A shell redirect that writes a protected path is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo x > dist/a.js"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["redirect-write targets protected path dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

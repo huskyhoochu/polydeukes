@@ -1,0 +1,97 @@
+{
+  "description": "An equal relation upholds identical line sets and records the left-only line before the right-only line when the sets differ.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "relation-equal",
+          "declare": {
+            "mechanism": "pairing",
+            "sources": {
+              "en": {
+                "file": "locales/en.txt"
+              },
+              "ko": {
+                "file": "locales/ko.txt"
+              }
+            },
+            "extract": {
+              "enLines": [
+                {
+                  "op": "source",
+                  "of": "en"
+                },
+                {
+                  "op": "lines"
+                }
+              ],
+              "koLines": [
+                {
+                  "op": "source",
+                  "of": "ko"
+                },
+                {
+                  "op": "lines"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "line-parity",
+                "relation": {
+                  "op": "equal",
+                  "of": ["enLines", "koLines"]
+                },
+                "messageBySide": {
+                  "left": "en has '{value}' that ko lacks",
+                  "right": "ko has '{value}' that en lacks"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "locales/en.txt": "a\nb\n",
+    "locales/ko.txt": "a\nb\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "locales/en.txt",
+          "post": "a\nb\n"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "locales/ko.txt",
+          "post": "a\nc\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'relation-equal' broken on locales/ko.txt: en has 'b' that ko lacks (+1)",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "relation-equal", "locales/en.txt"],
+      [
+        "advised",
+        "relation-equal",
+        "locales/ko.txt",
+        "[{\"id\":\"line-parity\",\"witnesses\":[{\"key\":\"2\",\"value\":\"b\",\"side\":\"left\"},{\"key\":\"2\",\"value\":\"c\",\"side\":\"right\"}],\"total\":2}]"
+      ]
+    ]
+  }
+}

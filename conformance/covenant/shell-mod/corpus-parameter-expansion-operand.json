@@ -1,0 +1,31 @@
+{
+  "description": "A protected path inside a parameter-expansion default is not routed to shell-mod and is recorded as skipped.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "rm -rf ${TARGET:-sub/protected/dist}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "shell-unjudgeable", "-", "no-observation"]]
+  }
+}

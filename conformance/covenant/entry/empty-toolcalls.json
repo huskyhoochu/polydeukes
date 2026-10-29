@@ -1,0 +1,17 @@
+{
+  "description": "An input with no tool calls is an explicit pass with no telemetry row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

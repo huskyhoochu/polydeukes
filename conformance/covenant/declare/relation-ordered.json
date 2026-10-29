@@ -1,0 +1,78 @@
+{
+  "description": "An ordered relation compares numbers numerically, upholding 1,2,10 and recording the item that falls out of order in 1,3,2.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "relation-ordered",
+          "declare": {
+            "mechanism": "monotonic-order",
+            "extract": {
+              "seq": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "ascending",
+                "relation": {
+                  "op": "ordered",
+                  "of": "seq"
+                },
+                "message": "'{key}' falls out of order"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[1,2,10]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[1,3,2]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'relation-ordered' broken on src/broken.txt: '2' falls out of order",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "relation-ordered", "src/held.txt"],
+      [
+        "advised",
+        "relation-ordered",
+        "src/broken.txt",
+        "[{\"id\":\"ascending\",\"witnesses\":[{\"key\":\"2\",\"value\":2}],\"total\":1}]"
+      ]
+    ]
+  }
+}

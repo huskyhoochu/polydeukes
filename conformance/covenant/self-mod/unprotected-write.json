@@ -1,0 +1,15 @@
+{
+  "description": "A mutating call whose target is outside every protected path is routed to no covenant and passes.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"src/a.ts\", \"content\": \"const a = 1;\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"src/a.ts\", \"post\": \"const a = 1;\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "src/a.ts"]]
+  }
+}

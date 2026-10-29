@@ -1,0 +1,73 @@
+{
+  "description": "A json step over text that is not JSON fails the call closed instead of upholding it.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-json-unparseable",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "select",
+                  "path": "flag"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "{}"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "{not json"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "discipline 'step-json-unparseable' cannot judge src/broken.txt: post — the value is not valid JSON"
+    ],
+    "rows": [
+      ["passed", "step-json-unparseable", "src/held.txt"],
+      ["blocked", "step-json-unparseable", "src/broken.txt"]
+    ]
+  }
+}

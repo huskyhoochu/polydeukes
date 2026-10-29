@@ -1,0 +1,74 @@
+{
+  "description": "A declaration reading the changes source sees every path of the diff on each dispatch.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "changeSetDisciplines": [
+        {
+          "id": "change-set-is-one-file",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "supply": {
+              "changes": "pass"
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-companion",
+                "relation": {
+                  "op": "subset",
+                  "of": "changed",
+                  "in": "own"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "diff --git a/lib/a.ts b/lib/a.ts\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/lib/a.ts\n@@ -0,0 +1 @@\n+hello\ndiff --git a/lib/b.ts b/lib/b.ts\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/lib/b.ts\n@@ -0,0 +1 @@\n+hello\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "lib/b.ts",
+      "lib/a.ts",
+      "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/a.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"1\",\"value\":\"lib/b.ts\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/b.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"0\",\"value\":\"lib/a.ts\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A target that reaches a protected path only after dot segments are resolved breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["packages/core/dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"packages/core/src/../dist/index.js\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"packages/core/src/../dist/index.js\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path packages/core/src/../dist/index.js"],
+    "rows": [["blocked", "self-mod", "packages/core/dist"]]
+  }
+}

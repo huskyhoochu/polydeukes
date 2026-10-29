@@ -1,0 +1,96 @@
+{
+  "description": "A blocked break whose declaration's own witness block holds is recorded as witnessed and exits 0.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "marker": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "allow-todo"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "acknowledged",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "marker"
+                  },
+                  "message": "the change carries no acknowledgement"
+                }
+              ]
+            }
+          },
+          "enforce": "block"
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "// TODO allow-todo"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'no-todo' broken on lib/a.txt: adds a TODO marker"],
+    "rows": [
+      [
+        "witnessed",
+        "no-todo",
+        "lib/a.txt",
+        "[{\"id\":\"no-todo-added\",\"witnesses\":[{\"key\":\"0\",\"value\":\"// TODO allow-todo\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

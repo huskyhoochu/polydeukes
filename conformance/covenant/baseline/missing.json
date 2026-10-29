@@ -1,0 +1,23 @@
+{
+  "description": "A session input with no stored baseline file records one unattributed row naming the baseline file itself.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["unattributed", "baseline", "@@ROOT@@/.polydeukes/baseline.json"]]
+  }
+}

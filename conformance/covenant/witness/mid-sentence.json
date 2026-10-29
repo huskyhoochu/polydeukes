@@ -1,0 +1,25 @@
+{
+  "description": "A token embedded mid-sentence on the first line does not open the valve and no expiry is reported.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"gate/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"gate/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}, \"session\": {\"userMessages\": [{\"text\": \"please send agreed-token\\nnow\", \"timestampMs\": @@NOW_MS-60000@@}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "session-write would modify protected path gate/inner.txt",
+      "a person can open this for 10 minutes by sending the witness token alone on the first line of a message\n"
+    ],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

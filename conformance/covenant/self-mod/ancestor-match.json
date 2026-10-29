@@ -1,0 +1,15 @@
+{
+  "description": "A write to a file nested several levels under a protected directory breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["lib/gate"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"lib/gate/deep/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"lib/gate/deep/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path lib/gate/deep/inner.txt"],
+    "rows": [["blocked", "self-mod", "lib/gate"]]
+  }
+}

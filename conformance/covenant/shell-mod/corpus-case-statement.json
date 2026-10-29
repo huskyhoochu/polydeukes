@@ -1,0 +1,34 @@
+{
+  "description": "A destructive command inside a case branch is judged and blocks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "case $x in a|b) rm -rf sub/protected/dist;; esac"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["mentions protected path sub/protected/dist without read-only proof"],
+    "rows": [
+      ["blocked", "shell-mod", "sub/protected/dist"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

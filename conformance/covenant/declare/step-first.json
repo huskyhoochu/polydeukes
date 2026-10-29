@@ -1,0 +1,81 @@
+{
+  "description": "The first step keeps the first item alone.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-first",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "first"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[\"x\",\"y\"]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-first' broken on src/broken.txt: found '0'",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-first", "src/held.txt"],
+      [
+        "advised",
+        "step-first",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"0\",\"value\":\"x\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

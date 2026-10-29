@@ -1,0 +1,100 @@
+{
+  "description": "A witness from the right side of an equal relation renders the right message template.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "locales-agree",
+          "declare": {
+            "mechanism": "pairing",
+            "scope": {
+              "source": "target.path",
+              "include": ["^locales/en\\.json$"]
+            },
+            "sources": {
+              "en": {
+                "file": "locales/en.json"
+              },
+              "ko": {
+                "file": "locales/ko.json"
+              }
+            },
+            "extract": {
+              "enKeys": [
+                {
+                  "op": "source",
+                  "of": "en"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "flattenKeys"
+                }
+              ],
+              "koKeys": [
+                {
+                  "op": "source",
+                  "of": "ko"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "flattenKeys"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "same-keys",
+                "relation": {
+                  "op": "equal",
+                  "of": ["enKeys", "koKeys"]
+                },
+                "messageBySide": {
+                  "left": "{key} is only in the en locale",
+                  "right": "{key} is only in the ko locale"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "locales/ko.json": "{\"a\":1,\"c\":3}"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "locales/en.json"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "locales/en.json",
+          "post": "{\"a\":1}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'locales-agree' broken on locales/en.json: c is only in the ko locale",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "locales-agree",
+        "locales/en.json",
+        "[{\"id\":\"same-keys\",\"witnesses\":[{\"key\":\"c\",\"value\":\"c\",\"side\":\"right\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "description": "The shell call command line is read as the command source, and the call is judged under subject dash.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "no-hard-reset",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command"
+            },
+            "extract": {
+              "hits": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "git reset\\b.*--hard"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "recoverable",
+                "relation": {
+                  "op": "empty",
+                  "of": "hits"
+                },
+                "message": "command line forecloses recovery: {value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "git reset --hard HEAD~1"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-hard-reset' broken on -: command line forecloses recovery: git reset --hard HEAD~1",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-hard-reset",
+        "-",
+        "[{\"id\":\"recoverable\",\"witnesses\":[{\"key\":\"1\",\"value\":\"git reset --hard HEAD~1\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

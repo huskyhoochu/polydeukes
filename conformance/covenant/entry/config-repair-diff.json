@@ -1,0 +1,13 @@
+{
+  "description": "The same repair arriving as a diff stays blocked because the change-set surface has no repair branch.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "{\"languages\":"
+  },
+  "stdin": "diff --git a/polydeukes.config.yaml b/polydeukes.config.yaml\n--- a/polydeukes.config.yaml\n+++ b/polydeukes.config.yaml\n@@ -1 +1 @@\n-{\"languages\":\n+{}\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["failed to parse polydeukes.config.yaml"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

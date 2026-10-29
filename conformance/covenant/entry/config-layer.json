@@ -1,0 +1,69 @@
+{
+  "description": "A discipline from the config layer is merged into the config and judges the call.",
+  "args": ["--config-layer", "@@ROOT@@/layer.json"],
+  "tree": {
+    "polydeukes.config.yaml": {},
+    "layer.json": {
+      "disciplines": [
+        {
+          "id": "no-db-files",
+          "why": "database files stay out of the tree",
+          "declare": {
+            "mechanism": "naming",
+            "scope": {
+              "source": "target.path",
+              "include": ["\\.db$"]
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "placed",
+                "relation": {
+                  "op": "empty",
+                  "of": "own"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "staged-write",
+        "args": {
+          "file_path": "data.db"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "data.db",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["covenant advisory: 1 verdict(s) recorded as advised, commit allowed", "data.db"],
+    "rows": [
+      [
+        "advised",
+        "no-db-files",
+        "data.db",
+        "[{\"id\":\"placed\",\"witnesses\":[{\"key\":\"0\",\"value\":\"data.db\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

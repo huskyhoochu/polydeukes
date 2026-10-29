@@ -1,0 +1,106 @@
+{
+  "description": "An intersect keeps the left items whose key the right side also carries, so a break reports the left-hand value.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "combinator-intersect",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "before": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ],
+              "after": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ],
+              "kept": [
+                {
+                  "op": "intersect",
+                  "of": ["before", "after"]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-overlap",
+                "relation": {
+                  "op": "empty",
+                  "of": "kept"
+                },
+                "message": "'{key}' is in both"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/held.txt",
+          "pre": "[{\"id\":\"a\",\"v\":1},{\"id\":\"b\",\"v\":2}]",
+          "post": "[{\"id\":\"c\",\"v\":3},{\"id\":\"d\",\"v\":4}]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/broken.txt",
+          "pre": "[{\"id\":\"a\",\"v\":1},{\"id\":\"b\",\"v\":2}]",
+          "post": "[{\"id\":\"b\",\"v\":9},{\"id\":\"c\",\"v\":3}]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'combinator-intersect' broken on src/broken.txt: 'b' is in both",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "combinator-intersect", "src/held.txt"],
+      [
+        "advised",
+        "combinator-intersect",
+        "src/broken.txt",
+        "[{\"id\":\"no-overlap\",\"witnesses\":[{\"key\":\"b\",\"value\":{\"id\":\"b\",\"v\":2}}],\"total\":1}]"
+      ]
+    ]
+  }
+}

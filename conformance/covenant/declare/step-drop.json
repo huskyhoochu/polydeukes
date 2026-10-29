@@ -1,0 +1,82 @@
+{
+  "description": "The drop step removes the first n items and keeps the rest under their own keys.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-drop",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "drop",
+                  "n": 2
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[\"a\",\"b\"]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[\"a\",\"b\",\"c\"]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-drop' broken on src/broken.txt: found '2'",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-drop", "src/held.txt"],
+      [
+        "advised",
+        "step-drop",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"2\",\"value\":\"c\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

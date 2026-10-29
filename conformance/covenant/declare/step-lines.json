@@ -1,0 +1,75 @@
+{
+  "description": "The lines step trims each line, drops blank ones and keys the rest by their one-based line number.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-lines",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "lines"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "\n  \n"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "a\n\n  b  \n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-lines' broken on src/broken.txt: found '1' (+1)",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-lines", "src/held.txt"],
+      [
+        "advised",
+        "step-lines",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"1\",\"value\":\"a\"},{\"key\":\"3\",\"value\":\"b\"}],\"total\":2}]"
+      ]
+    ]
+  }
+}

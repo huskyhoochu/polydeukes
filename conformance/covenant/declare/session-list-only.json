@@ -1,0 +1,96 @@
+{
+  "description": "A sessionDisciplines entry is not compiled for a diff, so it neither blocks nor leaves a row there.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ]
+          }
+        }
+      ],
+      "sessionDisciplines": [
+        {
+          "id": "implementer-boundary",
+          "declare": {
+            "mechanism": "actor-scope",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "implementer": [
+                {
+                  "op": "source",
+                  "of": "actor"
+                },
+                {
+                  "op": "select",
+                  "path": "agentType"
+                },
+                {
+                  "op": "matches",
+                  "re": "^implementer$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-the-implementer",
+                "relation": {
+                  "op": "empty",
+                  "of": "implementer"
+                },
+                "message": "the implementer subagent wrote under lib"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "--- /dev/null\n+++ b/lib/a.txt\n@@ -0,0 +1 @@\n+// TODO\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-todo' broken on lib/a.txt: adds a TODO marker",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-todo",
+        "lib/a.txt",
+        "[{\"id\":\"no-todo-added\",\"witnesses\":[{\"key\":\"0\",\"value\":\"// TODO\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "description": "A union keeps both operands in order without merging equal keys, so a break lists the left item before the right one.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "combinator-union",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "old": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                }
+              ],
+              "new": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                }
+              ],
+              "both": [
+                {
+                  "op": "union",
+                  "of": ["old", "new"]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "both-empty",
+                "relation": {
+                  "op": "empty",
+                  "of": "both"
+                },
+                "message": "found '{value}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/held.txt",
+          "pre": "[]",
+          "post": "[]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/broken.txt",
+          "pre": "[\"y\"]",
+          "post": "[\"x\"]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'combinator-union' broken on src/broken.txt: found 'y' (+1)",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "combinator-union", "src/held.txt"],
+      [
+        "advised",
+        "combinator-union",
+        "src/broken.txt",
+        "[{\"id\":\"both-empty\",\"witnesses\":[{\"key\":\"0\",\"value\":\"y\"},{\"key\":\"0\",\"value\":\"x\"}],\"total\":2}]"
+      ]
+    ]
+  }
+}

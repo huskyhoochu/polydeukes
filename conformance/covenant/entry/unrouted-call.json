@@ -1,0 +1,24 @@
+{
+  "description": "A call that no registration routes exits 0 with one passed row under the runner label naming its file path.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "@@ROOT@@/notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@/notes.txt"]]
+  }
+}

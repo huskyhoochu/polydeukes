@@ -1,0 +1,78 @@
+{
+  "description": "The flattenKeys step lists the leaves of a nested object as dot paths in object order.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-flattenKeys",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "flattenKeys"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "{}"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "{\"a\":{\"b\":1,\"c\":2},\"d\":3}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-flattenKeys' broken on src/broken.txt: found 'a.b' (+2)",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-flattenKeys", "src/held.txt"],
+      [
+        "advised",
+        "step-flattenKeys",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"a.b\",\"value\":\"a.b\"},{\"key\":\"a.c\",\"value\":\"a.c\"},{\"key\":\"d\",\"value\":\"d\"}],\"total\":3}]"
+      ]
+    ]
+  }
+}

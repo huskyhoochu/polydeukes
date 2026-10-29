@@ -1,0 +1,28 @@
+{
+  "description": "A session input whose stored hash differs from the entry state with no explaining row records one unattributed row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {
+        "gate": "stale-hash"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["unattributed", "baseline", "gate"]]
+  }
+}

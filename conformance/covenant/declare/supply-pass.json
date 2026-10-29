@@ -1,0 +1,66 @@
+{
+  "description": "A deleted file under supply pass records a skipped row with the supply-pass reason instead of a passed one.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ],
+            "supply": {
+              "post": "pass"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "delete",
+          "path": "lib/a.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "no-todo", "lib/a.txt", "supply-pass"]]
+  }
+}

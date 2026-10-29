@@ -1,0 +1,15 @@
+{
+  "description": "Deleting a directory that contains the protected path is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["packages/core/dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"packages/core\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"delete\", \"path\": \"packages/core\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path packages/core"],
+    "rows": [["blocked", "self-mod", "packages/core/dist"]]
+  }
+}

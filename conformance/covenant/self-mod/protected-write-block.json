@@ -1,0 +1,15 @@
+{
+  "description": "A mutating call whose proven target is a protected path breaks and exits 2 under block enforcement.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist/x.js\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"dist/x.js\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path dist/x.js"],
+    "rows": [["blocked", "self-mod", "dist"]]
+  }
+}

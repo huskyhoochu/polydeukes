@@ -1,0 +1,22 @@
+{
+  "description": "A token alone on the first line of a recent human message relaxes a block into witnessed and exits 0.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"gate/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"gate/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}, \"session\": {\"userMessages\": [{\"text\": \"agreed-token\\nplease proceed\", \"timestampMs\": @@NOW_MS-60000@@}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": ["session-write would modify protected path gate/inner.txt"],
+    "rows": [["witnessed", "self-mod", "gate"]]
+  }
+}

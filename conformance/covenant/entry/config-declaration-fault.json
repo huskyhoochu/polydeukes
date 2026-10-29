@@ -1,0 +1,62 @@
+{
+  "description": "A declaration the engine cannot compile makes the whole config invalid and blocks with exit 2.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "db-under-lib",
+          "why": "fixture",
+          "declare": {
+            "mechanism": "naming",
+            "scope": {
+              "source": "target.path",
+              "include": ["\\.db$"]
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                },
+                {
+                  "op": "sha256"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "placed",
+                "relation": {
+                  "op": "empty",
+                  "of": "own"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "invalid config in polydeukes.config.yaml",
+      "db-under-lib extract own: 'sha256' is not a registered extract step"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

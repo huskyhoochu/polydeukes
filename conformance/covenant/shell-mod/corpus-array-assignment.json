@@ -1,0 +1,36 @@
+{
+  "description": "A protected path glued behind an array assignment is found and blocks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "a=(sub/protected/dist x)"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "a=(sub/protected/dist mentions protected path sub/protected/dist without read-only proof"
+    ],
+    "rows": [
+      ["blocked", "shell-mod", "sub/protected/dist"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

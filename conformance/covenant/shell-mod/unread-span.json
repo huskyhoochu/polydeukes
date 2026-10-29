@@ -1,0 +1,34 @@
+{
+  "description": "A read-only head loses its proof when the line has a span the scanner could not read.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "cat dist/a.js \"unclosed"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["cat mentions protected path dist without read-only proof"],
+    "rows": [
+      ["blocked", "shell-mod", "dist"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "With no witness in the config a block stands and stderr says that no witness is configured.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"gate/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"gate/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}, \"session\": {\"userMessages\": [{\"text\": \"please update the gate\", \"timestampMs\": @@NOW_MS-60000@@}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "session-write would modify protected path gate/inner.txt",
+      "no witness is configured; a person can add witness: { token, ttlMinutes } to polydeukes.config.yaml, or make this change themselves"
+    ],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

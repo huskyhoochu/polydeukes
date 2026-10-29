@@ -1,0 +1,128 @@
+{
+  "description": "The ageMs step measures a turn against the session clock and drops a turn dated after it, so a future stamp never reads as recent.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "step-ageMs",
+          "declare": {
+            "mechanism": "turn-locality",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^held/"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "userTexts",
+                  "re": "^/allow"
+                },
+                {
+                  "op": "ageMs"
+                },
+                {
+                  "op": "filter",
+                  "when": [
+                    {
+                      "field": "ageMs",
+                      "lte": 600000
+                    }
+                  ]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no matching evidence on record"
+              }
+            ]
+          }
+        },
+        {
+          "id": "step-ageMs-miss",
+          "declare": {
+            "mechanism": "turn-locality",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^broken/"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "userTexts",
+                  "re": "^/later"
+                },
+                {
+                  "op": "ageMs"
+                },
+                {
+                  "op": "filter",
+                  "when": [
+                    {
+                      "field": "ageMs",
+                      "lte": 600000
+                    }
+                  ]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no matching evidence on record"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\":[{\"name\":\"Write\",\"fileChange\":{\"kind\":\"create\",\"path\":\"held/x.txt\",\"post\":\"x\"}},{\"name\":\"Write\",\"fileChange\":{\"kind\":\"create\",\"path\":\"broken/y.txt\",\"post\":\"y\"}}],\"subagentSpawns\":[],\"userMessages\":[],\"session\":{\"userMessages\":[{\"text\":\"/allow a\",\"timestampMs\":@@NOW_MS-60000@@},{\"text\":\"/later b\",\"timestampMs\":99999999999999}],\"toolCalls\":[]}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-ageMs-miss' broken on broken/y.txt: no matching evidence on record",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-ageMs", "held/x.txt"],
+      [
+        "advised",
+        "step-ageMs-miss",
+        "broken/y.txt",
+        "[{\"id\":\"has-evidence\",\"witnesses\":[{\"key\":\"found\",\"value\":null}],\"total\":1}]"
+      ]
+    ]
+  }
+}

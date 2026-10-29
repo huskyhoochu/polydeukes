@@ -1,0 +1,138 @@
+{
+  "description": "The agentType step keeps the sidecar records whose agent type equals the argument.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "step-agentType",
+          "declare": {
+            "mechanism": "precedent",
+            "sources": {
+              "spawns": {
+                "sidecar": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^held/"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "spawns"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "agentType",
+                  "is": "writer"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no matching evidence on record"
+              }
+            ]
+          }
+        },
+        {
+          "id": "step-agentType-miss",
+          "declare": {
+            "mechanism": "precedent",
+            "sources": {
+              "spawns": {
+                "sidecar": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^broken/"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "spawns"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "agentType",
+                  "is": "tester"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no matching evidence on record"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "held/x.txt",
+          "post": "x"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "broken/y.txt",
+          "post": "y"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "channels": {
+        "sidecar": "[{\"agentType\":\"writer\"},{\"agentType\":\"reviewer\"}]"
+      }
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-agentType-miss' broken on broken/y.txt: no matching evidence on record",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-agentType", "held/x.txt"],
+      [
+        "advised",
+        "step-agentType-miss",
+        "broken/y.txt",
+        "[{\"id\":\"has-evidence\",\"witnesses\":[{\"key\":\"found\",\"value\":null}],\"total\":1}]"
+      ]
+    ]
+  }
+}

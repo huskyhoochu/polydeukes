@@ -1,0 +1,66 @@
+{
+  "description": "A deleted file under supply empty reads the absent post as no items, so the relation is judged and upheld.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ],
+            "supply": {
+              "post": "empty"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "delete",
+          "path": "lib/a.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "no-todo", "lib/a.txt"]]
+  }
+}

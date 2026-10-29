@@ -1,0 +1,31 @@
+{
+  "description": "A redirect after a leading variable assignment still blocks as a write to the protected path.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "FOO=1 echo x > sub/protected/dist/a.js"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["redirect-write targets protected path sub/protected/dist"],
+    "rows": [["blocked", "shell-mod", "sub/protected/dist"]]
+  }
+}

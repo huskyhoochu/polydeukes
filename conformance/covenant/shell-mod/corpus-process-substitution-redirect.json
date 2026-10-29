@@ -1,0 +1,34 @@
+{
+  "description": "A protected path inside the process substitution of a loop redirect is blocked as an opaque mention.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "while read l; do echo $l; done < <(cat sub/protected/dist/x)"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path sub/protected/dist inside an opaque token"],
+    "rows": [
+      ["blocked", "shell-mod", "sub/protected/dist"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

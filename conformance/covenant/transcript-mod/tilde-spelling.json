@@ -1,0 +1,21 @@
+{
+  "description": "A redirect spelled with the home tilde that resolves to the session evidence file breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"shell-tool\", \"args\": {\"command\": \"echo x > ~/.claude/projects/p/session.jsonl\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session transcript"],
+    "rows": [
+      ["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

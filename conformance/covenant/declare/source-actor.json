@@ -1,0 +1,84 @@
+{
+  "description": "The input actor is read as the actor source, so a write by the named subagent breaks the discipline.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "implementer-boundary",
+          "declare": {
+            "mechanism": "actor-scope",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "supply": {
+              "actor": "pass"
+            },
+            "extract": {
+              "implementer": [
+                {
+                  "op": "source",
+                  "of": "actor"
+                },
+                {
+                  "op": "select",
+                  "path": "agentType"
+                },
+                {
+                  "op": "matches",
+                  "re": "^implementer$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-the-implementer",
+                "relation": {
+                  "op": "empty",
+                  "of": "implementer"
+                },
+                "message": "the implementer subagent wrote under lib"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "actor": {
+      "agentType": "implementer"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'implementer-boundary' broken on lib/a.txt: the implementer subagent wrote under lib",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "implementer-boundary",
+        "lib/a.txt",
+        "[{\"id\":\"not-the-implementer\",\"witnesses\":[{\"key\":\"0\",\"value\":\"implementer\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

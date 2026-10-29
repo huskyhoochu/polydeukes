@@ -1,0 +1,31 @@
+{
+  "description": "A pipeline stage after a read-only first word that writes a protected path is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "cat src.txt | tee dist/a.js"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["tee targets protected path dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

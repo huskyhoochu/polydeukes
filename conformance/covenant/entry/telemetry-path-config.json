@@ -1,0 +1,29 @@
+{
+  "description": "With no flag and no environment variable the config log path, resolved against the root, receives the row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "telemetry": {
+        "logPath": "logs/config.log"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "log": "logs/config.log",
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "description": "An unparseable config blocks a call that edits another file and names the one repair that would clear it.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "{\"languages\":"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "other.txt"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "other.txt",
+          "pre": "a\n",
+          "post": "b\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "failed to parse polydeukes.config.yaml",
+      "fix polydeukes.config.yaml in one Edit or Write whose result loads"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

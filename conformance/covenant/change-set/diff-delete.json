@@ -1,0 +1,15 @@
+{
+  "description": "A deleted file under a protected directory blocks under enforce block.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/old.txt b/gate/old.txt\ndeleted file mode 100644\nindex 1111111..0000000\n--- a/gate/old.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-bye\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-delete would modify protected path gate/old.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

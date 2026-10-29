@@ -1,0 +1,29 @@
+{
+  "description": "A stored hash equal to the entry's real state records no unattributed row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/a.txt": "x\n",
+    ".polydeukes/baseline.json": {
+      "entries": {
+        "gate": "415e542c815c0ede5babf45b487e98517b48e1ff0159b6be75a3178d3b05ad71"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

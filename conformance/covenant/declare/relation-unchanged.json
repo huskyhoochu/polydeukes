@@ -1,0 +1,81 @@
+{
+  "description": "An unchanged relation upholds an edit that leaves the compared field alone and records the post value of a field that moved.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "relation-unchanged",
+          "declare": {
+            "mechanism": "self-absolution-ban",
+            "extract": {
+              "limit": [
+                {
+                  "op": "source",
+                  "of": "state"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "field",
+                  "name": "limit"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "limit-fixed",
+                "relation": {
+                  "op": "unchanged",
+                  "of": "limit"
+                },
+                "message": "limit moved from {before} to {value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/held.txt",
+          "pre": "{\"limit\":5}",
+          "post": "{\"limit\":5,\"note\":\"x\"}"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/broken.txt",
+          "pre": "{\"limit\":5}",
+          "post": "{\"limit\":9}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'relation-unchanged' broken on src/broken.txt: limit moved from 5 to 9",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "relation-unchanged", "src/held.txt"],
+      [
+        "advised",
+        "relation-unchanged",
+        "src/broken.txt",
+        "[{\"id\":\"limit-fixed\",\"witnesses\":[{\"key\":\"0\",\"value\":9}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "description": "The entry why is appended to the break reason on stderr after a why separator.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ]
+          },
+          "why": "a TODO left in lib is an unfinished thought"
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "// TODO"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-todo' broken on lib/a.txt: adds a TODO marker — why: a TODO left in lib is an unfinished thought",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-todo",
+        "lib/a.txt",
+        "[{\"id\":\"no-todo-added\",\"witnesses\":[{\"key\":\"0\",\"value\":\"// TODO\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

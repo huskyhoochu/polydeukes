@@ -1,0 +1,82 @@
+{
+  "description": "A sidecar-bound declaration under supply pass records a skipped row when the session carries no channels.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "needs-sidecar",
+          "declare": {
+            "mechanism": "precedent",
+            "sources": {
+              "spawn": {
+                "sidecar": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "spawn"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "approved"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-record",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no spawn record"
+              }
+            ],
+            "supply": {
+              "spawn": "pass"
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "needs-sidecar", "lib/a.txt", "supply-pass"]]
+  }
+}

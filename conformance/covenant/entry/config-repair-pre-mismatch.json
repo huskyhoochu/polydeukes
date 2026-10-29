@@ -1,0 +1,33 @@
+{
+  "description": "An edit of the unloadable config whose pre is not the bytes on disk stays blocked even though its post loads.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "{\"languages\":"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "polydeukes.config.yaml"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "polydeukes.config.yaml",
+          "pre": "{\"languages\": ",
+          "post": "{}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "failed to parse polydeukes.config.yaml",
+      "fix polydeukes.config.yaml in one Edit or Write whose result loads"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

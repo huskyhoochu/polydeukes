@@ -1,0 +1,18 @@
+{
+  "description": "A read-only command on the session evidence file is upheld and routed to no covenant.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"shell-tool\", \"args\": {\"command\": \"cat @@HOME@@/.claude/projects/p/session.jsonl\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
+  }
+}

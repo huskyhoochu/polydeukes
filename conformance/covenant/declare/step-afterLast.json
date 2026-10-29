@@ -1,0 +1,87 @@
+{
+  "description": "The afterLast step keeps only the items after the last one a predicate admits.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "step-afterLast",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "out": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "afterLast",
+                  "when": [
+                    {
+                      "field": "kind",
+                      "eq": "reset"
+                    }
+                  ]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "found",
+                "relation": {
+                  "op": "empty",
+                  "of": "out"
+                },
+                "message": "found '{key}'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[{\"kind\":\"x\"},{\"kind\":\"reset\"}]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[{\"kind\":\"x\"},{\"kind\":\"reset\"},{\"kind\":\"y\"},{\"kind\":\"reset\"},{\"kind\":\"z\"}]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'step-afterLast' broken on src/broken.txt: found '4'",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "step-afterLast", "src/held.txt"],
+      [
+        "advised",
+        "step-afterLast",
+        "src/broken.txt",
+        "[{\"id\":\"found\",\"witnesses\":[{\"key\":\"4\",\"value\":{\"kind\":\"z\"}}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A mutating call carrying no file-change evidence whose arguments mention a protected path breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist/x.js\", \"content\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path dist"],
+    "rows": [["blocked", "self-mod", "dist"]]
+  }
+}

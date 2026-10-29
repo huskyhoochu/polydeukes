@@ -1,0 +1,31 @@
+{
+  "description": "A brace range appended to a protected path still names the protected path and blocks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["sub/protected/dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "rm -rf sub/protected/dist/{1..9}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["rm mentions protected path sub/protected/dist without read-only proof"],
+    "rows": [["blocked", "shell-mod", "sub/protected/dist"]]
+  }
+}

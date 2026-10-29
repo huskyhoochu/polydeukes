@@ -1,0 +1,22 @@
+{
+  "description": "A roster naming a shell tool but no command argument key is refused at the input stage with exit 3.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit"],
+      "shell": ["Bash"],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": ["tools.shell without a tools.commandArgs"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

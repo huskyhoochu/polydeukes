@@ -1,0 +1,15 @@
+{
+  "description": "A binary change to a protected file is judged from the file path alone and blocks under enforce block.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/img.bin"]
+    }
+  },
+  "stdin": "diff --git a/gate/img.bin b/gate/img.bin\nindex 1111111..2222222 100644\nBinary files a/gate/img.bin and b/gate/img.bin differ\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/img.bin"],
+    "rows": [["blocked", "self-mod", "gate/img.bin"]]
+  }
+}

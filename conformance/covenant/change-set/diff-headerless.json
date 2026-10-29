@@ -1,0 +1,15 @@
+{
+  "description": "A block with only the minus and plus header lines strips one a/ or b/ level and blocks on the protected path.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "--- a/gate/a.txt\n+++ b/gate/a.txt\n@@ -1 +1 @@\n-old\n+new\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/a.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -57,6 +57,9 @@ jobs:
       - name: Build the Linux executable for Python consumers
         run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/pdks-linux-x64"
 
+      - name: Verify covenant fixtures
+        run: node scripts/verify-covenant-fixtures.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
+
       - name: Verify standalone adapter registration and judgments
         run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
 

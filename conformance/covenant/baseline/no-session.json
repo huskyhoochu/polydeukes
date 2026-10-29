@@ -1,0 +1,20 @@
+{
+  "description": "A diff input never runs the state comparison, so a stale stored hash records nothing.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {
+        "gate": "stale-hash"
+      }
+    }
+  },
+  "stdin": "diff --git a/notes.txt b/notes.txt\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/notes.txt\n@@ -0,0 +1 @@\n+hello\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

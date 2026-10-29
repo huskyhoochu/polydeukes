@@ -1,0 +1,13 @@
+{
+  "description": "Stdin that is not JSON exits 3, distinct from a verdict, with one blocked runner row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": "not json",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: input is not JSON"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

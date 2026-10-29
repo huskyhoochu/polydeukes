@@ -1,0 +1,15 @@
+{
+  "description": "Text that holds no recognizable file block exits 3 instead of passing as an empty change set.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "this is not a diff\n",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: unified diff: no file block recognized in the input"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

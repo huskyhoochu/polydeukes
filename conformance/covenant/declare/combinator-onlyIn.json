@@ -1,0 +1,107 @@
+{
+  "description": "An onlyIn keeps the left items whose key the right side lacks, so a call that removes one id and adds another records only the added one.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "combinator-onlyIn",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "before": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ],
+              "after": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ],
+              "added": [
+                {
+                  "op": "onlyIn",
+                  "of": "after",
+                  "notIn": "before"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "nothing-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "added"
+                },
+                "message": "'{key}' was added"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/held.txt",
+          "pre": "[{\"id\":\"a\"},{\"id\":\"b\"}]",
+          "post": "[{\"id\":\"b\"},{\"id\":\"a\"}]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/broken.txt",
+          "pre": "[{\"id\":\"a\"},{\"id\":\"b\"}]",
+          "post": "[{\"id\":\"a\"},{\"id\":\"c\"}]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'combinator-onlyIn' broken on src/broken.txt: 'c' was added",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "combinator-onlyIn", "src/held.txt"],
+      [
+        "advised",
+        "combinator-onlyIn",
+        "src/broken.txt",
+        "[{\"id\":\"nothing-added\",\"witnesses\":[{\"key\":\"c\",\"value\":{\"id\":\"c\"}}],\"total\":1}]"
+      ]
+    ]
+  }
+}

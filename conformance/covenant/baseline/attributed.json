@@ -1,0 +1,29 @@
+{
+  "description": "The same changed entry with an advised row for it in the window records no unattributed row.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {
+        "gate": "stale-hash"
+      }
+    },
+    ".polydeukes/roi.log": "2026-01-01T00:00:00.000Z\tadvised\tself-mod\tgate\n"
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

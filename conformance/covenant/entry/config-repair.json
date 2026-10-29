@@ -1,0 +1,30 @@
+{
+  "description": "A single edit that turns an unloadable config into a loadable one exits 0 as advised and is not judged.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "{\"languages\":"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "polydeukes.config.yaml"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "polydeukes.config.yaml",
+          "pre": "{\"languages\":",
+          "post": "{}"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["advised, not judged"],
+    "rows": [["advised", "covenant-check", "polydeukes.config.yaml"]]
+  }
+}

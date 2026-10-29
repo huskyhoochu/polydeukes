@@ -1,0 +1,91 @@
+{
+  "description": "A subset relation upholds lines all found in the allowed list and records the line the allowed list lacks.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "relation-subset",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "sources": {
+              "vocab": {
+                "file": "vocab.txt"
+              }
+            },
+            "extract": {
+              "used": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "lines"
+                }
+              ],
+              "allowed": [
+                {
+                  "op": "source",
+                  "of": "vocab"
+                },
+                {
+                  "op": "lines"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "in-vocabulary",
+                "relation": {
+                  "op": "subset",
+                  "of": "used",
+                  "in": "allowed"
+                },
+                "message": "'{value}' is not allowed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "vocab.txt": "a\nb\nc\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "a\nb\n"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "a\nz\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'relation-subset' broken on src/broken.txt: 'z' is not allowed",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "relation-subset", "src/held.txt"],
+      [
+        "advised",
+        "relation-subset",
+        "src/broken.txt",
+        "[{\"id\":\"in-vocabulary\",\"witnesses\":[{\"key\":\"2\",\"value\":\"z\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

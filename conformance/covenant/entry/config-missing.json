@@ -1,0 +1,22 @@
+{
+  "description": "A repository with no config file fails closed with exit 2 and one blocked runner row.",
+  "args": [],
+  "tree": {},
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["no Polydeukes config found"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

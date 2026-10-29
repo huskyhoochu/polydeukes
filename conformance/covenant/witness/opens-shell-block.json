@@ -1,0 +1,22 @@
+{
+  "description": "A fresh token alone on the first line of a human message relaxes a shell-mod block into witnessed.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"Bash\", \"args\": {\"command\": \"echo x > gate/a.txt\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [], \"shell\": [\"Bash\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [{\"text\": \"agreed-token\\nplease proceed\", \"timestampMs\": @@NOW_MS-60000@@}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": ["redirect-write targets protected path gate"],
+    "rows": [["witnessed", "shell-mod", "gate"]]
+  }
+}

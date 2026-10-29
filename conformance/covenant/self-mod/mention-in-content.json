@@ -1,0 +1,15 @@
+{
+  "description": "A protected path mentioned only inside the content of a write to an unprotected target is upheld.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"src/a.ts\", \"content\": \"see dist/x.js\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"src/a.ts\", \"post\": \"see dist/x.js\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "self-mod", "dist"]]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A rename out of a protected directory blocks on its deletion half while the unprotected destination passes.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/old.txt b/free/new.txt\nsimilarity index 100%\nrename from gate/old.txt\nrename to free/new.txt\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-delete would modify protected path gate/old.txt"],
+    "rows": [["blocked", "self-mod", "gate"], ["passed", "covenant-check", "free/new.txt"]]
+  }
+}

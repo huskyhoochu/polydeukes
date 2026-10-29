@@ -1,0 +1,15 @@
+{
+  "description": "A write to a sibling directory that only shares a name prefix with the protected path passes.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist-old/x.js\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"dist-old/x.js\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "dist-old/x.js"]]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "description": "A command that mentions a protected path without read-only proof is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "node build.js dist"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["node mentions protected path dist without read-only proof"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

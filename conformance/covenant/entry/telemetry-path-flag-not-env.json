@@ -1,0 +1,32 @@
+{
+  "description": "The losing environment variable and config log path receive no row when the telemetry path flag is given.",
+  "args": ["--telemetry-path", "@@ROOT@@/flag-out/flag.log"],
+  "env": {
+    "POLYDEUKES_TELEMETRY_PATH": "@@ROOT@@/env.log"
+  },
+  "tree": {
+    "polydeukes.config.yaml": {
+      "telemetry": {
+        "logPath": "config.log"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Mystery",
+        "args": {
+          "file_path": "notes.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "log": "env.log",
+    "rows": []
+  }
+}

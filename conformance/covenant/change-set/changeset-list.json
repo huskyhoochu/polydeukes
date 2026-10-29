@@ -1,0 +1,109 @@
+{
+  "description": "The change-set surface judges changeSetDisciplines entries and leaves sessionDisciplines entries unjudged.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "changeSetDisciplines": [
+        {
+          "id": "needs-the-whole-change-set",
+          "declare": {
+            "mechanism": "companion",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "supply": {
+              "changes": "pass"
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-companion",
+                "relation": {
+                  "op": "implies",
+                  "of": "own",
+                  "requires": "changed"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ],
+      "sessionDisciplines": [
+        {
+          "id": "lib-needs-a-probe",
+          "why": "a lib edit follows a successful probe",
+          "declare": {
+            "mechanism": "precedent",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "supply": {
+              "session": "pass"
+            },
+            "extract": {
+              "probes": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["probe-tool"]
+                },
+                {
+                  "op": "filter",
+                  "when": [
+                    {
+                      "field": "succeeded",
+                      "eq": true
+                    }
+                  ]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "probed",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "probes"
+                },
+                "message": "no successful probe precedes this edit"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "diff --git a/lib/a.ts b/lib/a.ts\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/lib/a.ts\n@@ -0,0 +1 @@\n+hello\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "needs-the-whole-change-set", "lib/a.ts"]]
+  }
+}

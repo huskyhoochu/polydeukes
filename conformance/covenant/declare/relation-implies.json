@@ -1,0 +1,105 @@
+{
+  "description": "An implies relation compares keys only: it upholds an id the registry carries even when the entry differs, and records an id the registry lacks.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "relation-implies",
+          "declare": {
+            "mechanism": "companion",
+            "sources": {
+              "registry": {
+                "file": "registry.json"
+              }
+            },
+            "extract": {
+              "claimed": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ],
+              "known": [
+                {
+                  "op": "source",
+                  "of": "registry"
+                },
+                {
+                  "op": "json"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyBy",
+                  "field": "id"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "registered",
+                "relation": {
+                  "op": "implies",
+                  "of": "claimed",
+                  "requires": "known"
+                },
+                "message": "'{key}' is not registered"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "registry.json": "[{\"id\":\"a\",\"v\":1},{\"id\":\"b\",\"v\":2}]"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/held.txt",
+          "post": "[{\"id\":\"a\"}]"
+        }
+      },
+      {
+        "name": "Write",
+        "fileChange": {
+          "kind": "create",
+          "path": "src/broken.txt",
+          "post": "[{\"id\":\"a\"},{\"id\":\"c\"}]"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'relation-implies' broken on src/broken.txt: 'c' is not registered",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      ["passed", "relation-implies", "src/held.txt"],
+      [
+        "advised",
+        "relation-implies",
+        "src/broken.txt",
+        "[{\"id\":\"registered\",\"witnesses\":[{\"key\":\"c\",\"value\":{\"id\":\"c\"}}],\"total\":1}]"
+      ]
+    ]
+  }
+}
