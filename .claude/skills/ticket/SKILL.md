@@ -85,6 +85,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - `git checkout -b feat/<id>` (lowercase, e.g. `feat/core-03`), branched from up-to-date `main`.
 - This is the only sanctioned branch creation. Never create branches the loop (or the user)
   did not ask for.
+- Move the ticket's Plane item to `In Progress`.
 
 ### 3. WORK — delegate to the `/tdd` skill
 
@@ -252,7 +253,9 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   git -C _docs add -A && git -C _docs commit && git -C _docs push
   ```
 
-- Report which open issues the merge unlocked (those naming this ID as a dependency).
+- Report which open issues the merge unlocked (those naming this ID as a dependency), and move
+  each whose dependencies are now all closed from `Backlog` to `Todo` in Plane. Closing the
+  Forgejo issue moves this ticket's own item to `Done`; confirm it did.
 
 ## Notes
 
@@ -261,7 +264,10 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   (「일반 로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」), which keeps their stage too. A milestone's
   description holds its goal and Exit Criteria. A new or split ticket is a new issue with the same
   labels; it reaches POLY in Backlog with no module, so put it in the same module there. Title,
-  body, labels and closing belong to Forgejo; Plane only follows them.
+  body, labels, milestone and closing belong to Forgejo; Plane holds only the stage, set by one
+  rule: `Backlog` while a dependency is open, `Todo` once all are closed, `In Progress` from
+  BRANCH, `Done` when the issue closes after merge. The REST path for module and stage changes
+  is in `AGENTS.local.md`.
 - `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the
   project's Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there
   are ordinary git work: commit and push in that directory (see ARCHIVE). This skill is checked
