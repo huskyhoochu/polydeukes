@@ -91,11 +91,11 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Invoke the `tdd` skill with the PRD as the feature description. It owns
   PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE; do not re-implement its phases here.
-- **Inside this loop the three delegated phases run on pi with DeepSeek, not as `Agent`
-  spawns.** RED, AUDIT and GREEN each start one `pi` process from Bash in the repository root;
-  PRE-FLIGHT, the DELETE decisions, REVIEW and VALIDATE stay in the main session as the `tdd`
-  skill describes. Files go under the gitignored `.polydeukes/tmp/` (a Write outside the
-  project is refused by this repository's session hook):
+- **The three delegated phases run in the mode the owner names — sonnet or pi** (the `tdd`
+  skill's Runner section; ask once before RED when none is named). PRE-FLIGHT, the DELETE
+  decisions, REVIEW and VALIDATE stay in the main session either way.
+- **pi mode:** RED, AUDIT and GREEN each start one `pi` process from Bash in the repository
+  root. Files go under the gitignored `.polydeukes/tmp/`:
 
   ```sh
   awk 'BEGIN{n=0} /^---$/ && n<2 {n++; next} n>=2' .claude/agents/tdd-<role>.md \

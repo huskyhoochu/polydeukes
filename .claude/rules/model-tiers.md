@@ -13,12 +13,14 @@ file that a reviewer sees.
 | `sonnet` | `tdd-implementer` | writes the minimum code that turns audited tests green; the tests are the target |
 | `sonnet` | scope and other fixed-procedure steps | running `git diff` and listing files gains nothing from a higher tier |
 
-## Inside the ticket loop
+## The TDD runner
 
-`/ticket` runs RED, AUDIT and GREEN as `pi` processes on
-`openrouter/deepseek/deepseek-v4.1-flash-1017` (`.claude/skills/ticket/SKILL.md` §3), so the
-three `tdd-*` rows above apply when `/tdd` runs outside that loop. In both cases the agent
-files' bodies are the role prompts.
+RED, AUDIT and GREEN run in the mode the owner names (`.claude/skills/tdd/SKILL.md`, Runner):
+sonnet mode spawns all three with `model: "sonnet"`, overriding the `opus` in the writer's and
+auditor's files; pi mode runs them as `pi` processes on
+`openrouter/deepseek/deepseek-v4.1-flash-1017` (`.claude/skills/ticket/SKILL.md` §3). The three
+`tdd-*` rows above are the files' defaults for a spawn that names no model. In every mode the
+agent files' bodies are the role prompts.
 
 ## How it is enforced
 

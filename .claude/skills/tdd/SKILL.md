@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Run the RED→AUDIT→GREEN→REVIEW→VALIDATE TDD cycle for any production code change. Delegates test writing to tdd-test-writer, then classifies those tests via tdd-test-auditor BEFORE any implementation is written (so low-value tests are pruned before they induce unnecessary code), then delegates implementation to tdd-implementer, then reviews and validates. Single flow, no modes. Also use for auditing pre-existing test files — if the argument is `audit <path>` or the user says 'test audit', 'prune tests', '요식행위 테스트', '낮은 가치 테스트', 'test 가치 평가', enter the cycle at the AUDIT phase, classify, and act on user-approved DELETEs. Invoke aggressively whenever any of these phrases appear or when the user is about to write/modify production code under packages/, even if the user does not explicitly name the skill."
+description: "Run the RED→AUDIT→GREEN→REVIEW→VALIDATE TDD cycle for any production code change. Delegates test writing to tdd-test-writer, then classifies those tests via tdd-test-auditor BEFORE any implementation is written (so low-value tests are pruned before they induce unnecessary code), then delegates implementation to tdd-implementer, then reviews and validates. RED, AUDIT and GREEN run in the sonnet or pi mode the owner names. Also use for auditing pre-existing test files — if the argument is `audit <path>` or the user says 'test audit', 'prune tests', '요식행위 테스트', '낮은 가치 테스트', 'test 가치 평가', enter the cycle at the AUDIT phase, classify, and act on user-approved DELETEs. Invoke aggressively whenever any of these phrases appear or when the user is about to write/modify production code under packages/, even if the user does not explicitly name the skill."
 user_invocable: true
 argument: "<feature-description> | audit <path-or-glob>"
 ---
@@ -17,6 +17,18 @@ the turn *before* any test is written, so the rest of the cycle cannot be entere
 training-data assumptions. Auditing tests *before* implementation prevents writing code that only
 exists to satisfy low-value assertions. Every invocation walks the same phases in the same order;
 the argument only selects where to enter.
+
+## Runner — sonnet or pi, the owner's choice
+
+RED, AUDIT and GREEN run in the mode the owner names for the ticket or for one phase ("sonnet
+모드", "pi 모드"). When none is named, ask once before RED; nothing else switches it — not cost,
+usage or speed. A review fix runs in GREEN's mode unless the owner says otherwise. Both modes run
+the same role bodies (`.claude/agents/tdd-*.md`) with the same task text.
+
+- **sonnet** — the `Agent` tool with `subagent_type` the role and `model: "sonnet"`, which
+  overrides the `opus` in the writer's and auditor's files.
+- **pi** — one background `pi` process per phase on DeepSeek, launched as `/ticket` §3 WORK
+  describes.
 
 ## Entry points
 
