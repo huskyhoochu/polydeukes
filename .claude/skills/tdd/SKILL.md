@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Run the RED→AUDIT→GREEN→REVIEW→VALIDATE TDD cycle for any production code change. Delegates test writing to tdd-test-writer, then classifies those tests via tdd-test-auditor BEFORE any implementation is written (so low-value tests are pruned before they induce unnecessary code), then delegates implementation to tdd-implementer, then reviews and validates. RED, AUDIT and GREEN run in the sonnet or pi mode the owner names. Also use for auditing pre-existing test files — if the argument is `audit <path>` or the user says 'test audit', 'prune tests', '요식행위 테스트', '낮은 가치 테스트', 'test 가치 평가', enter the cycle at the AUDIT phase, classify, and act on user-approved DELETEs. Invoke aggressively whenever any of these phrases appear or when the user is about to write/modify production code under packages/, even if the user does not explicitly name the skill."
+description: "Run the RED→AUDIT→GREEN→REVIEW→VALIDATE TDD cycle for any production code change. Delegates test writing to tdd-test-writer, then classifies those tests via tdd-test-auditor BEFORE any implementation is written (so low-value tests are pruned before they induce unnecessary code), then delegates implementation to tdd-implementer, then reviews and validates. RED, AUDIT and GREEN run in the sonnet or pi mode the owner names. Also use for auditing pre-existing test files — if the argument is `audit <path>` or the user says 'test audit', 'prune tests', '요식행위 테스트', '낮은 가치 테스트', 'test 가치 평가', enter the cycle at the AUDIT phase, classify, and apply its DELETEs. Invoke aggressively whenever any of these phrases appear or when the user is about to write/modify production code under packages/, even if the user does not explicitly name the skill."
 user_invocable: true
 argument: "<feature-description> | audit <path-or-glob>"
 ---
@@ -32,7 +32,7 @@ the same role bodies (`.claude/agents/tdd-*.md`) with the same task text.
 ## Entry points
 
 - `<feature-description>` → start at PRE-FLIGHT and walk the full cycle.
-- `audit <path-or-glob>` → start at AUDIT over existing tests. Stops after user-approved DELETEs
+- `audit <path-or-glob>` → start at AUDIT over existing tests. Stops after the DELETEs
   land. PRE-FLIGHT / GREEN / REVIEW / VALIDATE are skipped because there is no new implementation
   to produce.
 - Keywords that resolve to the audit entry: `test audit`, `prune tests`, `요식행위 테스트`,
@@ -102,14 +102,13 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 - The gaps section answers a different question from the table: the table asks what bug each test
   catches, the gaps ask which input the suite never tried. A suite can be entirely P0 and still
   blind — that is how COVENANT-07b shipped three defects past a 24-test audit. Read both.
-- Present the table verbatim. For every DELETE, ask the user whether to prune, rewrite, or keep.
-  Default action on approved DELETE is surgical `Edit`; if a whole file is DELETE, `rm` it.
-- The auditor only has `Read, Glob, Grep`. It cannot delete. That is intentional — the DELETE
-  decision belongs to the user; the auditor's job is classification, not enforcement.
+- **The recommendations are accepted without asking the user.** The main session removes every
+  DELETE with a surgical `Edit` (`rm` when the whole file is DELETE), then reports the table
+  verbatim with what it removed. The auditor stays read-only; the main session executes.
 - This phase is the **value gate**. Tests that fail the bar do not reach GREEN, so the implementer
   never writes code to satisfy them.
 
-**For `audit <path>` entry, the cycle ends here** after approved DELETEs land.
+**For `audit <path>` entry, the cycle ends here** after the DELETEs land.
 
 ### 3. GREEN — delegate to `tdd-implementer`
 
