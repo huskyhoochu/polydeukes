@@ -25,8 +25,8 @@ RED, AUDIT and GREEN run in the mode the owner names for the ticket or for one p
 usage or speed. A review fix runs in GREEN's mode unless the owner says otherwise. Both modes run
 the same role bodies (`.claude/agents/tdd-*.md`) with the same task text.
 
-- **sonnet** — the `Agent` tool with `subagent_type` the role and `model: "sonnet"`, which
-  overrides the `opus` in the writer's and auditor's files.
+- **sonnet** — the `Agent` tool with `subagent_type` the role and `model: "sonnet"`. The role
+  files name no model; a spawn without one lands on the session default, `opus`.
 - **pi** — one background `pi` process per phase on DeepSeek, launched as `/ticket` §3 WORK
   describes.
 
