@@ -32,8 +32,9 @@ hand, with the version that shipped it.
 ## Tickets live in Forgejo issues
 
 Every planned ticket, candidate, open-on-condition item, and observed friction is one issue on
-`b95labs/polydeukes`, titled with its ID, labelled by kind, and placed on one of three kanban
-projects (roadmap, issue reports, docs). A milestone's goal and Exit Criteria are its Forgejo
+`b95labs/polydeukes`, titled with its ID and labelled by kind. Its stage and its board (roadmap,
+issue reports, docs) live in Plane's POLY project, which mirrors these issues; Forgejo's kanban
+projects are retired. A milestone's goal and Exit Criteria are its Forgejo
 milestone description, and the milestone is named for its goal, not a version number. No wiki
 page duplicates them.
 

@@ -24,9 +24,10 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Confirm the ticket is an **open Forgejo issue** on `b95labs/polydeukes` whose title starts with
   the ID (`LEDGER-01 · …`; an `ISSUE-<n>` ticket, optionally suffixed when one report splits into
-  several, `ISSUE-62a`, sits on the 「이슈 로드맵」 project), and that **every ticket its body names
-  as a dependency is a closed issue**. A ticket with unmet dependencies does not start — say so
-  and stop. The issue is the ticket's only record; no wiki document lists tickets.
+  several, `ISSUE-62a`, sits in the 「이슈 로드맵」 module of Plane's POLY project), and that
+  **every ticket its body names as a dependency is a closed issue**. A ticket with unmet
+  dependencies does not start — say so and stop. The issue is the ticket's only record; no wiki
+  document lists tickets.
 - Re-read the issue body (검증기준 = acceptance criteria) and its `why`, and the milestone
   description when the issue has one (its goal and Exit Criteria).
 - **If the ticket creates a package, read `.claude/rules/new-package-checklist.md` NOW and put
@@ -255,10 +256,12 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
 
 ## Notes
 
-- Tickets are Forgejo issues on `b95labs/polydeukes`, grouped on three kanban projects
-  (「일반 로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」) and labelled by kind (`ticket` ·
-  `candidate` · `conditional` · `friction` · `chore`); a milestone's description holds its goal
-  and Exit Criteria. A new or split ticket is a new issue with the same labels and project.
+- Tickets are Forgejo issues on `b95labs/polydeukes`, labelled by kind (`ticket` · `candidate` ·
+  `conditional` · `friction` · `chore`) and grouped as three modules of Plane's POLY project
+  (「일반 로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」), which keeps their stage too. A milestone's
+  description holds its goal and Exit Criteria. A new or split ticket is a new issue with the same
+  labels; it reaches POLY in Backlog with no module, so put it in the same module there. Title,
+  body, labels and closing belong to Forgejo; Plane only follows them.
 - `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the
   project's Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there
   are ordinary git work: commit and push in that directory (see ARCHIVE). This skill is checked
