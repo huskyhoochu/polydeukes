@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes' || exit 2",
             "timeout": 60
           }
         ]
