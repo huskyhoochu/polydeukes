@@ -8,8 +8,7 @@ argument: "<feature-description> | audit <path-or-glob>"
 # TDD Cycle Skill
 
 One flow, six phases, three delegated agents. The cycle is the sanctioned path for production code
-under `packages/`. It is how Polydeukes is built — and, after the self-dogfooding branch point, how
-Polydeukes builds itself.
+under `packages/`.
 
 The phase order is strict: **PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE**. Pre-flight
 forces the relevant design knowledge (`_docs/knowledge/` adr + dev-log) and library docs to land in
@@ -52,10 +51,9 @@ First privately list what you need next; then request every item that doesn't de
 
 ### 0. PRE-FLIGHT — main session (mandatory, blocks RED)
 
-Before delegating to `tdd-test-writer`, the main session emits a `### TDD Pre-flight` block. There
-is no hook enforcing it yet (a covenant will, post-dogfooding) — for now it is a discipline the main
-session upholds by hand. Skipping it is the most frequent root cause of repeating a mistake already
-recorded in `_docs/knowledge/`.
+Before delegating to `tdd-test-writer`, the main session emits a `### TDD Pre-flight` block.
+Skipping it is the most frequent root cause of repeating a mistake already recorded in
+`_docs/knowledge/`.
 
 ```text
 ### TDD Pre-flight
@@ -92,7 +90,6 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
   test helpers.
 - Output: a failing test file. If the target behavior is already implemented, tests may pass on
   first run — that is fine; AUDIT still evaluates their value.
-- Verify: run the test runner (below) on the new file and confirm failure (or intentional passing).
 - Pass the written file set straight to AUDIT — do not attempt GREEN until AUDIT has classified the
   tests.
 
@@ -119,17 +116,14 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 - Input: the audited, surviving test file(s) + current source tree.
 - Output: minimum code to make the surviving tests pass. No speculative branches, no features the
   surviving tests do not demand. (Global AGENTS.md §2 Simplicity First.)
-- Verify: the runner goes green on the new file.
 
 ### 4. REVIEW — main session
 
 - Dedupe and rename in both the implementation and the surviving tests.
 - Verify test-implementation alignment: every surviving `it()` should still describe behavior the
   implementation actually delivers. Auditor deletions can strand helper assertions; fix them here.
-- Check the cross-cutting invariants the PRD names — for core work that includes the **agent/tool/
-  language literal grep gate** (`@polydeukes/core` source must have zero `Edit`/`Write`/`claude`/
-  `vitest`/`pytest`/`go test` literals) and **one-way dependency** (every package depends only on
-  `core`).
+- Check the cross-cutting invariants the PRD names that no test enforces (the core literal gate
+  is `agent-literal-gate.test.ts`, run in VALIDATE).
 - Re-run the runner after every edit. Scope is cosmetic — naming, duplication, drift — behavior
   must not change.
 
@@ -144,34 +138,17 @@ The full gate, run once at the end of the cycle:
 If any fails, stop. Do not silence failures with `--no-verify` or targeted skips; diagnose and loop
 back to the phase that owns the failure (usually GREEN or REVIEW).
 
-> After the self-dogfooding branch point (roadmap: COVENANT-04 + ADAPTER-01 wired), VALIDATE also
-> means the change must pass the project's own covenants and be measured in the ledger. A covenant
-> that blocks, or a missing measurement, is itself a regression signal.
-
 After VALIDATE passes, continue to the `/post-task` skill (TSDoc pass, docs-drift check, dev-log
 self-question) before creating a PR — the cycle is not closed until its block is emitted.
 
 ## Test runner
 
-Single runner, single language: **vitest** on Node ≥24, ESM, TypeScript 7 RC.
+**vitest**. Test files live in each package's `__tests__/` directory (outside `src/`), so the
+core's literal gate, which scans `src/`, never trips on a `vitest` import.
 
 | Phase | Command |
 |---|---|
-| RED | new file only — `pnpm -F <pkg> exec vitest run <path>` (single-file failure confirmation) |
-| AUDIT | none (classification only) |
-| GREEN | new file only — single-file passing confirmation |
-| REVIEW | none (or narrowly scoped if a cosmetic change touches tested code) |
-| VALIDATE | full suite once — `pnpm -F <pkg> test` + typecheck + `pnpm check` |
-
-Test files live in each package's `__tests__/` directory (outside `src/`), so the core's
-literal-grep gate (which scans `src/` only) never trips on a `vitest` import.
-
-Per-phase full-suite runs waste time; VALIDATE is the single intra-cycle full-suite gate.
-
-## Why AUDIT comes before GREEN
-
-The naive order (RED → GREEN → AUDIT) lets implementation accumulate against tests the auditor
-would later classify DELETE. Every such test induces a code branch that exists only to satisfy a
-low-value assertion, and removing the test later often leaves the branch behind. Running AUDIT
-immediately after RED keeps the GREEN surface honest — code is only written for tests that already
-pass the value bar.
+| RED | the new file only — `pnpm -F <pkg> exec vitest run <path>`: confirm it fails (or passes on purpose) |
+| GREEN | the new file only — confirm it passes |
+| REVIEW | re-run the touched files after each edit |
+| VALIDATE | the full suite once — `pnpm -F <pkg> test` + typecheck + `pnpm check` |

@@ -7,10 +7,7 @@ argument: "<ticket-id> (e.g. CORE-03)"
 
 # Ticket Loop Skill
 
-One loop, seven phases. This is the sanctioned path for roadmap ticket work — the manual
-precursor of the ledger lifecycle CLI (roadmap LEDGER-06: new/start/work/verify/finish). After
-the self-dogfooding branch point, phases of this skill migrate one by one into ledger gates;
-until then, this document *is* the workflow.
+One loop, seven phases. This is the sanctioned path for roadmap ticket work.
 
 Scope guard: this loop is for **ticket work only** (a roadmap ID like CORE-03). Chores and doc
 edits do not enter it — they commit directly to `main` (no unrequested branches, ever) and, when
@@ -30,14 +27,10 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   document lists tickets.
 - Re-read the issue body (검증기준 = acceptance criteria) and its `why`, and the milestone
   description when the issue has one (its goal and Exit Criteria).
-- **If the ticket creates a package, read `.claude/rules/new-package-checklist.md` NOW and put
-  each of its registrations into the PRD
-  as an acceptance criterion.** The rule auto-loads for the files it names, but the files a
-  new package is made of are written by subagents in WORK — so the main session, which owns
-  the PRD and the release, never triggers it. `ISSUE-63` shipped a sixth package with the
-  `release-please-config.json` entry missing; the release PR then had to be closed, its
-  branch deleted, and the workflow re-run before the package could publish at all. The
-  checklist is the contract; this bullet is what makes the main session open it in time.
+- **If the ticket creates a package or crate, read `.claude/rules/new-package-checklist.md` now
+  and put each of its registrations into the PRD as an acceptance criterion.** The rule loads
+  only for the files it names, which subagents write in WORK, so the main session would never
+  see it (`ISSUE-63` shipped a package without its release-please entry).
 - **Knowledge is read through the memory index** (`.claude/rules/knowledge-reads.md`). Refresh it
   with `pnpm exec pdks memory ingest`, then search the ticket's area before writing the PRD —
   the PRD must build on recorded decisions, not re-derive them:
@@ -56,27 +49,20 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - **The lookups above do not depend on each other — issue them in one response** after the
   ingest. The area search and the carry-over sweep read different parts of the archive; running
   them one per turn spends a round trip on each.
-- **The PRD preserves no legacy.** The issue body and every carry-over hit above are
-  *candidate* requirements, not requirements. For each one the PRD records (1) who asked for
-  it and (2) whether the ticket's end goal is reached without it — and deletes what the goal
-  does not need. No field, value, or option kept "for later": a later ticket reviving part of
-  what was deleted is the normal case, and a ticket that revives nothing deleted too little.
-  A requirement nobody can be named for is a doc's residue, not a contract. **Read
-  `_docs/knowledge/foundation.research.first-principles-prd.md` in full before writing the
-  PRD** — it holds the method and its Falcon precedents, and its §4 is the §2-a requirement
-  table (requirement · who asked · verdict before the fundamental fact) the PRD opens its
-  scope section with, kept separate from the carry-over disposition table.
+- **The PRD preserves no legacy.** The issue body and every carry-over hit are candidate
+  requirements: the PRD names who asked for each and deletes what the ticket's goal does not
+  need. Read `_docs/knowledge/foundation.research.first-principles-prd.md` in full before
+  writing it; its §4 is the §2-a requirement table the scope section opens with, kept separate
+  from the carry-over disposition table.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): the OKF frontmatter of `_docs/knowledge/foundation.adr.knowledge-format.md`
   (`scope` · `type: prd` · `title` equal to the H1 · `tags` · `created_at` with UTC offset ·
   `status: draft`), links as relative markdown links (`other.md#anchor`, never `[[x]]`), status
   line `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
-- Record one **release impact** in the PRD status block before approval. Classify the ticket's
-  largest shipped effect, never the fact that it is a ticket: `patch` repairs behavior users
-  could already expect, `minor` adds a user-visible capability, `breaking` removes or changes a
-  compatibility promise, and `none` changes only non-release surfaces such as docs, tests, CI,
-  or repository administration. Name the reason in one sentence. Do not default to `minor` or
-  infer `feat` from the ticket workflow itself.
+- Record one **release impact** in the PRD status block, with a one-sentence reason, from the
+  ticket's largest shipped effect: `patch` repairs expected behavior, `minor` adds a
+  user-visible capability, `breaking` changes a compatibility promise, `none` touches only docs,
+  tests, CI or repository administration. Being a ticket implies none of them.
 - **Present the PRD to the user for approval before any code work.** The user may amend scope
   here; the approved PRD is the cycle's contract.
 
@@ -94,45 +80,20 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - **The three delegated phases run in the mode the owner names — sonnet or pi** (the `tdd`
   skill's Runner section; ask once before RED when none is named). PRE-FLIGHT, the DELETE
   decisions, REVIEW and VALIDATE stay in the main session either way.
-- **pi mode:** RED, AUDIT and GREEN each start one `pi` process from Bash in the repository
-  root. Files go under the gitignored `.polydeukes/tmp/`:
-
-  ```sh
-  awk 'BEGIN{n=0} /^---$/ && n<2 {n++; next} n>=2' .claude/agents/tdd-<role>.md \
-    > .polydeukes/tmp/<role>.role.md
-  pi -p --no-session --mode json \
-    --model openrouter/deepseek/deepseek-v4.1-flash-1017 --thinking medium \
-    --tools <tools> \
-    --append-system-prompt .polydeukes/tmp/<role>.role.md \
-    @.polydeukes/tmp/<role>.task.md < /dev/null > .polydeukes/tmp/<role>.jsonl 2>&1
-  ```
-
-  - `<tools>` is `read,bash,edit,write` for `test-writer` and `implementer`, and
-    `read,grep,find,ls` for `test-auditor`, which keeps the auditor without a shell or an
-    editor as its agent file intends.
-  - Run it with `run_in_background`. A few seconds after the start, check that the `.jsonl` has
-    events; a process with an open stdin or a session directory waits without calling the model.
-  - The task file is the phase's instruction, the shared rules below, and the PRD's contract,
-    pseudocode and acceptance list quoted from the file. It ends with the delegation line the
-    `tdd` skill gives verbatim.
-  - The shared rules: work only inside the repository root; do not touch the protected paths
+- **pi mode:** launch, log reading, cost and cleanup follow the global `pi-tdd` skill, from the
+  repository root with the role, task and log files under the gitignored `.polydeukes/tmp/`.
+  What this repository adds:
+  - The auditor gets `--tools read,grep,find,ls` — no shell, no editor, as its role file intends.
+  - The task file carries the PRD's contract, pseudocode and acceptance list, ends with the
+    `tdd` skill's delegation line, and states these rules: do not touch the protected paths
     (`.claude/`, `.codex/`, `.grok/`, `.git/`, `lefthook*.yml`, `biome.json`,
     `polydeukes.config.yaml`, `.polydeukes/bin/`, `packages/*/dist/`), because pi's tool calls
-    never reach this session's hook; run only the changed test files with
-    `pnpm -F <pkg> exec vitest run <file>`, never `pnpm test` or `pnpm build`; never cut a
-    command's output with `head` or `tail`; run no git command that writes (`add`, `commit`,
-    `push`, `stash`, `checkout`, `reset`), since commits belong to the main session; a rule the
-    contract does not state is not made — stop and report it.
-  - Read the result from the log: the final report is the text of the last assistant
-    `message_end` event, and the cost is the sum of its `usage.cost.total` values. The exit
-    code alone does not show success.
-  - After every run, the main session reads `git status --short` and the diff, and removes the
-    `.pi-lens-probe-home/` directory the pi-lens extension leaves in the root. After AUDIT, the
-    main session stages the surviving test files; after GREEN, an unstaged change under
-    `__tests__/` means the implementer edited a test, and the run is rejected.
-  - Read the RED output down to each fixture's premise before AUDIT. The model implements an
-    instruction literally, including a detail the task file states wrongly, so a wrong
-    fixture reaches GREEN as a wrong implementation.
+    never reach this session's hook; run only the changed test files, never `pnpm test` or
+    `pnpm build`; run no git command that writes, since commits belong to the main session.
+  - After AUDIT the main session stages the surviving test files; after GREEN, an unstaged
+    change under `__tests__/` means the implementer edited a test, and the run is rejected.
+  - Read the RED output down to each fixture's premise before AUDIT: the model implements a
+    detail the task file states wrongly just as literally as a right one.
 - The loop does not proceed until VALIDATE passes (tests + typecheck + `pnpm check`).
 - A knowledge document the loop writes besides the PRD (dev-log · ADR · research) carries
   `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to
@@ -158,15 +119,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `minor` → `feat`, `breaking` → the accurate type with `!` (and a `BREAKING CHANGE:` body when
   the migration needs explanation), `none` → the accurate non-release type such as `docs`,
   `test`, `ci`, `build`, or `chore`. Use that type in both the branch commit and the PR title;
-  push the branch and open a PR against `main` with `tea pr create`. A ticket ID does not imply
-  `feat`, and commitlint proving that a title is well-formed does not prove its release impact is
-  truthful.
-- **Splitting a branch by category is deferred, decided 2026-08-02.** It would cover ticket
-  branches carrying more than one kind of change (a distribution-API decision, a new layer,
-  a workflow fix that surfaced along the way), and would be done when each commit stands
-  alone with tests passing at that point. It is deferred because MERGE squashes: the split
-  would reach the review but never `main`. **Opens when the merge strategy stops squashing** —
-  until then the benefit is review granularity alone.
+  push the branch and open a PR against `main` with `tea pr create`.
 - Review with the built-in skill. On Claude Code:
   `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`.
   At `high` it fans out finder subagents by angle, verifies each candidate with an
@@ -183,7 +136,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   framing as review context (the finder/verifier agents honor it). Findings land
   in-session; triage them the project's way: reviewer confidence is hypothesis strength,
   not a verdict — judge each finding against the PRD text.
-- **Two constraints belong in the args, and a review without them leans one way.** A finding
+- **Three constraints belong in the args, and a review without them leans one way.** A finding
   always arrives as "here is how it breaks", so accepting one is free and declining one costs
   an argument. Left alone that gradient adds a check every round.
   - **Finite domain.** A finding must name a code path or an enumerated list. One that
@@ -201,23 +154,17 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
     `dist/`) locks every tool call in this session — twice on 2026-09-07 (SURFACE-02), each
     recovered only by the owner's terminal. A verifier that needs execution spawns the
     built bin against a fixture tree it created, never against this repository.
-- Auxiliary, for L-sized tickets where a durable review record on the PR is wanted: also run
-  the `code-review:code-review` plugin (5-perspective review posted as a GitHub comment).
-  Know its shape: findings scoring below its confidence cut are silently dropped, so it
-  supplements the in-session pass, never replaces it.
 - `/code-review ultra` (cloud multi-agent review, separately billed) is **user-triggered
-  only** — suggest it at milestone gates (e.g. closing v0.1), never launch it on the user's
-  behalf.
+  only** — suggest it at milestone gates, never launch it on the user's behalf.
 - Apply accepted fixes as follow-up commits on the same branch (each passing VALIDATE), push.
 
 ### 6. MERGE — user's call
 
 - **Merging is always the user's decision.** Report the PR state and wait; never merge
   unprompted.
-- On approval: before merging, compare the PRD release impact, PR title, and proposed squash
-  title. They must carry the same semantic type because release-please reads the commit that
-  lands on `main`, not the branch's internal history. Squash merge with that verified title,
-  delete the remote and local branch, then `git checkout main && git pull --ff-only`.
+- On approval: confirm the squash title carries the PRD release impact's type (release-please
+  reads only the commit that lands on `main`), squash merge with it, delete the remote and local
+  branch, then `git checkout main && git pull --ff-only`.
 
 ### 7. ARCHIVE — at merge time, not before
 
@@ -273,7 +220,5 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
   are ordinary git work: commit and push in that directory (see ARCHIVE). This skill is checked
   into the main repo, so contributors without that clone can still follow the loop's shape with
   their own tracker and PRD store.
-- Vocabulary is binding throughout: `covenant` / `discipline framework` / `memory` — never
-  `guard` / `harness` / `kb` (see `.claude/rules/domain-terms.md`).
 - Unit tasks must stay small enough for one PRD, verifiable by a command or test. If PRE
   reveals the ticket is bigger than that, propose splitting it into separate issues first.
