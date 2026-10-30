@@ -1,0 +1,39 @@
+{
+  "description": "A quoted redirect target is one word, so a session evidence path containing a space is matched whole and the write breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "echo x > \"@@HOME@@/a b/s.jsonl\""
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["session-write"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/a b/s.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["targets the session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/a b/s.jsonl"]]
+  }
+}

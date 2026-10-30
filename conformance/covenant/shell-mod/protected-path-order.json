@@ -1,0 +1,31 @@
+{
+  "description": "When one command mentions two protected paths the row subject is the one first in configuration order, while the reason names the one mentioned first.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist", "gate"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "rm gate/a dist/b"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["rm mentions protected path gate without read-only proof"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "description": "A shell roster holding only an empty name is an input error with exit 3; the TS judge reaches a verdict on the shell call instead.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "rm -rf dist"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [""],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": [
+      "covenant check failed closed: input carries a tools.shell roster with only empty names"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

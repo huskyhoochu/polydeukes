@@ -27,7 +27,7 @@ fn listed_conformance_cases_pass() {
     let list = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixture-cases.txt");
     run_runner(
         &["--cases", &list.to_string_lossy()],
-        "44 covenant fixture cases passed.",
+        "84 covenant fixture cases passed.",
     );
 }
 
@@ -36,7 +36,7 @@ fn divergent_cases_pass() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/divergent");
     run_runner(
         &["--cases-dir", &dir.to_string_lossy()],
-        "8 covenant fixture cases passed.",
+        "31 covenant fixture cases passed.",
     );
 }
 
@@ -45,6 +45,6 @@ fn not_ported_paths_block() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/not-ported");
     run_runner(
         &["--cases-dir", &dir.to_string_lossy()],
-        "5 covenant fixture cases passed.",
+        "3 covenant fixture cases passed.",
     );
 }

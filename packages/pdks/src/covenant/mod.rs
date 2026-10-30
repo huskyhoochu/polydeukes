@@ -1,6 +1,12 @@
+pub mod bash_line;
 pub mod discipline;
 pub mod dispatch;
 pub mod mention;
+pub mod mutation_rules;
 pub mod run_covenant;
 pub mod self_mod;
+pub mod shell_evidence;
+pub mod shell_mod;
+pub mod shell_path;
+pub mod transcript_mod;
 pub mod ttl_witness;

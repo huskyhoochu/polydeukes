@@ -1,0 +1,37 @@
+{
+  "description": "A Write whose body mentions a protected path is judged by its change only and leaves no shell-mod row.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "src/a.ts",
+          "content": "rebuild dist"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "src/a.ts",
+          "post": "rebuild dist"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "self-mod", "dist"]]
+  }
+}

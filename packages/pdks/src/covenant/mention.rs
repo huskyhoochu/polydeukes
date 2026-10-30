@@ -67,7 +67,7 @@ fn segments_match(candidate: &[&str], protected: &[&str]) -> bool {
 /// Resolve `.` and `..` against the preceding segment. A `..` with nothing to cancel is
 /// kept, so `../packages` does not collapse into `packages` and borrow a sibling checkout's
 /// protection.
-fn resolve_dot_segments<'a>(segments: &[&'a str]) -> Vec<&'a str> {
+pub fn resolve_dot_segments<'a>(segments: &[&'a str]) -> Vec<&'a str> {
     let mut resolved: Vec<&str> = Vec::new();
     for &segment in segments {
         if segment == "." {
@@ -80,6 +80,29 @@ fn resolve_dot_segments<'a>(segments: &[&'a str]) -> Vec<&'a str> {
         resolved.push(segment);
     }
     resolved
+}
+
+/// The segments of the `/`-separated parts read in order: empty parts and `.` are dropped and
+/// `..` removes the segment before it, so `..` above the root is the root.
+pub fn rooted_segments<'a>(parts: impl IntoIterator<Item = &'a str>) -> Vec<&'a str> {
+    let mut resolved = Vec::new();
+    for part in parts {
+        match part {
+            "" | "." => {}
+            ".." => {
+                resolved.pop();
+            }
+            _ => resolved.push(part),
+        }
+    }
+    resolved
+}
+
+/// `path.posix.join(root, relative)`: the two joined by `/` and normalized under the root.
+/// `Path::join` would discard the root for an absolute `relative`.
+pub fn join_under(root: &str, relative: &str) -> String {
+    let parts = rooted_segments(root.split('/').chain(relative.split('/')));
+    format!("/{}", parts.join("/"))
 }
 
 /// True when `candidate` names the protected path, a descendant of it, or a relative
@@ -101,6 +124,16 @@ pub fn path_candidates(token: &str) -> impl Iterator<Item = &str> {
     token
         .split(|c: char| is_js_space(c) || matches!(c, '=' | ',' | '(' | ')' | '`'))
         .filter(|fragment| !fragment.is_empty())
+}
+
+/// A command line the tokenizer could not read, as path candidates: the line itself plus its
+/// fragments split on the shell operators the tokenizer would have consumed. Adding a form can
+/// only add a match.
+pub fn untokenizable_line_candidates(line: &str) -> Vec<&str> {
+    let fragments = line
+        .split([';', '&', '|', '<', '>'])
+        .filter(|fragment| !fragment.is_empty() && *fragment != line);
+    std::iter::once(line).chain(fragments).collect()
 }
 
 /// Every string value inside `value`, at any depth; keys and non-strings are not scanned.

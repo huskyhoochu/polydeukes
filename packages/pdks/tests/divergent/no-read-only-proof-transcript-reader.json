@@ -1,0 +1,18 @@
+{
+  "description": "A cat of the session evidence file breaks, since no read-only proof exists.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"shell-tool\", \"args\": {\"command\": \"cat @@HOME@@/.claude/projects/p/session.jsonl\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["names the session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"]]
+  }
+}

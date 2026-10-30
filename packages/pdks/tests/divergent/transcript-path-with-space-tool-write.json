@@ -1,0 +1,40 @@
+{
+  "description": "A tool write without change evidence to a session evidence path containing a space breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "session-write",
+        "args": {
+          "file_path": "@@HOME@@/a b/s.jsonl",
+          "content": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["session-write"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/a b/s.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/a b/s.jsonl"]]
+  }
+}

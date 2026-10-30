@@ -1,0 +1,39 @@
+{
+  "description": "An absolute path whose dot-dot climbs above the root is read as the root, so a redirect through it into the session evidence file breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "echo x > /../@@HOME@@/.claude/projects/p/session.jsonl"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["session-write"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/.claude/projects/p/session.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["targets the session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"]]
+  }
+}

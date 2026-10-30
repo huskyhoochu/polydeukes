@@ -15,9 +15,6 @@ pub fn judge(
     protected_paths: &[String],
     mutating_tool_names: &[String],
 ) -> Judgment {
-    if mutating_tool_names.iter().all(String::is_empty) {
-        return Judgment::Unjudgeable;
-    }
     if !mutating_tool_names
         .iter()
         .any(|name| !name.is_empty() && *name == call.name)
@@ -54,8 +51,8 @@ pub fn registration(
 ) -> Registration {
     Registration {
         label: "self-mod",
-        protected_paths,
         judge: Judge::SelfMod {
+            protected_paths,
             mutating_tool_names,
         },
     }

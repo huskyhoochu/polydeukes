@@ -1,0 +1,31 @@
+{
+  "description": "An unpaired backtick inside double quotes is recorded as an unread span, so a line mentioning no protected path still leaves a skipped shell-unjudgeable row.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo \"`ls\""
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "shell-unjudgeable", "-", "no-observation"]]
+  }
+}

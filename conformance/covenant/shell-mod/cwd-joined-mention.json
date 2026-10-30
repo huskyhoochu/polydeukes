@@ -1,0 +1,32 @@
+{
+  "description": "A path that names a protected directory only after joining the call cwd is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "cwd": "pkg",
+        "args": {
+          "command": "rm ../dist/a"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

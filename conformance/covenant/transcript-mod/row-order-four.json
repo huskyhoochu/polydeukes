@@ -1,0 +1,26 @@
+{
+  "description": "One shell call that trips every registration leaves its rows in the order self-mod, shell-mod, transcript-mod, skipped shell-unjudgeable.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"shell-tool\", \"args\": {\"command\": \"cat dist/a; echo x > @@HOME@@/.claude/projects/p/session.jsonl ; echo 'open\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "cat mentions protected path dist without read-only proof",
+      "redirect-write targets the session transcript"
+    ],
+    "rows": [
+      ["passed", "self-mod", "dist"],
+      ["blocked", "shell-mod", "dist"],
+      ["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

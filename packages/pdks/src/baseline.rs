@@ -13,6 +13,7 @@ use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
 use crate::core::telemetry::{self, Event};
+use crate::covenant::mention::join_under;
 
 const LABEL: &str = "baseline";
 
@@ -29,8 +30,8 @@ fn baseline_path(root: &Path) -> PathBuf {
 }
 
 /// A configured entry may be absolute; it is appended under the root rather than replacing it.
-fn join_under(root: &Path, relative: &str) -> PathBuf {
-    root.join(relative.trim_start_matches('/'))
+fn under_root(root: &Path, relative: &str) -> PathBuf {
+    PathBuf::from(join_under(&root.to_string_lossy(), relative))
 }
 
 /// Fold one file's path and bytes into the hash. The path participates, so a rename with
@@ -48,8 +49,8 @@ fn fold_file(hasher: &mut Sha256, absolute: &Path, key: &str) {
 /// hashes identically twice. A file, or a path that does not exist, is not a traversal
 /// failure: a vanished entry hashes to the absence marker.
 fn fold_entry(hasher: &mut Sha256, root: &Path, relative: &str) {
-    let Ok(children) = fs::read_dir(join_under(root, relative)) else {
-        fold_file(hasher, &join_under(root, relative), relative);
+    let Ok(children) = fs::read_dir(under_root(root, relative)) else {
+        fold_file(hasher, &under_root(root, relative), relative);
         return;
     };
     let mut names: Vec<OsString> = children

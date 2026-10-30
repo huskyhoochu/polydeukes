@@ -3,6 +3,7 @@ use serde_json::Value;
 pub struct ToolCall {
     pub name: String,
     pub args: Option<Value>,
+    pub cwd: Option<String>,
     pub file_change: Option<Value>,
 }
 
@@ -39,12 +40,15 @@ pub fn parse_input(text: &str) -> Result<Input, String> {
         let Some(Value::String(name)) = call.remove("name") else {
             return Err(MALFORMED_TOOL_CALL.to_string());
         };
-        if call.get("cwd").is_some_and(|cwd| !cwd.is_string()) {
-            return Err("input carries a malformed tool-call cwd".to_string());
-        }
+        let cwd = match call.remove("cwd") {
+            None => None,
+            Some(Value::String(cwd)) => Some(cwd),
+            Some(_) => return Err("input carries a malformed tool-call cwd".to_string()),
+        };
         tool_calls.push(ToolCall {
             name,
             args: call.remove("args"),
+            cwd,
             file_change: call.remove("fileChange"),
         });
     }

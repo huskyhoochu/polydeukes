@@ -1,0 +1,45 @@
+{
+  "description": "An empty shell roster means the shell axis is absent, so a call creating an unrelated file passes with the session evidence path set.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "session-write",
+        "args": {
+          "file_path": "a.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["session-write"],
+      "shell": [],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/.claude/projects/p/session.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "a.txt"]]
+  }
+}

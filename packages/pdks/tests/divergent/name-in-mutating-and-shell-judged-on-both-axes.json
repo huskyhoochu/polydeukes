@@ -1,0 +1,44 @@
+{
+  "description": "A tool name listed as both mutating and shell is judged on both axes, so its change to the session evidence file breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "both",
+        "args": {
+          "command": "true"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "@@HOME@@/.claude/projects/p/session.jsonl",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["both"],
+      "shell": ["both"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/.claude/projects/p/session.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["would modify the session transcript"],
+    "rows": [["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"]]
+  }
+}

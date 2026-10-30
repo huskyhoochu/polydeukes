@@ -1,0 +1,32 @@
+{
+  "description": "A shell call whose commandArgs value is an array has no string to read and blocks as unjudgeable.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "cwd": "@@ROOT@@",
+        "args": {
+          "command": ["rm", "dist/a"]
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["unjudgeable shell call Bash"],
+    "rows": [["blocked", "shell-mod", "-"]]
+  }
+}

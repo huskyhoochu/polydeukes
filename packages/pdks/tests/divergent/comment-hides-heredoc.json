@@ -1,0 +1,31 @@
+{
+  "description": "A hash at the start of a word comments out the rest of its line, so the heredoc marker inside it opens nothing and the following rm of a protected path breaks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo hi # <<EOF\nrm -rf dist\nEOF"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

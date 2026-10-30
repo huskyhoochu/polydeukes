@@ -17,11 +17,11 @@ use crate::core::exit_codes::Exit;
 use crate::core::protocol::{Input, parse_input};
 use crate::core::telemetry::{self, Event, iso_utc};
 use crate::core::transcript::{UserMessage, user_messages};
-use crate::covenant::discipline::relativize_for_scope;
+use crate::covenant::discipline::{relativize_for_scope, shell_unjudgeable_registration};
 use crate::covenant::dispatch::{Context, Registration, dispatch};
 use crate::covenant::run_covenant::{Enforce, Verdict};
-use crate::covenant::self_mod;
 use crate::covenant::ttl_witness::{TtlSpec, Valve, witness_expired_at};
+use crate::covenant::{self_mod, shell_mod, transcript_mod};
 use crate::load_config::{
     LayerSource, discover_config_path, parse_config_source, parse_layer_source,
 };
@@ -73,7 +73,8 @@ struct Settled {
 
 struct Tools {
     mutating: Vec<String>,
-    shell_declared: bool,
+    shell: Vec<String>,
+    command_args: Vec<String>,
 }
 
 struct Session {
@@ -216,6 +217,17 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
             let mutating = string_list(object, "mutating")?;
             let shell = string_list(object, "shell")?;
             let command_args = string_list(object, "commandArgs")?;
+            for (key, names) in [
+                ("mutating", &mutating),
+                ("shell", &shell),
+                ("commandArgs", &command_args),
+            ] {
+                if !names.is_empty() && names.iter().all(String::is_empty) {
+                    return Err(format!(
+                        "input carries a tools.{key} roster with only empty names"
+                    ));
+                }
+            }
             // Every routed call would land unjudgeable, which no posture softens.
             if !shell.is_empty() && command_args.is_empty() {
                 return Err(
@@ -224,7 +236,8 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
             }
             Some(Tools {
                 mutating,
-                shell_declared: !shell.is_empty(),
+                shell,
+                command_args,
             })
         }
     };
@@ -281,20 +294,19 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
 
 /// Inputs that reach a part of the judge this build does not carry. They stop here rather
 /// than pass as if judged.
-fn not_ported(
-    tools: Option<&Tools>,
-    session: Option<&Session>,
-    config: &Config,
-) -> Option<&'static str> {
-    if tools.is_some_and(|tools| tools.shell_declared) {
-        Some("a non-empty tools.shell roster")
-    } else if session.is_some_and(|session| session.evidence_path.is_some()) {
-        Some("session.evidencePath")
-    } else if config.has_discipline_entries {
-        Some("discipline entries in the config")
-    } else {
-        None
-    }
+fn not_ported(config: &Config) -> Option<&'static str> {
+    config
+        .has_discipline_entries
+        .then_some("discipline entries in the config")
+}
+
+/// The environment's `HOME` when set, even empty, since that is what the judged shell expands
+/// `~` from; otherwise the passwd entry bash falls back to.
+fn home_dir() -> Option<String> {
+    env::var_os("HOME")
+        .map(PathBuf::from)
+        .or_else(env::home_dir)
+        .map(|home| home.to_string_lossy().into_owned())
 }
 
 fn witness_state_line(
@@ -356,20 +368,40 @@ fn judge_input(
         || vec![STAGED_WRITE.to_string(), STAGED_DELETE.to_string()],
         |tools| tools.mutating.clone(),
     );
-    // A host that declared an empty mutating roster has no tool axis to register.
-    let registrations: Vec<Registration> = if mutating.is_empty() {
-        Vec::new()
-    } else {
-        vec![self_mod::registration(
+    let no_names: &[String] = &[];
+    let (shell_tools, command_args) = tools.map_or((no_names, no_names), |tools| {
+        (tools.shell.as_slice(), tools.command_args.as_slice())
+    });
+    // An empty list is an axis the host does not have, so it registers nothing. The order is
+    // the order of the rows one call leaves.
+    let mut registrations: Vec<Registration> = Vec::new();
+    if !mutating.is_empty() {
+        registrations.push(self_mod::registration(
             config.protected_paths.clone(),
-            mutating,
-        )]
-    };
+            mutating.clone(),
+        ));
+    }
+    if !shell_tools.is_empty() {
+        registrations.push(shell_mod::registration(config.protected_paths.clone()));
+    }
+    let evidence_path = session.and_then(|session| session.evidence_path.as_deref());
+    if let Some(path) = evidence_path {
+        let root = spec.root.to_string_lossy();
+        registrations.extend(transcript_mod::registration(
+            path,
+            &root,
+            home_dir().as_deref(),
+            &mutating,
+        ));
+    }
+    registrations.push(shell_unjudgeable_registration());
 
     let context = Context {
         enforce: spec.enforce,
         valve: valve.as_ref(),
         telemetry_path,
+        shell_tools,
+        command_args,
     };
     let mut blocked = false;
     let mut valve_refused_a_block = false;
@@ -557,7 +589,7 @@ pub fn run_covenant_check(spec: &CheckSpec) -> Exit {
         Ok(shape) => shape,
         Err(error) => return fail_closed(telemetry_path, &error, "", Exit::InputUnreadable),
     };
-    if let Some(what) = not_ported(tools.as_ref(), session.as_ref(), &settled.config) {
+    if let Some(what) = not_ported(&settled.config) {
         let reason = format!("{what} is not ported");
         return fail_closed(telemetry_path, &reason, "", Exit::Blocked);
     }

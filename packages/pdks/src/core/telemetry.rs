@@ -59,8 +59,17 @@ fn sanitize(value: &str) -> String {
 /// Append one timestamped row, creating the log's directory. A logging failure never
 /// changes a verdict, so it is dropped here.
 pub fn append(path: &Path, event: Event, label: &str, subject: &str) {
+    append_row(path, event, label, subject, "");
+}
+
+/// A `skipped` row carries its skip reason as the fifth field.
+pub fn append_skipped(path: &Path, label: &str, subject: &str, reason: &str) {
+    append_row(path, Event::Skipped, label, subject, &format!("\t{reason}"));
+}
+
+fn append_row(path: &Path, event: Event, label: &str, subject: &str, tail: &str) {
     let line = format!(
-        "{}\t{}\t{}\t{}\n",
+        "{}\t{}\t{}\t{}{tail}\n",
         iso_utc(now_ms()),
         event.as_str(),
         sanitize(label),

@@ -1,19 +1,8 @@
 use std::path::Path;
 
-/// Lexically resolve the parts of an absolute path; `..` at the root stays at the root.
-fn absolute_parts(path: &str) -> Vec<&str> {
-    let mut parts: Vec<&str> = Vec::new();
-    for part in path.split('/') {
-        match part {
-            "" | "." => {}
-            ".." => {
-                parts.pop();
-            }
-            _ => parts.push(part),
-        }
-    }
-    parts
-}
+use super::dispatch::{Judge, Registration, ShellCall};
+use super::mention::rooted_segments;
+use super::shell_evidence::has_pathless_signal;
 
 /// `path.posix.normalize` for a relative path: resolve `.` and `..`, keep a trailing `/`.
 fn normalize_relative(path: &str) -> String {
@@ -39,8 +28,8 @@ fn normalize_relative(path: &str) -> String {
 
 /// `path.relative(root, path)` for two absolute paths.
 fn relative_to(root: &str, path: &str) -> String {
-    let from = absolute_parts(root);
-    let to = absolute_parts(path);
+    let from = rooted_segments(root.split('/'));
+    let to = rooted_segments(path.split('/'));
     let shared = from
         .iter()
         .zip(&to)
@@ -60,4 +49,18 @@ pub fn relativize_for_scope(file_path: &str, root: &Path) -> Option<String> {
     }
     let relativized = relative_to(&root.to_string_lossy(), file_path);
     (!relativized.starts_with("..")).then_some(relativized)
+}
+
+/// The one common shell-axis skip registration. A write whose target is unknowable belongs to
+/// no covenant's scope, so it leaves one row under one label with the subject `-`.
+pub fn shell_unjudgeable_registration() -> Registration {
+    Registration {
+        label: "shell-unjudgeable",
+        judge: Judge::ShellUnjudgeable,
+    }
+}
+
+/// True when a command line of the call writes somewhere its text does not reveal.
+pub fn shell_unjudgeable(shell: &ShellCall) -> bool {
+    shell.lines.iter().any(has_pathless_signal)
 }

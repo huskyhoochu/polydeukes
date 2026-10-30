@@ -1,0 +1,39 @@
+{
+  "description": "A mutating roster holding only an empty name is an input error with exit 3; the TS judge blocks the write at exit 2 on the self-mod covenant.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "dist/a.js",
+          "content": "x\n"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "dist/a.js",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [""],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": [
+      "covenant check failed closed: input carries a tools.mutating roster with only empty names"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

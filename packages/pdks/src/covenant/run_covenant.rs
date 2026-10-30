@@ -13,12 +13,9 @@ pub enum Enforce {
     Block,
 }
 
-/// `Unjudgeable` is a misassembly no judge could read: it blocks at either enforce level and
-/// carries no reason.
 pub enum Judgment {
     Upheld,
     Broken(String),
-    Unjudgeable,
 }
 
 /// What one wrapped judgment recorded. `valve_refused` is set when the valve was asked to
@@ -48,7 +45,7 @@ pub fn run_covenant(
     let event = match (judgment, enforce) {
         (Judgment::Upheld, _) => Event::Passed,
         (Judgment::Broken(_), Enforce::Advise) => Event::Advised,
-        (Judgment::Broken(_), Enforce::Block) | (Judgment::Unjudgeable, _) => match valve {
+        (Judgment::Broken(_), Enforce::Block) => match valve {
             Some(valve) if valve.opens() => Event::Witnessed,
             Some(_) => {
                 valve_refused = true;
@@ -64,5 +61,15 @@ pub fn run_covenant(
     Verdict {
         event,
         valve_refused,
+    }
+}
+
+/// A registration with nothing to judge records the no-op: there is no verdict to relax, so
+/// the valve is not consulted.
+pub fn record_skip(label: &str, subject: &str, telemetry_path: &Path) -> Verdict {
+    telemetry::append_skipped(telemetry_path, label, subject, "no-observation");
+    Verdict {
+        event: Event::Skipped,
+        valve_refused: false,
     }
 }
