@@ -30,9 +30,9 @@ printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
 
-Expect `exit=2`, a diagnostic naming the protected path on stderr, and a `blocked` row in the
-log. This command only asks for a judgment. It does **not** perform the proposed write, so the
-settings file stays unchanged and there is no destructive edit to undo.
+Expect `exit=2`, a diagnostic naming the protected path on stderr, and a `blocked` row in the log.
+This command only asks for a judgment. It does **not** perform the proposed write, so the settings
+file stays unchanged and there is no destructive edit to undo.
 
 Repeat with a path outside the protection list:
 
@@ -43,35 +43,34 @@ printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
 
-Expect `exit=0` and a `passed` row for this starter configuration. Again, no file is written.
-You have checked both a blocked and an allowed observation using the installed judge.
+Expect `exit=0` and a `passed` row for this starter configuration. Again, no file is written. You
+have checked both a blocked and an allowed observation using the installed judge.
 
-Open Claude Code in this project to use the same hook on actual tool calls. Ask it to create
-an ordinary text file, then confirm that a new row appears in `.polydeukes/roi.log`. The direct
-probe above does not prove that a particular host session loaded its hook registration.
+Open Claude Code in this project to use the same hook on actual tool calls. Ask it to create an
+ordinary text file, then confirm that a new row appears in `.polydeukes/roi.log`. The direct probe
+above does not prove that a particular host session loaded its hook registration.
 
-**Before the first config edit:** the loader automatically protects the discovered config
-file, even though it is not written in `protectedPaths`. For an intentional session edit, read
-`witness.token` and type that token yourself on the first line of a message, with nothing else
-on that line. The starter token is `pdks witness` and its window is ten minutes. The valve
-supplies permission only after a blocking verdict; an agent cannot supply the human message
-for you. Alternatively, make the deliberate configuration edit from your own terminal.
+**Before the first config edit:** the loader automatically protects the discovered config file, even
+though it is not written in `protectedPaths`. For an intentional session edit, read `witness.token`
+and type that token yourself on the first line of a message, with nothing else on that line. The
+starter token is `pdks witness` and its window is ten minutes. The valve supplies permission only
+after a blocking verdict; an agent cannot supply the human message for you. Alternatively, make the
+deliberate configuration edit from your own terminal.
 
 If the probe fails because the package or configuration cannot load, repair the named file or
-reinstall from your own terminal. A witness cannot repair a failure that occurs before the
-valve is assembled. See [configuration errors](../troubleshooting.md#invalid-config) and
+reinstall from your own terminal. A witness cannot repair a failure that occurs before the valve is
+assembled. See [configuration errors](../troubleshooting.md#invalid-config) and
 [missing judge](../troubleshooting.md#judge-cannot-be-loaded).
 
 <a id="next-step"></a>
 
 ## Continue with a real project
 
-- [Configure the project](../how-to/configure-project.md) to choose whether a violation advises
-  or blocks.
-- [Connect the surfaces](../how-to/connect-surfaces.md) for Grok, Codex, or a git pre-commit
-  hook.
+- [Configure the project](../how-to/configure-project.md) to choose whether a violation advises or
+  blocks.
+- [Connect the surfaces](../how-to/connect-surfaces.md) for Grok, Codex, or a git pre-commit hook.
 - [Write a discipline](../how-to/write-disciplines.md) and observe an advisory before choosing
   whether it should block.
 
-An exit code alone does not describe all observations. `advised` and `skipped` can accompany
-exit 0. Read the diagnostic and the [verdict vocabulary](../troubleshooting.md#reading-verdict).
+An exit code alone does not describe all observations. `advised` and `skipped` can accompany exit 0.
+Read the diagnostic and the [verdict vocabulary](../troubleshooting.md#reading-verdict).

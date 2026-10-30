@@ -13,31 +13,32 @@ contract vocabulary is in `package-contract.md`.
 
 ## Core terms
 
-| Concept | Package / code | Verb | CLI |
-|---|---|---|---|
-| **Covenant** | `polydeukes`'s `src/covenant/` module | uphold / break | `pdks covenant check` |
-| **Discipline** | one `disciplines:` entry (prose + enforcement tag) | — | `pdks` (root) |
-| **Memory** | `@polydeukes/memory` (SQLite + FTS5) | recall / ingest | `pdks memory search` |
-| **Witness (valve)** | `ttlWitness` / config `witness:` (meta-covenant valve: the token typed first-line-alone, held `ttlMinutes`) · a declaration's `witness` block (discipline valve: its own `extract`·`relate`) | witness | — |
+| Concept             | Package / code                                                                                                                                                                               | Verb            | CLI                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | --------------------- |
+| **Covenant**        | `polydeukes`'s `src/covenant/` module                                                                                                                                                        | uphold / break  | `pdks covenant check` |
+| **Discipline**      | one `disciplines:` entry (prose + enforcement tag)                                                                                                                                           | —               | `pdks` (root)         |
+| **Memory**          | `@polydeukes/memory` (SQLite + FTS5)                                                                                                                                                         | recall / ingest | `pdks memory search`  |
+| **Witness (valve)** | `ttlWitness` / config `witness:` (meta-covenant valve: the token typed first-line-alone, held `ttlMinutes`) · a declaration's `witness` block (discipline valve: its own `extract`·`relate`) | witness         | —                     |
 
 `core` and `adapter-*` packages keep their plain names.
 
 ## Judgment vocabulary — the telemetry row
 
-The six verdict words (`passed` · `blocked` · `witnessed` · `advised` · `skipped` ·
-`unattributed`) are the telemetry contract: a row in `.polydeukes/roi.log` carries exactly one, and
-tests, docs, and CLI output use the same word for the same event. `advised` is the disposition of
-an entry whose own `enforce` is `advise` or absent, or of a surface at `enforce: advise`.
-`unattributed` is written by the baseline comparison, not by a judge. Older rows that say
-`bypassed` are folded into `witnessed` by the reader; never write `bypassed` in new code.
+The six verdict words (`passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed`)
+are the telemetry contract: a row in `.polydeukes/roi.log` carries exactly one, and tests, docs, and
+CLI output use the same word for the same event. `advised` is the disposition of an entry whose own
+`enforce` is `advise` or absent, or of a surface at `enforce: advise`. `unattributed` is written by
+the baseline comparison, not by a judge. Older rows that say `bypassed` are folded into `witnessed`
+by the reader; never write `bypassed` in new code.
 
 A row has four fields (timestamp · event · label · subject) and an optional fifth whose meaning the
-event decides: on a break it is the witness list as a JSON array; on `skipped` it is a **skip
-reason** from the closed tuple `no-observation` (the surface has no channel for what the entry
-reads) · `config-fault` (no assembled registration carries it: the loader refuses a config with an
-entry it cannot compile) · `supply-pass` (the declaration's own `supply: pass` let an absent source
-through). A `skipped` row without a fifth field is a family runtime skip and reads back with no
-reason.
+event decides: on a break it is the witness list as a JSON array; on `skipped` it is a
+**skip
+reason**
+from the closed tuple `no-observation` (the surface has no channel for what the entry reads) ·
+`config-fault` (no assembled registration carries it: the loader refuses a config with an entry it
+cannot compile) · `supply-pass` (the declaration's own `supply: pass` let an absent source through).
+A `skipped` row without a fifth field is a family runtime skip and reads back with no reason.
 
 ## Surfaces, axes, meta-covenants
 
@@ -47,13 +48,13 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
   stdin) and **change-set** (`pdks covenant check --diff` over a finished change set from any
   producer). A surface's `enforce` belongs to the observer; an entry's `enforce` is the author's
   rung on the promotion ladder — absent means `advise`, `block` is the promotion — and the lenient
-  side wins. Meta-covenants carry no entry rung, so they alone block on the session surface.
-  Neither setting is a verdict word.
+  side wins. Meta-covenants carry no entry rung, so they alone block on the session surface. Neither
+  setting is a verdict word.
 - **Axes** — **tool** (Edit/Write/…), **shell** (Bash), and **transcript**.
 - **Meta-covenants** — **self-mod**, **shell-mod**, **transcript-mod**; registered directly by the
   session composition root. The verdict vocabulary applies unchanged.
-- **Declared limit vs defect** — a declared limit leaves a `skipped` row; a defect leaves NO row,
-  or a `passed` row with no judgment. The telemetry row is what separates them.
+- **Declared limit vs defect** — a declared limit leaves a `skipped` row; a defect leaves NO row, or
+  a `passed` row with no judgment. The telemetry row is what separates them.
 
 ## Term usage rules
 
@@ -76,10 +77,9 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
 
 ## `rule` — where the jargon survives
 
-- **`rule` survives only as internal jargon for detection primitives** inside judge
-  implementations (the `MutationRule` family — pattern detectors over shell commands). A detector
-  is a machine part, not a practice. Never export it into a user-facing name, folder, config key,
-  or doc.
+- **`rule` survives only as internal jargon for detection primitives** inside judge implementations
+  (the `MutationRule` family — pattern detectors over shell commands). A detector is a machine part,
+  not a practice. Never export it into a user-facing name, folder, config key, or doc.
 - Surfaces owned by other tools (an agent's own rules directory) and the npm `keywords` array keep
   their native vocabulary.
 - **Reference docs describe current behavior and use the current vocabulary.**

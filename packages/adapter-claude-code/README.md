@@ -18,11 +18,11 @@ Node, npm, or adapter installation. The npm package supports JavaScript module i
 All three adapters provide the same three functions. Each accepts one spec object and returns a
 named outcome.
 
-| Function | Role |
-|---|---|
-| `prepareHook` | Translate host events and collect available evidence |
-| `registerHook` | Merge project hook registrations |
-| `renderHookResponse` | Render the host’s allow or deny response |
+| Function             | Role                                                 |
+| -------------------- | ---------------------------------------------------- |
+| `prepareHook`        | Translate host events and collect available evidence |
+| `registerHook`       | Merge project hook registrations                     |
+| `renderHookResponse` | Render the host’s allow or deny response             |
 
 The common `pdks` runtime invokes `covenant check` through the current executable. The shared judge
 owns judgment and telemetry; the adapter owns translation and registration.

@@ -36,6 +36,6 @@ exception: the npm `keywords` array keeps the industry terms — it is a discove
 
 ## Tools that stay out
 
-Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills,
-MCP tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage
-agent instructions directly in `AGENTS.md` and the repository-owned rule files.
+Do not use or introduce Transcodes in this repository. Do not invoke Transcodes plugins, skills, MCP
+tools, CLI commands, Persona workflows, hooks, generated files, or dependencies here. Manage agent
+instructions directly in `AGENTS.md` and the repository-owned rule files.

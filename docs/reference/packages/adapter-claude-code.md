@@ -8,11 +8,11 @@
 This module translates host events and tool names into the common covenant input IR. All three
 adapters expose the same three functions.
 
-| Function | Input and result |
-|---|---|
-| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable` |
-| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
-| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr |
+| Function             | Input and result                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `prepareHook`        | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable`                     |
+| `registerHook`       | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr                   |
 
 The common `pdks` runtime reads stdin and sends IR to `covenant check --enforce block` through the
 current executable. Stdin EOF and child communication each have a 10-second deadline. Registered

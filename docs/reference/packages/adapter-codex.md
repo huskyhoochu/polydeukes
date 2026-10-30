@@ -8,11 +8,11 @@
 This module translates host events and tool names into the common covenant input IR. All three
 adapters expose the same three functions.
 
-| Function | Input and result |
-|---|---|
-| `prepareHook` | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable` |
-| `registerHook` | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
-| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr |
+| Function             | Input and result                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `prepareHook`        | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable`                     |
+| `registerHook`       | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
+| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr                   |
 
 The common `pdks` runtime reads stdin and sends IR to `covenant check --enforce block` through the
 current executable. Stdin EOF and child communication each have a 10-second deadline. Registered
@@ -58,10 +58,10 @@ shell calls and telemetry with your installed CLI. `Active` is not execution evi
 Grok responds with stdout JSON containing `decision: allow|deny`; Claude and Codex use empty stdout
 and exit 0 or 2. Observe-only lifecycle events exit 0 without a tool-decision JSON document.
 
-Shell paths use the event's cwd. In Codex CLI 0.163.0, one nested `exec_command` with a
-`workdir` override did not block a protected file's mtime change. The raw hook payload was not
-captured, so coverage of per-tool directory overrides remains unverified. Recheck it when
-that payload can be inspected.
+Shell paths use the event's cwd. In Codex CLI 0.163.0, one nested `exec_command` with a `workdir`
+override did not block a protected file's mtime change. The raw hook payload was not captured, so
+coverage of per-tool directory overrides remains unverified. Recheck it when that payload can be
+inspected.
 
 <a id="limits"></a>
 ## Declared limits

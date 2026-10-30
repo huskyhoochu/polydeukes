@@ -18,7 +18,7 @@ jobs:
   test:
     runs-on: node-24
     env:
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
       - uses: actions/checkout@v4
 
@@ -52,7 +52,7 @@ jobs:
 
       - uses: https://github.com/astral-sh/setup-uv@v10.3.0
         with:
-          version: '0.13.1'
+          version: "0.13.1"
 
       - name: Build the Linux executable for Python consumers
         run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/pdks-linux-x64"

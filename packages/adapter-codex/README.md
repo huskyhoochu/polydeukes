@@ -18,11 +18,11 @@ Node, npm, or adapter installation. The npm package supports JavaScript module i
 All three adapters provide the same three functions. Each accepts one spec object and returns a
 named outcome.
 
-| Function | Role |
-|---|---|
-| `prepareHook` | Translate host events and collect available evidence |
-| `registerHook` | Merge project hook registrations |
-| `renderHookResponse` | Render the host’s allow or deny response |
+| Function             | Role                                                 |
+| -------------------- | ---------------------------------------------------- |
+| `prepareHook`        | Translate host events and collect available evidence |
+| `registerHook`       | Merge project hook registrations                     |
+| `renderHookResponse` | Render the host’s allow or deny response             |
 
 The common `pdks` runtime invokes `covenant check` through the current executable. The shared judge
 owns judgment and telemetry; the adapter owns translation and registration.
@@ -48,10 +48,10 @@ const outcome = prepareHook({
 Coverage depends on the host version. After approval through `/hooks`, check real file and shell
 calls in `.polydeukes/roi.log`. An active registration alone does not prove nested-call coverage.
 
-Shell paths use the event's cwd. In Codex CLI 0.163.0, one nested `exec_command` with a
-`workdir` override did not block a protected file's mtime change. The raw hook payload was not
-captured, so coverage of per-tool directory overrides remains unverified. Recheck it when
-that payload can be inspected.
+Shell paths use the event's cwd. In Codex CLI 0.163.0, one nested `exec_command` with a `workdir`
+override did not block a protected file's mtime change. The raw hook payload was not captured, so
+coverage of per-tool directory overrides remains unverified. Recheck it when that payload can be
+inspected.
 
 <a id="see-also"></a>
 ## See also

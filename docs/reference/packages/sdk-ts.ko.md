@@ -9,12 +9,12 @@ Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일�
 <a id="ownership"></a>
 ## 담당하는 기능
 
-| 동사 | 명령 | 결과 |
-|---|---|---|
-| `checkCovenant` | `pdks covenant check` | `CheckCovenantVerdict` |
-| `checkChangeSet` | `pdks covenant check --diff` | `CheckCovenantVerdict` |
-| `memoryIngest` | `pdks memory ingest` | `MemoryIngestOutcome` |
-| `memorySearch` | `pdks memory search <query> --json` | `MemorySearchOutcome` |
+| 동사             | 명령                                | 결과                   |
+| ---------------- | ----------------------------------- | ---------------------- |
+| `checkCovenant`  | `pdks covenant check`               | `CheckCovenantVerdict` |
+| `checkChangeSet` | `pdks covenant check --diff`        | `CheckCovenantVerdict` |
+| `memoryIngest`   | `pdks memory ingest`                | `MemoryIngestOutcome`  |
+| `memorySearch`   | `pdks memory search <query> --json` | `MemorySearchOutcome`  |
 
 네 동사는 실행 파일 선택과 바이트 단위 프로세스 통신을 공유합니다. 루트는 호출자의 현재 디렉터리
 기준으로 절대화되어 자식의 cwd가 됩니다. 명시한 `executable`도 이름만 적었더라도 호출자의 cwd
@@ -40,6 +40,7 @@ SDK 호스트에는 Node >=24가 필요합니다.
 `unavailable`로 돌아옵니다.
 
 <a id="동사"></a>
+
 <a id="verb"></a>
 ## `checkCovenant`
 
@@ -47,55 +48,60 @@ SDK 호스트에는 Node >=24가 필요합니다.
 import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
 
 const input: CovenantInput = {
-  toolCalls: [{
-    name: 'writeFile',
-    args: { path: 'src/index.ts' },
-    fileChange: {
-      kind: 'create',
-      path: 'src/index.ts',
-      post: 'export const answer = 42;\n',
+  toolCalls: [
+    {
+      name: 'writeFile',
+      args: { path: 'src/index.ts' },
+      fileChange: {
+        kind: 'create',
+        path: 'src/index.ts',
+        post: 'export const answer = 42;\n',
+      },
     },
-  }],
+  ],
   subagentSpawns: [],
   userMessages: [],
   tools: { mutating: ['writeFile'], shell: ['exec'], commandArgs: ['command'] },
 };
 const verdict = await checkCovenant({
-  repoRoot: '/path/to/project', input, executable: '/opt/tools/pdks', timeoutMs: 2000,
+  repoRoot: '/path/to/project',
+  input,
+  executable: '/opt/tools/pdks',
+  timeoutMs: 2000,
 });
 if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 // upheld 판정 결과를 받은 뒤 이곳에서 제안한 작업을 실행합니다.
 ```
 
-호스트가 도구 호출마다 증거를 제공합니다. `fileChange`는 `create`(`path`, `post`),
-`modify`(`path`, `pre`, `post`), `delete`(`path`, 선택 `pre`) 중 하나입니다. `fileChange`가 없으면
-그 호출에는 입증된 파일 변경이 없으며 다른 호출의 증거가 대신하지 않습니다. SDK는 입력을 UTF-8
-JSON으로 그대로 보내고 actor, session, 도구 목록을 합성하지 않습니다. `CovenantInput`에는 `world`
-필드가 없고, CLI가 프로젝트에서 그 축을 공급합니다.
+호스트가 도구 호출마다 증거를 제공합니다. `fileChange`는 `create`(`path`, `post`), `modify`(`path`,
+`pre`, `post`), `delete`(`path`, 선택 `pre`) 중 하나입니다. `fileChange`가 없으면 그 호출에는 입증된
+파일 변경이 없으며 다른 호출의 증거가 대신하지 않습니다. SDK는 입력을 UTF-8 JSON으로 그대로 보내고
+actor, session, 도구 목록을 합성하지 않습니다. `CovenantInput`에는 `world` 필드가 없고, CLI가
+프로젝트에서 그 축을 공급합니다.
 
 <a id="spec"></a>
 ## 스펙
 
-| 필드 | `CheckCovenantSpec` | `CheckChangeSetSpec` |
-|---|---|---|
-| `repoRoot: string` | 프로젝트 루트와 자식 cwd | 같음 |
-| `input: CovenantInput` | 호출자가 만든 필수 IR | `diff: string`으로 대체 |
-| `enforce?: 'advise' \| 'block'` | 기본값 `block` | 같음 |
-| `configLayer?: string` | `--config-layer`로 전달, 상대 경로는 자식 cwd 기준 | 같음 |
-| `telemetryPath?: string` | `--telemetry-path`로 전달, 상대 경로는 자식 cwd 기준 | 같음 |
-| `executable?: string` | `PATH`보다 먼저 선택할 실행 파일 | 같음 |
-| `timeoutMs?: number` | 유한한 0 이상 밀리초, 미지정이면 기한 없음 | 같음 |
-| `spawn?: Spawn` | 주입할 프로세스 경계 | 같음 |
+| 필드                            | `CheckCovenantSpec`                                  | `CheckChangeSetSpec`    |
+| ------------------------------- | ---------------------------------------------------- | ----------------------- |
+| `repoRoot: string`              | 프로젝트 루트와 자식 cwd                             | 같음                    |
+| `input: CovenantInput`          | 호출자가 만든 필수 IR                                | `diff: string`으로 대체 |
+| `enforce?: 'advise' \| 'block'` | 기본값 `block`                                       | 같음                    |
+| `configLayer?: string`          | `--config-layer`로 전달, 상대 경로는 자식 cwd 기준   | 같음                    |
+| `telemetryPath?: string`        | `--telemetry-path`로 전달, 상대 경로는 자식 cwd 기준 | 같음                    |
+| `executable?: string`           | `PATH`보다 먼저 선택할 실행 파일                     | 같음                    |
+| `timeoutMs?: number`            | 유한한 0 이상 밀리초, 미지정이면 기한 없음           | 같음                    |
+| `spawn?: Spawn`                 | 주입할 프로세스 경계                                 | 같음                    |
 
 `MemoryIngestSpec`은 `root: string`과 `executable`, `timeoutMs`, `spawn`을 받습니다.
-`MemorySearchSpec`은 여기에 `query: string`과 선택 `limit: number`를 받습니다.
-limit은 양의 안전 정수여야 합니다. 잘못된 limit과 기한은 스폰 전에 실패 값이 됩니다.
-기억 명령에는 강제 수준, config-layer, telemetry 플래그를 보내지 않습니다.
+`MemorySearchSpec`은 여기에 `query: string`과 선택 `limit: number`를 받습니다. limit은 양의 안전
+정수여야 합니다. 잘못된 limit과 기한은 스폰 전에 실패 값이 됩니다. 기억 명령에는 강제 수준,
+config-layer, telemetry 플래그를 보내지 않습니다.
 
-통신 기한은 프로세스가 생성된 뒤 시작합니다. stdin 쓰기와 두 출력 파이프 수집을 포함하고,
-직접 자식이 먼저 끝난 뒤 후손이 파이프를 잡고 있는 시간에도 적용됩니다. 0은 스폰 직후 만료됩니다.
-만료 시 직접 자식을 종료·회수하고 파이프를 닫으며 후손은 종료하지 않습니다. 실행 파일 해석,
-직렬화, OS 스폰 지연은 기한 전에 일어납니다. 주입한 spawn은 직접 기한을 집행해야 합니다.
+통신 기한은 프로세스가 생성된 뒤 시작합니다. stdin 쓰기와 두 출력 파이프 수집을 포함하고, 직접
+자식이 먼저 끝난 뒤 후손이 파이프를 잡고 있는 시간에도 적용됩니다. 0은 스폰 직후 만료됩니다. 만료 시
+직접 자식을 종료·회수하고 파이프를 닫으며 후손은 종료하지 않습니다. 실행 파일 해석, 직렬화, OS 스폰
+지연은 기한 전에 일어납니다. 주입한 spawn은 직접 기한을 집행해야 합니다.
 
 <a id="verdicts"></a>
 ## 판정 결과 셋
@@ -107,15 +113,15 @@ type CheckCovenantVerdict =
   | { verdict: 'unjudged'; reason: string };
 ```
 
-status `0`은 `upheld`, `2`는 `blocked`, 나머지 status와 시그널은 `unjudged`입니다.
-실행 파일 해석, 직렬화, 스폰, 기한 실패도 `unjudged`입니다. 제안한 작업은 `upheld`일 때만 실행합니다.
-SDK는 stderr를 근거로 status `2`를 재해석하지 않습니다. 순환 참조, BigInt, 유한하지 않은 JSON 수치는
-직렬화에 실패합니다.
+status `0`은 `upheld`, `2`는 `blocked`, 나머지 status와 시그널은 `unjudged`입니다. 실행 파일 해석,
+직렬화, 스폰, 기한 실패도 `unjudged`입니다. 제안한 작업은 `upheld`일 때만 실행합니다. SDK는 stderr를
+근거로 status `2`를 재해석하지 않습니다. 순환 참조, BigInt, 유한하지 않은 JSON 수치는 직렬화에
+실패합니다.
 
-유효한 stderr 텍스트는 공백을 포함해 보존하고, 잘못된 UTF-8은 대체 디코딩합니다. `advisories`와
-차단 응답의 `reason`은 자식의 stderr입니다. 다른 비정상 종료 상태는 stderr가 있으면 이를 쓰고,
-없으면 상태 설명을 씁니다. 약속 stdout은 비우지만 판정 결과를 정하지 않습니다. 텔레메트리 행은 CLI가
-쓰며 `telemetryPath`로 목적지를 고릅니다.
+유효한 stderr 텍스트는 공백을 포함해 보존하고, 잘못된 UTF-8은 대체 디코딩합니다. `advisories`와 차단
+응답의 `reason`은 자식의 stderr입니다. 다른 비정상 종료 상태는 stderr가 있으면 이를 쓰고, 없으면
+상태 설명을 씁니다. 약속 stdout은 비우지만 판정 결과를 정하지 않습니다. 텔레메트리 행은 CLI가 쓰며
+`telemetryPath`로 목적지를 고릅니다.
 
 <a id="change-set"></a>
 ## `checkChangeSet`
@@ -124,7 +130,9 @@ SDK는 stderr를 근거로 status `2`를 재해석하지 않습니다. 순환 �
 import { checkChangeSet } from '@polydeukes/sdk-ts';
 
 const verdict = await checkChangeSet({
-  repoRoot: '/path/to/project', diff, executable: '/opt/tools/pdks',
+  repoRoot: '/path/to/project',
+  diff,
+  executable: '/opt/tools/pdks',
 });
 if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 ```
@@ -136,8 +144,8 @@ SDK는 git을 실행하지 않습니다. 생산 명령의 형식은 다음처럼
 git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
 ```
 
-추적하지 않은 파일은 `git add -N`을 해야 나타납니다. SDK의 강제 수준 기본값은 변경 집합 명령을 포함한
-두 약속 동사에서 모두 `block`입니다.
+추적하지 않은 파일은 `git add -N`을 해야 나타납니다. SDK의 강제 수준 기본값은 변경 집합 명령을
+포함한 두 약속 동사에서 모두 `block`입니다.
 
 <a id="memory"></a>
 ## `memoryIngest`와 `memorySearch`
@@ -150,9 +158,14 @@ const ingest = await memoryIngest(shared);
 if (ingest.outcome === 'unavailable') throw new Error(ingest.reason);
 const result = await memorySearch({ ...shared, query: 'session report', limit: 5 });
 switch (result.outcome) {
-  case 'found': console.log(result.hits); break;
-  case 'empty': console.log('일치하는 절 없음'); break;
-  case 'unavailable': throw new Error(result.reason);
+  case 'found':
+    console.log(result.hits);
+    break;
+  case 'empty':
+    console.log('일치하는 절 없음');
+    break;
+  case 'unavailable':
+    throw new Error(result.reason);
 }
 ```
 
@@ -162,23 +175,23 @@ switch (result.outcome) {
 `reason`이 있는 `unavailable`입니다. 검색은 query를 인자 하나로, limit을 `--limit <n>`으로
 전달합니다. 기억 stdin은 빈 바이트입니다.
 
-성공한 검색 stdout은 `ingestedAt: string`과 `results`가 있는 엄격한 UTF-8 JSON이어야 합니다.
-각 결과에는 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`(문자열), `stale`(불리언),
+성공한 검색 stdout은 `ingestedAt: string`과 `results`가 있는 엄격한 UTF-8 JSON이어야 합니다. 각
+결과에는 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`(문자열), `stale`(불리언),
 `supersededBy`(문자열 배열), `trust`(`human-reviewed`, `machine-verified`, `unverified`),
-`matchPath`(`and`, `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다.
-`MemorySearchResult`는 core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 유효한 빈 `results`
-배열만 `empty`입니다. 잘못된 응답과 실행 실패는 `unavailable`입니다.
+`matchPath`(`and`, `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다. `MemorySearchResult`는
+core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 유효한 빈 `results` 배열만 `empty`입니다.
+잘못된 응답과 실행 실패는 `unavailable`입니다.
 
 <a id="failure"></a>
 ## 실패와 전환
 
-실행 파일을 쓸 수 없으면 약속 명령은 `unjudged`, 기억 명령은 `unavailable`을 반환합니다.
-위 예제처럼 각 갈래를 명시적으로 처리합니다.
+실행 파일을 쓸 수 없으면 약속 명령은 `unjudged`, 기억 명령은 `unavailable`을 반환합니다. 위 예제처럼
+각 갈래를 명시적으로 처리합니다.
 
 npm peer를 설치하던 소비자는 단일 실행 파일 `pdks`를 설치하고 `executable`이나 `PATH`의 절대
-디렉터리로 선택합니다. `@polydeukes/core`의 입력 타입 import를 `@polydeukes/sdk-ts`로 옮깁니다.
-기존 `CheckCovenantSpawnSpec`은 `SpawnSpec`이 됩니다. 프로세스 경계는 네 동사를 처리하고 stdin,
-stdout, stderr를 바이트로 전달합니다.
+디렉터리로 선택합니다. `@polydeukes/core`의 입력 타입 import를 `@polydeukes/sdk-ts`로 옮깁니다. 기존
+`CheckCovenantSpawnSpec`은 `SpawnSpec`이 됩니다. 프로세스 경계는 네 동사를 처리하고 stdin, stdout,
+stderr를 바이트로 전달합니다.
 
 ```ts
 type SpawnSpec = {

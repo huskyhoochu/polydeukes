@@ -13,7 +13,7 @@ disciplines:
       extract:
         outside:
           - { op: source, of: target.path }
-          - { op: matches, re: '^(?!store/)' }
+          - { op: matches, re: "^(?!store/)" }
       relate:
         - { id: placed, relation: { op: empty, of: outside }, message: "{value} is outside store/" }
       witness:
@@ -22,13 +22,13 @@ disciplines:
   - id: no-why-entry
     declare:
       mechanism: added-only
-      scope: { source: target.path, include: ['^src/'] }
+      scope: { source: target.path, include: ["^src/"] }
       supply: { pre: empty, post: empty }
       extract:
         after:
           - { op: source, of: post }
           - { op: lines }
-          - { op: matches, re: 'TODO' }
+          - { op: matches, re: "TODO" }
       relate:
         - { id: none, relation: { op: empty, of: after }, message: "{value}" }
   - id: blocking-entry
@@ -40,7 +40,7 @@ disciplines:
       extract:
         outside:
           - { op: source, of: target.path }
-          - { op: matches, re: '^(?!logs/)' }
+          - { op: matches, re: "^(?!logs/)" }
       relate:
         - { id: placed, relation: { op: empty, of: outside }, message: "{value}" }
   - id: still-thinking
@@ -81,5 +81,13 @@ changeSetDisciplines:
           - { op: items }
           - { op: keyByPattern, re: '^(.+)\.ko\.md$' }
       relate:
-        - { id: ko-follows, relation: { op: implies, of: en, requires: koChanged }, message: "{value} changed without {key}.ko.md" }
-        - { id: en-follows, relation: { op: implies, of: ko, requires: enChanged }, message: "{value} changed without {key}.md" }
+        - {
+            id: ko-follows,
+            relation: { op: implies, of: en, requires: koChanged },
+            message: "{value} changed without {key}.ko.md",
+          }
+        - {
+            id: en-follows,
+            relation: { op: implies, of: ko, requires: enChanged },
+            message: "{value} changed without {key}.md",
+          }

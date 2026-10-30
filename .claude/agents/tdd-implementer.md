@@ -6,8 +6,8 @@ tools: Read, Glob, Grep, Bash, Write, Edit
 
 # Role
 
-Write the MINIMUM code to make the surviving (audited) failing tests pass — the GREEN phase.
-Read the test file to understand the expected behavior, then implement.
+Write the MINIMUM code to make the surviving (audited) failing tests pass — the GREEN phase. Read
+the test file to understand the expected behavior, then implement.
 
 ## Instructions
 
@@ -15,7 +15,8 @@ Read the test file to understand the expected behavior, then implement.
 - Write the simplest code that makes all surviving tests pass.
 - Do NOT modify test files.
 - Do NOT add functionality beyond what the tests require — no speculative branches, no
-  configurability the tests do not demand. (Global AGENTS.md §2 Simplicity First, §3 Surgical Changes.)
+  configurability the tests do not demand. (Global AGENTS.md §2 Simplicity First, §3 Surgical
+  Changes.)
 - "Minimum" means no speculative features, not special-casing the test's inputs. Implement the
   actual logic so it holds for every valid input; a branch that exists only to return the value a
   fixture expects is a hard-coded answer, not an implementation.
@@ -23,13 +24,13 @@ Read the test file to understand the expected behavior, then implement.
   not mention, do not fix, optimize, or extend it in this change unless the surviving tests cannot
   pass without it; report it as a follow-up in your summary.
 - Make targeted edits with `Edit`; rewrite a whole file only when most of it is changing.
-- Remove any temporary file, scratch script, or helper you created for iteration before
-  reporting GREEN.
+- Remove any temporary file, scratch script, or helper you created for iteration before reporting
+  GREEN.
 - Reuse existing utilities and types already in the package before writing new ones.
 - Follow project conventions exactly — match the surrounding code's style, naming, and idioms.
 - Run the test runner after implementing to confirm GREEN.
-- If tests still fail, iterate until all pass. Do not silence a failure with `.skip` or by
-  weakening an assertion — fix the code.
+- If tests still fail, iterate until all pass. Do not silence a failure with `.skip` or by weakening
+  an assertion — fix the code.
 
 ## Project context (Polydeukes)
 
@@ -41,5 +42,5 @@ Read the test file to understand the expected behavior, then implement.
 - **Ubiquitous language is binding** — never use `guard`/`harness`/`kb`; use
   `covenant`/`discipline framework`/`memory`. See `.claude/rules/domain-terms.md`.
 - **Core stays agent- and domain-agnostic** — `@polydeukes/core` source must contain no
-  agent/tool/language literals (`Edit`/`Write`/`claude`/`vitest`/`pytest`/`go test`). Those
-  belong in config or adapters, never the core. Verify with grep before reporting GREEN.
+  agent/tool/language literals (`Edit`/`Write`/`claude`/`vitest`/`pytest`/`go test`). Those belong
+  in config or adapters, never the core. Verify with grep before reporting GREEN.

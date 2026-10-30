@@ -7,14 +7,16 @@ argument: "(none — operates on the current session's uncommitted changes)"
 
 # Post-Task Skill
 
-The closing discipline of a work session — run after VALIDATE, before the PR (or before the
-final commit, for non-ticket chores). It is the manual precursor of the guidance the ledger
-`finish` gate will print after self-dogfooding (roadmap LEDGER-06); until then, this checklist
-is upheld by hand, exactly like the TDD skill's pre-flight.
+The closing discipline of a work session — run after VALIDATE, before the PR (or before the final
+commit, for non-ticket chores). It is the manual precursor of the guidance the ledger `finish` gate
+will print after self-dogfooding (roadmap LEDGER-06); until then, this checklist is upheld by hand,
+exactly like the TDD skill's pre-flight.
 
-Five checks, then one mandatory block. Every item must be grounded in tool output from **this
-session** — an unverified "looks fine" is not an answer. Skipping the block is not an option;
-"nothing to do" is recorded, not implied.
+Five checks, then one mandatory block. Every item must be grounded in tool output from
+**this
+session**
+— an unverified "looks fine" is not an answer. Skipping the block is not an option; "nothing to do"
+is recorded, not implied.
 
 ## 1. TSDoc pass (always)
 
@@ -26,38 +28,38 @@ Record what it did (files touched, or "no exported symbols changed").
 
 Ask: **did this change make any written description stale?** Check the changed files against:
 
-- `AGENTS.md` — a routing table only: does every file it names still exist and still hold what
-  the table says it holds;
-- `.claude/rules/*.md` — the always-on rules (`conventions.md` for commands, `development-process.md`,
-  `self-dogfooding.md`) and the path-scoped ones (workspace structure, domain terms);
+- `AGENTS.md` — a routing table only: does every file it names still exist and still hold what the
+  table says it holds;
+- `.claude/rules/*.md` — the always-on rules (`conventions.md` for commands,
+  `development-process.md`, `self-dogfooding.md`) and the path-scoped ones (workspace structure,
+  domain terms);
 - `README.md` / `STORY.md` and their `*.ko.md` mirrors — **bilingual docs must move together**;
 - the affected package's own README, if any.
 
 Small drift: fix it directly in this session. Structural drift (new package, new convention,
-reshaped workflow): run the `/codebase-docs` skill instead. Record the verdict either way, with
-the specific stale sentence found — or "no drift" after actually checking.
+reshaped workflow): run the `/codebase-docs` skill instead. Record the verdict either way, with the
+specific stale sentence found — or "no drift" after actually checking.
 
 ## 3. Dev-log self-question (always answer)
 
-Ask the three trigger questions (from the knowledge-store discipline — non-obvious learnings
-only, not a diary):
+Ask the three trigger questions (from the knowledge-store discipline — non-obvious learnings only,
+not a diary):
 
 1. **Looked-like ≠ was**: did something appear to be X but turn out to be Y?
 2. **Approach pivot**: did the session abandon one approach for another, and why?
 3. **Stale doc corrected by measurement**: did a document claim something reality contradicted?
 
-If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` following the
-OKF contract in `_docs/knowledge/foundation.adr.knowledge-format.md` (frontmatter `scope` ·
-`type: dev-log` · `title` equal to the H1 · `tags` · `created_at` · `ticket` (inside a `/ticket`
-loop only: the loop's ID, e.g. `MEMORY-07`; outside a loop, omit the key); relative markdown
-links, never `[[x]]`): searchable one-line conclusion as the title, body as symptom → wrong
-hypothesis → real cause → prescription, one `## H2 {#anchor}` per atomic topic. Add its entry to
-`_docs/knowledge/index.md` under its scope heading.
-If all three are no, record `dev-log: none` explicitly.
+If any answer is yes, write `_docs/knowledge/<scope>.dev-log.<name>.md` following the OKF contract
+in `_docs/knowledge/foundation.adr.knowledge-format.md` (frontmatter `scope` · `type: dev-log` ·
+`title` equal to the H1 · `tags` · `created_at` · `ticket` (inside a `/ticket` loop only: the loop's
+ID, e.g. `MEMORY-07`; outside a loop, omit the key); relative markdown links, never `[[x]]`):
+searchable one-line conclusion as the title, body as symptom → wrong hypothesis → real cause →
+prescription, one `## H2 {#anchor}` per atomic topic. Add its entry to `_docs/knowledge/index.md`
+under its scope heading. If all three are no, record `dev-log: none` explicitly.
 
-**Writing the file is not the durable step.** `_docs/` is a clone of the project's wiki, so
-a dev-log lands on one machine until it is pushed — the same leak §4 names below, one layer
-out. Inside the `/ticket` loop, ARCHIVE handles this for everything the loop wrote;
+**Writing the file is not the durable step.** `_docs/` is a clone of the project's wiki, so a
+dev-log lands on one machine until it is pushed — the same leak §4 names below, one layer out.
+Inside the `/ticket` loop, ARCHIVE handles this for everything the loop wrote;
 **running this skill standalone, do it here**:
 
 ```sh
@@ -66,29 +68,30 @@ git -C _docs add -A && git -C _docs commit && git -C _docs push
 
 ## 4. Public-language promotion (always answer)
 
-Ask: **did this session produce a decision or narrative worth promoting into the public
-docs' shared language?** The public surface is `docs/why-polydeukes.md` (+ `.ko.md`) —
-decisions and their reasons only, never internal roadmap or
-in-flight designs. This is the public counterpart of the dev-log question: dev-log feeds
-internal memory, this feeds the common language outsiders can understand.
+Ask:
+**did this session produce a decision or narrative worth promoting into the public
+docs' shared language?**
+The public surface is `docs/why-polydeukes.md` (+ `.ko.md`) — decisions and their reasons only,
+never internal roadmap or in-flight designs. This is the public counterpart of the dev-log question:
+dev-log feeds internal memory, this feeds the common language outsiders can understand.
 
-If yes, promote it this session: add the sentence or fill the section in both language
-files, in the present tense, as a decision and its reason. If the decision is real but its
-public statement is not yet true (it depends on a ticket that has not merged), it is a "no"
-for this check: record the candidate in the ticket's PRD §8 or a dev-log in `_docs/`, and
-the ticket that makes it true promotes it. Nothing is parked in the public files — no
-`TODO`, no parked-candidates comment, no marker of any kind (`.claude/rules/current-state-only.md`);
-a public file is either changed or left alone. If no, record `public docs: none` explicitly.
+If yes, promote it this session: add the sentence or fill the section in both language files, in the
+present tense, as a decision and its reason. If the decision is real but its public statement is not
+yet true (it depends on a ticket that has not merged), it is a "no" for this check: record the
+candidate in the ticket's PRD §8 or a dev-log in `_docs/`, and the ticket that makes it true
+promotes it. Nothing is parked in the public files — no `TODO`, no parked-candidates comment, no
+marker of any kind (`.claude/rules/current-state-only.md`); a public file is either changed or left
+alone. If no, record `public docs: none` explicitly.
 
 ## 5. Release-impact check (ticket work)
 
-For a `/ticket` run, read the approved PRD release impact and compare it with the actual diff.
-The largest shipped effect wins: `patch` repairs behavior users could already expect, `minor`
-adds a user-visible capability, `breaking` changes a compatibility promise, and `none` changes
-only non-release surfaces. Record the matching Conventional Commit type (`fix`, `feat`, an
-accurate type with `!`, or an accurate non-release type). Never use `feat` merely because the
-work has a ticket ID. This check chooses the type that the PR title and squash commit must both
-carry; commitlint checks syntax, not semantic truth.
+For a `/ticket` run, read the approved PRD release impact and compare it with the actual diff. The
+largest shipped effect wins: `patch` repairs behavior users could already expect, `minor` adds a
+user-visible capability, `breaking` changes a compatibility promise, and `none` changes only
+non-release surfaces. Record the matching Conventional Commit type (`fix`, `feat`, an accurate type
+with `!`, or an accurate non-release type). Never use `feat` merely because the work has a ticket
+ID. This check chooses the type that the PR title and squash commit must both carry; commitlint
+checks syntax, not semantic truth.
 
 For standalone non-ticket work, record `release impact: not a ticket` unless the user explicitly
 asked for release classification.
@@ -106,5 +109,5 @@ Emit this before proceeding to the PR (or the final commit):
 - Release impact: <patch → fix | minor → feat | breaking → <type>! | none → <type> | "not a ticket">
 ```
 
-The user may exempt a run via the literal phrase `skip post-task` in their **most recent**
-message. Self-granted exemptions are forbidden.
+The user may exempt a run via the literal phrase `skip post-task` in their **most recent** message.
+Self-granted exemptions are forbidden.

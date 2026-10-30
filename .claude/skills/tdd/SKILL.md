@@ -12,37 +12,37 @@ under `packages/`.
 
 The phase order is strict: **PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE**. Pre-flight
 forces the relevant design knowledge (`_docs/knowledge/` adr + dev-log) and library docs to land in
-the turn *before* any test is written, so the rest of the cycle cannot be entered on stale
-training-data assumptions. Auditing tests *before* implementation prevents writing code that only
+the turn _before_ any test is written, so the rest of the cycle cannot be entered on stale
+training-data assumptions. Auditing tests _before_ implementation prevents writing code that only
 exists to satisfy low-value assertions. Every invocation walks the same phases in the same order;
 the argument only selects where to enter.
 
 ## Runner — sonnet or pi, the owner's choice
 
-RED, AUDIT and GREEN run in the mode the owner names for the ticket or for one phase ("sonnet
-모드", "pi 모드"). When none is named, ask once before RED; nothing else switches it — not cost,
-usage or speed. A review fix runs in GREEN's mode unless the owner says otherwise. Both modes run
-the same role bodies (`.claude/agents/tdd-*.md`) with the same task text.
+RED, AUDIT and GREEN run in the mode the owner names for the ticket or for one phase ("sonnet 모드",
+"pi 모드"). When none is named, ask once before RED; nothing else switches it — not cost, usage or
+speed. A review fix runs in GREEN's mode unless the owner says otherwise. Both modes run the same
+role bodies (`.claude/agents/tdd-*.md`) with the same task text.
 
-- **sonnet** — the `Agent` tool with `subagent_type` the role and `model: "sonnet"`. The role
-  files name no model; a spawn without one lands on the session default, `opus`.
+- **sonnet** — the `Agent` tool with `subagent_type` the role and `model: "sonnet"`. The role files
+  name no model; a spawn without one lands on the session default, `opus`.
 - **pi** — one background `pi` process per phase on DeepSeek, launched as `/ticket` §3 WORK
   describes.
 
 ## Entry points
 
 - `<feature-description>` → start at PRE-FLIGHT and walk the full cycle.
-- `audit <path-or-glob>` → start at AUDIT over existing tests. Stops after the DELETEs
-  land. PRE-FLIGHT / GREEN / REVIEW / VALIDATE are skipped because there is no new implementation
-  to produce.
+- `audit <path-or-glob>` → start at AUDIT over existing tests. Stops after the DELETEs land.
+  PRE-FLIGHT / GREEN / REVIEW / VALIDATE are skipped because there is no new implementation to
+  produce.
 - Keywords that resolve to the audit entry: `test audit`, `prune tests`, `요식행위 테스트`,
   `낮은 가치 테스트`, `test 가치 평가`. These are not a separate mode — they are shortcuts into the
   same cycle at the AUDIT phase.
 
 ## Phases
 
-**Every delegation prompt (RED, AUDIT, GREEN) ends with this line, verbatim.** In a coding loop
-the model tends to issue the next independent tool calls one per turn; the line at the end of the
+**Every delegation prompt (RED, AUDIT, GREEN) ends with this line, verbatim.** In a coding loop the
+model tends to issue the next independent tool calls one per turn; the line at the end of the
 request is what keeps a single agent from spending a round trip per file:
 
 ```text
@@ -70,19 +70,19 @@ Skipping it is the most frequent root cause of repeating a mistake already recor
   - Skipped because: <reason>   ← only if no external library API is involved
 ```
 
-**Both searches read the memory index, never the files** (`.claude/rules/knowledge-reads.md`).
-Run `pnpm exec pdks memory ingest` first so the index holds the current documents. The area
-search takes topic words and ranks sections; the identifier search takes the identifiers the
-cycle will touch (symbol, file, config key, ticket ID) — an identifier is exact where a topic
-word matches every neighbouring section, and it reaches a prescription or a carry-over whose
-keywords never appear in a filename. Open a hit with `pnpm exec pdks memory show <section id>`.
+**Both searches read the memory index, never the files** (`.claude/rules/knowledge-reads.md`). Run
+`pnpm exec pdks memory ingest` first so the index holds the current documents. The area search takes
+topic words and ranks sections; the identifier search takes the identifiers the cycle will touch
+(symbol, file, config key, ticket ID) — an identifier is exact where a topic word matches every
+neighbouring section, and it reaches a prescription or a carry-over whose keywords never appear in a
+filename. Open a hit with `pnpm exec pdks memory show <section id>`.
 
 Every field must be grounded in tool output from this turn (not memory); empty results are valid
-("no matches"), a missing block is not. The search commands run *in this turn* — paste the
-section ids they return, do not synthesize. The user may exempt the block via the literal phrase
-`skip preflight` or `no context7 needed` in their **most recent** message (an earlier exemption
-does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
-(`audit <path>`) skips Pre-flight because no production code is produced.
+("no matches"), a missing block is not. The search commands run _in this turn_ — paste the section
+ids they return, do not synthesize. The user may exempt the block via the literal phrase
+`skip preflight` or `no context7 needed` in their **most recent** message (an earlier exemption does
+not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry (`audit <path>`) skips
+Pre-flight because no production code is produced.
 
 ### 1. RED — delegate to `tdd-test-writer`
 
@@ -97,8 +97,8 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 
 - Input: test file paths produced by RED. For `audit <path>` entry, the supplied path or glob.
 - Output: per-`it()` Markdown table classifying each test as **P0 / P1 / DELETE** with a 1–2
-  sentence rationale per test, plus a **coverage-gaps** section. Only P0/P1 survive; everything
-  else — including a happy-path already covered by a nearby P0/P1 — is DELETE.
+  sentence rationale per test, plus a **coverage-gaps** section. Only P0/P1 survive; everything else
+  — including a happy-path already covered by a nearby P0/P1 — is DELETE.
 - The gaps section answers a different question from the table: the table asks what bug each test
   catches, the gaps ask which input the suite never tried. A suite can be entirely P0 and still
   blind — that is how COVENANT-07b shipped three defects past a 24-test audit. Read both.
@@ -121,10 +121,10 @@ does not carry forward). Self-granted exemptions are forbidden. AUDIT-only entry
 - Dedupe and rename in both the implementation and the surviving tests.
 - Verify test-implementation alignment: every surviving `it()` should still describe behavior the
   implementation actually delivers. Auditor deletions can strand helper assertions; fix them here.
-- Check the cross-cutting invariants the PRD names that no test enforces (the core literal gate
-  is `agent-literal-gate.test.ts`, run in VALIDATE).
-- Re-run the runner after every edit. Scope is cosmetic — naming, duplication, drift — behavior
-  must not change.
+- Check the cross-cutting invariants the PRD names that no test enforces (the core literal gate is
+  `agent-literal-gate.test.ts`, run in VALIDATE).
+- Re-run the runner after every edit. Scope is cosmetic — naming, duplication, drift — behavior must
+  not change.
 
 ### 5. VALIDATE — main session
 
@@ -142,12 +142,12 @@ self-question) before creating a PR — the cycle is not closed until its block 
 
 ## Test runner
 
-**vitest**. Test files live in each package's `__tests__/` directory (outside `src/`), so the
-core's literal gate, which scans `src/`, never trips on a `vitest` import.
+**vitest**. Test files live in each package's `__tests__/` directory (outside `src/`), so the core's
+literal gate, which scans `src/`, never trips on a `vitest` import.
 
-| Phase | Command |
-|---|---|
-| RED | the new file only — `pnpm -F <pkg> exec vitest run <path>`: confirm it fails (or passes on purpose) |
-| GREEN | the new file only — confirm it passes |
-| REVIEW | re-run the touched files after each edit |
-| VALIDATE | the full suite once — `pnpm -F <pkg> test` + typecheck + `pnpm check` |
+| Phase    | Command                                                                                             |
+| -------- | --------------------------------------------------------------------------------------------------- |
+| RED      | the new file only — `pnpm -F <pkg> exec vitest run <path>`: confirm it fails (or passes on purpose) |
+| GREEN    | the new file only — confirm it passes                                                               |
+| REVIEW   | re-run the touched files after each edit                                                            |
+| VALIDATE | the full suite once — `pnpm -F <pkg> test` + typecheck + `pnpm check`                               |

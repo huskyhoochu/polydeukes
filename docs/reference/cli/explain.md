@@ -13,8 +13,8 @@ a second opinion.
 pdks explain
 ```
 
-Any extra argument is invalid. The command reads the config at the working directory, assembles
-both surfaces, and prints the result.
+Any extra argument is invalid. The command reads the config at the working directory, assembles both
+surfaces, and prints the result.
 
 <a id="explain-what-it-shows"></a>
 ## What it shows
@@ -36,12 +36,12 @@ it would under a normal hook payload.
 <a id="explain-failure-conditions"></a>
 ## Failure conditions
 
-| Situation | Result |
-|---|---|
-| Config loads and both surfaces assemble | exit `0` |
-| Any extra argument | exit `2`, usage line on stderr |
-| Missing, ambiguous, or invalid config | exit `2` |
-| Any assembly failure | exit `2` |
+| Situation                               | Result                         |
+| --------------------------------------- | ------------------------------ |
+| Config loads and both surfaces assemble | exit `0`                       |
+| Any extra argument                      | exit `2`, usage line on stderr |
+| Missing, ambiguous, or invalid config   | exit `2`                       |
+| Any assembly failure                    | exit `2`                       |
 
 The command leaves stdout at zero bytes on failure. It never prints a partial table.
 
@@ -53,9 +53,9 @@ pdks explain
 ```
 
 The output starts with the config file path, then one block for the session surface and one for the
-change-set surface. A starter config with no extra disciplines looks like this (`N` stands for
-the number of protected paths the assembly counted; the one `skip` row is normal — it is where a
-shell command whose write target cannot be determined lands):
+change-set surface. A starter config with no extra disciplines looks like this (`N` stands for the
+number of protected paths the assembly counted; the one `skip` row is normal — it is where a shell
+command whose write target cannot be determined lands):
 
 ```text
 pdks explain — polydeukes.config.yaml
@@ -72,14 +72,14 @@ input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · 
   skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 ```
 
-**The surface header names the lists that surface compiles and how many entries each holds.**
-The session header prints `disciplines <n> · sessionDisciplines <n>` and the change-set header
-prints `disciplines <n> · changeSetDisciplines <n>`, both counted from the config as written,
-before assembly. Reading the two headers is how the placement of every entry is checked without
-running a judgment: an entry that moved between lists moves one count in each header.
+**The surface header names the lists that surface compiles and how many entries each holds.** The
+session header prints `disciplines <n> · sessionDisciplines <n>` and the change-set header prints
+`disciplines <n> · changeSetDisciplines <n>`, both counted from the config as written, before
+assembly. Reading the two headers is how the placement of every entry is checked without running a
+judgment: an entry that moved between lists moves one count in each header.
 
-`N` is the assembled path count. A `declare` row uses the entry `id` as its label and a
-catalogue coordinate as its description. A `skip` row names a skip reason. A `draft` row is
+`N` is the assembled path count. A `declare` row uses the entry `id` as its label and a catalogue
+coordinate as its description. A `skip` row names a skip reason. A `draft` row is
 `unpromoted — no judgment`.
 
 <a id="explain-see-also"></a>

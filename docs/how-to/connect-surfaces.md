@@ -2,17 +2,17 @@
 
 **English** · [한국어](../how-to/connect-surfaces.ko.md)
 
-> Pick the surface that matches the job. Claude Code, Grok, and Codex wire the session surface;
-git wires the change-set surface.
+> Pick the surface that matches the job. Claude Code, Grok, and Codex wire the session surface; git
+> wires the change-set surface.
 
 The two surfaces share the same config vocabulary, but they answer different moments. Use the
-session surface when an AI partner is making edits, and use the change-set surface when history
-is about to be written.
+session surface when an AI partner is making edits, and use the change-set surface when history is
+about to be written.
 
 A write in a linked git worktree of the registered project is judged with the registered project's
 config, by the file's absolute path: protected entries still match, while disciplines scoped by a
-project-relative `target.path` pattern do not apply there. Its rows land in the registered
-project's telemetry.
+project-relative `target.path` pattern do not apply there. Its rows land in the registered project's
+telemetry.
 
 <a id="claude-code"></a>
 ## Claude Code session surface
@@ -25,8 +25,8 @@ Run the installed single executable from the project root. No separate Node, npm
 installation is required. Registration pins the absolute executable and project-root paths while
 preserving other handlers and settings. Rerun after moving either.
 
-Reopen the project and check telemetry for an actual call. Only messages identified by `origin.kind:
-human` can support the witness valve.
+Reopen the project and check telemetry for an actual call. Only messages identified by
+`origin.kind: human` can support the witness valve.
 
 [Registration details](../reference/cli/init.md#init-claude-code)
 
@@ -72,12 +72,11 @@ Use this when you want git to judge staged changes before they become history.
 
 1. Create `polydeukes.config.yaml` at the project root.
 2. Add the pre-commit hook.
-3. Run `git diff HEAD | pdks covenant check --diff` when you want the same judgment
-   on demand.
+3. Run `git diff HEAD | pdks covenant check --diff` when you want the same judgment on demand.
 
-A minimal lefthook entry looks like this. The `git diff` flags pin what the judge receives:
-no color codes, no external diff driver, no textconv rewrite, and the `a/`/`b/` prefixes the
-translator strips — a user's git config cannot change the observation (see the CLI reference).
+A minimal lefthook entry looks like this. The `git diff` flags pin what the judge receives: no color
+codes, no external diff driver, no textconv rewrite, and the `a/`/`b/` prefixes the translator
+strips — a user's git config cannot change the observation (see the CLI reference).
 
 ```yaml
 pre-commit:
@@ -102,17 +101,17 @@ git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-p
 ```
 
 If you use the plain hook, save it as `.git/hooks/pre-commit` and make it executable with
-`chmod +x .git/hooks/pre-commit`. Integrate with an existing hook instead of overwriting it.
-For lefthook, install it with your package manager and run its hook installer after saving the YAML.
-For husky, save `.husky/pre-commit` through husky's own installer so git can find it.
+`chmod +x .git/hooks/pre-commit`. Integrate with an existing hook instead of overwriting it. For
+lefthook, install it with your package manager and run its hook installer after saving the YAML. For
+husky, save `.husky/pre-commit` through husky's own installer so git can find it.
 
 The judge emits exit 0, 2, or 3 (an input it could not read) and never prompts. By default every
-break on this surface — a
-`protectedPaths` violation included — lands as a row with a diagnostic on stderr and exit 0: a
-staged gate-file change has already passed the session surface or was made by a human, and
-this surface has no valve a human could answer. Add `--enforce block` to the command when you
-want a `protectedPaths` violation or an entry set to `enforce: block` to exit 2. Whether a commit
-stops is your hook wiring: the entries above honour the exit code. Assembly errors always exit 2.
+break on this surface — a `protectedPaths` violation included — lands as a row with a diagnostic on
+stderr and exit 0: a staged gate-file change has already passed the session surface or was made by a
+human, and this surface has no valve a human could answer. Add `--enforce block` to the command when
+you want a `protectedPaths` violation or an entry set to `enforce: block` to exit 2. Whether a
+commit stops is your hook wiring: the entries above honour the exit code. Assembly errors always
+exit 2.
 
 <a id="witness-and-recovery"></a>
 ## Witness and recovery

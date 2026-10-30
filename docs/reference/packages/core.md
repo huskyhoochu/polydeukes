@@ -2,62 +2,66 @@
 
 **English** · [한국어](core.ko.md)
 
-> **The protocol every covenant speaks** — the input IR, the verdict shape, the config
-> schema, and the telemetry collector.
+> **The protocol every covenant speaks** — the input IR, the verdict shape, the config schema, and
+> the telemetry collector.
 >
-> A transitive dependency of the umbrella: you do not install it and you do not import
-> it. The consumer entry point is [`polydeukes`](polydeukes.md).
+> A transitive dependency of the umbrella: you do not install it and you do not import it. The
+> consumer entry point is [`polydeukes`](polydeukes.md).
 
 <a id="ownership"></a>
 ## What this package owns
 
-The protocol every covenant speaks, and nothing that knows what a covenant is *about*.
+The protocol every covenant speaks, and nothing that knows what a covenant is _about_.
 
-| Area | What it is |
-|---|---|
-| Covenant protocol | The stdin-JSON input IR, the verdict shape, the exit-code contract |
-| Config schema | `defineConfig()` validates parsed yaml/json data; the matching JSON Schema ships as a sibling artifact |
-| ROI telemetry | One append-only line collector every package writes through |
-| Fail policy | One table deciding fail-open against fail-closed per failure kind |
-| Protected-path normalization | The declared list becomes the literal strings the dispatcher matches |
-| Transcript seam | The query interface a covenant uses to ask about session history |
+| Area                         | What it is                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Covenant protocol            | The stdin-JSON input IR, the verdict shape, the exit-code contract                                     |
+| Config schema                | `defineConfig()` validates parsed yaml/json data; the matching JSON Schema ships as a sibling artifact |
+| ROI telemetry                | One append-only line collector every package writes through                                            |
+| Fail policy                  | One table deciding fail-open against fail-closed per failure kind                                      |
+| Protected-path normalization | The declared list becomes the literal strings the dispatcher matches                                   |
+| Transcript seam              | The query interface a covenant uses to ask about session history                                       |
 
-Two constraints hold this package's shape. **Zero runtime dependencies** — validation is
-hand-rolled and the published JSON Schema is a sibling artifact the source never reads.
-**No agent, tool, or language literals** — editor tool verbs and test-runner names are
-*values* supplied by configs and adapters, so the core's agent-neutrality is a claim a grep
-can check. Every other package depends on this one; this one depends on none of them.
+Two constraints hold this package's shape. **Zero runtime dependencies** — validation is hand-rolled
+and the published JSON Schema is a sibling artifact the source never reads.
+**No agent, tool, or language literals** — editor tool verbs and test-runner names are _values_
+supplied by configs and adapters, so the core's agent-neutrality is a claim a grep can check. Every
+other package depends on this one; this one depends on none of them.
 
 **The session adapter names it as a `peerDependency`, not a dependency of its
-own.** It shares the vocabulary with the umbrella rather than installing a copy — `SOURCE_KINDS` and
-`parseInput` have to be one set of values for the validator and the engine to agree, and two
-copies would disagree silently instead of failing at install time. The umbrella carries the
-ordinary dependency that satisfies that peer, which is why a consumer still installs one
-package and gets core transitively.
+own.**
+It shares the vocabulary with the umbrella rather than installing a copy — `SOURCE_KINDS` and
+`parseInput` have to be one set of values for the validator and the engine to agree, and two copies
+would disagree silently instead of failing at install time. The umbrella carries the ordinary
+dependency that satisfies that peer, which is why a consumer still installs one package and gets
+core transitively.
 
 <a id="protocol"></a>
 ## The judged protocol
 
-This is the contract the shipped judges speak: a judge receives a `CovenantInput` — parsed
-once from the stdin-JSON payload the surface hands the dispatcher — and answers with a
-verdict the wrapper translates into an exit code. Blocked rows in `.polydeukes/roi.log`
-use this judgment vocabulary.
+This is the contract the shipped judges speak: a judge receives a `CovenantInput` — parsed once from
+the stdin-JSON payload the surface hands the dispatcher — and answers with a verdict the wrapper
+translates into an exit code. Blocked rows in `.polydeukes/roi.log` use this judgment vocabulary.
 
-`world` is supplied by the surface (`files`, `changes`, `channels`). The judge does not
-read it from disk. `tools` and `session` are supplied by the host: the roster is values the
-adapter fills in, and the session is the evidence a live agent session proves that a bare
-IR cannot — message freshness and call outcome. `transcriptFromSession` wraps that key as
-the transcript a witness or a precedent consumer reads, the way `transcriptFromInput` wraps
-the bare IR without those two facts.
+`world` is supplied by the surface (`files`, `changes`, `channels`). The judge does not read it from
+disk. `tools` and `session` are supplied by the host: the roster is values the adapter fills in, and
+the session is the evidence a live agent session proves that a bare IR cannot — message freshness
+and call outcome. `transcriptFromSession` wraps that key as the transcript a witness or a precedent
+consumer reads, the way `transcriptFromInput` wraps the bare IR without those two facts.
 
-`toolCalls[].cwd` supplies the project-relative working directory for shell paths. It defaults
-to the project root when absent. Command text stays unchanged, and `fileChange.path` always
-remains relative to the project root. Routing, shell protection, transcript protection, and
-shell-derived declaration evidence share this path context.
+`toolCalls[].cwd` supplies the project-relative working directory for shell paths. It defaults to
+the project root when absent. Command text stays unchanged, and `fileChange.path` always remains
+relative to the project root. Routing, shell protection, transcript protection, and shell-derived
+declaration evidence share this path context.
 
 ```ts
 type CovenantInput = {
-  toolCalls: { name: string; args?: Record<string, unknown>; cwd?: string; fileChange?: FileChange }[];
+  toolCalls: {
+    name: string;
+    args?: Record<string, unknown>;
+    cwd?: string;
+    fileChange?: FileChange;
+  }[];
   subagentSpawns: { kind: string }[];
   userMessages: { text: string }[];
   actor?: { agentType?: string };
@@ -83,35 +87,37 @@ type FileChange =
 type CovenantVerdict = { upheld: true } | { upheld: false; reason: string };
 ```
 
-The vocabulary carries no tool or agent names. A concrete tool name is a *value* an adapter
-fills into `name`; `kind` on a spawn is likewise a value. `FileChange` is a discriminated
-union so that a deletion is first-class evidence rather than an unrepresentable case, and
-impossible states — a deletion carrying resulting content, a creation carrying a baseline —
-cannot be written down. `delete.pre` is absent when the baseline was a binary blob, because
-a deletion needs no content to be judged. `actor` is the observation's actor as the host
-envelope proves it — `agentType` inside a subagent, `{}` in the main session — and is absent
-when the surface proves none; the judge never defaults it.
+The vocabulary carries no tool or agent names. A concrete tool name is a _value_ an adapter fills
+into `name`; `kind` on a spawn is likewise a value. `FileChange` is a discriminated union so that a
+deletion is first-class evidence rather than an unrepresentable case, and impossible states — a
+deletion carrying resulting content, a creation carrying a baseline — cannot be written down.
+`delete.pre` is absent when the baseline was a binary blob, because a deletion needs no content to
+be judged. `actor` is the observation's actor as the host envelope proves it — `agentType` inside a
+subagent, `{}` in the main session — and is absent when the surface proves none; the judge never
+defaults it.
 
-**Evidence has exactly one home: the call it belongs to.** `fileChange` absent means *this
-call is unproven*, and no sibling call's evidence stands in for it.
+**Evidence has exactly one home: the call it belongs to.** `fileChange` absent means
+_this
+call is unproven_,
+and no sibling call's evidence stands in for it.
 
 ```ts
-function parseInput(stdinJson: string):
-  | { ok: true; value: CovenantInput }
-  | { ok: false; exitCode: 2; reason: string };
+function parseInput(
+  stdinJson: string,
+): { ok: true; value: CovenantInput } | { ok: false; exitCode: 2; reason: string };
 
 function verdictToExitCode(verdict: CovenantVerdict): 0 | 1;
 
 function allFileChanges(input: CovenantInput): FileChange[];
 ```
 
-`parseInput` never throws. Unparseable JSON, an empty payload, a non-object, a missing
-required collection, a malformed `world` or `actor` — each resolves to a blocking
-`{ ok: false, exitCode: 2, reason }`, so an unjudgeable input can never be mistaken for a valid
-one. `reason` names what was refused, such as `input carries no subagentSpawns array`.
+`parseInput` never throws. Unparseable JSON, an empty payload, a non-object, a missing required
+collection, a malformed `world` or `actor` — each resolves to a blocking
+`{ ok: false, exitCode: 2, reason }`, so an unjudgeable input can never be mistaken for a valid one.
+`reason` names what was refused, such as `input carries no subagentSpawns array`.
 
-`verdictToExitCode` returns `0` or `1` and never `2`. Translating a break into a block is
-the wrapper's policy, not the body's — see [exit codes](polydeukes.md#polydeukes-failure-boundaries).
+`verdictToExitCode` returns `0` or `1` and never `2`. Translating a break into a block is the
+wrapper's policy, not the body's — see [exit codes](polydeukes.md#polydeukes-failure-boundaries).
 The exported constants are `EXIT_UPHOLD` (`0`), `EXIT_BREAK_NON_BLOCKING` (`1`), and
 `EXIT_BREAK_BLOCKING` (`2`).
 
@@ -121,23 +127,23 @@ attribution. Calls without evidence are skipped, never substituted for.
 <a id="discipline-lists"></a>
 ## The three discipline lists and the channel derivation
 
-`defineConfig()` accepts three discipline lists and decides, for each entry, whether it is
-written in the right one.
+`defineConfig()` accepts three discipline lists and decides, for each entry, whether it is written
+in the right one.
 
-| Key | Type | Judged on |
-|---|---|---|
-| `disciplines` | `(DisciplineEntry \| DisciplineDraft)[]` | both surfaces |
-| `sessionDisciplines` | `DisciplineEntry[]` | the session surface only |
-| `changeSetDisciplines` | `DisciplineEntry[]` | the change-set surface only |
+| Key                    | Type                                     | Judged on                   |
+| ---------------------- | ---------------------------------------- | --------------------------- |
+| `disciplines`          | `(DisciplineEntry \| DisciplineDraft)[]` | both surfaces               |
+| `sessionDisciplines`   | `DisciplineEntry[]`                      | the session surface only    |
+| `changeSetDisciplines` | `DisciplineEntry[]`                      | the change-set surface only |
 
 `ResolvedConfig` carries the three under the same names, holding judged entries only, with the
-drafts split out into `drafts`. A list the input did not declare stays absent rather than
-becoming an empty array.
+drafts split out into `drafts`. A list the input did not declare stays absent rather than becoming
+an empty array.
 
-`defineConfigLayer()` validates a [config layer](../configuration/index.md#config-layer): an
-object carrying at most the three lists and `$schema`, its entries checked by the same rules
-`defineConfig()` applies. It returns the lists as given (`ConfigLayer`); the loader appends them
-to the config's own lists and validates the merged config with `defineConfig()`.
+`defineConfigLayer()` validates a [config layer](../configuration/index.md#config-layer): an object
+carrying at most the three lists and `$schema`, its entries checked by the same rules
+`defineConfig()` applies. It returns the lists as given (`ConfigLayer`); the loader appends them to
+the config's own lists and validates the merged config with `defineConfig()`.
 
 The derivation both the validator and the umbrella use is one exported function:
 
@@ -150,16 +156,16 @@ function declarationChannels(body: Omit<AlgebraDeclaration, 'discipline'>): Decl
 It is pure and syntactic — the declaration is never run. `transcript` comes from a
 `{ transcript: true }` binding, `channel` from a `{ sidecar: true }` binding, `command` from
 `scope.source === 'command'` or a `{ op: 'source', of: 'command' }` step, `actor` from a
-`{ op: 'source', of: 'actor' }` step, and `changes` from a
-`{ op: 'source', of: 'changes' }` step. A `witness` block's own `extract` is walked with the
-body's. The returned list is in the fixed order above, so two callers comparing channel sets
-compare the same list.
+`{ op: 'source', of: 'actor' }` step, and `changes` from a `{ op: 'source', of: 'changes' }` step. A
+`witness` block's own `extract` is walked with the body's. The returned list is in the fixed order
+above, so two callers comparing channel sets compare the same list.
 
 A body naming none of the five reads the changed file and repository files alone, which both
-surfaces supply, so it belongs in `disciplines`. Anything else is a `ConfigValidationError`
-naming the entry, its channels, and the list it belongs in; the messages are in [the
-configuration reference](../configuration/index.md#placement-rule). The umbrella uses this
-function to select the applicable discipline list.
+surfaces supply, so it belongs in `disciplines`. Anything else is a `ConfigValidationError` naming
+the entry, its channels, and the list it belongs in; the messages are in
+[the
+configuration reference](../configuration/index.md#placement-rule).
+The umbrella uses this function to select the applicable discipline list.
 
 <a id="consumer-contract"></a>
 ## Where the consumer touches it
@@ -168,22 +174,20 @@ Five places, all of them indirect.
 
 - **The config file.** Its schema is defined here. The vocabulary reference is
   [the configuration reference](../configuration/index.md).
-- **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath, for a
-  project that installs this package directly. A consumer of the umbrella names the copy
-  bundled there instead; both spellings are in
+- **The JSON Schema artifact** — `@polydeukes/core/schema.json`, an exports subpath, for a project
+  that installs this package directly. A consumer of the umbrella names the copy bundled there
+  instead; both spellings are in
   [configuration.md's IDE section](../../how-to/configure-project.md#add-ide-support).
-- **The input IR's JSON Schema** — `@polydeukes/core/covenant-input.schema.json`, for a host
-  written in another language that builds the input `pdks covenant check` reads on stdin. It
-  guarantees one direction: a document the schema accepts is one the command reads without
-  refusing. The command checks less than the schema does, so the converse does not hold. The
-  schema has no `world` key, because the command fills that axis itself and refuses an input
-  that carries one.
+- **The input IR's JSON Schema** — `@polydeukes/core/covenant-input.schema.json`, for a host written
+  in another language that builds the input `pdks covenant check` reads on stdin. It guarantees one
+  direction: a document the schema accepts is one the command reads without refusing. The command
+  checks less than the schema does, so the converse does not hold. The schema has no `world` key,
+  because the command fills that axis itself and refuses an input that carries one.
 - **The memory search output's JSON Schema** — `@polydeukes/core/memory-search-output.schema.json`,
   for a host written in another language that reads `pdks memory search --json`. Every field of a
-  result is required, and no object is closed, so a field the command adds later does not break
-  an existing host.
-- **The protocol above** — reading a `blocked` row means reading the vocabulary a body
-  answered in.
+  result is required, and no object is closed, so a field the command adds later does not break an
+  existing host.
+- **The protocol above** — reading a `blocked` row means reading the vocabulary a body answered in.
 
 Everything else here is reached through `polydeukes`.
 
@@ -191,12 +195,12 @@ Everything else here is reached through `polydeukes`.
 ## Declared limits
 
 - **Adapter namespaces are validated by shape, not by name.** `defineConfig()` checks that
-  `adapters` is a map of plain objects and that each namespace value is an object. It does
-  not check that a namespace *name* is one anybody implements, and it does not look inside
-  the namespace at all. Unknown vocabulary inside a namespace is rejected by that adapter's
-  own validator, at its own layer — not here.
-- **The default transcript is a noop.** A consumer that injects no real transcript
-  converges on "nothing happened", which is the safe direction for a valve: it never opens.
-  Real transcripts live behind adapters.
-- **Telemetry is fail-open, alone.** A logging failure never changes a verdict. Every other
-  failure kind in the table resolves toward blocking.
+  `adapters` is a map of plain objects and that each namespace value is an object. It does not check
+  that a namespace _name_ is one anybody implements, and it does not look inside the namespace at
+  all. Unknown vocabulary inside a namespace is rejected by that adapter's own validator, at its own
+  layer — not here.
+- **The default transcript is a noop.** A consumer that injects no real transcript converges on
+  "nothing happened", which is the safe direction for a valve: it never opens. Real transcripts live
+  behind adapters.
+- **Telemetry is fail-open, alone.** A logging failure never changes a verdict. Every other failure
+  kind in the table resolves toward blocking.

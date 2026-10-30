@@ -9,8 +9,8 @@ argument: "<ticket-id> (e.g. CORE-03)"
 
 One loop, seven phases. This is the sanctioned path for roadmap ticket work.
 
-Scope guard: this loop is for **ticket work only** (a roadmap ID like CORE-03). Chores and doc
-edits do not enter it — they commit directly to `main` (no unrequested branches, ever) and, when
+Scope guard: this loop is for **ticket work only** (a roadmap ID like CORE-03). Chores and doc edits
+do not enter it — they commit directly to `main` (no unrequested branches, ever) and, when
 substantial, run `/post-task` standalone before committing.
 
 The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → MERGE → ARCHIVE**.
@@ -28,83 +28,83 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 - Re-read the issue body (검증기준 = acceptance criteria) and its `why`, and the milestone
   description when the issue has one (its goal and Exit Criteria).
 - **If the ticket creates a package or crate, read `.claude/rules/new-package-checklist.md` now
-  and put each of its registrations into the PRD as an acceptance criterion.** The rule loads
-  only for the files it names, which subagents write in WORK, so the main session would never
-  see it (`ISSUE-63` shipped a package without its release-please entry).
+  and put each of its registrations into the PRD as an acceptance criterion.**
+  The rule loads only for the files it names, which subagents write in WORK, so the main session
+  would never see it (`ISSUE-63` shipped a package without its release-please entry).
 - **Knowledge is read through the memory index** (`.claude/rules/knowledge-reads.md`). Refresh it
-  with `pnpm exec pdks memory ingest`, then search the ticket's area before writing the PRD —
-  the PRD must build on recorded decisions, not re-derive them:
+  with `pnpm exec pdks memory ingest`, then search the ticket's area before writing the PRD — the
+  PRD must build on recorded decisions, not re-derive them:
   `pnpm exec pdks memory search '<area keywords>'`, and open a hit with
   `pnpm exec pdks memory show <section id>`.
-- **Carry-over sweep (separate from the area search):** carried-over items live in the *body*
-  (§8 follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket
-  (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`), and also by *form*: an
+- **Carry-over sweep (separate from the area search):** carried-over items live in the _body_ (§8
+  follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket
+  (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`), and also by _form_: an
   unchecked `- [ ]` item that names this ticket carries no carry-over word at all
   (`foundation.dev-log.carryover-grep-misses-disposition-sections.md`).
-  `pnpm exec pdks memory obligations <ID>` returns every line the root config's
-  `memory.obligations` rules extract for the ID — the unchecked boxes and the carry-over-marker
-  lines. `pnpm exec pdks memory search <ID>` returns every section that names the ID anywhere.
-  Every hit must be dispositioned in the PRD's scope section — included or explicitly excluded;
-  silence is a miss.
-- **The lookups above do not depend on each other — issue them in one response** after the
-  ingest. The area search and the carry-over sweep read different parts of the archive; running
-  them one per turn spends a round trip on each.
+  `pnpm exec pdks memory obligations <ID>` returns every line the root config's `memory.obligations`
+  rules extract for the ID — the unchecked boxes and the carry-over-marker lines.
+  `pnpm exec pdks memory search <ID>` returns every section that names the ID anywhere. Every hit
+  must be dispositioned in the PRD's scope section — included or explicitly excluded; silence is a
+  miss.
+- **The lookups above do not depend on each other — issue them in one response** after the ingest.
+  The area search and the carry-over sweep read different parts of the archive; running them one per
+  turn spends a round trip on each.
 - **The PRD preserves no legacy.** The issue body and every carry-over hit are candidate
-  requirements: the PRD names who asked for each and deletes what the ticket's goal does not
-  need. Read `_docs/knowledge/foundation.research.first-principles-prd.md` in full before
-  writing it; its §4 is the §2-a requirement table the scope section opens with, kept separate
-  from the carry-over disposition table.
+  requirements: the PRD names who asked for each and deletes what the ticket's goal does not need.
+  Read `_docs/knowledge/foundation.research.first-principles-prd.md` in full before writing it; its
+  §4 is the §2-a requirement table the scope section opens with, kept separate from the carry-over
+  disposition table.
 - Write `_docs/prd/<ID>.md` following the shape of the archived PRDs in `_docs/knowledge/`
   (`*.prd.*` files): the OKF frontmatter of `_docs/knowledge/foundation.adr.knowledge-format.md`
   (`scope` · `type: prd` · `title` equal to the H1 · `tags` · `created_at` with UTC offset ·
-  `status: draft`), links as relative markdown links (`other.md#anchor`, never `[[x]]`), status
-  line `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
+  `status: draft`), links as relative markdown links (`other.md#anchor`, never `[[x]]`), status line
+  `in-progress`, sections for goal / contract / acceptance criteria / invariants / follow-ups.
 - Record one **release impact** in the PRD status block, with a one-sentence reason, from the
-  ticket's largest shipped effect: `patch` repairs expected behavior, `minor` adds a
-  user-visible capability, `breaking` changes a compatibility promise, `none` touches only docs,
-  tests, CI or repository administration. Being a ticket implies none of them.
-- **Present the PRD to the user for approval before any code work.** The user may amend scope
-  here; the approved PRD is the cycle's contract.
+  ticket's largest shipped effect: `patch` repairs expected behavior, `minor` adds a user-visible
+  capability, `breaking` changes a compatibility promise, `none` touches only docs, tests, CI or
+  repository administration. Being a ticket implies none of them.
+- **Present the PRD to the user for approval before any code work.** The user may amend scope here;
+  the approved PRD is the cycle's contract.
 
 ### 2. BRANCH
 
 - `git checkout -b feat/<id>` (lowercase, e.g. `feat/core-03`), branched from up-to-date `main`.
-- This is the only sanctioned branch creation. Never create branches the loop (or the user)
-  did not ask for.
+- This is the only sanctioned branch creation. Never create branches the loop (or the user) did not
+  ask for.
 - Move the ticket's Plane item to `In Progress`.
 
 ### 3. WORK — delegate to the `/tdd` skill
 
-- Invoke the `tdd` skill with the PRD as the feature description. It owns
-  PRE-FLIGHT → RED → AUDIT → GREEN → REVIEW → VALIDATE; do not re-implement its phases here.
-- **The three delegated phases run in the mode the owner names — sonnet or pi** (the `tdd`
-  skill's Runner section; ask once before RED when none is named). PRE-FLIGHT, the DELETE
-  decisions, REVIEW and VALIDATE stay in the main session either way.
+- Invoke the `tdd` skill with the PRD as the feature description. It owns PRE-FLIGHT → RED → AUDIT →
+  GREEN → REVIEW → VALIDATE; do not re-implement its phases here.
+- **The three delegated phases run in the mode the owner names — sonnet or pi** (the `tdd` skill's
+  Runner section; ask once before RED when none is named). PRE-FLIGHT, the DELETE decisions, REVIEW
+  and VALIDATE stay in the main session either way.
 - **pi mode:** launch, log reading, cost and cleanup follow the global `pi-tdd` skill, from the
-  repository root with the role, task and log files under the gitignored `.polydeukes/tmp/`.
-  What this repository adds:
+  repository root with the role, task and log files under the gitignored `.polydeukes/tmp/`. What
+  this repository adds:
   - The auditor gets `--tools read,grep,find,ls` — no shell, no editor, as its role file intends.
-  - The task file carries the PRD's contract, pseudocode and acceptance list, ends with the
-    `tdd` skill's delegation line, and states these rules: do not touch the protected paths
-    (`.claude/`, `.codex/`, `.grok/`, `.git/`, `lefthook*.yml`, `biome.json`,
-    `polydeukes.config.yaml`, `.polydeukes/bin/`, `packages/*/dist/`), because pi's tool calls
-    never reach this session's hook; run only the changed test files, never `pnpm test` or
-    `pnpm build`; run no git command that writes, since commits belong to the main session.
-  - After AUDIT the main session stages the surviving test files; after GREEN, an unstaged
-    change under `__tests__/` means the implementer edited a test, and the run is rejected.
-  - Read the RED output down to each fixture's premise before AUDIT: the model implements a
-    detail the task file states wrongly just as literally as a right one.
+  - The task file carries the PRD's contract, pseudocode and acceptance list, ends with the `tdd`
+    skill's delegation line, and states these rules: do not touch the protected paths (`.claude/`,
+    `.codex/`, `.grok/`, `.git/`, `lefthook*.yml`, `biome.json`, `polydeukes.config.yaml`,
+    `.polydeukes/bin/`, `packages/*/dist/`), because pi's tool calls never reach this session's
+    hook; run only the changed test files, never `pnpm test` or `pnpm build`; run no git command
+    that writes, since commits belong to the main session.
+  - After AUDIT the main session stages the surviving test files; after GREEN, an unstaged change
+    under `__tests__/` means the implementer edited a test, and the run is rejected.
+  - Read the RED output down to each fixture's premise before AUDIT: the model implements a detail
+    the task file states wrongly just as literally as a right one.
 - The loop does not proceed until VALIDATE passes (tests + typecheck + `pnpm check`).
 - A knowledge document the loop writes besides the PRD (dev-log · ADR · research) carries
-  `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to
-  this PRD; the PRD itself takes its ticket from the H1 and carries no `ticket:` key.
-- **Tick each acceptance criterion the moment a run proves it — not at the end.** As every
-  phase lands (GREEN goes green, a spawn returns, VALIDATE passes), flip the criteria that run
-  proved to `- [x]` in the PRD and write *which run showed it* on the same line. Batching the
-  ticks until archive time means filling them in from memory, because by then the evidence is
-  already gone — and a box ticked from memory is a self-report, not a verification record. This
-  repository has had self-reports overturned by measurement at two milestone gates. A criterion
-  no run has proved yet stays unticked; that is the checklist working, not a gap to paper over.
+  `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to this
+  PRD; the PRD itself takes its ticket from the H1 and carries no `ticket:` key.
+- **Tick each acceptance criterion the moment a run proves it — not at the end.** As every phase
+  lands (GREEN goes green, a spawn returns, VALIDATE passes), flip the criteria that run proved to
+  `- [x]` in the PRD and write _which run showed it_ on the same line. Batching the ticks until
+  archive time means filling them in from memory, because by then the evidence is already gone — and
+  a box ticked from memory is a self-report, not a verification record. This repository has had
+  self-reports overturned by measurement at two milestone gates. A criterion no run has proved yet
+  stays unticked; that is the checklist working, not a gap to paper over.
 
 ### 4. POST-TASK — delegate to the `/post-task` skill
 
@@ -116,109 +116,104 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 ### 5. PR — create, review, fix
 
 - Derive the Conventional Commit type from the PRD's approved release impact: `patch` → `fix`,
-  `minor` → `feat`, `breaking` → the accurate type with `!` (and a `BREAKING CHANGE:` body when
-  the migration needs explanation), `none` → the accurate non-release type such as `docs`,
-  `test`, `ci`, `build`, or `chore`. Use that type in both the branch commit and the PR title;
-  push the branch and open a PR against `main` with `tea pr create`.
+  `minor` → `feat`, `breaking` → the accurate type with `!` (and a `BREAKING CHANGE:` body when the
+  migration needs explanation), `none` → the accurate non-release type such as `docs`, `test`, `ci`,
+  `build`, or `chore`. Use that type in both the branch commit and the PR title; push the branch and
+  open a PR against `main` with `tea pr create`.
 - Review with the built-in skill. On Claude Code:
-  `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`.
-  At `high` it fans out finder subagents by angle, verifies each candidate with an
-  independent subagent, and the main session dedups, ranks, and reports. The finders and
-  verifiers run on the subagent default model from `.claude/settings.json`; the synthesis is
-  the main session's — that split is the model policy in `.claude/rules/model-tiers.md`.
-  On Grok Build:
-  `workflow({ source: { type: "name", name: "pdks-code-review" },
-  args: { target: "<PR# or branch>", level: "high",
-  context: "<PRD invariants>" } })`
-  (`.grok/workflows/pdks-code-review.rhai` — Scope → Find → Verify → Synthesize).
-  This skill instructing the launch is the sanctioned opt-in; do not treat the launch as
-  needing separate user approval. In the args, pass the PRD's invariants and severity
-  framing as review context (the finder/verifier agents honor it). Findings land
-  in-session; triage them the project's way: reviewer confidence is hypothesis strength,
-  not a verdict — judge each finding against the PRD text.
+  `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`. At `high` it fans out
+  finder subagents by angle, verifies each candidate with an independent subagent, and the main
+  session dedups, ranks, and reports. The finders and verifiers run on the subagent default model
+  from `.claude/settings.json`; the synthesis is the main session's — that split is the model policy
+  in `.claude/rules/model-tiers.md`. On Grok Build:
+  `workflow({ source: { type: "name", name: "pdks-code-review" },   args: { target: "<PR# or branch>", level: "high",   context: "<PRD invariants>" } })`
+  (`.grok/workflows/pdks-code-review.rhai` — Scope → Find → Verify → Synthesize). This skill
+  instructing the launch is the sanctioned opt-in; do not treat the launch as needing separate user
+  approval. In the args, pass the PRD's invariants and severity framing as review context (the
+  finder/verifier agents honor it). Findings land in-session; triage them the project's way:
+  reviewer confidence is hypothesis strength, not a verdict — judge each finding against the PRD
+  text.
 - **Three constraints belong in the args, and a review without them leans one way.** A finding
-  always arrives as "here is how it breaks", so accepting one is free and declining one costs
-  an argument. Left alone that gradient adds a check every round.
-  - **Finite domain.** A finding must name a code path or an enumerated list. One that
-    samples an infinite input space — three invented malformed files out of all possible
-    malformed files — is not a defect report, and closing it writes code for inputs nobody
-    has seen. Ask for the measured instance; absent one, the finding is a hypothesis.
-  - **What the fix costs.** Every check takes something from whoever installed this: a file
-    they can no longer edit freely, a command that now refuses, a default that assumes they
-    are the threat. A finding that names only the risk has reported half of itself. This
-    product's disciplines are self-imposed, so a fix that removes the owner's choice is a
-    regression even when the risk is real.
-  - **No live-tree probes.** Finders and verifiers read; they never mutate the working tree
-    or run `pnpm build` to test a hypothesis. The session hook loads the built dist, so a
-    mutation probe that reaches dist (a source edit plus a rebuild, or a stub dropped into
-    `dist/`) locks every tool call in this session — twice on 2026-09-07 (SURFACE-02), each
-    recovered only by the owner's terminal. A verifier that needs execution spawns the
-    built bin against a fixture tree it created, never against this repository.
-- `/code-review ultra` (cloud multi-agent review, separately billed) is **user-triggered
-  only** — suggest it at milestone gates, never launch it on the user's behalf.
+  always arrives as "here is how it breaks", so accepting one is free and declining one costs an
+  argument. Left alone that gradient adds a check every round.
+  - **Finite domain.** A finding must name a code path or an enumerated list. One that samples an
+    infinite input space — three invented malformed files out of all possible malformed files — is
+    not a defect report, and closing it writes code for inputs nobody has seen. Ask for the measured
+    instance; absent one, the finding is a hypothesis.
+  - **What the fix costs.** Every check takes something from whoever installed this: a file they can
+    no longer edit freely, a command that now refuses, a default that assumes they are the threat. A
+    finding that names only the risk has reported half of itself. This product's disciplines are
+    self-imposed, so a fix that removes the owner's choice is a regression even when the risk is
+    real.
+  - **No live-tree probes.** Finders and verifiers read; they never mutate the working tree or run
+    `pnpm build` to test a hypothesis. The session hook loads the built dist, so a mutation probe
+    that reaches dist (a source edit plus a rebuild, or a stub dropped into `dist/`) locks every
+    tool call in this session — twice on 2026-09-07 (SURFACE-02), each recovered only by the owner's
+    terminal. A verifier that needs execution spawns the built bin against a fixture tree it
+    created, never against this repository.
+- `/code-review ultra` (cloud multi-agent review, separately billed) is
+  **user-triggered
+  only**
+  — suggest it at milestone gates, never launch it on the user's behalf.
 - Apply accepted fixes as follow-up commits on the same branch (each passing VALIDATE), push.
 
 ### 6. MERGE — user's call
 
-- **Merging is always the user's decision.** Report the PR state and wait; never merge
-  unprompted.
-- On approval: confirm the squash title carries the PRD release impact's type (release-please
-  reads only the commit that lands on `main`), squash merge with it, delete the remote and local
-  branch, then `git checkout main && git pull --ff-only`.
+- **Merging is always the user's decision.** Report the PR state and wait; never merge unprompted.
+- On approval: confirm the squash title carries the PRD release impact's type (release-please reads
+  only the commit that lands on `main`), squash merge with it, delete the remote and local branch,
+  then `git checkout main && git pull --ff-only`.
 
 ### 7. ARCHIVE — at merge time, not before
 
 Archiving happens **when the PR merges**, never merely when acceptance criteria pass:
 
-- Close the ticket's Forgejo issue with a comment naming the PR and the squash commit, and
-  comment on any open issue whose body the work changed (a dependency now met, a scope it
-  informed). An `ISSUE-<n>` ticket's GitHub report is closed separately, with the version
-  that shipped it.
-- **Reconcile the acceptance criteria — every box, in both places they live** (the PRD and,
-  when the issue body carries its own checklist, that list). By now the boxes
-  should already be ticked, each carrying the run that proved it (phase 3) — this step audits
-  that record rather than creating it. Any box still empty is answered here, not filled in:
-  either name the run that proved it and tick it, or leave it unticked with a line saying so
-  and a destination, exactly like a review finding. Closing a ticket issue while its own
-  criteria stay `- [ ]` is what makes an archived ticket read as "completed without
-  verification", and it also destroys the only record of how it was verified.
-- **Do the same for the doc-disposition list.** It is not an acceptance criterion, so the
-  bullet above does not reach it — but the rule is identical: for each item, record which run
-  or edit discharged it, or write its destination. A merged ticket that silently left its own
-  `- [ ]` items is how a carry-over goes missing, and closing that leak is the standing
-  prescription in `_docs/knowledge/foundation.dev-log.carryover-grep-misses-disposition-sections.md`.
-- Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to
-  `done` (with merge date + PR number), delete the `status: draft` key (absent means `stable`),
-  keep the rest of the frontmatter, and add the new file's entry to `_docs/knowledge/index.md`
-  under its scope heading. Archived PRDs are immutable.
-- **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any
-  dev-log from POST-TASK, the archived PRD — is only a local edit until that
-  push. Unpushed knowledge exists on one machine, which is exactly what the telemetry loss
-  demonstrated costs a project its record:
+- Close the ticket's Forgejo issue with a comment naming the PR and the squash commit, and comment
+  on any open issue whose body the work changed (a dependency now met, a scope it informed). An
+  `ISSUE-<n>` ticket's GitHub report is closed separately, with the version that shipped it.
+- **Reconcile the acceptance criteria — every box, in both places they live** (the PRD and, when the
+  issue body carries its own checklist, that list). By now the boxes should already be ticked, each
+  carrying the run that proved it (phase 3) — this step audits that record rather than creating it.
+  Any box still empty is answered here, not filled in: either name the run that proved it and tick
+  it, or leave it unticked with a line saying so and a destination, exactly like a review finding.
+  Closing a ticket issue while its own criteria stay `- [ ]` is what makes an archived ticket read
+  as "completed without verification", and it also destroys the only record of how it was verified.
+- **Do the same for the doc-disposition list.** It is not an acceptance criterion, so the bullet
+  above does not reach it — but the rule is identical: for each item, record which run or edit
+  discharged it, or write its destination. A merged ticket that silently left its own `- [ ]` items
+  is how a carry-over goes missing, and closing that leak is the standing prescription in
+  `_docs/knowledge/foundation.dev-log.carryover-grep-misses-disposition-sections.md`.
+- Move `_docs/prd/<ID>.md` → `_docs/knowledge/<scope>.prd.<name>.md`: flip the status line to `done`
+  (with merge date + PR number), delete the `status: draft` key (absent means `stable`), keep the
+  rest of the frontmatter, and add the new file's entry to `_docs/knowledge/index.md` under its
+  scope heading. Archived PRDs are immutable.
+- **Commit and push the `_docs/` clone.** Everything this loop wrote there — the PRD, any dev-log
+  from POST-TASK, the archived PRD — is only a local edit until that push. Unpushed knowledge exists
+  on one machine, which is exactly what the telemetry loss demonstrated costs a project its record:
 
   ```sh
   git -C _docs add -A && git -C _docs commit && git -C _docs push
   ```
 
-- Report which open issues the merge unlocked (those naming this ID as a dependency), and move
-  each whose dependencies are now all closed from `Backlog` to `Todo` in Plane. Closing the
-  Forgejo issue moves this ticket's own item to `Done`; confirm it did.
+- Report which open issues the merge unlocked (those naming this ID as a dependency), and move each
+  whose dependencies are now all closed from `Backlog` to `Todo` in Plane. Closing the Forgejo issue
+  moves this ticket's own item to `Done`; confirm it did.
 
 ## Notes
 
 - Tickets are Forgejo issues on `b95labs/polydeukes`, labelled by kind (`ticket` · `candidate` ·
-  `conditional` · `friction` · `chore`) and grouped as three modules of Plane's POLY project
-  (「일반 로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」), which keeps their stage too. A milestone's
+  `conditional` · `friction` · `chore`) and grouped as three modules of Plane's POLY project (「일반
+  로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」), which keeps their stage too. A milestone's
   description holds its goal and Exit Criteria. A new or split ticket is a new issue with the same
   labels; it reaches POLY in Backlog with no module, so put it in the same module there. Title,
   body, labels, milestone and closing belong to Forgejo; Plane holds only the stage, set by one
-  rule: `Backlog` while a dependency is open, `Todo` once all are closed, `In Progress` from
-  BRANCH, `Done` when the issue closes after merge. The REST path for module and stage changes
-  is in `AGENTS.local.md`.
-- `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the
-  project's Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there
-  are ordinary git work: commit and push in that directory (see ARCHIVE). This skill is checked
-  into the main repo, so contributors without that clone can still follow the loop's shape with
-  their own tracker and PRD store.
-- Unit tasks must stay small enough for one PRD, verifiable by a command or test. If PRE
-  reveals the ticket is bigger than that, propose splitting it into separate issues first.
+  rule: `Backlog` while a dependency is open, `Todo` once all are closed, `In Progress` from BRANCH,
+  `Done` when the issue closes after merge. The REST path for module and stage changes is in
+  `AGENTS.local.md`.
+- `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the project's
+  Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there are ordinary
+  git work: commit and push in that directory (see ARCHIVE). This skill is checked into the main
+  repo, so contributors without that clone can still follow the loop's shape with their own tracker
+  and PRD store.
+- Unit tasks must stay small enough for one PRD, verifiable by a command or test. If PRE reveals the
+  ticket is bigger than that, propose splitting it into separate issues first.

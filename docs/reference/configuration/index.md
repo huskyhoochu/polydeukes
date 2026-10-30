@@ -2,94 +2,95 @@
 
 **English** · [한국어](index.ko.md)
 
-Every key of `polydeukes.config.yaml`, one section per key. The guide — what the file is,
-how discovery fails, and the IDE wiring — is
+Every key of `polydeukes.config.yaml`, one section per key. The guide — what the file is, how
+discovery fails, and the IDE wiring — is
 [Configuring Polydeukes](../../how-to/configure-project.md), and what a verdict looks like when a
 discipline fires is its
-[What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block)
-section.
+[What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block) section.
 
-For the complete syntax of relations and extraction steps, see the [Declaration language
+For the complete syntax of relations and extraction steps, see the
+[Declaration language
 reference](../declaration-language/index.md).
 
 <a id="languages"></a>
 ## `languages`
 
-Optional. The language axis. Keys are your values (`typescript`, `python`, …) — the core
-ships no language names and never interprets the command string. A config without the key, or
-with an empty map, is valid, and no judgment reads these values.
+Optional. The language axis. Keys are your values (`typescript`, `python`, …) — the core ships no
+language names and never interprets the command string. A config without the key, or with an empty
+map, is valid, and no judgment reads these values.
 
 ```yaml
 languages:
   typescript:
-    productionGlob: 'packages/*/src/**/*.ts'   # what counts as production source
-    testCmd: 'pnpm --filter {scope} test'      # {scope} is substituted at resolve time
+    productionGlob: "packages/*/src/**/*.ts" # what counts as production source
+    testCmd: "pnpm --filter {scope} test" # {scope} is substituted at resolve time
 ```
 
-`testCmd` is a template string, not a function. Every `{scope}` occurrence is replaced;
-all other braces (`${VAR}`, `{a,b}`, `awk '{print}'`) pass through untouched. A command
-that ignores scope (`pnpm test`) is equally valid.
+`testCmd` is a template string, not a function. Every `{scope}` occurrence is replaced; all other
+braces (`${VAR}`, `{a,b}`, `awk '{print}'`) pass through untouched. A command that ignores scope
+(`pnpm test`) is equally valid.
 
 <a id="protectedpaths"></a>
 ## `protectedPaths`
 
-Optional. Raw path patterns whose files the covenants protect from modification — by
-editor tools and by shell commands alike (`sed -i`, `tee`, redirects, heredocs,
-parent-directory moves). Entries are normalized (trimmed, deduplicated) at resolve time.
-An empty-string entry is rejected at load time — it carries no path meaning.
+Optional. Raw path patterns whose files the covenants protect from modification — by editor tools
+and by shell commands alike (`sed -i`, `tee`, redirects, heredocs, parent-directory moves). Entries
+are normalized (trimmed, deduplicated) at resolve time. An empty-string entry is rejected at load
+time — it carries no path meaning.
 
 ```yaml
 protectedPaths:
-  - 'packages/core/src'
-  - '.claude/hooks'
+  - "packages/core/src"
+  - ".claude/hooks"
 ```
 
-**The config file protects itself.** The discovered config file is automatically appended
-to `protectedPaths` — an edit that would lower your own gates goes through the same judge
-as everything else. If the file that declares the disciplines were not itself under the
-disciplines, the whole chain would be decoration.
+**The config file protects itself.** The discovered config file is automatically appended to
+`protectedPaths` — an edit that would lower your own gates goes through the same judge as everything
+else. If the file that declares the disciplines were not itself under the disciplines, the whole
+chain would be decoration.
 
 <a id="adapters"></a>
 ## `adapters`
 
-Optional. Adapter namespaces. One config file, one namespace per adapter: each key names an
-adapter, and its value is that adapter's own settings object. The core validates the
-container shape only — the keys and the contents belong to each adapter, which ships
-its own validator for its own vocabulary. An unknown key *inside* a namespace is
-rejected by that adapter's validator, with the full field path in the error.
+Optional. Adapter namespaces. One config file, one namespace per adapter: each key names an adapter,
+and its value is that adapter's own settings object. The core validates the container shape only —
+the keys and the contents belong to each adapter, which ships its own validator for its own
+vocabulary. An unknown key _inside_ a namespace is rejected by that adapter's validator, with the
+full field path in the error.
 
 ```yaml
 adapters:
   example:
-    someKey: 'a value the example adapter defines'
+    someKey: "a value the example adapter defines"
 ```
 
-**`protectedPaths` is one list for both surfaces.** There is no additive change-set-only scope
-and no surface-level enforcement key in the config. The change-set surface judges the same
-normalized list the session surface does. A violation exits 2 on the session surface; on the
-change-set surface it lands `advised` at exit 0 unless the check runs with `--enforce block`. The
-judge emits only that exit code: whether a commit stops is the user's hook wiring, so a
-telemetry row records the verdict, not the commit's fate — a `blocked` row can sit beside a
-commit that proceeded because the wiring ignored the exit code.
+**`protectedPaths` is one list for both surfaces.** There is no additive change-set-only scope and
+no surface-level enforcement key in the config. The change-set surface judges the same normalized
+list the session surface does. A violation exits 2 on the session surface; on the change-set surface
+it lands `advised` at exit 0 unless the check runs with `--enforce block`. The judge emits only that
+exit code: whether a commit stops is the user's hook wiring, so a telemetry row records the verdict,
+not the commit's fate — a `blocked` row can sit beside a commit that proceeded because the wiring
+ignored the exit code.
 
 The session surface (the editor-time hook) has no level setting either. What it blocks is the
-judging chain's own protection — `protectedPaths` mutations and mentions on the tool and
-shell axes, the session transcript, an assembly that cannot judge (missing or invalid
-config, unbuilt judge, unparseable payload, a routing that could not answer) — plus any
-entry promoted with `enforce: block`. Every other discipline entry lands `advised` there.
+judging chain's own protection — `protectedPaths` mutations and mentions on the tool and shell axes,
+the session transcript, an assembly that cannot judge (missing or invalid config, unbuilt judge,
+unparseable payload, a routing that could not answer) — plus any entry promoted with
+`enforce: block`. Every other discipline entry lands `advised` there.
 
 **A declaration reaches only the surface that observes its channels.** A transcript reader is
 written in `sessionDisciplines` and is never compiled for a change set; a `changes` reader is
-written in `changeSetDisciplines` and is never compiled for one call. The three lists and the
-rule that places an entry in one of them are in [the three discipline
+written in `changeSetDisciplines` and is never compiled for one call. The three lists and the rule
+that places an entry in one of them are in
+[the three discipline
 lists](#three-lists).
 
-A declaration's `supply` policy still governs a channel the surface registers but the host
-does not prove. A host that carries no session (the Grok adapter) leaves a
-`sources: { session: { transcript: true } }` entry's source absent, and `supply: { session: 'pass'
-}`
-records a `skipped` telemetry event carrying the reason token `supply-pass` and lets the call
-proceed. Without that policy a missing source is unjudgeable (exit 2), not an automatic skip.
+A declaration's `supply` policy still governs a channel the surface registers but the host does not
+prove. A host that carries no session (the Grok adapter) leaves a
+`sources: { session: { transcript: true } }` entry's source absent, and
+`supply: { session: 'pass' }` records a `skipped` telemetry event carrying the reason token
+`supply-pass` and lets the call proceed. Without that policy a missing source is unjudgeable (exit
+2), not an automatic skip.
 
 <a id="telemetry"></a>
 ## `telemetry`
@@ -98,13 +99,12 @@ Optional.
 
 ```yaml
 telemetry:
-  logPath: '.polydeukes/roi.log'   # default when omitted; keep it gitignored
+  logPath: ".polydeukes/roi.log" # default when omitted; keep it gitignored
 ```
 
-Every judgment — passed, blocked, witnessed, advised, or skipped — appends one record.
-Telemetry is fail-open by design: a logging failure never changes a verdict. The path
-itself is still validated at load time — an empty or whitespace-only `logPath` is
-rejected.
+Every judgment — passed, blocked, witnessed, advised, or skipped — appends one record. Telemetry is
+fail-open by design: a logging failure never changes a verdict. The path itself is still validated
+at load time — an empty or whitespace-only `logPath` is rejected.
 
 <a id="witness"></a>
 ## `witness`
@@ -113,22 +113,22 @@ Optional.
 
 ```yaml
 witness:
-  token: 'pdks witness'   # the phrase a human types in the conversation
-  ttlMinutes: 10              # validity window, in minutes, from that message
+  token: "pdks witness" # the phrase a human types in the conversation
+  ttlMinutes: 10 # validity window, in minutes, from that message
 ```
 
-A human can open the witness valve by typing the configured token in the conversation.
-Blocked judgments may then proceed for `ttlMinutes` from that message's timestamp. After the
-window expires, blocking resumes. Both keys are required when this section is present:
-`token` must be non-empty after trimming, and `ttlMinutes` must be finite and greater than zero.
+A human can open the witness valve by typing the configured token in the conversation. Blocked
+judgments may then proceed for `ttlMinutes` from that message's timestamp. After the window expires,
+blocking resumes. Both keys are required when this section is present: `token` must be non-empty
+after trimming, and `ttlMinutes` must be finite and greater than zero.
 
-The judge runs before checking the valve. Only a blocked judgment can become `witnessed`;
-passed and advised judgments keep their original result.
+The judge runs before checking the valve. Only a blocked judgment can become `witnessed`; passed and
+advised judgments keep their original result.
 
-**The token must stand alone on the message's first line.** Invoking the witness is
-distinct from talking about it: a message that quotes, questions, or explains the token
-mid-sentence — or wraps it in backticks — does not open the valve, while a first line
-carrying the token alone does, with any following lines free for the work itself.
+**The token must stand alone on the message's first line.** Invoking the witness is distinct from
+talking about it: a message that quotes, questions, or explains the token mid-sentence — or wraps it
+in backticks — does not open the valve, while a first line carrying the token alone does, with any
+following lines free for the work itself.
 
 A message that invokes — the token alone on the first line, the rest free:
 
@@ -144,15 +144,15 @@ A message that merely mentions — the valve stays shut:
 so when does `pdks witness` expire?
 ```
 
-The token's value is free — any phrase works, and it is never checked for a prefix or a
-command shape. Only its placement is constrained.
+The token's value is free — any phrase works, and it is never checked for a prefix or a command
+shape. Only its placement is constrained.
 
-The adapter must identify the token's message as human input before it can open the valve.
-Knowing the token alone is insufficient. Every judgment allowed through the valve is recorded
-as `witnessed`. Claude Code and Codex accept prompt text for this purpose only when its
-origin explicitly identifies a human. An ordinary prompt event without that provenance
-does not open the valve. Grok supplies no human-message evidence. Recover a protected
-change from your own terminal when the host cannot prove that origin.
+The adapter must identify the token's message as human input before it can open the valve. Knowing
+the token alone is insufficient. Every judgment allowed through the valve is recorded as
+`witnessed`. Claude Code and Codex accept prompt text for this purpose only when its origin
+explicitly identifies a human. An ordinary prompt event without that provenance does not open the
+valve. Grok supplies no human-message evidence. Recover a protected change from your own terminal
+when the host cannot prove that origin.
 
 <a id="memory"></a>
 ## `memory`
@@ -163,9 +163,9 @@ Optional. Only `pdks memory` reads it; the judge does not. It needs the optional
 ```yaml
 memory:
   include:
-    - 'docs/**/*.md'
+    - "docs/**/*.md"
   exclude:
-    - 'docs/releases/**'
+    - "docs/releases/**"
   typeMap:
     adr: decision
   ticket:
@@ -173,37 +173,36 @@ memory:
       key: issue
     - type: plan
       from: title
-      pattern: '[A-Z]+-[0-9]+'
+      pattern: "[A-Z]+-[0-9]+"
   weights:
     decision: 2
   obligations:
     - line: '^\s*[-*] \[ \]'
-      key: '[A-Z]+-[0-9]+'
-    - section: '^Unresolved questions$'
+      key: "[A-Z]+-[0-9]+"
+    - section: "^Unresolved questions$"
   supersedes:
-    - line: 'superseded by'
-      key: '(?<=RFC )[0-9]+'
+    - line: "superseded by"
+      key: "(?<=RFC )[0-9]+"
       direction: superseded-by
 ```
 
-| Key | Required | What it does |
-|---|---|---|
-| `include` | yes | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are indexed |
-| `exclude` | no | A list of globs, relative to the same directory as `include`. A file one of them matches is not indexed, even when `include` reaches it. A glob that matches a directory leaves out every file under it: `docs/releases/*` also leaves out `docs/releases/old/v1.md` |
-| `typeMap` | no | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written |
-| `ticket` | no | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins |
-| `weights` | no | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results |
-| `obligations` | no | A list of rules that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line rule has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section rule has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` rules; a document without a ticket yields none. An entry has one form or the other |
-| `supersedes` | no | A list of rules that record which document replaces which. Each rule has `line`, `key`, and `direction`: in every section, each line that `line` matches names one target per match of `key` in that line. `direction: supersedes` means the document replaces the target; `direction: superseded-by` means the target replaces the document. A target resolves first by document name, as a wikilink name does (the document id equals it or ends in `/<target>`, ignoring case, the declaring document's directory first among several), then to the one other document whose ticket equals it; otherwise it stays unresolved and [`pdks memory lint`](../cli/memory.md#lint) reports it. A replaced document's sections rank after the others in search, and [`pdks memory supersession`](../cli/memory.md#supersession) lists the chain |
+| Key           | Required | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `include`     | yes      | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are indexed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `exclude`     | no       | A list of globs, relative to the same directory as `include`. A file one of them matches is not indexed, even when `include` reaches it. A glob that matches a directory leaves out every file under it: `docs/releases/*` also leaves out `docs/releases/old/v1.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `typeMap`     | no       | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `ticket`      | no       | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins                                                                                                                                                                                                                                                                                                                                            |
+| `weights`     | no       | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `obligations` | no       | A list of rules that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line rule has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section rule has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` rules; a document without a ticket yields none. An entry has one form or the other                                                                                                                                                                                                                                                                                                                  |
+| `supersedes`  | no       | A list of rules that record which document replaces which. Each rule has `line`, `key`, and `direction`: in every section, each line that `line` matches names one target per match of `key` in that line. `direction: supersedes` means the document replaces the target; `direction: superseded-by` means the target replaces the document. A target resolves first by document name, as a wikilink name does (the document id equals it or ends in `/<target>`, ignoring case, the declaring document's directory first among several), then to the one other document whose ticket equals it; otherwise it stays unresolved and [`pdks memory lint`](../cli/memory.md#lint) reports it. A replaced document's sections rank after the others in search, and [`pdks memory supersession`](../cli/memory.md#supersession) lists the chain |
 
-Keys outside these seven are rejected, as are an empty `include`, an `exclude` that is not a list
-or holds anything but non-empty strings, a `typeMap` value that is not a
-non-empty string, a negative or non-numeric weight, a `pattern`, `line`, `key`, or `section`
-that is not a valid regular expression, an `obligations` entry that mixes the two forms or
-lacks a key its form needs, and a `supersedes` entry that lacks `line`, `key`, or `direction`,
-carries another key, or has a `direction` other than `supersedes` or `superseded-by`. A change
-to `typeMap`, `ticket`, `obligations`, or `supersedes` reprocesses every document on the next
-`pdks memory ingest`.
+Keys outside these seven are rejected, as are an empty `include`, an `exclude` that is not a list or
+holds anything but non-empty strings, a `typeMap` value that is not a non-empty string, a negative
+or non-numeric weight, a `pattern`, `line`, `key`, or `section` that is not a valid regular
+expression, an `obligations` entry that mixes the two forms or lacks a key its form needs, and a
+`supersedes` entry that lacks `line`, `key`, or `direction`, carries another key, or has a
+`direction` other than `supersedes` or `superseded-by`. A change to `typeMap`, `ticket`,
+`obligations`, or `supersedes` reprocesses every document on the next `pdks memory ingest`.
 
 <a id="three-lists"></a>
 ## The three discipline lists
@@ -211,440 +210,431 @@ to `typeMap`, `ticket`, `obligations`, or `supersedes` reprocesses every documen
 Choose the list according to the evidence channels the declaration reads. Each surface supplies
 different channels; the loader rejects an entry in a list whose surface cannot supply them.
 
-| List | Judged on | What its declarations read |
-|---|---|---|
-| `disciplines` | both surfaces | the changed file itself (`target.path` · `pre` · `post` · `state`) and `file` sources — nothing else. Drafts live here too |
-| `sessionDisciplines` | the session surface only | at least one of `command` · `transcript` · the `sidecar` channel · `actor`, and never `changes` |
-| `changeSetDisciplines` | the change-set surface only | `changes`, and no session channel |
+| List                   | Judged on                   | What its declarations read                                                                                                 |
+| ---------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `disciplines`          | both surfaces               | the changed file itself (`target.path` · `pre` · `post` · `state`) and `file` sources — nothing else. Drafts live here too |
+| `sessionDisciplines`   | the session surface only    | at least one of `command` · `transcript` · the `sidecar` channel · `actor`, and never `changes`                            |
+| `changeSetDisciplines` | the change-set surface only | `changes`, and no session channel                                                                                          |
 
 The session surface is one call a host observed before it ran — an adapter hook, or a program
 calling the SDK with an input IR. It carries the command line, the conversation history, the
-spawn-record channel, and the actor, and it does not carry the finished change set. The
-change-set surface is `pdks covenant check --diff` over a change set some producer finished.
-It carries `changes`, and it carries no command line, no history, and no actor.
+spawn-record channel, and the actor, and it does not carry the finished change set. The change-set
+surface is `pdks covenant check --diff` over a change set some producer finished. It carries
+`changes`, and it carries no command line, no history, and no actor.
 
 <a id="channel-to-list"></a>
 ### Channel to list
 
-Each channel appears in a declaration in a fixed syntactic position, and the loader reads
-those positions to derive the list.
+Each channel appears in a declaration in a fixed syntactic position, and the loader reads those
+positions to derive the list.
 
-| Channel | How it appears in a declaration | List |
-|---|---|---|
-| `transcript` | `sources: { session: { transcript: true } }` | `sessionDisciplines` |
-| `channel` | `sources: { spawns: { sidecar: true } }` | `sessionDisciplines` |
-| `command` | `scope: { source: 'command' }`, or `{ op: 'source', of: 'command' }` in any pipeline | `sessionDisciplines` |
-| `actor` | `{ op: 'source', of: 'actor' }` in any pipeline | `sessionDisciplines` |
-| `changes` | `{ op: 'source', of: 'changes' }` in any pipeline | `changeSetDisciplines` |
-| none of the five | the declaration reads the changed file and `file` sources alone | `disciplines` |
+| Channel          | How it appears in a declaration                                                      | List                   |
+| ---------------- | ------------------------------------------------------------------------------------ | ---------------------- |
+| `transcript`     | `sources: { session: { transcript: true } }`                                         | `sessionDisciplines`   |
+| `channel`        | `sources: { spawns: { sidecar: true } }`                                             | `sessionDisciplines`   |
+| `command`        | `scope: { source: 'command' }`, or `{ op: 'source', of: 'command' }` in any pipeline | `sessionDisciplines`   |
+| `actor`          | `{ op: 'source', of: 'actor' }` in any pipeline                                      | `sessionDisciplines`   |
+| `changes`        | `{ op: 'source', of: 'changes' }` in any pipeline                                    | `changeSetDisciplines` |
+| none of the five | the declaration reads the changed file and `file` sources alone                      | `disciplines`          |
 
-A `witness` block's own `extract` is walked with the body's, so a valve reading the transcript
-puts its entry in `sessionDisciplines` like any other transcript reader.
+A `witness` block's own `extract` is walked with the body's, so a valve reading the transcript puts
+its entry in `sessionDisciplines` like any other transcript reader.
 
 <a id="placement-rule"></a>
 ### The placement rule
 
 `disciplines` takes an entry binding none of the five channels, plus every draft.
 `sessionDisciplines` takes an entry binding at least one session channel and not `changes`.
-`changeSetDisciplines` takes an entry binding `changes` and no session channel. Anything else
-is a `ConfigValidationError` at load time, on both surfaces, and the message names the entry,
-the channels it reads, and the list it belongs in:
+`changeSetDisciplines` takes an entry binding `changes` and no session channel. Anything else is a
+`ConfigValidationError` at load time, on both surfaces, and the message names the entry, the
+channels it reads, and the list it belongs in:
 
 ```text
 disciplines[7] ('merge-is-the-users-call') reads transcript, command: it belongs in sessionDisciplines
 ```
 
-A declaration reading both `changes` and a session channel is invalid in every list,
-because no surface observes both at once:
+A declaration reading both `changes` and a session channel is invalid in every list, because no
+surface observes both at once:
 
 ```text
 sessionDisciplines[2] ('pairs-across-a-session') reads transcript, changes: no surface observes both changes and a session channel
 ```
 
-A draft binds nothing — it carries no declaration — so it belongs in `disciplines`, and a
-draft written in either surface list is refused with `a draft belongs in disciplines`.
+A draft binds nothing — it carries no declaration — so it belongs in `disciplines`, and a draft
+written in either surface list is refused with `a draft belongs in disciplines`.
 
-Ids are unique across all three lists and the three meta-covenant labels (`self-mod` ·
-`shell-mod` · `transcript-mod`): the telemetry label space is one space, and `pdks explain`
-and every label-keyed reader index by the label alone.
+Ids are unique across all three lists and the three meta-covenant labels (`self-mod` · `shell-mod` ·
+`transcript-mod`): the telemetry label space is one space, and `pdks explain` and every label-keyed
+reader index by the label alone.
 
 <a id="lists-in-practice"></a>
 ### What each surface compiles
 
 `pdks covenant check` reading an input IR on stdin compiles `disciplines` followed by
 `sessionDisciplines`; the same command with `--diff` compiles `disciplines` followed by
-`changeSetDisciplines`. `pdks explain` prints both surfaces with each list's name and count in
-the surface header, so the placement of every entry is readable without running a judgment.
-This repository's live config places 11 judged entries and 1 draft in `disciplines`, 13 in
-`sessionDisciplines`, and 1 (`docs-stay-bilingual`) in `changeSetDisciplines` — 24
-registrations on the session surface and 12 on the change-set surface.
+`changeSetDisciplines`. `pdks explain` prints both surfaces with each list's name and count in the
+surface header, so the placement of every entry is readable without running a judgment. This
+repository's live config places 11 judged entries and 1 draft in `disciplines`, 13 in
+`sessionDisciplines`, and 1 (`docs-stay-bilingual`) in `changeSetDisciplines` — 24 registrations on
+the session surface and 12 on the change-set surface.
 
 ```yaml
-disciplines:            # both surfaces
-  - id: 'covenant-vocabulary'
+disciplines: # both surfaces
+  - id: "covenant-vocabulary"
     declare:
-      mechanism: 'added-only'
-      scope: { source: 'target.path', include: ['^packages/'] }
-      supply: { pre: 'empty', post: 'empty' }
+      mechanism: "added-only"
+      scope: { source: "target.path", include: ["^packages/"] }
+      supply: { pre: "empty", post: "empty" }
       extract:
-        before: [{ op: 'source', of: 'pre' }, { op: 'lines' }]
-        after: [{ op: 'source', of: 'post' }, { op: 'lines' }]
-        added: [{ op: 'onlyIn', of: 'after', notIn: 'before' }]
+        before: [{ op: "source", of: "pre" }, { op: "lines" }]
+        after: [{ op: "source", of: "post" }, { op: "lines" }]
+        added: [{ op: "onlyIn", of: "after", notIn: "before" }]
       relate:
-        - { id: 'nothing-added', relation: { op: 'empty', of: 'added' }, message: 'adds {value}' }
+        - { id: "nothing-added", relation: { op: "empty", of: "added" }, message: "adds {value}" }
 
-sessionDisciplines:     # the session surface only — reads command
-  - id: 'pnpm-only'
+sessionDisciplines: # the session surface only — reads command
+  - id: "pnpm-only"
     declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
       extract:
         hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: '\bnpm install\b' }
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - { op: "matches", re: '\bnpm install\b' }
       relate:
-        - { id: 'no-npm', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+        - { id: "no-npm", relation: { op: "empty", of: "hits" }, message: "{value}" }
 
-changeSetDisciplines:   # the change-set surface only — reads changes
-  - id: 'docs-stay-bilingual'
+changeSetDisciplines: # the change-set surface only — reads changes
+  - id: "docs-stay-bilingual"
     declare:
-      mechanism: 'companion'
-      scope: { source: 'target.path', include: ['\.md$'] }
+      mechanism: "companion"
+      scope: { source: "target.path", include: ['\.md$'] }
       extract:
         en:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'keyByPattern', re: '^(.+?)(?<!\.ko)\.md$' }
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
         koChanged:
-          - { op: 'source', of: 'changes' }
-          - { op: 'items' }
-          - { op: 'keyByPattern', re: '^(.+)\.ko\.md$' }
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
       relate:
-        - id: 'ko-follows'
-          relation: { op: 'implies', of: 'en', requires: 'koChanged' }
-          message: '{value} changed without {key}.ko.md'
+        - id: "ko-follows"
+          relation: { op: "implies", of: "en", requires: "koChanged" }
+          message: "{value} changed without {key}.ko.md"
 ```
 
-Moving an entry between lists is the whole edit: the entry's body is unchanged by the move,
-and the loader is what says whether the new place is the right one.
+Moving an entry between lists is the whole edit: the entry's body is unchanged by the move, and the
+loader is what says whether the new place is the right one.
 
 <a id="config-layer"></a>
 ### A config layer
 
-A program that judges many repositories can keep disciplines of its own in a file outside
-every judged tree and pass it with `pdks covenant check --config-layer <path>` (the SDK's
-`configLayer` field). The layer is a yaml or json file with at most the three discipline lists
-and `$schema`; any other key refuses the layer with the key named.
+A program that judges many repositories can keep disciplines of its own in a file outside every
+judged tree and pass it with `pdks covenant check --config-layer <path>` (the SDK's `configLayer`
+field). The layer is a yaml or json file with at most the three discipline lists and `$schema`; any
+other key refuses the layer with the key named.
 
 ```yaml
 sessionDisciplines:
-  - id: 'no-flushall'
-    why: 'tests share one Redis server'
+  - id: "no-flushall"
+    why: "tests share one Redis server"
     declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
       extract:
         hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: '\bFLUSHALL\b' }
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - { op: "matches", re: '\bFLUSHALL\b' }
       relate:
-        - { id: 'no-flush', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+        - { id: "no-flush", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
 
 Each layer list is appended after the config's list of the same name, and the merged config is
 validated as one: the placement rule applies to layer entries, and an id may not appear in both
-files. Everything else — `protectedPaths`, `witness`, `telemetry`, where the world is read —
-still comes from the judged project's config and tree. The layer is not added to
-`protectedPaths`: keeping it where the judged agents cannot write is the caller's arrangement.
-A layer that cannot be read or loaded fails the run closed.
+files. Everything else — `protectedPaths`, `witness`, `telemetry`, where the world is read — still
+comes from the judged project's config and tree. The layer is not added to `protectedPaths`: keeping
+it where the judged agents cannot write is the caller's arrangement. A layer that cannot be read or
+loaded fails the run closed.
 
 <a id="disciplines"></a>
 ## `disciplines`
 
-Optional. Each entry is one discipline: a practice the team imposes on itself, declared as
-data. Everything in this section applies to an entry in any of the three lists; which list an
-entry is written in is decided by [the placement rule](#placement-rule), and
-`sessionDisciplines` and `changeSetDisciplines` take the same entry shape as `disciplines`
-minus the draft form. A judged entry carries a `declare` block — the one judged form, a
-declaration whose `scope` lives inside the block — an `id` (the telemetry label), and
-optionally a `why` (the
-reason, which travels with the block message the agent reads) and an `enforce` level. The
-closed key set is `id` · `why` · `enforce` · `declare`; any other key is refused.
+Optional. Each entry is one discipline: a practice the team imposes on itself, declared as data.
+Everything in this section applies to an entry in any of the three lists; which list an entry is
+written in is decided by [the placement rule](#placement-rule), and `sessionDisciplines` and
+`changeSetDisciplines` take the same entry shape as `disciplines` minus the draft form. A judged
+entry carries a `declare` block — the one judged form, a declaration whose `scope` lives inside the
+block — an `id` (the telemetry label), and optionally a `why` (the reason, which travels with the
+block message the agent reads) and an `enforce` level. The closed key set is `id` · `why` ·
+`enforce` · `declare`; any other key is refused.
 
 **`draft` — an unpromoted entry.** The one shape that carries no predicate:
-`{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of
-its promotion — it makes no judgment and no telemetry record on either surface, and
-`pdks explain` shows it as `unpromoted`. `why` is required here (the prose is the entry's
-whole body), and the marker must be the literal `true` — a draft is declared, never
-inferred, so an entry with neither a predicate nor `draft: true` is still a validation
-error, and `draft: false` is rejected as dead data.
+`{ id, why, draft: true }` and nothing else. A draft registers a practice as prose ahead of its
+promotion — it makes no judgment and no telemetry record on either surface, and `pdks explain` shows
+it as `unpromoted`. `why` is required here (the prose is the entry's whole body), and the marker
+must be the literal `true` — a draft is declared, never inferred, so an entry with neither a
+predicate nor `draft: true` is still a validation error, and `draft: false` is rejected as dead
+data.
 
 ```yaml
 disciplines:
-  - id: 'benchmark-supports-performance-claim'
-    why: 'a performance claim must be supported by a fresh benchmark run during judgment.'
+  - id: "benchmark-supports-performance-claim"
+    why: "a performance claim must be supported by a fresh benchmark run during judgment."
     draft: true
 ```
 
-A bilingual mirror pair is not a draft. The engine already judges that shape as `companion`
-(this repository's `docs-stay-bilingual` entry). Use `draft: true` only for a promise the
-current grammar cannot express.
+A bilingual mirror pair is not a draft. The engine already judges that shape as `companion` (this
+repository's `docs-stay-bilingual` entry). Use `draft: true` only for a promise the current grammar
+cannot express.
 
-A `why` is never judged — it changes no verdict. It is appended to the break message once a
-verdict has blocked, so whoever reads the block gets the rationale in the same line instead
-of having to open this file. A `why` spanning several lines is folded to spaces: the message
-is one line.
+A `why` is never judged — it changes no verdict. It is appended to the break message once a verdict
+has blocked, so whoever reads the block gets the rationale in the same line instead of having to
+open this file. A `why` spanning several lines is folded to spaces: the message is one line.
 
 **`enforce` — the entry's own level.** Optional on any judged entry: `block` or `advise`.
-**Absent means `advise`.** Under `advise` a break is recorded as an `advised` telemetry
-event and the call proceeds (exit 0), with the break message still written to stderr;
-`block` is the promotion — it pins the entry at block. The config carries no surface-level
-enforcement key: absent or `advise` means `advised` on both surfaces, `block` means exit 2 on
-the session surface and on a change-set check run with `--enforce block` (the change-set
-surface's default posture is advise for every verdict). An unjudgeable body (never
-built, or one that cannot be loaded) still blocks whatever the level. A draft carries no
-`enforce`; any
-other value is rejected at load time. `pdks explain` prints the level an entry declares
-(`enforce: block` or `enforce: advise`) on both surfaces and leaves an absent one unmarked;
-the session header states the default.
+**Absent means `advise`.** Under `advise` a break is recorded as an `advised` telemetry event and
+the call proceeds (exit 0), with the break message still written to stderr; `block` is the promotion
+— it pins the entry at block. The config carries no surface-level enforcement key: absent or
+`advise` means `advised` on both surfaces, `block` means exit 2 on the session surface and on a
+change-set check run with `--enforce block` (the change-set surface's default posture is advise for
+every verdict). An unjudgeable body (never built, or one that cannot be loaded) still blocks
+whatever the level. A draft carries no `enforce`; any other value is rejected at load time.
+`pdks explain` prints the level an entry declares (`enforce: block` or `enforce: advise`) on both
+surfaces and leaves an absent one unmarked; the session header states the default.
 
 ```yaml
-  - id: 'hooks-stay-armed'
-    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
-    enforce: advise
-    declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
-      extract:
-        hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
-      relate:
-        - { id: 'gates-armed', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+- id: "hooks-stay-armed"
+  why: "a command that disarms or reroutes the git gate is a gate bypass in itself."
+  enforce: advise
+  declare:
+    mechanism: "forbidden-command"
+    scope: { source: "command" }
+    extract:
+      hits:
+        - { op: "source", of: "command" }
+        - { op: "lines" }
+        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+    relate:
+      - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
 
-**Added-direction content is a declaration.** A promise about what an edit *adds* — a
-banned word, a stray `.only`, a citation that resolves nowhere — is written as an
-`added-only` declaration: `pre` and `post` are each cut into lines and keyed by the match,
-`onlyIn` keeps what `post` has and `pre` lacks, and `empty` over that difference is the
-verdict. Existing occurrences are forgiven, so adopting the discipline never blocks a legacy
-codebase. `supply: empty` is what lets a file creation (no `pre`) count as all-added and a
-deletion (no `post`) as adding nothing; the `scope` block replaces `in`/`except` with
-regular expressions over the path. It takes two lists, `include` and `exclude`: a path is
-in scope when it matches at least one `include` pattern (an absent `include` admits every
-path) and matches no `exclude` pattern. `excludeIgnoreCase: true` makes the `exclude`
+**Added-direction content is a declaration.** A promise about what an edit _adds_ — a banned word, a
+stray `.only`, a citation that resolves nowhere — is written as an `added-only` declaration: `pre`
+and `post` are each cut into lines and keyed by the match, `onlyIn` keeps what `post` has and `pre`
+lacks, and `empty` over that difference is the verdict. Existing occurrences are forgiven, so
+adopting the discipline never blocks a legacy codebase. `supply: empty` is what lets a file creation
+(no `pre`) count as all-added and a deletion (no `post`) as adding nothing; the `scope` block
+replaces `in`/`except` with regular expressions over the path. It takes two lists, `include` and
+`exclude`: a path is in scope when it matches at least one `include` pattern (an absent `include`
+admits every path) and matches no `exclude` pattern. `excludeIgnoreCase: true` makes the `exclude`
 patterns case-insensitive; `include` is always case-sensitive.
 
 ```yaml
 disciplines:
-  - id: 'no-focused-tests-in-src'
-    why: 'a focused test must not land in shared source.'
+  - id: "no-focused-tests-in-src"
+    why: "a focused test must not land in shared source."
     declare:
-      mechanism: 'added-only'
-      scope: { source: 'target.path', include: ['^src/', '^test/'] }
-      supply: { pre: 'empty', post: 'empty' }
+      mechanism: "added-only"
+      scope: { source: "target.path", include: ["^src/", "^test/"] }
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\.only\()' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\.only\()' }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(\.only\()' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\.only\()' }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before', count: true }
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'adds {key}: {value}'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
 ```
 
-The key is the match text. With `count: true`, `onlyIn` compares how many times each key
-occurs, so a second `.only(` in a file that already has one is reported; without it, a line
-carrying a match the file already has anywhere is forgiven. A line carrying two new words
-surfaces only the first match; the second appears on a later judgment **after that first
-match is removed**. Re-judging the same input yields
-the same first match.
+The key is the match text. With `count: true`, `onlyIn` compares how many times each key occurs, so
+a second `.only(` in a file that already has one is reported; without it, a line carrying a match
+the file already has anywhere is forgiven. A line carrying two new words surfaces only the first
+match; the second appears on a later judgment
+**after that first
+match is removed**.
+Re-judging the same input yields the same first match.
 
-**A frozen path is a declaration too.** A file that may be created once and never modified
-or deleted: `pre` present means a modification, `post` absent means a deletion, and either
-breaks. Creating the file, including with empty contents (`post: ''`), passes.
+**A frozen path is a declaration too.** A file that may be created once and never modified or
+deleted: `pre` present means a modification, `post` absent means a deletion, and either breaks.
+Creating the file, including with empty contents (`post: ''`), passes.
 
 ```yaml
-  - id: 'archived-records-stay-frozen'
-    why: 'an archive that can be edited is not an archive.'
-    declare:
-      mechanism: 'self-absolution-ban'
-      scope: { source: 'target.path', include: ['^records/archive/'] }
-      supply: { pre: 'empty', post: 'empty' }
-      extract:
-        prior: [{ op: 'source', of: 'pre' }]
-        here: [{ op: 'source', of: 'target.path' }]
-        after: [{ op: 'source', of: 'post' }]
-        deleted: [{ op: 'onlyIn', of: 'here', notIn: 'after' }]
-        touched: [{ op: 'union', of: ['prior', 'deleted'] }]
-      relate:
-        - { id: 'frozen', relation: { op: 'empty', of: 'touched' }, message: '{value} is frozen' }
+- id: "archived-records-stay-frozen"
+  why: "an archive that can be edited is not an archive."
+  declare:
+    mechanism: "self-absolution-ban"
+    scope: { source: "target.path", include: ["^records/archive/"] }
+    supply: { pre: "empty", post: "empty" }
+    extract:
+      prior: [{ op: "source", of: "pre" }]
+      here: [{ op: "source", of: "target.path" }]
+      after: [{ op: "source", of: "post" }]
+      deleted: [{ op: "onlyIn", of: "here", notIn: "after" }]
+      touched: [{ op: "union", of: ["prior", "deleted"] }]
+    relate:
+      - { id: "frozen", relation: { op: "empty", of: "touched" }, message: "{value} is frozen" }
 ```
 
-**A command line is a source.** On the session surface a shell call carries its command
-line as the fixed source `command`, and a call that changes no file is still one
-observation — it is judged as a world of its own, with subject `-`. A `forbidden-command`
-declaration reads that source, cuts it into lines, keeps the lines a pattern matches, and
-requires the result to be `empty`. It scopes on `command` so that only shell calls are
-admitted: an Edit carries no command line, and a declaration reading a source its world
-lacks is unjudgeable. A multi-line command is judged line by line, so `^` means the start
-of a line; a pattern that would span a line boundary does not match. Heredoc bodies and
-herestring words are not part of the source: bash passes them to the command as stdin
-data rather than executing them, so a banned token quoted inside one is not a match, and
-whether that data becomes a file write is judged by the shell-evidence path instead. Text
-bash expands first stays in the source — a body under an unquoted delimiter that carries
-`$` or a backtick, and a herestring word holding a substitution — as does a line the
-tokenizer could not finish reading. What the receiving command does with its stdin is not
-judged: a script fed to an interpreter is data to bash and a program to the interpreter.
+**A command line is a source.** On the session surface a shell call carries its command line as the
+fixed source `command`, and a call that changes no file is still one observation — it is judged as a
+world of its own, with subject `-`. A `forbidden-command` declaration reads that source, cuts it
+into lines, keeps the lines a pattern matches, and requires the result to be `empty`. It scopes on
+`command` so that only shell calls are admitted: an Edit carries no command line, and a declaration
+reading a source its world lacks is unjudgeable. A multi-line command is judged line by line, so `^`
+means the start of a line; a pattern that would span a line boundary does not match. Heredoc bodies
+and herestring words are not part of the source: bash passes them to the command as stdin data
+rather than executing them, so a banned token quoted inside one is not a match, and whether that
+data becomes a file write is judged by the shell-evidence path instead. Text bash expands first
+stays in the source — a body under an unquoted delimiter that carries `$` or a backtick, and a
+herestring word holding a substitution — as does a line the tokenizer could not finish reading. What
+the receiving command does with its stdin is not judged: a script fed to an interpreter is data to
+bash and a program to the interpreter.
 
 ```yaml
-  - id: 'hooks-stay-armed'
-    why: 'a command that disarms or reroutes the git gate is a gate bypass in itself.'
-    declare:
-      mechanism: 'forbidden-command'
-      scope: { source: 'command' }
-      extract:
-        hits:
-          - { op: 'source', of: 'command' }
-          - { op: 'lines' }
-          - { op: 'matches', re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
-      relate:
-        - { id: 'gates-armed', relation: { op: 'empty', of: 'hits' }, message: '{value}' }
+- id: "hooks-stay-armed"
+  why: "a command that disarms or reroutes the git gate is a gate bypass in itself."
+  declare:
+    mechanism: "forbidden-command"
+    scope: { source: "command" }
+    extract:
+      hits:
+        - { op: "source", of: "command" }
+        - { op: "lines" }
+        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+    relate:
+      - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
 
-**A precedent is a declaration over the session.** Most declarations ask "is this change
-itself bad"; a `precedent` asks whether a required step happened earlier in the session.
-The change is legitimate — what is missing is the procedure in front of it, so what gets
-judged is the session history: `sources: { session: { transcript: true } }` hands the
-declaration the user turns and tool calls as one snapshot, `toolUses` picks the calls,
-`filter` keeps the ones that ran and **succeeded**, `select` reaches the command line, and
-`matches` finds the required one; `nonEmpty` is the verdict. A call the covenant blocked,
-one a human refused, and one that simply failed are not precedent. The pattern is matched
-anywhere in a command line — a line that merely mentions the command counts, a declared
-limit. `supply: { session: 'pass' }` is what disposes of an absent session on a host that proves
-none; an entry reading the transcript is written in `sessionDisciplines`, so a change set never
-compiles it at all.
+**A precedent is a declaration over the session.** Most declarations ask "is this change itself
+bad"; a `precedent` asks whether a required step happened earlier in the session. The change is
+legitimate — what is missing is the procedure in front of it, so what gets judged is the session
+history: `sources: { session: { transcript: true } }` hands the declaration the user turns and tool
+calls as one snapshot, `toolUses` picks the calls, `filter` keeps the ones that ran and
+**succeeded**, `select` reaches the command line, and `matches` finds the required one; `nonEmpty`
+is the verdict. A call the covenant blocked, one a human refused, and one that simply failed are not
+precedent. The pattern is matched anywhere in a command line — a line that merely mentions the
+command counts, a declared limit. `supply: { session: 'pass' }` is what disposes of an absent
+session on a host that proves none; an entry reading the transcript is written in
+`sessionDisciplines`, so a change set never compiles it at all.
 
 ```yaml
-  - id: 'dependency-needs-npm-view'
-    why: 'a dependency version must be measured before it is written.'
-    declare:
-      mechanism: 'precedent'
-      scope: { source: 'target.path', include: ['^(packages/[^/]+/)?package\.json$'] }
-      sources: { session: { transcript: true } }
-      supply: { session: 'pass' }
-      extract:
-        npmView:
-          - { op: 'source', of: 'session' }
-          - { op: 'toolUses', names: ['Bash'] }
-          - { op: 'filter', when: [{ field: 'succeeded', eq: true }] }
-          - { op: 'select', path: 'args.command' }
-          - { op: 'matches', re: '\bnpm view ' }
-      relate:
-        - { id: 'npm-view', relation: { op: 'nonEmpty', of: 'npmView' }, message: 'no successful npm view precedes this manifest edit' }
+- id: "dependency-needs-npm-view"
+  why: "a dependency version must be measured before it is written."
+  declare:
+    mechanism: "precedent"
+    scope: { source: "target.path", include: ['^(packages/[^/]+/)?package\.json$'] }
+    sources: { session: { transcript: true } }
+    supply: { session: "pass" }
+    extract:
+      npmView:
+        - { op: "source", of: "session" }
+        - { op: "toolUses", names: ["Bash"] }
+        - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+        - { op: "select", path: "args.command" }
+        - { op: "matches", re: '\bnpm view ' }
+    relate:
+      - {
+          id: "npm-view",
+          relation: { op: "nonEmpty", of: "npmView" },
+          message: "no successful npm view precedes this manifest edit",
+        }
 ```
 
-A tool call is evidence the same way: `toolUses` without `names`, then `field name` and
-`matches` over the tool's name, or `toolUses` with `subagentType` for a spawn of one agent
-kind. The other history mechanisms read the same snapshot — `phase-order` relates two
-spawn ordinals with `ordered`, `turn-locality` keeps the user turns inside a time window
-(`userTexts → ageMs → filter lte`), and `stated-ground` requires a user turn matching a
-pattern; the last two are usually scoped on `command`, so that only the shell call they
-apply to is judged.
+A tool call is evidence the same way: `toolUses` without `names`, then `field name` and `matches`
+over the tool's name, or `toolUses` with `subagentType` for a spawn of one agent kind. The other
+history mechanisms read the same snapshot — `phase-order` relates two spawn ordinals with `ordered`,
+`turn-locality` keeps the user turns inside a time window (`userTexts → ageMs → filter lte`), and
+`stated-ground` requires a user turn matching a pattern; the last two are usually scoped on
+`command`, so that only the shell call they apply to is judged.
 
-**A caution on line anchors.** A declaration's `lines` step splits the text first, so `^`
-inside `keyByPattern` or `matches` after it is the start of a line. A pattern that stops
-mid-value — say at the first digit of a version — keys `4.0.5` and `4.0.6` alike, so a bump
-adds nothing to an added-only difference and the discipline silently passes: make the
-pattern span the whole value that can change. Both failure shapes compile, run, and answer
-`passed`, so measure a new entry against a real file and a realistic edit.
+**A caution on line anchors.** A declaration's `lines` step splits the text first, so `^` inside
+`keyByPattern` or `matches` after it is the start of a line. A pattern that stops mid-value — say at
+the first digit of a version — keys `4.0.5` and `4.0.6` alike, so a bump adds nothing to an
+added-only difference and the discipline silently passes: make the pattern span the whole value that
+can change. Both failure shapes compile, run, and answer `passed`, so measure a new entry against a
+real file and a realistic edit.
 
 **Witnesses and precedent evidence are different.** A pattern seeking precedent evidence must
-distinguish the required action from a mere mention. Session evidence lives on the AI's own
-surface, so it is not forgery-proof; the design relies on the least effortful way to satisfy
-the check being to actually run the command, which is the behaviour the discipline exists to
-induce. A pattern alone does not eliminate the possibility of forged evidence. Test both valid
-and violating cases.
+distinguish the required action from a mere mention. Session evidence lives on the AI's own surface,
+so it is not forgery-proof; the design relies on the least effortful way to satisfy the check being
+to actually run the command, which is the behaviour the discipline exists to induce. A pattern alone
+does not eliminate the possibility of forged evidence. Test both valid and violating cases.
 
-**`declare` — declaration family.** One judgment written as data, in the algebra grammar
-the core publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The
-block carries the declaration's `scope`, `sources`, `supply`, `extract`, `relate`, and optional
-`witness`; the entry's `id` is the declaration's name, so the block never carries a
-`discipline` key, and `in`/`except`/`when` are refused — the `scope` block is the scope.
+**`declare` — declaration family.** One judgment written as data, in the algebra grammar the core
+publishes as `algebra-declaration.schema.json`: `judge = relate ∘ extract`. The block carries the
+declaration's `scope`, `sources`, `supply`, `extract`, `relate`, and optional `witness`; the entry's
+`id` is the declaration's name, so the block never carries a `discipline` key, and
+`in`/`except`/`when` are refused — the `scope` block is the scope.
 
 ```yaml
-  - id: 'db-files-only-under-data'
-    why: 'a *.db file may exist only under data/'
-    declare:
-      mechanism: 'naming'
-      scope: { source: 'target.path', include: ['\.db$'] }
-      extract:
-        outside:
-          - { op: 'source', of: 'target.path' }
-          - { op: 'matches', re: '^(?!data/)' }
-      relate:
-        - id: 'placed'
-          relation: { op: 'empty', of: 'outside' }
-          message: '{value} is outside data/'
+- id: "db-files-only-under-data"
+  why: "a *.db file may exist only under data/"
+  declare:
+    mechanism: "naming"
+    scope: { source: "target.path", include: ['\.db$'] }
+    extract:
+      outside:
+        - { op: "source", of: "target.path" }
+        - { op: "matches", re: "^(?!data/)" }
+    relate:
+      - id: "placed"
+        relation: { op: "empty", of: "outside" }
+        message: "{value} is outside data/"
 ```
 
 This repository's live config uses the same mechanism with `.polydeukes/` as
 `sqlite-only-under-polydeukes`.
 
 Each observation is judged as one **world** with seven source names: `target.path` (the
-repo-relative path), `pre` and `post` (the file's text on the side the change carries —
-a creation has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only
-on a modification), and `changes` (every path the observation changes — the one call on the
-session surface, the whole staged set on the change-set surface), and `command` (the shell
-call's command line — present on a shell call only, and a shell call that changes no file
-is one world of its own, so a declaration scoped on `command` sees it while one scoped on
-`target.path` does not), and `actor` (the observation's actor — described below). A
-declaration that reads `changes` is written in `changeSetDisciplines` and compiled only where
-the whole change set is observed, because one call never carries the other half of a pair.
-This repository's live config carries one — `docs-stay-bilingual`, an `implies` over the
-`.md`/`.ko.md` pair, advised on the change-set surface when one side is staged without the
-other. A declaration that needs a
-file outside the target names it in a `sources` block, `sources: { en: { file:
-'locales/en.json' } }`, and reads it as `{ op: 'source', of: 'en' }`; the path is
-repo-relative (no leading `/`, no `..` segment) and the name may not be one of the seven. The
-surface reads the file the way it observes the tree — the disk in a session, the index for a
-staged commit, the `<to>` commit for a range — except that a named file the change itself
-touches is read from the change's `post`, so both surfaces judge the same text. A second
-kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record channel
-instead of a path — the subagent records the host keeps beside the transcript, supplied as
-one JSON array; where the channel lives is the surface's fact, so the value is the marker
-`true`, and on the change-set surface (which has no session) the channel is always absent. A
-third kind, `sources: { session: { transcript: true } }`, names the session's own
-conversation history — the user turns and tool calls the surface reads, handed to the
-declaration as one snapshot whose entries carry their
-observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read it, and
-`agentType` reads the parsed sidecar and requires `is`, the agent type to keep
-(`{ op: 'agentType', is: 'tdd-test-writer' }`); without it the step does not compile and
-the config does not load. This repository's live config carries one —
-`tests-before-implementation`, an `ordered` over the ordinals of two subagent spawns, written
-in `sessionDisciplines`. The seventh fixed name, `actor`, is the
-observation's actor — `{ agentType }` inside a subagent, `{}` in the main session, absent
-where the surface proves none (the change-set surface) — read as `{ op: 'source', of: 'actor' }`
-followed by `select` on `agentType`; it derives the `actor` axis the `producer-owned` and
-`actor-scope` mechanisms require, and this repository's live config carries one of each
-(`tests-are-the-writers`, `commits-come-from-the-main-session`). A `supply` key must name
-one of the seven fixed sources or one of the declaration's own `sources`; any other key is
-refused. A source the change does not carry is absent, and the declaration's
-`supply` block says what that means: `error` (the default) makes the call unjudgeable —
-recorded `blocked` at either enforce level — `pass` leaves it unjudged, and `empty` reads
-the absent side as an empty item list and judges on. `empty` is what lets an added-only
-declaration see a creation as all-added and a deletion as adding nothing; it does not apply
-to `state`, the paired source. A declaration comparing before with after therefore needs
-`supply: { state: pass }` to let a file creation through.
+repo-relative path), `pre` and `post` (the file's text on the side the change carries — a creation
+has no `pre`, a deletion no `post`), `state` (`{ pre, post }`, present only on a modification), and
+`changes` (every path the observation changes — the one call on the session surface, the whole
+staged set on the change-set surface), and `command` (the shell call's command line — present on a
+shell call only, and a shell call that changes no file is one world of its own, so a declaration
+scoped on `command` sees it while one scoped on `target.path` does not), and `actor` (the
+observation's actor — described below). A declaration that reads `changes` is written in
+`changeSetDisciplines` and compiled only where the whole change set is observed, because one call
+never carries the other half of a pair. This repository's live config carries one —
+`docs-stay-bilingual`, an `implies` over the `.md`/`.ko.md` pair, advised on the change-set surface
+when one side is staged without the other. A declaration that needs a file outside the target names
+it in a `sources` block, `sources: { en: { file: 'locales/en.json' } }`, and reads it as
+`{ op: 'source', of: 'en' }`; the path is repo-relative (no leading `/`, no `..` segment) and the
+name may not be one of the seven. The surface reads the file the way it observes the tree — the disk
+in a session, the index for a staged commit, the `<to>` commit for a range — except that a named
+file the change itself touches is read from the change's `post`, so both surfaces judge the same
+text. A second kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record
+channel instead of a path — the subagent records the host keeps beside the transcript, supplied as
+one JSON array; where the channel lives is the surface's fact, so the value is the marker `true`,
+and on the change-set surface (which has no session) the channel is always absent. A third kind,
+`sources: { session: { transcript: true } }`, names the session's own conversation history — the
+user turns and tool calls the surface reads, handed to the declaration as one snapshot whose entries
+carry their observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read
+it, and `agentType` reads the parsed sidecar and requires `is`, the agent type to keep
+(`{ op: 'agentType', is: 'tdd-test-writer' }`); without it the step does not compile and the config
+does not load. This repository's live config carries one — `tests-before-implementation`, an
+`ordered` over the ordinals of two subagent spawns, written in `sessionDisciplines`. The seventh
+fixed name, `actor`, is the observation's actor — `{ agentType }` inside a subagent, `{}` in the
+main session, absent where the surface proves none (the change-set surface) — read as
+`{ op: 'source', of: 'actor' }` followed by `select` on `agentType`; it derives the `actor` axis the
+`producer-owned` and `actor-scope` mechanisms require, and this repository's live config carries one
+of each (`tests-are-the-writers`, `commits-come-from-the-main-session`). A `supply` key must name
+one of the seven fixed sources or one of the declaration's own `sources`; any other key is refused.
+A source the change does not carry is absent, and the declaration's `supply` block says what that
+means: `error` (the default) makes the call unjudgeable — recorded `blocked` at either enforce level
+— `pass` leaves it unjudged, and `empty` reads the absent side as an empty item list and judges on.
+`empty` is what lets an added-only declaration see a creation as all-added and a deletion as adding
+nothing; it does not apply to `state`, the paired source. A declaration comparing before with after
+therefore needs `supply: { state: pass }` to let a file creation through.
 
 A break is recorded like any other family's, with one addition: the telemetry row carries a fifth
 field naming the elements the relation failed on (at most eight per relate entry, with the true
@@ -663,5 +653,5 @@ as the file change it makes; one it cannot compute (`sed -i`, an opaque command)
 The declaration's own `witness` block joins the human's witness as a second way to open a blocked
 verdict.
 
-Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the
-escape layer for the few rules data cannot express.
+Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the escape
+layer for the few rules data cannot express.

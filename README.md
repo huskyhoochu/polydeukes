@@ -4,7 +4,7 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/huskyhoochu/polydeukes)
 
-> A development *discipline* framework for building alongside an AI coding partner. Deterministic
+> A development _discipline_ framework for building alongside an AI coding partner. Deterministic
 > covenants, a verifiable work ledger, a local memory graph, and adversarial verification — on one
 > thin core.
 
@@ -12,10 +12,11 @@
 ## Quick start
 
 Run from the project root in your own terminal. Download the executable for your system
-(`pdks-linux-x64` or `pdks-darwin-arm64`) from a [GitHub
-Release](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and place it on
-`PATH` as `pdks`. It includes all three adapters and memory commands and runs without Node, npm, or
-a `package.json`.
+(`pdks-linux-x64` or `pdks-darwin-arm64`) from a
+[GitHub
+Release](https://github.com/huskyhoochu/polydeukes/releases),
+make it executable, and place it on `PATH` as `pdks`. It includes all three adapters and memory
+commands and runs without Node, npm, or a `package.json`.
 
 ### 1. Connect your agent
 
@@ -33,45 +34,45 @@ project. For Git diff checks alone, use `pdks init`.
 
 ### 2. Configure your first discipline
 
-Open the generated `polydeukes.config.yaml` in your editor. Keep the generated `protectedPaths`
-and `witness` blocks. Add this `disciplines` list, or append the entry to your existing list.
-It reports newly added lines containing `TODO` in `src/`:
+Open the generated `polydeukes.config.yaml` in your editor. Keep the generated `protectedPaths` and
+`witness` blocks. Add this `disciplines` list, or append the entry to your existing list. It reports
+newly added lines containing `TODO` in `src/`:
 
 ```yaml
 disciplines:
-  - id: 'no-new-todo-lines'
-    why: 'Resolve TODOs before adding source lines.'
+  - id: "no-new-todo-lines"
+    why: "Resolve TODOs before adding source lines."
     enforce: advise
     declare:
-      mechanism: 'added-only'
-      scope: { source: 'target.path', include: ['^src/'] }
-      supply: { pre: 'empty', post: 'empty' }
+      mechanism: "added-only"
+      scope: { source: "target.path", include: ["^src/"] }
+      supply: { pre: "empty", post: "empty" }
       extract:
         before:
-          - { op: 'source', of: 'pre' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: "(.*TODO.*)" }
         after:
-          - { op: 'source', of: 'post' }
-          - { op: 'lines' }
-          - { op: 'keyByPattern', re: '(.*TODO.*)' }
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: "(.*TODO.*)" }
         added:
-          - { op: 'onlyIn', of: 'after', notIn: 'before' }
+          - { op: "onlyIn", of: "after", notIn: "before" }
       relate:
-        - id: 'nothing-added'
-          relation: { op: 'empty', of: 'added' }
-          message: 'Resolve this TODO: {value}'
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "Resolve this TODO: {value}"
 ```
 
-Unchanged TODO lines are allowed; repeating an identical existing line is also treated as
-already present. `advise` reports a violation and lets work continue. Choose `enforce: block`
-when you want the entry to stop a session call. Diff checks also need `--enforce block` to stop
-on a blocking entry.
+Unchanged TODO lines are allowed; repeating an identical existing line is also treated as already
+present. `advise` reports a violation and lets work continue. Choose `enforce: block` when you want
+the entry to stop a session call. Diff checks also need `--enforce block` to stop on a blocking
+entry.
 
 The config file itself is protected during agent sessions. Edit it yourself, or use the
-[witness procedure](./docs/how-to/connect-surfaces.md#witness-and-recovery) for an intentional
-agent edit. In Claude Code, the installed `discipline-draft` skill can help turn a problem you
-describe into an entry.
+[witness procedure](./docs/how-to/connect-surfaces.md#witness-and-recovery) for an intentional agent
+edit. In Claude Code, the installed `discipline-draft` skill can help turn a problem you describe
+into an entry.
 
 ### 3. Check the result
 
@@ -80,29 +81,26 @@ pdks explain
 git diff HEAD | pdks covenant check --diff
 ```
 
-`explain` should list `no-new-todo-lines` as `declare` on both surfaces. To see a violation, add
-a new `// TODO: quick-start check` line to a tracked file under `src/`, then rerun the diff
-command. Expect a diagnostic naming the discipline, an `advised` row in `.polydeukes/roi.log`,
-and exit code 0. Remove the line and rerun; that diagnostic should disappear.
+`explain` should list `no-new-todo-lines` as `declare` on both surfaces. To see a violation, add a
+new `// TODO: quick-start check` line to a tracked file under `src/`, then rerun the diff command.
+Expect a diagnostic naming the discipline, an `advised` row in `.polydeukes/roi.log`, and exit code 0.
+Remove the line and rerun; that diagnostic should disappear.
 
 Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
-[pre-commit integration](./docs/how-to/connect-surfaces.md#change-set-surface), or
-`pdks docs` for the installed documentation.
+[pre-commit integration](./docs/how-to/connect-surfaces.md#change-set-surface), or `pdks docs` for
+the installed documentation.
 
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-Seven npm packages and one Rust crate ship; a Python
-SDK is also available —
-`@polydeukes/core` (the covenant
-protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
+Seven npm packages and one Rust crate ship; a Python SDK is also available — `@polydeukes/core` (the
+covenant protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
 `@polydeukes/sdk-ts` (four asynchronous verbs for covenant checks and memory), the crate
 `polydeukes-sdk` (the same four verbs for a Rust host),
 [the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (four verbs over the
-standalone executable),
-`@polydeukes/memory` (the optional markdown index behind `pdks memory`), and the `polydeukes`
-umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`) is the CLI. The
-ledger and verify packages are still blueprint. The CLI today:
+standalone executable), `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and
+the `polydeukes` umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`)
+is the CLI. The ledger and verify packages are still blueprint. The CLI today:
 
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line
@@ -122,21 +120,20 @@ pdks memory obligations <key>                      # list every obligation the c
 pdks memory supersession <id>                      # list the chain of documents that replace, or were replaced by, one document
 ```
 
-The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a
-recurring problem to your AI partner and the skill classifies it into a config entry — judged
-at advise when the current declaration grammar can express it, a `draft: true` entry otherwise.
+The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a recurring
+problem to your AI partner and the skill classifies it into a config entry — judged at advise when
+the current declaration grammar can express it, a `draft: true` entry otherwise.
 
-Since v0.5.0 the default posture is diagnostic. A broken discipline lands as a recorded
-advisory — exit 0, one `advised` telemetry row, the entry's own `why` on stderr — rather
-than a refused call. What blocks unasked is the judging chain's self-protection;
-`enforce: block` on an entry is a promotion its author chooses, and the promotion ladder
-is `draft` → advise → block.
+Since v0.5.0 the default posture is diagnostic. A broken discipline lands as a recorded advisory —
+exit 0, one `advised` telemetry row, the entry's own `why` on stderr — rather than a refused call.
+What blocks unasked is the judging chain's self-protection; `enforce: block` on an entry is a
+promotion its author chooses, and the promotion ladder is `draft` → advise → block.
 
-The documentation ships inside the package, so `pdks docs` answers from the same version that
-does the judging — no network, and no drift between what a search engine indexed and what is
-installed. The [Documents](#documents) table below is the same set plus the narrative layer,
-grouped from getting started to reference. Planned — each arrives with its package: `pdks
-verify` (adversarial verification) and `pdks ledger start <id>` (work tracking).
+The documentation ships inside the package, so `pdks docs` answers from the same version that does
+the judging — no network, and no drift between what a search engine indexed and what is installed.
+The [Documents](#documents) table below is the same set plus the narrative layer, grouped from
+getting started to reference. Planned — each arrives with its package: `pdks verify` (adversarial
+verification) and `pdks ledger start <id>` (work tracking).
 
 ---
 
@@ -151,36 +148,36 @@ The framing is partnership, not control. A covenant is not a fence that cages th
 promise that applies equally to the human and the AI. The origin of the name and the philosophy
 behind it are in [`STORY.md`](./STORY.md).
 
-The design starts from AI development tooling embedded in a real production monorepo,
-and from an analysis of whether that tooling can be extracted into a general discipline framework.
+The design starts from AI development tooling embedded in a real production monorepo, and from an
+analysis of whether that tooling can be extracted into a general discipline framework.
 
 <a id="thin-core-and-packages"></a>
 ## Structure — a thin core plus independent packages
 
-The executable composes the judge and three host adapters. Each adapter translates its host’s
-events into the shared core vocabulary; the judge consumes that vocabulary.
+The executable composes the judge and three host adapters. Each adapter translates its host’s events
+into the shared core vocabulary; the judge consumes that vocabulary.
 
-| Package | Role |
-|---------|------|
-| `@polydeukes/core` | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, the input IR as a JSON Schema for hosts in other languages, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
-| `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself |
-| `@polydeukes/ledger` *(planned)* | Work tracking. Completion authority moves from "I'm done" to "the actions passed" |
-| `@polydeukes/memory` | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, `show`, `lint`, and `stats`. The documents stay the record; the index is rebuilt from them |
-| `@polydeukes/verify` *(planned)* | A multi-agent adversarial verification orchestrator |
+| Package                                   | Role                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@polydeukes/core`                        | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, the input IR as a JSON Schema for hosts in other languages, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
+| `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself                                                                                                                                                                                                                                                                   |
+| `@polydeukes/ledger` _(planned)_          | Work tracking. Completion authority moves from "I'm done" to "the actions passed"                                                                                                                                                                                                                                                                                               |
+| `@polydeukes/memory`                      | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, `show`, `lint`, and `stats`. The documents stay the record; the index is rebuilt from them                                                                                                                                                            |
+| `@polydeukes/verify` _(planned)_          | A multi-agent adversarial verification orchestrator                                                                                                                                                                                                                                                                                                                             |
 
 `core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, `sdk-rust`, `sdk-python`, and
-`memory` ship
-today. The
-planned adoption order once the rest exists is `covenant` → `memory` → `ledger` → `verify`:
-`covenant` and `memory` are expected to pay off regardless of project size, while `ledger` and
-`verify` target the scale of multiple worktrees and team workflows.
+`memory` ship today. The planned adoption order once the rest exists is `covenant` → `memory` →
+`ledger` → `verify`: `covenant` and `memory` are expected to pay off regardless of project size,
+while `ledger` and `verify` target the scale of multiple worktrees and team workflows.
 
 <a id="design-blueprint"></a>
 ## Design blueprint (in brief)
 
-The core principle of the extraction strategy is a one-way layering: **general core inward, domain
-outward**, with every dependency pointing inward at the core and none pointing back out. The core
-knows nothing of any specific product or AI runtime.
+The core principle of the extraction strategy is a one-way layering:
+**general core inward, domain
+outward**,
+with every dependency pointing inward at the core and none pointing back out. The core knows nothing
+of any specific product or AI runtime.
 
 ```text
 pdks (CLI · common runtime · judge)
@@ -212,32 +209,32 @@ layer you need.
 <a id="tutorials-and-guides"></a>
 ### Tutorials and guides
 
-| Document | Contents |
-|----------|----------|
+| Document                                                                 | Contents                                                                                  |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | [`docs/tutorials/first-judgment.md`](./docs/tutorials/first-judgment.md) | First visible judgment — install, wire Claude Code, and watch a protected edit get judged |
-| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md) | Connect the session and change-set surfaces, including Grok and Codex |
-| [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block |
-| [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing |
-| [`docs/troubleshooting.md`](./docs/troubleshooting.md) | Fail-closed states, the witness valve, and the telemetry log |
+| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md)   | Connect the session and change-set surfaces, including Grok and Codex                     |
+| [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block                          |
+| [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing                                        |
+| [`docs/troubleshooting.md`](./docs/troubleshooting.md)                   | Fail-closed states, the witness valve, and the telemetry log                              |
 
 <a id="reference-layer"></a>
 ### Reference
 
-| Document | Contents |
-|----------|----------|
-| [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md) | Configuration reference — every key, its rules, and its pitfalls |
+| Document                                                                                         | Contents                                                                                |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [`docs/reference/configuration/index.md`](./docs/reference/configuration/index.md)               | Configuration reference — every key, its rules, and its pitfalls                        |
 | [`docs/reference/declaration-language/index.md`](./docs/reference/declaration-language/index.md) | Declaration language reference — every source, extraction step, relation, and mechanism |
-| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md) | Package reference — subcommands, exit codes, and the package contract |
+| [`docs/reference/packages/polydeukes.md`](./docs/reference/packages/polydeukes.md)               | Package reference — subcommands, exit codes, and the package contract                   |
 
 <a id="why-and-the-journal"></a>
 ### Background and releases
 
-| Document | Contents |
-|----------|----------|
-| [Introducing Polydeukes (Korean)](https://funes-days.com/dev/polydeukes-open-source) | The author's introduction to the project on funes-days |
-| [`STORY.md`](./STORY.md) | The origin of the name and the design philosophy (a founder's narrative) |
-| [`docs/why-polydeukes.md`](./docs/why-polydeukes.md) | Why Polydeukes? — the design whitepaper: the principles, the failure stories behind them, and the measurements that settled each one |
-| [`CHANGELOG.md`](./CHANGELOG.md) | Release notes per milestone |
+| Document                                                                             | Contents                                                                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [Introducing Polydeukes (Korean)](https://funes-days.com/dev/polydeukes-open-source) | The author's introduction to the project on funes-days                                                                               |
+| [`STORY.md`](./STORY.md)                                                             | The origin of the name and the design philosophy (a founder's narrative)                                                             |
+| [`docs/why-polydeukes.md`](./docs/why-polydeukes.md)                                 | Why Polydeukes? — the design whitepaper: the principles, the failure stories behind them, and the measurements that settled each one |
+| [`CHANGELOG.md`](./CHANGELOG.md)                                                     | Release notes per milestone                                                                                                          |
 
 <a id="license"></a>
 ## License

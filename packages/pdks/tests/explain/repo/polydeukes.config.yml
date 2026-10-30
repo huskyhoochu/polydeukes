@@ -164,11 +164,7 @@ disciplines:
       mechanism: "added-only"
       scope:
         source: "target.path"
-        include:
-          [
-            '^packages/[^/]+/src/index\.ts$',
-            '^packages/polydeukes/src/claude-code\.ts$',
-          ]
+        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
       supply: { pre: "empty", post: "empty" }
       extract:
         before:
@@ -203,17 +199,11 @@ disciplines:
         before:
           - { op: "source", of: "pre" }
           - { op: "lines" }
-          - {
-              op: "keyByPattern",
-              re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])",
-            }
+          - { op: "keyByPattern", re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
         after:
           - { op: "source", of: "post" }
           - { op: "lines" }
-          - {
-              op: "keyByPattern",
-              re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])",
-            }
+          - { op: "keyByPattern", re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
         added:
           - { op: "onlyIn", of: "after", notIn: "before", count: true }
       relate:
@@ -299,16 +289,12 @@ disciplines:
       scope: { source: "target.path", include: ["^packages/core/schema/"] }
       sources:
         entry: { file: "packages/core/schema/polydeukes.schema.json" }
-        grammar:
-          { file: "packages/core/schema/algebra-declaration.schema.json" }
+        grammar: { file: "packages/core/schema/algebra-declaration.schema.json" }
       extract:
         entryNames:
           - { op: "source", of: "entry" }
           - { op: "json" }
-          - {
-              op: "select",
-              path: "$defs.declarationBody.properties.mechanism.enum",
-            }
+          - { op: "select", path: "$defs.declarationBody.properties.mechanism.enum" }
         grammarNames:
           - { op: "source", of: "grammar" }
           - { op: "json" }
@@ -439,11 +425,7 @@ sessionDisciplines:
     why: "a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled."
     declare:
       mechanism: "precedent"
-      scope:
-        {
-          source: "target.path",
-          include: ['^(packages/[^/]+/)?package\.json$'],
-        }
+      scope: { source: "target.path", include: ['^(packages/[^/]+/)?package\.json$'] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
@@ -470,11 +452,7 @@ sessionDisciplines:
     why: "the covenant package carries the most measured history in the store; editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling."
     declare:
       mechanism: "precedent"
-      scope:
-        {
-          source: "target.path",
-          include: ["^packages/polydeukes/(src|__tests__)/covenant/"],
-        }
+      scope: { source: "target.path", include: ["^packages/polydeukes/(src|__tests__)/covenant/"] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
@@ -503,8 +481,7 @@ sessionDisciplines:
     why: "the core is the one package every other depends on, so a change made without its recorded boundaries propagates outward before it is noticed."
     declare:
       mechanism: "precedent"
-      scope:
-        { source: "target.path", include: ["^packages/core/(src|__tests__)/"] }
+      scope: { source: "target.path", include: ["^packages/core/(src|__tests__)/"] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
@@ -533,11 +510,7 @@ sessionDisciplines:
     why: "the adapter translates an external payload contract this project does not own; the store holds what live probing found that contract to be, and that is exactly what recall gets wrong."
     declare:
       mechanism: "precedent"
-      scope:
-        {
-          source: "target.path",
-          include: ["^packages/adapter-claude-code/(src|__tests__)/"],
-        }
+      scope: { source: "target.path", include: ["^packages/adapter-claude-code/(src|__tests__)/"] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
@@ -626,21 +599,13 @@ sessionDisciplines:
       extract:
         writers:
           - { op: "source", of: "session" }
-          - {
-              op: "toolUses",
-              names: ["Agent", "Task"],
-              subagentType: "tdd-test-writer",
-            }
+          - { op: "toolUses", names: ["Agent", "Task"], subagentType: "tdd-test-writer" }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "field", name: "index" }
           - { op: "first" }
         implementers:
           - { op: "source", of: "session" }
-          - {
-              op: "toolUses",
-              names: ["Agent", "Task"],
-              subagentType: "tdd-implementer",
-            }
+          - { op: "toolUses", names: ["Agent", "Task"], subagentType: "tdd-implementer" }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "field", name: "index" }
           - { op: "first" }
@@ -671,11 +636,7 @@ sessionDisciplines:
     why: "the ticket loop is the only sanctioned branch creation; a branch nobody asked for is the thing the loop forbids."
     declare:
       mechanism: "stated-ground"
-      scope:
-        {
-          source: "command",
-          include: ['\bgit\s+(checkout\s+-b|switch\s+-c)\b'],
-        }
+      scope: { source: "command", include: ['\bgit\s+(checkout\s+-b|switch\s+-c)\b'] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
@@ -691,11 +652,7 @@ sessionDisciplines:
     why: "a test file is the test-writer subagent output; an implementer that edits one is fitting the test to the code."
     declare:
       mechanism: "producer-owned"
-      scope:
-        {
-          source: "target.path",
-          include: ['^packages/[^/]+/__tests__/.*\.test\.ts$'],
-        }
+      scope: { source: "target.path", include: ['^packages/[^/]+/__tests__/.*\.test\.ts$'] }
       supply: { actor: "pass" }
       extract:
         implementer:
@@ -712,10 +669,7 @@ sessionDisciplines:
     declare:
       mechanism: "actor-scope"
       scope:
-        {
-          source: "command",
-          include: ['(^|[;&|(]\s*)(git\s+(commit|push)|tea\s+pr\s+merge)\b'],
-        }
+        { source: "command", include: ['(^|[;&|(]\s*)(git\s+(commit|push)|tea\s+pr\s+merge)\b'] }
       supply: { actor: "pass" }
       extract:
         subagent:
