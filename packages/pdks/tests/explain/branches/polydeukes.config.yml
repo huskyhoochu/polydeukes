@@ -1,0 +1,85 @@
+protectedPaths:
+  - "locked/**"
+witness:
+  token: "pdks witness"
+  ttlMinutes: 10
+disciplines:
+  - id: db-only-under-store
+    why: "a db file lives only under store/"
+    enforce: advise
+    declare:
+      mechanism: naming
+      scope: { source: target.path, include: ['\.db$'] }
+      extract:
+        outside:
+          - { op: source, of: target.path }
+          - { op: matches, re: '^(?!store/)' }
+      relate:
+        - { id: placed, relation: { op: empty, of: outside }, message: "{value} is outside store/" }
+      witness:
+        relate:
+          - { id: override, relation: { op: nonEmpty, of: outside }, message: "w" }
+  - id: no-why-entry
+    declare:
+      mechanism: added-only
+      scope: { source: target.path, include: ['^src/'] }
+      supply: { pre: empty, post: empty }
+      extract:
+        after:
+          - { op: source, of: post }
+          - { op: lines }
+          - { op: matches, re: 'TODO' }
+      relate:
+        - { id: none, relation: { op: empty, of: after }, message: "{value}" }
+  - id: blocking-entry
+    why: "promoted rung"
+    enforce: block
+    declare:
+      mechanism: naming
+      scope: { source: target.path, include: ['\.log$'] }
+      extract:
+        outside:
+          - { op: source, of: target.path }
+          - { op: matches, re: '^(?!logs/)' }
+      relate:
+        - { id: placed, relation: { op: empty, of: outside }, message: "{value}" }
+  - id: still-thinking
+    why: "not yet written"
+    draft: true
+sessionDisciplines:
+  - id: writer-is-known
+    why: "every writer is a known agent"
+    declare:
+      mechanism: controlled-vocabulary
+      scope: { source: target.path, include: ['\.ts$'] }
+      sources: { spawns: { sidecar: true } }
+      supply: { spawns: pass }
+      extract:
+        own: [{ op: source, of: target.path }]
+        known: [{ op: source, of: spawns }, { op: json }, { op: flattenKeys }]
+      relate:
+        - { id: listed, relation: { op: subset, of: own, in: known }, message: "{value}" }
+changeSetDisciplines:
+  - id: docs-stay-bilingual
+    why: "English is the default and Korean mirrors live in *.ko.md."
+    declare:
+      mechanism: companion
+      scope: { source: target.path, include: ['\.md$'], exclude: ['^CLAUDE\.md$'] }
+      extract:
+        en:
+          - { op: source, of: target.path }
+          - { op: keyByPattern, re: '^(.+?)(?<!\.ko)\.md$' }
+        ko:
+          - { op: source, of: target.path }
+          - { op: keyByPattern, re: '^(.+)\.ko\.md$' }
+        enChanged:
+          - { op: source, of: changes }
+          - { op: items }
+          - { op: keyByPattern, re: '^(.+?)(?<!\.ko)\.md$' }
+        koChanged:
+          - { op: source, of: changes }
+          - { op: items }
+          - { op: keyByPattern, re: '^(.+)\.ko\.md$' }
+      relate:
+        - { id: ko-follows, relation: { op: implies, of: en, requires: koChanged }, message: "{value} changed without {key}.ko.md" }
+        - { id: en-follows, relation: { op: implies, of: ko, requires: enChanged }, message: "{value} changed without {key}.md" }

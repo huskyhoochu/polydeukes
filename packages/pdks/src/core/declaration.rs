@@ -225,6 +225,7 @@ pub struct Relate {
 /// block's own; `witness` is the witness block's relate entries.
 #[derive(Clone)]
 pub struct Declaration {
+    pub mechanism: String,
     pub scope: Option<Scope>,
     pub sources: Vec<(String, Binding)>,
     pub supply: Vec<(String, Supply)>,
@@ -234,6 +235,30 @@ pub struct Declaration {
 }
 
 impl Declaration {
+    /// The axes the head sources name and the relations the body relates, each in the order it
+    /// first appears.
+    pub fn shape(&self) -> (Vec<&'static str>, Vec<&'static str>) {
+        let mut axes: Vec<&'static str> = Vec::new();
+        for name in self.head_sources() {
+            let kind = match self.sources.iter().find(|(bound, _)| bound == name) {
+                Some((_, Binding::Transcript)) => "history",
+                Some(_) => "world",
+                None if name == "actor" => "actor",
+                None => "change",
+            };
+            if !axes.contains(&kind) {
+                axes.push(kind);
+            }
+        }
+        let mut relations: Vec<&'static str> = Vec::new();
+        for entry in &self.relate {
+            if !relations.contains(&entry.relation.name()) {
+                relations.push(entry.relation.name());
+            }
+        }
+        (axes, relations)
+    }
+
     /// What an absent source does; the default is an error.
     pub fn supply_of(&self, source: &str) -> Supply {
         self.supply
@@ -373,6 +398,7 @@ pub fn compile_declaration(id: &str, block: &Map<String, Value>) -> Check<Declar
         .map(|value| parse_witness(id, value, &sources, &mut pipelines, &mut ids))
         .transpose()?;
     let declaration = Declaration {
+        mechanism: mechanism.to_string(),
         scope,
         sources,
         supply,
@@ -380,7 +406,7 @@ pub fn compile_declaration(id: &str, block: &Map<String, Value>) -> Check<Declar
         relate,
         witness,
     };
-    check_mechanism(id, mechanism, &declaration)?;
+    check_mechanism(id, &declaration)?;
     Ok(declaration)
 }
 
@@ -1167,8 +1193,8 @@ struct Mechanism {
     scope: Option<&'static str>,
 }
 
-const ALL_AXES: &[&str] = &["change", "actor", "world", "history"];
-const ALL_RELATIONS: &[&str] = &[
+pub(crate) const ALL_AXES: &[&str] = &["change", "actor", "world", "history"];
+pub(crate) const ALL_RELATIONS: &[&str] = &[
     "empty",
     "nonEmpty",
     "equal",
@@ -1223,7 +1249,8 @@ const MECHANISMS: [Mechanism; 17] = [
 
 /// The mechanism name is checked against the shape the declaration's syntax derives: the
 /// axes its `source` heads name and the relations its body relates.
-fn check_mechanism(id: &str, mechanism: &str, declaration: &Declaration) -> Check<()> {
+fn check_mechanism(id: &str, declaration: &Declaration) -> Check<()> {
+    let mechanism = declaration.mechanism.as_str();
     let location = format!("{id} mechanism");
     let Some(spec) = MECHANISMS.iter().find(|spec| spec.name == mechanism) else {
         let names: Vec<&str> = MECHANISMS.iter().map(|spec| spec.name).collect();
@@ -1244,24 +1271,7 @@ fn check_mechanism(id: &str, mechanism: &str, declaration: &Declaration) -> Chec
     {
         return fail(&location, format!("'{mechanism}' scopes on '{pinned}'"));
     }
-    let mut axes: Vec<&str> = Vec::new();
-    for name in declaration.head_sources() {
-        let kind = match declaration.sources.iter().find(|(bound, _)| bound == name) {
-            Some((_, Binding::Transcript)) => "history",
-            Some(_) => "world",
-            None if name == "actor" => "actor",
-            None => "change",
-        };
-        if !axes.contains(&kind) {
-            axes.push(kind);
-        }
-    }
-    let mut relations: Vec<&str> = Vec::new();
-    for entry in &declaration.relate {
-        if !relations.contains(&entry.relation.name()) {
-            relations.push(entry.relation.name());
-        }
-    }
+    let (axes, relations) = declaration.shape();
     if axes.iter().all(|axis| spec.axes.contains(axis))
         && relations
             .iter()

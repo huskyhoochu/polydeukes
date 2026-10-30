@@ -406,9 +406,14 @@ fn witness_state_line(
     }
 }
 
+/// The tool names a change set's file changes carry.
+pub(crate) fn staged_roster() -> Vec<String> {
+    vec![STAGED_WRITE.to_string(), STAGED_DELETE.to_string()]
+}
+
 /// An empty list is an axis the host does not have, so it registers nothing. The order is the
 /// order of the rows one call leaves.
-fn assemble(
+pub(crate) fn assemble(
     root: &Path,
     config: &Config,
     entries: &[Entry],
@@ -493,10 +498,7 @@ fn judge_input(
         messages,
     });
 
-    let mutating = tools.map_or_else(
-        || vec![STAGED_WRITE.to_string(), STAGED_DELETE.to_string()],
-        |tools| tools.mutating.clone(),
-    );
+    let mutating = tools.map_or_else(staged_roster, |tools| tools.mutating.clone());
     let no_names: &[String] = &[];
     let (shell_tools, command_args) = tools.map_or((no_names, no_names), |tools| {
         (tools.shell.as_slice(), tools.command_args.as_slice())

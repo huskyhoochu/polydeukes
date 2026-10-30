@@ -1,0 +1,6 @@
+protectedPaths:
+  - ".github/workflows/**"
+  - "secrets/**"
+witness:
+  token: "pdks witness"
+  ttlMinutes: 15

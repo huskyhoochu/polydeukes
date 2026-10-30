@@ -1,0 +1,53 @@
+pdks explain — polydeukes.config.yml
+
+input: call IR (one call, stdin) · disciplines 11 · sessionDisciplines 16 · disciplines: advise unless enforce: block · meta: block
+  registrations 30 · declare 27 · skip 1 · meta 2 · draft 1
+  meta     self-mod                           paths 20 (includes the config file itself)
+  meta     transcript-mod                     content predicate · conditional: session.evidencePath
+  declare  covenant-vocabulary                added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
+  declare  english-only-sources               added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  comments-state-facts               added-only · change · empty no-wiki-coordinate, no-process-grade · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  barrels-only-reexport              added-only · change · empty nothing-added · scope target.path · include 2 · exclude 0 · sources 0 · valve — · why ✓
+  declare  tests-import-modules               added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  core-stays-runner-agnostic         added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  sqlite-only-under-polydeukes       naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  changelog-keeps-every-release      one-way-marker · change · subset release-kept · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  valve-is-not-the-agents            self-absolution-ban · change · unchanged valve-unchanged · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  schema-enums-agree                 pairing · world · equal same-names · scope target.path · include 1 · exclude 0 · sources 2 · valve — · why ✓
+  declare  agent-models-in-tiers              companion · change,world · implies tier-listed · scope target.path · include 1 · exclude 0 · sources 1 · valve — · why ✓
+  declare  hooks-stay-armed                   forbidden-command · change · empty gates-armed · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓ · enforce: block
+  declare  work-stays-recoverable             forbidden-command · change · empty recoverable · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓ · enforce: block
+  declare  pnpm-only                          forbidden-command · change · empty no-npm-mutation · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
+  declare  knowledge-reads-go-through-memory  forbidden-command · change · empty reads-through-memory · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
+  declare  output-is-read-whole               forbidden-command · change · empty not-truncated · scope command · include 0 · exclude 0 · sources 0 · valve — · why ✓
+  declare  manifest-needs-evidence            precedent · history · nonEmpty npm-view, context7 · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  covenant-needs-knowledge-read      precedent · history · nonEmpty read-first · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  core-needs-knowledge-read          precedent · history · nonEmpty read-first · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  adapter-needs-knowledge-read       precedent · history · nonEmpty read-first · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  prd-needs-its-method-read          precedent · history · nonEmpty read-first · scope target.path · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  workflow-read-before-dispatch      precedent · history · nonEmpty read-first · scope command · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  tests-before-implementation        phase-order · history · ordered writer-first · scope every world · include 0 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  merge-is-the-users-call            turn-locality · history · nonEmpty fresh-instruction · scope command · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  branches-come-from-a-ticket        stated-ground · history · nonEmpty ticket-named · scope command · include 1 · exclude 0 · sources 1 (transcript 1) · valve — · why ✓
+  declare  tests-are-the-writers              producer-owned · actor · empty not-the-implementer · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  commits-come-from-the-main-session actor-scope · actor · empty main-session-only · scope command · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  skip     shell-unjudgeable                  a shell command whose write target this layer cannot determine
+  draft    verbs-take-one-spec                unpromoted — no judgment
+
+input: --diff (change set, stdin) · disciplines 11 · changeSetDisciplines 1 · disciplines: advise unless enforce: block
+  registrations 14 · declare 12 · skip 1 · meta 1 · draft 1
+  meta     self-mod                      paths 20 (includes the config file itself)
+  declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
+  declare  english-only-sources          added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  comments-state-facts          added-only · change · empty no-wiki-coordinate, no-process-grade · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  barrels-only-reexport         added-only · change · empty nothing-added · scope target.path · include 2 · exclude 0 · sources 0 · valve — · why ✓
+  declare  tests-import-modules          added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  core-stays-runner-agnostic    added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  sqlite-only-under-polydeukes  naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  changelog-keeps-every-release one-way-marker · change · subset release-kept · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  valve-is-not-the-agents       self-absolution-ban · change · unchanged valve-unchanged · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
+  declare  schema-enums-agree            pairing · world · equal same-names · scope target.path · include 1 · exclude 0 · sources 2 · valve — · why ✓
+  declare  agent-models-in-tiers         companion · change,world · implies tier-listed · scope target.path · include 1 · exclude 0 · sources 1 · valve — · why ✓
+  declare  docs-stay-bilingual           companion · change · implies ko-follows, en-follows · scope target.path · include 1 · exclude 5 · sources 0 · valve — · why ✓
+  skip     shell-unjudgeable             a shell command whose write target this layer cannot determine
+  draft    verbs-take-one-spec           unpromoted — no judgment

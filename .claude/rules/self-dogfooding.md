@@ -7,7 +7,8 @@ Self-dogfooding has been on since 2026-07-14. What each axis compares, and the w
 ## What is wired
 
 Native PreToolUse registrations translate the supported file and shell calls, while lefthook's
-pre-commit pipes `git diff --cached` into `pdks covenant check --diff`. Each registration pins
+pre-commit pipes `git diff --cached` into the Rust executable's `covenant check --diff`
+(`packages/pdks/target/release/pdks`). Each registration pins
 `.polydeukes/bin/pdks` and the project root; this executable bundles all three adapters and the
 judge. Regenerate registrations with `pdks adapter <claude-code|grok|codex> init`, using the
 installed executable, rather than editing generated handlers. Grok uses its native tool names
@@ -41,7 +42,9 @@ These stay in a rule without `paths:` because no glob can predict when a session
 
 - The session hook runs the pinned executable independently of workspace `dist` and
   `node_modules`. Typecheck sources before building. Rebuilding the workspace updates the
-  development CLI and lefthook's judgment; the pinned session executable is updated separately.
+  development CLI; `cargo build --release` of `packages/pdks` updates lefthook's judgment, and
+  until it has run once a commit fails rather than passing unjudged. The pinned session
+  executable is updated separately.
 - Build a replacement executable at a temporary path and run
   `node scripts/verify-adapter-executable.mjs --executable <absolute-path>` before replacing the
   protected installed file. Keep the current executable available until its replacement is

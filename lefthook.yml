@@ -16,7 +16,7 @@ pre-commit:
   commands:
     covenant:
       priority: 1
-      run: set -o pipefail; git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+      run: set -o pipefail; git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./packages/pdks/target/release/pdks covenant check --diff
     check:
       priority: 2
       run: ./node_modules/.bin/biome check --write --no-errors-on-unmatched {staged_files}

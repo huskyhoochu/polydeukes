@@ -1,0 +1,22 @@
+pdks explain — polydeukes.config.yml
+
+input: call IR (one call, stdin) · disciplines 3 · sessionDisciplines 1 · disciplines: advise unless enforce: block · meta: block
+  registrations 7 · declare 4 · skip 1 · meta 2 · draft 1
+  meta     self-mod            paths 2 (includes the config file itself)
+  meta     transcript-mod      content predicate · conditional: session.evidencePath
+  declare  db-only-under-store naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve ✓ · why ✓
+  declare  no-why-entry        added-only · change · empty none · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why —
+  declare  blocking-entry      naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓ · enforce: block
+  declare  writer-is-known     controlled-vocabulary · change,world · subset listed · scope target.path · include 1 · exclude 0 · sources 1 (sidecar 1) · valve — · why ✓
+  skip     shell-unjudgeable   a shell command whose write target this layer cannot determine
+  draft    still-thinking      unpromoted — no judgment
+
+input: --diff (change set, stdin) · disciplines 3 · changeSetDisciplines 1 · disciplines: advise unless enforce: block
+  registrations 6 · declare 4 · skip 1 · meta 1 · draft 1
+  meta     self-mod            paths 2 (includes the config file itself)
+  declare  db-only-under-store naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve ✓ · why ✓
+  declare  no-why-entry        added-only · change · empty none · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why —
+  declare  blocking-entry      naming · change · empty placed · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓ · enforce: block
+  declare  docs-stay-bilingual companion · change · implies ko-follows, en-follows · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
+  skip     shell-unjudgeable   a shell command whose write target this layer cannot determine
+  draft    still-thinking      unpromoted — no judgment

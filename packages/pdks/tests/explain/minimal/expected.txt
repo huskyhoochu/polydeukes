@@ -1,0 +1,12 @@
+pdks explain — polydeukes.config.yml
+
+input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
+  registrations 3 · declare 0 · skip 1 · meta 2 · draft 0
+  meta     self-mod          paths 3 (includes the config file itself)
+  meta     transcript-mod    content predicate · conditional: session.evidencePath
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine
+
+input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
+  registrations 2 · declare 0 · skip 1 · meta 1 · draft 0
+  meta     self-mod          paths 3 (includes the config file itself)
+  skip     shell-unjudgeable a shell command whose write target this layer cannot determine

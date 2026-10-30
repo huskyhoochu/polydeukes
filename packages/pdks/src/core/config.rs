@@ -59,6 +59,10 @@ pub struct Config {
     pub protected_paths: Vec<String>,
     pub log_path: String,
     pub witness: Option<Witness>,
+    /// The ids of the `draft: true` entries.
+    pub drafts: Vec<String>,
+    /// How many of each surface's entries came from the shared `disciplines` list.
+    pub shared_count: usize,
     session_entries: Vec<Entry>,
     change_set_entries: Vec<Entry>,
 }
@@ -125,11 +129,14 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
     let mut problems: Vec<String> = Vec::new();
     let mut session_entries: Vec<Entry> = Vec::new();
     let mut change_set_entries: Vec<Entry> = Vec::new();
+    let mut drafts: Vec<String> = Vec::new();
+    let mut shared_count = 0;
     for list in DISCIPLINE_LISTS {
         if let Some(value) = config.get(list) {
-            let judged = validate_entries(value, list, &mut seen_ids, &mut problems)?;
+            let judged = validate_entries(value, list, &mut seen_ids, &mut problems, &mut drafts)?;
             match list {
                 "disciplines" => {
+                    shared_count = judged.len();
                     session_entries.extend(judged.clone());
                     change_set_entries.extend(judged);
                 }
@@ -154,6 +161,8 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
         protected_paths,
         log_path: log_path.unwrap_or_else(|| DEFAULT_TELEMETRY_LOG_PATH.to_string()),
         witness,
+        drafts,
+        shared_count,
         session_entries,
         change_set_entries,
     })
@@ -185,7 +194,7 @@ pub fn define_config_layer(layer: &Value) -> Result<Map<String, Value>, String> 
     let (mut seen_ids, mut problems) = (Vec::new(), Vec::new());
     for list in DISCIPLINE_LISTS {
         if let Some(entries) = layer.get(list) {
-            validate_entries(entries, list, &mut seen_ids, &mut problems)?;
+            validate_entries(entries, list, &mut seen_ids, &mut problems, &mut Vec::new())?;
             lists.insert(list.to_string(), entries.clone());
         }
     }
@@ -209,6 +218,7 @@ fn validate_entries(
     list: &str,
     seen_ids: &mut Vec<String>,
     problems: &mut Vec<String>,
+    drafts: &mut Vec<String>,
 ) -> Result<Vec<Entry>, String> {
     let mut judged = Vec::new();
     for (index, entry) in validate_array(value, list)?.iter().enumerate() {
@@ -232,6 +242,7 @@ fn validate_entries(
         seen_ids.push(id.to_string());
         if entry.contains_key("draft") {
             validate_draft(entry, list, &location)?;
+            drafts.push(id.to_string());
             continue;
         }
         reject_unknown_keys(entry, &["id", "why", "enforce", "declare"], &location)?;

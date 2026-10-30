@@ -7,7 +7,7 @@ use serde_saphyr::options::MergeKeyPolicy;
 
 use crate::core::config::{Config, define_config, define_config_layer};
 
-const CONFIG_FILENAMES: [&str; 3] = [
+pub(crate) const CONFIG_FILENAMES: [&str; 3] = [
     "polydeukes.config.yaml",
     "polydeukes.config.yml",
     "polydeukes.config.json",
@@ -19,12 +19,17 @@ pub struct LayerSource {
     pub path: String,
 }
 
-/// The one candidate present directly under `root`; there is no upward walk.
-pub fn discover_config_path(root: &Path) -> Result<String, String> {
-    let found: Vec<&str> = CONFIG_FILENAMES
+/// The config candidates present directly under `root`, in discovery order.
+pub(crate) fn present_config_names(root: &Path) -> Vec<&'static str> {
+    CONFIG_FILENAMES
         .into_iter()
         .filter(|name| root.join(name).exists())
-        .collect();
+        .collect()
+}
+
+/// The one candidate present directly under `root`; there is no upward walk.
+pub fn discover_config_path(root: &Path) -> Result<String, String> {
+    let found = present_config_names(root);
     match found.as_slice() {
         [only] => Ok((*only).to_string()),
         [] => Err(format!(

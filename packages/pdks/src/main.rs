@@ -3,17 +3,19 @@ mod check;
 mod core;
 mod covenant;
 mod diff;
+mod explain;
+mod init;
 mod load_config;
 
 use std::env;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use check::{CheckSpec, Mode, run_covenant_check};
 use covenant::run_covenant::Enforce;
 
-const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]";
+const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version";
 
 struct Flags {
     mode: Mode,
@@ -66,12 +68,45 @@ fn parse_check_flags(flags: &[String]) -> Option<Flags> {
     })
 }
 
+/// Write a finished report to stdout, or the failure to stderr, as the exit code.
+fn emit(command: &str, report: Result<String, String>) -> ExitCode {
+    match report {
+        Ok(text) => match std::io::stdout().write_all(text.as_bytes()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("pdks {command}: {error}");
+                ExitCode::from(2)
+            }
+        },
+        Err(reason) => {
+            eprintln!("pdks {command}: {reason}");
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Option<Vec<String>> = env::args_os()
         .skip(1)
         .map(|arg| arg.into_string().ok())
         .collect();
     let flags = match args.as_deref() {
+        Some([command]) if command == "--version" => {
+            let version = format!("pdks {}\n", env!("CARGO_PKG_VERSION"));
+            return emit("--version", Ok(version));
+        }
+        Some([command]) if command == "explain" || command == "init" => {
+            let report = env::current_dir()
+                .map_err(|error| error.to_string())
+                .and_then(|root| {
+                    if command == "explain" {
+                        explain::explain(&root)
+                    } else {
+                        init::init(&root)
+                    }
+                });
+            return emit(command, report);
+        }
         Some([command, subcommand, flags @ ..])
             if command == "covenant" && subcommand == "check" =>
         {

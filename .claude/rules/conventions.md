@@ -28,6 +28,8 @@ exception: the npm `keywords` array keeps the industry terms — it is a discove
   focused tests consume the existing build artifacts.
 - Typecheck before either build command. The root has no `typecheck` script:
   `pnpm -r --if-present typecheck`.
+- lefthook's pre-commit judges with the Rust release build. After a fresh clone or a change under
+  `packages/pdks`, run `cargo build --release --manifest-path packages/pdks/Cargo.toml`.
 - A single executable built for a release or a measurement comes after a full `pnpm build`.
   `pnpm -F polydeukes build` alone leaves the adapters' `dist` stale, and the executable bundles
   whatever `dist` holds.

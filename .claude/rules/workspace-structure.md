@@ -66,10 +66,10 @@ release registrations is `new-package-checklist.md`.
   approval. Code Mode coverage must be measured on the installed host version: an Active label
   alone is not execution evidence.
 - **`packages/pdks`** (crate `pdks`, `publish = false`) is the Rust re-implementation of
-  `covenant check` over both surfaces (stdin IR and `--diff`). It passes the cases of
-  `conformance/covenant/` listed in `tests/fixture-cases.txt`, plus Rust-only cases in
-  `tests/divergent/` (behavior it deliberately changes, which replace the listed cases they
-  contradict). Like
+  `covenant check` over both surfaces (stdin IR and `--diff`), `init`, `explain` and `--version`.
+  It passes the cases of `conformance/covenant/` listed in `tests/fixture-cases.txt`, plus
+  Rust-only cases in `tests/divergent/` (behavior it deliberately changes, which replace the
+  listed cases they contradict). Like
   `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites skip it; Forgejo
   CI runs its `cargo fmt`, `clippy` and `test`. Its constraints are in `rust.md`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
