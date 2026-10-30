@@ -1,0 +1,22 @@
+{
+  "description": "A tool call whose name is not a string is unreadable input and exits 3; the TS judge reads it and fails later at exit 2.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": 5,
+        "args": {}
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: input carries a malformed tool call"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

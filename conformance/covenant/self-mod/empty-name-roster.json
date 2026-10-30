@@ -1,0 +1,37 @@
+{
+  "description": "A mutating roster whose only name is the empty string has no valid entry, so the self-mod covenant cannot judge and the write is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "dist/a.js",
+          "content": "x\n"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "dist/a.js",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [""],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [],
+    "rows": [["blocked", "self-mod", "dist"]]
+  }
+}

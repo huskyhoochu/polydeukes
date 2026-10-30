@@ -1,0 +1,17 @@
+{
+  "description": "A tool call that is not an object fails closed at the input stage with exit 3; the TS judge ends it at the judgment stage with exit 2.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [null],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: input carries a malformed tool call"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

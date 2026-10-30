@@ -1,0 +1,20 @@
+{
+  "description": "A config layer path with a leading dot segment is named in its normalized form when the layer is invalid.",
+  "args": ["--config-layer", "./layer.json"],
+  "tree": {
+    "polydeukes.config.yaml": {},
+    "layer.json": {
+      "bogus": 1
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["invalid config layer in @@ROOT@@/layer.json"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "description": "A protectedPaths entry that normalizes to nothing is a config error; the TS judge drops it silently.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["./"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "invalid config in polydeukes.config.yaml",
+      "protectedPaths must not contain an empty string"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

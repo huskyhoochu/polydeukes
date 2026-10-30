@@ -40,10 +40,10 @@ jobs:
 
       # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it. Its
       # end-to-end test spawns the `pdks` built above. A minimal stable toolchain is
-      # installed when the runner has no cargo.
+      # installed when the runner has no rustup, which the clippy and rustfmt steps need.
       - name: Install Rust when absent
         run: |
-          command -v cargo >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       # Script-fixture creation must not overlap another test's fork on Linux: an inherited
@@ -59,6 +59,12 @@ jobs:
 
       - name: Verify covenant fixtures
         run: node scripts/verify-covenant-fixtures.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
+
+      # The Rust judge runs the same cases through its own cargo test, which spawns the runner.
+      - run: rustup component add rustfmt clippy
+      - run: cargo fmt --manifest-path packages/pdks/Cargo.toml --check
+      - run: cargo clippy --manifest-path packages/pdks/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path packages/pdks/Cargo.toml
 
       - name: Verify standalone adapter registration and judgments
         run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"

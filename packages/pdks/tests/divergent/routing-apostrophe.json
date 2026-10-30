@@ -1,0 +1,37 @@
+{
+  "description": "A tool call whose body holds an apostrophe is routed by its evidence path alone, so one passed row names the changed file; the TS judge reads the body as shell syntax and logs passed rows for the protected path instead.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "src/a.ts",
+          "content": "don't"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "src/a.ts",
+          "post": "don't"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "src/a.ts"]]
+  }
+}

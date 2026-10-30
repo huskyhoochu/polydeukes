@@ -39,6 +39,7 @@ rule loading (Codex, Grok) do this routing by hand. The rules most often reached
 | what the two surfaces and three axes compare, the witness valve | `dogfooding-axes.md` |
 | how adapters build the input IR and what counts as evidence | `evidence-and-ir.md` |
 | how an acceptance criterion or a measured number must be written | `claims-and-criteria.md` |
+| what Rust in `packages/pdks` must reproduce from the TS judge | `rust.md` |
 
 ## Where knowledge lives
 

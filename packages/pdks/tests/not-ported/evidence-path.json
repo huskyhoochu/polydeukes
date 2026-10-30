@@ -1,0 +1,27 @@
+{
+  "description": "A session evidence path reaches the transcript axis, which this build does not judge yet, so the run is blocked before the baseline comparison.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {}
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit"],
+      "shell": [],
+      "commandArgs": []
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "evidencePath": "@@HOME@@/s.jsonl"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed:", "is not ported"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "description": "A human message whose timestampMs is a numeric string has no provable freshness, so the witness valve stays closed and the write is blocked; the TS judge coerces the string and opens the valve.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"gate/inner.txt\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"gate/inner.txt\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}, \"session\": {\"userMessages\": [{\"text\": \"agreed-token\", \"timestampMs\": \"@@NOW_MS-1000@@\"}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["session-write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

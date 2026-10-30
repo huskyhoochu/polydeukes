@@ -1,0 +1,43 @@
+{
+  "description": "An empty POLYDEUKES_TELEMETRY_PATH counts as unset, so the config's logPath wins over the default log; the TS judge writes no row.",
+  "args": [],
+  "env": {
+    "POLYDEUKES_TELEMETRY_PATH": ""
+  },
+  "tree": {
+    "polydeukes.config.yaml": {
+      "telemetry": {
+        "logPath": "config.log"
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "log": "config.log",
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

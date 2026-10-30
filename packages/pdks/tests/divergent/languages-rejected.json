@@ -1,0 +1,42 @@
+{
+  "description": "The top-level languages key is an unknown key and the config is refused; the TS judge validates it and ignores it.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "languages": {
+        "typescript": {
+          "productionGlob": "src/**/*.ts",
+          "testCmd": "pnpm test"
+        }
+      }
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["invalid config in polydeukes.config.yaml: unknown key 'languages' in config"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

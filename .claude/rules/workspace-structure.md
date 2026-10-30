@@ -65,6 +65,12 @@ release registrations is `new-package-checklist.md`.
   only with explicit human provenance. A changed `.codex/hooks.json` definition needs `/hooks`
   approval. Code Mode coverage must be measured on the installed host version: an Active label
   alone is not execution evidence.
+- **`packages/pdks`** (crate `pdks`, `publish = false`) is the Rust re-implementation of
+  `covenant check`, built one axis at a time. It passes the subset of `conformance/covenant/`
+  listed in `tests/fixture-cases.txt`, plus Rust-only cases in `tests/divergent/` (behavior it
+  deliberately changes) and `tests/not-ported/` (axes it refuses until they are ported). Like
+  `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites skip it; Forgejo
+  CI runs its `cargo fmt`, `clippy` and `test`. Its constraints are in `rust.md`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

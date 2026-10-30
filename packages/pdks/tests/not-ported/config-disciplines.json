@@ -1,0 +1,67 @@
+{
+  "description": "A loaded config with a discipline entry reaches the declaration engine, which this build does not judge yet, so the run is blocked.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-db-files",
+          "why": "database files stay out of the tree",
+          "declare": {
+            "mechanism": "naming",
+            "scope": {
+              "source": "target.path",
+              "include": ["\\.db$"]
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "placed",
+                "relation": {
+                  "op": "empty",
+                  "of": "own"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed:", "is not ported"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}
