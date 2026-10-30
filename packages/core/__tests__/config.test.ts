@@ -84,6 +84,7 @@ describe('template testCmd — valid path and {scope} substitution', () => {
     expect(resolved.languages.typescript.testCmd('pkg-a')).toBe('fake-runner --all');
   });
 
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal ${VAR} is the input under test
   it('preserves non-{scope} braces (${VAR}, {a,b}, awk {print}) verbatim', () => {
     // Only the literal token `{scope}` is substituted; other braces are the shell's own
     // vocabulary. Catches a naive `{...}` regex that eats any brace group.
@@ -91,12 +92,14 @@ describe('template testCmd — valid path and {scope} substitution', () => {
       languages: {
         typescript: {
           productionGlob: 'packages/core/src/**/*',
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal ${VAR} is the input under test
           testCmd: "fake-runner ${VAR} {a,b} {scope} && fake-awk 'BEGIN {print}'",
         },
       },
     });
 
     expect(resolved.languages.typescript.testCmd('pkg-a')).toBe(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal ${VAR} is the expected output
       "fake-runner ${VAR} {a,b} pkg-a && fake-awk 'BEGIN {print}'",
     );
   });

@@ -482,6 +482,7 @@ describe('documentation search', () => {
   it('searches localized terms and ranks a title match ahead of a body-only match', async () => {
     const value = fixture();
     value.catalog.documents[0].en.terms = ['terminologyneedle'];
+    // biome-ignore lint/style/noNonNullAssertion: the fixture's first document always has a Korean side
     value.catalog.documents[0].ko!.terms = ['현지화검색어'];
     write(
       join(value.sourceRoot, 'manual.md'),
