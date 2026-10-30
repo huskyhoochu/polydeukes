@@ -9,7 +9,7 @@ The CLI owns judgment, configuration, telemetry, and memory indexing.
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=24. Install a platform-specific standalone `pdks` from
+The SDK host needs Node >=26. Install a platform-specific standalone `pdks` from
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
 select it through `executable` or an absolute `PATH` directory. Existing npm installations do not
 select the CLI; the SDK runs the executable directly. Runtime and peer dependencies on

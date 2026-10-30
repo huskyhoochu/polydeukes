@@ -29,7 +29,7 @@ Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일�
 pnpm add @polydeukes/sdk-ts
 ```
 
-SDK 호스트에는 Node >=24가 필요합니다.
+SDK 호스트에는 Node >=26가 필요합니다.
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
 파일 `pdks`를 설치하고 실행 권한을 준 다음, 경로를 지정하거나 `PATH`에 `pdks`라는 이름으로 둡니다.
 지원 실행 플랫폼은 Linux x64와 macOS arm64입니다. SDK는 npm 설치를 탐색하거나 별도 Node 자식을

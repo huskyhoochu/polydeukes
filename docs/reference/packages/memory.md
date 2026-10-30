@@ -7,7 +7,7 @@
 > `pdks memory` reads.
 >
 > Optional. Install it next to `polydeukes`, which names it as an optional peer dependency. It needs
-> Node.js 24.15 or later.
+> Node.js 26 or later.
 
 <a id="ownership"></a>
 ## What this package owns

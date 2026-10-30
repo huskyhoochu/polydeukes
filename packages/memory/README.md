@@ -14,7 +14,7 @@ to the umbrella:
 pnpm add -D @polydeukes/memory
 ```
 
-It needs Node.js 24.15 or later, where `node:sqlite` is stable.
+It needs Node.js 26 or later.
 
 <a id="overview"></a>
 ## Overview

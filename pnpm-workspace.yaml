@@ -6,7 +6,7 @@ packages:
 # each package.json. TypeScript 7.0 GA (the native Go compiler). Bump this one
 # line on patch releases and every package follows.
 catalog:
-  "@types/node": ^24.19.2
+  "@types/node": ^26.6.6
   ajv: 8.20.0
   esbuild: 0.28.2
   postject: 1.0.0-alpha.6

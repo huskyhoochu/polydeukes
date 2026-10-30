@@ -31,7 +31,7 @@ pdks memory usage [--json]
 pnpm add -D @polydeukes/memory
 ```
 
-이 패키지는 Node.js 24.15 이상이 필요합니다. 설치되어 있지 않으면 모든 `pdks memory` 명령이 한 줄을
+이 패키지는 Node.js 26 이상이 필요합니다. 설치되어 있지 않으면 모든 `pdks memory` 명령이 한 줄을
 출력하고 `2`로 종료합니다.
 
 ```text

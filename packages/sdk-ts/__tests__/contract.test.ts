@@ -149,9 +149,7 @@ describe('the SDK source judges nothing, records nothing, and builds no IR', () 
     // never proved, and a `Write` · `Edit` · `Bash` literal is one host's roster inside a
     // package meant for every host.
     const text = walkTs(sdkSrc)
-      .map((file) =>
-        stripComments(stripTypeScriptTypes(readFileSync(file, 'utf8'), { mode: 'transform' })),
-      )
+      .map((file) => stripComments(stripTypeScriptTypes(readFileSync(file, 'utf8'))))
       .join('\n');
     for (const key of FORBIDDEN_IR_KEYS) expect(text, key).not.toContain(key);
     for (const name of FORBIDDEN_TOOL_LITERALS) {

@@ -14,7 +14,7 @@
 pnpm add -D @polydeukes/memory
 ```
 
-Node.js 24.15 이상이 필요합니다. 이 버전부터 `node:sqlite`가 안정 기능입니다.
+Node.js 26 이상이 필요합니다.
 
 <a id="overview"></a>
 ## 개요

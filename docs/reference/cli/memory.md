@@ -32,8 +32,8 @@ and exits `2`.
 pnpm add -D @polydeukes/memory
 ```
 
-The package needs Node.js 24.15 or later. When it is not installed, every `pdks memory` command
-prints one line and exits `2`:
+The package needs Node.js 26 or later. When it is not installed, every `pdks memory` command prints
+one line and exits `2`:
 
 ```text
 pdks memory: @polydeukes/memory is not installed — install it with `pnpm add -D @polydeukes/memory`

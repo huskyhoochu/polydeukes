@@ -30,7 +30,7 @@ failure returns a failure value without retrying another candidate.
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=24. Install a standalone `pdks` for your platform from
+The SDK host needs Node >=26. Install a standalone `pdks` for your platform from
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
 supply its path or put it on `PATH` as `pdks`. The supported executable platforms are Linux x64 and
 macOS arm64. The SDK executes that file directly, without npm installation discovery or a separate

@@ -9,7 +9,7 @@
 pnpm add @polydeukes/sdk-ts
 ```
 
-SDK 호스트에는 Node >=24가 필요합니다.
+SDK 호스트에는 Node >=26가 필요합니다.
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
 파일 `pdks`를 설치하고 실행 권한을 준 뒤 `executable`이나 `PATH`의 절대 디렉터리로 선택합니다. 기존
 npm 설치는 CLI를 선택하지 않으며 SDK는 실행 파일을 직접 실행합니다. `@polydeukes/core`와

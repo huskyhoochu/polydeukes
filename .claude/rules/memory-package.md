@@ -8,9 +8,9 @@ paths:
 
 `@polydeukes/memory` keeps a derived index at `.polydeukes/memory.db` that can always be rebuilt
 from the documents; any schema change is absorbed by rebuilding. It has no core dependency, so it
-has no `vitest.config.ts` alias; `engines.node` is `>=24.15`, where `node:sqlite` stops printing an
-experimental warning. The umbrella loads it only in `pdks memory`, dynamically; without it that
-command prints an install hint and exits 2.
+has no `vitest.config.ts` alias; `engines.node` is `>=26`, where `node:sqlite` is stable. The
+umbrella loads it only in `pdks memory`, dynamically; without it that command prints an install hint
+and exits 2.
 
 ## Rows and the index
 

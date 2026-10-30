@@ -1,8 +1,8 @@
 # PR-time test gate — the Forgejo rendering of .github/workflows/ci.yml (same gate
 # sequence as publish.yml minus the upload; original rationale in that file's header).
 #
-# Two deliberate differences from the GitHub file. `runs-on: node-24` is this
-# instance's registered runner label (Node 24 preinstalled, so setup-node has no job
+# Two deliberate differences from the GitHub file. `runs-on: node-26` is this
+# instance's registered runner label (Node 26 preinstalled, so setup-node has no job
 # here). pnpm comes from corepack reading the root manifest's pinned `packageManager` —
 # the same single source pnpm/action-setup reads on the GitHub side.
 #
@@ -16,7 +16,7 @@ on:
 
 jobs:
   test:
-    runs-on: node-24
+    runs-on: node-26
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:

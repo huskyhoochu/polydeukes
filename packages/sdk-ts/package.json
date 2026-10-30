@@ -30,7 +30,7 @@
     "generate-types": "node scripts/generate-types.mjs"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "publishConfig": {
     "access": "public"

@@ -4,8 +4,8 @@
  *
  * Input is `dist` (run `pnpm build` first). The umbrella is bundled into one ESM file with
  * garu-ko's loader swapped for one that reads its wasm and model from the executable's assets.
- * A CommonJS main imports that bundle as a `data:` URL, since the runtime executes only a
- * CommonJS main. The blob is injected into a copy of the running node binary.
+ * That bundle is the executable's ESM main script. The blob is injected into a copy of the
+ * running node binary.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -51,13 +51,6 @@ export class Garu extends GaruBase {
 }
 `;
 
-const MAIN = `const { getAsset } = require('node:sea');
-import('data:text/javascript;base64,' + Buffer.from(getAsset('bundle.mjs', 'utf8')).toString('base64')).catch((error) => {
-  process.stderr.write('pdks: ' + (error instanceof Error ? error.message : String(error)) + '\\n');
-  process.exit(2);
-});
-`;
-
 function filesUnder(dir) {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
@@ -70,12 +63,12 @@ if (output === undefined) {
   process.exit(2);
 }
 const out = resolve(output);
-// The executable is a copy of this node binary, and its `pdks docs` lists its assets with
-// `getAssetKeys`, which arrived in Node 24.8.
-const [major, minor] = process.versions.node.split('.').map(Number);
-if (major < 24 || (major === 24 && minor < 8)) {
+// The executable is a copy of this node binary, which must run an ESM main script
+// (`mainFormat: "module"`); the repository's Node floor is 26.
+const [major] = process.versions.node.split('.').map(Number);
+if (major < 26) {
   process.stderr.write(
-    `build-sea: Node ${process.versions.node} cannot host it; use 24.8 or later\n`,
+    `build-sea: Node ${process.versions.node} cannot host it; use 26 or later\n`,
   );
   process.exit(2);
 }
@@ -88,7 +81,7 @@ try {
     outfile: bundle,
     format: 'esm',
     platform: 'node',
-    target: 'node24',
+    target: 'node26',
     bundle: true,
     logLevel: 'warning',
     banner: {
@@ -108,10 +101,7 @@ try {
     ],
   });
 
-  const main = join(work, 'main.cjs');
-  writeFileSync(main, MAIN);
   const assets = {
-    'bundle.mjs': bundle,
     'garu_wasm_bg.wasm': join(garuRoot, 'pkg', 'garu_wasm_bg.wasm'),
     'base.gmdl': join(garuRoot, 'models', 'base.gmdl'),
     'package.json': join(packageRoot, 'package.json'),
@@ -126,7 +116,8 @@ try {
   writeFileSync(
     seaConfig,
     JSON.stringify({
-      main,
+      main: bundle,
+      mainFormat: 'module',
       output: blob,
       disableExperimentalSEAWarning: true,
       useCodeCache: false,
