@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!.claude/workflows", "!**/*.astro"]
+    "includes": ["**", "!.claude/workflows", "!**/*.astro", "!CHANGELOG.md"]
   },
   "formatter": {
     "enabled": true,
@@ -20,10 +20,24 @@
       "quoteStyle": "single"
     }
   },
+  "markdown": {
+    "parser": {
+      "frontmatter": true
+    },
+    "formatter": {
+      "proseWrap": "always"
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "nursery": {
+        "useConsistentHeadingLevel": "on",
+        "useFencedCodeLanguage": "on",
+        "useSingleTopLevelHeading": "on",
+        "useTopLevelHeading": "on"
+      }
     }
   },
   "assist": {
