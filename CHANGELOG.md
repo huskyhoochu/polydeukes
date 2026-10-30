@@ -9,8 +9,6 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
-<!-- markdownlint-disable MD013 -- release-please writes the section lines below, at its own width. -->
-
 ## [0.20.1](https://github.com/huskyhoochu/polydeukes/compare/v0.20.0...v0.20.1) (2026-10-22)
 
 
