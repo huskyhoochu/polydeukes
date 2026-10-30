@@ -9,7 +9,7 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
-## [0.21.0](https://github.com/b95labs/polydeukes/compare/v0.20.1...v0.21.0) (2026-10-30)
+## [0.21.0](https://github.com/huskyhoochu/polydeukes/compare/v0.20.1...v0.21.0) (2026-10-30)
 
 
 ### ⚠ BREAKING CHANGES
@@ -18,7 +18,7 @@ everything not yet implemented.
 
 ### Build System
 
-* require node 26, the active LTS ([c0d901b](https://github.com/b95labs/polydeukes/commit/c0d901bd5696571f2b8f3d350609c33c76960d69))
+* require node 26, the active LTS ([c0d901b](https://github.com/huskyhoochu/polydeukes/commit/c0d901bd5696571f2b8f3d350609c33c76960d69))
 
 ## [0.20.1](https://github.com/huskyhoochu/polydeukes/compare/v0.20.0...v0.20.1) (2026-10-22)
 
