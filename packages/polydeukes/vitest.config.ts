@@ -20,5 +20,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['__tests__/**/*.test.ts'],
+    // The e2e suites spawn the CLI per test. On a busy CI runner one spawn has taken 29.9s
+    // where it takes under 100ms locally, so the 5s default fails runs that are correct.
+    testTimeout: 60_000,
   },
 });
