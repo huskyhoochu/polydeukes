@@ -1,0 +1,12 @@
+// Production code that asks whether a test runner is running passes tests the shipped code
+// fails; the varying part (a clock, a client, a setting) is an input the test provides.
+language js
+
+JsStaticMemberExpression(object=`process.env`, member=$name) as $read where {
+  $name <: or {
+    r"VITEST.*",
+    `JEST_WORKER_ID`,
+    `NODE_ENV`
+  },
+  register_diagnostic(span=$read, message="Production code reads the test runner's environment; take the varying part as an input.")
+}

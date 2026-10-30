@@ -28,10 +28,23 @@
       "proseWrap": "always"
     }
   },
+  "plugins": [
+    {
+      "path": "./biome-plugins/barrels-only-reexport.grit",
+      "includes": ["packages/*/src/index.ts", "packages/polydeukes/src/claude-code.ts"]
+    },
+    {
+      "path": "./biome-plugins/production-ignores-the-test-runner.grit",
+      "includes": ["packages/*/src/**"]
+    }
+  ],
   "linter": {
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "suspicious": {
+        "noSkippedTests": "error"
+      },
       "nursery": {
         "useConsistentHeadingLevel": "on",
         "useFencedCodeLanguage": "on",
@@ -40,6 +53,28 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/*/__tests__/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/src/index", "**/src/index.ts", "**/src/index.js"],
+                    "message": "A package test imports ../src/<module>.ts, never its own barrel."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {

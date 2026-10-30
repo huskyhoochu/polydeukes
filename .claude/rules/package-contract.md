@@ -64,8 +64,8 @@ points.
   static.
 - The barrel is the **consumer contract, not the test surface**. A package's own tests import
   `../src/<module>.ts` directly, never `../src/index.ts` in any spelling — check ⑥ in
-  `package-contract.test.ts` holds that for every `__tests__` tree, and the `tests-import-modules`
-  discipline advises on the edit. A package has one barrel.
+  `package-contract.test.ts` holds that for every `__tests__` tree, and biome's
+  `noRestrictedImports` reports it in the editor and at commit. A package has one barrel.
 - A symbol has one entry point. Two entry points may re-export the same module only when they carry
   different names from it. A barrel never re-exports another barrel.
 - The umbrella is not a facade: it re-exports no sibling verbs. From `@polydeukes/*` only

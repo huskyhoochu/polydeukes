@@ -48,6 +48,7 @@ protectedPaths:
   - "lefthook-local.yml"
   - ".lefthook-local"
   - "biome.json"
+  - "biome-plugins"
   - ".git/hooks"
   - "packages/core/dist"
   - "packages/polydeukes/dist"
@@ -160,58 +161,6 @@ disciplines:
         - id: "no-process-grade"
           relation: { op: "empty", of: "gradesAdded" }
           message: "adds a process grade — {key}: {value}"
-  - id: "barrels-only-reexport"
-    why: "a barrel carries re-export statements only: a definition or an import in it runs for every consumer of any other export, and the fail-closed proof that a gutted dist throws on import depends on every re-export staying static."
-    declare:
-      mechanism: "added-only"
-      scope:
-        source: "target.path"
-        include: ['^packages/[^/]+/src/index\.ts$', '^packages/polydeukes/src/claude-code\.ts$']
-      supply: { pre: "empty", post: "empty" }
-      extract:
-        before:
-          - { op: "source", of: "pre" }
-          - { op: "lines" }
-          - {
-              op: "keyByPattern",
-              re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)',
-            }
-        after:
-          - { op: "source", of: "post" }
-          - { op: "lines" }
-          - {
-              op: "keyByPattern",
-              re: '^(import |export \*|export (?:const|let|var|function|async function|class|interface|enum|default)\b|export type \w+ =)',
-            }
-        added:
-          - { op: "onlyIn", of: "after", notIn: "before", count: true }
-      relate:
-        - id: "nothing-added"
-          relation: { op: "empty", of: "added" }
-          message: "adds {key}: {value}"
-  - id: "tests-import-modules"
-    why: "a package test imports ../src/<module>.ts, never its own barrel: importing the barrel proves it carries a name rather than that the module behaves, and it widens the contract one test at a time."
-    declare:
-      mechanism: "added-only"
-      scope:
-        source: "target.path"
-        include: ["^packages/[^/]+/__tests__/"]
-      supply: { pre: "empty", post: "empty" }
-      extract:
-        before:
-          - { op: "source", of: "pre" }
-          - { op: "lines" }
-          - { op: "keyByPattern", re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
-        after:
-          - { op: "source", of: "post" }
-          - { op: "lines" }
-          - { op: "keyByPattern", re: "(from ['\"](?:\\.\\./)+src/index(?:\\.[tj]s)?['\"])" }
-        added:
-          - { op: "onlyIn", of: "after", notIn: "before", count: true }
-      relate:
-        - id: "nothing-added"
-          relation: { op: "empty", of: "added" }
-          message: "adds {key}: {value}"
   - id: "core-stays-runner-agnostic"
     why: "the core never names a test runner; verification is an exit code and the command is config."
     declare:
@@ -327,11 +276,6 @@ disciplines:
           relation: { op: "implies", of: "named", requires: "allowed" }
           message: "model {key} is not a tier model-tiers.md lists"
 
-  # ---- drafts: registered, read, not yet judged
-  - id: "verbs-take-one-spec"
-    why: "an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does."
-    draft: true
-
 # Judged on the session surface only — an adapter hook or the SDK, one call observed before
 # it runs. These declarations read the command line, the transcript, or the actor, which no
 # change set carries. Misplacing one under `disciplines` is a config error.
@@ -408,7 +352,7 @@ sessionDisciplines:
           relation: { op: "empty", of: "hits" }
           message: "command line searches _docs/knowledge directly instead of pdks memory: {value}"
   - id: "output-is-read-whole"
-    why: "a result cut by head or tail reads as the whole result: on 2026-09-28 a grep piped to head showed 10 of 21 files, the twelfth was the test that failed the release. count the result or read it whole; tail -f (following a log) is not a cut."
+    why: "a gate or a search piped into head or tail reads as the whole result: on 2026-09-28 a grep piped to head showed 10 of 21 files, the twelfth was the test that failed the release, and a gate piped into tail exits with tail's status. redirect it to a file, echo exit=$?, then read or count the file."
     declare:
       mechanism: "forbidden-command"
       scope: { source: "command" }
@@ -416,15 +360,54 @@ sessionDisciplines:
         hits:
           - { op: "source", of: "command" }
           - { op: "lines" }
-          - { op: "matches", re: '(^|[;&|(]\s*)(head|tail)\b(?!\s+-[fF]\b)' }
+          - {
+              op: "matches",
+              re: '\b(?:git\s+(?:push|commit)|cargo\s+(?:test|clippy)|pnpm\b[^|;&\n]*\b(?:test|check|typecheck|build)|vitest|grep|rg|find)\b(?:[^|;&\n]|>&\d)*\|\s*(?:head|tail)\b(?!\s+-[fF]\b)',
+            }
       relate:
         - id: "not-truncated"
           relation: { op: "empty", of: "hits" }
-          message: "command line cuts its output with head or tail: {value}"
+          message: "command line cuts a gate's or a search's output with head or tail: {value}"
+  - id: "deletes-name-their-target"
+    why: "a delete names what it removes. rm of the root, the home directory, the current directory, its parent or everything in it (/, ~, $HOME, ., .., *) removes what no task asked for."
+    enforce: block
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: '(?:^|[;&|(\x60\x22\x27]|\$\()\s*(?:(?:sudo|exec|nohup|env|xargs|command|time)\s+(?:-\S+\s+)*)*rm\s+(?:\S+\s+)*?(?:/|/\*|~|~/|~/\*|\$\{?HOME\}?/?\*?|\.|\./|\./\*|\.\.|\.\./|\*)(?=\s|$|[;&|)\x22\x27])',
+            }
+      relate:
+        - id: "none-wholesale"
+          relation: { op: "empty", of: "hits" }
+          message: "command line deletes a whole directory tree it did not name: {value}"
+  - id: "processes-end-by-pid"
+    why: "a process is ended by the PID read for it (kill <pid>). a name, a pattern or every process at once (pkill, killall, kill -1) reaches processes the task never named, such as another session's."
+    enforce: block
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - {
+              op: "matches",
+              re: '(?:^|[;&|(\x60\x22\x27]|\$\()\s*(?:(?:sudo|exec|nohup|env|xargs|command|time)\s+(?:-\S+\s+)*)*(?:pkill|killall)(?=\s)|\bkill\s+(?:-\S+\s+)*-1(?=\s*(?:$|[;&|)\x22\x27]))',
+            }
+      relate:
+        - id: "none-by-name"
+          relation: { op: "empty", of: "hits" }
+          message: "command line ends processes by name or all at once: {value}"
 
   # ---- the history axis: what the session did before this call
   - id: "manifest-needs-evidence"
-    why: "a dependency version must be measured before it is written (training knowledge is not evidence of what npm currently resolves), and the API a dependency exposes is read from its docs, not recalled."
+    why: "a dependency version must be measured before it is written: training knowledge is not evidence of what npm currently resolves."
     declare:
       mechanism: "precedent"
       scope: { source: "target.path", include: ['^(packages/[^/]+/)?package\.json$'] }
@@ -437,19 +420,10 @@ sessionDisciplines:
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "select", path: "args.command" }
           - { op: "matches", re: '\bnpm view ' }
-        context7:
-          - { op: "source", of: "session" }
-          - { op: "toolUses" }
-          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
-          - { op: "field", name: "name" }
-          - { op: "matches", re: "context7" }
       relate:
         - id: "npm-view"
           relation: { op: "nonEmpty", of: "npmView" }
           message: "no successful npm view precedes this manifest edit"
-        - id: "context7"
-          relation: { op: "nonEmpty", of: "context7" }
-          message: "no successful context7 call precedes this manifest edit"
   - id: "covenant-needs-knowledge-read"
     why: "the covenant package carries the most measured history in the store; editing its judges or their tests without reading one is how a closed defect gets reopened under a new spelling."
     declare:
@@ -463,10 +437,7 @@ sessionDisciplines:
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "select", path: "args.command" }
-          - {
-              op: "matches",
-              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\bcovenant\.(dev-log|research)\.',
-            }
+          - { op: "matches", re: '\bpdks memory show\b.*\bcovenant\.(dev-log|research)\.' }
         fileReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Read"] }
@@ -492,10 +463,7 @@ sessionDisciplines:
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "select", path: "args.command" }
-          - {
-              op: "matches",
-              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\bcore\.(dev-log|research)\.',
-            }
+          - { op: "matches", re: '\bpdks memory show\b.*\bcore\.(dev-log|research)\.' }
         fileReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Read"] }
@@ -521,10 +489,7 @@ sessionDisciplines:
           - { op: "toolUses", names: ["Bash"] }
           - { op: "filter", when: [{ field: "succeeded", eq: true }] }
           - { op: "select", path: "args.command" }
-          - {
-              op: "matches",
-              re: '(\b(cat|head|tail|less|bat|grep|rg|sed|awk)\b|\bpdks memory show\b).*\badapter\.(dev-log|research)\.',
-            }
+          - { op: "matches", re: '\bpdks memory show\b.*\badapter\.(dev-log|research)\.' }
         fileReads:
           - { op: "source", of: "session" }
           - { op: "toolUses", names: ["Read"] }

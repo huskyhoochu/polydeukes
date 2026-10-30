@@ -1,0 +1,18 @@
+// A barrel carries re-export statements only: a definition or an import in it runs for every
+// consumer of any other export, and the proof that a gutted dist throws on import depends on
+// every re-export staying static.
+language js
+
+or {
+  JsImport(),
+  JsExport(export_clause=$clause) where { $clause <: not JsExportNamedFromClause() },
+  JsVariableStatement(),
+  JsFunctionDeclaration(),
+  JsClassDeclaration(),
+  JsExpressionStatement(),
+  TsInterfaceDeclaration(),
+  TsTypeAliasDeclaration(),
+  TsEnumDeclaration()
+} as $statement where {
+  register_diagnostic(span=$statement, message="A barrel carries `export { … } from` statements only; define this in a module and re-export it by name.")
+}
