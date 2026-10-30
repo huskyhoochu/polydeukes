@@ -1,6 +1,7 @@
 use regress::Regex;
 use serde_json::{Map, Value};
 
+use super::declaration::{Declaration, compile_declaration};
 use super::protected_paths::normalize_protected_paths;
 use super::validation::{is_non_empty_string, js_trim, reject_unknown_keys};
 
@@ -29,13 +30,55 @@ pub struct Witness {
     pub ttl_minutes: f64,
 }
 
+/// An entry's own rung: `Advise` records a break without stopping it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+    Advise,
+    Block,
+}
+
+/// One judged discipline entry with its declaration compiled.
+#[derive(Clone)]
+pub struct Entry {
+    pub id: String,
+    pub why: Option<String>,
+    pub level: Level,
+    pub declaration: Declaration,
+}
+
 /// A validated config. `memory` and `adapters` are checked and not kept: this judge reads
-/// neither.
+/// neither. `entries` are the session surface's: `disciplines` then `sessionDisciplines`.
 pub struct Config {
     pub protected_paths: Vec<String>,
     pub log_path: String,
     pub witness: Option<Witness>,
-    pub has_discipline_entries: bool,
+    pub entries: Vec<Entry>,
+}
+
+/// The labels the judging chain's own registrations write rows under.
+const RESERVED_LABELS: [&str; 6] = [
+    "self-mod",
+    "shell-mod",
+    "transcript-mod",
+    "covenant-check",
+    "shell-unjudgeable",
+    "baseline",
+];
+
+/// One problem as its own text; several as a count and one indented line each.
+fn list_problems(problems: &[String]) -> String {
+    match problems {
+        [only] => only.clone(),
+        _ => format!(
+            "{} problems\n{}",
+            problems.len(),
+            problems
+                .iter()
+                .map(|problem| format!("  - {problem}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ),
+    }
 }
 
 pub fn define_config(config: &Value) -> Result<Config, String> {
@@ -60,10 +103,15 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
     if let Some(memory) = config.get("memory") {
         validate_memory(memory)?;
     }
-    let mut has_discipline_entries = false;
+    let mut seen_ids: Vec<String> = Vec::new();
+    let mut problems: Vec<String> = Vec::new();
+    let mut entries: Vec<Entry> = Vec::new();
     for list in DISCIPLINE_LISTS {
-        if let Some(entries) = config.get(list) {
-            has_discipline_entries |= validate_list(entries, list)?;
+        if let Some(value) = config.get(list) {
+            let judged = validate_entries(value, list, &mut seen_ids, &mut problems)?;
+            if list != "changeSetDisciplines" {
+                entries.extend(judged);
+            }
         }
     }
     let log_path = match config.get("telemetry") {
@@ -75,11 +123,14 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
         None => None,
     };
 
+    if !problems.is_empty() {
+        return Err(list_problems(&problems));
+    }
     Ok(Config {
         protected_paths,
         log_path: log_path.unwrap_or_else(|| DEFAULT_TELEMETRY_LOG_PATH.to_string()),
         witness,
-        has_discipline_entries,
+        entries,
     })
 }
 
@@ -103,23 +154,146 @@ pub fn define_config_layer(layer: &Value) -> Result<Map<String, Value>, String> 
     {
         return Err("$schema must be a string".to_string());
     }
+    // The layer's own entries are checked here so a fault in one is reported against the layer
+    // file, not against the merged config.
     let mut lists = Map::new();
+    let (mut seen_ids, mut problems) = (Vec::new(), Vec::new());
     for list in DISCIPLINE_LISTS {
         if let Some(entries) = layer.get(list) {
-            validate_list(entries, list)?;
+            validate_entries(entries, list, &mut seen_ids, &mut problems)?;
             lists.insert(list.to_string(), entries.clone());
         }
+    }
+    if !problems.is_empty() {
+        return Err(list_problems(&problems));
     }
     Ok(lists)
 }
 
-/// Whether the list holds entries. The entries themselves are judged by the declaration
-/// engine, which this build does not carry.
-fn validate_list(entries: &Value, list: &str) -> Result<bool, String> {
-    match entries.as_array() {
-        Some(entries) => Ok(!entries.is_empty()),
-        None => Err(format!("{list} must be an array")),
+fn validate_array<'a>(entries: &'a Value, list: &str) -> Result<&'a Vec<Value>, String> {
+    entries
+        .as_array()
+        .ok_or_else(|| format!("{list} must be an array"))
+}
+
+/// Validate one discipline list and compile its judged entries. A declaration that does not
+/// compile is a problem collected for the one invalid-config message; a malformed entry head
+/// stops the load. `seen_ids` spans the three lists.
+fn validate_entries(
+    value: &Value,
+    list: &str,
+    seen_ids: &mut Vec<String>,
+    problems: &mut Vec<String>,
+) -> Result<Vec<Entry>, String> {
+    let mut judged = Vec::new();
+    for (index, entry) in validate_array(value, list)?.iter().enumerate() {
+        let Some(entry) = entry.as_object() else {
+            return Err(format!("{list}[{index}] must be an object"));
+        };
+        let Some(id) = entry
+            .get("id")
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+        else {
+            return Err(format!("{list}[{index}].id must be a non-empty string"));
+        };
+        let location = format!("{list}[{index}] ('{id}')");
+        if seen_ids.iter().any(|seen| seen == id) {
+            return Err(format!("{location} duplicates the id of an earlier entry"));
+        }
+        if RESERVED_LABELS.contains(&id) {
+            return Err(format!("{location} id collides with a meta-covenant label"));
+        }
+        seen_ids.push(id.to_string());
+        if entry.contains_key("draft") {
+            validate_draft(entry, list, &location)?;
+            continue;
+        }
+        reject_unknown_keys(entry, &["id", "why", "enforce", "declare"], &location)?;
+        if entry.get("why").is_some_and(|why| !why.is_string()) {
+            return Err(format!("{location} why must be a string"));
+        }
+        let level = match entry.get("enforce").map(Value::as_str) {
+            None | Some(Some("advise")) => Level::Advise,
+            Some(Some("block")) => Level::Block,
+            Some(_) => return Err(format!("{location} enforce must be 'block' or 'advise'")),
+        };
+        let Some(block) = entry.get("declare").and_then(Value::as_object) else {
+            return Err(format!("{location} declare must be an object"));
+        };
+        let declaration = match compile_declaration(id, block) {
+            Ok(declaration) => declaration,
+            Err(fault) => {
+                problems.push(fault.to_string());
+                continue;
+            }
+        };
+        if let Err(problem) = check_placement(&declaration, list, &location) {
+            problems.push(problem);
+            continue;
+        }
+        judged.push(Entry {
+            id: id.to_string(),
+            why: entry.get("why").and_then(Value::as_str).map(str::to_string),
+            level,
+            declaration,
+        });
     }
+    Ok(judged)
+}
+
+fn validate_draft(entry: &Map<String, Value>, list: &str, location: &str) -> Result<(), String> {
+    if list != "disciplines" {
+        return Err(format!("{location} a draft belongs in disciplines"));
+    }
+    if let Some(key) = entry
+        .keys()
+        .find(|key| !["id", "why", "draft"].contains(&key.as_str()))
+    {
+        return Err(format!(
+            "{location} allows only id, why, draft on a draft entry (found '{key}')"
+        ));
+    }
+    if entry.get("draft") != Some(&Value::Bool(true)) {
+        return Err(format!("{location} draft must be the literal true"));
+    }
+    if !entry.get("why").is_some_and(is_non_empty_string) {
+        return Err(format!(
+            "{location} why must be a non-empty string on a draft entry"
+        ));
+    }
+    Ok(())
+}
+
+/// The list a declaration belongs in follows from the channels it binds.
+fn check_placement(declaration: &Declaration, list: &str, location: &str) -> Result<(), String> {
+    let channels = declaration.channels();
+    let reads_changes = channels.contains(&"changes");
+    let reads_session = channels.iter().any(|channel| *channel != "changes");
+    if reads_changes && reads_session {
+        return Err(format!(
+            "{location} reads {}: no surface observes both changes and a session channel",
+            channels.join(", ")
+        ));
+    }
+    let destination = if reads_session {
+        "sessionDisciplines"
+    } else if reads_changes {
+        "changeSetDisciplines"
+    } else {
+        "disciplines"
+    };
+    if destination == list {
+        return Ok(());
+    }
+    let reads = if channels.is_empty() {
+        "no evidence channel".to_string()
+    } else {
+        channels.join(", ")
+    };
+    Err(format!(
+        "{location} reads {reads}: it belongs in {destination}"
+    ))
 }
 
 fn validate_protected_paths(value: &Value) -> Result<Vec<String>, String> {

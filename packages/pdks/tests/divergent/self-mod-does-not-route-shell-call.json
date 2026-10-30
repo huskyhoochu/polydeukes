@@ -1,0 +1,25 @@
+{
+  "description": "One shell call that trips shell-mod and transcript-mod leaves no self-mod row, because self-mod routes only calls of a mutating tool.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"shell-tool\", \"args\": {\"command\": \"cat dist/a; echo x > @@HOME@@/.claude/projects/p/session.jsonl ; echo 'open\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [\"shell-tool\"], \"commandArgs\": [\"command\"]}, \"session\": {\"userMessages\": [], \"toolCalls\": [], \"evidencePath\": \"@@HOME@@/.claude/projects/p/session.jsonl\"}}",
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "cat mentions protected path dist without read-only proof",
+      "redirect-write targets the session transcript"
+    ],
+    "rows": [
+      ["blocked", "shell-mod", "dist"],
+      ["blocked", "transcript-mod", "@@HOME@@/.claude/projects/p/session.jsonl"],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

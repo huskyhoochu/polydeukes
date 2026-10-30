@@ -1,0 +1,109 @@
+{
+  "description": "When one relate entry stops at an absent supply-pass source and a later entry breaks in the same world, the break is the verdict.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "vocab-and-extra",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "sources": {
+              "vocab": {
+                "file": "vocab.txt"
+              },
+              "extra": {
+                "file": "extra.txt"
+              }
+            },
+            "supply": {
+              "extra": "pass"
+            },
+            "extract": {
+              "used": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "lines"
+                }
+              ],
+              "allowed": [
+                {
+                  "op": "source",
+                  "of": "vocab"
+                },
+                {
+                  "op": "lines"
+                }
+              ],
+              "other": [
+                {
+                  "op": "source",
+                  "of": "extra"
+                },
+                {
+                  "op": "lines"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "in-extra",
+                "relation": {
+                  "op": "subset",
+                  "of": "used",
+                  "in": "other"
+                },
+                "message": "not in extra: {value}"
+              },
+              {
+                "id": "in-vocabulary",
+                "relation": {
+                  "op": "subset",
+                  "of": "used",
+                  "in": "allowed"
+                },
+                "message": "'{value}' is not allowed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "vocab.txt": "a\nb\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "src/x.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "src/x.txt",
+          "post": "a\nz\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'vocab-and-extra' broken on src/x.txt: 'z' is not allowed",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "vocab-and-extra",
+        "src/x.txt",
+        "[{\"id\":\"in-vocabulary\",\"witnesses\":[{\"key\":\"2\",\"value\":\"z\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

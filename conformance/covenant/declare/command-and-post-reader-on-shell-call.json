@@ -1,0 +1,78 @@
+{
+  "description": "A scope-less declaration reading both the command and post receives the shell call's world, so its missing post is settled by the supply policy rather than leaving the call unjudged.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "y",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "a": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "matches",
+                  "re": "frob"
+                }
+              ],
+              "b": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "frob"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "r1",
+                "relation": {
+                  "op": "empty",
+                  "of": "a"
+                },
+                "message": "cmd frob"
+              },
+              {
+                "id": "r2",
+                "relation": {
+                  "op": "empty",
+                  "of": "b"
+                },
+                "message": "post frob"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "frobnicate --now"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["discipline 'y' cannot judge -: post — the world carries no source named 'post'"],
+    "rows": [["blocked", "y", "-"]]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "description": "A witness value holding replacement patterns and a value placeholder renders literally, and the substituted text is not substituted again.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "renders",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "lines"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "bad: {value}!"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "a$&b{value}$'c"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'renders' broken on lib/a.txt: bad: a$&b{value}$'c!",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "renders",
+        "lib/a.txt",
+        "[{\"id\":\"clean\",\"witnesses\":[{\"key\":\"1\",\"value\":\"a$&b{value}$'c\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,34 +1,37 @@
 {
-  "description": "A loaded config with a discipline entry reaches the declaration engine, which this build does not judge yet, so the run is blocked.",
+  "description": "A discipline id equal to the common shell skip registration's label is rejected, since its rows could not be told apart from that registration's.",
   "args": [],
   "tree": {
     "polydeukes.config.yaml": {
       "disciplines": [
         {
-          "id": "no-db-files",
-          "why": "database files stay out of the tree",
+          "id": "shell-unjudgeable",
           "declare": {
-            "mechanism": "naming",
+            "mechanism": "added-only",
             "scope": {
               "source": "target.path",
-              "include": ["\\.db$"]
+              "include": ["^lib/"]
             },
             "extract": {
-              "own": [
+              "hit": [
                 {
                   "op": "source",
-                  "of": "target.path"
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
                 }
               ]
             },
             "relate": [
               {
-                "id": "placed",
+                "id": "clean",
                 "relation": {
                   "op": "empty",
-                  "of": "own"
+                  "of": "hit"
                 },
-                "message": "{value}"
+                "message": "has TODO"
               }
             ]
           }
@@ -39,29 +42,23 @@
   "stdin": {
     "toolCalls": [
       {
-        "name": "Write",
+        "name": "edit-tool",
         "args": {
-          "file_path": "notes.txt",
-          "content": "x"
+          "file_path": "lib/a.txt"
         },
         "fileChange": {
           "kind": "create",
-          "path": "notes.txt",
+          "path": "lib/a.txt",
           "post": "x"
         }
       }
     ],
     "subagentSpawns": [],
-    "userMessages": [],
-    "tools": {
-      "mutating": ["Write"],
-      "shell": [],
-      "commandArgs": []
-    }
+    "userMessages": []
   },
   "expect": {
     "exit": 2,
-    "stderr": ["covenant check failed closed:", "is not ported"],
+    "stderr": ["invalid config in polydeukes.config.yaml"],
     "rows": [["blocked", "covenant-check", "-"]]
   }
 }

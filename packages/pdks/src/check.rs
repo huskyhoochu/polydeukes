@@ -5,20 +5,26 @@
 //! last baseline (session input only), judge every tool call, re-establish the baseline.
 //! A stage that cannot proceed fails closed with one `blocked` row.
 
+use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::baseline;
-use crate::core::config::{Config, DEFAULT_TELEMETRY_LOG_PATH, Witness};
+use crate::core::config::{Config, DEFAULT_TELEMETRY_LOG_PATH, Entry, Witness};
+use crate::core::declaration::Binding;
 use crate::core::exit_codes::Exit;
 use crate::core::protocol::{Input, parse_input};
 use crate::core::telemetry::{self, Event, iso_utc};
 use crate::core::transcript::{UserMessage, user_messages};
-use crate::covenant::discipline::{relativize_for_scope, shell_unjudgeable_registration};
+use crate::covenant::discipline::{
+    self, Supply, relativize_for_scope, shell_unjudgeable_registration,
+};
 use crate::covenant::dispatch::{Context, Registration, dispatch};
+use crate::covenant::extract::normalize;
 use crate::covenant::run_covenant::{Enforce, Verdict};
 use crate::covenant::ttl_witness::{TtlSpec, Valve, witness_expired_at};
 use crate::covenant::{self_mod, shell_mod, transcript_mod};
@@ -81,6 +87,9 @@ struct Session {
     evidence_path: Option<String>,
     user_messages: Vec<UserMessage>,
     user_message_count: usize,
+    sidecar: Option<String>,
+    /// The session flattened for a `transcript` binding.
+    snapshot: Value,
 }
 
 fn fail_closed(telemetry_path: &Path, reason: &str, suffix: &str, exit: Exit) -> Exit {
@@ -263,18 +272,18 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
                     );
                 }
             };
+            let mut sidecar = None;
             match object.get("channels") {
                 None => {}
-                Some(Value::Object(channels)) => {
-                    if channels
-                        .get("sidecar")
-                        .is_some_and(|sidecar| !sidecar.is_string())
-                    {
+                Some(Value::Object(channels)) => match channels.get("sidecar") {
+                    None => {}
+                    Some(Value::String(text)) => sidecar = Some(text.clone()),
+                    Some(_) => {
                         return Err(
                             "input carries a session.channels.sidecar that is not text".to_string()
                         );
                     }
-                }
+                },
                 Some(_) => {
                     return Err(
                         "input carries a session.channels that is not an object".to_string()
@@ -282,22 +291,89 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
                 }
             }
             let messages = lists.first().copied().map_or(&[][..], Vec::as_slice);
+            let calls = lists.get(1).copied().map_or(&[][..], Vec::as_slice);
             Some(Session {
                 evidence_path,
                 user_messages: user_messages(messages),
                 user_message_count: messages.len(),
+                sidecar,
+                snapshot: session_snapshot(messages, calls),
             })
         }
     };
     Ok((tools, session))
 }
 
-/// Inputs that reach a part of the judge this build does not carry. They stop here rather
-/// than pass as if judged.
-fn not_ported(config: &Config) -> Option<&'static str> {
-    config
-        .has_discipline_entries
-        .then_some("discipline entries in the config")
+/// The session as plain data for a declaration: each observation carries its ordinal in its
+/// own list, and the clock is the moment the snapshot is taken.
+fn session_snapshot(messages: &[Value], calls: &[Value]) -> Value {
+    let turns: Vec<Value> = messages
+        .iter()
+        .enumerate()
+        .filter_map(|(index, message)| {
+            let mut turn = Map::new();
+            turn.insert("index".to_string(), Value::from(index));
+            turn.insert("text".to_string(), message.get("text")?.clone());
+            if let Some(stamp) = message.get("timestampMs").filter(|stamp| stamp.is_number()) {
+                turn.insert("timestampMs".to_string(), normalize(stamp.clone()));
+            }
+            Some(Value::Object(turn))
+        })
+        .collect();
+    let tool_calls: Vec<Value> = calls
+        .iter()
+        .enumerate()
+        .filter_map(|(index, call)| {
+            let mut entry = Map::new();
+            entry.insert("index".to_string(), Value::from(index));
+            entry.insert("name".to_string(), call.get("name")?.clone());
+            let args = call.get("args").filter(|args| !args.is_null());
+            entry.insert(
+                "args".to_string(),
+                args.map_or_else(|| Value::Object(Map::new()), Clone::clone),
+            );
+            if let Some(succeeded) = call.get("succeeded").filter(|flag| flag.is_boolean()) {
+                entry.insert("succeeded".to_string(), succeeded.clone());
+            }
+            Some(Value::Object(entry))
+        })
+        .collect();
+    let mut snapshot = Map::new();
+    snapshot.insert("observedAtMs".to_string(), Value::from(telemetry::now_ms()));
+    snapshot.insert("userMessages".to_string(), Value::Array(turns));
+    snapshot.insert("toolCalls".to_string(), Value::Array(tool_calls));
+    Value::Object(snapshot)
+}
+
+/// The working-tree text of every `file` source the entries bind. A path the tree holds but
+/// cannot give as text (absent, a directory, or bytes carrying a NUL) is left out.
+fn read_file_sources(root: &Path, entries: &[Entry]) -> Result<HashMap<String, String>, String> {
+    let mut files = HashMap::new();
+    let mut read: Vec<&str> = Vec::new();
+    for entry in entries {
+        for (_, binding) in &entry.declaration.sources {
+            let Binding::File(path) = binding else {
+                continue;
+            };
+            if read.contains(&path.as_str()) {
+                continue;
+            }
+            read.push(path);
+            match fs::read(root.join(path)) {
+                Ok(bytes) if !bytes.contains(&0) => {
+                    files.insert(path.clone(), String::from_utf8_lossy(&bytes).into_owned());
+                }
+                Ok(_) => {}
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        ErrorKind::NotFound | ErrorKind::NotADirectory | ErrorKind::IsADirectory
+                    ) => {}
+                Err(error) => return Err(format!("cannot read {path}: {error}")),
+            }
+        }
+    }
+    Ok(files)
 }
 
 /// The environment's `HOME` when set, even empty, since that is what the judged shell expands
@@ -331,6 +407,39 @@ fn witness_state_line(
         ),
         None => open,
     }
+}
+
+/// An empty list is an axis the host does not have, so it registers nothing. The order is the
+/// order of the rows one call leaves.
+fn assemble(
+    root: &Path,
+    config: &Config,
+    mutating: &[String],
+    shell_tools: &[String],
+    evidence_path: Option<&str>,
+) -> Vec<Registration> {
+    let mut registrations: Vec<Registration> = Vec::new();
+    if !mutating.is_empty() {
+        registrations.push(self_mod::registration(
+            config.protected_paths.clone(),
+            mutating.to_vec(),
+        ));
+    }
+    if !shell_tools.is_empty() {
+        registrations.push(shell_mod::registration(config.protected_paths.clone()));
+    }
+    if let Some(path) = evidence_path {
+        let root = root.to_string_lossy();
+        registrations.extend(transcript_mod::registration(
+            path,
+            &root,
+            home_dir().as_deref(),
+            mutating,
+        ));
+    }
+    registrations.extend(discipline::registrations(&config.entries));
+    registrations.push(shell_unjudgeable_registration());
+    registrations
 }
 
 /// Judge every tool call as its own unit, so telemetry stays at one row per call.
@@ -372,29 +481,19 @@ fn judge_input(
     let (shell_tools, command_args) = tools.map_or((no_names, no_names), |tools| {
         (tools.shell.as_slice(), tools.command_args.as_slice())
     });
-    // An empty list is an axis the host does not have, so it registers nothing. The order is
-    // the order of the rows one call leaves.
-    let mut registrations: Vec<Registration> = Vec::new();
-    if !mutating.is_empty() {
-        registrations.push(self_mod::registration(
-            config.protected_paths.clone(),
-            mutating.clone(),
-        ));
-    }
-    if !shell_tools.is_empty() {
-        registrations.push(shell_mod::registration(config.protected_paths.clone()));
-    }
     let evidence_path = session.and_then(|session| session.evidence_path.as_deref());
-    if let Some(path) = evidence_path {
-        let root = spec.root.to_string_lossy();
-        registrations.extend(transcript_mod::registration(
-            path,
-            &root,
-            home_dir().as_deref(),
-            &mutating,
-        ));
-    }
-    registrations.push(shell_unjudgeable_registration());
+    let registrations = assemble(spec.root, config, &mutating, shell_tools, evidence_path);
+    let files = match read_file_sources(spec.root, &config.entries) {
+        Ok(files) => files,
+        Err(error) => return fail_closed(telemetry_path, &error, "", Exit::Blocked),
+    };
+    let supply = Supply {
+        root: spec.root,
+        actor: input.actor.as_ref(),
+        files: &files,
+        sidecar: session.and_then(|session| session.sidecar.as_deref()),
+        snapshot: session.map(|session| &session.snapshot),
+    };
 
     let context = Context {
         enforce: spec.enforce,
@@ -402,6 +501,7 @@ fn judge_input(
         telemetry_path,
         shell_tools,
         command_args,
+        supply: &supply,
     };
     let mut blocked = false;
     let mut valve_refused_a_block = false;
@@ -450,7 +550,6 @@ enum Repair {
     Loads(Config),
     Refused(String),
     NotThisCall,
-    NotPorted,
 }
 
 /// The config a single call would leave behind: exactly one call whose evidence modifies the
@@ -484,7 +583,6 @@ fn repairs(
         return Repair::NotThisCall;
     };
     match (parse_config_source(post, config_path, layer), layer) {
-        (Ok(config), _) if config.has_discipline_entries => Repair::NotPorted,
         (Ok(config), _) => Repair::Loads(config),
         (Err(error), Some(layer)) => Repair::Refused(format!("with layer {}: {error}", layer.path)),
         (Err(_), None) => Repair::NotThisCall,
@@ -552,12 +650,6 @@ fn settle_load_failure(spec: &CheckSpec, failure: &LoadFailure) -> Exit {
             );
             fail_closed(provisional, error, &suffix, Exit::Blocked)
         }
-        Repair::NotPorted => fail_closed(
-            provisional,
-            "discipline entries in the config is not ported",
-            "",
-            Exit::Blocked,
-        ),
         Repair::NotThisCall => {
             let suffix = format!(
                 " — fix {config_path} in one Edit or Write whose result loads; every other call stays blocked until it does"
@@ -589,10 +681,6 @@ pub fn run_covenant_check(spec: &CheckSpec) -> Exit {
         Ok(shape) => shape,
         Err(error) => return fail_closed(telemetry_path, &error, "", Exit::InputUnreadable),
     };
-    if let Some(what) = not_ported(&settled.config) {
-        let reason = format!("{what} is not ported");
-        return fail_closed(telemetry_path, &reason, "", Exit::Blocked);
-    }
 
     let entries = &settled.config.protected_paths;
     // A session call with nothing judgeable still compares and re-establishes: the window it

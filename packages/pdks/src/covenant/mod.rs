@@ -1,8 +1,11 @@
 pub mod bash_line;
+pub mod declare;
 pub mod discipline;
 pub mod dispatch;
+pub mod extract;
 pub mod mention;
 pub mod mutation_rules;
+pub mod relations;
 pub mod run_covenant;
 pub mod self_mod;
 pub mod shell_evidence;

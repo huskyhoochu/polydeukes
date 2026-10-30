@@ -1,0 +1,108 @@
+{
+  "description": "A shell call is judged by the command-scoped entry first, then each path-scoped entry records one skipped row at its first admitted written path.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ]
+          }
+        }
+      ],
+      "sessionDisciplines": [
+        {
+          "id": "no-frob",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command"
+            },
+            "extract": {
+              "hits": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "frobnicate"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hits"
+                },
+                "message": "forbidden: {value}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "echo x > out/b.txt; echo y > lib/c.txt; echo z > lib/d.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "no-frob", "-"], ["skipped", "no-todo", "lib/c.txt", "no-observation"]]
+  }
+}

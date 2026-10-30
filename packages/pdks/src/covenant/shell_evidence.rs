@@ -2,7 +2,9 @@
 //! reveal. A command with no write signal at all produces none, so a read leaves no row.
 
 use super::bash_line::{SimpleCommand, Tokenized, command_name_word, is_nested_shell_command};
-use super::mutation_rules::{command_basename, detect_without_redirects, is_write_redirect};
+use super::mutation_rules::{
+    command_basename, detect, detect_without_redirects, is_write_redirect,
+};
 
 /// Whether a write target text names a path: not opaque, not home-relative, and not a
 /// relative path on a line that changes directory (which base applies depends on execution).
@@ -50,19 +52,34 @@ fn command_has_pathless_signal(command: &SimpleCommand, moves_directory: bool) -
     command.words.iter().any(|word| word.opaque)
 }
 
+/// A directory change is line-scoped and order-blind: a write before it is as ambiguous as
+/// one after.
+fn moves_directory(line: &Tokenized) -> bool {
+    line.commands.iter().any(|command| {
+        command_name_word(command).is_some_and(|name| {
+            !name.opaque && matches!(command_basename(name), "cd" | "pushd" | "popd")
+        })
+    })
+}
+
+/// The paths the line's commands write whose text names a location.
+pub fn known_write_paths(line: &Tokenized) -> Vec<&str> {
+    let moves_directory = moves_directory(line);
+    line.commands
+        .iter()
+        .flat_map(detect)
+        .map(|found| found.path)
+        .filter(|path| target_is_known(path, false, moves_directory))
+        .collect()
+}
+
 /// True when the line has a span the scan could not read or a command with a write signal
 /// whose target is unknowable.
 pub fn has_pathless_signal(line: &Tokenized) -> bool {
     if !line.unread.is_empty() {
         return true;
     }
-    // A directory change is line-scoped and order-blind: a write before it is as ambiguous
-    // as one after.
-    let moves_directory = line.commands.iter().any(|command| {
-        command_name_word(command).is_some_and(|name| {
-            !name.opaque && matches!(command_basename(name), "cd" | "pushd" | "popd")
-        })
-    });
+    let moves_directory = moves_directory(line);
     line.commands
         .iter()
         .any(|command| command_has_pathless_signal(command, moves_directory))

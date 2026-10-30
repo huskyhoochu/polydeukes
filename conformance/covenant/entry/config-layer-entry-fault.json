@@ -1,0 +1,45 @@
+{
+  "description": "layer entry fault",
+  "args": ["--config-layer", "layer.json"],
+  "tree": {
+    "polydeukes.config.yaml": {},
+    "layer.json": {
+      "disciplines": [
+        {
+          "id": "a",
+          "declare": {
+            "mechanism": "bogus",
+            "extract": {
+              "x": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "r",
+                "relation": {
+                  "op": "empty",
+                  "of": "x"
+                },
+                "message": "m"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["invalid config layer in @@ROOT@@/layer.json"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

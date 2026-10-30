@@ -67,6 +67,17 @@ pub fn append_skipped(path: &Path, label: &str, subject: &str, reason: &str) {
     append_row(path, Event::Skipped, label, subject, &format!("\t{reason}"));
 }
 
+/// A break row carries its witness list, already serialized, as the fifth field.
+pub fn append_witnesses(path: &Path, event: Event, label: &str, subject: &str, witnesses: &str) {
+    append_row(
+        path,
+        event,
+        label,
+        subject,
+        &format!("\t{}", sanitize(witnesses)),
+    );
+}
+
 fn append_row(path: &Path, event: Event, label: &str, subject: &str, tail: &str) {
     let line = format!(
         "{}\t{}\t{}\t{}{tail}\n",

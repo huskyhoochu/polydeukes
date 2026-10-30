@@ -121,7 +121,7 @@ pub fn registration(
 ) -> Option<Registration> {
     let transcript = Transcript::new(path, home)?;
     Some(Registration {
-        label: "transcript-mod",
+        label: "transcript-mod".to_string(),
         judge: Judge::TranscriptMod(TranscriptMod {
             transcript,
             root: root.to_string(),

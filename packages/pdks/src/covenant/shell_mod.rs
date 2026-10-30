@@ -217,7 +217,7 @@ pub fn judge(
 
 pub fn registration(protected_paths: Vec<String>) -> Registration {
     Registration {
-        label: "shell-mod",
+        label: "shell-mod".to_string(),
         judge: Judge::ShellMod { protected_paths },
     }
 }

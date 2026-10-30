@@ -1,0 +1,65 @@
+{
+  "description": "A transcript binding whose marker is not the literal true is reported as a grammar fault, not as a misplaced discipline.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "bad-marker",
+          "declare": {
+            "mechanism": "turn-locality",
+            "sources": {
+              "h": {
+                "transcript": false
+              }
+            },
+            "extract": {
+              "seen": [
+                {
+                  "op": "source",
+                  "of": "h"
+                },
+                {
+                  "op": "userTexts"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "asked",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "seen"
+                },
+                "message": "no user text"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["invalid config in polydeukes.config.yaml", "must be the literal true"],
+    "stderrExcludes": ["sessionDisciplines"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

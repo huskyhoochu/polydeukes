@@ -23,3 +23,25 @@ pub fn reject_unknown_keys(
 pub fn is_non_empty_string(value: &Value) -> bool {
     value.as_str().is_some_and(|text| !text.is_empty())
 }
+
+/// `path.posix.normalize` for a relative path: resolve `.` and `..`, keep a trailing `/`.
+pub fn normalize_relative(path: &str) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." if parts.last().is_some_and(|last| *last != "..") => {
+                parts.pop();
+            }
+            _ => parts.push(part),
+        }
+    }
+    let mut joined = parts.join("/");
+    if joined.is_empty() {
+        joined.push('.');
+    }
+    if path.ends_with('/') {
+        joined.push('/');
+    }
+    joined
+}

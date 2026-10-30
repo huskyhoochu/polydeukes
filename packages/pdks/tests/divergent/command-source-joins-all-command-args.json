@@ -1,0 +1,77 @@
+{
+  "description": "The command source joins every command argument string with a newline, so text in a later argument is read.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "no-frob",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command"
+            },
+            "extract": {
+              "hits": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "frobnicate"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hits"
+                },
+                "message": "forbidden: {value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "ls",
+          "script": "frobnicate --now"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command", "script"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-frob' broken on -: forbidden: frobnicate --now",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-frob",
+        "-",
+        "[{\"id\":\"clean\",\"witnesses\":[{\"key\":\"2\",\"value\":\"frobnicate --now\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

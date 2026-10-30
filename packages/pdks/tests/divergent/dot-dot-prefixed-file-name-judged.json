@@ -1,0 +1,70 @@
+{
+  "description": "A file whose name merely starts with two dots is inside the root and is judged by a scope-less discipline.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "no-todo",
+          "declare": {
+            "mechanism": "added-only",
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "..foo.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "..foo.txt",
+          "post": "// TODO"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-todo' broken on ..foo.txt: adds a TODO marker",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-todo",
+        "..foo.txt",
+        "[{\"id\":\"clean\",\"witnesses\":[{\"key\":\"0\",\"value\":\"// TODO\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

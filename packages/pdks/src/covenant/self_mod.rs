@@ -8,19 +8,10 @@ use super::mention::{mentions_path, path_matches_protected, proven_change_path};
 use super::run_covenant::Judgment;
 use crate::core::protocol::ToolCall;
 
-/// A call whose name is a mutating tool is judged on its proven `fileChange` target, every
-/// kind included, and otherwise on an `args` mention at any depth.
-pub fn judge(
-    call: &ToolCall,
-    protected_paths: &[String],
-    mutating_tool_names: &[String],
-) -> Judgment {
-    if !mutating_tool_names
-        .iter()
-        .any(|name| !name.is_empty() && *name == call.name)
-    {
-        return Judgment::Upheld;
-    }
+/// A call to a mutating tool is judged on its proven `fileChange` target, every kind
+/// included, and otherwise on an `args` mention at any depth. The dispatcher routes only
+/// calls to those tools.
+pub fn judge(call: &ToolCall, protected_paths: &[String]) -> Judgment {
     if let Some(change_path) = proven_change_path(call) {
         return if protected_paths
             .iter()
@@ -50,7 +41,7 @@ pub fn registration(
     mutating_tool_names: Vec<String>,
 ) -> Registration {
     Registration {
-        label: "self-mod",
+        label: "self-mod".to_string(),
         judge: Judge::SelfMod {
             protected_paths,
             mutating_tool_names,

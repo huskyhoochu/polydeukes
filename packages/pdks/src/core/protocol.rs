@@ -11,6 +11,7 @@ pub struct ToolCall {
 pub struct Input {
     pub tool_calls: Vec<ToolCall>,
     pub has_world: bool,
+    pub actor: Option<Value>,
     pub tools: Option<Value>,
     pub session: Option<Value>,
 }
@@ -67,6 +68,7 @@ pub fn parse_input(text: &str) -> Result<Input, String> {
     Ok(Input {
         tool_calls,
         has_world: object.contains_key("world"),
+        actor: object.remove("actor"),
         tools: object.remove("tools"),
         session: object.remove("session"),
     })

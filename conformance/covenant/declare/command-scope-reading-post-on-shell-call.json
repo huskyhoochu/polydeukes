@@ -1,0 +1,67 @@
+{
+  "description": "A declaration scoped on the command line that also reads post meets a shell call without a file change through its supply policy: the default error makes it unjudgeable.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "x",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command",
+              "include": ["git"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "r",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "m"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "git status"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["discipline 'x' cannot judge -: post — the world carries no source named 'post'"],
+    "rows": [["blocked", "x", "-"]]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "description": "A declaration scoped on the command line does not judge a file edit: the edit carries no command, so it is outside the scope rather than a source the declaration cannot read.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "no-hard-reset",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command"
+            },
+            "extract": {
+              "hits": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "lines"
+                },
+                {
+                  "op": "matches",
+                  "re": "git reset\\b.*--hard"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "recoverable",
+                "relation": {
+                  "op": "empty",
+                  "of": "hits"
+                },
+                "message": "command line forecloses recovery: {value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "git reset --hard HEAD~1\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "lib/a.txt"]]
+  }
+}

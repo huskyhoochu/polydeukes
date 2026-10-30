@@ -16,6 +16,17 @@ pub enum Enforce {
 pub enum Judgment {
     Upheld,
     Broken(String),
+    /// A break a declaration found: its witnesses are the row's fifth field, and its own
+    /// witness block (`opens`) can relax a block like the valve does.
+    Declared {
+        reason: String,
+        witnesses: String,
+        opens: bool,
+    },
+    /// A declaration that could not read a source. It blocks whatever the enforce level is.
+    Unjudgeable(String),
+    /// A declaration whose absent source its own supply policy let pass.
+    SupplyPass,
 }
 
 /// What one wrapped judgment recorded. `valve_refused` is set when the valve was asked to
@@ -41,23 +52,45 @@ pub fn run_covenant(
     valve: Option<&Valve>,
     telemetry_path: &Path,
 ) -> Verdict {
-    let mut valve_refused = false;
-    let event = match (judgment, enforce) {
-        (Judgment::Upheld, _) => Event::Passed,
-        (Judgment::Broken(_), Enforce::Advise) => Event::Advised,
-        (Judgment::Broken(_), Enforce::Block) => match valve {
-            Some(valve) if valve.opens() => Event::Witnessed,
-            Some(_) => {
-                valve_refused = true;
-                Event::Blocked
-            }
-            None => Event::Blocked,
-        },
+    let (reason, witnesses, declared_opens, enforce) = match judgment {
+        Judgment::Upheld => {
+            telemetry::append(telemetry_path, Event::Passed, label, subject);
+            return Verdict {
+                event: Event::Passed,
+                valve_refused: false,
+            };
+        }
+        Judgment::SupplyPass => {
+            telemetry::append_skipped(telemetry_path, label, subject, "supply-pass");
+            return Verdict {
+                event: Event::Skipped,
+                valve_refused: false,
+            };
+        }
+        Judgment::Broken(reason) => (reason, None, false, enforce),
+        Judgment::Declared {
+            reason,
+            witnesses,
+            opens,
+        } => (reason, Some(witnesses), *opens, enforce),
+        Judgment::Unjudgeable(reason) => (reason, None, false, Enforce::Block),
     };
-    if let Judgment::Broken(reason) = judgment {
-        eprintln!("{reason}");
+    let mut valve_refused = false;
+    let event = match enforce {
+        Enforce::Advise => Event::Advised,
+        Enforce::Block if declared_opens || valve.is_some_and(Valve::opens) => Event::Witnessed,
+        Enforce::Block => {
+            valve_refused = valve.is_some();
+            Event::Blocked
+        }
+    };
+    eprintln!("{reason}");
+    match witnesses {
+        Some(witnesses) => {
+            telemetry::append_witnesses(telemetry_path, event, label, subject, witnesses);
+        }
+        None => telemetry::append(telemetry_path, event, label, subject),
     }
-    telemetry::append(telemetry_path, event, label, subject);
     Verdict {
         event,
         valve_refused,

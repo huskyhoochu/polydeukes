@@ -1,0 +1,72 @@
+{
+  "description": "A scope that reads an absent file source under supply error cannot judge, so the call is blocked instead of falling outside the scope.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "scoped-by-file",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "cfg",
+              "include": ["on"]
+            },
+            "sources": {
+              "cfg": {
+                "file": "cfg.txt"
+              }
+            },
+            "supply": {
+              "cfg": "error"
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "clean",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "has TODO"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["discipline 'scoped-by-file' cannot judge lib/a.txt: cfg"],
+    "rows": [["blocked", "scoped-by-file", "lib/a.txt"]]
+  }
+}

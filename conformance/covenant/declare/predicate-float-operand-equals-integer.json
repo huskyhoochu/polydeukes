@@ -1,0 +1,44 @@
+{
+  "description": "A predicate operand written as a YAML float with no fraction equals the integer the JSON item carries.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: fe\n    declare:\n      mechanism: precedent\n      sources:\n        sc: {sidecar: true}\n      extract:\n        hit:\n          - {op: source, of: sc}\n          - {op: json}\n          - {op: items}\n          - {op: filter, when: [{field: n, eq: 1.0}]}\n      relate:\n        - id: r\n          relation: {op: nonEmpty, of: hit}\n          message: \"none {key}\"\n",
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [],
+      "channels": {
+        "sidecar": "[{\"n\":1}]"
+      }
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "fe", "lib/a.txt"]]
+  }
+}
