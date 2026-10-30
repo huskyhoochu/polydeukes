@@ -2,6 +2,7 @@ mod baseline;
 mod check;
 mod core;
 mod covenant;
+mod diff;
 mod load_config;
 
 use std::env;

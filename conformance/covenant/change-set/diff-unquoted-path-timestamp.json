@@ -1,0 +1,15 @@
+{
+  "description": "An unquoted header path is cut at the tab that diff -u puts before its timestamp.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/f.txt"]
+    }
+  },
+  "stdin": "--- a/gate/f.txt\t2024-01-01 00:00:00.000000000 +0000\n+++ b/gate/f.txt\t2024-01-01 00:00:00.000000000 +0000\n@@ -1 +1 @@\n-x\n+y\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/f.txt"],
+    "rows": [["blocked", "self-mod", "gate/f.txt"]]
+  }
+}

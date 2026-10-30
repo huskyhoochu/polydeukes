@@ -1,0 +1,15 @@
+{
+  "description": "Quoted rename from and rename to paths are unescaped on both sides.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git \"a/gate/\\354\\225\\210.txt\" \"b/free/\\353\\260\\224.txt\"\nsimilarity index 100%\nrename from \"gate/\\354\\225\\210.txt\"\nrename to \"free/\\353\\260\\224.txt\"\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-delete would modify protected path gate/안.txt"],
+    "rows": [["blocked", "self-mod", "gate"], ["passed", "covenant-check", "free/바.txt"]]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "description": "A file binding on a modified path reads the working-tree file, not the hunk plus lines.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-tree",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "sources": {
+              "whole": {
+                "file": "lib/a.txt"
+              }
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "whole"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ],
+              "none": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                },
+                {
+                  "op": "matches",
+                  "re": "^never$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "subset",
+                  "of": "hit",
+                  "in": "none"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "TODO from tree\nkept\n"
+  },
+  "stdin": "--- a/lib/a.txt\n+++ b/lib/a.txt\n@@ -1,2 +1,2 @@\n-before\n+fine\n kept\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "TODO from tree",
+      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "reads-tree",
+        "lib/a.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"TODO from tree\\nkept\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -46,13 +46,31 @@ pub struct Entry {
     pub declaration: Declaration,
 }
 
+/// Which observation a judgment is: one call of a live session, or a finished change set.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Surface {
+    Session,
+    ChangeSet,
+}
+
 /// A validated config. `memory` and `adapters` are checked and not kept: this judge reads
-/// neither. `entries` are the session surface's: `disciplines` then `sessionDisciplines`.
+/// neither. Each surface's entries are the shared `disciplines` first, then its own list.
 pub struct Config {
     pub protected_paths: Vec<String>,
     pub log_path: String,
     pub witness: Option<Witness>,
-    pub entries: Vec<Entry>,
+    session_entries: Vec<Entry>,
+    change_set_entries: Vec<Entry>,
+}
+
+impl Config {
+    /// The entries a surface judges, in config order.
+    pub fn entries(&self, surface: Surface) -> &[Entry] {
+        match surface {
+            Surface::Session => &self.session_entries,
+            Surface::ChangeSet => &self.change_set_entries,
+        }
+    }
 }
 
 /// The labels the judging chain's own registrations write rows under.
@@ -105,12 +123,18 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
     }
     let mut seen_ids: Vec<String> = Vec::new();
     let mut problems: Vec<String> = Vec::new();
-    let mut entries: Vec<Entry> = Vec::new();
+    let mut session_entries: Vec<Entry> = Vec::new();
+    let mut change_set_entries: Vec<Entry> = Vec::new();
     for list in DISCIPLINE_LISTS {
         if let Some(value) = config.get(list) {
             let judged = validate_entries(value, list, &mut seen_ids, &mut problems)?;
-            if list != "changeSetDisciplines" {
-                entries.extend(judged);
+            match list {
+                "disciplines" => {
+                    session_entries.extend(judged.clone());
+                    change_set_entries.extend(judged);
+                }
+                "sessionDisciplines" => session_entries.extend(judged),
+                _ => change_set_entries.extend(judged),
             }
         }
     }
@@ -130,7 +154,8 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
         protected_paths,
         log_path: log_path.unwrap_or_else(|| DEFAULT_TELEMETRY_LOG_PATH.to_string()),
         witness,
-        entries,
+        session_entries,
+        change_set_entries,
     })
 }
 

@@ -1,0 +1,15 @@
+{
+  "description": "A quoted path decodes a backslash-t escape to a tab and drops the tab git appends after the closing quote.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/p\tq"]
+    }
+  },
+  "stdin": "--- \"a/gate/p\\tq\"\t\n+++ \"b/gate/p\\tq\"\t\n@@ -1 +1 @@\n-x\n+y\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/p\tq"],
+    "rows": [["blocked", "self-mod", "gate/p q"]]
+  }
+}

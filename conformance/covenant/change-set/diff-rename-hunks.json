@@ -1,0 +1,56 @@
+{
+  "description": "A rename with hunks puts the hunk lines on the new path and none on the old one.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/new"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "diff --git a/lib/old.txt b/lib/new.txt\nsimilarity index 71%\nrename from lib/old.txt\nrename to lib/new.txt\nindex 4cb29ea..ddc897f 100644\n--- a/lib/old.txt\n+++ b/lib/new.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n",
+  "expect": {
+    "exit": 0,
+    "stderr": ["TWO", "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"],
+    "rows": [
+      ["passed", "covenant-check", "lib/old.txt"],
+      [
+        "advised",
+        "reads-post",
+        "lib/new.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"TWO\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

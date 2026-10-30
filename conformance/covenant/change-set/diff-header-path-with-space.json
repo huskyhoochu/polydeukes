@@ -1,0 +1,15 @@
+{
+  "description": "A path with a space that only the diff --git header names is recovered by splitting the header at its midpoint.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/my file.txt b/gate/my file.txt\nnew file mode 100644\nindex 0000000..e69de29\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/my file.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A plus header line with no minus partner exits 3.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "+++ b/f.txt\n",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: unified diff: '+++' line with no '---' partner"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

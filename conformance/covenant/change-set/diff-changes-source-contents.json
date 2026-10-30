@@ -1,0 +1,86 @@
+{
+  "description": "The changes source lists the path of every call that carries a file change in input order, and leaves out a binary modification.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "changeSetDisciplines": [
+        {
+          "id": "change-set-is-one-file",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "supply": {
+              "changes": "pass"
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-companion",
+                "relation": {
+                  "op": "subset",
+                  "of": "changed",
+                  "in": "own"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "diff --git a/lib/b.ts b/lib/b.ts\nnew file mode 100644\nindex 0000000..e69de29\n--- /dev/null\n+++ b/lib/b.ts\n@@ -0,0 +1 @@\n+hi\ndiff --git a/lib/img.bin b/lib/img.bin\nindex 1111111..2222222 100644\nBinary files a/lib/img.bin and b/lib/img.bin differ\ndiff --git a/lib/old.ts b/lib/new.ts\nsimilarity index 100%\nrename from lib/old.ts\nrename to lib/new.ts\ndiff --git a/lib/gone.ts b/lib/gone.ts\ndeleted file mode 100644\nindex 1111111..0000000\n--- a/lib/gone.ts\n+++ /dev/null\n@@ -1 +0,0 @@\n-bye\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "lib/gone.ts",
+      "covenant advisory: 4 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/b.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"1\",\"value\":\"lib/old.ts\"},{\"key\":\"2\",\"value\":\"lib/new.ts\"},{\"key\":\"3\",\"value\":\"lib/gone.ts\"}],\"total\":3}]"
+      ],
+      ["passed", "covenant-check", "lib/img.bin"],
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/old.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"0\",\"value\":\"lib/b.ts\"},{\"key\":\"2\",\"value\":\"lib/new.ts\"},{\"key\":\"3\",\"value\":\"lib/gone.ts\"}],\"total\":3}]"
+      ],
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/new.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"0\",\"value\":\"lib/b.ts\"},{\"key\":\"1\",\"value\":\"lib/old.ts\"},{\"key\":\"3\",\"value\":\"lib/gone.ts\"}],\"total\":3}]"
+      ],
+      [
+        "advised",
+        "change-set-is-one-file",
+        "lib/gone.ts",
+        "[{\"id\":\"has-companion\",\"witnesses\":[{\"key\":\"0\",\"value\":\"lib/b.ts\"},{\"key\":\"1\",\"value\":\"lib/old.ts\"},{\"key\":\"2\",\"value\":\"lib/new.ts\"}],\"total\":3}]"
+      ]
+    ]
+  }
+}

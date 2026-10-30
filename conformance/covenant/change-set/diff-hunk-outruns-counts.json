@@ -1,0 +1,15 @@
+{
+  "description": "A hunk body that outruns its declared counts exits 3 instead of dropping lines.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "--- a/f.txt\n+++ b/f.txt\n@@ -1,0 +1,2 @@\n+aa\n ctx\n+bb\n",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: unified diff: unknown hunk line"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

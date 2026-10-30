@@ -1,0 +1,15 @@
+{
+  "description": "Whitespace-only input is an empty change set that passes with no row.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "\n\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

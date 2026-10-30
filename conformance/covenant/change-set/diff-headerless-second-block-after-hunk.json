@@ -1,0 +1,60 @@
+{
+  "description": "A header-less block that starts right after the previous hunk is a second file and both files are judged.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ],
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "--- a/lib/x.txt\n+++ b/lib/x.txt\n@@ -1 +1 @@\n-a\n+b\n--- a/gate/y.txt\n+++ b/gate/y.txt\n@@ -1 +1 @@\n-c\n+d\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "staged-write would modify protected path gate/y.txt",
+      "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "reads-post",
+        "lib/x.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"b\"}],\"total\":1}]"
+      ],
+      ["advised", "self-mod", "gate"]
+    ]
+  }
+}

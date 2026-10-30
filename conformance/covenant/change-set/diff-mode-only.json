@@ -1,0 +1,15 @@
+{
+  "description": "A mode-only block with no hunk is a write of its path and blocks on a protected path.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/mode.sh b/gate/mode.sh\nold mode 100644\nnew mode 100755\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/mode.sh"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

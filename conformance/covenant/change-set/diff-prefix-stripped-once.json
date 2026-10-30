@@ -1,0 +1,15 @@
+{
+  "description": "Exactly one a/ or b/ level is stripped, so a directory literally named a survives.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["a/x.txt"]
+    }
+  },
+  "stdin": "--- a/a/x.txt\n+++ b/a/x.txt\n@@ -1 +1 @@\n-x\n+y\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path a/x.txt"],
+    "rows": [["blocked", "self-mod", "a/x.txt"]]
+  }
+}

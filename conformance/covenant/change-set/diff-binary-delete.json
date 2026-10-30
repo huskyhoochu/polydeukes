@@ -1,0 +1,15 @@
+{
+  "description": "A binary deletion is dispatched as a delete of its path and blocks on a protected path.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/img.bin"]
+    }
+  },
+  "stdin": "diff --git a/gate/img.bin b/gate/img.bin\ndeleted file mode 100644\nindex d0463d4..0000000\nBinary files a/gate/img.bin and /dev/null differ\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-delete would modify protected path gate/img.bin"],
+    "rows": [["blocked", "self-mod", "gate/img.bin"]]
+  }
+}

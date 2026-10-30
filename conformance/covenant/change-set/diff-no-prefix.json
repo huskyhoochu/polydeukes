@@ -1,0 +1,15 @@
+{
+  "description": "Output written without a/ and b/ prefixes keeps its top-level directory.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git gate/f.txt gate/f.txt\nindex 1111111..2222222 100644\n--- gate/f.txt\n+++ gate/f.txt\n@@ -1 +1 @@\n-x\n+y\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/f.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

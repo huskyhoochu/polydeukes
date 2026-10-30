@@ -266,6 +266,13 @@ impl Declaration {
             .any(|name| name == "command" || name == "actor")
     }
 
+    /// Whether the declaration reads the paths of every file change in the input.
+    pub fn reads_changes(&self) -> bool {
+        self.head_sources()
+            .chain(self.scope.iter().map(|scope| scope.source.as_str()))
+            .any(|name| name == "changes")
+    }
+
     /// The evidence channels the declaration binds, in a fixed order.
     pub fn channels(&self) -> Vec<&'static str> {
         let mut found = Vec::new();

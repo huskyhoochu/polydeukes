@@ -1,0 +1,55 @@
+{
+  "description": "The signature separator and version line git format-patch appends after the last hunk are ignored.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "--- a/lib/f.txt\n+++ b/lib/f.txt\n@@ -1 +1 @@\n-x\n+y\n-- \n2.39.0\n",
+  "expect": {
+    "exit": 0,
+    "stderr": ["y", "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"],
+    "rows": [
+      [
+        "advised",
+        "reads-post",
+        "lib/f.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"y\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Creating an empty file carries no header pair or hunk and is still a write of its path.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/empty.txt b/gate/empty.txt\nnew file mode 100644\nindex 0000000..e69de29\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-write would modify protected path gate/empty.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

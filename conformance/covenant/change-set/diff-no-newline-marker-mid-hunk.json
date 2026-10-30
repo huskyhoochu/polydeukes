@@ -1,0 +1,93 @@
+{
+  "description": "A no-newline marker between a removed and an added line is dropped from both sides.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "reads-pre",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "--- a/lib/f.txt\n+++ b/lib/f.txt\n@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new\n",
+  "expect": {
+    "exit": 0,
+    "stderr": ["new", "old", "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"],
+    "rows": [
+      [
+        "advised",
+        "reads-post",
+        "lib/f.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"new\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "reads-pre",
+        "lib/f.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"old\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

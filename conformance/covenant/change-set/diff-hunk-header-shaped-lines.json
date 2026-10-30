@@ -1,0 +1,97 @@
+{
+  "description": "Inside a hunk a removed line reading as three dashes and an added line reading as three pluses stay hunk lines and are not file headers.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "reads-pre",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "--- a/lib/q.txt\n+++ b/lib/q.txt\n@@ -1,2 +1,2 @@\n-- note\n++ note\n keep\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "- note",
+      "+ note",
+      "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"
+    ],
+    "rows": [
+      [
+        "advised",
+        "reads-post",
+        "lib/q.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"+ note\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "reads-pre",
+        "lib/q.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"- note\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Deleting an empty file carries no header pair or hunk and is still a delete of its path.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --git a/gate/empty.txt b/gate/empty.txt\ndeleted file mode 100644\nindex e69de29..0000000\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["staged-delete would modify protected path gate/empty.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "description": "A file binding on a path the diff deletes reads the working tree, where the file is absent, so the supply policy decides.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-tree",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "sources": {
+              "whole": {
+                "file": "lib/a.txt"
+              }
+            },
+            "supply": {
+              "whole": "pass"
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "whole"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ],
+              "none": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                },
+                {
+                  "op": "matches",
+                  "re": "^never$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "subset",
+                  "of": "hit",
+                  "in": "none"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "diff --git a/lib/a.txt b/lib/a.txt\ndeleted file mode 100644\nindex 1111111..0000000\n--- a/lib/a.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-TODO gone\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "reads-tree", "lib/a.txt", "supply-pass"]]
+  }
+}

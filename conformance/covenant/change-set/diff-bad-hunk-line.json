@@ -1,0 +1,15 @@
+{
+  "description": "A hunk line starting with none of space, plus, minus or backslash exits 3.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-x\ny\n",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: unified diff: unknown hunk line: y"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

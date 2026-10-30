@@ -1,0 +1,15 @@
+{
+  "description": "Zero bytes are an empty change set that passes with no row.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

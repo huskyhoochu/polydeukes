@@ -1,0 +1,93 @@
+{
+  "description": "A modification reads pre as the minus lines and post as the plus lines across every hunk, with context and the no-newline marker dropped.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "reads-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "reads-pre",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                },
+                {
+                  "op": "matches",
+                  "re": "."
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "--- a/lib/f.txt\n+++ b/lib/f.txt\n@@ -1,3 +1,3 @@\n keep\n-old\n+new\n tail\n@@ -20,2 +20,2 @@\n more\n-early\n+late\n\\ No newline at end of file\n",
+  "expect": {
+    "exit": 0,
+    "stderr": ["new", "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"],
+    "rows": [
+      [
+        "advised",
+        "reads-post",
+        "lib/f.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"new\\nlate\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "reads-pre",
+        "lib/f.txt",
+        "[{\"id\":\"seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"old\\nearly\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A combined diff exits 3 instead of reading its two-column hunks as ordinary ones.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": "diff --cc old.txt\nindex 1111111,2222222..3333333\n--- a/old.txt\n+++ b/old.txt\n@@@ -1,3 -1,3 +1,3 @@@\n- main\n -side\n++merged\n  two\n",
+  "expect": {
+    "exit": 3,
+    "stderr": ["covenant check failed closed: unified diff: combined diffs are not translatable"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

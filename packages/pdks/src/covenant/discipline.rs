@@ -11,7 +11,7 @@ use super::relations::{Side, Witness};
 use super::run_covenant::Judgment;
 use super::shell_evidence::{has_pathless_signal, known_write_paths};
 use super::shell_path::shell_path;
-use crate::core::config::Entry;
+use crate::core::config::{Entry, Surface};
 use crate::core::declaration::{Binding, Declaration, Scope};
 use crate::core::protocol::ToolCall;
 use crate::core::validation::{js_trim, normalize_relative};
@@ -52,6 +52,9 @@ pub struct Supply<'a> {
     pub files: &'a HashMap<String, String>,
     pub sidecar: Option<&'a str>,
     pub snapshot: Option<&'a Value>,
+    pub surface: Surface,
+    /// The path of every file change in the input, in input order, as the input spells it.
+    pub changes: &'a Value,
 }
 
 fn string_of(change: &Map<String, Value>, key: &str) -> Option<Value> {
@@ -111,11 +114,21 @@ fn world_of(
     if let Some(actor) = supply.actor {
         world.insert("actor".to_string(), actor.clone());
     }
+    if declaration.reads_changes() {
+        world.insert("changes".to_string(), supply.changes.clone());
+    }
     for (name, binding) in &declaration.sources {
         let value = match binding {
             // A file this call changes reads the change's own `post` (absent on a deletion),
-            // since the tree still holds the state from before the call.
-            Binding::File(file) if *file == path => world.get("post").cloned(),
+            // since the tree still holds the state from before the call. A change-set `post`
+            // is only the whole file for a creation: a modification's is the hunks' added
+            // lines, so that file is read from the tree.
+            Binding::File(file)
+                if *file == path
+                    && (supply.surface == Surface::Session || !world.contains_key("pre")) =>
+            {
+                world.get("post").cloned()
+            }
             Binding::File(file) => supply
                 .files
                 .get(file)

@@ -1,0 +1,15 @@
+{
+  "description": "A C-quoted diff path holding a tab and a raw non-BMP character is judged as the decoded path and blocks.",
+  "args": ["--diff", "--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate/😀\tq"]
+    }
+  },
+  "stdin": "diff --git \"a/gate/😀\\tq\" \"b/gate/😀\\tq\"\nnew file mode 100644\n--- /dev/null\n+++ \"b/gate/😀\\tq\"\n@@ -0,0 +1 @@\n+x\n",
+  "expect": {
+    "exit": 2,
+    "stderr": ["would modify protected path"],
+    "rows": [["blocked", "self-mod", "gate/😀 q"]]
+  }
+}

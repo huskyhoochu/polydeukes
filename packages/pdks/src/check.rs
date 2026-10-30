@@ -14,7 +14,7 @@ use std::path::{Component, Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::baseline;
-use crate::core::config::{Config, DEFAULT_TELEMETRY_LOG_PATH, Entry, Witness};
+use crate::core::config::{Config, DEFAULT_TELEMETRY_LOG_PATH, Entry, Surface, Witness};
 use crate::core::declaration::Binding;
 use crate::core::exit_codes::Exit;
 use crate::core::protocol::{Input, parse_input};
@@ -28,13 +28,10 @@ use crate::covenant::extract::normalize;
 use crate::covenant::run_covenant::{Enforce, Verdict};
 use crate::covenant::ttl_witness::{TtlSpec, Valve, witness_expired_at};
 use crate::covenant::{self_mod, shell_mod, transcript_mod};
+use crate::diff::{self, STAGED_DELETE, STAGED_WRITE};
 use crate::load_config::{
     LayerSource, discover_config_path, parse_config_source, parse_layer_source,
 };
-
-/// The mutating roster of a host that declared none.
-const STAGED_WRITE: &str = "staged-write";
-const STAGED_DELETE: &str = "staged-delete";
 
 const TELEMETRY_ENV: &str = "POLYDEUKES_TELEMETRY_PATH";
 
@@ -196,7 +193,7 @@ fn read_input(spec: &CheckSpec) -> Result<Input, String> {
                 None => Err("input failure reason must be a non-empty string".to_string()),
             }
         }
-        Mode::Diff => Err("--diff input translation is not ported".to_string()),
+        Mode::Diff => diff::translate(spec.stdin),
     }
 }
 
@@ -414,6 +411,7 @@ fn witness_state_line(
 fn assemble(
     root: &Path,
     config: &Config,
+    entries: &[Entry],
     mutating: &[String],
     shell_tools: &[String],
     evidence_path: Option<&str>,
@@ -437,9 +435,31 @@ fn assemble(
             mutating,
         ));
     }
-    registrations.extend(discipline::registrations(&config.entries));
+    registrations.extend(discipline::registrations(entries));
     registrations.push(shell_unjudgeable_registration());
     registrations
+}
+
+/// The input mode is the surface: a diff is a finished change set, anything else is one call
+/// the caller observed.
+fn surface_of(mode: Mode) -> Surface {
+    if mode == Mode::Diff {
+        Surface::ChangeSet
+    } else {
+        Surface::Session
+    }
+}
+
+/// The path of every file change in the input, in input order, as the input spells it.
+fn changed_paths(input: &Input) -> Value {
+    Value::Array(
+        input
+            .tool_calls
+            .iter()
+            .filter_map(|call| call.file_change.as_ref()?.get("path")?.as_str())
+            .map(|path| Value::String(path.to_string()))
+            .collect(),
+    )
 }
 
 /// Judge every tool call as its own unit, so telemetry stays at one row per call.
@@ -482,17 +502,29 @@ fn judge_input(
         (tools.shell.as_slice(), tools.command_args.as_slice())
     });
     let evidence_path = session.and_then(|session| session.evidence_path.as_deref());
-    let registrations = assemble(spec.root, config, &mutating, shell_tools, evidence_path);
-    let files = match read_file_sources(spec.root, &config.entries) {
+    let surface = surface_of(spec.mode);
+    let entries = config.entries(surface);
+    let registrations = assemble(
+        spec.root,
+        config,
+        entries,
+        &mutating,
+        shell_tools,
+        evidence_path,
+    );
+    let files = match read_file_sources(spec.root, entries) {
         Ok(files) => files,
         Err(error) => return fail_closed(telemetry_path, &error, "", Exit::Blocked),
     };
+    let changes = changed_paths(input);
     let supply = Supply {
         root: spec.root,
         actor: input.actor.as_ref(),
         files: &files,
         sidecar: session.and_then(|session| session.sidecar.as_deref()),
         snapshot: session.map(|session| &session.snapshot),
+        surface,
+        changes: &changes,
     };
 
     let context = Context {
