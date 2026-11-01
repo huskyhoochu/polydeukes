@@ -1,0 +1,15 @@
+{
+  "description": "A write to an unprotected target whose content mentions a protected path is not routed to self-mod; the row is the runner's row for the target.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"src/a.ts\", \"content\": \"see dist/x.js\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"src/a.ts\", \"post\": \"see dist/x.js\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "src/a.ts"]]
+  }
+}

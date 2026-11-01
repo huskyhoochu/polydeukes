@@ -1,0 +1,31 @@
+{
+  "description": "When a command with no detected write mentions two protected paths, the backstop names the one mentioned first, and the row subject is that one.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist", "gate"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo gate dist"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["echo mentions protected path gate without read-only proof"],
+    "rows": [["blocked", "shell-mod", "gate"]]
+  }
+}

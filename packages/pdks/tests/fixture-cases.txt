@@ -28,7 +28,6 @@ self-mod/ancestor-match
 self-mod/dot-segment
 self-mod/empty-mutating-roster
 self-mod/evidence-free-mention
-self-mod/mention-in-content
 self-mod/protected-write-advise
 self-mod/protected-write-block
 self-mod/sibling-prefix
@@ -78,7 +77,6 @@ shell-mod/cwd-raw-mention
 shell-mod/escaped-multibyte
 shell-mod/escaped-multibyte-in-quotes
 shell-mod/hash-inside-word
-shell-mod/protected-path-order
 shell-mod/hash-after-process-substitution
 shell-mod/multibyte-in-substitution
 declare/combinator-intersect

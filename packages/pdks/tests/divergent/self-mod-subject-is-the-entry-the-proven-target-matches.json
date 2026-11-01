@@ -1,0 +1,37 @@
+{
+  "description": "A write to a protected path whose content mentions a different protected path is recorded under the path the write targets, because the proven change path is the only routing candidate.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["tools/bin/release", "gate.txt"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "gate.txt",
+          "content": "tools has no library"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "gate.txt",
+          "post": "tools has no library"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate.txt"],
+    "rows": [["blocked", "self-mod", "gate.txt"]]
+  }
+}

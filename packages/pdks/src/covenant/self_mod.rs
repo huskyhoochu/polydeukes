@@ -8,32 +8,33 @@ use super::mention::{mentions_path, path_matches_protected, proven_change_path};
 use super::run_covenant::Judgment;
 use crate::core::protocol::ToolCall;
 
-/// A call to a mutating tool is judged on its proven `fileChange` target, every kind
-/// included, and otherwise on an `args` mention at any depth. The dispatcher routes only
-/// calls to those tools.
-pub fn judge(call: &ToolCall, protected_paths: &[String]) -> Judgment {
-    if let Some(change_path) = proven_change_path(call) {
-        return if protected_paths
+/// The protected path a mutating call targets, with the broken judgment, or `None` when it
+/// targets none. The call is judged on its proven `fileChange` target, every kind included,
+/// and otherwise on an `args` mention at any depth. The dispatcher routes only calls to
+/// mutating tools.
+///
+/// The proven path is compared whole: an adapter already resolved it, and splitting it would
+/// break a path that contains a space into words that name nothing.
+pub fn judge(call: &ToolCall, protected_paths: &[String]) -> Option<(String, Judgment)> {
+    let (entry, target) = if let Some(change_path) = proven_change_path(call) {
+        let entry = protected_paths
             .iter()
-            .any(|path| path_matches_protected(change_path, path))
-        {
-            Judgment::Broken(format!(
-                "{} would modify protected path {change_path}",
-                call.name
-            ))
-        } else {
-            Judgment::Upheld
-        };
-    }
-    let mentioned = call.args.as_ref().and_then(|args| {
-        protected_paths
+            .find(|path| path_matches_protected(change_path, path))?;
+        (entry, change_path)
+    } else {
+        let args = call.args.as_ref()?;
+        let entry = protected_paths
             .iter()
-            .find(|path| mentions_path(args, path))
-    });
-    match mentioned {
-        Some(path) => Judgment::Broken(format!("{} would modify protected path {path}", call.name)),
-        None => Judgment::Upheld,
-    }
+            .find(|path| mentions_path(args, path))?;
+        (entry, entry.as_str())
+    };
+    Some((
+        entry.clone(),
+        Judgment::Broken(format!(
+            "{} would modify protected path {target}",
+            call.name
+        )),
+    ))
 }
 
 pub fn registration(

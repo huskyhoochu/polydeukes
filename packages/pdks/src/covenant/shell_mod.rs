@@ -71,11 +71,24 @@ impl Target<'_> {
     }
 }
 
-fn judge_command(command: &SimpleCommand, target: &Target, cwd: Option<&str>) -> Option<String> {
+/// The protected entry or transcript path a reason names, and the reason.
+pub struct Hit<'a> {
+    pub entry: &'a str,
+    pub reason: String,
+}
+
+fn judge_command<'a>(
+    command: &SimpleCommand,
+    target: &'a Target,
+    cwd: Option<&str>,
+) -> Option<Hit<'a>> {
     // (a) A detected write whose target is the compared target.
     for found in detect(command) {
         if let Some(hit) = target.mention(&[found.path], cwd) {
-            return Some(target.reason(&Clause::Detected(found.rule), hit));
+            return Some(Hit {
+                entry: hit,
+                reason: target.reason(&Clause::Detected(found.rule), hit),
+            });
         }
     }
 
@@ -106,7 +119,10 @@ fn judge_command(command: &SimpleCommand, target: &Target, cwd: Option<&str>) ->
     // (c) A protected path inside an opaque token (substitution, expansion, glob) is
     // undecidable. The transcript has no such clause: it falls through to (e).
     if mention_is_opaque && matches!(target, Target::Protected(_)) {
-        return Some(format!("protected path {mentioned} inside an opaque token"));
+        return Some(Hit {
+            entry: mentioned,
+            reason: format!("protected path {mentioned} inside an opaque token"),
+        });
     }
 
     // (d) An opaque write target could resolve to the compared target.
@@ -115,18 +131,28 @@ fn judge_command(command: &SimpleCommand, target: &Target, cwd: Option<&str>) ->
         .iter()
         .any(|redirect| redirect.operator.contains('>') && redirect.target.opaque)
     {
-        return Some(target.reason(&Clause::OpaqueRedirect, mentioned));
+        return Some(Hit {
+            entry: mentioned,
+            reason: target.reason(&Clause::OpaqueRedirect, mentioned),
+        });
     }
 
     // (e) Backstop: a mention breaks.
     let first = command.words.first().map_or("", |word| word.text.as_str());
-    Some(target.reason(&Clause::Backstop(first), mentioned))
+    Some(Hit {
+        entry: mentioned,
+        reason: target.reason(&Clause::Backstop(first), mentioned),
+    })
 }
 
-/// The reason the command lines break against the target, or `None` when none mentions it.
+/// The first hit in the command lines, or `None` when none mentions the target.
 /// For each line, an unread span is answered before the commands, so a mention only the span
 /// can see is named as one.
-pub fn judge_shell(lines: &[Tokenized], target: &Target, cwd: Option<&str>) -> Option<String> {
+pub fn judge_shell<'a>(
+    lines: &[Tokenized],
+    target: &'a Target,
+    cwd: Option<&str>,
+) -> Option<Hit<'a>> {
     for line in lines {
         // The shell would remove quotes and backslashes, so a target split by them
         // (`sr"c"`) would otherwise defeat the scan that replaces the one they stopped.
@@ -134,85 +160,43 @@ pub fn judge_shell(lines: &[Tokenized], target: &Target, cwd: Option<&str>) -> O
             let stripped = span.replace(['\'', '"', '\\'], "");
             let candidates = untokenizable_line_candidates(&stripped);
             if let Some(hit) = target.mention(&candidates, cwd) {
-                return Some(target.reason(&Clause::Unread, hit));
+                return Some(Hit {
+                    entry: hit,
+                    reason: target.reason(&Clause::Unread, hit),
+                });
             }
         }
         for command in &line.commands {
-            if let Some(reason) = judge_command(command, target, cwd) {
-                return Some(reason);
+            if let Some(found) = judge_command(command, target, cwd) {
+                return Some(found);
             }
         }
     }
     None
 }
 
-/// Every text the ladder reads, with the directory it is relative to: the candidates of each
-/// unread span, the detected write targets, the words and the redirect targets.
-fn read_texts<'a>(lines: &[Tokenized], cwd: Option<&'a str>) -> Vec<(String, Option<&'a str>)> {
-    let mut texts = Vec::new();
-    for line in lines {
-        for span in &line.unread {
-            let stripped = span.replace(['\'', '"', '\\'], "");
-            for candidate in untokenizable_line_candidates(&stripped) {
-                texts.push((candidate.to_string(), cwd));
-            }
-        }
-        for command in &line.commands {
-            for found in detect(command) {
-                texts.push((found.path.to_string(), cwd));
-            }
-            for (index, word) in command.words.iter().enumerate() {
-                texts.push((word.text.clone(), shell_word_cwd(command, index, cwd)));
-            }
-            for redirect in &command.redirects {
-                texts.push((redirect.target.text.clone(), cwd));
-            }
-        }
-    }
-    texts
-}
-
-/// The row subject of a shell call, or `None` when it is not routed here: the first protected
-/// path, in configuration order, that any text of the call mentions. A shell call with no
-/// command string cannot be read, so it routes with the placeholder subject and its judgment
-/// blocks.
-pub fn route<'a>(
-    shell: &ShellCall,
-    protected_paths: &'a [String],
-    cwd: Option<&str>,
-) -> Option<&'a str> {
-    if !shell.is_shell {
-        return None;
-    }
-    if shell.lines.is_empty() {
-        return Some("-");
-    }
-    let texts = read_texts(&shell.lines, cwd);
-    protected_paths
-        .iter()
-        .find(|path| {
-            texts
-                .iter()
-                .any(|(text, text_cwd)| mentions_shell_path(text, path, *text_cwd))
-        })
-        .map(String::as_str)
-}
-
+/// The row subject and judgment of a shell call, or `None` when it is not routed here. A shell
+/// call with no command string cannot be read, so it takes the placeholder subject and breaks.
 pub fn judge(
     call_name: &str,
     shell: &ShellCall,
     protected_paths: &[String],
     cwd: Option<&str>,
-) -> Judgment {
+) -> Option<(String, Judgment)> {
+    if !shell.is_shell {
+        return None;
+    }
     if shell.lines.is_empty() {
-        return Judgment::Broken(format!(
-            "unjudgeable shell call {call_name}: no command string under any command-arg name"
+        return Some((
+            "-".to_string(),
+            Judgment::Broken(format!(
+                "unjudgeable shell call {call_name}: no command string under any command-arg name"
+            )),
         ));
     }
-    match judge_shell(&shell.lines, &Target::Protected(protected_paths), cwd) {
-        Some(reason) => Judgment::Broken(reason),
-        None => Judgment::Upheld,
-    }
+    let target = Target::Protected(protected_paths);
+    let hit = judge_shell(&shell.lines, &target, cwd)?;
+    Some((hit.entry.to_string(), Judgment::Broken(hit.reason)))
 }
 
 pub fn registration(protected_paths: Vec<String>) -> Registration {

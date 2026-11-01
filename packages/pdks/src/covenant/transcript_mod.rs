@@ -161,9 +161,8 @@ pub fn judge(spec: &TranscriptMod, call: &ToolCall, shell: &ShellCall) -> Option
     let transcript = &spec.transcript;
     if shell.is_shell {
         let cwd = join_under(&spec.root, call.cwd.as_deref().unwrap_or("."));
-        if let Some(reason) = judge_shell(&shell.lines, &Target::Transcript(transcript), Some(&cwd))
-        {
-            return Some(Judgment::Broken(reason));
+        if let Some(hit) = judge_shell(&shell.lines, &Target::Transcript(transcript), Some(&cwd)) {
+            return Some(Judgment::Broken(hit.reason));
         }
     }
     if spec

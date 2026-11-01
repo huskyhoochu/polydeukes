@@ -18,6 +18,6 @@
   "expect": {
     "exit": 0,
     "stderr": [],
-    "rows": [["passed", "self-mod", "gate"]]
+    "rows": [["passed", "covenant-check", "@@ROOT@@/lib/a.txt"]]
   }
 }

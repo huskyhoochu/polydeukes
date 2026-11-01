@@ -22,6 +22,9 @@
   "expect": {
     "exit": 2,
     "stderr": ["Write would modify protected path alias.txt"],
-    "rows": [["blocked", "self-mod", "alias.txt"], ["passed", "self-mod", "alias.txt"]]
+    "rows": [
+      ["blocked", "self-mod", "alias.txt"],
+      ["passed", "covenant-check", "@@ROOT@@/alias.txt"]
+    ]
   }
 }

@@ -5,7 +5,6 @@
 use std::path::Path;
 
 use super::bash_line::{Tokenized, tokenize_command_line};
-use super::mention::{path_candidates, path_matches_protected, proven_change_path, string_values};
 use super::run_covenant::{Enforce, Judgment, Verdict, record_skip, run_covenant};
 use super::transcript_mod::TranscriptMod;
 use super::ttl_witness::Valve;
@@ -84,22 +83,11 @@ impl ShellCall {
 
 /// Run every registration the call mentions, in registration order and without
 /// short-circuiting.
-///
-/// Candidates are the path-shaped fragments of every string inside the call's `args` at any
-/// depth, plus the proven `fileChange` path whole: an adapter already resolved it, and
-/// splitting it would break a path that contains a space into words that name nothing.
 pub fn dispatch(
     call: &ToolCall,
     registrations: &[Registration],
     context: &Context,
 ) -> Vec<Verdict> {
-    let mut strings = Vec::new();
-    if let Some(args) = &call.args {
-        string_values(args, &mut strings);
-    }
-    let mut candidates: Vec<&str> = strings.into_iter().flat_map(path_candidates).collect();
-    candidates.extend(proven_change_path(call));
-
     let shell = ShellCall::new(call, context);
     let mut verdicts = Vec::new();
     for registration in registrations {
@@ -116,25 +104,18 @@ pub fn dispatch(
                 {
                     continue;
                 }
-                let mentioned = protected_paths.iter().find(|path| {
-                    candidates
-                        .iter()
-                        .any(|candidate| path_matches_protected(candidate, path))
-                });
-                let Some(subject) = mentioned else {
+                let Some((subject, judgment)) = self_mod::judge(call, protected_paths) else {
                     continue;
                 };
-                let judgment = self_mod::judge(call, protected_paths);
-                (subject.clone(), Some(judgment))
+                (subject, Some(judgment))
             }
             Judge::ShellMod { protected_paths } => {
-                let paths = protected_paths;
-                let cwd = call.cwd.as_deref();
-                let Some(subject) = shell_mod::route(&shell, paths, cwd) else {
+                let Some((subject, judgment)) =
+                    shell_mod::judge(&call.name, &shell, protected_paths, call.cwd.as_deref())
+                else {
                     continue;
                 };
-                let judgment = shell_mod::judge(&call.name, &shell, paths, cwd);
-                (subject.to_string(), Some(judgment))
+                (subject, Some(judgment))
             }
             Judge::TranscriptMod(spec) => {
                 let Some(judgment) = transcript_mod::judge(spec, call, &shell) else {

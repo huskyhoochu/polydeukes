@@ -32,6 +32,6 @@
   "expect": {
     "exit": 0,
     "stderr": [],
-    "rows": [["passed", "self-mod", "dist"]]
+    "rows": [["passed", "covenant-check", "src/a.ts"]]
   }
 }
