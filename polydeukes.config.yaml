@@ -34,7 +34,8 @@ memory:
 # passing it) and what a commit can never show (gitignored build output: the packages' dist and
 # the Rust release executable lefthook runs).
 protectedPaths:
-  - "packages/pdks/target/release"
+  - "target/release/pdks"
+  - ".cargo/config.toml"
   - ".claude/hooks"
   - ".claude/settings.json"
   - ".grok/hooks"
