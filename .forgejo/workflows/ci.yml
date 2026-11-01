@@ -22,7 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: corepack enable
+      # Node 25 and later no longer bundle corepack, so it is installed from npm first.
+      - run: npm install --global corepack && corepack enable
 
       - run: pnpm install --frozen-lockfile
 
