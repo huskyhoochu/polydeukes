@@ -80,6 +80,12 @@ registrations is `new-package-checklist.md`.
   `<pdks> covenant check`. A missing judge lets the call proceed with an install hint. Its
   translation is pinned by `conformance/adapter/claude-code/`, run through
   `scripts/verify-adapter-fixtures.mjs`.
+- **`packages/pdks-codex`** (crate, `publish = false`) is the Codex adapter in the same shape:
+  `init` writes `PreToolUse`, `PostToolUse` and `SessionEnd` registrations to `.codex/hooks.json` as
+  single-quoted command strings without `|| exit 2`, and adds `.codex/hooks.json` and
+  `.codex/config.toml` to `protectedPaths`. `hook` translates `apply_patch` and `Bash` calls, and
+  keeps the session's tool-call history in `.polydeukes/codex-sessions/` from the two lifecycle
+  events. Its cases are `conformance/adapter/codex/`, run with `--cases-dir`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

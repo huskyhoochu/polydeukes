@@ -1,0 +1,97 @@
+{
+  "description": "A corrupt evidence file of another session does not affect this session's call.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "history",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "cmds": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["Bash"]
+                },
+                {
+                  "op": "select",
+                  "path": "args.command"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "cmd-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "cmds"
+                },
+                "message": "a command is on record"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "never": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "(?!)"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "never",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "never"
+                  },
+                  "message": "never held"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/codex-sessions/d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa.jsonl": "{not json\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: lib/a.txt\n+x\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "history", "lib/a.txt"]]
+  }
+}

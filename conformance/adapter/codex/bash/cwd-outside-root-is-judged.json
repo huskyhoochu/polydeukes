@@ -1,0 +1,30 @@
+{
+  "description": "A Bash call whose cwd is outside the root is judged with a parent-escaping cwd instead of being refused.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@HOME@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "ls"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
+  }
+}

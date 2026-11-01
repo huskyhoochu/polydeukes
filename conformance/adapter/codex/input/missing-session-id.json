@@ -1,0 +1,29 @@
+{
+  "description": "A payload with no session_id fails closed.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: lib/a.txt\n+x\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

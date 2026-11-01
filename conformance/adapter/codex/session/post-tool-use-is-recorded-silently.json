@@ -1,0 +1,32 @@
+{
+  "description": "A PostToolUse event is recorded without a judgment: exit 0, no row, no output.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PostToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "ls"
+    },
+    "tool_response": {},
+    "success": true
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

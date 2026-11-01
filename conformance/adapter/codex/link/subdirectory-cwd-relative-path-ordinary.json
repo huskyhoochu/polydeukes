@@ -1,0 +1,67 @@
+{
+  "description": "A relative patch path under a subdirectory cwd that lands outside the protected directory passes under its rebased name.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/sub/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/sub/keep": ""
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@/lib/sub",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: inner.txt\n+x\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/sub/inner.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/sub/inner.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"x\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

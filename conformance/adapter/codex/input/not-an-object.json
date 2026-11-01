@@ -1,0 +1,17 @@
+{
+  "description": "A payload that is a JSON array fails closed.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": [],
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

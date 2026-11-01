@@ -1,0 +1,22 @@
+{
+  "description": "A SessionEnd event with no evidence file succeeds without a judgment: exit 0, no row, no output.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "hook_event_name": "SessionEnd",
+    "cwd": "@@ROOT@@",
+    "transcript_path": null
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

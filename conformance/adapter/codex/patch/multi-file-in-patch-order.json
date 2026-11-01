@@ -1,0 +1,72 @@
+{
+  "description": "Several hunks land as several file changes judged in the order the patch names them.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: lib/two.txt\n+2\n*** Add File: lib/one.txt\n+1\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/two.txt", "discipline 'see' broken on lib/one.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/two.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"2\\n\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "see",
+        "lib/one.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"1\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

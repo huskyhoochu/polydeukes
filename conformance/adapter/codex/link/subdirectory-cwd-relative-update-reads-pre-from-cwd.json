@@ -1,0 +1,82 @@
+{
+  "description": "An Update by a relative path from a subdirectory cwd reads the pre-state at the cwd-resolved file, and the post is rebased to the root-relative name.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/sub/"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ],
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              },
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/sub/inner.txt": "alpha\nbeta\n",
+    "inner.txt": "root decoy\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@/lib/sub",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: inner.txt\n@@\n-beta\n+BETA\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/sub/inner.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/sub/inner.txt",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha\\nbeta\\n\"}],\"total\":1},{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha\\nBETA\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Runs every conformance/adapter/claude-code/**/*.json case against an adapter hook command, so
-// any implementation of the Claude Code adapter is compared on the process boundary alone.
+// Runs every conformance/adapter/<host>/**/*.json case (claude-code unless --cases-dir names
+// another) against an adapter hook command, so any implementation of an adapter is compared on
+// the process boundary alone.
 // Usage: node scripts/verify-adapter-fixtures.mjs --command '<JSON argv array>'
 //          [--cases-dir <directory>] [<group>/<name> prefix]
 //

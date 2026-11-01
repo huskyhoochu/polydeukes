@@ -1,0 +1,31 @@
+{
+  "description": "A rename out of a protected directory is blocked on the source element.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/a.txt": "alpha\nbeta\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: gate/a.txt\n*** Move to: lib/a.txt\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path gate/a.txt"],
+    "rows": [["blocked", "self-mod", "gate"], ["passed", "covenant-check", "-"]]
+  }
+}

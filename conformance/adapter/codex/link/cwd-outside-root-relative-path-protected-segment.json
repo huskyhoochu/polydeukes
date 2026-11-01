@@ -1,0 +1,30 @@
+{
+  "description": "A relative patch path under a cwd outside the root resolves against that cwd and still matches a protected segment.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": [".codex/config.toml"]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@HOME@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: .codex/config.toml\n+x\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path"],
+    "rows": [["blocked", "self-mod", ".codex/config.toml"]]
+  }
+}

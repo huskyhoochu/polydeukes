@@ -1,0 +1,104 @@
+{
+  "description": "A Move to with no hunk yields the source delete and a destination create carrying the source text.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see-pre",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/a\\.txt$"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              }
+            ]
+          }
+        },
+        {
+          "id": "see-post",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/b\\.txt$"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "alpha\nbeta\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: lib/a.txt\n*** Move to: lib/b.txt\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'see-pre' broken on lib/a.txt",
+      "discipline 'see-post' broken on lib/b.txt"
+    ],
+    "rows": [
+      [
+        "advised",
+        "see-pre",
+        "lib/a.txt",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha\\nbeta\\n\"}],\"total\":1}]"
+      ],
+      [
+        "advised",
+        "see-post",
+        "lib/b.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha\\nbeta\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

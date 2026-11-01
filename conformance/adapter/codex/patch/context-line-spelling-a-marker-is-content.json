@@ -1,0 +1,32 @@
+{
+  "description": "A context line spelling a Delete File marker is content, not a deletion of the protected file it names.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "lib/a.txt": "*** Delete File: gate/x\nkeep\n",
+    "gate/x": "k\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: lib/a.txt\n@@\n *** Delete File: gate/x\n-keep\n+kept\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
+  }
+}

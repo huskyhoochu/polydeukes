@@ -1,0 +1,34 @@
+{
+  "description": "An Update through a link to a protected file is blocked by its real name.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/real.txt": "old\n"
+  },
+  "links": {
+    "lib/alias.txt": "../gate/real.txt"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: lib/alias.txt\n@@\n-old\n+new\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path gate/real.txt"],
+    "rows": [["passed", "covenant-check", "-"], ["blocked", "self-mod", "gate"]]
+  }
+}

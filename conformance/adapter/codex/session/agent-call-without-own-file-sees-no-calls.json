@@ -1,0 +1,98 @@
+{
+  "description": "An agent whose own file is absent sees an empty list, not the main session's calls.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "history",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "cmds": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["Bash"]
+                },
+                {
+                  "op": "select",
+                  "path": "args.command"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "cmd-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "cmds"
+                },
+                "message": "a command is on record"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "never": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "(?!)"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "never",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "never"
+                  },
+                  "message": "never held"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/codex-sessions/6a840baf5d8c3ff241688aeb14546e653774cd5387faf1cb982b0fbbf1fbb810.jsonl": "{\"kind\":\"tool\",\"name\":\"Bash\",\"args\":{\"command\":\"parent-run\"},\"succeeded\":true}\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Add File: lib/a.txt\n+x\n*** End Patch"
+    },
+    "agent_id": "a-1"
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "history", "lib/a.txt"]]
+  }
+}

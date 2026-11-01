@@ -1,0 +1,39 @@
+{
+  "description": "A Move whose destination goes through a link to a protected directory is blocked by the destination's real name.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/keep": "",
+    "lib/a.txt": "alpha\nbeta\n"
+  },
+  "links": {
+    "shortcut": "gate"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: lib/a.txt\n*** Move to: shortcut/b.txt\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["protected path gate/b.txt"],
+    "rows": [
+      ["passed", "covenant-check", "-"],
+      ["passed", "covenant-check", "-"],
+      ["blocked", "self-mod", "gate"]
+    ]
+  }
+}

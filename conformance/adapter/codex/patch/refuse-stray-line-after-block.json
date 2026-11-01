@@ -1,0 +1,31 @@
+{
+  "description": "An Update body line after the first block that is not under an @@ header is refused.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "lib/a.txt": "alpha\nbeta\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "apply_patch",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "*** Begin Patch\n*** Update File: lib/a.txt\n@@\n-alpha\n+ALPHA\n*** End of File\nstray\n*** End Patch"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

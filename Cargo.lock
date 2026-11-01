@@ -285,6 +285,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdks-codex"
+version = "0.20.1"
+dependencies = [
+ "serde-saphyr",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "polydeukes-sdk"
 version = "0.20.1"
 dependencies = [

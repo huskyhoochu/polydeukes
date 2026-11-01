@@ -1,0 +1,12 @@
+[package]
+name = "pdks-codex"
+version = "0.20.1"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+publish = false
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+serde-saphyr = "2"
+sha2 = "0.11"

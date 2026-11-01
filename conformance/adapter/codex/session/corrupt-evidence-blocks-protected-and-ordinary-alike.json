@@ -1,0 +1,31 @@
+{
+  "description": "A corrupt evidence file fails an ordinary Bash call closed too, with a blocked covenant-check row.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    ".polydeukes/codex-sessions/6a840baf5d8c3ff241688aeb14546e653774cd5387faf1cb982b0fbbf1fbb810.jsonl": "\n"
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "ls"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

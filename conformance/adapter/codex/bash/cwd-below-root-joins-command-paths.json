@@ -1,0 +1,31 @@
+{
+  "description": "A Bash call made from a protected directory carries that cwd, so a bare relative path resolves into it.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    "dist/keep": ""
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@/dist",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "rm a"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

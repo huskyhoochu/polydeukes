@@ -1,0 +1,30 @@
+{
+  "description": "A Bash command writing a protected path is blocked on the shell axis.",
+  "tree": {
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "session_id": "s-1",
+    "turn_id": "t-1",
+    "transcript_path": null,
+    "cwd": "@@ROOT@@",
+    "hook_event_name": "PreToolUse",
+    "model": "gpt-5",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_use_id": "call-1",
+    "tool_input": {
+      "command": "rm gate/inner.txt"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["gate"],
+    "rows": [["blocked", "shell-mod", "gate"]]
+  }
+}
