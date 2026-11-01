@@ -3,6 +3,7 @@ mod check;
 mod core;
 mod covenant;
 mod diff;
+mod docs;
 mod explain;
 mod init;
 mod load_config;
@@ -15,7 +16,7 @@ use std::process::ExitCode;
 use check::{CheckSpec, Mode, run_covenant_check};
 use covenant::run_covenant::Enforce;
 
-const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version";
+const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version | pdks docs [topic | search <query> | show <document-id>]";
 
 struct Flags {
     mode: Mode,
@@ -106,6 +107,9 @@ fn main() -> ExitCode {
                     }
                 });
             return emit(command, report);
+        }
+        Some([command, rest @ ..]) if command == "docs" => {
+            return emit("docs", docs::run(rest));
         }
         Some([command, subcommand, flags @ ..])
             if command == "covenant" && subcommand == "check" =>

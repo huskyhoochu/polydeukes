@@ -275,6 +275,27 @@ disciplines:
         - id: "tier-listed"
           relation: { op: "implies", of: "named", requires: "allowed" }
           message: "model {key} is not a tier model-tiers.md lists"
+  - id: "pdks-tests-spawn-the-executable"
+    why: "packages/pdks has no library target and every test spawns the executable from tests/; a test module under src/ splits the crate's tests across two layouts."
+    declare:
+      mechanism: "added-only"
+      scope: { source: "target.path", include: ['^packages/pdks/src/.*\.rs$'] }
+      supply: { pre: "empty", post: "empty" }
+      extract:
+        before:
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(#\[(?:test|cfg(?:_attr)?\([^\]]*\btest\b[^\]]*)\])' }
+        after:
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(#\[(?:test|cfg(?:_attr)?\([^\]]*\btest\b[^\]]*)\])' }
+        added:
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
+      relate:
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key} under src/; write the test in packages/pdks/tests/"
 
 # Judged on the session surface only — an adapter hook or the SDK, one call observed before
 # it runs. These declarations read the command line, the transcript, or the actor, which no

@@ -91,6 +91,10 @@ contradict each other. Silence one site with `#[expect(lint, reason = "...")]`, 
   injection; the TS judge had those for in-process callers this crate does not have.
 - `enum` instead of a `bool` parameter whose meaning is not obvious at the call site; named fields
   instead of tuples beyond a newtype.
+- Tests live in `tests/` and spawn the executable; `src/` holds no test module. The crate has no
+  library target and no in-process caller, so a process test is the only kind that exercises the
+  contract. The `pdks-tests-spawn-the-executable` discipline advises on a test attribute added under
+  `src/`.
 - No glob imports except `use super::*` in a test module.
 - Direct `for` loops over long combinator chains that mutate outside state.
 - Comments follow `comments.md`: the crate is public source.
