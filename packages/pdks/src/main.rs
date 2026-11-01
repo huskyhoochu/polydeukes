@@ -9,14 +9,17 @@ mod init;
 mod load_config;
 
 use std::env;
+use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
 
 use check::{CheckSpec, Mode, run_covenant_check};
 use covenant::run_covenant::Enforce;
 
-const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version | pdks docs [topic | search <query> | show <document-id>]";
+const BUILTINS: [&str; 4] = ["explain", "init", "docs", "covenant"];
+
+const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version | pdks docs [topic | search <query> | show <document-id>] | pdks <extension> [args...]";
 
 struct Flags {
     mode: Mode,
@@ -86,10 +89,61 @@ fn emit(command: &str, report: Result<String, String>) -> ExitCode {
     }
 }
 
+/// Run `pdks-<name>` from PATH when the first argument is a plain extension name that is not a
+/// builtin, passing the remaining arguments through unchanged. `None` means the argv names no
+/// extension.
+fn run_extension(args: &[OsString]) -> Option<ExitCode> {
+    let (first, rest) = args.split_first()?;
+    let name = first.to_str()?;
+    if BUILTINS
+        .iter()
+        .any(|builtin| builtin.eq_ignore_ascii_case(name))
+        || name.is_empty()
+        || name.starts_with('-')
+        || !name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return None;
+    }
+    let mut command = Command::new(format!("pdks-{name}"));
+    command.args(rest);
+    // On Unix the extension replaces this process, so signals reach it and its exit status is the
+    // caller's; `exec` returns only when it fails.
+    #[cfg(unix)]
+    let launched: std::io::Result<u8> = {
+        use std::os::unix::process::CommandExt;
+        Err(command.exec())
+    };
+    #[cfg(not(unix))]
+    let launched: std::io::Result<u8> = command.status().map(|status| {
+        status
+            .code()
+            .and_then(|code| u8::try_from(code).ok())
+            .unwrap_or(2)
+    });
+    let code = match launched {
+        Ok(code) => code,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!(
+                "pdks: '{name}' is not a pdks command and no pdks-{name} executable is on PATH; install pdks-{name} to add it"
+            );
+            eprintln!("{USAGE}");
+            2
+        }
+        Err(error) => {
+            eprintln!("pdks: cannot run pdks-{name}: {error}");
+            2
+        }
+    };
+    Some(ExitCode::from(code))
+}
+
 fn main() -> ExitCode {
-    let args: Option<Vec<String>> = env::args_os()
-        .skip(1)
-        .map(|arg| arg.into_string().ok())
+    let os_args: Vec<OsString> = env::args_os().skip(1).collect();
+    let args: Option<Vec<String>> = os_args
+        .iter()
+        .map(|arg| arg.to_str().map(String::from))
         .collect();
     let flags = match args.as_deref() {
         Some([command]) if command == "--version" => {
@@ -119,6 +173,9 @@ fn main() -> ExitCode {
         _ => None,
     };
     let Some(flags) = flags else {
+        if let Some(code) = run_extension(&os_args) {
+            return code;
+        }
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     };
