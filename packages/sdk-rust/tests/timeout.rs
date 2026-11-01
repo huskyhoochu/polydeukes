@@ -3,6 +3,11 @@
 //! covenant verb turns that into `Unjudged`, a memory verb into `Unavailable`, each naming
 //! the deadline. A caller's spawn receives the same deadline on `SpawnSpec.timeout`.
 //! `None` waits for the child as before.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::io;
@@ -61,6 +66,10 @@ impl RecordingSeam {
         }
     }
 
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the spawn seam is typed to return io::Result"
+    )]
     fn spawn(&self, spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
@@ -78,7 +87,7 @@ fn timed_out(_spec: SpawnSpec) -> io::Result<SpawnOutcome> {
 }
 
 /// Every verb once with `timeout` through `spawn`; returns the four outcomes as reasons in
-/// verb order: check_covenant, check_change_set, memory_ingest, memory_search. A verb that
+/// verb order: `check_covenant`, `check_change_set`, `memory_ingest`, `memory_search`. A verb that
 /// did not answer `Unjudged` / `Unavailable` panics with what it answered.
 fn reasons_of_every_verb(
     root: &Path,
@@ -164,7 +173,7 @@ fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
     let executable = root.join(EXECUTABLE_NAME);
     let input = empty_input();
 
-    check_covenant(CheckCovenantSpec {
+    drop(check_covenant(CheckCovenantSpec {
         repo_root: &root,
         input: &input,
         enforce: None,
@@ -173,8 +182,8 @@ fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
         executable: Some(&executable),
         timeout: Some(SHORT),
         spawn: Some(&spawn),
-    });
-    check_change_set(CheckChangeSetSpec {
+    }));
+    drop(check_change_set(CheckChangeSetSpec {
         repo_root: &root,
         diff: DIFF,
         enforce: None,
@@ -183,21 +192,21 @@ fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
         executable: Some(&executable),
         timeout: Some(SHORT),
         spawn: Some(&spawn),
-    });
-    memory_ingest(MemoryIngestSpec {
+    }));
+    drop(memory_ingest(MemoryIngestSpec {
         root: &root,
         executable: Some(&executable),
         timeout: Some(SHORT),
         spawn: Some(&spawn),
-    });
-    memory_search(MemorySearchSpec {
+    }));
+    drop(memory_search(MemorySearchSpec {
         root: &root,
         query: QUERY,
         limit: None,
         executable: Some(&executable),
         timeout: Some(SHORT),
         spawn: Some(&spawn),
-    });
+    }));
 
     let calls = seam.calls.into_inner();
     assert_eq!(calls.len(), 4);
@@ -216,7 +225,7 @@ fn a_spawn_without_a_deadline_is_handed_none() {
     let executable = root.join(EXECUTABLE_NAME);
     let input = empty_input();
 
-    check_covenant(CheckCovenantSpec {
+    drop(check_covenant(CheckCovenantSpec {
         repo_root: &root,
         input: &input,
         enforce: None,
@@ -225,8 +234,8 @@ fn a_spawn_without_a_deadline_is_handed_none() {
         executable: Some(&executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    check_change_set(CheckChangeSetSpec {
+    }));
+    drop(check_change_set(CheckChangeSetSpec {
         repo_root: &root,
         diff: DIFF,
         enforce: None,
@@ -235,21 +244,21 @@ fn a_spawn_without_a_deadline_is_handed_none() {
         executable: Some(&executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    memory_ingest(MemoryIngestSpec {
+    }));
+    drop(memory_ingest(MemoryIngestSpec {
         root: &root,
         executable: Some(&executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    memory_search(MemorySearchSpec {
+    }));
+    drop(memory_search(MemorySearchSpec {
         root: &root,
         query: QUERY,
         limit: None,
         executable: Some(&executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
+    }));
 
     let calls = seam.calls.into_inner();
     assert_eq!(calls.len(), 4);
@@ -481,9 +490,10 @@ mod default_spawn {
             spawn: None,
         }));
         let elapsed = started.elapsed();
-        let _ = Command::new("kill")
+        Command::new("kill")
             .arg(pid_recorded_in(&pid_file))
-            .status();
+            .status()
+            .ok();
 
         assert_eq!(
             reason,

@@ -150,7 +150,5 @@ _docs/
 .vercel
 .env*
 
-# Rust SDK build output; a library crate publishes without a lock file
-packages/sdk-rust/target/
-packages/pdks/target/
-packages/sdk-rust/Cargo.lock
+# Cargo workspace build output
+target/

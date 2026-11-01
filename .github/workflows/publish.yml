@@ -118,13 +118,13 @@ jobs:
       # The crate's end-to-end test spawns the built `pdks`.
       - run: pnpm turbo run build
 
-      - run: cargo test --manifest-path packages/sdk-rust/Cargo.toml
+      - run: cargo test -p polydeukes-sdk
 
       - name: Skip a version the registry already has
         id: published
         run: |
           set -euo pipefail
-          VERSION="$(cargo metadata --manifest-path packages/sdk-rust/Cargo.toml --no-deps --format-version 1 | node -p 'JSON.parse(require("fs").readFileSync(0)).packages[0].version')"
+          VERSION="$(cargo metadata --no-deps --format-version 1 | node -p 'JSON.parse(require("fs").readFileSync(0)).packages.find((p) => p.name === "polydeukes-sdk").version')"
           # A Cargo.toml the release left behind would otherwise read as already published.
           test "$VERSION" = "$(node -p 'require("./package.json").version')"
           STATUS="$(curl -s -o /dev/null -w '%{http_code}' -A 'polydeukes-publish (github.com/huskyhoochu/polydeukes)' "https://crates.io/api/v1/crates/polydeukes-sdk/$VERSION")"
@@ -134,7 +134,7 @@ jobs:
         if: steps.published.outputs.exists == 'false'
         id: auth
 
-      - run: cargo publish --manifest-path packages/sdk-rust/Cargo.toml
+      - run: cargo publish -p polydeukes-sdk
         if: steps.published.outputs.exists == 'false'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
@@ -224,7 +224,7 @@ jobs:
             TAG="$(git describe --tags --exact-match --match 'sdk-python-v*')"
             test "$TAG" = "sdk-python-v$VERSION"
             # Python-only publication requires the other packages to match the released sources.
-            git diff --exit-code "v$VERSION" HEAD -- 'packages/*/src/**' 'packages/*/schema/**' 'packages/*/scripts/**' 'packages/*/package.json' 'packages/sdk-rust/Cargo.toml' 'packages/sdk-rust/Cargo.lock' 'packages/sdk-rust/build.rs' ':!packages/sdk-python/**'
+            git diff --exit-code "v$VERSION" HEAD -- 'packages/*/src/**' 'packages/*/schema/**' 'packages/*/scripts/**' 'packages/*/package.json' 'packages/sdk-rust/Cargo.toml' 'packages/sdk-rust/build.rs' ':!packages/sdk-python/**'
           else
             TAG="$(git describe --tags --exact-match --match 'v*')"
             test "$TAG" = "v$VERSION"

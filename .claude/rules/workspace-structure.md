@@ -71,7 +71,8 @@ registrations is `new-package-checklist.md`.
   `conformance/covenant/` listed in `tests/fixture-cases.txt`, plus Rust-only cases in
   `tests/divergent/` (behavior it deliberately changes, which replace the listed cases they
   contradict). Like `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites
-  skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. Its constraints are in `rust.md`.
+  skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. It and `sdk-rust` are members of
+  the Cargo workspace in the root `Cargo.toml`. Its constraints are in `rust.md`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

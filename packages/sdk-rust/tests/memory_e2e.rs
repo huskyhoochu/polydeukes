@@ -5,6 +5,12 @@
 //! writes its index there, and that the generated hit type parses what the real command
 //! prints. `memory_ingest.rs` and `memory_search.rs` pin the same contract through the
 //! injected seam.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::fs;
 use std::num::NonZeroU32;
@@ -68,7 +74,7 @@ fn scaffold_consumer(root: &Path) {
     let node = String::from_utf8(node.stdout).unwrap();
     let node = node.trim();
     assert!(Path::new(node).is_absolute());
-    let quote = |value: &str| format!("'{}'", value.replace("'", "'\\''"));
+    let quote = |value: &str| format!("'{}'", value.replace('\'', "'\\''"));
     let wrapper = root.join("pdks-test");
     fs::write(
         &wrapper,

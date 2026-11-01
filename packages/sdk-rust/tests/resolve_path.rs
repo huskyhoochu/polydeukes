@@ -1,6 +1,11 @@
 //! Every verb selects the first executable pdks in an absolute PATH directory.
 //! npm metadata does not affect the selection. Environment mutations are serialized
 //! and restored after each test.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::ffi::OsString;
@@ -96,6 +101,10 @@ impl RecordingSeam {
         }
     }
 
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the spawn seam is typed to return io::Result"
+    )]
     fn spawn(&self, spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
@@ -151,7 +160,7 @@ fn unjudged(verdict: CheckCovenantVerdict) -> String {
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
-    items.iter().map(|s| s.to_string()).collect()
+    items.iter().map(ToString::to_string).collect()
 }
 
 /// The executable named by every unavailable-selection diagnostic.
@@ -167,6 +176,10 @@ static PATH_LOCK: Mutex<()> = Mutex::new(());
 struct PathRestore(Option<OsString>);
 
 impl PathRestore {
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     fn set(entries: &[&Path]) -> Self {
         let original = std::env::var_os("PATH");
         let joined = std::env::join_paths(entries).expect("fixture entries join into one PATH");
@@ -174,6 +187,10 @@ impl PathRestore {
         Self(original)
     }
 
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     fn unset() -> Self {
         let original = std::env::var_os("PATH");
         unsafe { std::env::remove_var("PATH") };
@@ -182,6 +199,10 @@ impl PathRestore {
 }
 
 impl Drop for PathRestore {
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     fn drop(&mut self) {
         match &self.0 {
             Some(original) => unsafe { std::env::set_var("PATH", original) },
@@ -193,7 +214,7 @@ impl Drop for PathRestore {
 fn path_lock() -> MutexGuard<'static, ()> {
     PATH_LOCK
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Every verb fails without spawning when no PATH candidate can run.

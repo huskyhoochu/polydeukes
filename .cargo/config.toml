@@ -1,0 +1,22 @@
+# Lint levels for every crate in this workspace. Cargo reads this file from the directory
+# cargo runs in and every parent, so it reaches each member wherever the build starts inside
+# the repository. A `RUSTFLAGS` environment variable replaces this list entirely.
+#
+# Groups come first: a later flag for the same lint wins.
+[build]
+rustflags = [
+  "-Dunsafe_code",
+  "-Wclippy::pedantic",
+  "-Wclippy::unwrap_used",
+  "-Wclippy::panic",
+  "-Wclippy::todo",
+  "-Wclippy::unimplemented",
+  "-Wclippy::indexing_slicing",
+  "-Wclippy::string_slice",
+  "-Wclippy::get_unwrap",
+  "-Wclippy::unwrap_in_result",
+  "-Wclippy::let_underscore_must_use",
+  "-Wclippy::map_err_ignore",
+  "-Wclippy::print_stdout",
+  "-Wclippy::dbg_macro",
+]

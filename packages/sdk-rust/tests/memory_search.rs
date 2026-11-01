@@ -5,6 +5,12 @@
 //! from core's schema. Every case injects the `spawn` seam and reads what it was handed, and
 //! every row of the status → outcome table has a case, because `Empty` is the one arm a
 //! failure must never land in.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -86,6 +92,10 @@ fn three_hits() -> Vec<Value> {
     ]
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "callers build the result list inline and hand it over"
+)]
 fn output(results: Vec<Value>) -> String {
     json!({ "ingestedAt": STAMP, "results": results }).to_string()
 }
@@ -176,8 +186,8 @@ fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
 fn expected_argv(tail: &[&str]) -> Vec<String> {
     SEARCH_VERB
         .iter()
-        .map(|s| s.to_string())
-        .chain(tail.iter().map(|s| s.to_string()))
+        .map(ToString::to_string)
+        .chain(tail.iter().map(ToString::to_string))
         .collect()
 }
 
@@ -194,14 +204,14 @@ mod what_the_seam_is_handed {
         install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
 
-        memory_search(spec(&root, &|s| seam.spawn(s)));
+        drop(memory_search(spec(&root, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].command, "/fixture/pdks");
         assert_eq!(literal_argv(&calls[0]), expected_argv(&[QUERY, JSON_FLAG]));
         assert_eq!(calls[0].cwd, root);
-        assert!(calls[0].stdin.is_empty());
+        assert_eq!(calls[0].stdin, [] as [u8; 0]);
     }
 
     #[test]
@@ -216,7 +226,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, &spawn);
         s.limit = NonZeroU32::new(5);
 
-        memory_search(s);
+        drop(memory_search(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -244,7 +254,7 @@ mod what_the_seam_is_handed {
         relative.push(root.strip_prefix("/").expect("absolute fixture"));
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
 
-        memory_search(spec(&relative, &|s| seam.spawn(s)));
+        drop(memory_search(spec(&relative, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
@@ -450,7 +460,7 @@ mod resolving_the_umbrella {
         fs::create_dir_all(&root).expect("nested root");
         let seam = RecordingSeam::answering(Some(0), output(vec![]), "");
 
-        memory_search(spec(&root, &|s| seam.spawn(s)));
+        drop(memory_search(spec(&root, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);

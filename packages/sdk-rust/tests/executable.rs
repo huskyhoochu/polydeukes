@@ -3,6 +3,11 @@
 //! `PATH` is consulted. A relative path resolves against the calling process's cwd. The file
 //! is not inspected ahead of the spawn, so one that cannot run comes back through the spawn
 //! failure branch each verb already has.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -87,6 +92,10 @@ impl RecordingSeam {
         }
     }
 
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the spawn seam is typed to return io::Result"
+    )]
     fn spawn(&self, spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         self.calls.borrow_mut().push(spec);
         Ok(SpawnOutcome {
@@ -98,13 +107,13 @@ impl RecordingSeam {
 }
 
 /// Every verb once, from `root` with `executable`, through one recording seam; returns what
-/// the seam was handed in verb order: check_covenant, check_change_set, memory_ingest,
-/// memory_search.
+/// the seam was handed in verb order: `check_covenant`, `check_change_set`, `memory_ingest`,
+/// `memory_search`.
 fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
     let seam = RecordingSeam::new();
     let spawn = |s| seam.spawn(s);
     let input = empty_input();
-    check_covenant(CheckCovenantSpec {
+    drop(check_covenant(CheckCovenantSpec {
         repo_root: root,
         input: &input,
         enforce: None,
@@ -113,8 +122,8 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         executable: Some(executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    check_change_set(CheckChangeSetSpec {
+    }));
+    drop(check_change_set(CheckChangeSetSpec {
         repo_root: root,
         diff: DIFF,
         enforce: None,
@@ -123,26 +132,26 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         executable: Some(executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    memory_ingest(MemoryIngestSpec {
+    }));
+    drop(memory_ingest(MemoryIngestSpec {
         root,
         executable: Some(executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
-    memory_search(MemorySearchSpec {
+    }));
+    drop(memory_search(MemorySearchSpec {
         root,
         query: QUERY,
         limit: None,
         executable: Some(executable),
         timeout: None,
         spawn: Some(&spawn),
-    });
+    }));
     seam.calls.into_inner()
 }
 
 fn strings(items: &[&str]) -> Vec<String> {
-    items.iter().map(|s| s.to_string()).collect()
+    items.iter().map(ToString::to_string).collect()
 }
 
 fn unjudged(verdict: CheckCovenantVerdict) -> String {

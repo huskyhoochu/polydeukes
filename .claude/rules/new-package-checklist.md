@@ -3,6 +3,7 @@ paths:
   - "release-please-config.json"
   - ".release-please-manifest.json"
   - "packages/*/package.json"
+  - "Cargo.toml"
   - "packages/*/Cargo.toml"
   - "packages/*/pyproject.toml"
   - ".github/workflows/**"
@@ -49,11 +50,12 @@ exists.
 
 ## A cargo crate
 
-A `toml` entry in `release-please-config.json` `extra-files` (`$.package.version` of its
-`Cargo.toml`), a `cargo test` step in `.forgejo/workflows/ci.yml` after the build, and a crates.io
-trusted publisher (repository `huskyhoochu/polydeukes`, workflow `publish.yml`) on the crate's
-settings page. The publisher can only be registered once the crate exists, so the first version is
-published by hand from the tagged tree with a `publish-new` token.
+A `members` entry in the root `Cargo.toml` (the workspace's `cargo fmt` and `clippy` steps then
+reach it), a `toml` entry in `release-please-config.json` `extra-files` (`$.package.version` of its
+`Cargo.toml`), a `cargo test -p <crate>` step in `.forgejo/workflows/ci.yml` after the build, and a
+crates.io trusted publisher (repository `huskyhoochu/polydeukes`, workflow `publish.yml`) on the
+crate's settings page. The publisher can only be registered once the crate exists, so the first
+version is published by hand from the tagged tree with a `publish-new` token.
 
 ## A Python package
 

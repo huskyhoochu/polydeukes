@@ -1,9 +1,15 @@
 //! `check_covenant` and `check_change_set` against the BUILT `pdks`: a throwaway tree
 //! scaffolded by `pdks init`, wired to the checkout's install graph by symlink, with one
 //! protected path of its own. Only a real spawn proves that the crate invokes the selected executable from
-//! the consumer's repo_root, that the child reads the consumer's config, and that the row the
+//! the consumer's `repo_root`, that the child reads the consumer's config, and that the row the
 //! child writes is the judge's own. `check_covenant.rs` and `check_change_set.rs` pin the same
 //! contract through the injected seam.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -33,7 +39,7 @@ const BLOCKED_EVENT: &str = "blocked";
 /// the change-set cases hand its row file by `telemetry_path` instead of the config's.
 const CONFIG_FILE: &str = "polydeukes.config.yaml";
 const CHANGE_SET_TELEMETRY_REL: &str = "change-set.log";
-/// A unified diff adding an entry to the config, paths in `a/`/`b/` form from repo_root.
+/// A unified diff adding an entry to the config, paths in `a/`/`b/` form from `repo_root`.
 const CONFIG_DIFF: &str = "diff --git a/polydeukes.config.yaml b/polydeukes.config.yaml\n--- a/polydeukes.config.yaml\n+++ b/polydeukes.config.yaml\n@@ -5,2 +5,3 @@\n protectedPaths:\n   - 'pipeline/gates'\n+  - 'src/secrets'\n";
 /// A unified diff creating the ordinary target.
 const ORDINARY_DIFF: &str = "diff --git a/src/answer.ts b/src/answer.ts\nnew file mode 100644\n--- /dev/null\n+++ b/src/answer.ts\n@@ -0,0 +1 @@\n+export const answer = 42;\n";
@@ -77,7 +83,7 @@ fn scaffold_consumer(root: &Path) {
     let node = String::from_utf8(node.stdout).unwrap();
     let node = node.trim();
     assert!(Path::new(node).is_absolute());
-    let quote = |value: &str| format!("'{}'", value.replace("'", "'\\''"));
+    let quote = |value: &str| format!("'{}'", value.replace('\'', "'\\''"));
     let wrapper = root.join("pdks-test");
     fs::write(
         &wrapper,

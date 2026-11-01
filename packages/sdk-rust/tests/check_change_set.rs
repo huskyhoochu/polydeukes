@@ -5,6 +5,11 @@
 //! from its sibling, and the status → verdict table is the one place it must not.
 //!
 //! The process seam keeps execution selection separate from npm metadata and root cwd.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -72,6 +77,10 @@ impl RecordingSeam {
         }
     }
 
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the spawn seam is typed to return io::Result"
+    )]
     fn spawn(&self, spec: SpawnSpec) -> io::Result<SpawnOutcome> {
         self.calls.borrow_mut().push(spec);
         let (status, stderr) = self.outcome;
@@ -136,8 +145,8 @@ fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
 fn expected_argv(fixed: &[&str], tail: &[&str]) -> Vec<String> {
     fixed
         .iter()
-        .map(|s| s.to_string())
-        .chain(tail.iter().map(|s| s.to_string()))
+        .map(ToString::to_string)
+        .chain(tail.iter().map(ToString::to_string))
         .collect()
 }
 
@@ -155,7 +164,7 @@ mod what_the_seam_is_handed {
         install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_change_set(spec(&root, DIFF, &|s| seam.spawn(s)));
+        drop(check_change_set(spec(&root, DIFF, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
@@ -174,7 +183,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, DIFF, &spawn);
         s.enforce = Some(Enforce::Advise);
 
-        check_change_set(s);
+        drop(check_change_set(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -194,7 +203,7 @@ mod what_the_seam_is_handed {
         s.config_layer = Some(Path::new(LAYER_PATH));
         s.telemetry_path = Some(Path::new(TELEMETRY_PATH));
 
-        check_change_set(s);
+        drop(check_change_set(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -222,7 +231,7 @@ mod what_the_seam_is_handed {
         let verdict = check_change_set(spec(&root, "", &|s| seam.spawn(s)));
 
         assert_eq!(seam.calls().len(), 1);
-        assert!(seam.calls()[0].stdin.is_empty());
+        assert_eq!(seam.calls()[0].stdin, [] as [u8; 0]);
         upheld(verdict);
     }
 }
@@ -256,7 +265,7 @@ mod resolving_the_umbrella {
         fs::create_dir_all(&repo_root).expect("nested repo_root");
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_change_set(spec(&repo_root, DIFF, &|s| seam.spawn(s)));
+        drop(check_change_set(spec(&repo_root, DIFF, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);

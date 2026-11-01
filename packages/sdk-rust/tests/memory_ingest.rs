@@ -4,6 +4,11 @@
 //! cwd, stdin — because those are the contract between this crate and the CLI, and the
 //! status → outcome table. The umbrella is resolved from `root` upward exactly as the
 //! covenant verbs resolve it; `check_covenant.rs` pins that walk in depth.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -116,7 +121,7 @@ fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
 }
 
 fn expected_argv(fixed: &[&str]) -> Vec<String> {
-    fixed.iter().map(|s| s.to_string()).collect()
+    fixed.iter().map(ToString::to_string).collect()
 }
 
 mod what_the_seam_is_handed {
@@ -132,14 +137,14 @@ mod what_the_seam_is_handed {
         install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(Some(0), "", "");
 
-        memory_ingest(spec(&root, &|s| seam.spawn(s)));
+        drop(memory_ingest(spec(&root, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].command, "/fixture/pdks");
         assert_eq!(literal_argv(&calls[0]), expected_argv(&INGEST_ARGS));
         assert_eq!(calls[0].cwd, root);
-        assert!(calls[0].stdin.is_empty());
+        assert_eq!(calls[0].stdin, [] as [u8; 0]);
     }
 
     #[test]
@@ -162,7 +167,7 @@ mod what_the_seam_is_handed {
         relative.push(root.strip_prefix("/").expect("absolute fixture"));
         let seam = RecordingSeam::answering(Some(0), "", "");
 
-        memory_ingest(spec(&relative, &|s| seam.spawn(s)));
+        drop(memory_ingest(spec(&relative, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
@@ -287,7 +292,7 @@ mod resolving_the_umbrella {
         fs::create_dir_all(&root).expect("nested root");
         let seam = RecordingSeam::answering(Some(0), "", "");
 
-        memory_ingest(spec(&root, &|s| seam.spawn(s)));
+        drop(memory_ingest(spec(&root, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);

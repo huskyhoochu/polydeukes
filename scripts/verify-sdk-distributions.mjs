@@ -93,7 +93,7 @@ try {
     'ir_generated',
   ];
   const rustGenerationOptions = {
-    env: { ...process.env, CARGO_TARGET_DIR: join(repository, 'packages/sdk-rust/target') },
+    env: { ...process.env, CARGO_TARGET_DIR: join(repository, 'target') },
   };
   run('cargo', rustGenerationArgs, rustGenerationOptions);
   const rustGenerated = join(rustGeneration, 'src/ir.rs');
@@ -168,10 +168,10 @@ try {
     'TS isolated tarball: no runtime peers/dependencies; strict valid consumer and three negative diagnostic locations verified',
   );
 
-  run('cargo', ['package', '--allow-dirty', '--manifest-path', 'packages/sdk-rust/Cargo.toml']);
+  run('cargo', ['package', '--allow-dirty', '-p', 'polydeukes-sdk']);
   const crate = join(
     repository,
-    'packages/sdk-rust/target/package/polydeukes-sdk-' +
+    'target/package/polydeukes-sdk-' +
       JSON.parse(readFileSync(join(repository, 'package.json'), 'utf8')).version +
       '.crate',
   );

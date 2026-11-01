@@ -5,6 +5,12 @@
 //! contract between this crate and the judge process, and the status → verdict table.
 //!
 //! Executable selection is explicit; npm metadata alongside the root cannot change it.
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -194,8 +200,8 @@ fn literal_argv(spec: &SpawnSpec) -> Vec<String> {
 fn expected_argv(fixed: &[&str], tail: &[&str]) -> Vec<String> {
     fixed
         .iter()
-        .map(|s| s.to_string())
-        .chain(tail.iter().map(|s| s.to_string()))
+        .map(ToString::to_string)
+        .chain(tail.iter().map(ToString::to_string))
         .collect()
 }
 
@@ -213,7 +219,7 @@ mod what_the_seam_is_handed {
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
+        drop(check_covenant(spec(&root, &input, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
@@ -236,7 +242,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, &input, &spawn);
         s.enforce = Some(Enforce::Block);
 
-        check_covenant(s);
+        drop(check_covenant(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -254,7 +260,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, &input, &spawn);
         s.enforce = Some(Enforce::Advise);
 
-        check_covenant(s);
+        drop(check_covenant(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -274,7 +280,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, &input, &spawn);
         s.config_layer = Some(Path::new(LAYER_PATH));
 
-        check_covenant(s);
+        drop(check_covenant(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -292,7 +298,7 @@ mod what_the_seam_is_handed {
         let mut s = spec(&root, &input, &spawn);
         s.telemetry_path = Some(Path::new(TELEMETRY_PATH));
 
-        check_covenant(s);
+        drop(check_covenant(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -314,7 +320,7 @@ mod what_the_seam_is_handed {
         s.config_layer = Some(Path::new(LAYER_PATH));
         s.telemetry_path = Some(Path::new(TELEMETRY_PATH));
 
-        check_covenant(s);
+        drop(check_covenant(s));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -347,7 +353,7 @@ mod what_the_seam_is_handed {
         };
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
+        drop(check_covenant(spec(&root, &input, &|s| seam.spawn(s))));
 
         let sent: Value = serde_json::from_slice(&seam.calls()[0].stdin).expect("stdin is JSON");
         let keys: Vec<&String> = sent.as_object().expect("an object").keys().collect();
@@ -486,7 +492,7 @@ mod resolving_the_umbrella {
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s)));
+        drop(check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);
@@ -504,7 +510,7 @@ mod resolving_the_umbrella {
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s)));
+        drop(check_covenant(spec(&repo_root, &input, &|s| seam.spawn(s))));
 
         assert_eq!(
             literal_argv(&seam.calls()[0]),
@@ -578,7 +584,7 @@ mod resolving_the_umbrella {
         let input = write_input();
         let seam = RecordingSeam::answering(Some(0), "");
 
-        check_covenant(spec(&relative, &input, &|s| seam.spawn(s)));
+        drop(check_covenant(spec(&relative, &input, &|s| seam.spawn(s))));
 
         let calls = seam.calls();
         assert_eq!(calls.len(), 1);

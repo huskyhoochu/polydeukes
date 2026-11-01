@@ -1,4 +1,10 @@
 #![cfg(unix)]
+#![expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "test assertions fail loudly by design"
+)]
 
 use std::cell::RefCell;
 use std::fs;
@@ -186,8 +192,8 @@ fn all_verbs_share_a_byte_transport_and_literal_arguments() {
         calls[1].stdin,
         fixture()["diff"].as_str().unwrap().as_bytes()
     );
-    assert!(calls[2].stdin.is_empty());
-    assert!(calls[3].stdin.is_empty());
+    assert_eq!(calls[2].stdin, [] as [u8; 0]);
+    assert_eq!(calls[3].stdin, [] as [u8; 0]);
 }
 
 #[test]
@@ -221,6 +227,10 @@ fn path_selection_skips_invalid_entries_and_ignores_npm_installations() {
             .join(":")
     );
     // This integration binary serializes its environment-mutating tests.
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     unsafe {
         std::env::set_var("PATH", candidate_path);
     }
@@ -230,6 +240,10 @@ fn path_selection_skips_invalid_entries_and_ignores_npm_installations() {
         Ok(success())
     };
     invoke(root, None, &spawn, None);
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     unsafe {
         if let Some(value) = old_path {
             std::env::set_var("PATH", value);
@@ -245,6 +259,22 @@ fn path_selection_skips_invalid_entries_and_ignores_npm_installations() {
 
 #[test]
 fn selected_path_failure_does_not_retry_a_later_executable() {
+    struct RestorePath(Option<std::ffi::OsString>);
+    impl Drop for RestorePath {
+        #[expect(
+            unsafe_code,
+            reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+        )]
+        fn drop(&mut self) {
+            unsafe {
+                if let Some(value) = &self.0 {
+                    std::env::set_var("PATH", value);
+                } else {
+                    std::env::remove_var("PATH");
+                }
+            }
+        }
+    }
     // A fallback would conceal the selected CLI failure and run the marker-producing candidate.
     let _lock = ENVIRONMENT.lock().unwrap();
     let dir = tempfile::tempdir().unwrap();
@@ -260,19 +290,11 @@ fn selected_path_failure_does_not_retry_a_later_executable() {
         "pdks",
         &format!("printf ran > '{}'\nexit 0", marker.display()),
     );
-    struct RestorePath(Option<std::ffi::OsString>);
-    impl Drop for RestorePath {
-        fn drop(&mut self) {
-            unsafe {
-                if let Some(value) = &self.0 {
-                    std::env::set_var("PATH", value);
-                } else {
-                    std::env::remove_var("PATH");
-                }
-            }
-        }
-    }
     let restore = RestorePath(std::env::var_os("PATH"));
+    #[expect(
+        unsafe_code,
+        reason = "edition 2024 makes environment mutation unsafe; the test runs single-threaded"
+    )]
     unsafe {
         std::env::set_var("PATH", format!("{}:{}", first.display(), second.display()));
     }
@@ -452,9 +474,10 @@ impl Drop for ProcessCleanup {
     fn drop(&mut self) {
         for file in &self.0 {
             if let Ok(pid) = fs::read_to_string(file) {
-                let _ = Command::new("/bin/kill")
+                Command::new("/bin/kill")
                     .args(["-KILL", pid.trim()])
-                    .status();
+                    .status()
+                    .ok();
             }
         }
     }

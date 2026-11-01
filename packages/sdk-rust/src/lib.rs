@@ -113,7 +113,17 @@ fn find_pdks_on_path() -> Option<PathBuf> {
 /// Run the spec's command with every stream piped and collect stdout and stderr. Past the spec's
 /// `timeout` the child is killed and reaped, and the answer is a `TimedOut` error. Only the child
 /// is killed: a process it started itself keeps running.
+#[expect(
+    clippy::let_underscore_must_use,
+    reason = "each dropped result is a peer already gone: a child that closed stdin early, a \
+              receiver past the deadline, or a child killed after a failure being returned"
+)]
 fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
+    enum Completed {
+        Stdin,
+        Stdout(io::Result<Vec<u8>>),
+        Stderr(io::Result<Vec<u8>>),
+    }
     let mut child = Command::new(&spec.command)
         .args(&spec.args)
         .current_dir(&spec.cwd)
@@ -125,11 +135,6 @@ fn default_spawn(spec: SpawnSpec) -> io::Result<SpawnOutcome> {
     let mut stdin = child.stdin.take().expect("stdin is piped");
     let mut stdout = child.stdout.take().expect("stdout is piped");
     let mut stderr = child.stderr.take().expect("stderr is piped");
-    enum Completed {
-        Stdin,
-        Stdout(io::Result<Vec<u8>>),
-        Stderr(io::Result<Vec<u8>>),
-    }
     let (sender, receiver) = mpsc::channel();
     let written = sender.clone();
     thread::spawn(move || {
@@ -272,6 +277,11 @@ pub struct CheckChangeSetSpec<'a> {
 }
 
 /// Judge one input against the covenants of `repo_root` and return the verdict as a value.
+#[must_use]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the public signature takes the spec by value and must not change"
+)]
 pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
     run_check(
         spec.repo_root,
@@ -288,6 +298,11 @@ pub fn check_covenant(spec: CheckCovenantSpec) -> CheckCovenantVerdict {
 
 /// Judge one change set, a unified diff, against the covenants of `repo_root` and return the
 /// verdict as a value.
+#[must_use]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the public signature takes the spec by value and must not change"
+)]
 pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
     run_check(
         spec.repo_root,
@@ -447,6 +462,11 @@ pub enum MemorySearchOutcome {
 }
 
 /// Bring the memory index under `root` level with its documents.
+#[must_use]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the public signature takes the spec by value and must not change"
+)]
 pub fn memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome {
     match run_memory(
         spec.root,
@@ -461,6 +481,11 @@ pub fn memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome {
 }
 
 /// Search the memory index under `root` and return its hits as values.
+#[must_use]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the public signature takes the spec by value and must not change"
+)]
 pub fn memory_search(spec: MemorySearchSpec) -> MemorySearchOutcome {
     let mut args = vec!["search".into(), spec.query.into(), "--json".into()];
     if let Some(limit) = spec.limit {

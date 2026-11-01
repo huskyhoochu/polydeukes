@@ -1,6 +1,9 @@
 ---
 paths:
+  - "Cargo.toml"
+  - ".cargo/config.toml"
   - "packages/pdks/**"
+  - "packages/pdks-*/**"
 ---
 
 # Rust in this repository
@@ -15,34 +18,25 @@ contract disagree somewhere. Researched against stable 1.99.1 (2026-10-30); sour
   dependencies, not the newest toolchain: `pdks` is at 1.89 because `serde-saphyr` is.
 - Edition 2024 gives let chains (`if let Some(x) = a && x > 0`), stable since 1.88. Use them instead
   of nested `if let` ladders.
-- `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` run in CI beside `cargo test`.
-  Format with rustfmt defaults; no `rustfmt.toml`.
+- The Rust crates are one Cargo workspace: the root `Cargo.toml` lists the members, and they share
+  `Cargo.lock` and `target/` (lefthook runs `target/release/pdks`). `cargo fmt --all --check` and
+  `cargo clippy --workspace --all-targets -- -D warnings` run in CI beside each member's
+  `cargo test -p`. Format with rustfmt defaults; no `rustfmt.toml`.
 
-## Lints live in `Cargo.toml`
+## Lints live in `.cargo/config.toml`
 
-```toml
-[lints.rust]
-unsafe_code = "forbid"
-
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-unwrap_used = "warn"
-panic = "warn"
-todo = "warn"
-unimplemented = "warn"
-indexing_slicing = "warn"
-string_slice = "warn"
-get_unwrap = "warn"
-unwrap_in_result = "warn"
-let_underscore_must_use = "warn"
-map_err_ignore = "warn"
-print_stdout = "warn"
-dbg_macro = "warn"
-```
+Lint levels are `rustflags` in the root `.cargo/config.toml`, a session-protected file, so the
+manifests stay as freely editable as a `package.json`. The flags reach every workspace member,
+`sdk-rust` included: `-Dunsafe_code`, `-Wclippy::pedantic` first, then the `restriction` lints one
+by one (`unwrap_used`, `panic`, `todo`, `unimplemented`, `indexing_slicing`, `string_slice`,
+`get_unwrap`, `unwrap_in_result`, `let_underscore_must_use`, `map_err_ignore`, `print_stdout`,
+`dbg_macro`). Cargo reads the file from the directory it runs in, so a build started outside the
+repository, or with a `RUSTFLAGS` variable set, runs without them; CI sets no `RUSTFLAGS`.
 
 The `restriction` group is opted into lint by lint, never as a whole: it contains lints that
 contradict each other. Silence one site with `#[expect(lint, reason = "...")]`, not `#[allow]`;
-`expect` fails once the code it excused is gone.
+`expect` fails once the code it excused is gone. `unsafe_code` is `deny` rather than `forbid` so
+that the SDK's tests can expect it around edition 2024's `std::env::set_var`.
 
 ## Why these lints, in this crate
 

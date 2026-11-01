@@ -4,6 +4,7 @@
 //! a regeneration, fails here. With `POLYDEUKES_REGEN_IR=1` it writes the files instead of
 //! comparing. Outside the checkout (a published crate) the schemas are absent and the test
 //! has nothing to compare.
+#![expect(clippy::panic, reason = "test assertions fail loudly by design")]
 
 use std::fs;
 use std::path::Path;
