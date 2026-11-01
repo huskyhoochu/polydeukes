@@ -1,0 +1,29 @@
+{
+  "description": "A MultiEdit that applies to a protected file is blocked.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/inner.txt": "one\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "edits": [
+        {
+          "old_string": "one",
+          "new_string": "two"
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["MultiEdit would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "description": "An Edit post is the disk content with old_string replaced once, and new_string is inserted literally (no $-pattern expansion).",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ],
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              },
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "alpha beta\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "old_string": "beta",
+      "new_string": "gamma $& end"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/a.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/a.txt",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha beta\\n\"}],\"total\":1},{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"alpha gamma $& end\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

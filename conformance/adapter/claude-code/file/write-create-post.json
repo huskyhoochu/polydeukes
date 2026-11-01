@@ -1,0 +1,59 @@
+{
+  "description": "A Write to a missing file is a create whose post is the written content.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/new.txt",
+      "content": "fresh\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/new.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/new.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"fresh\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

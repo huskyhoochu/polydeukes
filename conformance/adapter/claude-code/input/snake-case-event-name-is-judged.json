@@ -1,0 +1,23 @@
+{
+  "description": "The event name pre_tool_use is accepted as PreToolUse and judged normally.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "pre_tool_use",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

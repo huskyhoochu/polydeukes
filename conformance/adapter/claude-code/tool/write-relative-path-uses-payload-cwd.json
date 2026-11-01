@@ -1,0 +1,24 @@
+{
+  "description": "A relative file_path resolves against the payload cwd, so ../gate/x from a subdirectory is the protected path.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "sub/keep": ""
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@/sub",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "../gate/x.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/x.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

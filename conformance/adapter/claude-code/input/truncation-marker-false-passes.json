@@ -1,0 +1,25 @@
+{
+  "description": "A truncation marker that is false (or not the boolean true) does not fail the payload.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    },
+    "truncated": false,
+    "inputTruncated": "true"
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@/lib/a.txt"]]
+  }
+}

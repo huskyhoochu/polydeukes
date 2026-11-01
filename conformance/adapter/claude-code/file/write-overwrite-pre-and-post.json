@@ -1,0 +1,74 @@
+{
+  "description": "A Write over an existing file carries the disk content as pre and the written content as post.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ],
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              },
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "old\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "new\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/a.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/a.txt",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"old\\n\"}],\"total\":1},{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"new\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

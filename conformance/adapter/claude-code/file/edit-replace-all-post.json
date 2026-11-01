@@ -1,0 +1,62 @@
+{
+  "description": "An Edit with replace_all replaces every occurrence, where a single replacement of a repeated old_string would be unsatisfiable.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "x y x\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "old_string": "x",
+      "new_string": "z",
+      "replace_all": true
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/a.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/a.txt",
+        "[{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"z y z\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

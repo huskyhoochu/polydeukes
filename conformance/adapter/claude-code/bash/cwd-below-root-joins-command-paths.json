@@ -1,0 +1,23 @@
+{
+  "description": "A Bash call made from a protected directory is judged with that cwd, so a bare relative path resolves into it.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    "dist/keep": ""
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@/dist",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "rm a"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

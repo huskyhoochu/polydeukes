@@ -1,0 +1,23 @@
+{
+  "description": "A protected path named only inside the written content is a mention, so the Write to an ordinary file passes.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "see gate/inner.txt\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "self-mod", "gate"]]
+  }
+}

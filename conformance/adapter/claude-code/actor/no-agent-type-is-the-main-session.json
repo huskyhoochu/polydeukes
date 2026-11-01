@@ -1,0 +1,66 @@
+{
+  "description": "A payload without agent_type is the main session, an actor with no agent type.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "implementer-boundary",
+          "declare": {
+            "mechanism": "actor-scope",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "implementer": [
+                {
+                  "op": "source",
+                  "of": "actor"
+                },
+                {
+                  "op": "select",
+                  "path": "agentType"
+                },
+                {
+                  "op": "matches",
+                  "re": "^implementer$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-the-implementer",
+                "relation": {
+                  "op": "empty",
+                  "of": "implementer"
+                },
+                "message": "the implementer subagent wrote under lib"
+              }
+            ],
+            "supply": {
+              "actor": "pass"
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "implementer-boundary", "lib/a.txt"]]
+  }
+}

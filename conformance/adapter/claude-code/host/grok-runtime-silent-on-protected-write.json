@@ -1,0 +1,26 @@
+{
+  "description": "Under the Grok runtime the Claude registration answers nothing: exit 0, no output, no row, even for a protected write.",
+  "env": {
+    "GROK_WORKSPACE_ROOT": "/grok/workspace"
+  },
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

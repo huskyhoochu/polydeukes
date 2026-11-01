@@ -1,0 +1,25 @@
+{
+  "description": "An Edit that applies to a protected file is blocked.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/inner.txt": "locked: yes\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "old_string": "yes",
+      "new_string": "no"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Edit would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

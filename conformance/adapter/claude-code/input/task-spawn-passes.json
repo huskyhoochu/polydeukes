@@ -1,0 +1,23 @@
+{
+  "description": "A Task call with a subagent_type is a spawn record and an ordinary call that passes.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Task",
+    "tool_input": {
+      "subagent_type": "reviewer",
+      "prompt": "go"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": []
+  }
+}

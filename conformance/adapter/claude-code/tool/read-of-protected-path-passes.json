@@ -1,0 +1,23 @@
+{
+  "description": "A Read of a protected file is not a mutating call and passes.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/inner.txt": "x\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@/gate/inner.txt"]]
+  }
+}

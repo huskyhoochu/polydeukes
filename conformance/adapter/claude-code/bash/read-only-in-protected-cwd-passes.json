@@ -1,0 +1,23 @@
+{
+  "description": "A read-only Bash command run from inside a protected directory is allowed.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    "dist/keep": ""
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@/dist",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
+  }
+}

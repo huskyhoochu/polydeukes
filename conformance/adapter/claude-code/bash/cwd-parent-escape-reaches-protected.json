@@ -1,0 +1,23 @@
+{
+  "description": "A Bash call from a sibling directory reaches a protected path through ../ only when its cwd is carried.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    "pkg/keep": ""
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@/pkg",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "rm ../dist/a"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

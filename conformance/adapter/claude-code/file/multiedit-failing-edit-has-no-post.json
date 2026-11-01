@@ -1,0 +1,62 @@
+{
+  "description": "A MultiEdit with one edit that cannot apply proves no change at all, never a partial post.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "one two\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "edits": [
+        {
+          "old_string": "one",
+          "new_string": "1"
+        },
+        {
+          "old_string": "absent",
+          "new_string": "x"
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@/lib/a.txt"]]
+  }
+}

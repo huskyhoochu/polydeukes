@@ -1,0 +1,97 @@
+{
+  "description": "An agent_id with path separators never reaches a file name, so a traversal that would land on a real transcript sees no calls.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "history",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "cmds": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["Bash"]
+                },
+                {
+                  "op": "select",
+                  "path": "args.command"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "cmd-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "cmds"
+                },
+                "message": "a command is on record"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "never": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "(?!)"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "never",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "never"
+                  },
+                  "message": "never held"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "sessions/s-1.jsonl": "{\"origin\":{\"kind\":\"human\"},\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"carry on\"},\"timestamp\":\"@@NOW_ISO-60000@@\",\"uuid\":\"u1\"}\n{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_p\",\"name\":\"Bash\",\"input\":{\"command\":\"parent-run\"}}]},\"uuid\":\"a-toolu_p\"}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_p\",\"content\":\"ok\"}]},\"uuid\":\"r-toolu_p\"}\n",
+    "sessions/s-1/subagents/agent-x/keep": "",
+    "sessions/s-1/s-1.jsonl": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_t\",\"name\":\"Bash\",\"input\":{\"command\":\"traversal-run\"}}]},\"uuid\":\"a-toolu_t\"}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_t\",\"content\":\"ok\"}]},\"uuid\":\"r-toolu_t\"}\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    },
+    "transcript_path": "@@ROOT@@/sessions/s-1.jsonl",
+    "agent_id": "x/../../s-1"
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "history", "lib/a.txt"]]
+  }
+}

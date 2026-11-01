@@ -1,0 +1,30 @@
+{
+  "description": "A Write through a link between two ordinary names is judged under both names and allowed.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "lib/real.txt": "x\n"
+  },
+  "links": {
+    "alias.txt": "lib/real.txt"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/alias.txt",
+      "content": "y\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [
+      ["passed", "covenant-check", "@@ROOT@@/alias.txt"],
+      ["passed", "covenant-check", "@@ROOT@@/alias.txt"]
+    ]
+  }
+}

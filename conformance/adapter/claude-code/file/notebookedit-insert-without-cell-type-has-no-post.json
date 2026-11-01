@@ -1,0 +1,67 @@
+{
+  "description": "A NotebookEdit insert without the cell_type the real tool requires proves no change.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^nb/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "nb/a.ipynb": {
+      "cells": [
+        {
+          "id": "c1",
+          "cell_type": "code",
+          "source": ["print(1)\n", "x = 2\n"]
+        },
+        {
+          "id": "c2",
+          "cell_type": "code",
+          "source": "keep\n"
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "NotebookEdit",
+    "tool_input": {
+      "notebook_path": "@@ROOT@@/nb/a.ipynb",
+      "new_source": "added\n",
+      "edit_mode": "insert"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
+  }
+}

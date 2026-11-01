@@ -1,0 +1,27 @@
+{
+  "description": "A Write through a protected link name whose real target is ordinary is blocked under the spelled name.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["alias.txt"]
+    },
+    "lib/real.txt": "x\n"
+  },
+  "links": {
+    "alias.txt": "lib/real.txt"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/alias.txt",
+      "content": "y\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path alias.txt"],
+    "rows": [["blocked", "self-mod", "alias.txt"], ["passed", "self-mod", "alias.txt"]]
+  }
+}

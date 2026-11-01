@@ -1,0 +1,87 @@
+{
+  "description": "A payload without transcript_path carries no session at all, so a sidecar declaration under supply: pass is skipped.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "spawns",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "spawn": {
+                "sidecar": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "spawn": [
+                {
+                  "op": "source",
+                  "of": "spawn"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "spawn-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "spawn"
+                },
+                "message": "spawn records on record"
+              }
+            ],
+            "supply": {
+              "spawn": "pass"
+            },
+            "witness": {
+              "extract": {
+                "never": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "(?!)"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "never",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "never"
+                  },
+                  "message": "never held"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "spawns", "lib/a.txt", "supply-pass"]]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "description": "A human token message older than the TTL does not open the valve.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "sessions/s-1.jsonl": "{\"origin\":{\"kind\":\"human\"},\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"agreed-token\"},\"timestamp\":\"@@NOW_ISO-3600000@@\",\"uuid\":\"u1\"}\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "content": "x\n"
+    },
+    "transcript_path": "@@ROOT@@/sessions/s-1.jsonl"
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

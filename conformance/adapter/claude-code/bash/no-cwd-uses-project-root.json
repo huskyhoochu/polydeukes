@@ -1,0 +1,21 @@
+{
+  "description": "A Bash payload without cwd is judged from the project root.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "rm dist/a"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["dist"],
+    "rows": [["blocked", "shell-mod", "dist"]]
+  }
+}

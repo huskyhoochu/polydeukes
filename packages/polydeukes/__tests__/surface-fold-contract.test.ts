@@ -27,7 +27,7 @@ const PACKAGE_DIRS = [
 /** Workspace members that are not published; they carry no copy of the judge. */
 const PRIVATE_PACKAGE_DIRS = ['documentation'];
 /** Directories managed by Cargo or uv rather than the npm workspace. */
-const NON_NPM_DIRS = ['pdks', 'sdk-python', 'sdk-rust'];
+const NON_NPM_DIRS = ['pdks', 'pdks-claude-code', 'sdk-python', 'sdk-rust'];
 /** The two specifiers the judgment chain never reaches: the memory package and its store. */
 const MEMORY_SPECIFIERS = ['@polydeukes/memory', 'node:sqlite'];
 /** A specifier the judgment chain does reach — the walk found edges if this is present. */

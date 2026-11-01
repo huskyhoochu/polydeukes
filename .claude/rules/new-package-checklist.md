@@ -52,7 +52,9 @@ exists.
 
 A `members` entry in the root `Cargo.toml` (the workspace's `cargo fmt` and `clippy` steps then
 reach it), a `toml` entry in `release-please-config.json` `extra-files` (`$.package.version` of its
-`Cargo.toml`), a `cargo test -p <crate>` step in `.forgejo/workflows/ci.yml` after the build, and a
+`Cargo.toml`), a `cargo test -p <crate>` step in `.forgejo/workflows/ci.yml` after the build, its
+directory in `NON_NPM_DIRS` of `packages/polydeukes/__tests__/surface-fold-contract.test.ts` (that
+test pins the npm package directories and fails on any other entry under `packages/`), and a
 crates.io trusted publisher (repository `huskyhoochu/polydeukes`, workflow `publish.yml`) on the
 crate's settings page. The publisher can only be registered once the crate exists, so the first
 version is published by hand from the tagged tree with a `publish-new` token.

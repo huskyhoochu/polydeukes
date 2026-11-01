@@ -1,0 +1,54 @@
+{
+  "description": "An Edit whose old_string does not occur in an unprotected file proves no change, so a discipline reading post records only the ordinary pass instead of a break.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "x y x\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "old_string": "absent text",
+      "new_string": "z"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@/lib/a.txt"]]
+  }
+}

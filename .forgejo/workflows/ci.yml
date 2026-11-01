@@ -66,6 +66,7 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test -p pdks
+      - run: cargo test -p pdks-claude-code
 
       - name: Verify standalone adapter registration and judgments
         run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"

@@ -1,0 +1,20 @@
+{
+  "description": "A payload with no event name fails closed as an unsupported hook event.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed", "unsupported hook event"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

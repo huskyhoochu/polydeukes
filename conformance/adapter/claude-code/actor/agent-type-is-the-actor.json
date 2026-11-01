@@ -1,0 +1,76 @@
+{
+  "description": "The top-level agent_type of the payload is the actor a discipline reads.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "implementer-boundary",
+          "declare": {
+            "mechanism": "actor-scope",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "implementer": [
+                {
+                  "op": "source",
+                  "of": "actor"
+                },
+                {
+                  "op": "select",
+                  "path": "agentType"
+                },
+                {
+                  "op": "matches",
+                  "re": "^implementer$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-the-implementer",
+                "relation": {
+                  "op": "empty",
+                  "of": "implementer"
+                },
+                "message": "the implementer subagent wrote under lib"
+              }
+            ],
+            "supply": {
+              "actor": "pass"
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    },
+    "agent_type": "implementer"
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'implementer-boundary' broken on lib/a.txt: the implementer subagent wrote under lib"
+    ],
+    "rows": [
+      [
+        "advised",
+        "implementer-boundary",
+        "lib/a.txt",
+        "[{\"id\":\"not-the-implementer\",\"witnesses\":[{\"key\":\"0\",\"value\":\"implementer\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

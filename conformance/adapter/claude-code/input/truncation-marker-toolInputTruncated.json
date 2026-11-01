@@ -1,0 +1,24 @@
+{
+  "description": "A payload carrying toolInputTruncated: true fails closed as truncated even though it would otherwise pass.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    },
+    "toolInputTruncated": true
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed", "host payload is truncated"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

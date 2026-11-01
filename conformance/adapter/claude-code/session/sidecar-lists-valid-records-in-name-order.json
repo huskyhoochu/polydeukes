@@ -1,0 +1,99 @@
+{
+  "description": "The sidecar channel is the JSON array of subagents/agent-*.meta.json records in name order; a half-written record, a directory with a matching name and other files are left out.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "spawns",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "spawn": {
+                "sidecar": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "spawn": [
+                {
+                  "op": "source",
+                  "of": "spawn"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "spawn-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "spawn"
+                },
+                "message": "spawn records on record"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "never": [
+                  {
+                    "op": "source",
+                    "of": "post"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "(?!)"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "never",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "never"
+                  },
+                  "message": "never held"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "sessions/s-1.jsonl": "{\"origin\":{\"kind\":\"human\"},\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"carry on\"},\"timestamp\":\"@@NOW_ISO-60000@@\",\"uuid\":\"u1\"}\n",
+    "sessions/s-1/subagents/agent-004.meta.json": "{\"agentType\":\"tester\",\"toolUseId\":\"t4\"}",
+    "sessions/s-1/subagents/agent-001.meta.json": "{\"agentType\":\"reviewer\",\"toolUseId\":\"t1\"}",
+    "sessions/s-1/subagents/agent-002.meta.json": "{\"agentType\":",
+    "sessions/s-1/subagents/agent-003.meta.json/inner": "x",
+    "sessions/s-1/subagents/notes.json": "{\"agentType\":\"stray\"}",
+    "sessions/s-1/subagents/agent-005.jsonl": "{\"agentType\":\"stray\"}"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n"
+    },
+    "transcript_path": "@@ROOT@@/sessions/s-1.jsonl"
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'spawns' broken on lib/a.txt"],
+    "rows": [
+      [
+        "advised",
+        "spawns",
+        "lib/a.txt",
+        "[{\"id\":\"spawn-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"[{\\\"agentType\\\":\\\"reviewer\\\",\\\"toolUseId\\\":\\\"t1\\\"},{\\\"agentType\\\":\\\"tester\\\",\\\"toolUseId\\\":\\\"t4\\\"}]\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

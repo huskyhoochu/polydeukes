@@ -1,0 +1,26 @@
+{
+  "description": "A Write to a link whose target does not exist is refused rather than judged under its spelled name.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "links": {
+    "lib/dangle.txt": "missing.txt"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/dangle.txt",
+      "content": "y\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed", "dangling symbolic link"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

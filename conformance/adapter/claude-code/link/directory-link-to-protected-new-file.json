@@ -1,0 +1,30 @@
+{
+  "description": "A Write of a new file under a link to a protected directory resolves the existing ancestor and is blocked.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    },
+    "gate/keep": ""
+  },
+  "links": {
+    "shortcut": "gate"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/shortcut/new.txt",
+      "content": "y\n"
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/new.txt"],
+    "rows": [
+      ["passed", "covenant-check", "@@ROOT@@/shortcut/new.txt"],
+      ["blocked", "self-mod", "gate"]
+    ]
+  }
+}

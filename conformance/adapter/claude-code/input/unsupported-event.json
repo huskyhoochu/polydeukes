@@ -1,0 +1,19 @@
+{
+  "description": "An event other than PreToolUse fails closed as an unsupported hook event.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "Notification",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "message": "hi"
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant check failed closed", "unsupported hook event"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "description": "A NotebookEdit replace judges the target cell: pre is its source (array joined as is), post is new_source, and the subject is the notebook.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^nb/"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ],
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              },
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "nb/a.ipynb": {
+      "cells": [
+        {
+          "id": "c1",
+          "cell_type": "code",
+          "source": ["print(1)\n", "x = 2\n"]
+        },
+        {
+          "id": "c2",
+          "cell_type": "code",
+          "source": "keep\n"
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "NotebookEdit",
+    "tool_input": {
+      "notebook_path": "@@ROOT@@/nb/a.ipynb",
+      "cell_id": "c1",
+      "new_source": "print(2)\n"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on nb/a.ipynb"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "nb/a.ipynb",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"print(1)\\nx = 2\\n\"}],\"total\":1},{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"print(2)\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

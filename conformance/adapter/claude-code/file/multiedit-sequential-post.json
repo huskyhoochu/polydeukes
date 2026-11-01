@@ -1,0 +1,83 @@
+{
+  "description": "A MultiEdit applies its edits in order, so the second edit matches text the first produced.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "see",
+          "declare": {
+            "mechanism": "added-only",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "pre": [
+                {
+                  "op": "source",
+                  "of": "pre"
+                }
+              ],
+              "post": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "pre-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "pre"
+                },
+                "message": "pre"
+              },
+              {
+                "id": "post-seen",
+                "relation": {
+                  "op": "empty",
+                  "of": "post"
+                },
+                "message": "post"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "lib/a.txt": "one two\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "edits": [
+        {
+          "old_string": "one",
+          "new_string": "1"
+        },
+        {
+          "old_string": "1 two",
+          "new_string": "1 2"
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["discipline 'see' broken on lib/a.txt"],
+    "rows": [
+      [
+        "advised",
+        "see",
+        "lib/a.txt",
+        "[{\"id\":\"pre-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"one two\\n\"}],\"total\":1},{\"id\":\"post-seen\",\"witnesses\":[{\"key\":\"0\",\"value\":\"1 2\\n\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

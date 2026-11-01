@@ -73,6 +73,13 @@ registrations is `new-package-checklist.md`.
   contradict). Like `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites
   skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. It and `sdk-rust` are members of
   the Cargo workspace in the root `Cargo.toml`. Its constraints are in `rust.md`.
+- **`packages/pdks-claude-code`** (crate, `publish = false`) is the Claude Code adapter as a
+  `pdks-<name>` extension: `init` pins itself and the `pdks` found on PATH by absolute path in one
+  `PreToolUse` registration without `onFailure`, and adds the two Claude settings files to
+  `protectedPaths`; `hook` translates the payload into the input IR and runs
+  `<pdks> covenant check`. A missing judge lets the call proceed with an install hint. Its
+  translation is pinned by `conformance/adapter/claude-code/`, run through
+  `scripts/verify-adapter-fixtures.mjs`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

@@ -1,0 +1,67 @@
+{
+  "description": "An agent_type inside tool_input is the agent's own argument and never names the actor.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "implementer-boundary",
+          "declare": {
+            "mechanism": "actor-scope",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "implementer": [
+                {
+                  "op": "source",
+                  "of": "actor"
+                },
+                {
+                  "op": "select",
+                  "path": "agentType"
+                },
+                {
+                  "op": "matches",
+                  "re": "^implementer$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-the-implementer",
+                "relation": {
+                  "op": "empty",
+                  "of": "implementer"
+                },
+                "message": "the implementer subagent wrote under lib"
+              }
+            ],
+            "supply": {
+              "actor": "pass"
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/lib/a.txt",
+      "content": "x\n",
+      "agent_type": "implementer"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "implementer-boundary", "lib/a.txt"]]
+  }
+}

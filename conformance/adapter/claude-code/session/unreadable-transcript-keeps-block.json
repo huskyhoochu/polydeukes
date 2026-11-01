@@ -1,0 +1,31 @@
+{
+  "description": "A transcript_path naming a file that does not exist leaves the valve shut.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "content": "x\n"
+    },
+    "transcript_path": "@@ROOT@@/sessions/s-1.jsonl"
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "description": "The token in a task-notification, an origin-less user line and a tool_result is not human evidence, so the block stands.",
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["gate"],
+      "witness": {
+        "token": "agreed-token",
+        "ttlMinutes": 10
+      }
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    },
+    "sessions/s-1.jsonl": "{\"origin\":{\"kind\":\"task-notification\"},\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"agreed-token\"},\"timestamp\":\"@@NOW_ISO-60000@@\",\"uuid\":\"u1\"}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"agreed-token\"},\"timestamp\":\"@@NOW_ISO-60000@@\",\"uuid\":\"u1\"}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"agreed-token\"}]},\"uuid\":\"r-t1\"}\n"
+  },
+  "stdin": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "s-1",
+    "cwd": "@@ROOT@@",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "@@ROOT@@/gate/inner.txt",
+      "content": "x\n"
+    },
+    "transcript_path": "@@ROOT@@/sessions/s-1.jsonl"
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["Write would modify protected path gate/inner.txt"],
+    "rows": [["blocked", "self-mod", "gate"]]
+  }
+}

@@ -1,0 +1,287 @@
+---
+name: discipline-draft
+description: Turn a described discipline problem into a registered entry in polydeukes.config — a judged entry when the declaration grammar and observed evidence can express it, a draft entry otherwise. Use when the user describes a recurring problem they want promised away ("I keep...", "stop X from happening", "we should never...", "how do I enforce Y").
+---
+
+# discipline-draft — from a problem description to a registered discipline
+
+This project is judged by Polydeukes. A discipline starts as prose and climbs a ladder — `draft`
+(registered, read, never judged) → `advise` (judged, recorded, never stops a call) → `block` (stops
+the call; the user's explicit choice, never the default). This skill walks a problem description
+down to the right first rung and registers it.
+
+## Procedure
+
+### 1. Restate the problem as a promise
+
+Rewrite the description as one sentence of the form "X must not happen" or "when A happens, B must
+also happen". If the sentence needs "unless" more than once, split it into two promises and classify
+each separately.
+
+### 2. Classify the shape
+
+Choose from the current catalogue, then check whether the intended surface can supply the required
+evidence. A mechanism name constrains the declaration; it does not implement the promise by itself.
+The extracted axes and body relations must be subsets of the admitted sets below. Scope filtering is
+separate from the extracted axes.
+
+| Mechanism               | Admitted axes                         | Body relations                                                            | Evidence or structural condition                                                                                                                                                                 |
+| ----------------------- | ------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pairing`               | `world`                               | `equal`, `subset`                                                         | Compare supplied files or channels; extract keys when values may differ. Three or more files: build their `flattenKeys` union with `onlyIn` and `union`, then one `subset` of it into each file. |
+| `companion`             | `change`, `world`                     | `implies`                                                                 | Compare presence by key; a multi-file promise needs the observed change set.                                                                                                                     |
+| `monotonic-order`       | `change`, `world`                     | `ordered`                                                                 | Extract a sequence with an explicit comparison field; order is not presence.                                                                                                                     |
+| `fingerprint-sync`      | `world`                               | `equal`                                                                   | Compare supplied stamps; no generator or compiler runs during judgment.                                                                                                                          |
+| `producer-owned`        | `actor`                               | `empty`, `nonEmpty`                                                       | Requires host-provided actor evidence, not an artifact's self-reported producer.                                                                                                                 |
+| `self-absolution-ban`   | `change`                              | `unchanged`, `empty`                                                      | Extract protected fields or path changes; choose creation/deletion supply explicitly.                                                                                                            |
+| `actor-scope`           | `actor`                               | `empty`, `nonEmpty`                                                       | Requires a proven actor; a missing actor is not proof of the main session.                                                                                                                       |
+| `precedent`             | `history`, `world`                    | `nonEmpty`                                                                | Requires an observed earlier call in a transcript or supplied channel.                                                                                                                           |
+| `phase-order`           | `history`                             | `ordered`                                                                 | Compare observed call ordinals; missing phases need a separate presence promise.                                                                                                                 |
+| `turn-locality`         | `history`                             | `nonEmpty`                                                                | Requires observed turns and time or ordinal boundaries.                                                                                                                                          |
+| `stated-ground`         | `history`                             | `nonEmpty`                                                                | Can require recorded text, not establish whether its reasoning is sound.                                                                                                                         |
+| `controlled-vocabulary` | `change`, `world`                     | `subset`                                                                  | Extract values and an explicit allowed set.                                                                                                                                                      |
+| `naming`                | `change`                              | `empty`, `nonEmpty`                                                       | Scope must read `target.path`; match the intended name pattern.                                                                                                                                  |
+| `added-only`            | `change`                              | `empty`                                                                   | Compare pre/post extractions and judge only newly added matches.                                                                                                                                 |
+| `one-way-marker`        | `change`                              | `subset`                                                                  | Existing markers must remain in the extracted post-change set.                                                                                                                                   |
+| `delegated-scope`       | —                                     | —                                                                         | Reserved for a definition-time evaluator; not accepted in current declarations.                                                                                                                  |
+| `scoped-valve`          | `change`, `actor`, `world`, `history` | `empty`, `nonEmpty`, `equal`, `subset`, `implies`, `ordered`, `unchanged` | Requires a `witness` block expressing the exception condition.                                                                                                                                   |
+| `forbidden-command`     | `change`                              | `empty`                                                                   | Scope must read `command`; a text pattern is not shell semantic analysis.                                                                                                                        |
+
+These four requests illustrate the classification boundary:
+
+| Request                                                                      | Classification                                        | Proof                                                                       |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| The English and Korean locale files must carry identical keys.               | `pairing`, with two supplied files.                   | An unmatched key breaks; translated values may differ.                      |
+| Every status must belong to an allowed list.                                 | `controlled-vocabulary`, with a supplied allowed set. | An unknown status breaks; an allowed status passes.                         |
+| A successful package lookup must precede a manifest edit.                    | `precedent`, with observed session history.           | Failed or absent lookups break; an unavailable transcript is a supply case. |
+| A fresh benchmark must execute during judgment to prove a performance claim. | `draft`: the engine does not execute benchmarks.      | Comparing an existing report would be a different promise.                  |
+
+Run `pdks docs show write-disciplines` for the key-pairing walkthrough and
+`pdks docs show configuration --section disciplines` for the declaration grammar. Use `--lang ko`
+for Korean; these commands read the installed version offline.
+
+An `added-only` declaration forgives existing occurrences — only what the edit adds breaks the
+promise. That is usually what you want: a discipline adopted today should not indict yesterday's
+code.
+
+One path-shaped promise takes no `disciplines:` entry at all: a path nobody may touch belongs in the
+top-level `protectedPaths:` list — its own config block, never an entry key.
+
+### 3. Check the observation boundary
+
+Do not confuse an expressible relation with available evidence:
+
+- **Files outside the repository** — file-change protection observes the project root. Use the
+  host's permission policy for comprehensive protection outside it. A command-text pattern may
+  recognize a particular string, but does not observe all resulting writes.
+- **Writes by child processes** — arbitrary writes inside a test runner or script are not
+  individually observed by the session surface. A commit comparison can observe the resulting files
+  when they enter its selected diff; it does not recover the originating tool history.
+- **Missing history or actor channels** — choose the declaration's supply policy explicitly. Commit
+  observations have no session transcript; `supply: pass` records a skip, not success.
+- **Fresh execution or semantic proof** — the engine compares supplied evidence. It does not run a
+  new benchmark or prove that a written explanation is true. Preserve that unmet promise as a draft
+  rather than silently replacing it with a weaker text check.
+
+### 4a. Expressible now — register a judged entry
+
+Add the entry to the `disciplines:` array in `polydeukes.config.yaml`. Advise is the default landing
+— a break is recorded as `advised` and the call goes on — and the `enforce: advise` line below only
+spells that default out. NEVER write `enforce: block` from this skill: promotion to block is the
+user's own choice, made after the advise measurements have been read.
+
+The examples below are whole documents; in a config that already has entries, copy the entry only.
+
+```yaml
+disciplines:
+  - id: "no-focused-tests"
+    why: "a committed .only silently shrinks the suite to one test"
+    declare:
+      mechanism: "added-only"
+      scope: { source: "target.path", include: ["^src/"] }
+      supply: { pre: "empty", post: "empty" }
+      extract:
+        before:
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\.only\()' }
+        after:
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\.only\()' }
+        added:
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
+      relate:
+        - id: "nothing-added"
+          relation: { op: "empty", of: "added" }
+          message: "adds {key}: {value}"
+    enforce: advise
+```
+
+The key here is the marker itself, so every `.only(` in a file has the same key. Without
+`count: true`, `onlyIn` compares keys as a set and a second `.only(` in a file that already has one
+adds nothing; with it, each added occurrence is reported.
+
+A command-line ban reads the fixed source `command` and scopes on it — the scope is part of the
+mechanism's shape, so a `forbidden-command` entry without it is refused at load time:
+
+```yaml
+sessionDisciplines:
+  - id: "no-force-push"
+    why: "a force push rewrites history nobody reviewed"
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - { op: "matches", re: 'git push\b.*--force(?![\w-])' }
+      relate:
+        - { id: "no-force", relation: { op: "empty", of: "hits" }, message: "{value}" }
+    enforce: advise
+```
+
+The following examples implement the first three classification cases. Both locale files and the
+allowed-status file must exist and contain valid JSON. File bindings use the proposed contents for a
+file changed by the current observation, not a second stale disk read.
+
+```yaml
+disciplines:
+  - id: "locale-key-parity"
+    why: "the ko and en locales must carry the same keys"
+    declare:
+      mechanism: "pairing"
+      scope: { source: "target.path", include: ["^locales/(ko|en)[.]json$"] }
+      sources:
+        ko: { file: "locales/ko.json" }
+        en: { file: "locales/en.json" }
+      supply: { ko: "error", en: "error" }
+      extract:
+        koKeys: [{ op: "source", of: "ko" }, { op: "json" }, { op: "flattenKeys" }]
+        enKeys: [{ op: "source", of: "en" }, { op: "json" }, { op: "flattenKeys" }]
+      relate:
+        - id: "parity"
+          relation: { op: "equal", of: ["koKeys", "enKeys"] }
+          messageBySide:
+            left: "{key} is in ko only"
+            right: "{key} is in en only"
+    enforce: advise
+```
+
+```yaml
+disciplines:
+  - id: "status-vocabulary"
+    why: "statuses.json may contain only values listed in allowed-statuses.json"
+    declare:
+      mechanism: "controlled-vocabulary"
+      scope: { source: "target.path", include: ["^statuses[.]json$"] }
+      sources: { allowed: { file: "allowed-statuses.json" } }
+      supply: { post: "error", allowed: "error" }
+      extract:
+        selected: [{ op: "source", of: "post" }, { op: "json" }, { op: "items" }]
+        permitted: [{ op: "source", of: "allowed" }, { op: "json" }, { op: "items" }]
+      relate:
+        - id: "allowed-status"
+          relation: { op: "subset", of: "selected", in: "permitted" }
+          message: "unknown status: {value}"
+    enforce: advise
+```
+
+Here both status files are JSON arrays of strings. This declaration scopes on statuses.json; editing
+only the allowed list does not trigger it. Broaden the observation deliberately if changes to that
+list must recheck all dependent files.
+
+```yaml
+sessionDisciplines:
+  - id: "manifest-needs-npm-view"
+    why: "a successful package lookup must precede a manifest edit"
+    declare:
+      mechanism: "precedent"
+      scope: { source: "target.path", include: ["^(packages/[^/]+/)?package[.]json$"] }
+      sources: { session: { transcript: true } }
+      supply: { session: "pass" }
+      extract:
+        npmView:
+          - { op: "source", of: "session" }
+          - { op: "toolUses", names: ["Bash"] }
+          - { op: "filter", when: [{ field: "succeeded", eq: true }] }
+          - { op: "select", path: "args.command" }
+          - { op: "matches", re: "^npm view " }
+      relate:
+        - id: "npm-view"
+          relation: { op: "nonEmpty", of: "npmView" }
+          message: "no successful npm view precedes this edit"
+    enforce: advise
+```
+
+The precedent example proves only that an observed successful Bash call starts with npm view; it
+does not prove that the lookup concerns the dependency being edited. The change-set surface has no
+transcript and therefore skips this example by its explicit supply policy.
+
+**Write the regex yourself — the user states the promise, you author the pattern.** The pattern is
+the part users find hardest, so never hand the prose back and ask for one. Three authoring traps,
+each measured on a live config:
+
+- **A pattern answers a syntactic question only.** "Is this string a forbidden word" is syntax; "is
+  this a new dependency version" is meaning, and a regex leaks both ways on a semantic question.
+  When the question is semantic, narrow the declaration's own `scope` block to the files where any
+  match IS a break, or accept "editing this file at all" as the trigger.
+- **`^` means what the preceding step left.** After a `lines` step a declaration's pattern sees one
+  line at a time, so `^` anchors to that line; over an unsplit source it anchors to the whole text
+  and matches the first line only. A ban over the command line puts `lines` before its `matches` for
+  exactly that reason.
+- **Author both directions.** Before registering, write down one string the pattern must match and
+  one nearby string it must not (`only(` vs `only_helper(`, a flag vs its substring). A pattern
+  checked in only the breaking direction over-fires in review-proof ways.
+
+### 4b. Not expressible yet — register a draft
+
+A draft is prose with a handle: `id`, `why`, and the literal marker `draft: true` — no other keys.
+It produces no judgment and no telemetry; `pdks explain` lists it as unpromoted. Record the intended
+promise and the exact missing capability inside `why`. Do not classify pairing, vocabulary, or
+history promises as drafts merely because they are absent from a short example list. Check the
+catalogue, extraction steps, and observation channel first. A reserved `delegated-scope` declaration
+cannot be registered as a judged entry.
+
+```yaml
+disciplines:
+  - id: "benchmark-supports-performance-claim"
+    why: "a performance claim needs a fresh benchmark run during judgment; the engine cannot execute it"
+    draft: true
+```
+
+### 5. Prove it fires, then close
+
+Run `pdks explain` and confirm the new entry is listed (a judged entry with its mechanism and
+surfaces; a draft as unpromoted).
+
+For a judged entry, registration is not the finish — a pattern that never fires protects nothing
+while looking installed. Fire it once for real, with the proof run the declaration's own mechanism
+can actually reach:
+
+| Mechanism                                      | Break it once                                         | The entry's id shows up in                                                                                                                                                   |
+| ---------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a file-reading one (`added-only`, `naming`, …) | one scratch edit matching the must-match direction    | `pdks covenant check --diff` output over `git diff HEAD` on stdin — the exit stays 0 at advise, the id is the proof                                                          |
+| `forbidden-command`                            | run one harmless command matching the pattern         | the telemetry log tail — at advise the call proceeds and its row records the id                                                                                              |
+| `precedent`                                    | one in-scope edit made without the required precedent | the telemetry log tail — a declaration reading the session judges on the session surface only (the change-set surface has none, so its `supply` policy records it `skipped`) |
+
+Then undo the scratch break, repeat the same observation, and confirm a passing row for the
+must-NOT-match case. Silence alone may mean a scope miss, unchanged files, or unavailable evidence;
+check `pdks explain` and telemetry for `no-observation` or `supply-pass`. Close by telling the user
+which rung the entry landed on and that `enforce: block` is theirs to add later if the advise record
+earns it.
+
+## Updating this skill without losing local edits
+
+An upgrade does not overwrite an existing skill; rerunning `pdks claude-code init` reports it
+unchanged. Generate a fresh copy in a disposable project using the installed package, compare it
+with this file, and merge the changes you want. Keep a backup of local additions. Do not delete the
+existing skill to force regeneration in the working project.
+
+## Reading the advise record
+
+An `advised` row means a promise was broken and the call went through anyway. Rows land in the
+telemetry log at the path configured by `telemetry.logPath` (default `.polydeukes/roi.log`). The
+hook's stderr note is not shown to you, so consult the log at task boundaries: before committing, or
+after a batch of edits, read the tail and act on any `advised` row — fix the break, or tell the user
+why it should stand. An advisory nobody reads measures nothing.
