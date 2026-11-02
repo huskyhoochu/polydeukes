@@ -68,6 +68,7 @@ jobs:
       - run: cargo test -p pdks
       - run: cargo test -p pdks-claude-code
       - run: cargo test -p pdks-codex
+      - run: cargo test -p pdks-memory
 
       - name: Verify standalone adapter registration and judgments
         run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
