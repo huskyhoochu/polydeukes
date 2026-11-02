@@ -40,6 +40,9 @@ and the milestone is named for its goal, not a version number. No wiki page dupl
 ## Milestone gate
 
 A milestone closes through a fixed gate, once its Exit Criteria hold: ① a full audit runs every
-criterion's command; ② a dogfooding journal round is added with numbers; ③ the release-please PR
-merges; ④ `_docs/roadmap.history.md` gains the gate entry and inherits the milestone's Exit Criteria
-verbatim.
+criterion's command and runs `uv run bench/memory/run.py <pdks-memory>` against the `pdks-memory`
+executable built by `cargo build --release -p pdks-memory` from the milestone's head commit, with a
+new run section added to the knowledge document `memory.research.public-benchmark.md` recording the
+date, that commit, the table printed on stdout, and the elapsed time the runner prints on stderr; ②
+a dogfooding journal round is added with numbers; ③ the release-please PR merges; ④
+`_docs/roadmap.history.md` gains the gate entry and inherits the milestone's Exit Criteria verbatim.
