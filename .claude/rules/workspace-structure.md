@@ -61,31 +61,31 @@ registrations is `new-package-checklist.md`.
   its unstable transcript unread. Prompt text enters witness evidence only with explicit human
   provenance. A changed `.codex/hooks.json` definition needs `/hooks` approval. Code Mode coverage
   must be measured on the installed host version: an Active label alone is not execution evidence.
-- **`packages/pdks`** (crate `pdks`, `publish = false`) is the Rust re-implementation of
-  `covenant check` over both surfaces (stdin IR and `--diff`), `init`, `explain`, `docs` and
-  `--version`. Any other first argument that is a plain name (`[A-Za-z0-9_-]`, not starting with
-  `-`) runs `pdks-<name>` from PATH with the remaining arguments and inherited stdio, and exits with
-  its code; the crate names no extension. `build.rs` embeds the bundled documents of
-  `docs/catalog.json`, so `docs` reads no file at run time. It passes the cases of
+- **`packages/pdks`** (crate `pdks`) is the Rust re-implementation of `covenant check` over both
+  surfaces (stdin IR and `--diff`), `init`, `explain`, `docs` and `--version`. Any other first
+  argument that is a plain name (`[A-Za-z0-9_-]`, not starting with `-`) runs `pdks-<name>` from
+  PATH with the remaining arguments and inherited stdio, and exits with its code; the crate names no
+  extension. `build.rs` embeds the bundled documents of `docs/catalog.json`, so `docs` reads no file
+  at run time; `packages/pdks/docs` is a git symbolic link to the root `docs/`, and `build.rs` reads
+  through it, so `cargo package` copies the documents into the crate package. It passes the cases of
   `conformance/covenant/` listed in `tests/fixture-cases.txt`, plus Rust-only cases in
   `tests/divergent/` (behavior it deliberately changes, which replace the listed cases they
   contradict). Like `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites
   skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. It and `sdk-rust` are members of
   the Cargo workspace in the root `Cargo.toml`. Its constraints are in `rust.md`.
-- **`packages/pdks-claude-code`** (crate, `publish = false`) is the Claude Code adapter as a
-  `pdks-<name>` extension: `init` pins itself and the `pdks` found on PATH by absolute path in one
-  `PreToolUse` registration without `onFailure`, and adds the two Claude settings files to
-  `protectedPaths`; `hook` translates the payload into the input IR and runs
-  `<pdks> covenant check`. A missing judge lets the call proceed with an install hint. Its
-  translation is pinned by `conformance/adapter/claude-code/`, run through
-  `scripts/verify-adapter-fixtures.mjs`.
-- **`packages/pdks-codex`** (crate, `publish = false`) is the Codex adapter in the same shape:
-  `init` writes `PreToolUse`, `PostToolUse` and `SessionEnd` registrations to `.codex/hooks.json` as
-  single-quoted command strings without `|| exit 2`, and adds `.codex/hooks.json` and
-  `.codex/config.toml` to `protectedPaths`. `hook` translates `apply_patch` and `Bash` calls, and
-  keeps the session's tool-call history in `.polydeukes/codex-sessions/` from the two lifecycle
-  events. Its cases are `conformance/adapter/codex/`, run with `--cases-dir`.
-- **`packages/pdks-memory`** (crate, `publish = false`) is memory as a `pdks-<name>` extension:
+- **`packages/pdks-claude-code`** (crate) is the Claude Code adapter as a `pdks-<name>` extension:
+  `init` pins itself and the `pdks` found on PATH by absolute path in one `PreToolUse` registration
+  without `onFailure`, and adds the two Claude settings files to `protectedPaths`; `hook` translates
+  the payload into the input IR and runs `<pdks> covenant check`. A missing judge lets the call
+  proceed with an install hint. Its translation is pinned by `conformance/adapter/claude-code/`, run
+  through `scripts/verify-adapter-fixtures.mjs`.
+- **`packages/pdks-codex`** (crate) is the Codex adapter in the same shape: `init` writes
+  `PreToolUse`, `PostToolUse` and `SessionEnd` registrations to `.codex/hooks.json` as single-quoted
+  command strings without `|| exit 2`, and adds `.codex/hooks.json` and `.codex/config.toml` to
+  `protectedPaths`. `hook` translates `apply_patch` and `Bash` calls, and keeps the session's
+  tool-call history in `.polydeukes/codex-sessions/` from the two lifecycle events. Its cases are
+  `conformance/adapter/codex/`, run with `--cases-dir`.
+- **`packages/pdks-memory`** (crate) is memory as a `pdks-<name>` extension:
   `pdks memory search | show | obligations | supersession | lint | stats | usage`, each with
   `--json`; `search` also takes `--limit <n>`. It reads only the `memory` key of the one config file
   in the working directory and recomputes every answer from the markdown files `memory.include`
@@ -154,6 +154,13 @@ are owned by root and follow cargo binstall's default name and layout: one direc
 and `EN-KO-LICENSE`). release-please also bumps the five workspace members' versions in
 `Cargo.lock`. `release-assets` attaches the Node single executables and the Rust archives to the
 same Release independently, each only when the jobs that built it succeeded.
+
+`publish.yml`'s `publish-rust-crates` job runs after `rust-executables` succeeds and runs
+`cargo publish --locked` for each of the four crates whose tagged version crates.io does not have
+yet, through crates.io trusted publishing, as `publish-crate` does for `sdk-rust`. A crate's first
+version is published by hand (see `new-package-checklist.md`). `cargo binstall` finds the Release
+archives through the crates' `repository`, which the root `[workspace.package]` declares together
+with `authors` and `license`.
 
 ## Shared dependency versions go through the pnpm catalog
 

@@ -3,4 +3,6 @@ resolver = "3"
 members = ["packages/pdks", "packages/pdks-claude-code", "packages/pdks-codex", "packages/pdks-memory", "packages/sdk-rust"]
 
 [workspace.package]
+authors = ["huskyhoochu <dfg1499@gmail.com>"]
 license = "MIT"
+repository = "https://github.com/huskyhoochu/polydeukes"

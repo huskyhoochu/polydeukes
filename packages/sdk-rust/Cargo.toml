@@ -3,9 +3,10 @@ name = "polydeukes-sdk"
 version = "0.20.1"
 edition = "2024"
 rust-version = "1.85"
+authors.workspace = true
 license.workspace = true
 description = "Polydeukes SDK for Rust — hands a covenant input or a change set to `pdks covenant check` and returns the verdict as a value, and ingests and searches memory through `pdks memory`."
-repository = "https://github.com/huskyhoochu/polydeukes"
+repository.workspace = true
 readme = "README.md"
 
 [dependencies]

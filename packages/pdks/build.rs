@@ -20,7 +20,7 @@ fn checked(path: &str) -> &str {
 fn main() {
     let manifest = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|e| fail(&e.to_string()));
     let out_dir = env::var("OUT_DIR").unwrap_or_else(|e| fail(&e.to_string()));
-    let docs: PathBuf = Path::new(&manifest).join("../../docs");
+    let docs: PathBuf = Path::new(&manifest).join("docs");
     let catalog_path = docs.join("catalog.json");
     println!("cargo:rerun-if-changed={}", catalog_path.display());
     let text = fs::read_to_string(&catalog_path).unwrap_or_else(|e| fail(&e.to_string()));

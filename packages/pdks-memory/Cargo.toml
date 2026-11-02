@@ -3,9 +3,11 @@ name = "pdks-memory"
 version = "0.20.1"
 edition = "2024"
 rust-version = "1.89"
-license.workspace = true
+authors.workspace = true
+license = "MIT AND CC-BY-SA-4.0"
+description = "The Polydeukes memory extension, run as pdks memory: answers from the markdown files on every run and keeps no index file."
+repository.workspace = true
 readme = "README.md"
-publish = false
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }

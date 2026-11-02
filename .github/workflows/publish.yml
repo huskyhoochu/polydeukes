@@ -242,6 +242,45 @@ jobs:
           path: ${{ runner.temp }}/rust/*
           if-no-files-found: error
 
+  # The four executable crates go to crates.io from the same tag once both targets' tests
+  # passed, since a crates.io version cannot be taken back. `cargo binstall` then finds the
+  # Release archives above through each crate's `repository`. Auth, the first hand-published
+  # version, and skipping a version the registry already has work as in `publish-crate`.
+  publish-rust-crates:
+    needs: rust-executables
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # rust-executables checked the four versions against the tag on this same commit.
+      - name: List the crates the registry does not have yet
+        id: missing
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          args=""
+          for name in pdks pdks-claude-code pdks-codex pdks-memory; do
+            STATUS="$(curl --retry 3 -sS -o /dev/null -w '%{http_code}' -A 'polydeukes-publish (github.com/huskyhoochu/polydeukes)' "https://crates.io/api/v1/crates/$name/${TAG#v}")"
+            case "$STATUS" in
+              200) ;;
+              404) args="$args -p $name" ;;
+              *) echo "Unexpected crates.io status $STATUS for $name" >&2; exit 1 ;;
+            esac
+          done
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      - uses: rust-lang/crates-io-auth-action@v1
+        if: steps.missing.outputs.args != ''
+        id: auth
+
+      # One invocation packages and verifies every crate before uploading any of them.
+      - if: steps.missing.outputs.args != ''
+        run: cargo publish --locked ${{ steps.missing.outputs.args }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
   publish-python:
     needs: executables
     if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}

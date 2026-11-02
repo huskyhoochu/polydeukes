@@ -8,6 +8,16 @@ answers from the markdown files on every run and keeps no index file.
 <a id="install"></a>
 ## Install
 
+`cargo install --locked pdks-memory` builds the executable from crates.io with the dependency
+versions the release was tested with (the `Cargo.lock` in the crate). `cargo binstall pdks-memory`
+downloads the Release archive described below for `aarch64-apple-darwin` and
+`x86_64-unknown-linux-musl`, and falls back to a source build on other targets.
+
+```sh
+cargo install --locked pdks-memory
+cargo binstall pdks-memory
+```
+
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
 `pdks-memory-<target>-v<version>.tar.gz` for `aarch64-apple-darwin` and `x86_64-unknown-linux-musl`.
 Each archive holds one directory with the same name, containing the executable and `LICENSE`,

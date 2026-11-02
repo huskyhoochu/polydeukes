@@ -3,9 +3,11 @@ name = "pdks"
 version = "0.20.1"
 edition = "2024"
 rust-version = "1.89"
+authors.workspace = true
 license.workspace = true
+description = "The Polydeukes covenant judge: covenant check, init, explain and docs, with pdks-<name> executables on PATH run as pdks <name>."
+repository.workspace = true
 readme = "README.md"
-publish = false
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
