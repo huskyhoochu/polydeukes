@@ -68,6 +68,15 @@ try {
 
   const rustGeneration = join(copied, 'packages/sdk-rust');
   mkdirSync(join(rustGeneration, 'tests'), { recursive: true });
+  // The crate inherits package fields from the root `[workspace.package]`, so the copy needs
+  // a root manifest whose only member is the copied crate.
+  const rootManifest = readFileSync(join(repository, 'Cargo.toml'), 'utf8');
+  const copiedRootManifest = rootManifest.replace(
+    /^members = .*$/m,
+    'members = ["packages/sdk-rust"]',
+  );
+  assert.notEqual(copiedRootManifest, rootManifest, 'root Cargo.toml has no members line');
+  writeFileSync(join(copied, 'Cargo.toml'), copiedRootManifest);
   cpSync(join(repository, 'packages/sdk-rust/src'), join(rustGeneration, 'src'), {
     recursive: true,
   });

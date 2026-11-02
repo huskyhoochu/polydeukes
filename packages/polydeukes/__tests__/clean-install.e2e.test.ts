@@ -121,11 +121,18 @@ beforeAll(() => {
           [packageNameOf(CORE_DIR)]: `file:${tarballOf(CORE_DIR)}`,
           [packageNameOf(MEMORY_DIR)]: `file:${tarballOf(MEMORY_DIR)}`,
         },
-        pnpm: { overrides },
       },
       null,
       2,
     )}\n`,
+  );
+  // pnpm 12 reads overrides only from pnpm-workspace.yaml; the package.json `pnpm` field is
+  // ignored with a warning. JSON strings are valid YAML scalars.
+  writeFileSync(
+    join(consumerRoot, 'pnpm-workspace.yaml'),
+    `overrides:\n${Object.entries(overrides)
+      .map(([name, spec]) => `  ${JSON.stringify(name)}: ${JSON.stringify(spec)}\n`)
+      .join('')}`,
   );
 
   const install = spawnSync('pnpm', ['install'], { cwd: consumerRoot, encoding: 'utf-8' });
@@ -135,22 +142,29 @@ beforeAll(() => {
     );
   }
 
-  // The overrides are load-bearing, and a resolution that ignores them still exits 0: the
-  // registry answers every `^0.3.0` range, and each spawned case then judges through a
-  // year of missing exports with failures that name the wrong culprit. Refuse the tree
-  // here, naming the package, instead of letting six cases fail on the symptom.
-  // Only packages that actually landed in the consumer graph are checked: a packed
-  // sibling this consumer does not depend on (a second session adapter) is absent from
-  // the store by design, not because the override failed.
+  // The overrides are load-bearing, and a resolution that ignores them still exits 0
+  // whenever the registry already has the version: each spawned case then judges through
+  // the published build, with failures that name the wrong culprit. Refuse the tree here,
+  // naming the package. A direct `file:` dependency puts a `@file+` entry in the store even
+  // when a transitive copy of the same package came from the registry, so the check is for
+  // any registry entry (`<name>@<version>`), not for the presence of the tarball's entry.
   const virtualStore = readdirSync(join(consumerRoot, 'node_modules', '.pnpm'));
-  for (const dir of PACKAGE_DIRS.filter((entry) => entry !== UMBRELLA_DIR)) {
+  for (const dir of PACKAGE_DIRS) {
     const name = packageNameOf(dir);
-    if (!existsSync(join(consumerRoot, 'node_modules', name))) continue;
-    const storePrefix = `${name.replace('/', '+')}@file+`;
-    if (!virtualStore.some((entry) => entry.startsWith(storePrefix))) {
+    const storePrefix = `${name.replace('/', '+')}@`;
+    const fromRegistry = virtualStore.find(
+      (entry) => entry.startsWith(storePrefix) && !entry.startsWith(`${storePrefix}file+`),
+    );
+    if (fromRegistry !== undefined) {
       throw new Error(
-        `consumer resolved ${name} from the registry, not its packed tarball — pnpm.overrides did not apply`,
+        `consumer resolved ${name} from the registry (${fromRegistry}), not its packed tarball — the overrides did not apply`,
       );
+    }
+    // A package at the consumer root must also show its tarball entry, or a store laid out
+    // elsewhere would pass the check above with nothing to inspect.
+    const atRoot = existsSync(join(consumerRoot, 'node_modules', name));
+    if (atRoot && !virtualStore.some((entry) => entry.startsWith(`${storePrefix}file+`))) {
+      throw new Error(`consumer has ${name} but no packed-tarball entry for it in the store`);
     }
   }
 
