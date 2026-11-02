@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use garu_core::model::Analyzer;
+use crate::garu::model::Analyzer;
 
 const MODEL: &[u8] = include_bytes!("../models/garu-base.gmdl");
 

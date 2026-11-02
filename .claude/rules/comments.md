@@ -89,3 +89,6 @@ sounds like it ought to be true.
 The paragraph is the unit, and three lines is a normal one. A comment that runs past eight is
 usually two facts and a restatement — cut it to the fact that survives the question in the previous
 section.
+
+The vendored upstream code under `packages/pdks-memory/src/garu/` keeps upstream's comments and is
+outside this file's rules.

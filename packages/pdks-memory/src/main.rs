@@ -3,6 +3,12 @@
 mod config;
 mod corpus;
 mod expand;
+// Upstream garu-core source, changed only by a source header per file, its `crate::` paths, its
+// removed test modules, and one closure pattern edition 2024 rejects, so the workspace lints and
+// rustfmt do not apply to it.
+#[allow(warnings, unsafe_code, clippy::all, clippy::pedantic, clippy::restriction)]
+#[rustfmt::skip]
+mod garu;
 mod log;
 mod normalize;
 mod output;

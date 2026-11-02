@@ -90,8 +90,11 @@ registrations is `new-package-checklist.md`.
   `--json`; `search` also takes `--limit <n>`. It reads only the `memory` key of the one config file
   in the working directory and recomputes every answer from the markdown files `memory.include`
   reaches on each run; it keeps no index file. `search` reduces the query with the `garu-core`
-  Korean morphological analyzer, whose model is embedded in the executable (a git dependency pinned
-  to one commit), and ranks sections by one bm25 formula over passages split at blank lines, line
+  Korean morphological analyzer, whose model is embedded in the executable (source vendored as
+  `src/garu/` from one pinned commit of `ongjin/garu`, MIT, changed only for a source header per
+  file, `crate::` paths, removed test modules and one closure pattern rejected by edition 2024;
+  workspace lints and rustfmt are disabled for the module; `models/GARU-LICENSE` covers it and the
+  embedded model), and ranks sections by one bm25 formula over passages split at blank lines, line
   breaks, then whitespace to at most 2,000 characters where whitespace allows, with a proximity
   adjustment and title occurrences counted twice. When the query has no Hangul, each query word is
   searched together with up to three Korean translations, taken first from `Korean(english)` glosses

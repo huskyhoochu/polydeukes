@@ -38,6 +38,10 @@ contradict each other. Silence one site with `#[expect(lint, reason = "...")]`, 
 `expect` fails once the code it excused is gone. `unsafe_code` is `deny` rather than `forbid` so
 that the SDK's tests can expect it around edition 2024's `std::env::set_var`.
 
+The one exception is the vendored `packages/pdks-memory/src/garu/` module, silenced as a whole by
+`#[allow(warnings, unsafe_code, clippy::all, clippy::pedantic, clippy::restriction)]` plus
+`#[rustfmt::skip]` on its declaration because its code is upstream's and is not edited here.
+
 ## Why these lints, in this crate
 
 - **A panic is an exit code nobody promised.** An unwinding panic ends the process with 101; the
