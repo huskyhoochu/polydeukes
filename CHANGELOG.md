@@ -9,6 +9,13 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.21.1](https://github.com/huskyhoochu/polydeukes/compare/v0.21.0...v0.21.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **release:** unblock the npm publish gate that stopped v0.21.0 ([#324](https://github.com/huskyhoochu/polydeukes/issues/324)) ([fb8a90e](https://github.com/huskyhoochu/polydeukes/commit/fb8a90e08f8fc2e63b27793e0aa54677f5455aaa))
+
 ## [0.21.0](https://github.com/huskyhoochu/polydeukes/compare/v0.20.1...v0.21.0) (2026-11-02)
 
 
