@@ -9,6 +9,25 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.21.0](https://github.com/huskyhoochu/polydeukes/compare/v0.20.1...v0.21.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* `pdks adapter grok` and @polydeukes/adapter-grok are gone. A project registered with `pdks adapter grok init` refuses every Grok tool call after upgrading; delete .grok/hooks/covenant-pretooluse.json from your terminal.
+* every package requires Node.js 26 or later.
+
+### Features
+
+* drop Grok support and judge this repository's sessions with the Rust pdks ([#303](https://github.com/huskyhoochu/polydeukes/issues/303)) ([178fc00](https://github.com/huskyhoochu/polydeukes/commit/178fc00629f39fa068de42dc68f327406b234cbb))
+* **release:** attach the four Rust executables for macOS arm64 and Linux x64 to each Release ([#321](https://github.com/huskyhoochu/polydeukes/issues/321)) ([1fe1ffe](https://github.com/huskyhoochu/polydeukes/commit/1fe1ffe78b37baf22df8968e968732b406166c7e))
+* **release:** publish pdks and its three extension crates to crates.io for cargo install ([#322](https://github.com/huskyhoochu/polydeukes/issues/322)) ([3074d8e](https://github.com/huskyhoochu/polydeukes/commit/3074d8e612156ae9d4d0ad9c7bb36a0ce42240c1))
+
+
+### Build System
+
+* require node 26, the active LTS ([c0d901b](https://github.com/huskyhoochu/polydeukes/commit/c0d901bd5696571f2b8f3d350609c33c76960d69))
+
 ## [0.20.1](https://github.com/huskyhoochu/polydeukes/compare/v0.20.0...v0.20.1) (2026-10-22)
 
 
