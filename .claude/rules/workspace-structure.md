@@ -175,15 +175,23 @@ archive's license files, the crate's README, and a Node launcher `bin/<name>.js`
 executable for `darwin arm64`, `linux x64` or `linux arm64`; on any other platform it writes one
 stderr line. The launcher's own failures (unsupported platform or an executable that cannot run)
 exit 1, because a host reads exit 2 from a hook as a block. A child ended by a signal exits 128 plus
-the signal number. The launcher passes `argv[0]` as the `node_modules/.bin` link path when run
-through that link (the basename of `process.argv[1]` equals the command name) and as the bare name
-otherwise, so an extension's `init` registers the `.bin` entry either way. `publish.yml`'s
-`npm-packages` job runs after `rust-executables` and `release-assets` on `macos-latest`,
-`ubuntu-latest` and `ubuntu-24.04-arm`, downloads the archives from the tag's GitHub Release, packs
-the four packages and runs `scripts/verify-npm-packages.mjs`, which installs them with npm into a
-fresh consumer and runs them. The `publish-npm-binaries` job runs after `npm-packages`, packs them
-from the same Release archives and runs `npm publish --provenance --access public` for each version
-the registry does not have, through npm trusted publishing registered for all four names.
+the signal number. When `<cwd>/node_modules/<npm name>/bin/<target>/<name>` exists and has the same
+real path as the executable beside the launcher, the launcher runs that path and passes it as
+`argv[0]`. Otherwise, for example in a global install, it runs the executable beside the launcher
+and passes the bare command name as `argv[0]`, so an extension's `init` looks itself up on `PATH`
+and registers the package manager's bin entry; the launcher's own real path can name a pnpm store
+version. When `<cwd>/node_modules/polydeukes/bin/<target>/pdks` exists, the launcher puts that
+directory first on the child's `PATH`. An extension's `init`, run from the project root, therefore
+registers the two platform executables under the project's `node_modules/<package>` directories, so
+the registered hook runs without Node and the registration keeps working after an npm or pnpm
+upgrade (pnpm keeps `node_modules/<package>` as a link to its versioned store directory).
+`publish.yml`'s `npm-packages` job runs after `rust-executables` and `release-assets` on
+`macos-latest`, `ubuntu-latest` and `ubuntu-24.04-arm`, sets up pnpm with `pnpm/action-setup`,
+downloads the archives from the tag's GitHub Release, packs the four packages and runs
+`scripts/verify-npm-packages.mjs`, which installs them into a fresh npm consumer and a fresh pnpm
+consumer and runs them. The `publish-npm-binaries` job runs after `npm-packages`, packs them from
+the same Release archives and runs `npm publish --provenance --access public` for each version the
+registry does not have, through npm trusted publishing registered for all four names.
 
 ## Shared dependency versions go through the pnpm catalog
 

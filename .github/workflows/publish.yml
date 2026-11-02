@@ -296,6 +296,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # verify-npm-packages.mjs installs into a pnpm consumer as well as an npm one.
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
           node-version: 26

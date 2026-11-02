@@ -48,10 +48,11 @@ const { author } = JSON.parse(readFileSync(join(repository, 'package.json'), 'ut
 const field = (text, key) => text.match(new RegExp(`^${key} = "([^"]*)"$`, 'm'))?.[1];
 
 // The launcher's own failures exit 1, never 2: a host reads 2 from a hook as a block.
-const launcher = (name) => `#!/usr/bin/env node
+const launcher = (name, npm) => `#!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import { existsSync, realpathSync } from 'node:fs';
 import { constants } from 'node:os';
-import { basename } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const name = ${JSON.stringify(name)};
@@ -61,16 +62,23 @@ if (target === undefined) {
   process.stderr.write(\`\${name}: no prebuilt executable for \${process.platform} \${process.arch}\\n\`);
   process.exit(1);
 }
-// \`init\` registers argv[0] when it is a path and looks a bare name up on PATH. Run through a
-// node_modules/.bin link, the link is passed on; otherwise (a package manager's shell shim) the
-// bare name finds the .bin entry. Either way the registration outlives an upgrade, which this
-// file's own install path does not.
-const invoked = process.argv[1];
-const result = spawnSync(
-  fileURLToPath(new URL(\`./\${target}/\${name}\`, import.meta.url)),
-  process.argv.slice(2),
-  { stdio: 'inherit', argv0: basename(invoked) === name ? invoked : name },
-);
+// An extension's \`init\` registers its own argv[0] when it is a path and looks a bare name up on
+// PATH; it registers the first pdks on PATH. Inside the project, the node_modules/<package>
+// spelling keeps its path across an npm or pnpm upgrade and the hook runs without Node. Outside
+// it (a global install), this file's real path can name a pnpm store version, so the bare name
+// finds the package manager's bin entry instead.
+const own = fileURLToPath(new URL(\`./\${target}/\${name}\`, import.meta.url));
+const local = join(process.cwd(), 'node_modules', ${JSON.stringify(npm)}, 'bin', target, name);
+const inProject = existsSync(local) && realpathSync(local) === realpathSync(own);
+const judge = join(process.cwd(), 'node_modules', 'polydeukes', 'bin', target);
+const env = existsSync(join(judge, 'pdks'))
+  ? { ...process.env, PATH: [judge, process.env.PATH].filter(Boolean).join(delimiter) }
+  : process.env;
+const result = spawnSync(inProject ? local : own, process.argv.slice(2), {
+  stdio: 'inherit',
+  env,
+  argv0: inProject ? local : name,
+});
 if (result.error) {
   process.stderr.write(\`\${name}: cannot run the \${target} executable: \${result.error.message}\\n\`);
   process.exit(1);
@@ -98,7 +106,7 @@ try {
       for (const license of LICENSES[crate] ?? ['LICENSE'])
         copyFileSync(join(scratch, stem, license), join(target, license));
     }
-    writeFileSync(join(target, 'bin', `${crate}.js`), launcher(crate), { mode: 0o755 });
+    writeFileSync(join(target, 'bin', `${crate}.js`), launcher(crate, npm), { mode: 0o755 });
     copyFileSync(join(repository, 'packages', crate, 'README.md'), join(target, 'README.md'));
     const pkg = {
       name: npm,
