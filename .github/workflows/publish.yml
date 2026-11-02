@@ -187,6 +187,61 @@ jobs:
           path: ${{ runner.temp }}/${{ matrix.asset }}
           if-no-files-found: error
 
+  # The Rust executables, one archive each per platform, for the package managers to install
+  # from the Release. Linux links musl statically, so the file runs on any x86_64 Linux whatever
+  # its C library. The tests run the release build for the shipped target, so the packed files
+  # are the ones tested; CI covers Linux only, so this is where macOS is tested.
+  rust-executables:
+    if: ${{ !inputs.python_only }}
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The crates' fixture tests run the conformance scripts with node.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Verify HEAD is exactly the tagged release
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --exact-match)"
+          test "$TAG" = "v$(node -p 'require("./package.json").version')"
+          for name in pdks pdks-claude-code pdks-codex pdks-memory; do
+            grep -qx "version = \"${TAG#v}\"" "packages/$name/Cargo.toml"
+          done
+
+      - run: rustup target add ${{ matrix.target }}
+
+      - run: cargo test --release --locked --target ${{ matrix.target }} -p pdks -p pdks-claude-code -p pdks-codex -p pdks-memory
+
+      - run: cargo build --release --locked --target ${{ matrix.target }} -p pdks -p pdks-claude-code -p pdks-codex -p pdks-memory
+
+      - name: Pack each executable
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p 'require("./package.json").version')"
+          for name in pdks pdks-claude-code pdks-codex pdks-memory; do
+            scripts/pack-rust-executable.sh "$name" "$TARGET" "$VERSION" "target/$TARGET/release/$name" "$RUNNER_TEMP/rust"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-${{ matrix.target }}
+          path: ${{ runner.temp }}/rust/*
+          if-no-files-found: error
+
   publish-python:
     needs: executables
     if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}
@@ -276,9 +331,12 @@ jobs:
         if: steps.published.outputs.exists == 'false'
 
   # Release objects do not cross the mirror, so the tag's GitHub Release is made here when it
-  # does not exist yet; the executables replace any earlier upload of the same name.
+  # does not exist yet; the executables replace any earlier upload of the same name. Each set is
+  # attached only when every job that built it succeeded, so a failure in one does not hold back
+  # the other.
   release-assets:
-    needs: executables
+    needs: [executables, rust-executables]
+    if: ${{ !cancelled() && (needs.executables.result == 'success' || needs.rust-executables.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -293,7 +351,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          SEA: ${{ needs.executables.result }}
+          RUST: ${{ needs.rust-executables.result }}
         run: |
           set -euo pipefail
+          files=()
+          if [ "$SEA" = success ]; then files+=(assets/pdks-linux-x64 assets/pdks-darwin-arm64); fi
+          if [ "$RUST" = success ]; then files+=(assets/*.tar.gz); fi
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --notes "Single executables of pdks for this release."
-          gh release upload "$TAG" assets/pdks-linux-x64 assets/pdks-darwin-arm64 --clobber
+          gh release upload "$TAG" "${files[@]}" --clobber

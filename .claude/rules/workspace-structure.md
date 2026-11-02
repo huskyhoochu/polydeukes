@@ -144,6 +144,17 @@ adapters), built by `packages/polydeukes/scripts/build-sea.mjs <output path>` an
 GitHub Release by `publish.yml` (`pdks-linux-x64`, `pdks-darwin-arm64`). Build it after a full
 `pnpm build`: the bundle takes whatever the adapters' `dist` holds.
 
+`publish.yml`'s `rust-executables` job tests the release build for each shipped target with
+`cargo test --release --locked --target` before building `pdks`, `pdks-claude-code`, `pdks-codex`
+and `pdks-memory` for `aarch64-apple-darwin` and `x86_64-unknown-linux-musl` (musl is statically
+linked). `scripts/pack-rust-executable.sh` packs each executable as
+`<name>-<target>-v<version>.tar.gz` only; GitHub records each asset's digest. The archive entries
+are owned by root and follow cargo binstall's default name and layout: one directory named
+`<name>-<target>-v<version>` holding the executable and `LICENSE` (`pdks-memory` adds `GARU-LICENSE`
+and `EN-KO-LICENSE`). release-please also bumps the five workspace members' versions in
+`Cargo.lock`. `release-assets` attaches the Node single executables and the Rust archives to the
+same Release independently, each only when the jobs that built it succeeded.
+
 ## Shared dependency versions go through the pnpm catalog
 
 Versions shared across packages are defined **once** in `pnpm-workspace.yaml` under `catalog:` and
