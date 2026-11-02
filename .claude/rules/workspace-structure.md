@@ -93,9 +93,14 @@ registrations is `new-package-checklist.md`.
   Korean morphological analyzer, whose model is embedded in the executable (a git dependency pinned
   to one commit), and ranks sections by one bm25 formula over passages split at blank lines, line
   breaks, then whitespace to at most 2,000 characters where whitespace allows, with a proximity
-  adjustment and title occurrences counted twice. `search`, `show` and `obligations` append one line
-  each to `.polydeukes/memory-log.jsonl`, which `usage` reads. Its tests are process tests in
-  `tests/process/`. The TypeScript `@polydeukes/memory` still ships `pdks memory` with `ingest`.
+  adjustment and title occurrences counted twice. When the query has no Hangul, each query word is
+  searched together with up to three Korean translations, taken first from `Korean(english)` glosses
+  written in the searched documents and then from `models/en-ko.tsv`, an English-to-Korean word list
+  built from Wiktionary (CC-BY-SA 4.0, built by `models/en-ko.py`) and embedded in the executable; a
+  section matches the word if any of them matches, and scores by the best one. `search`, `show` and
+  `obligations` append one line each to `.polydeukes/memory-log.jsonl`, which `usage` reads. Its
+  tests are process tests in `tests/process/`. The TypeScript `@polydeukes/memory` still ships
+  `pdks memory` with `ingest`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

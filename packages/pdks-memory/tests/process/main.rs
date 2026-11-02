@@ -5,6 +5,7 @@ mod common;
 mod config;
 mod corpus;
 mod errors;
+mod expand;
 mod links;
 mod lint;
 mod log;

@@ -1,0 +1,12 @@
+en-ko.tsv is derived from Wiktionary, https://en.wiktionary.org/, by its contributors.
+
+It was built by en-ko.py from kaikki.org's extract of the English Wiktionary's Korean entries,
+https://kaikki.org/dictionary/Korean/kaikki.org-dictionary-Korean.jsonl, as published on
+2026-10-30 (SHA-256 c160b1dadd49b14109c2c1a29a616cc44064a738f91d2b98c1cdf457b90fde7f).
+
+en-ko.tsv is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License,
+https://creativecommons.org/licenses/by-sa/4.0/. Changes from the source: only Korean headwords
+whose English gloss is one word are kept, inverted into English-to-Korean pairs, verbs
+and adjectives cut to their stems, and at most three translations kept per English word.
+
+The license applies to en-ko.tsv only, not to the rest of this package.

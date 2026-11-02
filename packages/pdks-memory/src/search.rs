@@ -8,8 +8,9 @@ use serde_json::{Value, json};
 
 use crate::config::Settings;
 use crate::corpus::{Corpus, Doc, Section};
+use crate::expand;
 use crate::log::now_millis;
-use crate::normalize::{is_js_space, normalize_query, query_words};
+use crate::normalize::{has_hangul, is_js_space, normalize_query, query_words};
 use crate::output::pairs;
 
 const MAX_CHUNK: usize = 2000;
@@ -410,14 +411,14 @@ fn rank(a: &Ranked, b: &Ranked, entries: &[Entry]) -> Ordering {
 /// How much a chunk's score is lowered for its two different terms sitting `δ` words apart
 /// (Tao & Zhai's `MinDist`, `ln(α + e^-δ)`). `ln α` is subtracted so that a chunk whose terms are
 /// far apart is lowered by nothing.
-fn proximity(text: &str, terms: &[String]) -> f64 {
+fn proximity(text: &str, terms: &[Vec<String>]) -> f64 {
     let mut last: Vec<Option<usize>> = vec![None; terms.len()];
     let mut nearest: Option<usize> = None;
     for (at, word) in text.split_whitespace().enumerate() {
         let here: Vec<usize> = terms
             .iter()
             .enumerate()
-            .filter(|(_, term)| word.contains(term.as_str()))
+            .filter(|(_, group)| group.iter().any(|term| word.contains(term.as_str())))
             .map(|(k, _)| k)
             .collect();
         if here.len() >= 2 {
@@ -446,7 +447,12 @@ fn proximity(text: &str, terms: &[String]) -> f64 {
 
 /// The lowest score among an entry's chunks that hold a matched term, with the proximity lowering
 /// applied to chunks holding at least two.
-fn best_chunk(entry: &Entry, index: usize, matches: &[TermMatch], lowered: &[String]) -> f64 {
+fn best_chunk(
+    entry: &Entry,
+    index: usize,
+    matches: &[Vec<TermMatch>],
+    lowered: &[Vec<String>],
+) -> f64 {
     entry
         .chunks
         .iter()
@@ -454,7 +460,12 @@ fn best_chunk(entry: &Entry, index: usize, matches: &[TermMatch], lowered: &[Str
         .filter_map(|(chunk, body)| {
             let scores: Vec<f64> = matches
                 .iter()
-                .filter_map(|term| term.scores.get(index)?.get(chunk).copied().flatten())
+                .filter_map(|group| {
+                    group
+                        .iter()
+                        .filter_map(|term| term.scores.get(index)?.get(chunk).copied().flatten())
+                        .reduce(f64::min)
+                })
                 .collect();
             (!scores.is_empty()).then(|| {
                 let sum = scores.iter().sum::<f64>();
@@ -467,6 +478,28 @@ fn best_chunk(entry: &Entry, index: usize, matches: &[TermMatch], lowered: &[Str
         })
         .reduce(f64::min)
         .unwrap_or_default()
+}
+
+fn group_matches(
+    entries: &[Entry],
+    total: f64,
+    avglen: f64,
+    groups: &[Vec<String>],
+) -> (Vec<Vec<String>>, Vec<Vec<TermMatch>>) {
+    let lowered = groups
+        .iter()
+        .map(|group| group.iter().map(|term| term.to_ascii_lowercase()).collect())
+        .collect();
+    let matches = groups
+        .iter()
+        .map(|group| {
+            group
+                .iter()
+                .map(|term| term_match(entries, total, avglen, term))
+                .collect()
+        })
+        .collect();
+    (lowered, matches)
 }
 
 /// The sections that match, best first, at most `limit` of them.
@@ -486,11 +519,12 @@ pub fn find(corpus: &Corpus, settings: &Settings, query: &str, limit: usize) -> 
             .sum(),
     ) / total;
     let (terms, literal) = query_terms(query);
-    let lowered: Vec<String> = terms.iter().map(|term| term.to_ascii_lowercase()).collect();
-    let matches: Vec<TermMatch> = terms
-        .iter()
-        .map(|term| term_match(&entries, total, avglen, term))
-        .collect();
+    let groups = if has_hangul(query) {
+        terms.into_iter().map(|term| vec![term]).collect()
+    } else {
+        expand::groups(corpus, terms)
+    };
+    let (lowered, matches) = group_matches(&entries, total, avglen, &groups);
 
     let mut superseded_by: HashMap<&str, Vec<String>> = HashMap::new();
     let pairs = pairs(corpus, false);
@@ -505,15 +539,20 @@ pub fn find(corpus: &Corpus, settings: &Settings, query: &str, limit: usize) -> 
     for (index, entry) in entries.iter().enumerate() {
         let hits = matches
             .iter()
-            .filter(|term| term.in_text(index) || term.by_id(index))
+            .filter(|group| {
+                group
+                    .iter()
+                    .any(|term| term.in_text(index) || term.by_id(index))
+            })
             .count();
         if hits == 0 {
             continue;
         }
-        let id_only = matches
-            .iter()
-            .any(|term| term.by_id(index) && !term.in_text(index));
-        let match_path = if hits < terms.len() {
+        let id_only = matches.iter().any(|group| {
+            group.iter().any(|term| term.by_id(index))
+                && !group.iter().any(|term| term.in_text(index))
+        });
+        let match_path = if hits < groups.len() {
             "or"
         } else if id_only {
             "like"

@@ -40,7 +40,7 @@ fn is_hangul(c: char) -> bool {
         | '\u{FFDA}'..='\u{FFDC}')
 }
 
-fn has_hangul(text: &str) -> bool {
+pub fn has_hangul(text: &str) -> bool {
     text.chars().any(is_hangul)
 }
 

@@ -2,6 +2,7 @@
 
 mod config;
 mod corpus;
+mod expand;
 mod log;
 mod normalize;
 mod output;
