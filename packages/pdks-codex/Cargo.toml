@@ -4,6 +4,7 @@ version = "0.20.1"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
+readme = "README.md"
 publish = false
 
 [dependencies]
