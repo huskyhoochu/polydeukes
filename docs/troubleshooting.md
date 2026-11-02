@@ -12,8 +12,8 @@ judging packages, provided its own installed documentation bundle is intact.
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root. Restore
 the intended file from Git, or use `pdks init` / `pdks adapter claude-code init` /
-`pdks adapter grok init` / `pdks adapter codex init` for a new project. Then run `pdks explain`. No
-configuration means no silent default policy.
+`pdks adapter codex init` for a new project. Then run `pdks explain`. No configuration means no
+silent default policy.
 
 <a id="multiple-config"></a>
 ## More than one config file
@@ -43,19 +43,6 @@ touches the config together with another file, or one whose evidence does not st
 on disk. The change-set surface has no such path: a commit that repairs the config is a human's
 commit, made from a terminal that can see the error.
 
-<a id="grok-witness"></a>
-## Grok witness
-
-A hook not yet loaded and an unavailable witness valve are different problems:
-
-- After `pdks adapter grok init`, reload the Hooks tab or start a new session. Verify an actual call
-  and its telemetry; a successful installer run does not prove the open host loaded the hook.
-- Grok's ACP history does not supply the Claude-format human message required by the current session
-  witness valve. Reloading does not add that capability. Perform a necessary repair from your own
-  terminal rather than trying to send a Claude witness token through Grok.
-
-The change-set surface has no witness prompt and cannot release a blocked Grok tool call.
-
 <a id="codex-witness"></a>
 ## Codex witness
 
@@ -80,13 +67,13 @@ again.
 
 Check that `pdks` exists and is executable at the registered absolute path. If the executable or
 project moved, run `pdks adapter <host> init` from your own terminal at the new location and check
-host trust again. The single executable contains the judge and all three adapters. A source checkout
+host trust again. The single executable contains the judge and both adapters. A source checkout
 using npm packages needs its dependencies and complete workspace build restored.
 
-While the registered executable cannot start, all three hosts refuse every file-changing or shell
-tool call and the session itself continues: prompts are still submitted, and reading tools still
-run, so you can read the refusal and repair the path. A registration committed from another machine
-names that machine's paths; run init on yours.
+While the registered executable cannot start, both hosts refuse every file-changing or shell tool
+call and the session itself continues: prompts are still submitted, and reading tools still run, so
+you can read the refusal and repair the path. A registration committed from another machine names
+that machine's paths; run init on yours.
 
 A failure before the hook starts may leave no telemetry. A started hook with invalid input sends
 `--input-failure` to the shared judge, producing one diagnostic and one `blocked covenant-check`

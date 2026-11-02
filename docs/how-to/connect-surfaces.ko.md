@@ -2,8 +2,8 @@
 
 [English](../how-to/connect-surfaces.md) · **한국어**
 
-> 작업에 맞는 표면을 고릅니다. Claude Code와 Grok, Codex는 세션 표면을 배선하고, git은 변경 집합
-> 표면을 배선합니다.
+> 작업에 맞는 표면을 고릅니다. Claude Code와 Codex는 세션 표면을 배선하고, git은 변경 집합 표면을
+> 배선합니다.
 
 두 표면은 같은 설정 어휘를 쓰지만 판정 시점이 다릅니다. AI 파트너가 편집할 때는 세션 표면을, 변경을
 이력으로 기록하기 전에는 변경 집합 표면을 사용합니다.
@@ -27,23 +27,6 @@ pdks adapter claude-code init
 메시지만 증인(witness) 밸브에 쓰입니다.
 
 [등록 상세](../reference/cli/init.ko.md#init-claude-code)
-
-<a id="grok"></a>
-## Grok 세션 표면
-
-```sh
-pdks adapter grok init
-```
-
-설치한 단일 실행 파일을 프로젝트 루트에서 실행합니다. 별도 Node·npm·어댑터 설치가 필요하지 않습니다.
-현재 실행 파일과 프로젝트 루트의 절대 경로를 등록하며 다른 handler와 설정을 보존합니다. 위치가
-바뀌면 다시 실행하세요.
-
-프로젝트 신뢰를 승인하고 Hooks 탭을 다시 불러오세요. Grok 자체 등록이 필요합니다.
-`GROK_WORKSPACE_ROOT`가 있는 Grok 실행에서는 Claude 호환 callback을 건너뛰어 중복 판정을 피합니다.
-현재 세션 기록·사람 출처가 없어 증인 밸브를 열 수 없으므로 보호 변경은 사용자 터미널에서 수행하세요.
-
-[등록 상세](../reference/cli/init.ko.md#init-grok)
 
 <a id="codex"></a>
 ## Codex 세션 표면
@@ -113,7 +96,7 @@ git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-p
 ## 증인과 복구
 
 사람 출처를 증명하는 Claude 세션에서는 설정된 토큰을 메시지 첫 줄에 단독으로 보낸 뒤 의도한 변경을
-재시도할 수 있습니다. 증인 밸브는 차단 결과 뒤에 확인하며 TTL 안에서만 적용됩니다. 현재 Codex·Grok
+재시도할 수 있습니다. 증인 밸브는 차단 결과 뒤에 확인하며 TTL 안에서만 적용됩니다. 현재 Codex
 prompt는 이 출처를 증명하지 못하므로 사용자 터미널에서 보호 변경을 수행하세요. 변경 집합 표면에는
 증인 프롬프트가 없으며 훅이 exit code에 따라 커밋을 처리합니다.
 

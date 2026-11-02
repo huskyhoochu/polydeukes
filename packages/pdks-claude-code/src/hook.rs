@@ -34,10 +34,6 @@ impl Answer {
 }
 
 pub fn run(root: &Path, pdks: &Path) -> ExitCode {
-    // Under the Grok runtime the Grok registration owns the judgment.
-    if std::env::var_os("GROK_WORKSPACE_ROOT").is_some_and(|value| !value.is_empty()) {
-        return ExitCode::SUCCESS;
-    }
     let mut raw = Vec::new();
     let translated = match std::io::stdin().lock().read_to_end(&mut raw) {
         Ok(_) => translate(&raw, root),

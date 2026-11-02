@@ -132,7 +132,7 @@ describe('assembleCheckRegistrations — the surface picks the list', () => {
   });
 
   it("'session' with no `session` key on the input still leaves the change-set entry out", () => {
-    // The Grok shape: that host carries no `session` key. Inferring the surface from the
+    // A host shape that carries no `session` key. Inferring the surface from the
     // key's absence assembled such a call as the change-set surface — one `.md` edit
     // could then be reported as a bilingual-docs break.
     const labels = labelsFor('session');

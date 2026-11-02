@@ -80,9 +80,9 @@ adapters:
 하나에 놓는 규칙은 [규율 목록 셋](#three-lists)에 있습니다.
 
 표면이 등록은 하되 호스트가 증명하지 못하는 통로는 여전히 선언의 `supply` 정책이 처리합니다. 세션을
-싣지 않는 호스트(Grok 어댑터)에서는 `sources: { session: { transcript: true } }` 항목의 소스가 없는
-상태가 되고, `supply: { session: 'pass' }`가 사유 `supply-pass`와 함께 `skipped`를 기록하며 호출을
-지나가게 합니다. 이 정책이 없으면 없는 소스는 판정 불가(exit 2)이지 자동 건너뛰기가 아닙니다.
+싣지 않는 호스트에서는 `sources: { session: { transcript: true } }` 항목의 소스가 없는 상태가 되고,
+`supply: { session: 'pass' }`가 사유 `supply-pass`와 함께 `skipped`를 기록하며 호출을 지나가게
+합니다. 이 정책이 없으면 없는 소스는 판정 불가(exit 2)이지 자동 건너뛰기가 아닙니다.
 
 <a id="telemetry"></a>
 ## `telemetry`
@@ -141,8 +141,7 @@ pdks witness
 어댑터가 토큰을 담은 메시지를 사람의 입력으로 확인해야 밸브가 열립니다. 토큰을 아는 것만으로는
 증언할 수 없습니다. 밸브로 통과한 판정은 모두 `witnessed`로 기록됩니다. Claude Code와 Codex는 출처가
 사람이라고 명시된 메시지만 증인 입력으로 받습니다. 출처가 없는 일반 prompt 이벤트는 밸브를 열지
-않습니다. Grok은 사람 메시지 증거를 제공하지 않습니다. 호스트가 출처를 증명하지 못하면 보호된 변경은
-사용자 터미널에서 처리합니다.
+않습니다. 호스트가 출처를 증명하지 못하면 보호된 변경은 사용자 터미널에서 처리합니다.
 
 <a id="memory"></a>
 ## `memory`

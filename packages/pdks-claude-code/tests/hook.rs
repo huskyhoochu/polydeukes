@@ -71,7 +71,6 @@ impl Sandbox {
     fn run(&self, args: &[&str], stdin: &str) -> Output {
         let mut child = Command::new(ADAPTER)
             .args(args)
-            .env_remove("GROK_WORKSPACE_ROOT")
             .current_dir(&self.root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

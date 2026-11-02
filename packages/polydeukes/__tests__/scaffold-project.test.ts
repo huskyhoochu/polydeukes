@@ -38,17 +38,15 @@ const SCHEMA_LINE =
  * The minimum protection set for a generated config — the gate definitions the session
  * layer creates. A generated list ships as a minimum a consumer adds to, so an entry
  * belongs here only when editing that path removes a judgment rather than failing one.
- * `.grok/hooks` holds the Grok spawn registration; deleting it silences that host rather
+ * `.codex/hooks` holds the Codex spawn registration; deleting it silences that host rather
  * than failing a call.
  */
-const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json', '.grok/hooks'];
+const MINIMUM_PROTECTED_PATHS = ['.claude/hooks', '.claude/settings.json', '.codex/hooks'];
 /** The generated protection list — every host registration and host configuration file. */
 const GENERATED_PROTECTED_PATHS = [
   '.claude/hooks',
   '.claude/settings.json',
   '.claude/settings.local.json',
-  '.grok/hooks',
-  '.grok/config.toml',
   '.codex/hooks',
   '.codex/hooks.json',
   '.codex/config.toml',

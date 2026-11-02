@@ -6,19 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes' || exit 2",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks-codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes' '--pdks' '/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks'",
             "timeout": 60
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
-            "timeout": 30
           }
         ]
       }
@@ -29,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks-codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes' '--pdks' '/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks'",
             "timeout": 30
           }
         ]
@@ -40,8 +29,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks' 'adapter' 'codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes'",
-            "timeout": 5
+            "command": "'/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks-codex' 'hook' '--project-root' '/Users/funes/Documents/personal/polydeukes' '--pdks' '/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks'",
+            "timeout": 3
           }
         ]
       }

@@ -7,29 +7,19 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = resolve(import.meta.dirname, '../../..');
 const umbrellaDir = resolve(import.meta.dirname, '..');
 const umbrellaSrc = join(umbrellaDir, 'src');
-const ADAPTERS = ['adapter-claude-code', 'adapter-codex', 'adapter-grok'];
+const ADAPTERS = ['adapter-claude-code', 'adapter-codex'];
 
 /** The umbrella files that carried the in-process session path. */
 const OLD_SESSION_PATH_FILES = ['claude-code-hook.ts', 'claude-code.ts'];
 /** The adapter's in-process entry the old path called, and the file that defined it. */
 const OLD_ADAPTER_ENTRY = 'runAdapterPath';
 const OLD_ADAPTER_ENTRY_FILE = 'run-adapter-path.ts';
-/** The umbrella's Grok-to-Claude name rewrite the old wiring needed. */
-const NAME_REWRITE = 'rewriteGrokToolNames';
 
 /**
  * An agent's tool roster, matched as quoted string literals: a bare word like `Edit` is also
  * an identifier fragment, and the roster only reaches the umbrella as a string.
  */
-const AGENT_TOOL_NAMES = [
-  'Write',
-  'Edit',
-  'MultiEdit',
-  'NotebookEdit',
-  'Bash',
-  'search_replace',
-  'run_terminal_command',
-];
+const AGENT_TOOL_NAMES = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'Bash', 'apply_patch'];
 /** An agent's payload keys, matched as whole identifiers. */
 const AGENT_PAYLOAD_KEYS = ['tool_name', 'toolInput', 'tool_input', 'transcript_path'];
 
@@ -72,13 +62,13 @@ const manifest = JSON.parse(readFileSync(join(umbrellaDir, 'package.json'), 'utf
 
 describe('one-way umbrella, adapter and vocabulary ownership', () => {
   it('has neither old session file under the umbrella src', () => {
-    // A file left behind is a second session entry that still rewrites Grok names and
-    // writes rows beside the adapter's spawn.
+    // A file left behind is a second session entry that still writes rows beside
+    // the adapter's spawn.
     const left = OLD_SESSION_PATH_FILES.filter((name) => existsSync(join(umbrellaSrc, name)));
     expect(left).toEqual([]);
   });
 
-  it('depends on all three adapter leaves, each pointing only to core', () => {
+  it('depends on both adapter leaves, each pointing only to core', () => {
     for (const adapter of ADAPTERS) {
       expect(manifest.dependencies?.[`@polydeukes/${adapter}`]).toBe('workspace:^');
       const leaf = JSON.parse(
@@ -118,18 +108,10 @@ describe('one-way umbrella, adapter and vocabulary ownership', () => {
       ).toEqual([]);
     }
   });
-
-  it('names the Grok name rewrite nowhere under the umbrella src', () => {
-    // The rewrite mapped `search_replace` onto `Edit` and lost the evidence that told a
-    // mutation target from a mention; with the Grok delegator on its own adapter, it has
-    // no caller.
-    const found = carriers(umbrellaSrc, identifier(NAME_REWRITE));
-    expect(found, `name-rewrite references in umbrella src:\n${found.join('\n')}`).toEqual([]);
-  });
 });
 
 describe('host translation stays outside the common runtime and judgment', () => {
-  // Path strings (`.claude/hooks`, `.grok/hooks`) are outside this check: the scaffolded
+  // Path strings (`.claude/hooks`, `.codex/hooks`) are outside this check: the scaffolded
   // default protected list names those directories on purpose, whichever agent is installed.
 
   it('carries none of the agent tool names as a string literal under src, comments stripped', () => {

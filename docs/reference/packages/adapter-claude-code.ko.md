@@ -5,7 +5,7 @@
 <a id="ownership"></a>
 ## 소유 범위
 
-호스트의 이벤트·도구 이름은 이 모듈에서 공통 약속(covenant) 입력 IR로 바뀝니다. 세 어댑터 모두 같은
+호스트의 이벤트·도구 이름은 이 모듈에서 공통 약속(covenant) 입력 IR로 바뀝니다. 두 어댑터 모두 같은
 세 함수를 제공합니다.
 
 | 함수                 | 입력과 결과                                                                           |
@@ -37,7 +37,7 @@ prompt/post는 30초, 종료는 5초입니다.
 pdks adapter claude-code init
 ```
 
-프로젝트 루트에서 실행하세요. 단일 실행 파일에 세 어댑터가 포함되며 별도 Node·npm 설치가 필요하지
+프로젝트 루트에서 실행하세요. 단일 실행 파일에 두 어댑터가 포함되며 별도 Node·npm 설치가 필요하지
 않습니다. 등록에는 현재 실행 파일과 프로젝트 루트의 절대 경로가 고정됩니다. 실행 파일이나 프로젝트를
 옮기면 새 위치에서 다시 실행하세요.
 
@@ -45,8 +45,8 @@ pdks adapter claude-code init
 일치할 때 제거하고 사용자가 수정한 파일은 보존합니다. 기존 설정을 덮어쓰지 않으므로 출력한 필수 보호
 경로를 설정의 `protectedPaths`와 대조하세요.
 
-Grok은 stdout JSON의 `decision: allow|deny`로 응답하고 Claude·Codex는 빈 stdout과 exit 0·2로
-응답합니다. 관측 전용 생명주기 이벤트는 도구 판정 JSON 없이 exit 0으로 끝납니다.
+Claude·Codex는 빈 stdout과 exit 0·2로 응답합니다. 관측 전용 생명주기 이벤트는 도구 판정 JSON 없이
+exit 0으로 끝납니다.
 
 <a id="limits"></a>
 ## 관측 한계
@@ -55,8 +55,6 @@ Grok은 stdout JSON의 `decision: allow|deny`로 응답하고 Claude·Codex는 �
 않습니다. 증거가 없으면 해당 선언의 공급 정책을 따르며 없는 기록을 합성해 `passed`로 만들지
 않습니다. 호스트가 훅을 신뢰하지 않거나 비활성화했다면 이 경로의 판정이 시작되지 않습니다.
 
-Claude와 Grok을 함께 등록한 프로젝트에서는 Grok의 호환 Claude callback을 `GROK_WORKSPACE_ROOT`가
-있을 때 건너뛰고 Grok 자체 등록으로 판정합니다. Grok 연결에도 자체 `init`이 필요합니다. 전역 호스트
-설정은 변경하지 않습니다.
+전역 호스트 설정은 변경하지 않습니다.
 
 [설치 참조](../cli/init.ko.md#init-claude-code)

@@ -566,7 +566,7 @@ describe('the bundled docs answer from the installed tree', () => {
     const savedConfig = readFileSync(configPath);
     // Everything the umbrella depends on, stashed so the docs reader answers with the
     // judging code absent, including the adapter leaves the umbrella installs.
-    const dependencies = ['core', 'adapter-codex', 'adapter-claude-code', 'adapter-grok'];
+    const dependencies = ['core', 'adapter-codex', 'adapter-claude-code'];
     const moved: [string, string][] = [];
     const offline = join(packRoot, 'offline-docs.mjs');
     writeFileSync(

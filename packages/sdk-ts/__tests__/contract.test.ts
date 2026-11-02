@@ -16,7 +16,6 @@ const FORBIDDEN_IMPORTS = [
   '@polydeukes/core',
   'polydeukes',
   '@polydeukes/adapter-claude-code',
-  '@polydeukes/adapter-grok',
   '@polydeukes/adapter-codex',
 ];
 /** The judge's verbs: naming one here is judging or recording in-process. */

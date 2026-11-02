@@ -8,15 +8,15 @@ a guide for your task below.
 <a id="start-here"></a>
 ## Start here
 
-| If you want to                           | Read                                                                                                                 |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Get to a first visible judgment          | [First judgment](./tutorials/first-judgment.md) — install, wire Claude Code, and watch one protected edit get judged |
-| Connect Claude Code, Grok, Codex, or git | [Connect the surfaces](./how-to/connect-surfaces.md) — session and commit setup, including Grok and Codex            |
-| Shape the project config                 | [Configure the project](./how-to/configure-project.md) — discovery, IDE support, and advise versus block             |
-| Write a real discipline                  | [Write disciplines](./how-to/write-disciplines.md) — worked declarations, especially locale key pairing              |
-| Recover from a block or skip             | [Troubleshooting](./troubleshooting.md) — the fail-closed states, the witness valve, and the log                     |
-| Understand why the framework exists      | [Why Polydeukes?](./why-polydeukes.md) — the design whitepaper                                                       |
-| Contribute to these docs                 | [Contributing](./contributing.md) — bilingual pairs, stable IDs, catalog, and checks                                 |
+| If you want to                      | Read                                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Get to a first visible judgment     | [First judgment](./tutorials/first-judgment.md) — install, wire Claude Code, and watch one protected edit get judged |
+| Connect Claude Code, Codex, or git  | [Connect the surfaces](./how-to/connect-surfaces.md) — session and commit setup, including Codex                     |
+| Shape the project config            | [Configure the project](./how-to/configure-project.md) — discovery, IDE support, and advise versus block             |
+| Write a real discipline             | [Write disciplines](./how-to/write-disciplines.md) — worked declarations, especially locale key pairing              |
+| Recover from a block or skip        | [Troubleshooting](./troubleshooting.md) — the fail-closed states, the witness valve, and the log                     |
+| Understand why the framework exists | [Why Polydeukes?](./why-polydeukes.md) — the design whitepaper                                                       |
+| Contribute to these docs            | [Contributing](./contributing.md) — bilingual pairs, stable IDs, catalog, and checks                                 |
 
 <a id="reference"></a>
 ## Reference
@@ -52,7 +52,6 @@ extraction step, combinator, relation, and mechanism with its syntax and constra
 | [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md)              | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
 | [`@polydeukes/core`](./reference/packages/core.md)                               | The protocol, the input IR, the config schema, telemetry                                                                           |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR                                                                    |
-| [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.md)               | Grok session surface — hook payloads become the input IR                                                                           |
 | [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.md)             | Codex session surface — hook payloads become the input IR, one element per file the patch touches                                  |
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md)                           | Call the judge from TypeScript and handle its result                                                                               |
 | [`@polydeukes/memory`](./reference/packages/memory.md)                           | The optional index behind `pdks memory` — markdown sections in a local SQLite database                                             |
@@ -80,10 +79,10 @@ investigate violations, skipped checks, and unexpected results. The
 <a id="two-surfaces"></a>
 ## Two surfaces
 
-| Surface     | Judges                                                             | Wired by                                                        | For                                    |
-| ----------- | ------------------------------------------------------------------ | --------------------------------------------------------------- | -------------------------------------- |
-| **Session** | A tool call, before it runs                                        | `pdks-claude-code init`, `pdks-grok init`, or `pdks-codex init` | A project developed with an AI partner |
-| **Commit**  | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand  | A human developing alone, and CI       |
+| Surface     | Judges                                                             | Wired by                                                       | For                                    |
+| ----------- | ------------------------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------- |
+| **Session** | A tool call, before it runs                                        | `pdks-claude-code init` or `pdks-codex init`                   | A project developed with an AI partner |
+| **Commit**  | A unified diff on stdin — staged, the working tree, or a ref range | A pre-commit hook piping `git diff --cached`, or run on demand | A human developing alone, and CI       |
 
 The commit judge also answers on demand: `git diff HEAD | pdks covenant check --diff` after a task,
 `git diff main...HEAD | …` before a PR. Same verdict a commit would receive, delivered as an exit

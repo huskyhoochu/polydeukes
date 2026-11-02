@@ -39,14 +39,7 @@ pub fn translate(raw: &[u8], root: &Path) -> Result<Value, String> {
     {
         return Err("host payload is truncated".to_owned());
     }
-    let event = payload
-        .get("hook_event_name")
-        .filter(|event| !event.is_null())
-        .or_else(|| payload.get("hookEventName"));
-    if !matches!(
-        event.and_then(Value::as_str),
-        Some("PreToolUse" | "pre_tool_use")
-    ) {
+    if payload.get("hook_event_name").and_then(Value::as_str) != Some("PreToolUse") {
         return Err("unsupported hook event".to_owned());
     }
 

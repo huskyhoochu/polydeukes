@@ -13,7 +13,7 @@
 프로젝트 루트의 사용자 터미널에서 실행하세요.
 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의 운영체제에 맞는 실행
 파일(`pdks-linux-x64`·`pdks-darwin-arm64`)을 받아 실행 권한을 주고 `pdks`라는 이름으로 `PATH`에
-두세요. Node·npm·`package.json` 없이 세 어댑터와 memory를 포함한 명령을 실행합니다.
+두세요. Node·npm·`package.json` 없이 두 어댑터와 memory를 포함한 명령을 실행합니다.
 
 ### 1. 에이전트 연결하기
 
@@ -21,13 +21,11 @@
 pdks adapter claude-code init
 # 또는
 pdks adapter codex init
-pdks adapter grok init
 ```
 
 설치기는 설정을 만들고 프로젝트 훅을 병합합니다. Claude Code는 다시 열고, Codex는 `/hooks`에서
-승인하고, Grok은 프로젝트 신뢰 승인 뒤 Hooks 탭을 다시 불러오세요. 실제 호출과
-`.polydeukes/roi.log`로 연결을 확인하세요. 실행 파일·프로젝트 위치가 바뀌면 `init`을 다시
-실행합니다. Git diff만 사용하려면 `pdks init`을 실행하세요.
+승인하세요. 실제 호출과 `.polydeukes/roi.log`로 연결을 확인하세요. 실행 파일·프로젝트 위치가 바뀌면
+`init`을 다시 실행합니다. Git diff만 사용하려면 `pdks init`을 실행하세요.
 
 ### 2. 첫 규율 설정하기
 
@@ -88,19 +86,18 @@ git diff HEAD | pdks covenant check --diff
 <a id="status-and-cli"></a>
 ## 현재 상태와 CLI
 
-npm 패키지 일곱 개와 Rust crate 하나가 발행되어 있으며 Python SDK도 제공합니다.
-`@polydeukes/core`(약속(covenant) 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-grok`,
-`adapter-codex`), 약속 판정과 memory의 네 비동기 동사를 제공하는 TypeScript 클라이언트
-`@polydeukes/sdk-ts`, 같은 네 동사를 Rust 호스트에 제공하는 crate `polydeukes-sdk`, 단일 실행 파일
-위의 네 동사를 제공하는 [Python 패키지 `polydeukes-sdk`](./packages/sdk-python/README.ko.md),
-`pdks memory`가 쓰는 선택 설치 마크다운 색인 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks`
-bin(`polydeukes`의 별칭)이 CLI인 우산(umbrella) 패키지 `polydeukes`입니다. ledger·verify 패키지는
-아직 청사진 단계입니다. 오늘의 CLI는 이렇습니다.
+npm 패키지 여섯 개와 Rust crate 하나가 발행되어 있으며 Python SDK도 제공합니다.
+`@polydeukes/core`(약속(covenant) 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-codex`),
+약속 판정과 memory의 네 비동기 동사를 제공하는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 네
+동사를 Rust 호스트에 제공하는 crate `polydeukes-sdk`, 단일 실행 파일 위의 네 동사를 제공하는
+[Python 패키지 `polydeukes-sdk`](./packages/sdk-python/README.ko.md), `pdks memory`가 쓰는 선택 설치
+마크다운 색인 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인
+우산(umbrella) 패키지 `polydeukes`입니다. ledger·verify 패키지는 아직 청사진 단계입니다. 오늘의
+CLI는 이렇습니다.
 
 ```sh
 pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
 pdks adapter claude-code init  # Claude Code
-pdks adapter grok init         # Grok
 pdks adapter codex init        # Codex
 git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
 git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에
@@ -148,7 +145,7 @@ AI에게 똑같이 적용되는 공유된 약속입니다. 이름의 유래와 �
 <a id="thin-core-and-packages"></a>
 ## 구성. 얇은 코어와 독립 패키지
 
-실행 파일이 판정기와 세 호스트 어댑터를 조합합니다. 각 어댑터는 호스트 이벤트를 공통 core 어휘로
+실행 파일이 판정기와 두 호스트 어댑터를 조합합니다. 각 어댑터는 호스트 이벤트를 공통 core 어휘로
 번역하고 판정기는 그 어휘를 소비합니다.
 
 | 패키지                                 | 역할                                                                                                                                                                                                                                                                                                                                       |
@@ -173,8 +170,7 @@ AI에게 똑같이 적용되는 공유된 약속입니다. 이름의 유래와 �
 ```text
 pdks (CLI · 공통 실행 · 판정기)
   ├── adapter-claude-code ──┐
-  ├── adapter-codex ────────┼── core (공통 어휘 · 스키마)
-  └── adapter-grok ─────────┘
+  └── adapter-codex ────────┴── core (공통 어휘 · 스키마)
 
 sdk-ts / sdk-rust / sdk-python ── 실행 파일 호출 ── pdks
 ```
@@ -202,7 +198,7 @@ sdk-ts / sdk-rust / sdk-python ── 실행 파일 호출 ── pdks
 | 문서                                                                           | 내용                                                                               |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | [`docs/tutorials/first-judgment.ko.md`](./docs/tutorials/first-judgment.ko.md) | 첫 눈에 보이는 판정 — 설치하고 Claude Code를 배선한 뒤 보호된 편집이 판정되는 모습 |
-| [`docs/how-to/connect-surfaces.ko.md`](./docs/how-to/connect-surfaces.ko.md)   | 세션과 변경 집합 표면 연결, Grok와 Codex 포함                                      |
+| [`docs/how-to/connect-surfaces.ko.md`](./docs/how-to/connect-surfaces.ko.md)   | 세션과 변경 집합 표면 연결, Codex 포함                                             |
 | [`docs/how-to/configure-project.ko.md`](./docs/how-to/configure-project.ko.md) | 프로젝트 파일, IDE 지원, advise와 block                                            |
 | [`docs/how-to/write-disciplines.ko.md`](./docs/how-to/write-disciplines.ko.md) | 실전 선언 예제, 특히 locale key pairing                                            |
 | [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md)                   | fail-closed 상태, 증인 밸브, 텔레메트리 로그                                       |

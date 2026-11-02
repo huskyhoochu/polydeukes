@@ -15,8 +15,8 @@ Run from the project root in your own terminal. Download the executable for your
 (`pdks-linux-x64` or `pdks-darwin-arm64`) from a
 [GitHub
 Release](https://github.com/huskyhoochu/polydeukes/releases),
-make it executable, and place it on `PATH` as `pdks`. It includes all three adapters and memory
-commands and runs without Node, npm, or a `package.json`.
+make it executable, and place it on `PATH` as `pdks`. It includes both adapters and memory commands
+and runs without Node, npm, or a `package.json`.
 
 ### 1. Connect your agent
 
@@ -24,13 +24,11 @@ commands and runs without Node, npm, or a `package.json`.
 pdks adapter claude-code init
 # or
 pdks adapter codex init
-pdks adapter grok init
 ```
 
 The installer creates configuration and merges project hooks. Reopen Claude Code, approve Codex
-hooks through `/hooks`, or approve Grok project trust and reload its Hooks tab. Verify the
-connection with a real call and `.polydeukes/roi.log`. Rerun init after moving the executable or
-project. For Git diff checks alone, use `pdks init`.
+hooks through `/hooks`. Verify the connection with a real call and `.polydeukes/roi.log`. Rerun init
+after moving the executable or project. For Git diff checks alone, use `pdks init`.
 
 ### 2. Configure your first discipline
 
@@ -93,8 +91,8 @@ the installed documentation.
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-Seven npm packages and one Rust crate ship; a Python SDK is also available — `@polydeukes/core` (the
-covenant protocol), the session adapters (`adapter-claude-code`, `adapter-grok`, `adapter-codex`),
+Six npm packages and one Rust crate ship; a Python SDK is also available — `@polydeukes/core` (the
+covenant protocol), the session adapters (`adapter-claude-code`, `adapter-codex`),
 `@polydeukes/sdk-ts` (four asynchronous verbs for covenant checks and memory), the crate
 `polydeukes-sdk` (the same four verbs for a Rust host),
 [the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (four verbs over the
@@ -105,7 +103,6 @@ is the CLI. The ledger and verify packages are still blueprint. The CLI today:
 ```sh
 pdks init                # create the project scaffold: config file and telemetry ignore line
 pdks adapter claude-code init  # Claude Code
-pdks adapter grok init         # Grok
 pdks adapter codex init        # Codex
 git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
 git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree
@@ -154,7 +151,7 @@ analysis of whether that tooling can be extracted into a general discipline fram
 <a id="thin-core-and-packages"></a>
 ## Structure — a thin core plus independent packages
 
-The executable composes the judge and three host adapters. Each adapter translates its host’s events
+The executable composes the judge and two host adapters. Each adapter translates its host’s events
 into the shared core vocabulary; the judge consumes that vocabulary.
 
 | Package                                   | Role                                                                                                                                                                                                                                                                                                                                                                            |
@@ -182,8 +179,7 @@ of any specific product or AI runtime.
 ```text
 pdks (CLI · common runtime · judge)
   ├── adapter-claude-code ──┐
-  ├── adapter-codex ────────┼── core (shared vocabulary · schemas)
-  └── adapter-grok ─────────┘
+  └── adapter-codex ────────┴── core (shared vocabulary · schemas)
 
 sdk-ts / sdk-rust / sdk-python ── process calls ── pdks
 ```
@@ -212,7 +208,7 @@ layer you need.
 | Document                                                                 | Contents                                                                                  |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | [`docs/tutorials/first-judgment.md`](./docs/tutorials/first-judgment.md) | First visible judgment — install, wire Claude Code, and watch a protected edit get judged |
-| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md)   | Connect the session and change-set surfaces, including Grok and Codex                     |
+| [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md)   | Connect the session and change-set surfaces, including Codex                              |
 | [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block                          |
 | [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing                                        |
 | [`docs/troubleshooting.md`](./docs/troubleshooting.md)                   | Fail-closed states, the witness valve, and the telemetry log                              |

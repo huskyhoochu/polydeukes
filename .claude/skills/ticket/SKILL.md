@@ -86,10 +86,10 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   - The auditor gets `--tools read,grep,find,ls` — no shell, no editor, as its role file intends.
   - The task file carries the PRD's contract, pseudocode and acceptance list, ends with the `tdd`
     skill's delegation line, and states these rules: do not touch the protected paths (`.claude/`,
-    `.codex/`, `.grok/`, `.git/`, `lefthook*.yml`, `biome.json`, `polydeukes.config.yaml`,
-    `.polydeukes/bin/`, `packages/*/dist/`), because pi's tool calls never reach this session's
-    hook; run only the changed test files, never `pnpm test` or `pnpm build`; run no git command
-    that writes, since commits belong to the main session.
+    `.codex/`, `.git/`, `lefthook*.yml`, `biome.json`, `polydeukes.config.yaml`, `.polydeukes/bin/`,
+    `packages/*/dist/`), because pi's tool calls never reach this session's hook; run only the
+    changed test files, never `pnpm test` or `pnpm build`; run no git command that writes, since
+    commits belong to the main session.
   - After AUDIT the main session stages the surviving test files; after GREEN, an unstaged change
     under `__tests__/` means the implementer edited a test, and the run is rejected.
   - Read the RED output down to each fixture's premise before AUDIT: the model implements a detail
@@ -125,14 +125,11 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   finder subagents by angle, verifies each candidate with an independent subagent, and the main
   session dedups, ranks, and reports. The finders and verifiers run on the subagent default model
   from `.claude/settings.json`; the synthesis is the main session's — that split is the model policy
-  in `.claude/rules/model-tiers.md`. On Grok Build:
-  `workflow({ source: { type: "name", name: "pdks-code-review" },   args: { target: "<PR# or branch>", level: "high",   context: "<PRD invariants>" } })`
-  (`.grok/workflows/pdks-code-review.rhai` — Scope → Find → Verify → Synthesize). This skill
-  instructing the launch is the sanctioned opt-in; do not treat the launch as needing separate user
-  approval. In the args, pass the PRD's invariants and severity framing as review context (the
-  finder/verifier agents honor it). Findings land in-session; triage them the project's way:
-  reviewer confidence is hypothesis strength, not a verdict — judge each finding against the PRD
-  text.
+  in `.claude/rules/model-tiers.md`. This skill instructing the launch is the sanctioned opt-in; do
+  not treat the launch as needing separate user approval. In the args, pass the PRD's invariants and
+  severity framing as review context (the finder/verifier agents honor it). Findings land
+  in-session; triage them the project's way: reviewer confidence is hypothesis strength, not a
+  verdict — judge each finding against the PRD text.
 - **Three constraints belong in the args, and a review without them leans one way.** A finding
   always arrives as "here is how it breaks", so accepting one is free and declining one costs an
   argument. Left alone that gradient adds a check every round.

@@ -2,7 +2,7 @@ pdks explain — polydeukes.config.yml
 
 input: call IR (one call, stdin) · disciplines 11 · sessionDisciplines 16 · disciplines: advise unless enforce: block · meta: block
   registrations 30 · declare 27 · skip 1 · meta 2 · draft 1
-  meta     self-mod                           paths 20 (includes the config file itself)
+  meta     self-mod                           paths 17 (includes the config file itself)
   meta     transcript-mod                     content predicate · conditional: session.evidencePath
   declare  covenant-vocabulary                added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
   declare  english-only-sources               added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
@@ -36,7 +36,7 @@ input: call IR (one call, stdin) · disciplines 11 · sessionDisciplines 16 · d
 
 input: --diff (change set, stdin) · disciplines 11 · changeSetDisciplines 1 · disciplines: advise unless enforce: block
   registrations 14 · declare 12 · skip 1 · meta 1 · draft 1
-  meta     self-mod                      paths 20 (includes the config file itself)
+  meta     self-mod                      paths 17 (includes the config file itself)
   declare  covenant-vocabulary           added-only · change · empty nothing-added · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
   declare  english-only-sources          added-only · change · empty nothing-added · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓
   declare  comments-state-facts          added-only · change · empty no-wiki-coordinate, no-process-grade · scope target.path · include 1 · exclude 0 · sources 0 · valve — · why ✓

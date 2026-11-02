@@ -27,7 +27,7 @@ automatically; every other agent reads them first.
 Every other file in `.claude/rules/` carries a `paths:` list and states the constraints a file's own
 source does not explain. Before editing, list the intended paths, match them against each rule's
 `paths:`, and read every matching rule in full; repeat when the scope grows. Hosts without automatic
-rule loading (Codex, Grok) do this routing by hand. The rules most often reached:
+rule loading (Codex) do this routing by hand. The rules most often reached:
 
 | To learn                                                         | Rule                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |

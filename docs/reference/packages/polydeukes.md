@@ -36,8 +36,8 @@ dependency rather than importing it.
 | `pdks memory lint`               | Report unresolved links, unlinked documents, and untyped documents; exit `1` when any is found                   |
 | `pdks memory stats`              | Count the indexed documents, sections, links, unresolved links, and isolated documents                           |
 
-The same executable installs each session surface with `pdks adapter <claude-code|grok|codex> init`.
-Its three adapter modules translate host payloads, maintain native registrations, and render host
+The same executable installs each session surface with `pdks adapter <claude-code|codex> init`. Its
+two adapter modules translate host payloads, maintain native registrations, and render host
 responses; the common runtime owns input collection, judgment execution, and deadlines.
 
 <a id="surface-from-input-mode"></a>
@@ -55,9 +55,9 @@ compiles the shared list plus its own:
 
 The IR's `session` key says something else: what the host proved about the call — the witness
 valve's human turns, the transcript axis, and the pre-state channel shell-write evidence needs. A
-host that carries no session (the Grok adapter) is still judged on the session surface, and what it
-lacks is the evidence those three read, not the surface. `pdks explain` prints each surface with its
-two list names and counts.
+host that carries no session is still judged on the session surface, and what it lacks is the
+evidence those three read, not the surface. `pdks explain` prints each surface with its two list
+names and counts.
 
 `pdks docs` is offline. It reads the installed package, not the network. Flags, JSON, and exit codes
 are in [`pdks docs`](../cli/docs.md).

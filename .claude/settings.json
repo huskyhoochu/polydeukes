@@ -9,71 +9,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
+            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks-claude-code",
             "args": [
-              "adapter",
-              "claude-code",
               "hook",
               "--project-root",
-              "/Users/funes/Documents/personal/polydeukes"
+              "/Users/funes/Documents/personal/polydeukes",
+              "--pdks",
+              "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks"
             ],
-            "timeout": 60,
-            "onFailure": "block"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
-            "args": [
-              "adapter",
-              "claude-code",
-              "hook",
-              "--project-root",
-              "/Users/funes/Documents/personal/polydeukes"
-            ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
-            "args": [
-              "adapter",
-              "claude-code",
-              "hook",
-              "--project-root",
-              "/Users/funes/Documents/personal/polydeukes"
-            ],
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks",
-            "args": [
-              "adapter",
-              "claude-code",
-              "hook",
-              "--project-root",
-              "/Users/funes/Documents/personal/polydeukes"
-            ],
-            "timeout": 5
+            "timeout": 60
           }
         ]
       }

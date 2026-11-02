@@ -67,7 +67,7 @@ describe('registrationCommand pnpm path selection', () => {
   it('keeps the running script path when no unversioned link exists', () => {
     // A missing link is not a reason to invent a path that does not resolve.
     const running = installPackage(VERSION);
-    const command = { executable: process.execPath, args: [running, 'adapter', 'grok', 'init'] };
+    const command = { executable: process.execPath, args: [running, 'adapter', 'codex', 'init'] };
 
     expect(registrationCommand({ projectRoot: root, command })).toEqual(command);
   });
@@ -83,7 +83,7 @@ describe('registrationCommand pnpm path selection', () => {
       join(root, 'node_modules', 'polydeukes'),
       'dir',
     );
-    const command = { executable: process.execPath, args: [running, 'adapter', 'grok', 'init'] };
+    const command = { executable: process.execPath, args: [running, 'adapter', 'codex', 'init'] };
 
     expect(registrationCommand({ projectRoot: root, command })).toEqual(command);
   });

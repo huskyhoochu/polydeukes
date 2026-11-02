@@ -205,9 +205,6 @@ importers:
       '@polydeukes/adapter-codex':
         specifier: workspace:*
         version: link:packages/adapter-codex
-      '@polydeukes/adapter-grok':
-        specifier: workspace:*
-        version: link:packages/adapter-grok
       '@polydeukes/sdk-ts':
         specifier: workspace:*
         version: link:packages/sdk-ts
@@ -237,21 +234,6 @@ importers:
         version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
 
   packages/adapter-codex:
-    devDependencies:
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
-
-  packages/adapter-grok:
     devDependencies:
       '@polydeukes/core':
         specifier: workspace:^
@@ -332,9 +314,6 @@ importers:
       '@polydeukes/adapter-codex':
         specifier: workspace:^
         version: link:../adapter-codex
-      '@polydeukes/adapter-grok':
-        specifier: workspace:^
-        version: link:../adapter-grok
       '@polydeukes/core':
         specifier: workspace:^
         version: link:../core

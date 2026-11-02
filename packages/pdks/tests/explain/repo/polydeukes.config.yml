@@ -35,12 +35,10 @@ memory:
 protectedPaths:
   - ".claude/hooks"
   - ".claude/settings.json"
-  - ".grok/hooks"
   - ".codex/hooks"
   - ".codex/hooks.json"
   - ".codex/config.toml"
   - ".claude/settings.local.json"
-  - ".grok/config.toml"
   - ".polydeukes/bin/pdks"
   - "lefthook.yml"
   - "lefthook-local.yml"
@@ -50,7 +48,6 @@ protectedPaths:
   - "packages/core/dist"
   - "packages/polydeukes/dist"
   - "packages/adapter-claude-code/dist"
-  - "packages/adapter-grok/dist"
   - "packages/adapter-codex/dist"
 
 # The valve: this token alone on a message's first line opens a blocked judgment for

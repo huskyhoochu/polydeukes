@@ -20,9 +20,9 @@ registrations is `new-package-checklist.md`.
 - **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella / `pdks`
   CLI. Subcommands: `covenant check` (the judgment runner over an input IR or a unified diff on
   stdin), `init` (the agent-neutral scaffold — config file and telemetry ignore line),
-  `adapter <claude-code|codex|grok> init | hook` (native registration and host events),
-  `docs [topic]` (the offline reader over the docs bundled into `dist/docs` at build time),
-  `explain` (the assembled-registration renderer), and
+  `adapter <claude-code|codex> init | hook` (native registration and host events), `docs [topic]`
+  (the offline reader over the docs bundled into `dist/docs` at build time), `explain` (the
+  assembled-registration renderer), and
   `memory ingest | search | show | obligations | supersession | lint | stats | usage`
   (`src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`, by dynamic
   import, and only for this command). It owns the config discovery loader (`loadConfig`) — the one
@@ -41,27 +41,26 @@ registrations is `new-package-checklist.md`.
   it.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**: the
   covenant protocol, the config schema, and the IR vocabulary.
-- **`packages/adapter-claude-code`**, **`packages/adapter-grok`**, and **`packages/adapter-codex`**
-  share three public verbs: `prepareHook`, `registerHook`, and `renderHookResponse`. Each owns its
-  host payload, evidence, native registration, and response format. They peer on core and have no
-  bin. The umbrella depends on all three and bundles them into its single executable;
-  `adapter-command.ts` owns their common execution path and `adapter-process.ts` owns process
-  communication and deadlines. Registration pins the executable and project root. Moving the
-  executable requires init from its new location; from a pnpm install, init pins
-  `node_modules/polydeukes/dist/bin.js` rather than the versioned store path. The pinned root is
-  never replaced: a file in a worktree or anywhere outside the root is judged by its absolute path.
-  Each adapter carries a file target under its spelled name and, when it differs, again under its
-  real (`realpathSync.native`) name, so a protected entry that is itself a symlink and a link that
-  leads to one both stay judged; a dangling link or a real path that fails to resolve (other than
-  `ENOTDIR`) refuses the call. Only the PreToolUse registration turns a hook that cannot start into
-  a refusal (Claude `onFailure: block`, Codex and Grok `|| exit 2`); the other events never block on
-  failure. Existing project config remains owner-controlled; init reports the required protected
-  paths. Native registration replaces owned legacy commands, removes an exact generated mjs, and
-  preserves user-modified files and sibling handlers. Codex translates `apply_patch` into file
-  changes and keeps session/subagent evidence from lifecycle events, leaving its unstable transcript
-  unread. Prompt text enters witness evidence only with explicit human provenance. A changed
-  `.codex/hooks.json` definition needs `/hooks` approval. Code Mode coverage must be measured on the
-  installed host version: an Active label alone is not execution evidence.
+- **`packages/adapter-claude-code`** and **`packages/adapter-codex`** share three public verbs:
+  `prepareHook`, `registerHook`, and `renderHookResponse`. Each owns its host payload, evidence,
+  native registration, and response format. They peer on core and have no bin. The umbrella depends
+  on both and bundles them into its single executable; `adapter-command.ts` owns their common
+  execution path and `adapter-process.ts` owns process communication and deadlines. Registration
+  pins the executable and project root. Moving the executable requires init from its new location;
+  from a pnpm install, init pins `node_modules/polydeukes/dist/bin.js` rather than the versioned
+  store path. The pinned root is never replaced: a file in a worktree or anywhere outside the root
+  is judged by its absolute path. Each adapter carries a file target under its spelled name and,
+  when it differs, again under its real (`realpathSync.native`) name, so a protected entry that is
+  itself a symlink and a link that leads to one both stay judged; a dangling link or a real path
+  that fails to resolve (other than `ENOTDIR`) refuses the call. Only the PreToolUse registration
+  turns a hook that cannot start into a refusal (Claude `onFailure: block`, Codex `|| exit 2`); the
+  other events never block on failure. Existing project config remains owner-controlled; init
+  reports the required protected paths. Native registration replaces owned legacy commands, removes
+  an exact generated mjs, and preserves user-modified files and sibling handlers. Codex translates
+  `apply_patch` into file changes and keeps session/subagent evidence from lifecycle events, leaving
+  its unstable transcript unread. Prompt text enters witness evidence only with explicit human
+  provenance. A changed `.codex/hooks.json` definition needs `/hooks` approval. Code Mode coverage
+  must be measured on the installed host version: an Active label alone is not execution evidence.
 - **`packages/pdks`** (crate `pdks`, `publish = false`) is the Rust re-implementation of
   `covenant check` over both surfaces (stdin IR and `--diff`), `init`, `explain`, `docs` and
   `--version`. Any other first argument that is a plain name (`[A-Za-z0-9_-]`, not starting with

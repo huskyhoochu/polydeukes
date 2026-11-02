@@ -2,8 +2,8 @@
 
 **English** · [한국어](../how-to/connect-surfaces.ko.md)
 
-> Pick the surface that matches the job. Claude Code, Grok, and Codex wire the session surface; git
-> wires the change-set surface.
+> Pick the surface that matches the job. Claude Code and Codex wire the session surface; git wires
+> the change-set surface.
 
 The two surfaces share the same config vocabulary, but they answer different moments. Use the
 session surface when an AI partner is making edits, and use the change-set surface when history is
@@ -29,24 +29,6 @@ Reopen the project and check telemetry for an actual call. Only messages identif
 `origin.kind: human` can support the witness valve.
 
 [Registration details](../reference/cli/init.md#init-claude-code)
-
-<a id="grok"></a>
-## Grok session surface
-
-```sh
-pdks adapter grok init
-```
-
-Run the installed single executable from the project root. No separate Node, npm, or adapter
-installation is required. Registration pins the absolute executable and project-root paths while
-preserving other handlers and settings. Rerun after moving either.
-
-Approve project trust and reload the Hooks tab. Grok needs its own registration. Under Grok’s
-`GROK_WORKSPACE_ROOT`, the Claude compatibility callback is skipped to avoid duplicate judgment.
-Current events supply no session history or human provenance, so protected changes requiring the
-witness valve belong in your own terminal.
-
-[Registration details](../reference/cli/init.md#init-grok)
 
 <a id="codex"></a>
 ## Codex session surface
@@ -118,9 +100,8 @@ exit 2.
 
 In a Claude session that proves human provenance, send the configured token alone on the first line,
 then retry the intentional change within its TTL. The witness valve is consulted after a blocking
-result. Current Codex and Grok prompts do not establish that provenance; perform protected changes
-from your own terminal. The change-set surface has no witness prompt; your hook acts on the exit
-code.
+result. Current Codex prompts do not establish that provenance; perform protected changes from your
+own terminal. The change-set surface has no witness prompt; your hook acts on the exit code.
 
 A witness cannot repair a missing executable, unapproved trust, or a disabled hook. Repair the path
 or host approval and verify another real call and its telemetry.

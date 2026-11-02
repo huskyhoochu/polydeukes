@@ -243,11 +243,11 @@ describe('checkCovenant — the child status is the verdict', () => {
     // it where a human later reads and stops. A `blocked` with no reason is a stop nobody
     // can act on.
     installExecutableAndNpmFixture();
-    const { spawn } = recordingSpawn({ status: 2, stderr: 'self-mod: .grok/hooks\n' });
+    const { spawn } = recordingSpawn({ status: 2, stderr: 'self-mod: .codex/hooks\n' });
 
     const verdict = await checkCovenant({ repoRoot, input: writeInput(), spawn });
 
-    expect(verdict).toEqual({ verdict: 'blocked', reason: 'self-mod: .grok/hooks\n' });
+    expect(verdict).toEqual({ verdict: 'blocked', reason: 'self-mod: .codex/hooks\n' });
   });
 
   it("status 1 → { verdict: 'unjudged' } with the crash's stderr as the reason", async () => {

@@ -10,15 +10,15 @@
 <a id="start-here"></a>
 ## 시작하기
 
-| 하려는 것                                     | 읽을 문서                                                                                                              |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 첫 판정을 확인하고 싶다                       | [첫 판정](./tutorials/first-judgment.ko.md) — 설치와 Claude Code 연동을 마치고 보호 파일 편집에 대한 판정을 확인합니다 |
-| Claude Code, Grok, Codex, git을 연결하고 싶다 | [표면 연결하기](./how-to/connect-surfaces.ko.md) — 세션과 커밋 연동 설정, Grok와 Codex 포함                            |
-| 프로젝트 설정을 다듬고 싶다                   | [프로젝트 설정하기](./how-to/configure-project.ko.md) — 설정 파일 찾기, IDE 지원, advise와 block 선택                  |
-| 실제 규율을 쓰고 싶다                         | [규율 작성하기](./how-to/write-disciplines.ko.md) — 번역 키 짝 맞춤을 포함한 선언 예제                                 |
-| 차단이나 건너뜀에서 회복하고 싶다             | [문제 해결](./troubleshooting.ko.md) — fail-closed 상태, 증인 밸브, 로그                                               |
-| 이 프레임워크가 왜 있는지 알고 싶다           | [왜 폴리데우케스인가?](./why-polydeukes.ko.md) — 설계 백서                                                             |
-| 이 문서에 기여하고 싶다                       | [문서에 기여하기](./contributing.ko.md) — 영한 쌍, 안정 ID, 카탈로그, 검사                                             |
+| 하려는 것                               | 읽을 문서                                                                                                              |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 첫 판정을 확인하고 싶다                 | [첫 판정](./tutorials/first-judgment.ko.md) — 설치와 Claude Code 연동을 마치고 보호 파일 편집에 대한 판정을 확인합니다 |
+| Claude Code, Codex, git을 연결하고 싶다 | [표면 연결하기](./how-to/connect-surfaces.ko.md) — 세션과 커밋 연동 설정, Codex 포함                                   |
+| 프로젝트 설정을 다듬고 싶다             | [프로젝트 설정하기](./how-to/configure-project.ko.md) — 설정 파일 찾기, IDE 지원, advise와 block 선택                  |
+| 실제 규율을 쓰고 싶다                   | [규율 작성하기](./how-to/write-disciplines.ko.md) — 번역 키 짝 맞춤을 포함한 선언 예제                                 |
+| 차단이나 건너뜀에서 회복하고 싶다       | [문제 해결](./troubleshooting.ko.md) — fail-closed 상태, 증인 밸브, 로그                                               |
+| 이 프레임워크가 왜 있는지 알고 싶다     | [왜 폴리데우케스인가?](./why-polydeukes.ko.md) — 설계 백서                                                             |
+| 이 문서에 기여하고 싶다                 | [문서에 기여하기](./contributing.ko.md) — 영한 쌍, 안정 ID, 카탈로그, 검사                                             |
 
 <a id="reference"></a>
 ## 참조
@@ -54,7 +54,6 @@
 | [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md)                  | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
 | [`@polydeukes/core`](./reference/packages/core.ko.md)                               | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리                                                               |
 | [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로                                                   |
-| [`@polydeukes/adapter-grok`](./reference/packages/adapter-grok.ko.md)               | Grok 세션 표면입니다. 훅 페이로드에서 입력 IR로                                                          |
 | [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.ko.md)             | Codex 세션 표면입니다. 훅 페이로드에서 입력 IR로, 패치가 건드리는 파일마다 원소 하나                     |
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.ko.md)                           | TypeScript에서 판정기를 호출하고 결과를 처리하는 방법                                                    |
 | [`@polydeukes/memory`](./reference/packages/memory.ko.md)                           | `pdks memory`가 쓰는 선택 설치 색인입니다. 마크다운 절을 로컬 SQLite 데이터베이스에 둡니다               |
@@ -81,7 +80,7 @@
 
 | 표면     | 판정 대상                                                 | 배선 방법                                                                     | 대상                               |
 | -------- | --------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
-| **세션** | 도구 호출, 실행되기 전에                                  | `pdks-claude-code init`, `pdks-grok init`, 또는 `pdks-codex init`             | AI 파트너와 함께 개발하는 프로젝트 |
+| **세션** | 도구 호출, 실행되기 전에                                  | `pdks-claude-code init` 또는 `pdks-codex init`                                | AI 파트너와 함께 개발하는 프로젝트 |
 | **커밋** | stdin의 unified diff — 스테이징 영역, 작업 트리, ref 범위 | `git diff --cached`를 파이프로 넘기는 pre-commit 훅, 또는 필요할 때 직접 실행 | 혼자 개발하는 사람, 그리고 CI      |
 
 커밋 판정기는 필요할 때 직접 실행할 수도 있습니다. 작업 후에는

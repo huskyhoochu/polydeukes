@@ -5,8 +5,8 @@
 <a id="ownership"></a>
 ## Ownership
 
-This module translates host events and tool names into the common covenant input IR. All three
-adapters expose the same three functions.
+This module translates host events and tool names into the common covenant input IR. Both adapters
+expose the same three functions.
 
 | Function             | Input and result                                                                                    |
 | -------------------- | --------------------------------------------------------------------------------------------------- |
@@ -38,17 +38,17 @@ identifies its human origin; `role: user` alone does not establish it.
 pdks adapter claude-code init
 ```
 
-Run from the project root. The single executable includes all three adapters and requires no
-separate Node or npm installation. Registration pins absolute paths to the current executable and
-project root. Rerun from the new location after moving either.
+Run from the project root. The single executable includes both adapters and requires no separate
+Node or npm installation. Registration pins absolute paths to the current executable and project
+root. Rerun from the new location after moving either.
 
 The installer updates its own registrations while preserving other handlers and owner settings. It
 removes an old generated `.mjs` only when its contents match the original and preserves modified
 files. Existing configuration is retained; compare the reported required protected paths with
 `protectedPaths`.
 
-Grok responds with stdout JSON containing `decision: allow|deny`; Claude and Codex use empty stdout
-and exit 0 or 2. Observe-only lifecycle events exit 0 without a tool-decision JSON document.
+Claude and Codex use empty stdout and exit 0 or 2. Observe-only lifecycle events exit 0 without a
+tool-decision JSON document.
 
 <a id="limits"></a>
 ## Declared limits
@@ -58,8 +58,6 @@ performed by a child process. Missing evidence follows the declaration’s suppl
 history is not invented to produce `passed`. If the host has not trusted the hook or has disabled
 it, this judgment path does not start.
 
-When Claude and Grok are registered together, the Claude compatibility callback is skipped when
-`GROK_WORKSPACE_ROOT` is present; Grok’s own registration owns that judgment. Grok still needs its
-own `init`. Global host settings are unchanged.
+Global host settings are unchanged.
 
 [Installation reference](../cli/init.md#init-claude-code)

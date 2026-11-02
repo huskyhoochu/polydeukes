@@ -27,8 +27,6 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "pdks-adapter's space-")));
 const emptyPath = join(root, 'empty-path');
 mkdirSync(emptyPath);
 const env = { ...process.env, PATH: emptyPath };
-delete env.GROK_WORKSPACE_ROOT;
-delete env.GROK_SESSION_ID;
 let checks = 0;
 const movedExecutable = join(root, 'moved pdks');
 copyFileSync(executable, movedExecutable);
@@ -51,11 +49,7 @@ function run(args, cwd, input = '', extra = {}) {
   return { ...result, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 function settings(host) {
-  return host === 'claude-code'
-    ? '.claude/settings.json'
-    : host === 'codex'
-      ? '.codex/hooks.json'
-      : '.grok/hooks/covenant-pretooluse.json';
+  return host === 'claude-code' ? '.claude/settings.json' : '.codex/hooks.json';
 }
 function readSettings(host, project) {
   return JSON.parse(readFileSync(join(project, settings(host)), 'utf8'));
@@ -67,24 +61,15 @@ function entries(value, event) {
 }
 function payload(host, project, path = 'allowed.txt', extra = {}) {
   const common = { cwd: project, session_id: 'fixture-main', hook_event_name: 'PreToolUse' };
-  return host === 'grok'
-    ? {
-        hookEventName: 'pre_tool_use',
-        sessionId: 'fixture-main',
-        cwd: project,
-        toolName: 'write',
-        toolInput: { file_path: path, content: 'new text\n' },
-        ...extra,
-      }
-    : {
-        ...common,
-        tool_name: host === 'codex' ? 'apply_patch' : 'Write',
-        tool_input:
-          host === 'codex'
-            ? { command: `*** Begin Patch\n*** Add File: ${path}\n+new text\n*** End Patch\n` }
-            : { file_path: path, content: 'new text\n' },
-        ...extra,
-      };
+  return {
+    ...common,
+    tool_name: host === 'codex' ? 'apply_patch' : 'Write',
+    tool_input:
+      host === 'codex'
+        ? { command: `*** Begin Patch\n*** Add File: ${path}\n+new text\n*** End Patch\n` }
+        : { file_path: path, content: 'new text\n' },
+    ...extra,
+  };
 }
 function hook(host, project, value, extra) {
   return run(
@@ -109,15 +94,12 @@ function rows(project) {
 }
 function checkResponse(host, result, status) {
   assert.equal(result.status, status, `${host}: ${result.stderr || result.stdout}`);
-  if (host === 'grok') {
-    assert.equal(JSON.parse(result.stdout).decision, status === 0 ? 'allow' : 'deny');
-    assert.equal(result.stderr, '');
-  } else assert.equal(result.stdout, '');
+  assert.equal(result.stdout, '');
   checks++;
 }
 
 try {
-  for (const host of ['claude-code', 'codex', 'grok']) {
+  for (const host of ['claude-code', 'codex']) {
     const project = join(root, host);
     mkdirSync(project);
     const installed = run(['adapter', host, 'init'], project);
@@ -195,20 +177,12 @@ try {
       hook(host, project, payload(host, project, '../gate.txt', { cwd: join(project, 'sub') })),
       2,
     );
-    const lifecycle =
-      host === 'grok'
-        ? {
-            hookEventName: 'user_prompt_submit',
-            sessionId: 'fixture-main',
-            cwd: project,
-            prompt: 'fixture-witness',
-          }
-        : {
-            hook_event_name: 'UserPromptSubmit',
-            session_id: 'fixture-main',
-            cwd: project,
-            prompt: 'fixture-witness',
-          };
+    const lifecycle = {
+      hook_event_name: 'UserPromptSubmit',
+      session_id: 'fixture-main',
+      cwd: project,
+      prompt: 'fixture-witness',
+    };
     const recorded = hook(host, project, lifecycle);
     assert.equal(recorded.status, 0);
     assert.equal(recorded.stdout, '');
@@ -294,13 +268,8 @@ try {
     ]) {
       const event = payload(host, contextProject);
       event.cwd = join(contextProject, 'sub');
-      if (host === 'grok') {
-        event.toolName = 'run_terminal_command';
-        event.toolInput = { command };
-      } else {
-        event.tool_name = 'Bash';
-        event.tool_input = { command };
-      }
+      event.tool_name = 'Bash';
+      event.tool_input = { command };
       const before = rows(contextProject).length;
       checkResponse(host, hook(host, contextProject, event), status);
       if (status === 2)
@@ -317,27 +286,18 @@ try {
         );
     }
   }
-  // Compatibility registration is silent; Grok's native registration owns the call.
-  const project = join(root, 'grok');
-  const offset = rows(project).length;
-  const skipped = hook('claude-code', project, payload('grok', project), {
-    GROK_WORKSPACE_ROOT: project,
-  });
-  assert.equal(skipped.status, 0);
-  assert.equal(skipped.stdout, '');
-  assert.equal(rows(project).length, offset);
-  checks++;
-
   // A pipe writer that never sends EOF must still receive an explicit denial.
-  const child = spawn(executable, ['adapter', 'grok', 'hook', '--project-root', project], {
-    cwd: project,
+  const stalledProject = join(root, 'codex');
+  const child = spawn(executable, ['adapter', 'codex', 'hook', '--project-root', stalledProject], {
+    cwd: stalledProject,
     env,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
-  const chunks = [];
-  child.stdout.on('data', (chunk) => chunks.push(chunk));
-  child.stderr.resume();
-  const result = await new Promise((settle, reject) => {
+  const stdoutChunks = [];
+  const stderrChunks = [];
+  child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
+  child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
+  const stalledStatus = await new Promise((settle, reject) => {
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
       reject(new Error('stdin EOF deadline missing'));
@@ -348,8 +308,9 @@ try {
       settle(status);
     });
   });
-  assert.equal(result, 2);
-  assert.match(JSON.parse(Buffer.concat(chunks).toString()).reason, /deadline/);
+  assert.equal(stalledStatus, 2);
+  assert.equal(Buffer.concat(stdoutChunks).toString(), '');
+  assert.match(Buffer.concat(stderrChunks).toString(), /deadline/);
   child.stdin.destroy();
   checks++;
   console.log(

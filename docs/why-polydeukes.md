@@ -26,12 +26,12 @@ better verification.
 
 ## What exists now
 
-Seven packages provide a shared input vocabulary, three session adapters, TypeScript, Rust, and
-Python clients for programs, an optional markdown index, and the `polydeukes` umbrella, which
-carries the judge and the `pdks` command. Two observation surfaces serve different purposes:
+The packages provide a shared input vocabulary, two session adapters, TypeScript, Rust, and Python
+clients for programs, an optional markdown index, and the `polydeukes` umbrella, which carries the
+judge and the `pdks` command. Two observation surfaces serve different purposes:
 
-- The **session surface** judges one call before it runs — an input IR on stdin. Claude Code, Grok,
-  and Codex have installers, and a program reaches the same surface through the TypeScript, Rust, or
+- The **session surface** judges one call before it runs — an input IR on stdin. Claude Code and
+  Codex have installers, and a program reaches the same surface through the TypeScript, Rust, or
   Python SDK; what history and witness each host can prove differs. An adapter uses stable host
   events to assemble that evidence rather than treating an undocumented transcript format as a
   contract.
@@ -102,7 +102,7 @@ failure path too: when an adapter cannot build the input, it sends the reason to
 of recording the failure itself, so the writer never changes with the outcome.
 
 A shared layer structure does not imply identical evidence. The three language SDKs call the
-executable and return values for the same four operations. The three host adapters own event
+executable and return values for the same four operations. The two host adapters own event
 translation, registration, and responses; the common runtime invokes the judge through the same
 executable. Execution and failure handling are shared while each host supplies only what it can
 prove. An unknown prompt origin is not promoted to a human message to make capabilities match.

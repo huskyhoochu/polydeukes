@@ -43,12 +43,12 @@
       "en": {
         "path": "how-to/connect-surfaces.md",
         "title": "Connect the surfaces",
-        "summary": "Connect Claude Code, Grok, Codex, and git; distinguish their witness paths."
+        "summary": "Connect Claude Code, Codex, and git; distinguish their witness paths."
       },
       "ko": {
         "path": "how-to/connect-surfaces.ko.md",
         "title": "표면 연결하기",
-        "summary": "Claude Code, Grok, Codex, git을 연결하고 표면별 증인 사용법을 구별합니다."
+        "summary": "Claude Code, Codex, git을 연결하고 표면별 증인 사용법을 구별합니다."
       }
     },
     {
@@ -91,12 +91,12 @@
       "en": {
         "path": "troubleshooting.md",
         "title": "Troubleshooting Polydeukes",
-        "summary": "Diagnose invalid config, declarations that cannot compile, and Grok witness limits."
+        "summary": "Diagnose invalid config, declarations that cannot compile, and witness limits."
       },
       "ko": {
         "path": "troubleshooting.ko.md",
         "title": "폴리데우케스 문제 해결",
-        "summary": "설정 오류, 컴파일할 수 없는 선언, Grok 증인 제한의 원인을 확인합니다."
+        "summary": "설정 오류, 컴파일할 수 없는 선언, 증인 제한의 원인을 확인합니다."
       }
     },
     {
@@ -139,12 +139,12 @@
       "en": {
         "path": "reference/cli/init.md",
         "title": "pdks init",
-        "summary": "Create project configuration and register Claude Code, Grok, or Codex with pdks adapter <host> init."
+        "summary": "Create project configuration and register Claude Code or Codex with pdks adapter <host> init."
       },
       "ko": {
         "path": "reference/cli/init.ko.md",
         "title": "pdks init",
-        "summary": "프로젝트 설정을 만들고 pdks adapter <host> init으로 Claude Code, Grok, Codex를 등록합니다."
+        "summary": "프로젝트 설정을 만들고 pdks adapter <host> init으로 Claude Code, Codex를 등록합니다."
       }
     },
     {
@@ -273,22 +273,6 @@
         "path": "reference/packages/adapter-claude-code.ko.md",
         "title": "@polydeukes/adapter-claude-code",
         "summary": "단일 pdks 실행 파일로 claude-code를 연결하고 번역·등록·응답 계약을 확인합니다."
-      }
-    },
-    {
-      "id": "package-adapter-grok",
-      "category": "reference",
-      "order": 17,
-      "bundled": true,
-      "en": {
-        "path": "reference/packages/adapter-grok.md",
-        "title": "@polydeukes/adapter-grok",
-        "summary": "Connect grok through the standalone pdks executable and inspect its translation, registration, and response contract."
-      },
-      "ko": {
-        "path": "reference/packages/adapter-grok.ko.md",
-        "title": "@polydeukes/adapter-grok",
-        "summary": "단일 pdks 실행 파일로 grok를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
     {

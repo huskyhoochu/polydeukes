@@ -44,7 +44,7 @@ fn adapter_conformance_cases_pass() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        output.status.success() && stdout.contains("72 adapter fixture cases passed."),
-        "expected `72 adapter fixture cases passed.`\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        output.status.success() && stdout.contains("67 adapter fixture cases passed."),
+        "expected `67 adapter fixture cases passed.`\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 }

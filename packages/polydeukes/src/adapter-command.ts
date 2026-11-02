@@ -7,7 +7,6 @@ import { scaffoldProject } from './scaffold-project.ts';
 const hosts = {
   'claude-code': () => import('@polydeukes/adapter-claude-code'),
   codex: () => import('@polydeukes/adapter-codex'),
-  grok: () => import('@polydeukes/adapter-grok'),
 };
 
 /** The current executable identity and finite adapter arguments. */
@@ -98,7 +97,7 @@ export async function runAdapterCommand(
     return {
       stdout: '',
       stderr:
-        'usage: pdks adapter <claude-code|codex|grok> init | pdks adapter <claude-code|codex|grok> hook --project-root <absolute-path>\n',
+        'usage: pdks adapter <claude-code|codex> init | pdks adapter <claude-code|codex> hook --project-root <absolute-path>\n',
       exitCode: 2,
     };
   }
@@ -126,10 +125,6 @@ export async function runAdapterCommand(
         exitCode: 2,
       };
     }
-  }
-  // Grok also discovers Claude registrations; its own adapter owns that observation.
-  if (host === 'claude-code' && process.env.GROK_WORKSPACE_ROOT) {
-    return adapter.renderHookResponse({ exitCode: 0 });
   }
   let prepared: ReturnType<typeof adapter.prepareHook>;
   try {

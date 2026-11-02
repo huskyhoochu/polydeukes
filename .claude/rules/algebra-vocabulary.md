@@ -11,10 +11,11 @@ paths:
 
 # The declaration grammar — closed lists and where they live
 
-Every list below is a closed enumeration whose single source is an `as const` tuple in
-`packages/core/src/algebra.ts` (mechanisms in `catalogue.ts`); a name outside a closed list is
-rejected by validation, never coerced. Registering a new unary extract step is
-`extract-vocabulary.md`.
+The lists below are closed enumerations. The TypeScript judge defines its grammar in
+`packages/core/src/algebra.ts` and its mechanism catalogue in `packages/core/src/catalogue.ts`; the
+Rust judge defines its grammar and catalogue in `packages/pdks/src/core/declaration.rs`. A name
+outside a judge's closed list is rejected by validation, never coerced. Registering a new unary
+extract step is `extract-vocabulary.md`.
 
 ## Discipline families — what a declaration reads
 
@@ -57,15 +58,18 @@ without a transcript channel such an entry records `skipped` by its own `supply:
   `empty` and `subset` are the primitives (`nonEmpty ≡ ¬empty`, `equal ≡ subset` both ways,
   `implies ≡ subset` of key projections, `unchanged ≡ equal` over shared keys); the expansion is
   engine-internal. camelCase like every other position.
-- **Mechanism catalogue** — eighteen names in `catalogue.ts`: `pairing` · `companion` ·
-  `monotonic-order` · `fingerprint-sync` · `producer-owned` · `self-absolution-ban` · `actor-scope`
-  · `precedent` · `phase-order` · `turn-locality` · `stated-ground` · `controlled-vocabulary` ·
-  `naming` · `added-only` · `one-way-marker` · `delegated-scope` · `scoped-valve` ·
-  `forbidden-command`. Structural markers: `scoped-valve` needs a `witness` block, `naming` scopes
-  on `target.path`, `forbidden-command` scopes on `command`, `delegated-scope` is reserved and
-  absent from the declaration schema's enum. The derived shape is read from syntax alone (every
-  `source` step's name gives an axis, every relate entry's `op` a relation) and must be a subset of
-  the spec; a `source` name neither fixed nor bound is refused.
+- **Mechanism catalogue** — seventeen names in the Rust judge’s
+  `packages/pdks/src/core/declaration.rs`: `pairing` · `companion` · `monotonic-order` ·
+  `fingerprint-sync` · `producer-owned` · `self-absolution-ban` · `actor-scope` · `precedent` ·
+  `phase-order` · `turn-locality` · `stated-ground` · `controlled-vocabulary` · `naming` ·
+  `added-only` · `one-way-marker` · `scoped-valve` · `forbidden-command`. The TypeScript catalogue
+  in `packages/core/src/catalogue.ts` additionally keeps the reserved `delegated-scope`, making
+  eighteen names; the Rust judge rejects `delegated-scope` as outside its catalogue. Structural
+  markers: `scoped-valve` needs a `witness` block, `naming` scopes on `target.path`,
+  `forbidden-command` scopes on `command`. The derived shape is read from syntax alone (each
+  pipeline's first step gives its sources and axis, every relate entry's `op` a relation) and must
+  be a subset of the spec; a `source` name neither fixed nor bound is refused. `source` may appear
+  only as a pipeline's first step; elsewhere it is a config fault. Use `field` for a field lookup.
 - **Axes of a declaration** — `change` · `actor` · `world` · `history`. A fixed source name derives
   `change` except `actor`, which derives `actor`; a `file` or `sidecar` binding derives `world`, a
   `transcript` binding `history`.

@@ -89,11 +89,10 @@ export function prepareHook(spec: PrepareHookSpec): PrepareHookOutcome {
       ].some((key) => payload[key] === true)
     )
       throw new Error('host payload is truncated');
-    const event = payload.hook_event_name ?? payload.hookEventName;
+    const event = payload.hook_event_name;
     if (event === 'UserPromptSubmit' || event === 'PostToolUse' || event === 'SessionEnd')
       return { outcome: 'recorded' };
-    if (event !== 'PreToolUse' && event !== 'pre_tool_use')
-      throw new Error('unsupported hook event');
+    if (event !== 'PreToolUse') throw new Error('unsupported hook event');
     const built = buildCovenantInput([payload]);
     if (!built.ok) throw new Error(built.reason);
     if (payload.cwd !== undefined && typeof payload.cwd !== 'string')

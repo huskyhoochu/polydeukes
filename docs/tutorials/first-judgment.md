@@ -68,7 +68,7 @@ assembled. See [configuration errors](../troubleshooting.md#invalid-config) and
 
 - [Configure the project](../how-to/configure-project.md) to choose whether a violation advises or
   blocks.
-- [Connect the surfaces](../how-to/connect-surfaces.md) for Grok, Codex, or a git pre-commit hook.
+- [Connect the surfaces](../how-to/connect-surfaces.md) for Codex or a git pre-commit hook.
 - [Write a discipline](../how-to/write-disciplines.md) and observe an advisory before choosing
   whether it should block.
 

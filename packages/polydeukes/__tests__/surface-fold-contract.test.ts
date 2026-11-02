@@ -18,7 +18,6 @@ const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 const PACKAGE_DIRS = [
   'adapter-claude-code',
   'adapter-codex',
-  'adapter-grok',
   'core',
   'memory',
   'polydeukes',
@@ -50,13 +49,9 @@ const EXCLUDED_DIRS = new Set(['node_modules', 'dist', join('src', 'content', 'd
  * the memory command loads its optional package, and the adapter command selects a host leaf.
  */
 const DYNAMIC_IMPORT_MODULES = new Set(['bin.ts', 'memory-command.ts', 'adapter-command.ts']);
-const ADAPTER_SPECIFIERS = [
-  '@polydeukes/adapter-claude-code',
-  '@polydeukes/adapter-codex',
-  '@polydeukes/adapter-grok',
-];
+const ADAPTER_SPECIFIERS = ['@polydeukes/adapter-claude-code', '@polydeukes/adapter-codex'];
 /** The words the `explain` module may no longer spell: host, VCS, and hook names. */
-const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook', 'grok'];
+const EXPLAIN_FOREIGN_WORDS = ['claude-code', 'git', 'hook'];
 /** The seven verbs the composition roots call on the judge module. */
 const COVENANT_MEMBERS = [
   'compileDisciplineRegistrations',
@@ -107,10 +102,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds seven packages', () => {
+describe('the workspace holds six packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the seven package directories', () => {
+  it('packages/ lists exactly the six package directories', () => {
     const present = readdirSync(join(repoRoot, 'packages')).sort();
     expect(
       present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir) && !NON_NPM_DIRS.includes(dir)),

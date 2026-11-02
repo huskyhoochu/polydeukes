@@ -300,7 +300,7 @@ fn generated_config_explains_and_carries_no_host_text() {
     assert!(!text.contains("yaml-language-server"));
     assert!(!text.contains("read-only"));
     let lower = text.to_lowercase();
-    for host in ["claude", "codex", "grok"] {
+    for host in ["claude", "codex"] {
         assert!(!lower.contains(host), "template names {host}");
     }
 }
@@ -384,7 +384,7 @@ fn source_names_no_host() {
         let lower = fs::read_to_string(&file)
             .expect("a source file is UTF-8")
             .to_lowercase();
-        for host in ["claude", "codex", "grok"] {
+        for host in ["claude", "codex"] {
             assert!(!lower.contains(host), "{} names {host}", file.display());
         }
     }

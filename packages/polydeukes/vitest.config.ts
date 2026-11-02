@@ -14,7 +14,6 @@ export default defineConfig({
         import.meta.dirname,
         '../adapter-claude-code/src/index.ts',
       ),
-      '@polydeukes/adapter-grok': resolve(import.meta.dirname, '../adapter-grok/src/index.ts'),
     },
   },
   test: {

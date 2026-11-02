@@ -386,11 +386,11 @@ mod the_child_status_is_the_verdict {
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root, &pdks_manifest());
         let input = write_input();
-        let seam = RecordingSeam::answering(Some(2), "self-mod: .grok/hooks\n");
+        let seam = RecordingSeam::answering(Some(2), "self-mod: .codex/hooks\n");
 
         let verdict = check_covenant(spec(&root, &input, &|s| seam.spawn(s)));
 
-        assert_eq!(blocked(verdict), "self-mod: .grok/hooks\n");
+        assert_eq!(blocked(verdict), "self-mod: .codex/hooks\n");
     }
 
     #[test]
