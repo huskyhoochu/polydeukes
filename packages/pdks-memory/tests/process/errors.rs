@@ -4,7 +4,7 @@ use serde_json::json;
 
 use crate::common::{NOTES_INCLUDE, Project, assert_refused, doc};
 
-const USAGE: &str = "usage: pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory supersession <doc> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]";
+const USAGE: &str = "usage: pdks memory search <query…> [--json] [--limit <n>] | pdks memory show <id> [--json] | pdks memory obligations <key> [--json] | pdks memory supersession <doc> [--json] | pdks memory lint [--json] | pdks memory stats [--json] | pdks memory usage [--json]";
 const EXAMPLE: &str = "\nmemory:\n  include:\n    - 'docs/**/*.md'";
 const NO_OBLIGATION_RULES: &str = "memory.obligations is not declared — add the line or section rules that mark an obligation to the project config";
 const INVALID_INCLUDE: &str = "invalid config in polydeukes.config.json: memory.include must be a non-empty array of non-empty strings";

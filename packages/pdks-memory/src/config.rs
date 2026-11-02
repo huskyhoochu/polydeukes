@@ -1,5 +1,6 @@
 //! The `memory` section of the one config file in the working directory.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -58,6 +59,8 @@ pub struct Settings {
     pub ticket: Vec<TicketRule>,
     pub obligations: Vec<ObligationRule>,
     pub supersedes: Vec<SupersedeRule>,
+    pub type_map: HashMap<String, String>,
+    pub weights: HashMap<String, f64>,
 }
 
 /// Reads and validates the `memory` key of the one config file directly under `root`.
@@ -152,6 +155,8 @@ fn validate(value: &Value) -> Result<Settings, String> {
         ticket: rules(memory, "ticket", ticket_rule)?,
         obligations: rules(memory, "obligations", obligation_rule)?,
         supersedes: rules(memory, "supersedes", supersede_rule)?,
+        type_map: type_map(memory),
+        weights: weights(memory),
     })
 }
 
@@ -182,6 +187,26 @@ fn rules<T>(
         .iter()
         .enumerate()
         .map(|(index, rule)| build(rule, &format!("memory.{name}[{index}]")))
+        .collect()
+}
+
+/// The validated `typeMap`: every value is a non-empty string.
+fn type_map(memory: &Map<String, Value>) -> HashMap<String, String> {
+    let entries = memory.get("typeMap").and_then(Value::as_object);
+    entries
+        .into_iter()
+        .flatten()
+        .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_string())))
+        .collect()
+}
+
+/// The validated `weights`: every value is a finite number of at least zero.
+fn weights(memory: &Map<String, Value>) -> HashMap<String, f64> {
+    let entries = memory.get("weights").and_then(Value::as_object);
+    entries
+        .into_iter()
+        .flatten()
+        .filter_map(|(key, value)| Some((key.clone(), value.as_f64()?)))
         .collect()
 }
 

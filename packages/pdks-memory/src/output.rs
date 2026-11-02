@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use crate::corpus::{Corpus, Doc, Link, Section};
 use crate::parse::{constant, group, replace_all};
+use crate::search::Hit;
 
 fn line(value: &Value) -> String {
     format!("{value}\n")
@@ -195,6 +196,38 @@ pub fn show(corpus: &Corpus, id: &str, json: bool) -> Option<String> {
     ))
 }
 
+/// The ranked hits: one tab-separated line each, or `{"results":[…]}`.
+pub fn search(hits: &[Hit], json: bool) -> String {
+    if json {
+        let results: Vec<Value> = hits.iter().map(Hit::json).collect();
+        return line(&json!({ "results": results }));
+    }
+    let rows: Vec<String> = hits
+        .iter()
+        .map(|hit| {
+            let stale = if hit.stale {
+                format!("{}, stale", hit.status)
+            } else {
+                hit.status.clone()
+            };
+            let status = if hit.superseded_by.is_empty() {
+                stale
+            } else {
+                format!("{stale}, superseded by {}", hit.superseded_by.join(" "))
+            };
+            [
+                hit.id.as_str(),
+                hit.match_path,
+                status.as_str(),
+                hit.trust,
+                title_of(&hit.doc_title, &hit.section_title).as_str(),
+            ]
+            .join("\t")
+        })
+        .collect();
+    lines(&rows)
+}
+
 /// The obligations filed under `key` and the section ids they came from, in section id then
 /// position order.
 pub fn obligations(corpus: &Corpus, key: &str, json: bool) -> (String, Vec<String>) {
@@ -236,7 +269,7 @@ pub fn obligations(corpus: &Corpus, key: &str, json: bool) -> (String, Vec<Strin
 
 /// Every resolved (newer, older) pair: a `supersedes` row's declaring document is the newer side,
 /// a `superseded-by` row's the older one.
-fn pairs(corpus: &Corpus, declared_only: bool) -> BTreeSet<(String, String)> {
+pub fn pairs(corpus: &Corpus, declared_only: bool) -> BTreeSet<(String, String)> {
     let mut found = BTreeSet::new();
     for row in &corpus.supersessions {
         let Some(dst) = &row.dst else { continue };

@@ -11,6 +11,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 serde-saphyr = "2"
 regress = "0.12"
 globset = "0.4"
+garu-core = { git = "https://github.com/ongjin/garu", rev = "3229d92a20622bbe83779d94faf9e58b80c62ec0" }
 
 [dev-dependencies]
 tempfile = "3"

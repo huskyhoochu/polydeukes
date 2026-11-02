@@ -9,6 +9,7 @@ mod links;
 mod lint;
 mod log;
 mod obligations;
+mod search;
 mod show;
 mod stats;
 mod supersession;

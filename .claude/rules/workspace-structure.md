@@ -86,12 +86,16 @@ registrations is `new-package-checklist.md`.
   keeps the session's tool-call history in `.polydeukes/codex-sessions/` from the two lifecycle
   events. Its cases are `conformance/adapter/codex/`, run with `--cases-dir`.
 - **`packages/pdks-memory`** (crate, `publish = false`) is memory as a `pdks-<name>` extension:
-  `pdks memory show | obligations | supersession | lint | stats | usage`, each with `--json`. It
-  reads only the `memory` key of the one config file in the working directory and recomputes every
-  answer from the markdown files `memory.include` reaches on each run; it keeps no index file.
-  `show` and `obligations` append one line each to `.polydeukes/memory-log.jsonl`, which `usage`
-  reads. Its tests are process tests in `tests/process/`. The TypeScript `@polydeukes/memory` still
-  ships `pdks memory` with `ingest` and `search`.
+  `pdks memory search | show | obligations | supersession | lint | stats | usage`, each with
+  `--json`; `search` also takes `--limit <n>`. It reads only the `memory` key of the one config file
+  in the working directory and recomputes every answer from the markdown files `memory.include`
+  reaches on each run; it keeps no index file. `search` reduces the query with the `garu-core`
+  Korean morphological analyzer, whose model is embedded in the executable (a git dependency pinned
+  to one commit), and ranks sections by one bm25 formula over passages split at blank lines, line
+  breaks, then whitespace to at most 2,000 characters where whitespace allows, with a proximity
+  adjustment and title occurrences counted twice. `search`, `show` and `obligations` append one line
+  each to `.polydeukes/memory-log.jsonl`, which `usage` reads. Its tests are process tests in
+  `tests/process/`. The TypeScript `@polydeukes/memory` still ships `pdks memory` with `ingest`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.

@@ -1,4 +1,4 @@
-//! The query log: one JSON line per answered `show` or `obligations`, read back by `usage`.
+//! The query log: one JSON line per answered `search`, `show`, or `obligations`, read back by `usage`.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -9,13 +9,18 @@ use serde_json::{Value, json};
 const LOG_DIR: &str = ".polydeukes";
 pub const LOG_PATH: &str = ".polydeukes/memory-log.jsonl";
 
-/// `Date#toISOString` shape: `2026-09-28T00:00:00.000Z`.
-fn iso_now() -> String {
-    let millis = SystemTime::now()
+/// Milliseconds since the epoch.
+pub fn now_millis() -> i64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .ok()
         .and_then(|elapsed| i64::try_from(elapsed.as_millis()).ok())
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+/// `Date#toISOString` shape: `2026-09-28T00:00:00.000Z`.
+fn iso_now() -> String {
+    let millis = now_millis();
     let days = millis.div_euclid(86_400_000);
     let of_day = millis.rem_euclid(86_400_000);
     let z = days + 719_468;
@@ -43,8 +48,7 @@ fn iso_now() -> String {
 
 /// Appends one line in a single write; a log that cannot be written loses the line and leaves
 /// the answer as it is.
-pub fn append(command: &str, query: &str, ids: &[String]) {
-    let results: Vec<Value> = ids.iter().map(|id| json!({ "id": id })).collect();
+pub fn append(command: &str, query: &str, results: &[Value]) {
     let entry = json!({ "at": iso_now(), "command": command, "query": query, "results": results });
     let write = || -> std::io::Result<()> {
         fs::create_dir_all(LOG_DIR)?;
