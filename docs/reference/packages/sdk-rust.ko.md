@@ -5,9 +5,9 @@
 <a id="ownership"></a>
 ## 이 crate가 맡는 일
 
-네 블로킹 동사 `check_covenant`, `check_change_set`, `memory_ingest`, `memory_search`가 별도로
-설치한 `pdks`를 실행합니다. 약속(covenant) 판정, 설정, 텔레메트리, 기억(memory) 색인은 CLI가
-맡습니다. crate는 호출자가 만든 입력을 보내고 결과를 값으로 돌려줍니다.
+세 블로킹 동사 `check_covenant`, `check_change_set`, `memory_search`가 별도로 설치한 `pdks`를
+실행합니다. 약속(covenant) 판정, 설정, 텔레메트리는 CLI가 맡습니다. crate는 호출자가 만든 입력을
+보내고 결과를 값으로 돌려줍니다.
 
 모든 동사는 실행 파일 선택기와 프로세스 실행기를 공유합니다. 루트는 호출자의 cwd 기준으로 절대화되어
 자식의 cwd가 됩니다. 명시한 `executable`은 이름만 적었더라도 호출자의 cwd 기준 파일 경로이며 symlink
@@ -24,8 +24,9 @@ cargo add polydeukes-sdk
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 Linux x64 또는 macOS
 arm64용 단일 실행 파일 `pdks`를 설치하고 실행 권한을 줍니다. `executable`에 경로를 적거나 `PATH`에
 `pdks`라는 이름으로 둡니다. crate는 그 파일을 직접 실행하므로 Node나 npm 설치가 필요하지 않습니다.
-기억 동사에는 기억 기능을 제공하는 CLI가 필요하며 의존성, 설정, 색인이 없으면 `Unavailable`이
-됩니다.
+기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
+`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+`pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
 
 <a id="verb"></a>
 ## `check_covenant`
@@ -92,9 +93,9 @@ actor, session, 도구 목록을 더하지 않습니다. `CovenantInput`과 구�
 | `timeout: Option<Duration>`     | `None`이면 기한 없음                                  | 같음                  |
 | `spawn`                         | 선택 `&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>` | 같음                  |
 
-`MemoryIngestSpec`은 `root: &Path`, `executable`, `timeout`, `spawn`을 받습니다.
-`MemorySearchSpec`은 여기에 `query: &str`, `limit: Option<NonZeroU32>`를 받으며 `None`이면 CLI의
-기본값을 씁니다. 기억 명령에는 강제 수준, config-layer, telemetry 플래그를 보내지 않습니다.
+`MemorySearchSpec`은 `root: &Path`, `executable`, `timeout`, `spawn`, `query: &str`,
+`limit: Option<NonZeroU32>`를 받으며 `None`이면 CLI의 기본값을 씁니다. 기억 명령에는 강제 수준,
+config-layer, telemetry 플래그를 보내지 않습니다.
 
 timeout은 스폰 뒤 통신을 잽니다. stdin 쓰기와 두 출력 파이프 비우기를 포함하고, 직접 자식이 끝난 뒤
 후손이 파이프를 잡은 시간에도 적용됩니다. 0은 스폰 뒤 만료됩니다. 만료되면 직접 자식을 종료·회수하고
@@ -128,7 +129,7 @@ git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
 판정 결과를 정하지 않습니다. CLI가 텔레메트리를 쓰며 `telemetry_path`로 목적지를 고릅니다.
 
 <a id="memory"></a>
-## `memory_ingest`와 `memory_search`
+## `memory_search`
 
 ```rust
 use polydeukes_sdk::{memory_search, MemorySearchOutcome, MemorySearchSpec};
@@ -149,13 +150,12 @@ match result {
 }
 ```
 
-`memory_ingest`는 `pdks memory ingest`를 실행하고 status `0`일 때만 `MemoryIngestOutcome::Ingested`,
-그 밖에는 `Unavailable { reason }`을 반환합니다. ingest stdout은 무시합니다. `memory_search`는
-query를 인자 하나로 `pdks memory search <query> --json`에 전달하고 limit이 있으면 `--limit <n>`을
-더합니다. 두 기억 명령의 stdin은 빈 바이트입니다.
+`memory_search`는 query를 인자 하나로 `pdks memory search <query> --json`에 전달하고 limit이 있으면
+`--limit <n>`을 더합니다. 기억 검색의 stdin은 빈 바이트입니다.
 
-검색 성공에는 문자열 `ingestedAt`과 배열 `results`가 있는 엄격한 UTF-8 JSON이 필요합니다. 각 hit에는
-문자열 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, 불리언 `stale`, 문자열 배열
+검색 출력은 `@polydeukes/core`가 내보내는 `memory-search-output.schema.json`을 따르며 형태는
+`{"results": [...]}`입니다. 검색 성공에는 `results` 배열이 있는 엄격한 UTF-8 JSON이 필요합니다. 각
+hit에는 문자열 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, 불리언 `stale`, 문자열 배열
 `supersededBy`, `trust`(`human-reviewed`, `machine-verified`, `unverified`), `matchPath`(`and`,
 `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다. 생성된 Rust 필드는 snake case인
 `concept_id`, `doc_title`, `section_title`, `match_path`, `superseded_by`입니다. `Found { hits }`는
@@ -185,7 +185,7 @@ pub struct SpawnOutcome {
 ```
 
 status `None`은 시그널 종료입니다. SDK가 해석할 때까지 출력 바이트를 보존합니다. 검색 stdout을 손실
-치환하면 잘못된 UTF-8을 감추게 됩니다. 네 동사는 이 경계를 공유합니다. 일반 I/O 오류는 실패 값이
+치환하면 잘못된 UTF-8을 감추게 됩니다. 세 동사는 이 경계를 공유합니다. 일반 I/O 오류는 실패 값이
 되지만 호스트 종료와 Rust panic은 잡지 않습니다.
 
 <a id="limits"></a>

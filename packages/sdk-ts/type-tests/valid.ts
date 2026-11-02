@@ -3,9 +3,7 @@ import {
   type CovenantInput,
   checkChangeSet,
   checkCovenant,
-  type MemoryIngestOutcome,
   type MemorySearchOutcome,
-  memoryIngest,
   memorySearch,
 } from '@polydeukes/sdk-ts';
 
@@ -35,16 +33,6 @@ function covenant(value: CheckCovenantVerdict): string {
       return unreachable(value);
   }
 }
-function ingest(value: MemoryIngestOutcome): string {
-  switch (value.outcome) {
-    case 'ingested':
-      return 'ingested';
-    case 'unavailable':
-      return value.reason;
-    default:
-      return unreachable(value);
-  }
-}
 function search(value: MemorySearchOutcome): string {
   switch (value.outcome) {
     case 'found':
@@ -61,7 +49,6 @@ async function example(): Promise<void> {
   const settings = { executable: '/opt/pdks', timeoutMs: 2000 };
   covenant(await checkCovenant({ ...settings, repoRoot: '.', input }));
   covenant(await checkChangeSet({ ...settings, repoRoot: '.', diff: '' }));
-  ingest(await memoryIngest({ ...settings, root: '.' }));
   search(await memorySearch({ ...settings, root: '.', query: 'word', limit: 1 }));
 }
 void example;

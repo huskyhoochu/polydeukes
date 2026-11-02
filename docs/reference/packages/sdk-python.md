@@ -3,7 +3,7 @@
 **English** · [한국어](sdk-python.ko.md)
 
 Python 3.12+ synchronous client for `pdks covenant check` and `pdks memory`.
-[Installation and four-verb example](../../../packages/sdk-python/README.md).
+[Installation and three-verb example](../../../packages/sdk-python/README.md).
 
 <a id="contract"></a>
 ## Contract
@@ -16,7 +16,6 @@ accept `str | os.PathLike[str]`. Generated `TypedDict` inputs keep the CLI's cam
 | ------------------------------------------- | ----------------------------------- | ----------------------------------------------------------- |
 | `check_covenant(CheckCovenantSpec(...))`    | `repo_root`, `input: CovenantInput` | `Upheld(advisories)`, `Blocked(reason)`, `Unjudged(reason)` |
 | `check_change_set(CheckChangeSetSpec(...))` | `repo_root`, `diff: str`            | The same `CheckCovenantVerdict` union                       |
-| `memory_ingest(MemoryIngestSpec(...))`      | `root`                              | `Ingested()` or `Unavailable(reason)`                       |
 | `memory_search(MemorySearchSpec(...))`      | `root`, `query: str`                | `Found(hits)`, `Empty()`, `Unavailable(reason)`             |
 
 Every spec has `executable=None`, `timeout=None`, and `spawn=None`. The covenant specs also have
@@ -28,7 +27,7 @@ handled. Frozen dataclasses are shallow: their nested input dictionaries remain 
 <a id="execution"></a>
 ## Executable and process
 
-All four verbs use one resolver and runner. A specified `executable` is a file path relative to the
+All three verbs use one resolver and runner. A specified `executable` is a file path relative to the
 caller's cwd, even for a bare name; its symlink spelling is preserved. Otherwise the first
 executable regular file named `pdks` in an absolute `PATH` directory runs. Empty and relative
 entries are skipped. A selected executable's failure returns a failure result.
@@ -43,7 +42,6 @@ descriptors are closed, and no shell evaluates the command.
 | ------------------ | -------------------------------------------- | ------------ |
 | `check_covenant`   | `covenant check --enforce <level>`           | JSON         |
 | `check_change_set` | `covenant check --diff --enforce <level>`    | Unified diff |
-| `memory_ingest`    | `memory ingest`                              | Empty bytes  |
 | `memory_search`    | `memory search <query> --json [--limit <n>]` | Empty bytes  |
 
 Both covenant verbs append `--config-layer` and `--telemetry-path` when specified. Generate a diff
@@ -65,12 +63,17 @@ serialization, spawn, and timeout failures give `Unjudged`. The child's stderr i
 result contract. Read telemetry to identify the disciplines actually judged. `Unjudged` is not
 permission to execute.
 
-Memory nonzero exits, signals, spawn failures, and timeout give `Unavailable`. Ingest exit `0` gives
-`Ingested`. Search requires valid UTF-8 JSON with a string `ingestedAt` and a `results` array. Every
-hit's required fields, types, and `trust`/`matchPath` enums are checked; additional fields are
-accepted. Only a valid empty array gives `Empty`. `Found.hits` is a nonempty tuple that preserves
-CLI order; hit fields retain camelCase. Missing indexes and malformed replies are `Unavailable`.
-Search retrieves sections; obligation lookup is a separate CLI command.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
+package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
+missing, search returns `Unavailable` with the reason `pdks` prints.
+
+The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`. Memory
+nonzero exits, signals, spawn failures, and timeout give `Unavailable`. Search requires valid UTF-8
+JSON with a `results` array (`{"results": [...]}`). Every hit's required fields, types, and
+`trust`/`matchPath` enums are checked; additional fields are accepted. Only a valid empty array
+gives `Empty`. `Found.hits` is a nonempty tuple that preserves CLI order; hit fields retain
+camelCase. Malformed replies are `Unavailable`. Search retrieves sections; obligation lookup is a
+separate CLI command.
 
 <a id="spawn"></a>
 ## Injecting spawn
@@ -116,7 +119,7 @@ Normal unified releases continue to use `v<version>` with `python_only=false`.
 <a id="sdk-contract"></a>
 ## Shared SDK contract
 
-The TS, Rust, and Python SDKs share explicit-executable → absolute-PATH selection, four verbs,
+The TS, Rust, and Python SDKs share explicit-executable → absolute-PATH selection, three verbs,
 closed results, and communication-deadline semantics. TS uses promises and milliseconds; Rust uses
 synchronous functions and Duration; Python uses synchronous functions and seconds. Core’s two
 schemas supply the generated wire types, separately from search-response validation.

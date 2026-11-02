@@ -2,8 +2,8 @@
 
 **English** · [한국어](./README.ko.md)
 
-Four blocking Rust verbs run a standalone `pdks` and return results as values. The CLI owns
-judgment, configuration, telemetry, and memory indexing.
+Three blocking Rust verbs run a standalone `pdks` and return results as values. The CLI owns
+judgment, configuration, telemetry, and memory search.
 
 ```sh
 cargo add polydeukes-sdk
@@ -20,10 +20,9 @@ npm installations are unnecessary.
 - `check_covenant(CheckCovenantSpec)` sends generated `CovenantInput` as UTF-8 JSON.
 - `check_change_set(CheckChangeSetSpec)` sends a unified diff verbatim.
 - Both return `CheckCovenantVerdict`: `Upheld`, `Blocked`, or `Unjudged`.
-- `memory_ingest(MemoryIngestSpec)` returns `MemoryIngestOutcome`: `Ingested` or `Unavailable`.
 - `memory_search(MemorySearchSpec)` returns `MemorySearchOutcome`: ranked `Found` hits, `Empty`, or
   `Unavailable`.
-- All four accept `executable`, `timeout`, and `spawn`, using `SpawnSpec` and `SpawnOutcome` with
+- All three accept `executable`, `timeout`, and `spawn`, using `SpawnSpec` and `SpawnOutcome` with
   `Vec<u8>` stdin, stdout, and stderr.
 
 Roots and explicit executable paths resolve from the caller's cwd, preserving executable symlink
@@ -63,6 +62,10 @@ Only `Upheld` authorizes the action. Status `0` is `Upheld`, `2` is `Blocked`, a
 status, signal, or execution failure is `Unjudged`. Enforcement defaults to `Enforce::Block`.
 `check_change_set` takes `diff` in place of `input`, with `a/` and `b/` paths relative to
 `repo_root`. The API blocks; async hosts use a blocking task.
+
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
+package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
+missing, search returns `Unavailable` with the reason `pdks` prints.
 
 Memory specs use `root`; search adds `query` and optional `limit: NonZeroU32`. Only a valid empty
 search response is `Empty`. Missing memory support, malformed responses, and execution failures are

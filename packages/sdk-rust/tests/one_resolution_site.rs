@@ -1,4 +1,4 @@
-//! Executable selection is shared by all four verbs. Runtime package discovery and a Node
+//! Executable selection is shared by all three verbs. Runtime package discovery and a Node
 //! launcher would change the standalone process contract even when a seam reports success.
 
 const LIB: &str = include_str!("../src/lib.rs");

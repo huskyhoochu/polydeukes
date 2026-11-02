@@ -1,4 +1,4 @@
-"""Four synchronous process clients for the pdks executable."""
+"""Three synchronous process clients for the pdks executable."""
 
 import json
 import os
@@ -11,9 +11,6 @@ from ._contract import (
     CheckCovenantVerdict,
     Empty,
     Found,
-    Ingested,
-    MemoryIngestOutcome,
-    MemoryIngestSpec,
     MemorySearchOutcome,
     MemorySearchSpec,
     SpawnOutcome,
@@ -68,17 +65,6 @@ def check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict:
     return _check(spec)
 
 
-def memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome:
-    """Ingest through pdks, returning Unavailable for every process failure."""
-    try:
-        outcome = run(
-            spec.root, spec.executable, spec.timeout, spec.spawn, ("memory", "ingest"), b""
-        )
-        return Ingested() if outcome.status == 0 else Unavailable(_failure(outcome))
-    except Exception as error:
-        return Unavailable(_reason(error))
-
-
 def _invalid_constant(value: str) -> object:
     raise ValueError(f"Invalid JSON constant: {value}")
 
@@ -89,8 +75,8 @@ def _hits(data: bytes) -> tuple[MemorySearchResult, ...]:
         raise ValueError("memory search response must be an object")
     root = cast(dict[str, object], payload)
     results = root.get("results")
-    if not isinstance(root.get("ingestedAt"), str) or not isinstance(results, list):
-        raise ValueError("memory search response requires ingestedAt and results")
+    if not isinstance(results, list):
+        raise ValueError("memory search response requires results")
     for value in cast(list[object], results):
         if not isinstance(value, dict):
             raise ValueError("memory search hit must be an object")

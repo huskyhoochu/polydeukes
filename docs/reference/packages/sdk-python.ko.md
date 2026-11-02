@@ -3,7 +3,7 @@
 [English](sdk-python.md) · **한국어**
 
 `pdks covenant check`와 `pdks memory`를 호출하는 Python 3.12+ 동기 클라이언트입니다.
-[설치와 네 동사 예시](../../../packages/sdk-python/README.ko.md)를 참고하세요.
+[설치와 세 동사 예시](../../../packages/sdk-python/README.ko.md)를 참고하세요.
 
 <a id="contract"></a>
 ## 계약
@@ -16,7 +16,6 @@
 | ------------------------------------------- | ----------------------------------- | ----------------------------------------------------------- |
 | `check_covenant(CheckCovenantSpec(...))`    | `repo_root`, `input: CovenantInput` | `Upheld(advisories)`, `Blocked(reason)`, `Unjudged(reason)` |
 | `check_change_set(CheckChangeSetSpec(...))` | `repo_root`, `diff: str`            | 같은 `CheckCovenantVerdict` 합집합                          |
-| `memory_ingest(MemoryIngestSpec(...))`      | `root`                              | `Ingested()` 또는 `Unavailable(reason)`                     |
 | `memory_search(MemorySearchSpec(...))`      | `root`, `query: str`                | `Found(hits)`, `Empty()`, `Unavailable(reason)`             |
 
 모든 spec은 `executable=None`, `timeout=None`, `spawn=None`을 갖습니다. 약속(covenant) spec은
@@ -28,7 +27,7 @@
 <a id="execution"></a>
 ## 실행 파일과 프로세스
 
-네 동사는 해석기와 실행기 하나를 사용합니다. 지정한 `executable`은 단순한 이름이어도 호출자 cwd 기준
+세 동사는 해석기와 실행기 하나를 사용합니다. 지정한 `executable`은 단순한 이름이어도 호출자 cwd 기준
 파일 경로이며 symlink 표기를 보존합니다. 없으면 절대 `PATH` 디렉터리에서 처음 발견한 실행 가능한
 일반 파일 `pdks`를 실행합니다. 비거나 상대적인 항목은 건너뜁니다. 선택한 실행 파일이 실패하면 실패
 결과를 반환합니다.
@@ -43,7 +42,6 @@ JSON(`allow_nan=False`)으로, diff를 줄바꿈이 보존된 UTF-8 바이트로
 | ------------------ | -------------------------------------------- | --------- |
 | `check_covenant`   | `covenant check --enforce <level>`           | JSON      |
 | `check_change_set` | `covenant check --diff --enforce <level>`    | 통합 diff |
-| `memory_ingest`    | `memory ingest`                              | 빈 바이트 |
 | `memory_search`    | `memory search <query> --json [--limit <n>]` | 빈 바이트 |
 
 두 약속 동사는 지정한 `--config-layer`와 `--telemetry-path`를 덧붙입니다. diff는
@@ -63,12 +61,16 @@ arm64에서 상속한 파이프가 기한 반환을 늦추지 않습니다. 직�
 포함됩니다. 결과 계약은 status를 따르며 실제 판정한 규율(discipline)은 텔레메트리로 식별합니다.
 `Unjudged`는 실행 허가가 아닙니다.
 
-기억(memory)의 0 아닌 종료, 시그널, 실행 실패, 기한 초과는 `Unavailable`입니다. Ingest 종료 `0`은
-`Ingested`입니다. 검색은 문자열 `ingestedAt`과 `results` 배열이 있는 유효한 UTF-8 JSON을 요구합니다.
-각 hit의 필수 필드·타입과 `trust`/`matchPath` enum을 검사하고 추가 필드는 허용합니다. 유효한 빈
-배열만 `Empty`입니다. `Found.hits`는 CLI 순서를 유지하는 비지 않은 tuple이며 hit 필드는
-camelCase입니다. 없는 색인과 잘못된 응답은 `Unavailable`입니다. 검색은 절을 찾으며 의무 조회는 별도
-CLI 명령입니다.
+기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
+`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+`pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
+
+검색 출력은 `@polydeukes/core`가 내보내는 `memory-search-output.schema.json`을 따르며 형태는
+`{"results": [...]}`입니다. 기억(memory)의 0 아닌 종료, 시그널, 실행 실패, 기한 초과는
+`Unavailable`입니다. 검색은 `results` 배열이 있는 유효한 UTF-8 JSON을 요구합니다. 각 hit의 필수
+필드·타입과 `trust`/`matchPath` enum을 검사하고 추가 필드는 허용합니다. 유효한 빈 배열만
+`Empty`입니다. `Found.hits`는 CLI 순서를 유지하는 비지 않은 tuple이며 hit 필드는 camelCase입니다.
+잘못된 응답은 `Unavailable`입니다. 검색은 절을 찾으며 의무 조회는 별도 CLI 명령입니다.
 
 <a id="spawn"></a>
 ## Spawn 주입
@@ -112,7 +114,7 @@ manifest가 `v<version>`과 같은지 확인하고, 해당 릴리스의 Linux �
 <a id="sdk-contract"></a>
 ## 세 언어의 공통 계약
 
-TS·Rust·Python SDK는 명시 실행 파일 → 절대 PATH의 pdks, 네 동사와 닫힌 결과, 기한의 같은 의미를
+TS·Rust·Python SDK는 명시 실행 파일 → 절대 PATH의 pdks, 세 동사와 닫힌 결과, 기한의 같은 의미를
 사용합니다. TS는 Promise와 밀리초, Rust는 동기 함수와 Duration, Python은 동기 함수와 초를
 사용합니다. 두 core schema가 전송 타입의 원본이며 언어별 생성 타입과 검색 응답 검증을 구분합니다.
 

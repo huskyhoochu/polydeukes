@@ -379,6 +379,54 @@ fn the_json_form_has_the_pinned_keys_in_order() {
     );
 }
 
+// The schema core publishes for `search --json` names the keys a host reads. A key the command
+// prints and the schema omits (or the reverse) leaves every generated SDK type out of step with
+// the producer, and the open objects hide it from a validator.
+#[test]
+fn the_json_output_carries_exactly_the_keys_the_published_schema_declares() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../core/schema/memory-search-output.schema.json");
+    let schema: Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).expect("the schema is readable"))
+            .expect("the schema is JSON");
+    let keys = |properties: &Value| -> BTreeSet<String> {
+        properties
+            .as_object()
+            .expect("properties is an object")
+            .keys()
+            .cloned()
+            .collect()
+    };
+    let root_keys = keys(schema.pointer("/properties").expect("root properties"));
+    let result_keys = keys(
+        schema
+            .pointer("/$defs/MemorySearchResult/properties")
+            .expect("result properties"),
+    );
+
+    let project = corpus(&[("alpha", topic("needleword here."))]);
+    let answer = project.json(&["search", WORD]);
+
+    let printed_root: BTreeSet<String> = answer
+        .as_object()
+        .expect("the answer is an object")
+        .keys()
+        .cloned()
+        .collect();
+    assert_eq!(printed_root, root_keys);
+    let results = results_of(&answer);
+    assert_eq!(results.len(), 1);
+    for result in &results {
+        let printed: BTreeSet<String> = result
+            .as_object()
+            .expect("a result is an object")
+            .keys()
+            .cloned()
+            .collect();
+        assert_eq!(printed, result_keys);
+    }
+}
+
 // The preamble row's section title is the empty string, and `supersededBy` is a list of the
 // documents that replace this one.
 #[test]

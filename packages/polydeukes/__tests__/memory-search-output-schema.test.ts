@@ -7,12 +7,9 @@ import { runMemory } from '../src/memory-command.ts';
 import { writeConfigAt } from './helpers.ts';
 
 // core ships the JSON Schema for `pdks memory search --json` as a language-neutral data
-// contract, and nothing in core can import the memory package's TS type to pin it. The
-// only place both the schema and the real producer are reachable is this package, so the
-// contract is held here by running the real command and validating its bytes. A field
-// renamed on the TS side fails (a); a field added on the TS side without a schema change
-// fails (c), because `additionalProperties` stays open so a Rust host built against an
-// older schema keeps parsing a newer CLI.
+// contract. This file compiles it under ajv strict and validates the bytes the TS command
+// prints, so a field renamed on the TS side or an enum closed to the wrong members fails here.
+// The key-for-key comparison against the shipped `pdks-memory` lives in that crate's tests.
 
 const SCHEMA_PATH = resolve(
   import.meta.dirname,
@@ -29,7 +26,7 @@ const HIT_WORD = 'shared-term';
 const NO_HIT_WORD = 'zz-no-such-term-491';
 const DOC_TEXT = `---\ntitle: Alpha\ntype: note\n---\n## One\n\n${HIT_WORD} here.\n\n## Two\n\nalpha only.\n`;
 
-type SearchOutput = { ingestedAt: string; results: Record<string, unknown>[] };
+type SearchOutput = { results: Record<string, unknown>[] };
 
 let projectRoot: string;
 
@@ -90,35 +87,6 @@ describe('memory-search-output schema ⟺ pdks memory search --json', () => {
 
     expect(output.results).toEqual([]);
     expect(validate(output), JSON.stringify(validate.errors)).toBe(true);
-  });
-
-  // `additionalProperties` is left open, so (a) stays green when the TS type gains a field
-  // the schema does not know; this is the assertion that fails then. A schema that lists a
-  // tenth property the command never prints fails from the other side.
-  it('names exactly the keys every result carries under $defs.MemorySearchResult.properties', async () => {
-    const schema = loadSchema();
-    const defs = schema.$defs as Record<string, { properties: Record<string, unknown> }>;
-    const declared = Object.keys(defs.MemorySearchResult?.properties ?? {}).sort();
-    expect(declared.length).toBe(9);
-    await ingested();
-
-    const output = await searchJson(HIT_WORD);
-
-    expect(Object.keys(output).sort()).toEqual(Object.keys(schema.properties as object).sort());
-    expect(output.results.length).toBeGreaterThan(0);
-    for (const result of output.results) {
-      expect(Object.keys(result).sort()).toEqual(declared);
-    }
-  });
-
-  // The root is what a code generator names the top-level type after, and `results` is
-  // the one list the Rust verb reads; a root that nests the list under another key, or
-  // names `$defs` differently, generates a type the mapping cannot read `results` from.
-  it('declares the root title MemorySearchOutput with ingestedAt and results required', () => {
-    const schema = loadSchema();
-
-    expect(schema.title).toBe('MemorySearchOutput');
-    expect((schema.required as string[]).sort()).toEqual(['ingestedAt', 'results']);
   });
 
   // The published path is what a consumer's import of

@@ -19,5 +19,4 @@ class MemorySearchResult(TypedDict):
 
 
 class MemorySearchOutput(TypedDict):
-    ingestedAt: str
     results: list[MemorySearchResult]

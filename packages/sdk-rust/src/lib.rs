@@ -1,10 +1,10 @@
 //! Hand one covenant input, or one change set as a unified diff, to `pdks covenant check` and
-//! read the verdict as a value; ingest and search a project's memory through `pdks memory` and
-//! read the hits as values.
+//! read the verdict as a value; search a project's memory through `pdks memory` and read the
+//! hits as values.
 //!
 //! The crate runs the `pdks` executable a caller names in the spec, or otherwise locates the
 //! first `pdks` executable in an absolute `PATH` directory, and maps the child's exit status. It
-//! judges nothing and opens no index.
+//! judges nothing and reads no memory document itself.
 
 #[rustfmt::skip]
 mod ir;
@@ -414,25 +414,6 @@ fn run_check(
     }
 }
 
-/// `memory_ingest` input.
-pub struct MemoryIngestSpec<'a> {
-    /// The memory root — config discovery and the child's cwd.
-    pub root: &'a Path,
-    /// The `pdks` executable to run. `None` selects the first executable in an absolute `PATH` directory.
-    pub executable: Option<&'a Path>,
-    /// The communication deadline after spawn; `None` waits for exit and all piped streams.
-    pub timeout: Option<Duration>,
-    /// Injected spawn seam — `None` runs the selected executable with every stream piped.
-    pub spawn: Option<&'a dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>>,
-}
-
-/// What `pdks memory ingest` answered. `reason` is the child's stderr verbatim when it left one.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MemoryIngestOutcome {
-    Ingested,
-    Unavailable { reason: String },
-}
-
 /// `memory_search` input.
 pub struct MemorySearchSpec<'a> {
     /// The memory root — config discovery and the child's cwd.
@@ -451,9 +432,9 @@ pub struct MemorySearchSpec<'a> {
 
 /// What `pdks memory search` answered.
 ///
-/// `Empty` is a search that ran and matched nothing; every failure is `Unavailable`, so reading
-/// `Empty` never hides an index that was not searched. `hits` is never empty and keeps the
-/// command's order.
+/// `pdks memory search` reads the markdown documents the root's config includes. `Empty` is a
+/// search that ran and matched nothing; every failure is `Unavailable`. `hits` is never empty and
+/// keeps the command's order.
 #[derive(Clone, Debug)]
 pub enum MemorySearchOutcome {
     Found { hits: Vec<MemorySearchResult> },
@@ -461,26 +442,7 @@ pub enum MemorySearchOutcome {
     Unavailable { reason: String },
 }
 
-/// Bring the memory index under `root` level with its documents.
-#[must_use]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "the public signature takes the spec by value and must not change"
-)]
-pub fn memory_ingest(spec: MemoryIngestSpec) -> MemoryIngestOutcome {
-    match run_memory(
-        spec.root,
-        vec!["ingest".into()],
-        spec.executable,
-        spec.timeout,
-        spec.spawn,
-    ) {
-        Ok(_) => MemoryIngestOutcome::Ingested,
-        Err(reason) => MemoryIngestOutcome::Unavailable { reason },
-    }
-}
-
-/// Search the memory index under `root` and return its hits as values.
+/// Search the memory documents the config under `root` includes and return the hits as values.
 #[must_use]
 #[expect(
     clippy::needless_pass_by_value,

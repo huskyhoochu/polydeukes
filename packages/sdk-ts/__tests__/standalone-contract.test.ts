@@ -14,7 +14,6 @@ import { join, relative, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkChangeSet } from '../src/check-change-set.ts';
 import { checkCovenant } from '../src/check-covenant.ts';
-import { memoryIngest } from '../src/memory-ingest.ts';
 import { memorySearch } from '../src/memory-search.ts';
 import type { Spawn, SpawnOutcome, SpawnSpec } from '../src/process.ts';
 
@@ -22,7 +21,7 @@ const fixture = JSON.parse(
   readFileSync(new URL('../../../fixtures/sdk/contract.json', import.meta.url), 'utf8'),
 );
 const bytes = (text: string) => new TextEncoder().encode(text);
-const empty = bytes('{"ingestedAt":"fixture-time","results":[]}');
+const empty = bytes('{"results":[]}');
 const query = 'two words; $(touch unwanted)';
 let root: string;
 beforeEach(() => {
@@ -54,7 +53,6 @@ async function everyVerb(executable: string | undefined, spawn: Spawn, timeoutMs
       telemetryPath: 'rows.log',
     }),
     checkChangeSet({ ...shared, repoRoot: root, diff: fixture.diff }),
-    memoryIngest({ ...shared, root }),
     memorySearch({ ...shared, root, query, limit: 7 }),
   ]);
 }
@@ -68,12 +66,12 @@ function script(name: string, body: string) {
 }
 
 describe('standalone process contract', () => {
-  it('uses one byte seam for four literal commands and preserves evidence, diff and flags', async () => {
+  it('uses one byte seam for three literal commands and preserves evidence, diff and flags', async () => {
     // A second transport path tends to lose memory deadlines or add covenant flags to memory.
     const { spawn, calls } = recording();
     await everyVerb('./tools/pdks', spawn, 123);
     expect(calls.map(({ command, cwd, timeoutMs }) => ({ command, cwd, timeoutMs }))).toEqual(
-      Array.from({ length: 4 }, () => ({
+      Array.from({ length: 3 }, () => ({
         command: resolve('tools/pdks'),
         cwd: root,
         timeoutMs: 123,
@@ -91,12 +89,11 @@ describe('standalone process contract', () => {
         'rows.log',
       ],
       ['covenant', 'check', '--diff', '--enforce', 'block'],
-      ['memory', 'ingest'],
       ['memory', 'search', query, '--json', '--limit', '7'],
     ]);
     expect(calls.map((call) => Array.from(call.stdin))).toEqual(
-      [bytes(JSON.stringify(fixture.input)), bytes(fixture.diff), bytes(''), bytes('')].map(
-        (value) => Array.from(value),
+      [bytes(JSON.stringify(fixture.input)), bytes(fixture.diff), bytes('')].map((value) =>
+        Array.from(value),
       ),
     );
   });
@@ -133,7 +130,7 @@ describe('standalone process contract', () => {
     vi.stubEnv('PATH', ['', '.', 'relative-bin', ...dirs].join(':'));
     const { spawn, calls } = recording();
     await everyVerb(undefined, spawn);
-    expect(calls.map((call) => call.command)).toEqual(Array(4).fill(join(dirs[2], 'pdks')));
+    expect(calls.map((call) => call.command)).toEqual(Array(3).fill(join(dirs[2], 'pdks')));
   });
 
   it.each([undefined, '', '.:relative-bin'])(
@@ -145,7 +142,7 @@ describe('standalone process contract', () => {
       const outcomes = await everyVerb(undefined, spawn);
       expect(calls).toHaveLength(0);
       expect(outcomes.map((value) => ('verdict' in value ? value.verdict : value.outcome))).toEqual(
-        ['unjudged', 'unjudged', 'unavailable', 'unavailable'],
+        ['unjudged', 'unjudged', 'unavailable'],
       );
     },
   );
@@ -158,12 +155,11 @@ describe('standalone process contract', () => {
       throw new Error('EACCES selected file');
     };
     const outcomes = await everyVerb('/selected/pdks', spawn);
-    expect(calls).toHaveLength(4);
+    expect(calls).toHaveLength(3);
     expect(calls.every((call) => call.command === '/selected/pdks')).toBe(true);
     expect(outcomes.map((value) => ('verdict' in value ? value.verdict : value.outcome))).toEqual([
       'unjudged',
       'unjudged',
-      'unavailable',
       'unavailable',
     ]);
   });
@@ -180,14 +176,14 @@ describe('standalone process contract', () => {
     chmodSync(join(first, 'pdks'), 0o755);
     chmodSync(join(second, 'pdks'), 0o755);
     vi.stubEnv('PATH', `${first}:${second}`);
-    expect(await memoryIngest({ root })).toMatchObject({ outcome: 'unavailable' });
+    expect(await memorySearch({ root, query })).toMatchObject({ outcome: 'unavailable' });
     expect(existsSync(marker)).toBe(false);
   });
 
   it.each([0, 2, 1, null])(
-    'maps byte responses at status %s for all four verbs',
+    'maps byte responses at status %s for all three verbs',
     async (status) => {
-      // stdout is ignored for covenant and ingest, while valid stderr whitespace survives.
+      // stdout is ignored for covenant, while valid stderr whitespace survives.
       const { spawn } = recording({
         status,
         stdout: empty,
@@ -198,7 +194,6 @@ describe('standalone process contract', () => {
         expect(results).toEqual([
           { verdict: 'upheld', advisories: ' reason \uD55C\uAE00\n' },
           { verdict: 'upheld', advisories: ' reason \uD55C\uAE00\n' },
-          { outcome: 'ingested' },
           { outcome: 'empty' },
         ]);
       } else {
@@ -210,7 +205,6 @@ describe('standalone process contract', () => {
           expect(results[1]).toHaveProperty('reason', ' reason \uD55C\uAE00\n');
         }
         expect(results[2]).toMatchObject({ outcome: 'unavailable' });
-        expect(results[3]).toMatchObject({ outcome: 'unavailable' });
       }
     },
   );
@@ -223,7 +217,7 @@ describe('standalone process contract', () => {
       const outcomes = await everyVerb('/chosen/pdks', spawn, timeoutMs);
       expect(calls).toHaveLength(0);
       expect(outcomes.map((value) => ('verdict' in value ? value.verdict : value.outcome))).toEqual(
-        ['unjudged', 'unjudged', 'unavailable', 'unavailable'],
+        ['unjudged', 'unjudged', 'unavailable'],
       );
     },
   );
@@ -272,31 +266,25 @@ describe('standalone process contract', () => {
       'unjudged',
       'unjudged',
       'unavailable',
-      'unavailable',
     ]);
   });
 });
 
 describe('strict search decoding', () => {
   const hit = fixture.hit;
-  const valid = { ingestedAt: 'fixture-time', results: [hit, { ...hit, id: 'second#hit' }] };
+  const valid = { results: [hit, { ...hit, id: 'second#hit' }] };
   const invalid: [string, Uint8Array][] = [
     [
       'invalid UTF-8 inside a JSON string',
-      new Uint8Array([...bytes('{"ingestedAt":"'), 255, ...bytes('","results":[]}')]),
+      new Uint8Array([...bytes('{"results":[],"future":"'), 255, ...bytes('"}')]),
     ],
     ['malformed JSON', bytes('{')],
-    ['non-JSON numeric notation', bytes('{"ingestedAt":"t","results":[],"extra":NaN}')],
+    ['non-JSON numeric notation', bytes('{"results":[],"extra":NaN}')],
     ['null root', bytes('null')],
     ['array root', bytes('[]')],
-    ['non-string ingestedAt', bytes('{"ingestedAt":7,"results":[]}')],
-    ['non-array results', bytes('{"ingestedAt":"t","results":{}}')],
-    ['non-object hit', bytes('{"ingestedAt":"t","results":[null]}')],
-    ...['ingestedAt', 'results'].map((field): [string, Uint8Array] => {
-      const value = { ...valid } as Record<string, unknown>;
-      delete value[field];
-      return [`missing ${field}`, bytes(JSON.stringify(value))];
-    }),
+    ['non-array results', bytes('{"results":{}}')],
+    ['non-object hit', bytes('{"results":[null]}')],
+    ['missing results', bytes('{}')],
     ...Object.keys(hit).map((field): [string, Uint8Array] => {
       const value = { ...hit };
       delete value[field];
@@ -404,12 +392,12 @@ describe('real process deadlines', () => {
 
   it('accepts a completed response before the deadline and expires a zero deadline', async () => {
     // Treating zero as absent leaves a sleeping process running indefinitely.
-    const fast = script('fast-pdks', 'exit 0');
-    expect(await memoryIngest({ root, executable: fast, timeoutMs: 2000 })).toEqual({
-      outcome: 'ingested',
+    const fast = script('fast-pdks', `printf '%s' '{"results":[]}'`);
+    expect(await memorySearch({ root, query, executable: fast, timeoutMs: 2000 })).toEqual({
+      outcome: 'empty',
     });
     const slow = script('slow-pdks', 'while :; do :; done');
-    expect(await memoryIngest({ root, executable: slow, timeoutMs: 0 })).toMatchObject({
+    expect(await memorySearch({ root, query, executable: slow, timeoutMs: 0 })).toMatchObject({
       outcome: 'unavailable',
       reason: expect.stringMatching(/timeout|timed|within|deadline/i),
     });

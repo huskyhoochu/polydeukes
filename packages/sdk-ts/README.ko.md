@@ -2,14 +2,14 @@
 
 [English](./README.md) · **한국어**
 
-네 TypeScript 동사가 호출자가 만든 입력을 단일 실행 파일 `pdks`에 보내고 결과를 값으로 돌려줍니다.
-약속(covenant) 판정, 설정, 텔레메트리, 기억(memory) 색인은 CLI가 맡습니다.
+세 TypeScript 동사가 호출자가 만든 입력을 단일 실행 파일 `pdks`에 보내고 결과를 값으로 돌려줍니다.
+약속(covenant) 판정, 설정, 텔레메트리, 기억(memory) 검색은 CLI가 맡습니다.
 
 ```sh
 pnpm add @polydeukes/sdk-ts
 ```
 
-SDK 호스트에는 Node >=26가 필요합니다.
+SDK 호스트에는 Node >=24가 필요합니다.
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
 파일 `pdks`를 설치하고 실행 권한을 준 뒤 `executable`이나 `PATH`의 절대 디렉터리로 선택합니다. 기존
 npm 설치는 CLI를 선택하지 않으며 SDK는 실행 파일을 직접 실행합니다. `@polydeukes/core`와
@@ -21,10 +21,9 @@ npm 설치는 CLI를 선택하지 않으며 SDK는 실행 파일을 직접 실�
 - `checkCovenant(CheckCovenantSpec)`은 `CovenantInput`을 UTF-8 JSON으로 보냅니다.
 - `checkChangeSet(CheckChangeSetSpec)`은 unified diff를 그대로 보냅니다.
 - 둘 다 `CheckCovenantVerdict`인 `upheld`, `blocked`, `unjudged`를 반환합니다.
-- `memoryIngest(MemoryIngestSpec)`은 `MemoryIngestOutcome`인 `ingested`, `unavailable`을 반환합니다.
 - `memorySearch(MemorySearchSpec)`은 `MemorySearchOutcome`인 순위가 있는 `MemorySearchResult` 목록의
   `found`, `empty`, `unavailable`을 반환합니다.
-- 네 동사는 `executable`, `timeoutMs`, `spawn: Spawn`을 받고 `SpawnSpec`, `SpawnOutcome`으로
+- 세 동사는 `executable`, `timeoutMs`, `spawn: Spawn`을 받고 `SpawnSpec`, `SpawnOutcome`으로
   바이트를 전송합니다.
 
 명시한 실행 파일과 루트는 호출자의 cwd 기준이며 symlink 경로 표기를 보존합니다. 미지정이면 `PATH`의
@@ -63,6 +62,10 @@ if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 작업은 `upheld`일 때만 실행합니다. status `0`은 `upheld`, `2`는 `blocked`, 나머지 상태, 시그널, 실행
 실패는 `unjudged`입니다. 강제 수준 기본값은 `block`입니다. `checkChangeSet`은 `input` 대신 `diff`를
 받고, `a/`, `b/` 뒤의 경로는 `repoRoot` 기준입니다.
+
+기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
+`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+`pdks`가 출력한 이유와 함께 `unavailable`을 반환합니다.
 
 기억 spec은 `root`를 받고 검색에는 `query`와 선택 양의 안전 정수 `limit`을 더합니다. 유효한 빈 검색
 응답만 `empty`입니다. 기억 기능 부재, 잘못된 응답, 실행 실패는 `unavailable`입니다.

@@ -1,4 +1,4 @@
-/** Four standalone pdks process verbs and their transport types. */
+/** Three standalone pdks process verbs and their transport types. */
 export { type CheckChangeSetSpec, checkChangeSet } from './check-change-set.ts';
 export {
   type CheckCovenantSpec,
@@ -19,6 +19,5 @@ export type {
   UserMessage,
 } from './ir.ts';
 export type { MemorySearchResult } from './memory.ts';
-export { type MemoryIngestOutcome, type MemoryIngestSpec, memoryIngest } from './memory-ingest.ts';
 export { type MemorySearchOutcome, type MemorySearchSpec, memorySearch } from './memory-search.ts';
 export type { Spawn, SpawnOutcome, SpawnSpec } from './process.ts';

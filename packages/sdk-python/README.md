@@ -2,7 +2,7 @@
 
 **English** · [한국어](README.ko.md)
 
-Call the Polydeukes judge and memory commands from Python 3.12 or newer. Four synchronous verbs
+Call the Polydeukes judge and memory commands from Python 3.12 or newer. Three synchronous verbs
 share one executable resolver and process runner. The package has zero runtime dependencies.
 
 ```sh
@@ -23,8 +23,6 @@ from polydeukes_sdk import (
     check_covenant,
     CheckChangeSetSpec,
     check_change_set,
-    MemoryIngestSpec,
-    memory_ingest,
     MemorySearchSpec,
     memory_search,
     Found,
@@ -38,7 +36,6 @@ if isinstance(verdict, Upheld):
     print("The proposed operation may proceed", verdict.advisories)
 
 verdict = check_change_set(CheckChangeSetSpec(repo_root=".", diff="", timeout=10))
-ingest = memory_ingest(MemoryIngestSpec(root=".", timeout=30))
 recall = memory_search(MemorySearchSpec(root=".", query="design decision", limit=5, timeout=10))
 match recall:
     case Found(hits=hits):
@@ -51,7 +48,11 @@ match recall:
 
 The host supplies IR evidence and decides whether to execute the proposed operation. Only `Upheld`
 permits it in this example. The child reads configuration, judges disciplines, writes telemetry, and
-manages the memory index.
+runs memory search.
+
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
+package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
+missing, search returns `Unavailable` with the reason `pdks` prints.
 
 The
 [Python SDK reference](https://github.com/huskyhoochu/polydeukes/blob/main/docs/reference/packages/sdk-python.md)

@@ -64,18 +64,8 @@ class CheckChangeSetSpec:
 
 
 @dataclass(frozen=True, kw_only=True)
-class MemoryIngestSpec:
-    """Ask the executable to ingest documents under root."""
-
-    root: Path
-    executable: Path | None = None
-    timeout: float | None = None
-    spawn: Spawn | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
 class MemorySearchSpec:
-    """Search the executable's memory index with one literal query argument."""
+    """Search the project's memory documents with one literal query argument."""
 
     root: Path
     query: str
@@ -107,11 +97,6 @@ class Unjudged:
 
 
 @dataclass(frozen=True)
-class Ingested:
-    """The memory ingest command succeeded."""
-
-
-@dataclass(frozen=True)
 class Unavailable:
     """The memory command or its response could not be consumed."""
 
@@ -131,5 +116,4 @@ class Empty:
 
 
 type CheckCovenantVerdict = Upheld | Blocked | Unjudged
-type MemoryIngestOutcome = Ingested | Unavailable
 type MemorySearchOutcome = Found | Empty | Unavailable

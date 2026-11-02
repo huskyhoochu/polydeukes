@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -24,9 +25,17 @@ assert(
   option('--executable') && existsSync(executable),
   '--executable must name a built standalone pdks',
 );
+const memoryExecutable = join(dirname(executable), 'pdks-memory');
+assert(existsSync(memoryExecutable), 'pdks-memory must sit beside --executable');
 const fixture = JSON.parse(readFileSync(join(repository, 'fixtures/sdk/contract.json'), 'utf8'));
 const hitFields = Object.keys(fixture.hit);
 const scratch = mkdtempSync(join(tmpdir(), 'pdks-sdk-contract-'));
+// The observers find `pdks-memory` through PATH and nothing else, so a `pdks` on PATH cannot
+// stand in for the executable under test.
+const memoryPath = join(scratch, 'memory-path');
+mkdirSync(memoryPath);
+copyFileSync(memoryExecutable, join(memoryPath, 'pdks-memory'));
+chmodSync(join(memoryPath, 'pdks-memory'), 0o755);
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
     cwd: repository,
@@ -104,7 +113,7 @@ try {
       },
       {
         id: 'seam-memory-failed',
-        verb: 'memory_ingest',
+        verb: 'memory_search',
         response: { status: 2, stderr: 'memory failure\n' },
         expected: 'Unavailable',
       },
@@ -120,7 +129,7 @@ try {
         response: {
           status: 0,
           stdoutBytes: [
-            ...new TextEncoder().encode('{"ingestedAt":"fixture-time","results":[],"future":"'),
+            ...new TextEncoder().encode('{"results":[],"future":"'),
             255,
             ...new TextEncoder().encode('"}'),
           ],
@@ -144,8 +153,6 @@ try {
     const unchanged = structuredClone(fixture.input);
     unchanged.toolCalls[0].fileChange.post = unchanged.toolCalls[0].fileChange.pre;
     requests.push(
-      { id: 'real-no-index', verb: 'memory_search', expected: 'Unavailable' },
-      { id: 'real-ingest', verb: 'memory_ingest', expected: 'Ingested' },
       { id: 'real-found', verb: 'memory_search', expected: 'Found' },
       { id: 'real-empty', verb: 'memory_search', query: 'zzabsent98765', expected: 'Empty' },
       { id: 'real-limit', verb: 'memory_search', limit: 1, expected: 'Found' },
@@ -158,10 +165,10 @@ try {
     );
     const broken = join(root, 'broken');
     mkdirSync(broken);
-    writeFileSync(join(broken, 'polydeukes.config.yaml'), 'disciplines: invalid');
+    writeFileSync(join(broken, 'polydeukes.config.yaml'), 'memory: invalid');
     requests.push({
       id: 'real-invalid-config',
-      verb: 'memory_ingest',
+      verb: 'memory_search',
       root: broken,
       expected: 'Unavailable',
     });
@@ -183,7 +190,7 @@ try {
       run(command, [...args, manifest], {
         env: {
           ...process.env,
-          PATH: join(scratch, 'empty-path'),
+          PATH: memoryPath,
           PYTHONPATH: join(repository, 'packages/sdk-python/src'),
           PDKS_SDK_MODULE: tsModule,
         },
@@ -243,9 +250,9 @@ try {
   }
   assert.deepEqual(all.ts, all.python, 'TS/Python observations differ');
   assert.deepEqual(all.rust, all.python, 'Rust/Python observations differ');
-  const digest = createHash('sha256').update(readFileSync(executable)).digest('hex');
+  const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
   console.log(
-    `SDK contract: ${all.ts.length} cases × 3 languages agree; executable=${executable}; sha256=${digest}; ${process.platform}/${process.arch}; ${process.version}; ${run('rustc', ['--version']).trim()}; ${run(python, ['--version']).trim()}`,
+    `SDK contract: ${all.ts.length} cases × 3 languages agree; executable=${executable}; sha256=${sha256(executable)}; pdks-memory sha256=${sha256(memoryExecutable)}; ${process.platform}/${process.arch}; ${process.version}; ${run('rustc', ['--version']).trim()}; ${run(python, ['--version']).trim()}`,
   );
 } finally {
   if (process.env.PDKS_KEEP_CONTRACT_FIXTURES) console.log(`SDK fixtures: ${scratch}`);

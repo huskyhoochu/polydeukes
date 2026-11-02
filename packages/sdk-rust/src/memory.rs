@@ -4,13 +4,10 @@
 ///What `pdks memory search --json` prints on stdout at exit 0. An empty `results` is a search that found nothing; every failure exits non-zero with nothing on stdout. Objects stay open so a host built against this schema keeps reading a newer command's output.
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct MemorySearchOutput {
-    ///When the index being searched was last ingested, as an ISO 8601 timestamp.
-    #[serde(rename = "ingestedAt")]
-    pub ingested_at: ::std::string::String,
     ///The matched sections, in the command's ranking order.
     pub results: ::std::vec::Vec<MemorySearchResult>,
 }
-///One section found in the memory index.
+///One section the search matched.
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct MemorySearchResult {
     ///The id of the document the section belongs to.

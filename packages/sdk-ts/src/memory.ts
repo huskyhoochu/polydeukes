@@ -5,17 +5,13 @@
  */
 export interface MemorySearchOutput {
   /**
-   * When the index being searched was last ingested, as an ISO 8601 timestamp.
-   */
-  ingestedAt: string;
-  /**
    * The matched sections, in the command's ranking order.
    */
   results: MemorySearchResult[];
   [k: string]: unknown;
 }
 /**
- * One section found in the memory index.
+ * One section the search matched.
  *
  * This interface was referenced by `MemorySearchOutput`'s JSON-Schema
  * via the `definition` "MemorySearchResult".

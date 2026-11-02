@@ -3,7 +3,6 @@
 from ._api import (
     check_change_set as check_change_set,
     check_covenant as check_covenant,
-    memory_ingest as memory_ingest,
     memory_search as memory_search,
 )
 from ._contract import (
@@ -14,9 +13,6 @@ from ._contract import (
     Empty as Empty,
     Enforce as Enforce,
     Found as Found,
-    Ingested as Ingested,
-    MemoryIngestOutcome as MemoryIngestOutcome,
-    MemoryIngestSpec as MemoryIngestSpec,
     MemorySearchOutcome as MemorySearchOutcome,
     MemorySearchSpec as MemorySearchSpec,
     Path as Path,

@@ -84,8 +84,10 @@ class ProcessTests(unittest.TestCase):
         subprocess.run([str(program), "--warmup"], check=True)
         try:
             before = time.monotonic()
-            result = sdk.memory_ingest(
-                sdk.MemoryIngestSpec(root=self.root, executable=program, timeout=0.2)
+            result = sdk.memory_search(
+                sdk.MemorySearchSpec(
+                    root=self.root, query=FIXTURE["query"], executable=program, timeout=0.2
+                )
             )
             self.assertLess(time.monotonic() - before, 5)
             self.assertIsInstance(result, sdk.Unavailable)
@@ -163,25 +165,6 @@ class StandaloneTests(unittest.TestCase):
             ),
             sdk.Upheld,
         )
-
-    def test_real_memory_distinguishes_absent_index_found_and_empty(self):
-        # Only an ingested index can answer Found or Empty.
-        with patch.dict(os.environ, {"PATH": "/nonexistent"}):
-
-            def search(query):
-                return sdk.memory_search(
-                    sdk.MemorySearchSpec(root=self.root, query=query, executable=self.binary)
-                )
-
-            self.assertIsInstance(search(FIXTURE["query"]), sdk.Unavailable)
-            self.assertIsInstance(
-                sdk.memory_ingest(sdk.MemoryIngestSpec(root=self.root, executable=self.binary)),
-                sdk.Ingested,
-            )
-            result = search(FIXTURE["query"])
-            self.assertIsInstance(result, sdk.Found)
-            self.assertEqual([hit["id"] for hit in result.hits], [FIXTURE["hit"]["id"]])
-            self.assertIsInstance(search("absentwordxyz"), sdk.Empty)
 
     def test_invalid_config_never_returns_upheld(self):
         # Configuration failure shares exit 2 with blocked judgments in the CLI contract.

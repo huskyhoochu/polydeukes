@@ -37,7 +37,6 @@ const QUERY: &str = "cognee removal";
 const FIRST_ID: &str = "notes/decisions#cognee";
 const SECOND_ID: &str = "notes/log#cleanup";
 const THIRD_ID: &str = "notes/log#triage";
-const STAMP: &str = "2026-10-10T14:00:00.000Z";
 
 /// A fixture tree whose path is canonical, so a bin path and a cwd computed from it agree
 /// with one computed through the filesystem (macOS hands out `/var/...` for `/private/var/...`).
@@ -97,7 +96,7 @@ fn three_hits() -> Vec<Value> {
     reason = "callers build the result list inline and hand it over"
 )]
 fn output(results: Vec<Value>) -> String {
-    json!({ "ingestedAt": STAMP, "results": results }).to_string()
+    json!({ "results": results }).to_string()
 }
 
 /// A seam that records every spec it is handed and answers `outcome` for each.
@@ -309,9 +308,7 @@ mod the_child_status_and_stdout_are_the_outcome {
         install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(
             Some(0),
-            format!(
-                "# ingested at {STAMP}\n{FIRST_ID}\tand\tactive\tunverified\tDecisions › Cognee\n"
-            ),
+            format!("{FIRST_ID}\tand\tactive\tunverified\tDecisions › Cognee\n"),
             "",
         );
 
@@ -355,36 +352,23 @@ mod the_child_status_and_stdout_are_the_outcome {
 
     #[test]
     fn status_2_is_unavailable_carrying_stderr_as_the_reason_whatever_stdout_holds() {
-        // Exit 2 with a stdout that happens to parse (an index that was there a moment
-        // ago, a usage line after a partial print) is still not an answer; the status
-        // decides first, and the stderr line is what the host logs.
+        // Exit 2 with a stdout that happens to parse (a partial print before a usage
+        // line) is still not an answer; the status decides first, and the stderr line is
+        // what the host logs.
         let (_dir, root) = fixture_root();
         install_stub_polydeukes(&root);
         let seam = RecordingSeam::answering(
             Some(2),
             output(vec![]),
-            "pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first\n",
+            "pdks memory: invalid config in polydeukes.config.json: memory.include must be a non-empty array of non-empty strings\n",
         );
 
         let outcome = memory_search(spec(&root, &|s| seam.spawn(s)));
 
         assert_eq!(
             unavailable(outcome),
-            "pdks memory: no index at .polydeukes/memory.db — run `pdks memory ingest` first\n"
+            "pdks memory: invalid config in polydeukes.config.json: memory.include must be a non-empty array of non-empty strings\n"
         );
-    }
-
-    #[test]
-    fn status_0_with_no_results_key_is_unavailable_not_empty() {
-        // Only a `results` list the CLI printed may read as "nothing found".
-        let (_dir, root) = fixture_root();
-        install_stub_polydeukes(&root);
-        let seam =
-            RecordingSeam::answering(Some(0), json!({ "ingestedAt": STAMP }).to_string(), "");
-
-        let outcome = memory_search(spec(&root, &|s| seam.spawn(s)));
-
-        unavailable(outcome);
     }
 
     #[test]

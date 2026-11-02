@@ -2,9 +2,9 @@
 
 [English](sdk-ts.md) · **한국어**
 
-Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일을 호출합니다. SDK는 호출자의 입력을
-보내고 약속(covenant)의 판정 결과나 기억(memory) 결과를 값으로 돌려줍니다. 판정, 설정, 텔레메트리,
-색인은 CLI가 맡습니다.
+Promise를 반환하는 세 동사가 별도로 설치한 `pdks` 실행 파일을 호출합니다. SDK는 호출자의 입력을
+보내고 약속(covenant)의 판정 결과나 기억(memory) 결과를 값으로 돌려줍니다. 판정, 설정, 텔레메트리는
+CLI가 맡습니다.
 
 <a id="ownership"></a>
 ## 담당하는 기능
@@ -13,10 +13,9 @@ Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일�
 | ---------------- | ----------------------------------- | ---------------------- |
 | `checkCovenant`  | `pdks covenant check`               | `CheckCovenantVerdict` |
 | `checkChangeSet` | `pdks covenant check --diff`        | `CheckCovenantVerdict` |
-| `memoryIngest`   | `pdks memory ingest`                | `MemoryIngestOutcome`  |
 | `memorySearch`   | `pdks memory search <query> --json` | `MemorySearchOutcome`  |
 
-네 동사는 실행 파일 선택과 바이트 단위 프로세스 통신을 공유합니다. 루트는 호출자의 현재 디렉터리
+세 동사는 실행 파일 선택과 바이트 단위 프로세스 통신을 공유합니다. 루트는 호출자의 현재 디렉터리
 기준으로 절대화되어 자식의 cwd가 됩니다. 명시한 `executable`도 이름만 적었더라도 호출자의 cwd
 기준으로 해석하며 symlink 경로 표기를 보존합니다. 미지정이면 `PATH`의 절대 디렉터리에서 실행할 수
 있는 일반 파일 `pdks`를 처음 선택합니다. 빈 항목과 상대 항목은 건너뜁니다. 선택한 실행 파일이
@@ -29,15 +28,16 @@ Promise를 반환하는 네 동사가 별도로 설치한 `pdks` 실행 파일�
 pnpm add @polydeukes/sdk-ts
 ```
 
-SDK 호스트에는 Node >=26가 필요합니다.
+SDK 호스트에는 Node >=24가 필요합니다.
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 플랫폼에 맞는 단일 실행
 파일 `pdks`를 설치하고 실행 권한을 준 다음, 경로를 지정하거나 `PATH`에 `pdks`라는 이름으로 둡니다.
 지원 실행 플랫폼은 Linux x64와 macOS arm64입니다. SDK는 npm 설치를 탐색하거나 별도 Node 자식을
 띄우지 않고 그 파일을 직접 실행합니다. `@polydeukes/core`와 `polydeukes`에 대한 런타임·peer 의존성이
 없습니다. 생성한 전송 타입은 패키지에 포함됩니다.
 
-기억 동사에는 기억 기능을 제공하는 CLI가 필요합니다. 기억 의존성, 설정, 색인이 없으면
-`unavailable`로 돌아옵니다.
+기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
+`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+`pdks`가 출력한 이유와 함께 `unavailable`을 반환합니다.
 
 <a id="동사"></a>
 
@@ -93,10 +93,9 @@ actor, session, 도구 목록을 합성하지 않습니다. `CovenantInput`에�
 | `timeoutMs?: number`            | 유한한 0 이상 밀리초, 미지정이면 기한 없음           | 같음                    |
 | `spawn?: Spawn`                 | 주입할 프로세스 경계                                 | 같음                    |
 
-`MemoryIngestSpec`은 `root: string`과 `executable`, `timeoutMs`, `spawn`을 받습니다.
-`MemorySearchSpec`은 여기에 `query: string`과 선택 `limit: number`를 받습니다. limit은 양의 안전
-정수여야 합니다. 잘못된 limit과 기한은 스폰 전에 실패 값이 됩니다. 기억 명령에는 강제 수준,
-config-layer, telemetry 플래그를 보내지 않습니다.
+`MemorySearchSpec`은 `root: string`, `executable`, `timeoutMs`, `spawn`, `query: string`과 선택
+`limit: number`를 받습니다. limit은 양의 안전 정수여야 합니다. 잘못된 limit과 기한은 스폰 전에 실패
+값이 됩니다. 기억 명령에는 강제 수준, config-layer, telemetry 플래그를 보내지 않습니다.
 
 통신 기한은 프로세스가 생성된 뒤 시작합니다. stdin 쓰기와 두 출력 파이프 수집을 포함하고, 직접
 자식이 먼저 끝난 뒤 후손이 파이프를 잡고 있는 시간에도 적용됩니다. 0은 스폰 직후 만료됩니다. 만료 시
@@ -148,14 +147,12 @@ git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD
 포함한 두 약속 동사에서 모두 `block`입니다.
 
 <a id="memory"></a>
-## `memoryIngest`와 `memorySearch`
+## `memorySearch`
 
 ```ts
-import { memoryIngest, memorySearch } from '@polydeukes/sdk-ts';
+import { memorySearch } from '@polydeukes/sdk-ts';
 
 const shared = { root: '/path/to/project', executable: '/opt/tools/pdks', timeoutMs: 2000 };
-const ingest = await memoryIngest(shared);
-if (ingest.outcome === 'unavailable') throw new Error(ingest.reason);
 const result = await memorySearch({ ...shared, query: 'session report', limit: 5 });
 switch (result.outcome) {
   case 'found':
@@ -169,18 +166,17 @@ switch (result.outcome) {
 }
 ```
 
-`MemoryIngestOutcome`은 `{ outcome: 'ingested' }` 또는
-`{ outcome: 'unavailable'; reason: string }`입니다. ingest는 status `0`에서만 성공하며 stdout은
-무시합니다. `MemorySearchOutcome`은 비어 있지 않은 `hits` 목록을 가진 `found`, `empty`, 또는
-`reason`이 있는 `unavailable`입니다. 검색은 query를 인자 하나로, limit을 `--limit <n>`으로
-전달합니다. 기억 stdin은 빈 바이트입니다.
+`MemorySearchOutcome`은 비어 있지 않은 `hits` 목록을 가진 `found`, `empty`, 또는 `reason`이 있는
+`unavailable`입니다. 검색은 query를 인자 하나로, limit을 `--limit <n>`으로 전달합니다. 기억 stdin은
+빈 바이트입니다.
 
-성공한 검색 stdout은 `ingestedAt: string`과 `results`가 있는 엄격한 UTF-8 JSON이어야 합니다. 각
-결과에는 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`(문자열), `stale`(불리언),
-`supersededBy`(문자열 배열), `trust`(`human-reviewed`, `machine-verified`, `unverified`),
-`matchPath`(`and`, `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다. `MemorySearchResult`는
-core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 유효한 빈 `results` 배열만 `empty`입니다.
-잘못된 응답과 실행 실패는 `unavailable`입니다.
+검색 출력은 `@polydeukes/core`가 내보내는 `memory-search-output.schema.json`을 따르며 형태는
+`{"results": [...]}`입니다. 성공한 검색 stdout은 `results` 배열이 있는 엄격한 UTF-8 JSON이어야
+합니다. 각 결과에는 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`(문자열),
+`stale`(불리언), `supersededBy`(문자열 배열), `trust`(`human-reviewed`, `machine-verified`,
+`unverified`), `matchPath`(`and`, `or`, `like`)가 필요합니다. 객체의 추가 필드는 허용합니다.
+`MemorySearchResult`는 core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 유효한 빈 `results`
+배열만 `empty`입니다. 잘못된 응답과 실행 실패는 `unavailable`입니다.
 
 <a id="failure"></a>
 ## 실패와 전환
@@ -190,7 +186,7 @@ core의 기억 출력 스키마에서 생성합니다. 순위를 보존하며 �
 
 npm peer를 설치하던 소비자는 단일 실행 파일 `pdks`를 설치하고 `executable`이나 `PATH`의 절대
 디렉터리로 선택합니다. `@polydeukes/core`의 입력 타입 import를 `@polydeukes/sdk-ts`로 옮깁니다. 기존
-`CheckCovenantSpawnSpec`은 `SpawnSpec`이 됩니다. 프로세스 경계는 네 동사를 처리하고 stdin, stdout,
+`CheckCovenantSpawnSpec`은 `SpawnSpec`이 됩니다. 프로세스 경계는 세 동사를 처리하고 stdin, stdout,
 stderr를 바이트로 전달합니다.
 
 ```ts

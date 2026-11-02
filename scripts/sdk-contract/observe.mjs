@@ -9,7 +9,6 @@ const requests = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const names = {
   check_covenant: 'checkCovenant',
   check_change_set: 'checkChangeSet',
-  memory_ingest: 'memoryIngest',
   memory_search: 'memorySearch',
 };
 const encode = (text = '') => new TextEncoder().encode(text);

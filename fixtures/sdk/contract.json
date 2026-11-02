@@ -147,20 +147,11 @@
       "result": "Blocked"
     },
     {
-      "id": "ingested",
-      "verb": "memory_ingest",
-      "args": ["memory", "ingest"],
-      "status": 0,
-      "stdout": "",
-      "stderr": "",
-      "result": "Ingested"
-    },
-    {
       "id": "empty",
       "verb": "memory_search",
       "args": ["memory", "search", "needleword", "--json"],
       "status": 0,
-      "stdout": "{\"ingestedAt\":\"fixture-time\",\"results\":[]}",
+      "stdout": "{\"results\":[]}",
       "stderr": "",
       "result": "Empty"
     },
@@ -187,7 +178,7 @@
       "verb": "memory_search",
       "args": ["memory", "search", "needleword", "--json"],
       "status": 0,
-      "stdout": "{\"results\":[]}",
+      "stdout": "{}",
       "stderr": "",
       "result": "Unavailable"
     },
@@ -196,7 +187,7 @@
       "verb": "memory_search",
       "args": ["memory", "search", "needleword", "--json"],
       "status": 0,
-      "stdout": "{\"ingestedAt\": \"fixture-time\", \"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": []}]}",
+      "stdout": "{\"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": []}]}",
       "stderr": "",
       "result": "Found"
     },
@@ -205,7 +196,7 @@
       "verb": "memory_search",
       "args": ["memory", "search", "needleword", "--json"],
       "status": 0,
-      "stdout": "{\"ingestedAt\": \"fixture-time\", \"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": [], \"futureField\": \"future\"}], \"futureRoot\": true}",
+      "stdout": "{\"results\": [{\"id\": \"notes/alpha#topic\", \"conceptId\": \"notes/alpha\", \"docTitle\": \"Alpha\", \"sectionTitle\": \"Topic\", \"status\": \"stable\", \"trust\": \"unverified\", \"stale\": false, \"matchPath\": \"and\", \"supersededBy\": [], \"futureField\": \"future\"}], \"futureRoot\": true}",
       "stderr": "",
       "result": "Found"
     }

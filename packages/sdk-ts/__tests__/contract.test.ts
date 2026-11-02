@@ -25,16 +25,13 @@ const FORBIDDEN_IR_KEYS = ['session:', 'tools:'];
 /** One host's tool roster, matched as quoted literals: the roster is the consumer's value. */
 const FORBIDDEN_TOOL_LITERALS = ['Write', 'Edit', 'Bash'];
 
-/** The consumer contract: four verbs, byte transport and generated wire vocabulary. */
+/** The consumer contract: three verbs, byte transport and generated wire vocabulary. */
 const KEPT_EXPORTS: readonly string[] = [
   'checkCovenant',
   'CheckCovenantSpec',
   'CheckCovenantVerdict',
   'checkChangeSet',
   'CheckChangeSetSpec',
-  'memoryIngest',
-  'MemoryIngestSpec',
-  'MemoryIngestOutcome',
   'memorySearch',
   'MemorySearchSpec',
   'MemorySearchOutcome',

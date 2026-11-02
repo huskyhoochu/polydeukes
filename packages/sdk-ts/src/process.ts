@@ -16,7 +16,7 @@ export type SpawnOutcome = { status: number | null; stdout: Uint8Array; stderr: 
 /** Injectable process boundary; implementations enforce the supplied communication deadline. */
 export type Spawn = (spec: SpawnSpec) => Promise<SpawnOutcome>;
 
-/** Process settings shared by all four verbs. */
+/** Process settings shared by all three verbs. */
 export type ProcessSpec = { executable?: string; timeoutMs?: number; spawn?: Spawn };
 
 function resolveExecutable(executable?: string): string {

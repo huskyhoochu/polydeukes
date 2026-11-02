@@ -18,13 +18,13 @@ use std::time::{Duration, Instant};
 
 use polydeukes_sdk::{
     CheckChangeSetSpec, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, Enforce,
-    MemoryIngestOutcome, MemoryIngestSpec, MemorySearchOutcome, MemorySearchSpec, SpawnOutcome,
-    SpawnSpec, check_change_set, check_covenant, memory_ingest, memory_search,
+    MemorySearchOutcome, MemorySearchSpec, SpawnOutcome, SpawnSpec, check_change_set,
+    check_covenant, memory_search,
 };
 use serde_json::{Value, json};
 
 const QUERY: &str = "two words; $(touch unwanted)";
-const EMPTY: &[u8] = b"{\"ingestedAt\":\"fixture-time\",\"results\":[]}";
+const EMPTY: &[u8] = b"{\"results\":[]}";
 static ENVIRONMENT: Mutex<()> = Mutex::new(());
 
 fn fixture() -> Value {
@@ -65,15 +65,6 @@ fn invoke(
                 enforce: None,
                 config_layer: None,
                 telemetry_path: None,
-                executable,
-                timeout,
-                spawn: Some(spawn)
-            })
-        ),
-        format!(
-            "{:?}",
-            memory_ingest(MemoryIngestSpec {
-                root,
                 executable,
                 timeout,
                 spawn: Some(spawn)
@@ -153,7 +144,7 @@ fn all_verbs_share_a_byte_transport_and_literal_arguments() {
         Some(Duration::from_millis(123)),
     );
     let calls = calls.borrow();
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in calls.iter() {
         assert_eq!(
             Path::new(&call.command),
@@ -179,9 +170,8 @@ fn all_verbs_share_a_byte_transport_and_literal_arguments() {
         calls[1].args,
         ["covenant", "check", "--diff", "--enforce", "block"]
     );
-    assert_eq!(calls[2].args, ["memory", "ingest"]);
     assert_eq!(
-        calls[3].args,
+        calls[2].args,
         ["memory", "search", QUERY, "--json", "--limit", "7"]
     );
     assert_eq!(
@@ -193,7 +183,6 @@ fn all_verbs_share_a_byte_transport_and_literal_arguments() {
         fixture()["diff"].as_str().unwrap().as_bytes()
     );
     assert_eq!(calls[2].stdin, [] as [u8; 0]);
-    assert_eq!(calls[3].stdin, [] as [u8; 0]);
 }
 
 #[test]
@@ -251,7 +240,7 @@ fn path_selection_skips_invalid_entries_and_ignores_npm_installations() {
             std::env::remove_var("PATH");
         }
     }
-    assert_eq!(calls.borrow().len(), 4);
+    assert_eq!(calls.borrow().len(), 3);
     for call in calls.borrow().iter() {
         assert_eq!(Path::new(&call.command), dirs[2].join("pdks"));
     }
@@ -298,14 +287,16 @@ fn selected_path_failure_does_not_retry_a_later_executable() {
     unsafe {
         std::env::set_var("PATH", format!("{}:{}", first.display(), second.display()));
     }
-    let outcome = memory_ingest(MemoryIngestSpec {
+    let outcome = memory_search(MemorySearchSpec {
         root,
+        query: QUERY,
+        limit: None,
         executable: None,
         timeout: None,
         spawn: None,
     });
     drop(restore);
-    assert!(matches!(outcome, MemoryIngestOutcome::Unavailable { .. }));
+    assert!(matches!(outcome, MemorySearchOutcome::Unavailable { .. }));
     assert!(!marker.exists());
 }
 
@@ -342,11 +333,11 @@ fn all_verbs_map_binary_statuses_and_preserve_stderr() {
         };
         let results = invoke(dir.path(), Some(Path::new("/pdks")), &spawn, None);
         let expected = if status == Some(0) {
-            ["Upheld", "Upheld", "Ingested", "Empty"]
+            ["Upheld", "Upheld", "Empty"]
         } else if status == Some(2) {
-            ["Blocked", "Blocked", "Unavailable", "Unavailable"]
+            ["Blocked", "Blocked", "Unavailable"]
         } else {
-            ["Unjudged", "Unjudged", "Unavailable", "Unavailable"]
+            ["Unjudged", "Unjudged", "Unavailable"]
         };
         for (result, prefix) in results.iter().zip(expected) {
             assert!(result.starts_with(prefix), "{result}");
@@ -375,14 +366,10 @@ fn selected_spawn_errors_and_timeouts_return_failures_without_retry() {
             &spawn,
             Some(Duration::from_millis(200)),
         );
-        for (result, prefix) in
-            results
-                .iter()
-                .zip(["Unjudged", "Unjudged", "Unavailable", "Unavailable"])
-        {
+        for (result, prefix) in results.iter().zip(["Unjudged", "Unjudged", "Unavailable"]) {
             assert!(result.starts_with(prefix), "{result}");
         }
-        assert_eq!(calls.borrow().len(), 4);
+        assert_eq!(calls.borrow().len(), 3);
         for call in calls.borrow().iter() {
             assert_eq!(call.command, "/chosen/pdks");
         }
@@ -395,25 +382,20 @@ fn strict_search_rejects_bad_utf8_missing_fields_types_enums_and_non_json_number
     let dir = tempfile::tempdir().unwrap();
     let data = fixture();
     let hit = data["hit"].clone();
-    let valid = json!({"ingestedAt":"fixture-time", "results":[hit.clone()]});
+    let valid = json!({"results":[hit.clone()]});
     let mut invalid = vec![
         b"{".to_vec(),
-        b"{\"ingestedAt\":\"t\",\"results\":[],\"extra\":NaN}".to_vec(),
+        b"{\"results\":[],\"extra\":NaN}".to_vec(),
         b"null".to_vec(),
         b"[]".to_vec(),
-        b"{\"ingestedAt\":7,\"results\":[]}".to_vec(),
-        b"{\"ingestedAt\":\"t\",\"results\":{}}".to_vec(),
-        b"{\"ingestedAt\":\"t\",\"results\":[null]}".to_vec(),
+        b"{}".to_vec(),
+        b"{\"results\":{}}".to_vec(),
+        b"{\"results\":[null]}".to_vec(),
     ];
-    let mut utf8 = b"{\"ingestedAt\":\"".to_vec();
+    let mut utf8 = b"{\"results\":[],\"future\":\"".to_vec();
     utf8.push(255);
-    utf8.extend_from_slice(b"\",\"results\":[]}");
+    utf8.extend_from_slice(b"\"}");
     invalid.push(utf8);
-    for field in ["ingestedAt", "results"] {
-        let mut value = valid.clone();
-        value.as_object_mut().unwrap().remove(field);
-        invalid.push(serde_json::to_vec(&value).unwrap());
-    }
     for field in hit.as_object().unwrap().keys() {
         let mut value = valid.clone();
         value["results"][0].as_object_mut().unwrap().remove(field);
@@ -452,10 +434,7 @@ fn search_accepts_open_objects_and_keeps_cli_ranking() {
     first["future"] = json!(true);
     let mut second = data["hit"].clone();
     second["id"] = json!("a#second");
-    let stdout = serde_json::to_vec(
-        &json!({"ingestedAt":"fixture-time","results":[first,second],"future":true}),
-    )
-    .unwrap();
+    let stdout = serde_json::to_vec(&json!({"results":[first,second],"future":true})).unwrap();
     match search(dir.path(), Some(0), stdout) {
         MemorySearchOutcome::Found { hits } => assert_eq!(
             hits.iter().map(|hit| hit.id.as_str()).collect::<Vec<_>>(),
@@ -578,26 +557,30 @@ fn normal_completion_succeeds_and_zero_deadline_expires() {
     // Treating Duration::ZERO as absent leaves the child running indefinitely.
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
-    let fast = script(root, "fast-pdks", "exit 0");
+    let fast = script(root, "fast-pdks", "echo '{\"results\":[]}'");
     assert!(matches!(
-        memory_ingest(MemoryIngestSpec {
+        memory_search(MemorySearchSpec {
             root,
+            query: QUERY,
+            limit: None,
             executable: Some(&fast),
             timeout: Some(Duration::from_secs(2)),
             spawn: None
         }),
-        MemoryIngestOutcome::Ingested
+        MemorySearchOutcome::Empty
     ));
     let slow = script(root, "slow-pdks", "while :; do :; done");
     let started = Instant::now();
     assert!(matches!(
-        memory_ingest(MemoryIngestSpec {
+        memory_search(MemorySearchSpec {
             root,
+            query: QUERY,
+            limit: None,
             executable: Some(&slow),
             timeout: Some(Duration::ZERO),
             spawn: None
         }),
-        MemoryIngestOutcome::Unavailable { .. }
+        MemorySearchOutcome::Unavailable { .. }
     ));
     assert!(started.elapsed() < Duration::from_secs(5));
 }

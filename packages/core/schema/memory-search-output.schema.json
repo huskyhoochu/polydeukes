@@ -3,12 +3,8 @@
   "title": "MemorySearchOutput",
   "description": "What `pdks memory search --json` prints on stdout at exit 0. An empty `results` is a search that found nothing; every failure exits non-zero with nothing on stdout. Objects stay open so a host built against this schema keeps reading a newer command's output.",
   "type": "object",
-  "required": ["ingestedAt", "results"],
+  "required": ["results"],
   "properties": {
-    "ingestedAt": {
-      "description": "When the index being searched was last ingested, as an ISO 8601 timestamp.",
-      "type": "string"
-    },
     "results": {
       "description": "The matched sections, in the command's ranking order.",
       "type": "array",
@@ -19,7 +15,7 @@
   },
   "$defs": {
     "MemorySearchResult": {
-      "description": "One section found in the memory index.",
+      "description": "One section the search matched.",
       "type": "object",
       "required": [
         "id",

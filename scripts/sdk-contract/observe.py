@@ -58,8 +58,6 @@ for request in requests:
             spec = sdk.CheckCovenantSpec(input=request["input"], **options)
         else:
             spec = sdk.CheckChangeSetSpec(diff=request["diff"], **options)
-    elif verb == "memory_ingest":
-        spec = sdk.MemoryIngestSpec(root=request["root"], **options)
     else:
         spec = sdk.MemorySearchSpec(
             root=request["root"],

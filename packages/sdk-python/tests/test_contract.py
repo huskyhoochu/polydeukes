@@ -34,8 +34,6 @@ class ContractTests(unittest.TestCase):
             spec = sdk.CheckChangeSetSpec(
                 **{"repo_root": self.root, "diff": FIXTURE["diff"], **options}
             )
-        elif verb == "memory_ingest":
-            spec = sdk.MemoryIngestSpec(**{"root": self.root, **options})
         else:
             spec = sdk.MemorySearchSpec(**{"root": self.root, "query": FIXTURE["query"], **options})
         return getattr(sdk, verb)(spec)
@@ -91,9 +89,8 @@ class ContractTests(unittest.TestCase):
         diff = FIXTURE["diff"].replace("\n", "\r\n") + "한글"
         self.invoke("check_change_set", diff=diff)
         self.assertEqual(self.calls[-1].stdin, diff.encode())
-        for verb in ("memory_ingest", "memory_search"):
-            self.invoke(verb)
-            self.assertEqual(self.calls[-1].stdin, b"")
+        self.invoke("memory_search")
+        self.assertEqual(self.calls[-1].stdin, b"")
 
     def test_serialization_failure_never_spawns_or_upholds(self):
         # Python's permissive NaN JSON would otherwise bypass the transport contract.
@@ -108,7 +105,7 @@ class ContractTests(unittest.TestCase):
 
     def test_nonverdict_status_signal_and_spawn_error_are_closed_results(self):
         # A missing or signalled child is neither an upheld covenant nor an empty search.
-        for verb in ("check_covenant", "check_change_set", "memory_ingest", "memory_search"):
+        for verb in ("check_covenant", "check_change_set", "memory_search"):
             expected = sdk.Unjudged if verb.startswith("check") else sdk.Unavailable
             for status in (1, 127, None):
                 with self.subTest(verb=verb, status=status):
@@ -126,11 +123,12 @@ class ContractTests(unittest.TestCase):
 
     def test_memory_nonzero_including_two_is_unavailable(self):
         # Exit 2 has judgment meaning only on the covenant command.
-        for verb in ("memory_ingest", "memory_search"):
-            self.assertIsInstance(
-                self.invoke(verb, sdk.SpawnOutcome(status=2, stdout=b"{}", stderr=b"failed")),
-                sdk.Unavailable,
-            )
+        self.assertIsInstance(
+            self.invoke(
+                "memory_search", sdk.SpawnOutcome(status=2, stdout=b"{}", stderr=b"failed")
+            ),
+            sdk.Unavailable,
+        )
 
     def test_control_flow_exceptions_propagate(self):
         # Catching BaseException would swallow a caller's cancellation.
@@ -146,7 +144,7 @@ class ContractTests(unittest.TestCase):
         # Nonfinite deadlines and nonpositive limits cannot reach subprocess APIs.
         for limit in (0, -1, 1.5, True):
             self.assertIsInstance(self.invoke("memory_search", limit=limit), sdk.Unavailable)
-        for verb in ("check_covenant", "check_change_set", "memory_ingest", "memory_search"):
+        for verb in ("check_covenant", "check_change_set", "memory_search"):
             expected = sdk.Unjudged if verb.startswith("check") else sdk.Unavailable
             for timeout in (-1, math.inf, -math.inf, math.nan):
                 with self.subTest(verb=verb, timeout=timeout):
@@ -155,7 +153,7 @@ class ContractTests(unittest.TestCase):
 
     def test_zero_and_none_timeout_are_forwarded_on_every_verb(self):
         # Zero is an immediate deadline, rather than the unset value.
-        for verb in ("check_covenant", "check_change_set", "memory_ingest", "memory_search"):
+        for verb in ("check_covenant", "check_change_set", "memory_search"):
             for timeout in (None, 0, 0.2):
                 self.invoke(verb, timeout=timeout)
                 self.assertEqual(self.calls[-1].timeout, timeout)
@@ -182,7 +180,7 @@ class ContractTests(unittest.TestCase):
         third = self.root / "third"
         executable(third)
         with patch.dict(os.environ, {"PATH": f".:{first}:{denied}:{second}:{third}:"}):
-            for verb in ("check_covenant", "check_change_set", "memory_ingest", "memory_search"):
+            for verb in ("check_covenant", "check_change_set", "memory_search"):
                 self.invoke(verb, executable=None)
                 self.assertEqual(self.calls[-1].command, str(chosen))
 
@@ -193,7 +191,7 @@ class ContractTests(unittest.TestCase):
         (npm / "package.json").write_text('{"bin":{"pdks":"bin.js"}}')
         (npm / "bin.js").write_text("process.exit(0)")
         with patch.dict(os.environ, {"PATH": "relative::"}):
-            for verb in ("check_covenant", "check_change_set", "memory_ingest", "memory_search"):
+            for verb in ("check_covenant", "check_change_set", "memory_search"):
                 expected = sdk.Unjudged if verb.startswith("check") else sdk.Unavailable
                 result = self.invoke(verb, executable=None)
                 self.assertIsInstance(result, expected)
@@ -234,23 +232,19 @@ class ContractTests(unittest.TestCase):
             "trust": "human-reviewed",
             "matchPath": "like",
         }
-        result = self.search(
-            {"ingestedAt": "fixture-time", "results": [first, second], "futureRoot": True}
-        )
+        result = self.search({"results": [first, second], "futureRoot": True})
         self.assertIsInstance(result, sdk.Found)
         self.assertEqual(result.hits, (first, second))
 
     def test_only_valid_empty_search_is_empty(self):
         # Root shape errors must never be mistaken for a successful search with no hits.
-        self.assertIsInstance(self.search({"ingestedAt": "fixture-time", "results": []}), sdk.Empty)
+        self.assertIsInstance(self.search({"results": []}), sdk.Empty)
         for payload in (
             b"\xff",
             b"{",
             [],
             {},
-            {"results": []},
-            {"ingestedAt": 4, "results": []},
-            {"ingestedAt": "x", "results": {}},
+            {"results": {}},
         ):
             with self.subTest(payload=repr(payload)):
                 self.assertIsInstance(self.search(payload), sdk.Unavailable)
@@ -268,9 +262,7 @@ class ContractTests(unittest.TestCase):
             hit = copy.deepcopy(FIXTURE["hit"])
             del hit[field]
             with self.subTest(missing=field):
-                self.assertIsInstance(
-                    self.search({"ingestedAt": "x", "results": [hit]}), sdk.Unavailable
-                )
+                self.assertIsInstance(self.search({"results": [hit]}), sdk.Unavailable)
         invalid = {
             "id": 2,
             "conceptId": None,
@@ -285,7 +277,7 @@ class ContractTests(unittest.TestCase):
         for field, value in invalid.items():
             with self.subTest(field=field):
                 self.assertIsInstance(
-                    self.search({"ingestedAt": "x", "results": [{**FIXTURE["hit"], field: value}]}),
+                    self.search({"results": [{**FIXTURE["hit"], field: value}]}),
                     sdk.Unavailable,
                 )
 
@@ -296,7 +288,7 @@ class ContractTests(unittest.TestCase):
         marker = self.root / "ran-second"
         executable(second, body=f"from pathlib import Path\nPath({str(marker)!r}).touch()")
         with patch.dict(os.environ, {"PATH": f"{first}:{second}"}):
-            result = sdk.memory_ingest(sdk.MemoryIngestSpec(root=self.root))
+            result = sdk.memory_search(sdk.MemorySearchSpec(root=self.root, query=FIXTURE["query"]))
         self.assertIsInstance(result, sdk.Unavailable)
         self.assertFalse(marker.exists())
         self.assertTrue(chosen.exists())
@@ -311,13 +303,9 @@ class ContractTests(unittest.TestCase):
         properties = schema["$defs"]["MemorySearchResult"]["properties"]
         for field in ("trust", "matchPath"):
             for value in properties[field]["enum"]:
-                result = self.search(
-                    {"ingestedAt": "x", "results": [{**FIXTURE["hit"], field: value}]}
-                )
+                result = self.search({"results": [{**FIXTURE["hit"], field: value}]})
                 self.assertIsInstance(result, sdk.Found)
         valid = {**FIXTURE["hit"], "supersededBy": ["notes/new"]}
-        self.assertIsInstance(self.search({"ingestedAt": "x", "results": [valid]}), sdk.Found)
+        self.assertIsInstance(self.search({"results": [valid]}), sdk.Found)
         for hit in (None, [], "hit", {**FIXTURE["hit"], "supersededBy": "notes/new"}):
-            self.assertIsInstance(
-                self.search({"ingestedAt": "x", "results": [hit]}), sdk.Unavailable
-            )
+            self.assertIsInstance(self.search({"results": [hit]}), sdk.Unavailable)

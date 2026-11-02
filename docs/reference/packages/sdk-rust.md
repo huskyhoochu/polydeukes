@@ -5,9 +5,9 @@
 <a id="ownership"></a>
 ## What this crate owns
 
-Four blocking verbs execute a separately installed `pdks`: `check_covenant`, `check_change_set`,
-`memory_ingest`, and `memory_search`. The CLI owns judgment, configuration, telemetry, and indexing.
-The crate sends caller-built inputs and returns results as values.
+Three blocking verbs execute a separately installed `pdks`: `check_covenant`, `check_change_set`,
+and `memory_search`. The CLI owns judgment, configuration, and telemetry. The crate sends
+caller-built inputs and returns results as values.
 
 Every verb shares one resolver and process runner. A root becomes absolute relative to the caller's
 cwd and becomes the child's cwd. An explicit `executable` is a file path relative to the caller's
@@ -25,8 +25,10 @@ cargo add polydeukes-sdk
 Install the standalone `pdks` for Linux x64 or macOS arm64 from
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), give it execute permission,
 and name it in `executable` or put it on `PATH` as `pdks`. The crate runs that file directly and
-needs neither Node nor an npm installation. Memory verbs require a CLI with memory support; missing
-memory dependencies, configuration, or an index return `Unavailable`.
+needs neither Node nor an npm installation. Memory search runs `pdks memory ...`, which invokes
+`pdks-memory` on `PATH` (installed by the npm package `@polydeukes/memory`, the Release archive, or
+`cargo install pdks-memory`); if it is missing, search returns `Unavailable` with the reason `pdks`
+prints.
 
 <a id="verb"></a>
 ## `check_covenant`
@@ -93,9 +95,9 @@ from core's input schema. The CLI supplies `world`, which is absent from this in
 | `timeout: Option<Duration>`     | `None` means no deadline                                  | Same                     |
 | `spawn`                         | Optional `&dyn Fn(SpawnSpec) -> io::Result<SpawnOutcome>` | Same                     |
 
-`MemoryIngestSpec` takes `root: &Path`, `executable`, `timeout`, and `spawn`. `MemorySearchSpec`
-also takes `query: &str` and `limit: Option<NonZeroU32>`; `None` uses the CLI default. Memory
-commands receive no enforcement, config-layer, or telemetry flags.
+`MemorySearchSpec` takes `root: &Path`, `executable`, `timeout`, `spawn`, `query: &str` and
+`limit: Option<NonZeroU32>`; `None` uses the CLI default. Memory commands receive no enforcement,
+config-layer, or telemetry flags.
 
 The timeout measures communication after spawn: writing stdin and draining both output pipes,
 including descendant-held pipes after the direct child exits. Zero expires after spawn. Expiry kills
@@ -132,7 +134,7 @@ when stderr is absent. Covenant stdout is drained without determining the verdic
 telemetry; `telemetry_path` selects its destination.
 
 <a id="memory"></a>
-## `memory_ingest` and `memory_search`
+## `memory_search`
 
 ```rust
 use polydeukes_sdk::{memory_search, MemorySearchOutcome, MemorySearchSpec};
@@ -153,13 +155,12 @@ match result {
 }
 ```
 
-`memory_ingest` runs `pdks memory ingest` and returns `MemoryIngestOutcome::Ingested` only at status
-`0`; otherwise it returns `Unavailable { reason }`. Ingest stdout is ignored. `memory_search` sends
-the query as one literal argument to `pdks memory search <query> --json` and adds `--limit <n>` when
-supplied. Both memory commands send empty stdin.
+`memory_search` sends the query as one literal argument to `pdks memory search <query> --json` and
+adds `--limit <n>` when supplied. Memory search sends empty stdin.
 
-Search success requires strict UTF-8 JSON with string `ingestedAt` and array `results`. Every hit
-needs string `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, boolean `stale`, string-array
+The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`. Search
+success requires strict UTF-8 JSON with a `results` array (`{"results": [...]}`). Every hit needs
+string `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, boolean `stale`, string-array
 `supersededBy`, `trust` (`human-reviewed`, `machine-verified`, `unverified`), and `matchPath`
 (`and`, `or`, `like`). Extra object fields are accepted. Generated Rust fields use snake case:
 `concept_id`, `doc_title`, `section_title`, `match_path`, `superseded_by`. `Found { hits }`
@@ -189,7 +190,7 @@ pub struct SpawnOutcome {
 ```
 
 `None` status means signal termination. Preserve output bytes until the SDK decodes them; converting
-search stdout with lossy decoding would conceal invalid UTF-8. All four verbs use this same
+search stdout with lossy decoding would conceal invalid UTF-8. All three verbs use this same
 boundary. Ordinary I/O errors become failure values; host termination and Rust panics are not
 caught.
 

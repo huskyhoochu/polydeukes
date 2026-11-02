@@ -2,7 +2,7 @@
 
 [English](README.md) · **한국어**
 
-Python 3.12 이상에서 Polydeukes 판정기와 기억(memory) 명령을 호출합니다. 동기 동사 네 개가 실행 파일
+Python 3.12 이상에서 Polydeukes 판정기와 기억(memory) 명령을 호출합니다. 동기 동사 세 개가 실행 파일
 해석기와 프로세스 실행기 하나를 공유합니다. 런타임 의존성은 없습니다.
 
 ```sh
@@ -23,8 +23,6 @@ from polydeukes_sdk import (
     check_covenant,
     CheckChangeSetSpec,
     check_change_set,
-    MemoryIngestSpec,
-    memory_ingest,
     MemorySearchSpec,
     memory_search,
     Found,
@@ -38,7 +36,6 @@ if isinstance(verdict, Upheld):
     print("제안한 작업을 진행할 수 있습니다", verdict.advisories)
 
 verdict = check_change_set(CheckChangeSetSpec(repo_root=".", diff="", timeout=10))
-ingest = memory_ingest(MemoryIngestSpec(root=".", timeout=30))
 recall = memory_search(MemorySearchSpec(root=".", query="설계 결정", limit=5, timeout=10))
 match recall:
     case Found(hits=hits):
@@ -50,8 +47,12 @@ match recall:
 ```
 
 호스트는 IR 증거를 제공하고 제안한 작업의 실행 여부를 결정합니다. 이 예시는 `Upheld`일 때만 실행을
-허용합니다. 자식 프로세스가 설정을 읽고 규율(discipline)을 판정하며 텔레메트리와 기억 색인을
+허용합니다. 자식 프로세스가 설정을 읽고 규율(discipline)을 판정하며 텔레메트리와 기억 검색을
 관리합니다.
+
+기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
+`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+`pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
 
 [Python SDK 참조](https://github.com/huskyhoochu/polydeukes/blob/main/docs/reference/packages/sdk-python.ko.md)에서
 모든 spec, 결과, 기한과 주입 가능한 `spawn` 경계를 설명합니다.

@@ -93,17 +93,6 @@ fn main() {
                 timeout,
                 spawn: seam,
             })),
-            "memory_ingest" => match memory_ingest(MemoryIngestSpec {
-                root,
-                executable,
-                timeout,
-                spawn: seam,
-            }) {
-                MemoryIngestOutcome::Ingested => json!({"kind":"Ingested"}),
-                MemoryIngestOutcome::Unavailable { reason } => {
-                    json!({"kind":"Unavailable","reason":reason})
-                }
-            },
             "memory_search" => match memory_search(MemorySearchSpec {
                 root,
                 query: request["query"].as_str().unwrap(),

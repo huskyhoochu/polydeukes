@@ -16,14 +16,14 @@ use std::time::Duration;
 
 use polydeukes_sdk::{
     CheckChangeSetSpec, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput,
-    MemoryIngestOutcome, MemoryIngestSpec, MemorySearchOutcome, MemorySearchSpec, SpawnOutcome,
-    SpawnSpec, check_change_set, check_covenant, memory_ingest, memory_search,
+    MemorySearchOutcome, MemorySearchSpec, SpawnOutcome, SpawnSpec, check_change_set,
+    check_covenant, memory_search,
 };
 use tempfile::TempDir;
 
 /// Injected fixture value — the query the fake CLI is asked.
 const QUERY: &str = "hook block";
-const EMPTY_OUTPUT: &str = "{\"ingestedAt\":\"2026-10-10T14:00:00.000Z\",\"results\":[]}";
+const EMPTY_OUTPUT: &str = "{\"results\":[]}";
 const DIFF: &str = "diff --git a/src/answer.ts b/src/answer.ts\n--- a/src/answer.ts\n+++ b/src/answer.ts\n@@ -1 +1 @@\n-export const answer = 41;\n+export const answer = 42;\n";
 /// An executable path with no file behind it; the seam never runs it.
 const EXECUTABLE_NAME: &str = "pdks-single";
@@ -86,8 +86,8 @@ fn timed_out(_spec: SpawnSpec) -> io::Result<SpawnOutcome> {
     Err(io::Error::from(io::ErrorKind::TimedOut))
 }
 
-/// Every verb once with `timeout` through `spawn`; returns the four outcomes as reasons in
-/// verb order: `check_covenant`, `check_change_set`, `memory_ingest`, `memory_search`. A verb that
+/// Every verb once with `timeout` through `spawn`; returns the three outcomes as reasons in
+/// verb order: `check_covenant`, `check_change_set`, `memory_search`. A verb that
 /// did not answer `Unjudged` / `Unavailable` panics with what it answered.
 fn reasons_of_every_verb(
     root: &Path,
@@ -113,12 +113,6 @@ fn reasons_of_every_verb(
             enforce: None,
             config_layer: None,
             telemetry_path: None,
-            executable: Some(&executable),
-            timeout,
-            spawn: Some(spawn),
-        })),
-        ingest_unavailable(memory_ingest(MemoryIngestSpec {
-            root,
             executable: Some(&executable),
             timeout,
             spawn: Some(spawn),
@@ -156,13 +150,6 @@ fn unavailable(outcome: MemorySearchOutcome) -> String {
     }
 }
 
-fn ingest_unavailable(outcome: MemoryIngestOutcome) -> String {
-    match outcome {
-        MemoryIngestOutcome::Unavailable { reason } => reason,
-        MemoryIngestOutcome::Ingested => panic!("expected unavailable, got ingested"),
-    }
-}
-
 #[test]
 fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
     // A verb that builds `SpawnSpec` with `timeout: None` compiles and passes every other
@@ -193,12 +180,6 @@ fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
         timeout: Some(SHORT),
         spawn: Some(&spawn),
     }));
-    drop(memory_ingest(MemoryIngestSpec {
-        root: &root,
-        executable: Some(&executable),
-        timeout: Some(SHORT),
-        spawn: Some(&spawn),
-    }));
     drop(memory_search(MemorySearchSpec {
         root: &root,
         query: QUERY,
@@ -209,7 +190,7 @@ fn every_verb_hands_its_spawn_the_deadline_it_was_given() {
     }));
 
     let calls = seam.calls.into_inner();
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in &calls {
         assert_eq!(call.timeout, Some(SHORT));
     }
@@ -245,12 +226,6 @@ fn a_spawn_without_a_deadline_is_handed_none() {
         timeout: None,
         spawn: Some(&spawn),
     }));
-    drop(memory_ingest(MemoryIngestSpec {
-        root: &root,
-        executable: Some(&executable),
-        timeout: None,
-        spawn: Some(&spawn),
-    }));
     drop(memory_search(MemorySearchSpec {
         root: &root,
         query: QUERY,
@@ -261,7 +236,7 @@ fn a_spawn_without_a_deadline_is_handed_none() {
     }));
 
     let calls = seam.calls.into_inner();
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in &calls {
         assert_eq!(call.timeout, None);
     }
@@ -280,7 +255,6 @@ fn a_timed_out_spawn_under_a_deadline_names_the_deadline_in_every_verb() {
         vec![
             format!("the judge did not answer within {SHORT:?}"),
             format!("the judge did not answer within {SHORT:?}"),
-            format!("pdks memory did not answer within {SHORT:?}"),
             format!("pdks memory did not answer within {SHORT:?}"),
         ]
     );
@@ -306,13 +280,8 @@ fn a_timed_out_spawn_with_no_deadline_keeps_the_spawn_failure_reason() {
     );
     assert!(
         reasons[2].starts_with("pdks memory could not be spawned: "),
-        "ingest reason: {}",
-        reasons[2]
-    );
-    assert!(
-        reasons[3].starts_with("pdks memory could not be spawned: "),
         "search reason: {}",
-        reasons[3]
+        reasons[2]
     );
 }
 

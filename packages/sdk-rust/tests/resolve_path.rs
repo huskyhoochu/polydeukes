@@ -28,7 +28,7 @@ const EXECUTABLE_NAME: &str = "pdks";
 /// Injected fixture value — the query the fake CLI is asked.
 const QUERY: &str = "hook block";
 const SEARCH_TAIL: [&str; 4] = ["memory", "search", QUERY, "--json"];
-const EMPTY_OUTPUT: &str = "{\"ingestedAt\":\"2026-10-10T14:00:00.000Z\",\"results\":[]}";
+const EMPTY_OUTPUT: &str = "{\"results\":[]}";
 const DIFF: &str = "diff --git a/src/answer.ts b/src/answer.ts\n--- a/src/answer.ts\n+++ b/src/answer.ts\n@@ -1 +1 @@\n-export const answer = 41;\n+export const answer = 42;\n";
 /// A `PATH` entry that is not absolute; only the process cwd could resolve it.
 const RELATIVE_ENTRY: &str = "rel-dir";

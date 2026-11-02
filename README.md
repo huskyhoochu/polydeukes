@@ -93,9 +93,9 @@ the installed documentation.
 
 Six npm packages and one Rust crate ship; a Python SDK is also available — `@polydeukes/core` (the
 covenant protocol), the session adapters (`adapter-claude-code`, `adapter-codex`),
-`@polydeukes/sdk-ts` (four asynchronous verbs for covenant checks and memory), the crate
-`polydeukes-sdk` (the same four verbs for a Rust host),
-[the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (four verbs over the
+`@polydeukes/sdk-ts` (three asynchronous verbs for covenant checks and memory), the crate
+`polydeukes-sdk` (the same three verbs for a Rust host),
+[the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (three verbs over the
 standalone executable), `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and
 the `polydeukes` umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`)
 is the CLI. The ledger and verify packages are still blueprint. The CLI today:

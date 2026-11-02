@@ -2,9 +2,9 @@
 
 **English** · [한국어](sdk-ts.ko.md)
 
-Four Promise-returning verbs run a separately installed `pdks` executable. The SDK sends the
+Three Promise-returning verbs run a separately installed `pdks` executable. The SDK sends the
 caller's input and returns a judgment or memory result as a value. The CLI owns judgment,
-configuration, telemetry, and indexing.
+configuration, and telemetry.
 
 <a id="ownership"></a>
 ## What this package owns
@@ -13,10 +13,9 @@ configuration, telemetry, and indexing.
 | ---------------- | ----------------------------------- | ---------------------- |
 | `checkCovenant`  | `pdks covenant check`               | `CheckCovenantVerdict` |
 | `checkChangeSet` | `pdks covenant check --diff`        | `CheckCovenantVerdict` |
-| `memoryIngest`   | `pdks memory ingest`                | `MemoryIngestOutcome`  |
 | `memorySearch`   | `pdks memory search <query> --json` | `MemorySearchOutcome`  |
 
-All four verbs share executable resolution and byte-oriented process communication. Roots become
+All three verbs share executable resolution and byte-oriented process communication. Roots become
 absolute relative to the caller's current directory and become the child's cwd. An explicit
 `executable` is also resolved relative to the caller's cwd, even when it is a bare filename; symlink
 spelling is preserved. Otherwise, the first executable regular file named `pdks` in an absolute
@@ -30,15 +29,16 @@ failure returns a failure value without retrying another candidate.
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=26. Install a standalone `pdks` for your platform from
+The SDK host needs Node >=24. Install a standalone `pdks` for your platform from
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
 supply its path or put it on `PATH` as `pdks`. The supported executable platforms are Linux x64 and
 macOS arm64. The SDK executes that file directly, without npm installation discovery or a separate
 Node child. The SDK has no runtime or peer dependency on `@polydeukes/core` or `polydeukes`. Its
 generated transport types ship with the package.
 
-The selected CLI must provide memory support for the memory verbs; a missing memory dependency,
-configuration, or index is reported as `unavailable`.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
+package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
+missing, search returns `unavailable` with the reason `pdks` prints.
 
 <a id="the-verb"></a>
 
@@ -94,10 +94,10 @@ no `world` field: the CLI supplies that axis from the project.
 | `timeoutMs?: number`            | Finite nonnegative milliseconds; absent means no deadline | Same                       |
 | `spawn?: Spawn`                 | Optional process boundary                                 | Same                       |
 
-`MemoryIngestSpec` takes `root: string` plus `executable`, `timeoutMs`, and `spawn`.
-`MemorySearchSpec` takes those fields plus `query: string` and optional `limit: number`. The limit
-must be a positive safe integer. Invalid limits and deadlines return failure values before spawning.
-Memory commands receive no enforcement, config-layer, or telemetry flags.
+`MemorySearchSpec` takes `root: string`, `executable`, `timeoutMs`, `spawn`, `query: string` and
+optional `limit: number`. The limit must be a positive safe integer. Invalid limits and deadlines
+return failure values before spawning. Memory commands receive no enforcement, config-layer, or
+telemetry flags.
 
 The communication deadline starts after the process is spawned. It includes writing stdin and
 collecting both output pipes, including pipes held by descendants after the direct child exits. Zero
@@ -151,14 +151,12 @@ Untracked files need `git add -N` before they appear. SDK enforcement defaults t
 covenant verbs, including the change-set command.
 
 <a id="memory"></a>
-## `memoryIngest` and `memorySearch`
+## `memorySearch`
 
 ```ts
-import { memoryIngest, memorySearch } from '@polydeukes/sdk-ts';
+import { memorySearch } from '@polydeukes/sdk-ts';
 
 const shared = { root: '/path/to/project', executable: '/opt/tools/pdks', timeoutMs: 2000 };
-const ingest = await memoryIngest(shared);
-if (ingest.outcome === 'unavailable') throw new Error(ingest.reason);
 const result = await memorySearch({ ...shared, query: 'session report', limit: 5 });
 switch (result.outcome) {
   case 'found':
@@ -172,13 +170,13 @@ switch (result.outcome) {
 }
 ```
 
-`MemoryIngestOutcome` is `{ outcome: 'ingested' }` or `{ outcome: 'unavailable'; reason: string }`.
-Ingest succeeds only at status `0`; stdout is ignored. `MemorySearchOutcome` is `found` with a
-nonempty `hits` list, `empty`, or `unavailable` with a `reason`. Search passes the query as one
-literal argument and `limit` as `--limit <n>`. Memory stdin is empty.
+`MemorySearchOutcome` is `found` with a nonempty `hits` list, `empty`, or `unavailable` with a
+`reason`. Search passes the query as one literal argument and `limit` as `--limit <n>`. Memory stdin
+is empty.
 
-Successful search stdout must be strict UTF-8 JSON with `ingestedAt: string` and `results`. Each
-result requires `id`, `conceptId`, `docTitle`, `sectionTitle`, `status` (strings), `stale`
+The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`.
+Successful search stdout must be strict UTF-8 JSON with a `results` array (`{"results": [...]}`).
+Each result requires `id`, `conceptId`, `docTitle`, `sectionTitle`, `status` (strings), `stale`
 (boolean), `supersededBy` (string array), `trust` (`human-reviewed`, `machine-verified`, or
 `unverified`), and `matchPath` (`and`, `or`, or `like`). Additional object fields are allowed.
 `MemorySearchResult` is generated from core's memory output schema. Ranking order is preserved. Only
@@ -194,7 +192,7 @@ Handle those branches explicitly, as the examples above do.
 Consumers that previously installed npm peers should install a standalone `pdks` and select it
 through `executable` or an absolute `PATH` directory. Import input types from `@polydeukes/sdk-ts`,
 replacing imports from `@polydeukes/core`. The old `CheckCovenantSpawnSpec` name becomes
-`SpawnSpec`. The process boundary now handles four verbs and carries binary stdin, stdout, and
+`SpawnSpec`. The process boundary now handles three verbs and carries binary stdin, stdout, and
 stderr:
 
 ```ts

@@ -1,7 +1,7 @@
 import type { MemorySearchOutput, MemorySearchResult } from './memory.ts';
 import { failureReason, type ProcessSpec, runProcess } from './process.ts';
 
-/** Search the index using one literal query argument. */
+/** Search the project's memory documents using one literal query argument. */
 export type MemorySearchSpec = ProcessSpec & { root: string; query: string; limit?: number };
 /** Ranked hits, a valid empty response, or a failed search. */
 export type MemorySearchOutcome =
@@ -15,7 +15,6 @@ function object(value: unknown): value is Record<string, unknown> {
 function validOutput(value: unknown): value is MemorySearchOutput {
   return (
     object(value) &&
-    typeof value.ingestedAt === 'string' &&
     Array.isArray(value.results) &&
     value.results.every(
       (hit: unknown) =>

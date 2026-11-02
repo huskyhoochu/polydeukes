@@ -15,9 +15,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use polydeukes_sdk::{
-    CheckChangeSetSpec, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput, MemoryIngestSpec,
+    CheckChangeSetSpec, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput,
     MemorySearchOutcome, MemorySearchSpec, SpawnOutcome, SpawnSpec, check_change_set,
-    check_covenant, memory_ingest, memory_search,
+    check_covenant, memory_search,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -26,7 +26,7 @@ use tempfile::TempDir;
 const STUB_BIN_REL: &str = "./dist/bin.js";
 /// Injected fixture value — the query the fake CLI is asked.
 const QUERY: &str = "hook block";
-const EMPTY_OUTPUT: &str = "{\"ingestedAt\":\"2026-10-10T14:00:00.000Z\",\"results\":[]}";
+const EMPTY_OUTPUT: &str = "{\"results\":[]}";
 const DIFF: &str = "diff --git a/src/answer.ts b/src/answer.ts\n--- a/src/answer.ts\n+++ b/src/answer.ts\n@@ -1 +1 @@\n-export const answer = 41;\n+export const answer = 42;\n";
 /// An executable path with no file behind it; the seam never runs it.
 const EXECUTABLE_NAME: &str = "pdks-single";
@@ -107,8 +107,7 @@ impl RecordingSeam {
 }
 
 /// Every verb once, from `root` with `executable`, through one recording seam; returns what
-/// the seam was handed in verb order: `check_covenant`, `check_change_set`, `memory_ingest`,
-/// `memory_search`.
+/// the seam was handed in verb order: `check_covenant`, `check_change_set`, `memory_search`.
 fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
     let seam = RecordingSeam::new();
     let spawn = |s| seam.spawn(s);
@@ -129,12 +128,6 @@ fn spawns_of_every_verb(root: &Path, executable: &Path) -> Vec<SpawnSpec> {
         enforce: None,
         config_layer: None,
         telemetry_path: None,
-        executable: Some(executable),
-        timeout: None,
-        spawn: Some(&spawn),
-    }));
-    drop(memory_ingest(MemoryIngestSpec {
-        root,
         executable: Some(executable),
         timeout: None,
         spawn: Some(&spawn),
@@ -186,7 +179,7 @@ fn an_absolute_executable_is_the_command_and_the_verb_its_first_argument_over_an
 
     let calls = spawns_of_every_verb(&root, &executable);
 
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in &calls {
         assert_eq!(call.command, executable.to_string_lossy());
         assert_eq!(call.cwd, root);
@@ -199,9 +192,8 @@ fn an_absolute_executable_is_the_command_and_the_verb_its_first_argument_over_an
         calls[1].args,
         strings(&["covenant", "check", "--diff", "--enforce", "block"])
     );
-    assert_eq!(calls[2].args, strings(&["memory", "ingest"]));
     assert_eq!(
-        calls[3].args,
+        calls[2].args,
         strings(&["memory", "search", QUERY, "--json"])
     );
 }
@@ -216,7 +208,7 @@ fn a_broken_nearest_install_does_not_stop_a_named_executable() {
 
     let calls = spawns_of_every_verb(&root, &executable);
 
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in &calls {
         assert_eq!(call.command, executable.to_string_lossy());
     }
@@ -234,7 +226,7 @@ fn a_relative_executable_resolves_against_the_calling_process_cwd_not_the_root()
 
     let calls = spawns_of_every_verb(&root, Path::new(RELATIVE_EXECUTABLE));
 
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     let expected = cwd.join(RELATIVE_EXECUTABLE);
     for call in &calls {
         assert_eq!(Path::new(&call.command), expected);
@@ -295,7 +287,7 @@ fn a_symlinked_executable_is_the_command_as_named_not_its_target() {
 
     let calls = spawns_of_every_verb(&root, &link);
 
-    assert_eq!(calls.len(), 4);
+    assert_eq!(calls.len(), 3);
     for call in &calls {
         assert_eq!(call.command, link.to_string_lossy());
     }

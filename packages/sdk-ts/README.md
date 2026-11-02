@@ -2,14 +2,14 @@
 
 **English** · [한국어](./README.ko.md)
 
-Four TypeScript verbs send caller-built inputs to a standalone `pdks` and return results as values.
-The CLI owns judgment, configuration, telemetry, and memory indexing.
+Three TypeScript verbs send caller-built inputs to a standalone `pdks` and return results as values.
+The CLI owns judgment, configuration, telemetry, and memory search.
 
 ```sh
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=26. Install a platform-specific standalone `pdks` from
+The SDK host needs Node >=24. Install a platform-specific standalone `pdks` from
 [GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
 select it through `executable` or an absolute `PATH` directory. Existing npm installations do not
 select the CLI; the SDK runs the executable directly. Runtime and peer dependencies on
@@ -21,10 +21,9 @@ select the CLI; the SDK runs the executable directly. Runtime and peer dependenc
 - `checkCovenant(CheckCovenantSpec)` sends a `CovenantInput` as UTF-8 JSON.
 - `checkChangeSet(CheckChangeSetSpec)` sends a unified diff verbatim.
 - Both return `CheckCovenantVerdict`: `upheld`, `blocked`, or `unjudged`.
-- `memoryIngest(MemoryIngestSpec)` returns `MemoryIngestOutcome`: `ingested` or `unavailable`.
 - `memorySearch(MemorySearchSpec)` returns `MemorySearchOutcome`: `found` with ranked
   `MemorySearchResult` hits, `empty`, or `unavailable`.
-- All four accept `executable`, `timeoutMs`, and `spawn: Spawn`, using `SpawnSpec` and
+- All three accept `executable`, `timeoutMs`, and `spawn: Spawn`, using `SpawnSpec` and
   `SpawnOutcome` byte transport.
 
 Explicit executable paths and roots resolve from the caller's cwd; symlink spelling is preserved.
@@ -64,6 +63,10 @@ if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 Only `upheld` authorizes the action. Status `0` is `upheld`, `2` is `blocked`, and all other
 statuses, signals, and execution failures are `unjudged`. Enforcement defaults to `block`.
 `checkChangeSet` takes `diff` instead of `input`, with `a/` and `b/` paths relative to `repoRoot`.
+
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
+package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
+missing, search returns `unavailable` with the reason `pdks` prints.
 
 Memory specs use `root`; search adds `query` and optional positive safe-integer `limit`. Only a
 valid empty search response means `empty`. Missing memory support, malformed responses, and

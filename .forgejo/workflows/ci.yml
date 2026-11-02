@@ -2,9 +2,10 @@
 # sequence as publish.yml minus the upload; original rationale in that file's header).
 #
 # Two deliberate differences from the GitHub file. `runs-on: node-26` is this
-# instance's registered runner label (Node 26 preinstalled, so setup-node has no job
-# here). pnpm comes from corepack reading the root manifest's pinned `packageManager` —
-# the same single source pnpm/action-setup reads on the GitHub side.
+# instance's registered runner label (Node 26 preinstalled; setup-node only installs the
+# Node 24 that the last step runs the SDK contract on, the lowest Node sdk-ts supports).
+# pnpm comes from corepack reading the root manifest's pinned `packageManager` — the same
+# single source pnpm/action-setup reads on the GitHub side.
 #
 # Forgejo reads workflows from the first directory it finds among .forgejo/, .gitea/,
 # and .github/ — this directory existing is what keeps the GitHub files from being
@@ -87,7 +88,16 @@ jobs:
           --python 3.12 --python 3.14 --python 3.15
 
       - name: Compare the three SDK process contracts
-        run: node scripts/verify-sdk-contract.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
+        run: |
+          cargo build -p pdks -p pdks-memory
+          node scripts/verify-sdk-contract.mjs --executable "$PWD/target/debug/pdks"
 
       - name: Verify isolated SDK distributions and TypeScript consumer types
-        run: node scripts/verify-sdk-distributions.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
+        run: node scripts/verify-sdk-distributions.mjs --executable "$PWD/target/debug/pdks"
+
+      - uses: https://github.com/actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Compare the three SDK process contracts on Node 24
+        run: node scripts/verify-sdk-contract.mjs --executable "$PWD/target/debug/pdks"
