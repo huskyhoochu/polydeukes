@@ -9,6 +9,17 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.22.0](https://github.com/huskyhoochu/polydeukes/compare/v0.21.1...v0.22.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* npm polydeukes installs the Rust pdks only. It no longer installs the adapters, has no polydeukes bin alias and no `pdks adapter <host>` command. Install @polydeukes/adapter-claude-code or @polydeukes/adapter-codex and rerun `npx pdks-claude-code init` or `npx pdks-codex init`; a hook registered by 0.21.x (`node .../dist/bin.js adapter ... hook`) does not run after the upgrade.
+
+### Features
+
+* ship npm polydeukes and its three extensions as the Rust executables ([#326](https://github.com/huskyhoochu/polydeukes/issues/326)) ([264a892](https://github.com/huskyhoochu/polydeukes/commit/264a892c891ddbab8c59fa55e5459743264d9be9))
+
 ## [0.21.1](https://github.com/huskyhoochu/polydeukes/compare/v0.21.0...v0.21.1) (2026-11-02)
 
 
