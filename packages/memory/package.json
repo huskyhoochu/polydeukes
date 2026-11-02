@@ -1,6 +1,7 @@
 {
   "name": "@polydeukes/memory",
   "version": "0.21.1",
+  "private": true,
   "description": "Polydeukes memory — a derived SQLite index over a project's markdown documents.",
   "author": "huskyhoochu <dfg1499@gmail.com>",
   "license": "MIT",

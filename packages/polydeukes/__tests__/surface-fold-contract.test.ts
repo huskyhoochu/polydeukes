@@ -15,16 +15,18 @@ const umbrellaSrc = join(repoRoot, 'packages', 'polydeukes', 'src');
 const umbrellaDist = join(repoRoot, 'packages', 'polydeukes', 'dist');
 
 /** The package directories that ship, left after the fold. */
-const PACKAGE_DIRS = [
+const PACKAGE_DIRS = ['core', 'sdk-ts'];
+/**
+ * Workspace members that are not published. The npm names of the umbrella, the two adapters
+ * and memory ship the Rust executables, packed from the release archives outside the workspace.
+ */
+const PRIVATE_PACKAGE_DIRS = [
   'adapter-claude-code',
   'adapter-codex',
-  'core',
+  'documentation',
   'memory',
   'polydeukes',
-  'sdk-ts',
 ];
-/** Workspace members that are not published; they carry no copy of the judge. */
-const PRIVATE_PACKAGE_DIRS = ['documentation'];
 /** Directories managed by Cargo or uv rather than the npm workspace. */
 const NON_NPM_DIRS = [
   'pdks',
@@ -109,10 +111,10 @@ function umbrellaSources(): string[] {
   return out.sort();
 }
 
-describe('the workspace holds six packages', () => {
+describe('the workspace publishes two npm packages', () => {
   // The retired package directory left behind keeps a second copy of the judge that no
   // manifest depends on and every path glob still matches.
-  it('packages/ lists exactly the six package directories', () => {
+  it('packages/ lists exactly the published, private, and non-npm directories', () => {
     const present = readdirSync(join(repoRoot, 'packages')).sort();
     expect(
       present.filter((dir) => !PRIVATE_PACKAGE_DIRS.includes(dir) && !NON_NPM_DIRS.includes(dir)),

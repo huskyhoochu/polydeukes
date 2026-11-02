@@ -1,16 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // The publish tarballs, verified as artifacts. `pnpm pack` is the same producer
 // `pnpm publish -r` runs, so what these tests enumerate is what a registry would serve.
 // Tarball paths are discovered by globbing each pack destination, never spelled with a
 // version literal, so the suite stays version-agnostic.
-//
-// Helpers stay file-local: clean-install.e2e.test.ts packs its own tarballs too, so each
-// suite runs standalone.
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
 
@@ -30,15 +27,6 @@ const PACKAGE_DIRS = readdirSync(join(repoRoot, 'packages')).filter((dir) => {
 /** Presence enumeration — every tarball must carry these. */
 const REQUIRED_ENTRIES = ['package/package.json', 'package/README.md', 'package/LICENSE'];
 const DIST_PREFIX = 'package/dist/';
-
-/** The umbrella package directory, whose tarball carries the folded judge. */
-const UMBRELLA_DIR = 'polydeukes';
-/** The tarball name prefix the retired judge package would pack under. */
-const RETIRED_TARBALL_PREFIX = ['polydeukes', 'covenant-'].join('-');
-/** Where the folded judge's modules sit inside the umbrella tarball. */
-const JUDGE_DIST_PREFIX = 'package/dist/covenant/';
-/** The umbrella barrel's build output — gone with the `.` entry point. */
-const UMBRELLA_BARREL_ENTRY = 'package/dist/index.js';
 
 /** Absence enumeration — development-only files that must never ship. */
 const FORBIDDEN_PREFIXES = ['package/src/', 'package/__tests__/'];
@@ -143,24 +131,6 @@ describe('tarball contents match the published enumeration', () => {
     },
     30_000,
   );
-});
-
-describe('the judge ships inside the umbrella tarball', () => {
-  // The retired judge directory left publishable packs an extra tarball that publishes
-  // a judge nobody depends on.
-  it('packs no tarball for the retired judge package', () => {
-    const names = PACKAGE_DIRS.map((dir) => basename(tarballOf(dir)));
-    expect(names.filter((name) => name.startsWith(RETIRED_TARBALL_PREFIX))).toEqual([]);
-  }, 30_000);
-
-  // The folded modules missing from the tarball make every installed judgment fail closed
-  // at import; a `dist/index.js` still present ships the barrel the manifest no longer
-  // exports, and `main` resolution on an older resolver would serve it.
-  it('the umbrella tarball carries dist/covenant/ and no dist/index.js', () => {
-    const entries = tarEntries(UMBRELLA_DIR);
-    expect(entries.some((entry) => entry.startsWith(JUDGE_DIST_PREFIX))).toBe(true);
-    expect(entries).not.toContain(UMBRELLA_BARREL_ENTRY);
-  }, 30_000);
 });
 
 describe('packed manifests carry no workspace-only specifier', () => {

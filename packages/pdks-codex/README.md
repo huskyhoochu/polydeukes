@@ -10,8 +10,9 @@ The Rust host adapter connects Codex to the `pdks` covenant judge. `init` regist
 
 `cargo install --locked pdks-codex` builds the executable from crates.io with the dependency
 versions the release was tested with (the `Cargo.lock` in the crate). `cargo binstall pdks-codex`
-downloads the Release archive described below for `aarch64-apple-darwin` and
-`x86_64-unknown-linux-musl`, and falls back to a source build on other targets.
+downloads the Release archive described below for `aarch64-apple-darwin`,
+`x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl`, and falls back to a source build on
+other targets.
 
 ```sh
 cargo install --locked pdks-codex
@@ -19,9 +20,9 @@ cargo binstall pdks-codex
 ```
 
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
-`pdks-codex-<target>-v<version>.tar.gz` for `aarch64-apple-darwin` and `x86_64-unknown-linux-musl`.
-Each archive holds one directory with the same name, containing the executable and `LICENSE`.
-Extract it and place the executable on `PATH`.
+`pdks-codex-<target>-v<version>.tar.gz` for `aarch64-apple-darwin`, `x86_64-unknown-linux-musl` and
+`aarch64-unknown-linux-musl`. Each archive holds one directory with the same name, containing the
+executable and `LICENSE`. Extract it and place the executable on `PATH`.
 
 Or clone the [repository](https://github.com/huskyhoochu/polydeukes) and build from its root:
 

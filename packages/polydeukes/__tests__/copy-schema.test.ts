@@ -80,9 +80,7 @@ describe('the umbrella build copies the core schema into dist', () => {
     // goes green while an editor validates against something that is no longer the schema.
     //
     // The fixture supplies the source, so this measures the step in isolation: bytes in
-    // equal bytes out, not that the step read core's file. That the shipped copy matches
-    // core's own is asserted on the installed tree in clean-install.e2e, where the two
-    // files arrive from separately packed tarballs.
+    // equal bytes out, not that the step read core's file.
     const source = readFileSync(join(repoRoot, SOURCE_REL));
     const { status, stderr, fixtureRoot } = runInFixture({ source: source.toString('utf-8') });
 

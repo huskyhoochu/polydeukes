@@ -44,9 +44,8 @@ PRD that creates a package lists every item below as an acceptance criterion.
    the workflow. **Which packages the workflow publishes is read off the registry**:
    `dist.attestations` on the latest version is present only when the workflow uploaded it.
 
-The publish e2e suites (`publish-pack.e2e.test.ts`, `clean-install.e2e.test.ts`) derive their
-package set from the non-private `packages/*` manifests, so a new package is covered the moment it
-exists.
+The publish e2e suite (`publish-pack.e2e.test.ts`) derives its package set from the non-private
+`packages/*` manifests, so a new package is covered the moment it exists.
 
 ## A cargo crate
 

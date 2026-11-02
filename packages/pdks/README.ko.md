@@ -9,9 +9,9 @@ Rust 실행 파일 `pdks`는 약속(covenant) 판정기(judge)이며 `covenant c
 ## 설치
 
 `cargo install --locked pdks`는 crates.io의 소스로 실행 파일을 빌드하며, 릴리스를 테스트한 의존성
-버전(crate에 포함된 `Cargo.lock`)을 사용합니다. `cargo binstall pdks`는 `aarch64-apple-darwin`과
-`x86_64-unknown-linux-musl`에서 다음 문단의 Release 압축 파일을 내려받으며, 다른 대상에서는 소스
-빌드로 전환합니다.
+버전(crate에 포함된 `Cargo.lock`)을 사용합니다. `cargo binstall pdks`는 `aarch64-apple-darwin`,
+`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`에서 다음 문단의 Release 압축 파일을
+내려받으며, 다른 대상에서는 소스 빌드로 전환합니다.
 
 ```sh
 cargo install --locked pdks
@@ -19,9 +19,9 @@ cargo binstall pdks
 ```
 
 각 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)는
-`pdks-<target>-v<version>.tar.gz`를 제공합니다. 지원 대상은 `aarch64-apple-darwin`과
-`x86_64-unknown-linux-musl`입니다. 압축 파일에는 같은 이름의 디렉터리 하나가 있으며 실행 파일과
-`LICENSE`가 들어 있습니다. 압축을 풀고 실행 파일을 `PATH`에 둡니다.
+`pdks-<target>-v<version>.tar.gz`를 제공합니다. 지원 대상은 `aarch64-apple-darwin`,
+`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`입니다. 압축 파일에는 같은 이름의 디렉터리
+하나가 있으며 실행 파일과 `LICENSE`가 들어 있습니다. 압축을 풀고 실행 파일을 `PATH`에 둡니다.
 
 또는 [저장소](https://github.com/huskyhoochu/polydeukes)를 복제한 뒤 루트에서 빌드합니다:
 

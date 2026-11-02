@@ -12,8 +12,8 @@
 # re-run after a partial upload publishes only what is missing.
 #
 # The verification gate stands BEFORE the upload and its failure propagates (PRD §5
-# invariant 2): `pnpm -r test` includes the publish-pack and clean-install e2e suites, so a
-# tarball that ships broken contents or fails a real install never reaches the registry.
+# invariant 2): `pnpm -r test` includes the publish-pack e2e suite, so a tarball that ships
+# broken contents never reaches the registry.
 #
 # Provenance lives HERE, not in each manifest: the flag is one line in one file rather than
 # a field repeated across every package.json. `--no-git-checks` because a release event
@@ -77,8 +77,7 @@ jobs:
       # each sibling's dist/index.d.ts, which a fresh checkout does not have.
       - run: pnpm -r typecheck
 
-      # The publish gate: unit suites plus the two DIST-03 e2e suites (tarball contents,
-      # clean-environment install → init → live judgments).
+      # The publish gate: unit suites plus the tarball-contents e2e suite.
       - run: pnpm -r test
 
       - run: node scripts/check-docs.mjs
@@ -188,8 +187,8 @@ jobs:
           if-no-files-found: error
 
   # The Rust executables, one archive each per platform, for the package managers to install
-  # from the Release. Linux links musl statically, so the file runs on any x86_64 Linux whatever
-  # its C library. The tests run the release build for the shipped target, so the packed files
+  # from the Release. Linux links musl statically, so the file runs on any Linux of its
+  # architecture whatever its C library. The tests run the release build for the shipped target, so the packed files
   # are the ones tested; CI covers Linux only, so this is where macOS is tested.
   rust-executables:
     if: ${{ !inputs.python_only }}
@@ -200,6 +199,8 @@ jobs:
             target: aarch64-apple-darwin
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -280,6 +281,86 @@ jobs:
         run: cargo publish --locked ${{ steps.missing.outputs.args }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+  # The npm names `polydeukes`, `@polydeukes/adapter-claude-code`, `@polydeukes/adapter-codex`
+  # and `@polydeukes/memory` carry the same Rust executables, packed from the archives attached to
+  # the tag's Release with a Node launcher that runs the one for the current platform, so each
+  # upload carries the bytes the Release holds at that moment. Each package is installed and run on
+  # every platform it ships before any of them is uploaded.
+  npm-packages:
+    needs: [rust-executables, release-assets]
+    strategy:
+      matrix:
+        runner: [macos-latest, ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Download the Release archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "$GITHUB_REF_NAME" --pattern '*.tar.gz' --dir archives
+
+      # The Release must hold exactly the archives this run built and tested.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-*
+          path: built
+          merge-multiple: true
+
+      - run: diff -r built archives
+
+      - run: node scripts/pack-npm-packages.mjs archives "$(node -p 'require("./package.json").version')" "$RUNNER_TEMP/npm"
+
+      - run: node scripts/verify-npm-packages.mjs "$RUNNER_TEMP/npm"
+
+  # Auth is npm trusted publishing (OIDC), registered for all four names. The upload is skipped
+  # for a version the registry already has, so a re-run publishes only what is missing.
+  publish-npm-binaries:
+    needs: npm-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Download the Release archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "$GITHUB_REF_NAME" --pattern '*.tar.gz' --dir archives
+
+      # The Release must hold exactly the archives this run built and tested.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-*
+          path: built
+          merge-multiple: true
+
+      - run: diff -r built archives
+
+      - run: node scripts/pack-npm-packages.mjs archives "$(node -p 'require("./package.json").version')" "$RUNNER_TEMP/npm"
+
+      - name: Publish the versions the registry does not have yet
+        run: |
+          set -euo pipefail
+          for dir in "$RUNNER_TEMP"/npm/*; do
+            NAME="$(node -p "require('$dir/package.json').name")"
+            VERSION="$(node -p "require('$dir/package.json').version")"
+            STATUS="$(curl --retry 3 -sS -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/$NAME/$VERSION")"
+            case "$STATUS" in
+              200) ;;
+              404) npm publish --provenance --access public "$dir" ;;
+              *) echo "Unexpected npm registry status $STATUS for $NAME" >&2; exit 1 ;;
+            esac
+          done
 
   publish-python:
     needs: executables

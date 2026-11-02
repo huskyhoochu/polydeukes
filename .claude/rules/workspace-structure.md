@@ -17,12 +17,12 @@ registrations is `new-package-checklist.md`.
 
 ## Package roles
 
-- **`packages/polydeukes`** is the **unscoped name reservation** on npm and the umbrella / `pdks`
-  CLI. Subcommands: `covenant check` (the judgment runner over an input IR or a unified diff on
-  stdin), `init` (the agent-neutral scaffold — config file and telemetry ignore line),
-  `adapter <claude-code|codex> init | hook` (native registration and host events), `docs [topic]`
-  (the offline reader over the docs bundled into `dist/docs` at build time), `explain` (the
-  assembled-registration renderer), and
+- **`packages/polydeukes`** is the private TypeScript umbrella / `pdks` CLI source; the npm name
+  `polydeukes` ships the Rust `pdks`. Subcommands: `covenant check` (the judgment runner over an
+  input IR or a unified diff on stdin), `init` (the agent-neutral scaffold — config file and
+  telemetry ignore line), `adapter <claude-code|codex> init | hook` (native registration and host
+  events), `docs [topic]` (the offline reader over the docs bundled into `dist/docs` at build time),
+  `explain` (the assembled-registration renderer), and
   `memory ingest | search | show | obligations | supersession | lint | stats | usage`
   (`src/memory-command.ts`, the one umbrella module that loads `@polydeukes/memory`, by dynamic
   import, and only for this command). It owns the config discovery loader (`loadConfig`) — the one
@@ -42,21 +42,23 @@ registrations is `new-package-checklist.md`.
 - **`packages/core`** (`@polydeukes/core`) is the **thin, domain- and agent-agnostic core**: the
   covenant protocol, the config schema, and the IR vocabulary.
 - **`packages/adapter-claude-code`** and **`packages/adapter-codex`** share three public verbs:
-  `prepareHook`, `registerHook`, and `renderHookResponse`. Each owns its host payload, evidence,
-  native registration, and response format. They peer on core and have no bin. The umbrella depends
-  on both and bundles them into its single executable; `adapter-command.ts` owns their common
-  execution path and `adapter-process.ts` owns process communication and deadlines. Registration
-  pins the executable and project root. Moving the executable requires init from its new location;
-  from a pnpm install, init pins `node_modules/polydeukes/dist/bin.js` rather than the versioned
-  store path. The pinned root is never replaced: a file in a worktree or anywhere outside the root
-  is judged by its absolute path. Each adapter carries a file target under its spelled name and,
-  when it differs, again under its real (`realpathSync.native`) name, so a protected entry that is
-  itself a symlink and a link that leads to one both stay judged; a dangling link or a real path
-  that fails to resolve (other than `ENOTDIR`) refuses the call. Only the PreToolUse registration
-  turns a hook that cannot start into a refusal (Claude `onFailure: block`, Codex `|| exit 2`); the
-  other events never block on failure. Existing project config remains owner-controlled; init
-  reports the required protected paths. Native registration replaces owned legacy commands, removes
-  an exact generated mjs, and preserves user-modified files and sibling handlers. Codex translates
+  `prepareHook`, `registerHook`, and `renderHookResponse`. Both are private; their npm names
+  `@polydeukes/adapter-claude-code` and `@polydeukes/adapter-codex` ship `pdks-claude-code` and
+  `pdks-codex`, respectively. Each owns its host payload, evidence, native registration, and
+  response format. They peer on core and have no bin. The umbrella depends on both and bundles them
+  into its single executable; `adapter-command.ts` owns their common execution path and
+  `adapter-process.ts` owns process communication and deadlines. Registration pins the executable
+  and project root. Moving the executable requires init from its new location; from a pnpm install,
+  init pins `node_modules/polydeukes/dist/bin.js` rather than the versioned store path. The pinned
+  root is never replaced: a file in a worktree or anywhere outside the root is judged by its
+  absolute path. Each adapter carries a file target under its spelled name and, when it differs,
+  again under its real (`realpathSync.native`) name, so a protected entry that is itself a symlink
+  and a link that leads to one both stay judged; a dangling link or a real path that fails to
+  resolve (other than `ENOTDIR`) refuses the call. Only the PreToolUse registration turns a hook
+  that cannot start into a refusal (Claude `onFailure: block`, Codex `|| exit 2`); the other events
+  never block on failure. Existing project config remains owner-controlled; init reports the
+  required protected paths. Native registration replaces owned legacy commands, removes an exact
+  generated mjs, and preserves user-modified files and sibling handlers. Codex translates
   `apply_patch` into file changes and keeps session/subagent evidence from lifecycle events, leaving
   its unstable transcript unread. Prompt text enters witness evidence only with explicit human
   provenance. A changed `.codex/hooks.json` definition needs `/hooks` approval. Code Mode coverage
@@ -107,9 +109,10 @@ registrations is `new-package-checklist.md`.
 - **`packages/sdk-ts`**, **`packages/sdk-rust`** (crate `polydeukes-sdk`), and
   **`packages/sdk-python`** (PyPI `polydeukes-sdk`) are process clients over a standalone `pdks`;
   see `sdk-packages.md`.
-- **`packages/memory`** (`@polydeukes/memory`) is published and is an **optional peer** of the
-  umbrella (`peerDependenciesMeta` optional plus a `devDependencies` entry, which is the turbo build
-  edge). The judgment chain never imports it; see `memory-package.md`.
+- **`packages/memory`** (`@polydeukes/memory`) is private, its npm name ships `pdks-memory`, and it
+  is an **optional peer** of the umbrella (`peerDependenciesMeta` optional plus a `devDependencies`
+  entry, which is the turbo build edge). The judgment chain never imports it; see
+  `memory-package.md`.
 - **`packages/documentation`** (`@polydeukes/documentation`) is **`private`** and publishes nothing:
   it builds the public site at <https://polydeukes.vercel.app> from `docs/`. It carries no judgment
   logic and no internal dependency, so `workspace:^` and the catalog do not apply, and the publish
@@ -146,8 +149,9 @@ GitHub Release by `publish.yml` (`pdks-linux-x64`, `pdks-darwin-arm64`). Build i
 
 `publish.yml`'s `rust-executables` job tests the release build for each shipped target with
 `cargo test --release --locked --target` before building `pdks`, `pdks-claude-code`, `pdks-codex`
-and `pdks-memory` for `aarch64-apple-darwin` and `x86_64-unknown-linux-musl` (musl is statically
-linked). `scripts/pack-rust-executable.sh` packs each executable as
+and `pdks-memory` for `aarch64-apple-darwin`, `x86_64-unknown-linux-musl` and
+`aarch64-unknown-linux-musl` (musl is statically linked); `aarch64-unknown-linux-musl` is built on
+`ubuntu-24.04-arm`. `scripts/pack-rust-executable.sh` packs each executable as
 `<name>-<target>-v<version>.tar.gz` only; GitHub records each asset's digest. The archive entries
 are owned by root and follow cargo binstall's default name and layout: one directory named
 `<name>-<target>-v<version>` holding the executable and `LICENSE` (`pdks-memory` adds `GARU-LICENSE`
@@ -161,6 +165,25 @@ yet, through crates.io trusted publishing, as `publish-crate` does for `sdk-rust
 version is published by hand (see `new-package-checklist.md`). `cargo binstall` finds the Release
 archives through the crates' `repository`, which the root `[workspace.package]` declares together
 with `authors` and `license`.
+
+`pnpm -r publish` publishes only `@polydeukes/core` and `@polydeukes/sdk-ts`.
+`scripts/pack-npm-packages.mjs` builds four npm packages outside the pnpm workspace from the twelve
+Release archives: `polydeukes` ships `pdks`, `@polydeukes/adapter-claude-code` ships
+`pdks-claude-code`, `@polydeukes/adapter-codex` ships `pdks-codex`, and `@polydeukes/memory` ships
+`pdks-memory`. Each package contains the three targets' executables under `bin/<target>/`, the
+archive's license files, the crate's README, and a Node launcher `bin/<name>.js` that selects the
+executable for `darwin arm64`, `linux x64` or `linux arm64`; on any other platform it writes one
+stderr line. The launcher's own failures (unsupported platform or an executable that cannot run)
+exit 1, because a host reads exit 2 from a hook as a block. A child ended by a signal exits 128 plus
+the signal number. The launcher passes `argv[0]` as the `node_modules/.bin` link path when run
+through that link (the basename of `process.argv[1]` equals the command name) and as the bare name
+otherwise, so an extension's `init` registers the `.bin` entry either way. `publish.yml`'s
+`npm-packages` job runs after `rust-executables` and `release-assets` on `macos-latest`,
+`ubuntu-latest` and `ubuntu-24.04-arm`, downloads the archives from the tag's GitHub Release, packs
+the four packages and runs `scripts/verify-npm-packages.mjs`, which installs them with npm into a
+fresh consumer and runs them. The `publish-npm-binaries` job runs after `npm-packages`, packs them
+from the same Release archives and runs `npm publish --provenance --access public` for each version
+the registry does not have, through npm trusted publishing registered for all four names.
 
 ## Shared dependency versions go through the pnpm catalog
 
