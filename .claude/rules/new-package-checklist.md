@@ -69,3 +69,12 @@ dependency group. Its first release requires the owner to configure a PyPI pendi
 environment. The pinned TOML updater exposes parsed scalar nodes as `{value, start, end}`, so the
 lockfile JSONPath filters by `@.name.value` before selecting `.version`; recheck that path when
 upgrading the action.
+
+Measured on 2026-11-04: PyPI accepts a pending publisher for a given owner, repository, workflow and
+environment for one project name only; a second name is refused with "A pending trusted publisher
+matching this configuration has already been registered for a different project name." Ordinary
+trusted publishers on existing projects share the same configuration across several projects. When
+one release adds several new PyPI names, publish each name's first version by hand from the verified
+wheels with an account-scoped API token (`twine upload`), register the trusted publisher on each
+project's Publishing page, then delete the token. A token upload leaves the pending publisher on the
+account's Publishing page; remove it there.

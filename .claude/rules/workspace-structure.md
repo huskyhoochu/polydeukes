@@ -213,6 +213,36 @@ copies the four formulae into `Formula/`, and pushes one commit `pdks <version>`
 when the formulae are unchanged. It pushes nothing when the tap's `Formula/pdks.rb` names a newer
 version than the run's.
 
+`scripts/pack-pypi-wheels.py <archives-dir> <version> <out-dir>`, run as `python -I`, uses only the
+Python standard library and builds twelve wheels from the twelve Release archives: `polydeukes`
+ships `pdks`, `polydeukes-claude-code` ships `pdks-claude-code`, `polydeukes-codex` ships
+`pdks-codex`, and `polydeukes-memory` ships `pdks-memory`, one wheel per name and target. The script
+exits 1 when an archive or license file is missing, or the archives directory holds an archive
+outside its crate and target tables. Each wheel holds the archive's executable unchanged under
+`<dist>-<version>.data/scripts/`, which installers copy into the environment's `bin/`, and its
+license files under `.dist-info/licenses/`; `pdks-memory` adds `GARU-LICENSE` and `EN-KO-LICENSE`
+and carries the crate's `License-Expression` of `MIT AND CC-BY-SA-4.0`. Metadata comes from the
+crate's `Cargo.toml` `description` and `license` (including the workspace license when inherited)
+and its README. The README in each wheel's metadata has its relative links (`./` and `../../`)
+rewritten to `https://github.com/huskyhoochu/polydeukes/blob/v<version>/...`, because PyPI resolves
+relative links against pypi.org. The wheels carry no dependencies, so an extension wheel does not
+install `polydeukes`. The macOS tag is `macosx_11_0_arm64`; each static musl Linux target has one
+wheel tagged with `manylinux_2_17`, `manylinux2014` and `musllinux_1_1` for its architecture, so
+glibc and musl systems install the same file. The executable's zip entry mode is `0o100755`: pip
+keeps the executable bit only when the mode also carries the regular-file type. Entries carry a
+fixed timestamp, so the same archives produce byte-identical wheels on every leg. `publish.yml`'s
+`pypi-wheels` job runs after `rust-executables` and `release-assets` on `macos-latest`,
+`ubuntu-latest` and `ubuntu-24.04-arm`, downloads the tag's Release archives, compares them with
+this run's `rust-*` artifacts using `diff -r`, builds the wheels and runs
+`scripts/verify-pypi-wheels.py`. The verifier installs the platform's four wheels into a fresh venv
+with pip and checks that the judge alone installs only `pdks`, `pdks init` writes no host directory,
+each adapter's `init` registers `<venv>/bin/<name>` and `<venv>/bin/pdks`, the registered command
+blocks a protected write, and `pdks memory search` finds a document. The `ubuntu-latest` leg uploads
+the twelve wheels it built and verified as the `pypi-wheels` artifact. The `publish-pypi-binaries`
+job runs after `pypi-wheels` in the GitHub environment `pypi`, downloads the `pypi-wheels` artifact,
+and uploads it with `pypa/gh-action-pypi-publish` and `skip-existing: true` through PyPI trusted
+publishing registered for all four names. A re-run uploads only the files PyPI does not have.
+
 ## Shared dependency versions go through the pnpm catalog
 
 Versions shared across packages are defined **once** in `pnpm-workspace.yaml` under `catalog:` and

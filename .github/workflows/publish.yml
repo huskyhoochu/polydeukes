@@ -456,6 +456,70 @@ jobs:
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "pdks $VERSION"
           git push origin HEAD:main
 
+  # Each wheel holds one Release executable, unchanged, for one platform.
+  pypi-wheels:
+    needs: [rust-executables, release-assets]
+    strategy:
+      matrix:
+        runner: [macos-latest, ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Download the Release archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "$GITHUB_REF_NAME" --pattern '*.tar.gz' --dir archives
+
+      # The Release must hold exactly the archives this run built and tested.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-*
+          path: built
+          merge-multiple: true
+
+      - run: diff -r built archives
+
+      - run: python -I scripts/pack-pypi-wheels.py archives "$(python -c 'import json; print(json.load(open("package.json"))["version"])')" pypi-wheels
+
+      - run: python -I scripts/verify-pypi-wheels.py pypi-wheels
+
+      # The same archives give byte-identical wheels on every leg, so the wheels this leg built
+      # are the ones each platform verified.
+      - if: matrix.runner == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-wheels
+          path: pypi-wheels/*.whl
+          if-no-files-found: error
+
+  # Auth is PyPI trusted publishing (OIDC), registered for all four names. Files PyPI already
+  # has are skipped, so a re-run uploads only what is missing.
+  publish-pypi-binaries:
+    needs: pypi-wheels
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pypi-wheels
+          path: pypi-wheels
+
+      - uses: pypa/gh-action-pypi-publish@v1.14.3
+        with:
+          packages-dir: pypi-wheels/
+          skip-existing: true
+
   publish-python:
     needs: executables
     if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}
