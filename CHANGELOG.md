@@ -9,6 +9,23 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.23.0](https://github.com/huskyhoochu/polydeukes/compare/v0.22.0...v0.23.0) (2026-11-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* @polydeukes/sdk-ts, the polydeukes-sdk crate, and the polydeukes-sdk Python package no longer export memoryIngest / memory_ingest, MemoryIngestSpec, or MemoryIngestOutcome (Python also drops Ingested), and MemorySearchOutput no longer has ingestedAt. Remove ingest calls; memory search needs pdks-memory on PATH.
+
+### Features
+
+* **release:** publish pdks and its three extensions through a Homebrew tap ([#334](https://github.com/huskyhoochu/polydeukes/issues/334)) ([2a0b65f](https://github.com/huskyhoochu/polydeukes/commit/2a0b65fbda13acb9c6f587dd8f54504889e26033))
+
+
+### Bug Fixes
+
+* align the three SDKs' memory verbs with the Rust pdks-memory ([#330](https://github.com/huskyhoochu/polydeukes/issues/330)) ([3440e5d](https://github.com/huskyhoochu/polydeukes/commit/3440e5dfa5cbf750ee56c9432d60b8d76c3ffb6a))
+* **release:** npm and pnpm installs register the platform executables, not the launchers ([#333](https://github.com/huskyhoochu/polydeukes/issues/333)) ([2fabe7d](https://github.com/huskyhoochu/polydeukes/commit/2fabe7d992ed2ae4b3c183f268992793c176c767))
+
 ## [0.22.0](https://github.com/huskyhoochu/polydeukes/compare/v0.21.1...v0.22.0) (2026-11-02)
 
 
