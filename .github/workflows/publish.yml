@@ -365,6 +365,97 @@ jobs:
             esac
           done
 
+  # The tap huskyhoochu/homebrew-polydeukes installs the Release archives, each checked against the
+  # sha256 digest GitHub recorded for it. The formulae are installed from a local tap and run on
+  # macOS and Linux x64 before the tap gets them.
+  homebrew-formulae:
+    needs: [rust-executables, release-assets]
+    strategy:
+      matrix:
+        runner: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      # The Ubuntu image has Homebrew installed but not on PATH.
+      - if: runner.os == 'Linux'
+        run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
+
+      - name: Write the formulae from the Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/releases/tags/$GITHUB_REF_NAME" --jq .assets > "$RUNNER_TEMP/assets.json"
+          node scripts/homebrew-formulae.mjs "$(node -p 'require("./package.json").version')" "$RUNNER_TEMP/assets.json" "$RUNNER_TEMP/formula"
+
+      - run: node scripts/verify-homebrew-formulae.mjs "$RUNNER_TEMP/formula"
+
+      # The tap gets the files this job verified, not ones written again from a Release that a
+      # later run may have replaced.
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formulae
+          path: ${{ runner.temp }}/formula/*.rb
+          if-no-files-found: error
+
+  # The deploy key in HOMEBREW_PDKS_DEPLOY_KEY may write to the tap repository only. A run whose
+  # formulae equal the tap's makes no commit, and a run for a version older than the tap's pushes
+  # nothing.
+  publish-homebrew:
+    needs: homebrew-formulae
+    runs-on: ubuntu-latest
+    concurrency: homebrew-tap
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: homebrew-formulae
+          path: ${{ runner.temp }}/formula
+
+      # github.com's ed25519 host key, as `gh api meta` publishes it.
+      - name: Push the formulae to the tap
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_PDKS_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p 'require("./package.json").version')"
+          install -m 600 /dev/null "$RUNNER_TEMP/tap-key"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/tap-key"
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap-key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts"
+          git clone git@github.com:huskyhoochu/homebrew-polydeukes.git "$RUNNER_TEMP/tap"
+          TAPPED="$(sed -n 's/^  version "\(.*\)"$/\1/p' "$RUNNER_TEMP/tap/Formula/pdks.rb" 2>/dev/null || true)"
+          if [ -n "$TAPPED" ] && [ "$(printf '%s\n%s\n' "$TAPPED" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+            echo "The tap has $TAPPED, newer than $VERSION."
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/tap/Formula"
+          cp "$RUNNER_TEMP"/formula/*.rb "$RUNNER_TEMP/tap/Formula/"
+          cd "$RUNNER_TEMP/tap"
+          git add Formula
+          if git diff --cached --quiet; then
+            echo "The tap already has the formulae of $VERSION."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "pdks $VERSION"
+          git push origin HEAD:main
+
   publish-python:
     needs: executables
     if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}

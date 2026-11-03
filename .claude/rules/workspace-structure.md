@@ -193,6 +193,26 @@ consumer and runs them. The `publish-npm-binaries` job runs after `npm-packages`
 the same Release archives and runs `npm publish --provenance --access public` for each version the
 registry does not have, through npm trusted publishing registered for all four names.
 
+`scripts/homebrew-formulae.mjs <version> <assets.json> <out-dir>` writes the four formulae of the
+tap `huskyhoochu/homebrew-polydeukes` (`pdks`, `pdks-claude-code`, `pdks-codex`, `pdks-memory`) from
+the tag's Release asset list (`gh api .../releases/tags/<tag> --jq .assets`). Each formula's `url`
+is a Release archive and its `sha256` is the `digest` GitHub records for that asset; a missing asset
+or digest exits 1. On macOS a formula requires arm64; on Linux it picks the x86_64 or aarch64 musl
+archive. The three extension formulae depend on `huskyhoochu/polydeukes/pdks`. `pdks-memory` also
+installs `GARU-LICENSE` and `EN-KO-LICENSE` into its keg. `publish.yml`'s `homebrew-formulae` job
+runs after `rust-executables` and `release-assets` on `macos-latest` and `ubuntu-latest`, puts
+`/home/linuxbrew/.linuxbrew/bin` on PATH only on `ubuntu-latest`, writes the formulae and runs
+`scripts/verify-homebrew-formulae.mjs`, which installs them from a local tap, runs them, and removes
+the tap and the formulae afterwards. Its `ubuntu-latest` leg uploads the formulae it verified as the
+`homebrew-formulae` artifact. An extension installed by Homebrew, with its `init` run by bare name,
+registers `$(brew --prefix)/bin/<name>` and `$(brew --prefix)/bin/pdks`, links that `brew upgrade`
+keeps. The `publish-homebrew` job runs after `homebrew-formulae` in the `homebrew-tap` concurrency
+group, downloads the `homebrew-formulae` artifact, clones the tap over SSH with the write deploy key
+in the `HOMEBREW_PDKS_DEPLOY_KEY` secret (github.com's ed25519 host key is pinned in the step),
+copies the four formulae into `Formula/`, and pushes one commit `pdks <version>` to `main`, or none
+when the formulae are unchanged. It pushes nothing when the tap's `Formula/pdks.rb` names a newer
+version than the run's.
+
 ## Shared dependency versions go through the pnpm catalog
 
 Versions shared across packages are defined **once** in `pnpm-workspace.yaml` under `catalog:` and
