@@ -36,7 +36,7 @@ body:
       description: Paste the output of the command below, plus `node --version`.
       render: shell
       placeholder: |
-        $ npm ls polydeukes @polydeukes/core @polydeukes/adapter-claude-code
+        $ pdks --version
         $ node --version
     validations:
       required: true

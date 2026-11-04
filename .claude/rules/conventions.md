@@ -22,9 +22,12 @@ exception: the npm `keywords` array keeps the industry terms — it is a discove
 ## Commands
 
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
-- Root `pnpm test` completes workspace builds using Turbo's cache, then runs every package's test
-  suite in parallel on each invocation. First run `cargo build -p pdks`: `sdk-ts` e2e tests spawn
-  `target/debug/pdks`.
+- Root `pnpm test` completes the pnpm workspace builds using Turbo's cache, then runs the pnpm
+  packages' test suites in parallel on each invocation. First run `cargo build -p pdks`: `sdk-ts`
+  e2e tests spawn `target/debug/pdks`.
+- Rust crates run `cargo test -p <crate>`; their tests live in `tests/`.
+- `pnpm build` builds `sdk-ts` and `documentation`.
+- In repository agent sessions, read bundled docs with `cargo run -q -p pdks -- docs <topic>`.
 - For a focused e2e run, first run `pnpm build`, then `pnpm -F <package> exec vitest run <file>`;
   focused tests consume the existing build artifacts. For `sdk-ts`, run `cargo build -p pdks` first.
 - Typecheck before either build command. The root has no `typecheck` script:

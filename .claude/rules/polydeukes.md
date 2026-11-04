@@ -16,9 +16,14 @@ Run `pdks docs` for the topic list, `pdks docs <topic>` for topic content,
 `pdks docs search "locale key pairing"` to find a section, or `pdks docs show write-disciplines` to
 retrieve the guide. Add `--lang ko` for Korean.
 
-A local install puts the bin in `node_modules/.bin`, which a plain shell does not have on PATH. If
-`pdks` is not found, run `./node_modules/.bin/pdks docs <topic>` — or your package manager's exec
-form — from the project root.
+In this repository, run `cargo run -q -p pdks -- docs <topic>` from the project root. The same form
+works for `search`, `show` and `--lang ko`, for example:
+
+```sh
+cargo run -q -p pdks -- docs search "locale key pairing"
+cargo run -q -p pdks -- docs show write-disciplines
+cargo run -q -p pdks -- docs <topic> --lang ko
+```
 
 | Before you                                                    | Run                    |
 | ------------------------------------------------------------- | ---------------------- |

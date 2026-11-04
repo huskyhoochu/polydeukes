@@ -7,7 +7,7 @@
       "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "exclude": ["**/node_modules/**", "**/dist/**", "**/build/**"],
       "rootMarkers": ["pnpm-workspace.yaml"],
-      "bin": "./packages/polydeukes/node_modules/.bin/tsc",
+      "bin": "./packages/sdk-ts/node_modules/.bin/tsc",
       "args": ["--lsp", "--stdio"],
       "cwd": "{root}",
       "languageIdByExtension": {

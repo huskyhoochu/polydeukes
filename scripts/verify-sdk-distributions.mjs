@@ -45,9 +45,7 @@ try {
       recursive: true,
     });
   symlinkSync(join(repository, 'packages/sdk-ts/node_modules'), join(sdk, 'node_modules'), 'dir');
-  cpSync(join(repository, 'packages/core/schema'), join(copied, 'packages/core/schema'), {
-    recursive: true,
-  });
+  cpSync(join(repository, 'schema'), join(copied, 'schema'), { recursive: true });
   const generator = join(sdk, 'scripts/generate-types.mjs');
   run(process.execPath, [generator, '--check']);
   const generated = join(sdk, 'src/ir.ts');
@@ -55,7 +53,7 @@ try {
   writeFileSync(generated, `${source}\n// drift\n`);
   run(process.execPath, [generator, '--check'], {}, false);
   writeFileSync(generated, source);
-  const schemaPath = join(copied, 'packages/core/schema/covenant-input.schema.json');
+  const schemaPath = join(copied, 'schema/covenant-input.schema.json');
   const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
   schema.required = schema.required.filter((key) => key !== 'toolCalls');
   writeFileSync(schemaPath, JSON.stringify(schema));
@@ -86,13 +84,7 @@ try {
     join(repository, 'packages/sdk-rust/tests/ir_generated.rs'),
     join(rustGeneration, 'tests/ir_generated.rs'),
   );
-  copyFileSync(
-    join(repository, 'packages/core/package.json'),
-    join(copied, 'packages/core/package.json'),
-  );
-  cpSync(join(repository, 'packages/core/schema'), join(copied, 'packages/core/schema'), {
-    recursive: true,
-  });
+  cpSync(join(repository, 'schema'), join(copied, 'schema'), { recursive: true });
   const rustGenerationArgs = [
     'test',
     '--quiet',
@@ -138,11 +130,6 @@ try {
   assert.equal(Object.keys(metadata.peerDependencies ?? {}).length, 0);
   const packages = readdirSync(join(consumer, 'node_modules/@polydeukes'));
   assert.deepEqual(packages, ['sdk-ts']);
-  const declarations = readdirSync(join(installed, 'dist'))
-    .filter((file) => file.endsWith('.d.ts'))
-    .map((file) => readFileSync(join(installed, 'dist', file), 'utf8'))
-    .join('\n');
-  assert(!/from\s+['"](?:@polydeukes\/core|polydeukes)(?:\/|['"])/.test(declarations));
   for (const file of ['valid', 'invalid'])
     copyFileSync(
       join(repository, `packages/sdk-ts/type-tests/${file}.ts`),

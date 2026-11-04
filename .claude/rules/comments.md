@@ -5,10 +5,10 @@ paths:
 
 # Comments a stranger can read
 
-Every comment in `packages/` is published. It ships to npm inside `dist`, and it is what a reader on
-GitHub sees before they have read anything else. Write for that reader: someone with no access to
-our wiki, no memory of the ticket, and no reason to care which phase of which cycle produced the
-line they are looking at.
+Comments in `packages/` are public source and may ship in package distributions. They are what a
+reader on GitHub sees before they have read anything else. Write for that reader: someone with no
+access to our wiki, no memory of the ticket, and no reason to care which phase of which cycle
+produced the line they are looking at.
 
 Measured 2026-08-27, before the sweep that produced this file: 1,180 coordinate citations across 165
 files pointed into `_docs/`, a gitignored clone of a private wiki that is in no package's `files`
@@ -29,18 +29,16 @@ Cite a published document only where a reader genuinely needs the concept and th
 restate it — a package entry point, or the head of a judge. Twice in one file is duplication; write
 the fact the second time.
 
-Reachability is the test, not the shape of the reference. A step letter a function defines and uses
-inside itself — `judgeShellCommand`'s `(a)`–`(f)` ladder, where "(d) before (e)" is an invariant the
-code cannot state — is a pointer the reader resolves by looking twenty lines up. Keep those.
-`§2-a A6` looked identical and pointed off the machine.
+Reachability is the test, not the shape of the reference. In
+`packages/pdks/src/covenant/shell_mod.rs`, `judge_shell` explains why unread spans are checked
+before commands. A reader can resolve that ordering against the function itself.
 
 Two near-misses that read as reachable and are not. A repo file that no package ships — `AGENTS.md`,
-`.claude/rules/`, this file — is unreachable from an installed `dist`; state the fact instead. And
-`telemetry.ts:136` rots the moment a line is inserted above it: name the function, never the line.
+`.claude/rules/`, this file — is unreachable from an installed package; state the fact instead. And
+`telemetry.rs:136` rots the moment a line is inserted above it: name the function, never the line.
 
-The same token can be reachable in one position and not in another. `(d)` inside `judgeShellCommand`
-points twenty lines up and stays; `(d)` in a test title points at a ladder in another file, so the
-title keeps the descriptive name instead — `breaks (opaque redirect target)`, not `breaks (d)`.
+Test titles name the behavior they verify, such as `breaks (opaque redirect target)`, rather than a
+step letter in another file.
 
 ## Process vocabulary is not a fact about the code
 
@@ -56,9 +54,7 @@ not have this comment change the code wrongly?**
 Two kinds clear it:
 
 - **What the code cannot express** — why a constant holds exactly these members, why a check is
-  deliberately conservative, which invariant an ordering protects. A reader who deletes an "unused"
-  entry from `MUTATING_TOOLS` silently stops judging that tool; no test in the repository catches
-  it. That comment stays.
+  deliberately conservative, which invariant an ordering protects.
 - **Why a fixture is shaped strangely** — a payload built to reproduce one bug, a setup whose
   realism was traded away for discrimination, an ordering the assertion depends on.
 

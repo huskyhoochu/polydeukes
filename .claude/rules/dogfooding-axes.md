@@ -6,12 +6,9 @@ paths:
   - ".codex/hooks.json"
   - "polydeukes.config.yaml"
   - "lefthook.yml"
-  - "packages/polydeukes/src/covenant/**"
-  - "packages/adapter-claude-code/**"
   - "packages/pdks/src/covenant/**"
   - "packages/pdks-claude-code/**"
   - "packages/pdks-codex/**"
-  - "packages/adapter-codex/**"
 ---
 
 # How the two surfaces judge

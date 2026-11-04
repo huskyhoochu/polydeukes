@@ -34,13 +34,13 @@ the test file to understand the expected behavior, then implement.
 
 ## Project context (Polydeukes)
 
-- **Runtime:** Node ≥24, pnpm@10.32.1, ESM (`"type": "module"`), TypeScript 7.0.2 (GA).
-- **Test runner:** vitest. Run a single file during GREEN — `pnpm -F <pkg> exec vitest run <file>`.
+- **Runtime:** Rust (edition 2024); TypeScript packages use Node ≥26, pnpm@12.16.1, ESM
+  (`"type":   "module"`), TypeScript 7.0.2 (GA).
+- **Test runner:** Rust uses `cargo test -p <crate> --test <target> [filter]` in `tests/`. `sdk-ts`
+  uses `pnpm -F <pkg> exec vitest run <file>` in `__tests__/`; its e2e tests need
+  `cargo build -p pdks`. Run the target tests during GREEN.
 - **tsconfig is `strict` + `verbatimModuleSyntax`** — type-only imports MUST be `import type { … }`.
 - **Formatting (Biome):** single quotes, 2-space indent, line width 100. Run `pnpm check` before
   considering the work done.
 - **Ubiquitous language is binding** — never use `guard`/`harness`/`kb`; use
   `covenant`/`discipline framework`/`memory`. See `.claude/rules/domain-terms.md`.
-- **Core stays agent- and domain-agnostic** — `@polydeukes/core` source must contain no
-  agent/tool/language literals (`Edit`/`Write`/`claude`/`vitest`/`pytest`/`go test`). Those belong
-  in config or adapters, never the core. Verify with grep before reporting GREEN.

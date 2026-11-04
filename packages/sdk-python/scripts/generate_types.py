@@ -1,4 +1,4 @@
-"""Generate standard-library TypedDict modules from the two core wire schemas."""
+"""Generate standard-library TypedDict modules from the two wire schemas."""
 
 import argparse
 import importlib.metadata
@@ -15,7 +15,7 @@ def main() -> int:
     if importlib.metadata.version("datamodel-code-generator") != "0.86.0":
         raise RuntimeError("datamodel-code-generator==0.86.0 is required")
     package = Path(__file__).resolve().parents[1]
-    schemas = package.parents[1] / "packages/core/schema"
+    schemas = package.parents[1] / "schema"
     output = package / "src/polydeukes_sdk"
     with tempfile.TemporaryDirectory() as temporary:
         for schema, module in (

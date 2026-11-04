@@ -1,6 +1,6 @@
 ---
 paths:
-  - "packages/polydeukes/src/covenant/**"
+  - "packages/pdks/src/covenant/**"
 ---
 
 # Judging paths and shell lines
@@ -42,15 +42,6 @@ not the inputs that triggered the report.
 Two operator classes that share a character prefix make the scan order the grammar itself —
 redirects must be scanned before control operators, or `cmd &> log` splits wrong. Any new operator
 class needs its position in that order fixed and commented, not just its pattern.
-
-## An allowlist vouches for the command, not for the intent
-
-A read-only head (`cat`, `tail`, `grep`) absolves the line it fronts. That premise breaks in two
-directions: a later stage of the same line can write, and a line the scanner could not finish
-reading could be anything.
-**A layered absolution must never trust a lower layer's
-non-detection**
-— an open `unread` span withdraws the head's vouching power for that line.
 
 ## Green tests do not substitute for adversarial execution
 

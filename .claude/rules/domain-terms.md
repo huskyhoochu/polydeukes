@@ -13,14 +13,12 @@ contract vocabulary is in `package-contract.md`.
 
 ## Core terms
 
-| Concept             | Package / code                                                                                                                                                                               | Verb            | CLI                   |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | --------------------- |
-| **Covenant**        | `polydeukes`'s `src/covenant/` module                                                                                                                                                        | uphold / break  | `pdks covenant check` |
-| **Discipline**      | one `disciplines:` entry (prose + enforcement tag)                                                                                                                                           | —               | `pdks` (root)         |
-| **Memory**          | `@polydeukes/memory` (SQLite + FTS5)                                                                                                                                                         | recall / ingest | `pdks memory search`  |
-| **Witness (valve)** | `ttlWitness` / config `witness:` (meta-covenant valve: the token typed first-line-alone, held `ttlMinutes`) · a declaration's `witness` block (discipline valve: its own `extract`·`relate`) | witness         | —                     |
-
-`core` and `adapter-*` packages keep their plain names.
+| Concept             | Package / code                                                                                                                                                                                                              | Verb           | CLI                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------- |
+| **Covenant**        | `packages/pdks/src/covenant/`                                                                                                                                                                                               | uphold / break | `pdks covenant check` |
+| **Discipline**      | one `disciplines:` entry (prose + enforcement tag)                                                                                                                                                                          | —              | `pdks` (root)         |
+| **Memory**          | `packages/pdks-memory` (markdown queries)                                                                                                                                                                                   | recall         | `pdks memory search`  |
+| **Witness (valve)** | `packages/pdks/src/covenant/ttl_witness.rs` / config `witness:` (meta-covenant valve: the token typed first-line-alone, held `ttlMinutes`) · a declaration's `witness` block (discipline valve: its own `extract`·`relate`) | witness        | —                     |
 
 ## Judgment vocabulary — the telemetry row
 
@@ -58,12 +56,12 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
 
 ## Term usage rules
 
-1. **Code / package names:** English concept word. `upholdCovenant()`, `dispatchCovenants()`.
+1. **Code / package names:** English concept word. `covenant`, `discipline`, `memory`.
 2. **Docs / narrative:** concept word, with context where helpful — "a covenant (a promise both
    agree to share)".
-3. **CLI:** the subcommands in the table above are canonical; `pdks` aliases `polydeukes`. Most
-   verbs are area subcommands (`pdks <area> <verb>`); `docs` is a root verb (`pdks docs [topic]`)
-   because it belongs to no area, and its topic names are a query vocabulary, not domain terms.
+3. **CLI:** the subcommands in the table above are canonical. Most verbs are area subcommands
+   (`pdks <area> <verb>`); `docs` is a root verb (`pdks docs [topic]`) because it belongs to no
+   area, and its topic names are a query vocabulary, not domain terms.
 4. **Never use these words** in any code, doc, or user-facing surface — use the concept term:
    - ❌ `guard` → ✅ `covenant`
    - ❌ `harness` → ✅ `discipline framework`
@@ -78,8 +76,9 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
 ## `rule` — where the jargon survives
 
 - **`rule` survives only as internal jargon for detection primitives** inside judge implementations
-  (the `MutationRule` family — pattern detectors over shell commands). A detector is a machine part,
-  not a practice. Never export it into a user-facing name, folder, config key, or doc.
+  (`packages/pdks/src/covenant/mutation_rules.rs` — pattern detectors over shell commands). A
+  detector is a machine part, not a practice. Never export it into a user-facing name, folder,
+  config key, or doc.
 - Surfaces owned by other tools (an agent's own rules directory) and the npm `keywords` array keep
   their native vocabulary.
 - **Reference docs describe current behavior and use the current vocabulary.**

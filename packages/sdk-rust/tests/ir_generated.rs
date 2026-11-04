@@ -21,14 +21,14 @@ struct Generated {
 
 const GENERATED: [Generated; 2] = [
     Generated {
-        schema_rel: "../core/schema/covenant-input.schema.json",
+        schema_rel: "../../schema/covenant-input.schema.json",
         file_rel: "src/ir.rs",
-        header: "// Generated from packages/core/schema/covenant-input.schema.json by typify. Do not edit;\n// run `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` to regenerate.\n\n",
+        header: "// Generated from schema/covenant-input.schema.json by typify. Do not edit;\n// run `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` to regenerate.\n\n",
     },
     Generated {
-        schema_rel: "../core/schema/memory-search-output.schema.json",
+        schema_rel: "../../schema/memory-search-output.schema.json",
         file_rel: "src/memory.rs",
-        header: "// Generated from packages/core/schema/memory-search-output.schema.json by typify. Do not edit;\n// run `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` to regenerate.\n\n",
+        header: "// Generated from schema/memory-search-output.schema.json by typify. Do not edit;\n// run `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` to regenerate.\n\n",
     },
 ];
 
@@ -71,7 +71,9 @@ fn check(generated: &Generated) {
     // it, a schema that moved would otherwise turn this check off without a word.
     let Ok(schema_text) = fs::read_to_string(&schema_path) else {
         assert!(
-            !manifest_dir.join("../core/package.json").exists(),
+            !manifest_dir
+                .join("../../packages/sdk-rust/Cargo.toml")
+                .exists(),
             "{} is missing inside the repository",
             schema_path.display()
         );

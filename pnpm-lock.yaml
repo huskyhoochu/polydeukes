@@ -167,24 +167,12 @@ catalogs:
     '@types/node':
       specifier: ^26.6.6
       version: 26.6.6
-    ajv:
-      specifier: 8.20.0
-      version: 8.20.0
-    esbuild:
-      specifier: 0.28.2
-      version: 0.28.2
-    postject:
-      specifier: 1.0.0-alpha.6
-      version: 1.0.0-alpha.6
     typescript:
       specifier: 7.0.2
       version: 7.0.2
     vitest:
       specifier: ^5.0.5
       version: 5.0.5
-    yaml:
-      specifier: 2.9.1
-      version: 2.9.1
 
 importers:
 
@@ -199,72 +187,12 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.2.4
         version: 21.2.4
-      '@polydeukes/adapter-claude-code':
-        specifier: workspace:*
-        version: link:packages/adapter-claude-code
-      '@polydeukes/adapter-codex':
-        specifier: workspace:*
-        version: link:packages/adapter-codex
-      '@polydeukes/sdk-ts':
-        specifier: workspace:*
-        version: link:packages/sdk-ts
       lefthook:
         specifier: ^2.2.2
         version: 2.2.2
-      polydeukes:
-        specifier: workspace:*
-        version: link:packages/polydeukes
       turbo:
         specifier: latest
         version: 2.11.10
-
-  packages/adapter-claude-code:
-    devDependencies:
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
-
-  packages/adapter-codex:
-    devDependencies:
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
-
-  packages/core:
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      ajv:
-        specifier: 'catalog:'
-        version: 8.20.0
-      ajv-formats:
-        specifier: 3.0.1
-        version: 3.0.1(ajv@8.20.0)
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
 
   packages/documentation:
     dependencies:
@@ -286,62 +214,6 @@ importers:
       sharp:
         specifier: ^0.34.0
         version: 0.34.5
-
-  packages/memory:
-    dependencies:
-      garu-ko:
-        specifier: 0.9.18
-        version: 0.9.18
-      yaml:
-        specifier: 'catalog:'
-        version: 2.9.1
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
-
-  packages/polydeukes:
-    dependencies:
-      '@polydeukes/adapter-claude-code':
-        specifier: workspace:^
-        version: link:../adapter-claude-code
-      '@polydeukes/adapter-codex':
-        specifier: workspace:^
-        version: link:../adapter-codex
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
-      yaml:
-        specifier: 'catalog:'
-        version: 2.9.1
-    devDependencies:
-      '@polydeukes/memory':
-        specifier: workspace:^
-        version: link:../memory
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      ajv:
-        specifier: 'catalog:'
-        version: 8.20.0
-      esbuild:
-        specifier: 'catalog:'
-        version: 0.28.2
-      postject:
-        specifier: 'catalog:'
-        version: 1.0.0-alpha.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@types/node@26.6.6)(vite@8.1.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
 
   packages/sdk-ts:
     devDependencies:
@@ -1641,14 +1513,6 @@ packages:
   '@vitest/spy@5.0.5':
     resolution: {integrity: sha512-lwJRExuH417257Q5wv9QYugN9IMJkoxcrKrYxGPQkBzl7wlNpTUxD/5yNX4ESKVUIShKPgkGchYPFMWOOk0wzw==}
 
-  ajv-formats@3.0.1:
-    resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
-    peerDependencies:
-      ajv: ^8.0.0
-    peerDependenciesMeta:
-      ajv:
-        optional: true
-
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
 
@@ -1765,10 +1629,6 @@ packages:
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
-
-  commander@9.5.0:
-    resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
-    engines: {node: ^12.20.0 || >=14}
 
   common-ancestor-path@2.0.0:
     resolution: {integrity: sha512-dnN3ibLeoRf2HNC+OlCiNc5d2zxbLJXOtiZUudNFSXZrNSydxcCsSpRzXwfu7BBWCIfHPw+xTayeBvJCP/D8Ng==}
@@ -1978,9 +1838,6 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
-
-  garu-ko@0.9.18:
-    resolution: {integrity: sha512-DuKeyg805H4MY1rCkh/C5igdMMRwU1iL1QXR1xRDSYgJMTqlsAJy5aT3ycRETo2rjkRrPDOJwgcvtpTJcnNf9w==}
 
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
@@ -2497,11 +2354,6 @@ packages:
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
-
-  postject@1.0.0-alpha.6:
-    resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
-    engines: {node: '>=14.0.0'}
-    hasBin: true
 
   prettier@3.9.10:
     resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
@@ -3919,10 +3771,6 @@ snapshots:
 
   '@vitest/spy@5.0.5': {}
 
-  ajv-formats@3.0.1(ajv@8.20.0):
-    optionalDependencies:
-      ajv: 8.20.0
-
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -4097,8 +3945,6 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@11.1.0: {}
-
-  commander@9.5.0: {}
 
   common-ancestor-path@2.0.0: {}
 
@@ -4300,8 +4146,6 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
-
-  garu-ko@0.9.18: {}
 
   get-caller-file@2.0.5: {}
 
@@ -4948,10 +4792,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postject@1.0.0-alpha.6:
-    dependencies:
-      commander: 9.5.0
-
   prettier@3.9.10: {}
 
   prismjs@1.30.0: {}
@@ -5350,7 +5190,8 @@ snapshots:
 
   y18n@5.0.8: {}
 
-  yaml@2.9.1: {}
+  yaml@2.9.1:
+    optional: true
 
   yargs-parser@22.0.0: {}
 

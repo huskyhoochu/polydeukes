@@ -18,11 +18,11 @@ session**
 — an unverified "looks fine" is not an answer. Skipping the block is not an option; "nothing to do"
 is recorded, not implied.
 
-## 1. TSDoc pass (always)
+## 1. Public-symbol comments (always)
 
-Run the `/tsdoc` skill with no arguments — its default scope (uncommitted/untracked files) is
-exactly this session's surface. Let it document exported symbols the session added or changed.
-Record what it did (files touched, or "no exported symbols changed").
+For changed TypeScript files, run `/tsdoc` with no arguments; its default scope is the
+uncommitted/untracked files. For changed Rust files, review public-symbol doc comments against
+`.claude/rules/comments.md`. Record the files documented, or "no exported symbols changed".
 
 ## 2. Docs-drift check (always ask, conditionally act)
 

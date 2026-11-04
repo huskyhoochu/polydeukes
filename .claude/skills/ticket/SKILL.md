@@ -9,9 +9,9 @@ argument: "<ticket-id> (e.g. CORE-03)"
 
 One loop, seven phases. This is the sanctioned path for roadmap ticket work.
 
-Scope guard: this loop is for **ticket work only** (a roadmap ID like CORE-03). Chores and doc edits
-do not enter it — they commit directly to `main` (no unrequested branches, ever) and, when
-substantial, run `/post-task` standalone before committing.
+Scope: this loop is for **ticket work only** (a roadmap ID like CORE-03). Chores and doc edits do
+not enter it — they commit directly to `main` (no unrequested branches, ever) and, when substantial,
+run `/post-task` standalone before committing.
 
 The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → MERGE → ARCHIVE**.
 
@@ -31,22 +31,22 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   and put each of its registrations into the PRD as an acceptance criterion.**
   The rule loads only for the files it names, which subagents write in WORK, so the main session
   would never see it (`ISSUE-63` shipped a package without its release-please entry).
-- **Knowledge is read through the memory index** (`.claude/rules/knowledge-reads.md`). Refresh it
-  with `pnpm exec pdks memory ingest`, then search the ticket's area before writing the PRD — the
-  PRD must build on recorded decisions, not re-derive them:
-  `pnpm exec pdks memory search '<area keywords>'`, and open a hit with
-  `pnpm exec pdks memory show <section id>`.
+- **Knowledge is read through memory** (`.claude/rules/knowledge-reads.md`). Run
+  `cargo build --release -p pdks-memory` once per session, then search the ticket's area before
+  writing the PRD — the PRD must build on recorded decisions, not re-derive them:
+  `./target/release/pdks-memory search '<area keywords>'`, and open a hit with
+  `./target/release/pdks-memory show <section id>`.
 - **Carry-over sweep (separate from the area search):** carried-over items live in the _body_ (§8
   follow-ups) of prior archived PRDs whose filenames share no keyword with the new ticket
   (`foundation.dev-log.preflight-keyword-scan-misses-carryovers.md`), and also by _form_: an
   unchecked `- [ ]` item that names this ticket carries no carry-over word at all
   (`foundation.dev-log.carryover-grep-misses-disposition-sections.md`).
-  `pnpm exec pdks memory obligations <ID>` returns every line the root config's `memory.obligations`
-  rules extract for the ID — the unchecked boxes and the carry-over-marker lines.
-  `pnpm exec pdks memory search <ID>` returns every section that names the ID anywhere. Every hit
-  must be dispositioned in the PRD's scope section — included or explicitly excluded; silence is a
-  miss.
-- **The lookups above do not depend on each other — issue them in one response** after the ingest.
+  `./target/release/pdks-memory obligations <ID>` returns every line the root config's
+  `memory.obligations` rules extract for the ID — the unchecked boxes and the carry-over-marker
+  lines. `./target/release/pdks-memory search <ID>` returns every section that names the ID
+  anywhere. Every hit must be dispositioned in the PRD's scope section — included or explicitly
+  excluded; silence is a miss.
+- **The lookups above do not depend on each other — issue them in one response** after the build.
   The area search and the carry-over sweep read different parts of the archive; running them one per
   turn spends a round trip on each.
 - **The PRD preserves no legacy.** The issue body and every carry-over hit are candidate
@@ -86,17 +86,18 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   - The auditor gets `--tools read,grep,find,ls` — no shell, no editor, as its role file intends.
   - The task file carries the PRD's contract, pseudocode and acceptance list, ends with the `tdd`
     skill's delegation line, and states these rules: do not touch the protected paths (`.claude/`,
-    `.codex/`, `.git/`, `lefthook*.yml`, `biome.json`, `polydeukes.config.yaml`, `.polydeukes/bin/`,
-    `packages/*/dist/`), because pi's tool calls never reach this session's hook; run only the
+    `.codex/`, `.git/`, `lefthook*.yml`, `biome.json`, `polydeukes.config.yaml`,
+    `.polydeukes/bin/`), because pi's tool calls never reach this session's hook; run only the
     changed test files, never `pnpm test` or `pnpm build`; run no git command that writes, since
     commits belong to the main session.
   - After AUDIT the main session stages the surviving test files; after GREEN, an unstaged change
-    under `__tests__/` means the implementer edited a test, and the run is rejected.
+    under `__tests__/` or `tests/` means the implementer edited a test, and the run is rejected.
   - Read the RED output down to each fixture's premise before AUDIT: the model implements a detail
     the task file states wrongly just as literally as a right one.
-- The loop does not proceed until VALIDATE passes (tests + typecheck + `pnpm check`).
+- The loop does not proceed until VALIDATE passes (the language-appropriate tests and checks in
+  `/tdd`).
 - A knowledge document the loop writes besides the PRD (dev-log · ADR · research) carries
-  `ticket: <ID>` in its frontmatter. The memory index reads that key to relate the document to this
+  `ticket: <ID>` in its frontmatter. `pdks-memory` reads that key to relate the document to this
   PRD; the PRD itself takes its ticket from the H1 and carries no `ticket:` key.
 - **Tick each acceptance criterion the moment a run proves it — not at the end.** As every phase
   lands (GREEN goes green, a spawn returns, VALIDATE passes), flip the criteria that run proved to
@@ -143,11 +144,9 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
     self-imposed, so a fix that removes the owner's choice is a regression even when the risk is
     real.
   - **No live-tree probes.** Finders and verifiers read; they never mutate the working tree or run
-    `pnpm build` to test a hypothesis. The session hook loads the built dist, so a mutation probe
-    that reaches dist (a source edit plus a rebuild, or a stub dropped into `dist/`) locks every
-    tool call in this session — twice on 2026-09-07 (SURFACE-02), each recovered only by the owner's
-    terminal. A verifier that needs execution spawns the built bin against a fixture tree it
-    created, never against this repository.
+    `pnpm build` to test a hypothesis. The session hook runs the Rust executables in
+    `.polydeukes/bin/`. A verifier that needs execution spawns the built bin against a fixture tree
+    it created, never against this repository.
 - `/code-review ultra` (cloud multi-agent review, separately billed) is
   **user-triggered
   only**

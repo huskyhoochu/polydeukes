@@ -1,8 +1,8 @@
 // Builds the four npm packages from a release's Rust executable archives:
 //   node scripts/pack-npm-packages.mjs <archives-dir> <version> <out-dir>
 // Each package carries the macOS arm64, Linux x64 and Linux arm64 executables and a Node
-// launcher that runs the one for the current platform. The packages are made outside the pnpm workspace, whose
-// members of the same names are the private TypeScript sources.
+// launcher that runs the one for the current platform. The script builds the packages outside
+// the pnpm workspace.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {

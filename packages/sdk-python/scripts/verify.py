@@ -54,8 +54,8 @@ def check_generation():
         package = root / "packages/sdk-python"
         shutil.copytree(PACKAGE / "src", package / "src")
         shutil.copytree(PACKAGE / "scripts", package / "scripts")
-        schemas = root / "packages/core/schema"
-        shutil.copytree(ROOT / "packages/core/schema", schemas)
+        schemas = root / "schema"
+        shutil.copytree(ROOT / "schema", schemas)
         copied_script = str(package / "scripts/generate_types.py")
         run(sys.executable, copied_script, "--check")
         generated = package / "src/polydeukes_sdk/ir.py"

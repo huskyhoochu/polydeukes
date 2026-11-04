@@ -1,4 +1,4 @@
-/** Generated from core JSON Schema. Run scripts/generate-types.mjs to regenerate. */
+/** Generated from JSON Schema. Run scripts/generate-types.mjs to regenerate. */
 
 /**
  * What `pdks memory search --json` prints on stdout at exit 0. An empty `results` is a search that found nothing; every failure exits non-zero with nothing on stdout. Objects stay open so a host built against this schema keeps reading a newer command's output.

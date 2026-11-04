@@ -11,9 +11,7 @@
 # already-published version, and pnpm skips versions already on the registry, so a
 # re-run after a partial upload publishes only what is missing.
 #
-# The verification gate stands BEFORE the upload and its failure propagates (PRD §5
-# invariant 2): `pnpm -r test` includes the publish-pack e2e suite, so a tarball that ships
-# broken contents never reaches the registry.
+# The verification gate stands BEFORE the upload and its failure propagates.
 #
 # Provenance lives HERE, not in each manifest: the flag is one line in one file rather than
 # a field repeated across every package.json. `--no-git-checks` because a release event
@@ -73,14 +71,11 @@ jobs:
 
       - run: pnpm turbo run build
 
-      # After build: the adapters and the umbrella resolve their workspace siblings through
-      # each sibling's dist/index.d.ts, which a fresh checkout does not have.
       - run: pnpm -r typecheck
 
       # The end-to-end tests of sdk-ts spawn target/debug/pdks.
       - run: cargo build -p pdks
 
-      # The publish gate: unit suites plus the tarball-contents e2e suite.
       - run: pnpm -r test
 
       - run: node scripts/check-docs.mjs
@@ -508,7 +503,7 @@ jobs:
             TAG="$(git describe --tags --exact-match --match 'sdk-python-v*')"
             test "$TAG" = "sdk-python-v$VERSION"
             # Python-only publication requires the other packages to match the released sources.
-            git diff --exit-code "v$VERSION" HEAD -- 'packages/*/src/**' 'packages/*/schema/**' 'packages/*/scripts/**' 'packages/*/package.json' 'packages/sdk-rust/Cargo.toml' 'packages/sdk-rust/build.rs' ':!packages/sdk-python/**'
+            git diff --exit-code "v$VERSION" HEAD -- 'packages/*/src/**' 'schema/**' 'packages/*/scripts/**' 'packages/*/package.json' 'packages/sdk-rust/Cargo.toml' 'packages/sdk-rust/build.rs' ':!packages/sdk-python/**'
           else
             TAG="$(git describe --tags --exact-match --match 'v*')"
             test "$TAG" = "v$VERSION"

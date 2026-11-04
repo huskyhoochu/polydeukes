@@ -51,11 +51,12 @@ blocks. So a test asserting that an ordinary operation still _passes_ carries th
 asserting a violation blocks, and both belong in the suite.
 
 When a test drives the assembled hook rather than a pure judge, assert **who answered**, not only
-what. The hook is fail-closed by construction — a stale `dist`, a failed import, a missing config
-all exit 2 — so an exit-code-only assertion can go green because the judge crashed rather than
-because it judged. The telemetry label separates those two, and the `subject` separates a verdict
-about the right protected path from one about the wrong one. A suite that omits the subject can stay
-green while the logic it names is deleted entirely.
+what. A running judge fails closed when configuration cannot load, while an adapter that cannot
+start the judge lets the call proceed with an install hint. An exit-code-only assertion can go green
+because configuration failed rather than because the intended covenant judged. The telemetry label
+separates those two, and the `subject` separates a verdict about the right protected path from one
+about the wrong one. A suite that omits the subject can stay green while the logic it names is
+deleted entirely.
 
 Beyond that, the recurring bug surfaces in this codebase are boundary conditions where the spec has
 a comparison or a "non-empty" check, forbidden state transitions that are easy to break silently in
@@ -77,8 +78,10 @@ intent, so they get blanket-updated when they break and decay into noise.
 
 ## Project constraints (binding)
 
-- Tests import from `vitest` and live in the package's `__tests__/` directory, outside `src/`, named
-  `*.test.ts`.
+- Rust tests live in `tests/` and run with `cargo test -p <crate> --test <target> [filter]`. Judge
+  and adapter tests spawn the executable.
+- `sdk-ts` tests import from `vitest` and live in `__tests__/`, outside `src/`, named `*.test.ts`.
+  Its e2e tests require `cargo build -p pdks`.
 - tsconfig is `strict` + `verbatimModuleSyntax` — type-only imports MUST be `import type { … }`.
 - `describe`/`it` titles and code comments MUST be in English.
 - Ubiquitous language is binding: `covenant` / `discipline` / `memory` — never `guard`, `harness`,
@@ -86,15 +89,15 @@ intent, so they get blanket-updated when they break and decay into noise.
 - Tool names, protected paths, and similar domain values are **injected fixture values** in tests,
   never source literals — follow the fixture pattern already at the top of the suite you are
   extending.
-- Each `it()` carries a short comment naming the mutation it catches, matching the density and voice
+- Each test carries a short comment naming the mutation it catches, matching the density and voice
   of the surrounding file.
 
 ## Working notes
 
-Extend the existing suite rather than rewriting it; add your own `describe` block and leave shipped
-blocks untouched unless the task says otherwise. When the file already exists, add the block with
-`Edit`; `Write` is for a new file. Rewriting a whole file to append one block spends output tokens
-on lines that did not change and makes the diff unreviewable.
+Extend the existing suite rather than rewriting it; add your own test group and leave shipped blocks
+untouched unless the task says otherwise. When the file already exists, add the block with `Edit`;
+`Write` is for a new file. Rewriting a whole file to append one block spends output tokens on lines
+that did not change and makes the diff unreviewable.
 
 Scratch scripts and quick checks you run along the way need not be kept: remove any temporary file
 you created before reporting, and do not turn a scratch check into an additional permanent test

@@ -23,5 +23,5 @@ changed is not marking an absence.
 No mannered prose. A metaphor substituted for a direct statement ("a dial worth turning" for "a
 parameter worth varying", "earns its keep" for "still matters") makes the reader work to recover the
 literal claim and drags in connotations the writer did not choose. When a literal phrase is
-available, use it. The glossary's own terms (`witness valve`, `umbrella`, `surface`, `covenant`) are
-vocabulary, not figures — they stay; what goes is the ornament around them.
+available, use it. The glossary's own terms (`witness valve`, `surface`, `covenant`) are vocabulary,
+not figures — they stay; what goes is the ornament around them.

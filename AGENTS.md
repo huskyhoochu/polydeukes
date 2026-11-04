@@ -19,7 +19,7 @@ automatically; every other agent reads them first.
 | `.claude/rules/conventions.md`         | binding vocabulary, bilingual docs, build and test commands, tools that stay out                   |
 | `.claude/rules/development-process.md` | the roadmap → PRD → TDD loop, retrofit and `ISSUE-<n>` tickets, Forgejo issues, the milestone gate |
 | `.claude/rules/self-dogfooding.md`     | how this repository judges itself, what is session-protected, recovery from a locked session       |
-| `.claude/rules/knowledge-reads.md`     | knowledge is written under `_docs/` and read through `pdks memory`                                 |
+| `.claude/rules/knowledge-reads.md`     | knowledge is written under `_docs/` and read through `pdks-memory`                                 |
 | `.claude/rules/model-tiers.md`         | which model runs which role                                                                        |
 
 ## Read before touching a path
@@ -39,18 +39,18 @@ rule loading (Codex) do this routing by hand. The rules most often reached:
 | what the two surfaces and three axes compare, the witness valve  | `dogfooding-axes.md`                                  |
 | how adapters build the input IR and what counts as evidence      | `evidence-and-ir.md`                                  |
 | how an acceptance criterion or a measured number must be written | `claims-and-criteria.md`                              |
-| what Rust in `packages/pdks` must reproduce from the TS judge    | `rust.md`                                             |
+| the Rust judge's process contract and implementation constraints | `rust.md`                                             |
 
 ## Where knowledge lives
 
-| Question                                                                 | Source                                                                                             |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| why something was decided, what was measured, what a past ticket changed | the knowledge store: `pnpm exec pdks memory search <words>`, then `show <id>` (`_docs/knowledge/`) |
-| current behaviour in detail                                              | the code and the archived PRDs (`_docs/knowledge/*.prd.*`)                                         |
-| what is planned, open, or blocked                                        | Forgejo issues on `b95labs/polydeukes`; a milestone's description holds its goal and Exit Criteria |
-| how the plan changed over time                                           | `_docs/roadmap.history.md`, read through `pdks memory show`                                        |
-| what a user installs, configures, and recovers                           | `docs/` (English and `*.ko.md`), `pdks docs <topic>`, <https://polydeukes.vercel.app>              |
-| why the project is built this way, in public language                    | `docs/why-polydeukes.md`                                                                           |
+| Question                                                                 | Source                                                                                                    |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| why something was decided, what was measured, what a past ticket changed | the knowledge store: `./target/release/pdks-memory search <words>`, then `show <id>` (`_docs/knowledge/`) |
+| current behaviour in detail                                              | the code and the archived PRDs (`_docs/knowledge/*.prd.*`)                                                |
+| what is planned, open, or blocked                                        | Forgejo issues on `b95labs/polydeukes`; a milestone's description holds its goal and Exit Criteria        |
+| how the plan changed over time                                           | `_docs/roadmap.history.md`, read through `./target/release/pdks-memory show`                              |
+| what a user installs, configures, and recovers                           | `docs/` (English and `*.ko.md`), `cargo run -q -p pdks -- docs <topic>`, <https://polydeukes.vercel.app>  |
+| why the project is built this way, in public language                    | `docs/why-polydeukes.md`                                                                                  |
 
 ## Workflows
 

@@ -1,21 +1,19 @@
 ---
 paths:
-  - "packages/core/src/algebra.ts"
-  - "packages/core/src/catalogue.ts"
-  - "packages/core/src/validation.ts"
-  - "packages/core/schema/**"
-  - "packages/polydeukes/src/covenant/**"
+  - "packages/pdks/src/core/declaration.rs"
+  - "packages/pdks/src/core/validation.rs"
+  - "schema/**"
+  - "packages/pdks/src/covenant/**"
+  - "packages/pdks/src/check.rs"
   - "polydeukes.config.yaml"
   - "docs/reference/declaration-language/**"
 ---
 
 # The declaration grammar — closed lists and where they live
 
-The lists below are closed enumerations. The TypeScript judge defines its grammar in
-`packages/core/src/algebra.ts` and its mechanism catalogue in `packages/core/src/catalogue.ts`; the
-Rust judge defines its grammar and catalogue in `packages/pdks/src/core/declaration.rs`. A name
-outside a judge's closed list is rejected by validation, never coerced. Registering a new unary
-extract step is `extract-vocabulary.md`.
+The lists below are closed enumerations. The judge defines its grammar and mechanism catalogue in
+`packages/pdks/src/core/declaration.rs`. A name outside the judge's closed list is rejected by
+validation, never coerced. Registering a new unary extract step is `extract-vocabulary.md`.
 
 ## Discipline families — what a declaration reads
 
@@ -42,15 +40,15 @@ without a transcript channel such an entry records `skipped` by its own `supply:
   (admitted only by a scope that does not name `target.path`) · `actor` (present where the host
   proved one). A side the change lacks is an absent key — the declaration's `supply` policy, never
   the host, says what that means.
-- **Supply layer** — `planSources` · `supplySources` in the umbrella's covenant module fill the IR's
-  `world` field: `files` through the surface's injected reader, `channels` through its channel
-  reader (`sidecar` is the spawn-record list as JSON text; `'[]'` says the channel observed no
-  spawn, an absent key says there is no channel), `changes` when the surface observes more than it
-  dispatches at once. The judge merges them: a named file this input changes is read from the
-  change's `post` (absent on a deletion), any other from `world.files`, a channel binding from
-  `world.channels`, a transcript binding from the injected `CanonicalTranscript`, flattened once
-  into a plain session snapshot (`observedAtMs` · `userMessages` · `toolCalls`, each observation
-  carrying its ordinal `index`) that the history steps read. core and covenant open no file.
+- **Supply layer** — `packages/pdks/src/check.rs` reads named files and builds the session snapshot;
+  `packages/pdks/src/covenant/discipline.rs` binds these values into the declaration's world. A
+  named file on the session surface is read from the change's `post` when the call changes it
+  (absent on a deletion). A change-set modification reads the file from the tree because its `post`
+  contains only added diff lines. Other files come from the runner's reads. The session supplies
+  sidecar text and the transcript snapshot (`observedAtMs` · `userMessages` · `toolCalls`, each
+  observation carrying its ordinal `index`). `'[]'` says the sidecar observed no spawn; an absent
+  key says there is no channel. The input cannot supply a `world` key. Covenant opens no file; core
+  opens only the telemetry log.
 
 ## Relations, mechanisms, axes
 
@@ -62,14 +60,12 @@ without a transcript channel such an entry records `skipped` by its own `supply:
   `packages/pdks/src/core/declaration.rs`: `pairing` · `companion` · `monotonic-order` ·
   `fingerprint-sync` · `producer-owned` · `self-absolution-ban` · `actor-scope` · `precedent` ·
   `phase-order` · `turn-locality` · `stated-ground` · `controlled-vocabulary` · `naming` ·
-  `added-only` · `one-way-marker` · `scoped-valve` · `forbidden-command`. The TypeScript catalogue
-  in `packages/core/src/catalogue.ts` additionally keeps the reserved `delegated-scope`, making
-  eighteen names; the Rust judge rejects `delegated-scope` as outside its catalogue. Structural
-  markers: `scoped-valve` needs a `witness` block, `naming` scopes on `target.path`,
-  `forbidden-command` scopes on `command`. The derived shape is read from syntax alone (each
-  pipeline's first step gives its sources and axis, every relate entry's `op` a relation) and must
-  be a subset of the spec; a `source` name neither fixed nor bound is refused. `source` may appear
-  only as a pipeline's first step; elsewhere it is a config fault. Use `field` for a field lookup.
+  `added-only` · `one-way-marker` · `scoped-valve` · `forbidden-command`. Structural markers:
+  `scoped-valve` needs a `witness` block, `naming` scopes on `target.path`, `forbidden-command`
+  scopes on `command`. The derived shape is read from syntax alone (each pipeline's first step gives
+  its sources and axis, every relate entry's `op` a relation) and must be a subset of the spec; a
+  `source` name neither fixed nor bound is refused. `source` may appear only as a pipeline's first
+  step; elsewhere it is a config fault. Use `field` for a field lookup.
 - **Axes of a declaration** — `change` · `actor` · `world` · `history`. A fixed source name derives
   `change` except `actor`, which derives `actor`; a `file` or `sidecar` binding derives `world`, a
   `transcript` binding `history`.
@@ -87,7 +83,8 @@ without a transcript channel such an entry records `skipped` by its own `supply:
 - **Relate entry** — `{ id, relation, message | messageBySide }`. Never `rule` in any name.
 - **Paired source** — `source: state` runs the same pipeline over `pre` and `post`. A pair in any
   relation but `unchanged`, or a single extraction under `unchanged`, is a config fault.
-- **Config fault** — the value `compileDeclaration` returns instead of a compiled declaration (a
-  step name outside the registry, an argument outside a step's closed key set, an uncompilable
-  regex, a paired/single mismatch). It names a `location` and is never a throw; the loader collects
-  every entry's fault into one invalid-config error, so assembly never sees one.
+- **Config fault** — the `Fault` returned by `compile_declaration` in
+  `packages/pdks/src/core/declaration.rs` (a step name outside the registry, an argument outside a
+  step's closed key set, an uncompilable regex, a paired/single mismatch). It names a `location` and
+  is never a throw; the loader collects every entry's fault into one invalid-config error, so
+  assembly never sees one.

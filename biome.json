@@ -31,7 +31,7 @@
   "plugins": [
     {
       "path": "./biome-plugins/barrels-only-reexport.grit",
-      "includes": ["packages/*/src/index.ts", "packages/polydeukes/src/claude-code.ts"]
+      "includes": ["packages/*/src/index.ts"]
     },
     {
       "path": "./biome-plugins/production-ignores-the-test-runner.grit",

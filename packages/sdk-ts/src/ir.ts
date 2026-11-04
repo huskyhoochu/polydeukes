@@ -1,4 +1,4 @@
-/** Generated from core JSON Schema. Run scripts/generate-types.mjs to regenerate. */
+/** Generated from JSON Schema. Run scripts/generate-types.mjs to regenerate. */
 
 /**
  * One file's mutation evidence around the judged call, discriminated by `kind`. `delete.pre` is the text baseline when one exists, absent for a binary blob.

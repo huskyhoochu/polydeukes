@@ -1,8 +1,10 @@
 ---
 paths:
-  - "packages/core/__tests__/**"
-  - "packages/adapter-claude-code/__tests__/**"
-  - "packages/polydeukes/__tests__/**"
+  - "packages/pdks/tests/**"
+  - "packages/pdks-*/tests/**"
+  - "packages/sdk-rust/tests/**"
+  - "packages/sdk-ts/__tests__/**"
+  - "conformance/**"
 ---
 
 # Fixtures and what a green test proves

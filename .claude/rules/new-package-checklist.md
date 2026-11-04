@@ -19,9 +19,7 @@ PRD that creates a package lists every item below as an acceptance criterion.
 
 ## An npm package
 
-1. **`vitest.config.ts` alias** — map `@polydeukes/core` to its _source_. The exports map points at
-   `dist`, so without the alias `pnpm -F <pkg> test` breaks on a clean clone.
-2. **`release-please-config.json` `extra-files`** — the list is explicit, so a new package's version
+1. **`release-please-config.json` `extra-files`** — the list is explicit, so a new package's version
    file is not bumped until it is registered.
    **If a release PR is already open, editing
    the config is not enough**:
@@ -34,8 +32,8 @@ PRD that creates a package lists every item below as an acceptance criterion.
    every manifest and `.release-please-manifest.json` to the new version, the CHANGELOG section the
    bot had composed on the closed PR, committed as `chore(main): release X.Y.Z`. An empty `chore:`
    commit is the only rerun — the workflow has no `workflow_dispatch`.
-3. **`workspace:^` for internal dependencies** — never a version range.
-4. **npm trusted publishing is registered per package, and only after the package exists.** A new
+2. **`workspace:^` for internal dependencies** — never a version range.
+3. **npm trusted publishing is registered per package, and only after the package exists.** A new
    name has no access page, so the workflow's OIDC token answers `ENEEDAUTH` and stops the whole
    `pnpm -r publish` walk there. Publish the first version by hand from the tagged tree —
    `pnpm publish --access public --no-git-checks --otp=<authenticator code>` (`npm publish` rejects
@@ -44,16 +42,11 @@ PRD that creates a package lists every item below as an acceptance criterion.
    the workflow. **Which packages the workflow publishes is read off the registry**:
    `dist.attestations` on the latest version is present only when the workflow uploaded it.
 
-The publish e2e suite (`publish-pack.e2e.test.ts`) derives its package set from the non-private
-`packages/*` manifests, so a new package is covered the moment it exists.
-
 ## A cargo crate
 
 A `members` entry in the root `Cargo.toml` (the workspace's `cargo fmt` and `clippy` steps then
 reach it), a `toml` entry in `release-please-config.json` `extra-files` (`$.package.version` of its
-`Cargo.toml`), a `cargo test -p <crate>` step in `.forgejo/workflows/ci.yml` after the build, its
-directory in `NON_NPM_DIRS` of `packages/polydeukes/__tests__/surface-fold-contract.test.ts` (that
-test pins the npm package directories and fails on any other entry under `packages/`), and a
+`Cargo.toml`), a `cargo test -p <crate>` step in `.forgejo/workflows/ci.yml` after the build, and a
 crates.io trusted publisher (repository `huskyhoochu/polydeukes`, workflow `publish.yml`) on the
 crate's settings page. The publisher can only be registered once the crate exists, so the first
 version is published by hand from the tagged tree with a `publish-new` token.

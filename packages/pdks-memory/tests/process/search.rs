@@ -385,7 +385,7 @@ fn the_json_form_has_the_pinned_keys_in_order() {
 #[test]
 fn the_json_output_carries_exactly_the_keys_the_published_schema_declares() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../core/schema/memory-search-output.schema.json");
+        .join("../../schema/memory-search-output.schema.json");
     let schema: Value =
         serde_json::from_str(&std::fs::read_to_string(&path).expect("the schema is readable"))
             .expect("the schema is JSON");

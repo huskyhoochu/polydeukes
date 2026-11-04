@@ -8,9 +8,11 @@ paths:
 
 # Rust in this repository
 
-`packages/pdks` re-implements a process contract that the TypeScript judge defined and the fixtures
-in `conformance/covenant/` pin. Most of what follows exists because general Rust advice and that
-contract disagree somewhere. Researched against stable 1.99.1 (2026-10-30); sources at the end.
+`packages/pdks` implements the process contract pinned by `conformance/covenant/` and run through
+`scripts/verify-covenant-fixtures.mjs`. The adapter contract lives in `conformance/adapter/` and
+runs through `scripts/verify-adapter-fixtures.mjs`. Most of what follows exists because general Rust
+advice and that contract disagree somewhere. Researched against stable 1.99.1 (2026-10-30); sources
+at the end.
 
 ## Toolchain and edition
 
@@ -50,9 +52,8 @@ The one exception is the vendored `packages/pdks-memory/src/garu/` module, silen
   invariant the code itself established a few lines up.
 - **`covenant check` writes nothing to stdout.** The fixture runner fails a case whose stdout is not
   empty, so `print_stdout` stays on; stderr goes through `eprintln!` or an explicit writer.
-- **Strings are UTF-8 here and UTF-16 in the original.** A TS `length`, `slice` or index counts
-  UTF-16 code units. Port string walks with `char_indices` or byte offsets the scan itself produced;
-  `string_slice` catches the rest.
+- **Strings are UTF-8; protocol limits can count UTF-16 code units.** Walk strings with
+  `char_indices` or byte offsets the scan itself produced; `string_slice` catches the rest.
 - **A dropped `Result` is a missing telemetry row.** Telemetry writes are fail-open by design, and
   that is stated where it happens (`let _ = ...` behind an `#[expect]` with the reason), never left
   implicit.
@@ -60,8 +61,8 @@ The one exception is the vendored `packages/pdks-memory/src/garu/` module, silen
 ## Errors
 
 - The binary owns its error text: stderr substrings are contract, compared by the fixtures. Errors
-  are an enum or a `reason: String` whose `Display` is the exact line the TS judge wrote. No
-  `anyhow` or `Box<dyn Error>` context chains, whose `a: b: c` format the contract does not use.
+  are an enum or a `reason: String` whose `Display` matches the fixture contract. No `anyhow` or
+  `Box<dyn Error>` context chains, whose `a: b: c` format the contract does not use.
 - Exit codes are one enum (0 · 2 · 3) mapped in `main`. No other function calls
   `std::process::exit`.
 
@@ -75,7 +76,7 @@ The one exception is the vendored `packages/pdks-memory/src/garu/` module, silen
 - Time is milliseconds since the epoch as `i64`, formatted as ISO-8601 UTC with milliseconds
   (`2026-10-30T00:00:00.000Z`), the shape `Date.prototype.toISOString` produces.
 - Deserialize input with `serde` structs where the shape is fixed, but never `deny_unknown_fields`
-  on the IR: the TS reader accepts top-level keys it does not read.
+  on the IR: the reader accepts top-level keys it does not read.
 - Patterns in the config are JS `RegExp` source, and real configs use lookahead. Compile them with
   `regress` (ECMAScript syntax), never the `regex` crate, which rejects lookaround.
 - `Path::join` with an absolute argument discards the base; Node's `path.join` appends it. A
@@ -86,7 +87,7 @@ The one exception is the vendored `packages/pdks-memory/src/garu/` module, silen
 
 - No `async`, no threads, no `Rc`/`Arc`: one process judges one input and exits.
 - No trait with a single implementation, no builder for a struct literal, no module object for test
-  injection; the TS judge had those for in-process callers this crate does not have.
+  injection.
 - `enum` instead of a `bool` parameter whose meaning is not obvious at the call site; named fields
   instead of tuples beyond a newtype.
 - Tests live in `tests/` and spawn the executable; `src/` holds no test module. The crate has no

@@ -253,8 +253,7 @@ class ContractTests(unittest.TestCase):
         # A missing field or wrong enum cannot masquerade as a schema-compatible hit.
         schema = json.loads(
             (
-                Path(__file__).resolve().parents[3]
-                / "packages/core/schema/memory-search-output.schema.json"
+                Path(__file__).resolve().parents[3] / "schema/memory-search-output.schema.json"
             ).read_text()
         )
         fields = schema["$defs"]["MemorySearchResult"]["required"]
@@ -296,8 +295,7 @@ class ContractTests(unittest.TestCase):
     def test_search_accepts_schema_enums_and_rejects_nonobject_hits(self):
         schema = json.loads(
             (
-                Path(__file__).resolve().parents[3]
-                / "packages/core/schema/memory-search-output.schema.json"
+                Path(__file__).resolve().parents[3] / "schema/memory-search-output.schema.json"
             ).read_text()
         )
         properties = schema["$defs"]["MemorySearchResult"]["properties"]

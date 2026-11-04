@@ -1,9 +1,10 @@
 ---
 paths:
-  - "packages/core/src/config.ts"
-  - "packages/core/src/algebra.ts"
-  - "packages/core/src/validation.ts"
-  - "packages/core/schema/**"
+  - "packages/pdks/src/core/config.rs"
+  - "packages/pdks/src/core/declaration.rs"
+  - "packages/pdks/src/core/validation.rs"
+  - "packages/pdks/src/load_config.rs"
+  - "schema/**"
   - "polydeukes.config.yaml"
 ---
 
@@ -11,6 +12,10 @@ paths:
 
 The config is data and the judgment is code. These are the ways that boundary has been crossed by
 accident.
+
+The root `schema/` contains `polydeukes.schema.json`, `algebra-declaration.schema.json`,
+`covenant-input.schema.json`, and `memory-search-output.schema.json`. SDK types are generated from
+the last two. The root config's `schema-enums-agree` discipline compares the first two.
 
 ## Never ask a semantic question with a syntactic pattern
 
@@ -39,14 +44,11 @@ Assembly-time conditions that ask questions assembly cannot answer produce fail-
 protection. If the answer only exists at judgment time, do not compile the question into a
 registration — move it to the point that has the data, or drop it.
 
-## Empty and malformed config fail in different directions
+## YAML parsing rejects unsupported tags
 
-An unresolved YAML tag surfaces as a _warning_, not a parse error — safe parsing does not mean
-fail-closed parsing. Validation must reject explicitly; do not assume the parser did it.
-
-Zero valid entries must never become universal-uphold. Both judge bodies fail closed on an empty
-list for exactly this reason, and the pair-grid argv parser treats a `--`-prefixed value as a
-shifted grid rather than a value.
+`packages/pdks/src/load_config.rs` parses with `reject_unsupported_tags: true` and
+`strict_booleans: true`; merge keys are ordinary keys. Unsupported tags and duplicate keys fail
+parsing. Configuration validation checks the parsed value before assembly.
 
 ## Added-direction filtering is what makes added-only declarations usable
 

@@ -2,7 +2,7 @@
 
 Self-dogfooding has been on since 2026-07-14. What each axis compares, and the witness valve, are in
 `.claude/rules/dogfooding-axes.md`. Measured host coverage lives in the knowledge store
-(`pnpm exec pdks memory search host measurements`), not here.
+(`./target/release/pdks-memory search host measurements`), not here.
 
 ## What is wired
 
@@ -30,18 +30,19 @@ cannot be witnessed open; perform a protected change from the user's terminal.
 
 ## What blocks
 
-Session-protected: the gate definitions (hook wiring, `.claude/settings.json`, `lefthook.yml`,
-`biome.json`, `.cargo/config.toml`, `.git/hooks`), the packages' gitignored `dist`, and the root
-config. This includes the Codex hook directory, `.codex/hooks.json`, the `.polydeukes/bin`
-directory, and adapter dist. The change-set surface has no list of its own and no prompt: it judges
-the piped diff and lands every verdict `advised` at exit 0 unless the command carries
+Session-protected items include the root config's `protectedPaths` and the loaded config file, which
+the judge appends to that list at run time. The root config is therefore session-protected without
+an explicit list entry. The `transcript-mod` registration protects the session transcript
+separately. The session hooks run the Rust executables in `.polydeukes/bin/`. Rebuilding `sdk-ts` or
+`documentation` cannot lock a session. The change-set surface has no list of its own and no prompt:
+it judges the piped diff and lands every verdict `advised` at exit 0 unless the command carries
 `--enforce block` (this repo's lefthook line does not — a staged gate-file change has already passed
 the session surface).
 
-The protected list above is the only thing that blocks unasked, and only on the session surface;
-nothing promotes a discipline's own `advise` to a block. How the three discipline lists are placed
-and judged is in `dogfooding-axes.md`. Every judgment appends a row to `.polydeukes/roi.log` (local,
-gitignored).
+The configured protected list, the loaded config file, and the session transcript block unasked on
+the session surface; nothing promotes a discipline's own `advise` to a block. How the three
+discipline lists are placed and judged is in `dogfooding-axes.md`. Every judgment appends a row to
+`.polydeukes/roi.log` (local, gitignored).
 
 ## Recovery and rewiring
 
@@ -62,7 +63,8 @@ These stay in a rule without `paths:` because no glob can predict when a session
 - Prove the temporary executables before replacing the protected installed files:
   `node scripts/verify-adapter-fixtures.mjs --command '["<tmp>/pdks-claude-code","hook","--project-root","@@ROOT@@","--pdks","<tmp>/pdks"]'`
   and
-  `node scripts/verify-adapter-fixtures.mjs --command '["<tmp>/pdks-codex","hook","--project-root","@@ROOT@@","--pdks","<tmp>/pdks"]' --cases-dir conformance/adapter/codex`.
+  `node scripts/verify-adapter-fixtures.mjs --command '["<tmp>/pdks-codex","hook","--project-root","@@ROOT@@","--pdks","<tmp>/pdks"]' --cases-dir conformance/adapter/codex`
+
   Replace `<tmp>` with the absolute temporary-directory path. Keep the previous executables until
   the replacement is proven, then replace all three files in `.polydeukes/bin/` from the owner's
   terminal. Root configuration and hook definitions remain protected owner changes.

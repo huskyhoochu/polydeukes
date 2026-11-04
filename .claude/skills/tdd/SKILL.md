@@ -58,9 +58,9 @@ Skipping it is the most frequent root cause of repeating a mistake already recor
 ```text
 ### TDD Pre-flight
 - Task area: <one line — e.g. "core covenant protocol: stdin-JSON parse + exit-code map">
-- area search (`pnpm exec pdks memory search '<keywords>'`):
+- area search (`./target/release/pdks-memory search '<keywords>'`):
   - <section id>: <one-line takeaway>   ← repeat per hit, or "no matches" if zero
-- identifier search (`pnpm exec pdks memory search '<identifier>'` — symbol, file, config key, ticket ID):
+- identifier search (`./target/release/pdks-memory search '<identifier>'` — symbol, file, config key, ticket ID):
   - <section id>: <one-line takeaway>   ← repeat per hit, or "no matches"
   - Skipped because: <reason>   ← only when the area search already answered the area
 - PRD consulted (`_docs/prd/<ID>.md`):
@@ -70,12 +70,13 @@ Skipping it is the most frequent root cause of repeating a mistake already recor
   - Skipped because: <reason>   ← only if no external library API is involved
 ```
 
-**Both searches read the memory index, never the files** (`.claude/rules/knowledge-reads.md`). Run
-`pnpm exec pdks memory ingest` first so the index holds the current documents. The area search takes
-topic words and ranks sections; the identifier search takes the identifiers the cycle will touch
-(symbol, file, config key, ticket ID) — an identifier is exact where a topic word matches every
-neighbouring section, and it reaches a prescription or a carry-over whose keywords never appear in a
-filename. Open a hit with `pnpm exec pdks memory show <section id>`.
+**Both searches use memory, never direct file reads** (`.claude/rules/knowledge-reads.md`). Run
+`cargo build --release -p pdks-memory` once per session before the searches. Each invocation reads
+the current markdown. The area search takes topic words and ranks sections; the identifier search
+takes the identifiers the cycle will touch (symbol, file, config key, ticket ID) — an identifier is
+exact where a topic word matches every neighbouring section, and it reaches a prescription or a
+carry-over whose keywords never appear in a filename. Open a hit with
+`./target/release/pdks-memory show <section id>`.
 
 Every field must be grounded in tool output from this turn (not memory); empty results are valid
 ("no matches"), a missing block is not. The search commands run _in this turn_ — paste the section
@@ -96,9 +97,11 @@ Pre-flight because no production code is produced.
 ### 2. AUDIT — delegate to `tdd-test-auditor`
 
 - Input: test file paths produced by RED. For `audit <path>` entry, the supplied path or glob.
-- Output: per-`it()` Markdown table classifying each test as **P0 / P1 / DELETE** with a 1–2
-  sentence rationale per test, plus a **coverage-gaps** section. Only P0/P1 survive; everything else
-  — including a happy-path already covered by a nearby P0/P1 — is DELETE.
+- Output: per-test (`it()` or Rust `#[test]`) Markdown table classifying each test as
+  **P0 / P1 /
+  DELETE**
+  with a 1–2 sentence rationale per test, plus a **coverage-gaps** section. Only P0/P1 survive;
+  everything else — including a happy-path already covered by a nearby P0/P1 — is DELETE.
 - The gaps section answers a different question from the table: the table asks what bug each test
   catches, the gaps ask which input the suite never tried. A suite can be entirely P0 and still
   blind — that is how COVENANT-07b shipped three defects past a 24-test audit. Read both.
@@ -119,10 +122,9 @@ Pre-flight because no production code is produced.
 ### 4. REVIEW — main session
 
 - Dedupe and rename in both the implementation and the surviving tests.
-- Verify test-implementation alignment: every surviving `it()` should still describe behavior the
+- Verify test-implementation alignment: every surviving test should still describe behavior the
   implementation actually delivers. Auditor deletions can strand helper assertions; fix them here.
-- Check the cross-cutting invariants the PRD names that no test enforces (the core literal gate is
-  `agent-literal-gate.test.ts`, run in VALIDATE).
+- Check the cross-cutting invariants the PRD names that no test enforces.
 - Re-run the runner after every edit. Scope is cosmetic — naming, duplication, drift — behavior must
   not change.
 
@@ -130,9 +132,10 @@ Pre-flight because no production code is produced.
 
 The full gate, run once at the end of the cycle:
 
-- `pnpm -F <pkg> test` (or `pnpm build` / `turbo run test` across packages)
-- `pnpm -F <pkg> typecheck` (`tsc --noEmit`)
-- `pnpm check` (Biome lint + format — also runs on staged files at pre-commit via lefthook)
+- Rust: `cargo test -p <crate>`, `cargo fmt --all --check`, and
+  `cargo clippy -p <crate> --all-targets -- -D warnings`.
+- `sdk-ts`: `cargo build -p pdks` before e2e tests, `pnpm -F @polydeukes/sdk-ts test`,
+  `pnpm -F @polydeukes/sdk-ts typecheck` (`tsc --noEmit`), and `pnpm check`.
 
 If any fails, stop. Do not silence failures with `--no-verify` or targeted skips; diagnose and loop
 back to the phase that owns the failure (usually GREEN or REVIEW).
@@ -142,12 +145,12 @@ self-question) before creating a PR — the cycle is not closed until its block 
 
 ## Test runner
 
-**vitest**. Test files live in each package's `__tests__/` directory (outside `src/`), so the core's
-literal gate, which scans `src/`, never trips on a `vitest` import.
+Rust tests live in each crate's `tests/`. `sdk-ts` uses vitest in `__tests__/`; its e2e tests
+require `cargo build -p pdks`.
 
-| Phase    | Command                                                                                             |
-| -------- | --------------------------------------------------------------------------------------------------- |
-| RED      | the new file only — `pnpm -F <pkg> exec vitest run <path>`: confirm it fails (or passes on purpose) |
-| GREEN    | the new file only — confirm it passes                                                               |
-| REVIEW   | re-run the touched files after each edit                                                            |
-| VALIDATE | the full suite once — `pnpm -F <pkg> test` + typecheck + `pnpm check`                               |
+| Phase    | TypeScript SDK                                                              | Rust                                                                                                       |
+| -------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| RED      | `pnpm -F <pkg> exec vitest run <path>`: confirm failure or intentional pass | `cargo test -p <crate> --test <target> [filter]`: confirm failure or intentional pass                      |
+| GREEN    | Run the new file; confirm it passes                                         | `cargo test -p <crate> --test <target> [filter]`: confirm it passes                                        |
+| REVIEW   | Re-run the touched files after each edit                                    | `cargo test -p <crate> --test <target> [filter]` after each edit                                           |
+| VALIDATE | Full suite, typecheck, and `pnpm check`                                     | `cargo test -p <crate>`, `cargo fmt --all --check`, `cargo clippy -p <crate> --all-targets -- -D warnings` |

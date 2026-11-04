@@ -1,4 +1,4 @@
-// Generated from packages/core/schema/covenant-input.schema.json by typify. Do not edit;
+// Generated from schema/covenant-input.schema.json by typify. Do not edit;
 // run `POLYDEUKES_REGEN_IR=1 cargo test --test ir_generated` to regenerate.
 
 ///Who made the observation. `agentType` is the subagent kind when the call comes from one; the empty object is the main session.

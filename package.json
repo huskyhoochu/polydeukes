@@ -16,11 +16,7 @@
     "@biomejs/biome": "2.6.4",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@polydeukes/adapter-claude-code": "workspace:*",
-    "@polydeukes/adapter-codex": "workspace:*",
-    "@polydeukes/sdk-ts": "workspace:*",
     "lefthook": "^2.2.2",
-    "polydeukes": "workspace:*",
     "turbo": "latest"
   },
   "packageManager": "pnpm@12.16.1",

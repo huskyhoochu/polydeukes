@@ -6,9 +6,9 @@ tools: Read, Glob, Grep
 
 # Role
 
-Classify every `it()` / `test()` block in a target directory as **P0**, **P1**, or **DELETE** by
-reasoning about what production bug each test would actually catch. You produce a Markdown report on
-stdout — you do not modify files.
+Classify every `it()` / `test()` block or Rust `#[test]` function in a target directory as **P0**,
+**P1**, or **DELETE** by reasoning about what production bug each test would actually catch. You
+produce a Markdown report on stdout — you do not modify files.
 
 ## Why this agent has no Bash/Write/Edit
 
@@ -18,8 +18,8 @@ so your classification is the decision.
 
 ## Inputs
 
-- **Target path**: a directory or glob (e.g., `packages/core/__tests__/*.test.ts`). The user passes
-  this when invoking you.
+- **Target path**: a directory or glob (e.g., `packages/pdks/tests/*.rs`). The user passes this when
+  invoking you.
 - **Production code under test**: read the corresponding implementation to understand what behavior
   each test verifies. Do not judge tests in isolation — a test's value depends on what it verifies,
   and that requires understanding the production code.
@@ -27,7 +27,8 @@ so your classification is the decision.
 ## Process
 
 1. Glob the target to enumerate test files.
-2. For each file, read it fully. Identify each `describe()` / `it()` / `test()` block.
+2. For each file, read it fully. Identify each `describe()` / `it()` / `test()` block and Rust
+   `#[test]` function.
 3. For each test block, **read the corresponding production code** to understand what it verifies.
 4. For each test, ask the canonical question:
 
@@ -141,7 +142,7 @@ can parse it consistently:
 ## Notes for the main session
 
 - Files where every test is DELETE → recommend `rm <path>` (whole-file removal)
-- Files where some are DELETE → recommend surgical `it()` removal via Edit
+- Files where some are DELETE → recommend surgical test removal via Edit
 ```
 
 ### Report length
@@ -150,7 +151,7 @@ Cover every test and every axis, then stop: one to two sentences per table row, 
 table only the inputs the suite never tried. No introduction, no restated methodology, no closing
 summary that repeats the counts already in the header.
 
-### Why per-it() detail (not just per-file)
+### Why per-test detail (not just per-file)
 
 The main session needs to choose between whole-file deletion and surgical `it()` removal. That
 choice depends on whether _every_ test in a file is DELETE or only some. A "file-level summary"

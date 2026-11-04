@@ -1,7 +1,10 @@
 ---
 paths:
-  - "packages/core/**"
-  - "packages/adapter-claude-code/**"
+  - "packages/pdks/src/core/**"
+  - "packages/pdks/src/check.rs"
+  - "packages/pdks/src/covenant/discipline.rs"
+  - "packages/pdks-claude-code/**"
+  - "packages/pdks-codex/**"
 ---
 
 # Evidence and the IR
@@ -54,22 +57,17 @@ invents risks that do not exist. Report per-unit, then aggregate — never the r
 
 ## The world axis is supplied, never read by the judge
 
-`CovenantInput.world` is the third axis beside the changes and the transcript: `files` are texts the
-supply layer read for the declarations that named them, `channels` are the surface-resolved evidence
-channels (`sidecar` — the spawn records this host keeps beside the transcript, as JSON text; the
-change-set surface has no session, so it injects no channel reader and every channel is absent there
-by design), `changes` is the observation unit's change set when the surface dispatches narrower than
-it observes (the change-set surface judges one staged change per dispatch). An absent file or
-channel is an absent key — `null` is `FileChange.pre`'s creation marker and means something else,
-and `'[]'` under `sidecar` is a present channel that observed nothing, a different fact from no
-channel. A root supplies what its **supply body** read and nothing more — the readers live in the
-adapters (`sessionSourceReader` · `sessionChannelReader` · `observationSourceReader`), the root only
-injects them; which text a judged change sees is the judge's rule (the change's own `post` wins over
-the disk, since the session surface judges before the edit lands — a rule that never reaches a
-channel, which has no path to overlap). A `transcript` binding is neither a file nor a channel: it
-is the session the root already injects for the context family, flattened into a plain snapshot at
-supply time, and its absence is the absence of that session — the change-set surface has none, so
-`supply: pass` is how a history declaration lands there.
+The runner owns world supply. `packages/pdks/src/check.rs` rejects an input carrying a `world` key,
+reads the files named by declarations, and builds a session snapshot.
+`packages/pdks/src/covenant/discipline.rs` binds the supplied files, sidecar, transcript, and
+observed changes into each declaration's world.
+
+An absent file or channel is an absent key; `'[]'` as sidecar text is a present channel that
+observed no spawn. On the session surface, a file binding for the judged change reads its own
+`post`, absent on deletion. On the change-set surface, a modification reads the file from the tree
+because its `post` contains only the added diff lines. Other file bindings read the supplied file
+text. Transcript bindings read the session snapshot; the change-set surface has no session, so the
+declaration's supply policy decides what that absence means.
 
 ## The actor comes from the host envelope only
 
