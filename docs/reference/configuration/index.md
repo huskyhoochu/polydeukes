@@ -4,31 +4,14 @@
 
 Every key of `polydeukes.config.yaml`, one section per key. The guide — what the file is, how
 discovery fails, and the IDE wiring — is
-[Configuring Polydeukes](../../how-to/configure-project.md), and what a verdict looks like when a
-discipline fires is its
+[Configuring
+Polydeukes](../../how-to/configure-project.md),
+and what a verdict looks like when a discipline fires is its
 [What enforcement looks like](../../how-to/configure-project.md#choose-advise-or-block) section.
 
 For the complete syntax of relations and extraction steps, see the
 [Declaration language
 reference](../declaration-language/index.md).
-
-<a id="languages"></a>
-## `languages`
-
-Optional. The language axis. Keys are your values (`typescript`, `python`, …) — the core ships no
-language names and never interprets the command string. A config without the key, or with an empty
-map, is valid, and no judgment reads these values.
-
-```yaml
-languages:
-  typescript:
-    productionGlob: "packages/*/src/**/*.ts" # what counts as production source
-    testCmd: "pnpm --filter {scope} test" # {scope} is substituted at resolve time
-```
-
-`testCmd` is a template string, not a function. Every `{scope}` occurrence is replaced; all other
-braces (`${VAR}`, `{a,b}`, `awk '{print}'`) pass through untouched. A command that ignores scope
-(`pnpm test`) is equally valid.
 
 <a id="protectedpaths"></a>
 ## `protectedPaths`
@@ -80,10 +63,8 @@ unparseable payload, a routing that could not answer) — plus any entry promote
 
 **A declaration reaches only the surface that observes its channels.** A transcript reader is
 written in `sessionDisciplines` and is never compiled for a change set; a `changes` reader is
-written in `changeSetDisciplines` and is never compiled for one call. The three lists and the rule
-that places an entry in one of them are in
-[the three discipline
-lists](#three-lists).
+written in `changeSetDisciplines` and is never compiled for one call. The three lists and the
+constraint that places an entry in one of them are in [the three discipline lists](#three-lists).
 
 A declaration's `supply` policy still governs a channel the surface registers but the host does not
 prove. A host that carries no session leaves a `sources: { session: { transcript: true } }` entry's
@@ -184,23 +165,17 @@ memory:
       direction: superseded-by
 ```
 
-| Key           | Required | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `include`     | yes      | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are indexed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `exclude`     | no       | A list of globs, relative to the same directory as `include`. A file one of them matches is not indexed, even when `include` reaches it. A glob that matches a directory leaves out every file under it: `docs/releases/*` also leaves out `docs/releases/old/v1.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `typeMap`     | no       | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `ticket`      | no       | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins                                                                                                                                                                                                                                                                                                                                            |
-| `weights`     | no       | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `obligations` | no       | A list of rules that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line rule has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section rule has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` rules; a document without a ticket yields none. An entry has one form or the other                                                                                                                                                                                                                                                                                                                  |
-| `supersedes`  | no       | A list of rules that record which document replaces which. Each rule has `line`, `key`, and `direction`: in every section, each line that `line` matches names one target per match of `key` in that line. `direction: supersedes` means the document replaces the target; `direction: superseded-by` means the target replaces the document. A target resolves first by document name, as a wikilink name does (the document id equals it or ends in `/<target>`, ignoring case, the declaring document's directory first among several), then to the one other document whose ticket equals it; otherwise it stays unresolved and [`pdks memory lint`](../cli/memory.md#lint) reports it. A replaced document's sections rank after the others in search, and [`pdks memory supersession`](../cli/memory.md#supersession) lists the chain |
+| Key           | Required | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `include`     | yes      | A non-empty list of globs, relative to the directory `pdks memory` runs in. The `.md` files they reach are read on every invocation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `exclude`     | no       | A list of globs, relative to the same directory as `include`. A file one of them matches is excluded, even when `include` reaches it. A glob that matches a directory leaves out every file under it: `docs/releases/*` also leaves out `docs/releases/old/v1.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `typeMap`     | no       | Maps a document's frontmatter `type` to the type stored for it. A type the map does not name is stored as written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `ticket`      | no       | An ordered list of ways to derive the ticket stored with a document. `from: title` reads the title; `from: frontmatter` reads the frontmatter field named by `key`; `from: path` reads the document id, the file's path relative to the directory `pdks memory` runs in without `.md` (`text/2094-nll`). `type` limits an entry to documents whose frontmatter `type` equals it, and `pattern` keeps the first match of a regular expression. The first entry that yields a non-empty value wins                                                                                                                                                                                                                                                                                                                                     |
+| `weights`     | no       | Maps a stored type to a non-negative number. A larger weight places that type's sections earlier in search results                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `obligations` | no       | Entries that extract the obligations [`pdks memory obligations`](../cli/memory.md#obligations) lists. A line entry has `line` and `key`: in every section, each line that `line` matches yields one obligation per match of `key` in that line, keyed by the matched text. A section entry has `section` alone: each H2 section whose title `section` matches is one obligation, keyed by the document's ticket from the `ticket` configuration; a document without a ticket yields none. An entry has one form or the other                                                                                                                                                                                                                                                                                                         |
+| `supersedes`  | no       | Entries that record which document replaces which. Each entry has `line`, `key`, and `direction`: in every section, each line that `line` matches names one target per match of `key` in that line. `direction: supersedes` means the document replaces the target; `direction: superseded-by` means the target replaces the document. A target resolves first by document name, as a wikilink name does (the document id equals it or ends in `/<target>`, ignoring case, the declaring document's directory first among several), then to the one other document whose ticket equals it; otherwise it stays unresolved and [`pdks memory lint`](../cli/memory.md#lint) reports it. A replaced document's sections rank after the others in search, and [`pdks memory supersession`](../cli/memory.md#supersession) lists the chain |
 
-Keys outside these seven are rejected, as are an empty `include`, an `exclude` that is not a list or
-holds anything but non-empty strings, a `typeMap` value that is not a non-empty string, a negative
-or non-numeric weight, a `pattern`, `line`, `key`, or `section` that is not a valid regular
-expression, an `obligations` entry that mixes the two forms or lacks a key its form needs, and a
-`supersedes` entry that lacks `line`, `key`, or `direction`, carries another key, or has a
-`direction` other than `supersedes` or `superseded-by`. A change to `typeMap`, `ticket`,
-`obligations`, or `supersedes` reprocesses every document on the next `pdks memory ingest`.
+Configuration changes take effect on the next memory query, which reads the current Markdown.
 
 <a id="three-lists"></a>
 ## The three discipline lists
@@ -239,7 +214,7 @@ A `witness` block's own `extract` is walked with the body's, so a valve reading 
 its entry in `sessionDisciplines` like any other transcript reader.
 
 <a id="placement-rule"></a>
-### The placement rule
+### Placement constraints
 
 `disciplines` takes an entry binding none of the five channels, plus every draft.
 `sessionDisciplines` takes an entry binding at least one session channel and not `changes`.
@@ -350,7 +325,7 @@ sessionDisciplines:
 ```
 
 Each layer list is appended after the config's list of the same name, and the merged config is
-validated as one: the placement rule applies to layer entries, and an id may not appear in both
+validated as one: the placement constraints apply to layer entries, and an id may not appear in both
 files. Everything else — `protectedPaths`, `witness`, `telemetry`, where the world is read — still
 comes from the judged project's config and tree. The layer is not added to `protectedPaths`: keeping
 it where the judged agents cannot write is the caller's arrangement. A layer that cannot be read or
@@ -361,7 +336,7 @@ loaded fails the run closed.
 
 Optional. Each entry is one discipline: a practice the team imposes on itself, declared as data.
 Everything in this section applies to an entry in any of the three lists; which list an entry is
-written in is decided by [the placement rule](#placement-rule), and `sessionDisciplines` and
+written in is decided by [the placement constraints](#placement-rule), and `sessionDisciplines` and
 `changeSetDisciplines` take the same entry shape as `disciplines` minus the draft form. A judged
 entry carries a `declare` block — the one judged form, a declaration whose `scope` lives inside the
 block — an `id` (the telemetry label), and optionally a `why` (the reason, which travels with the
@@ -607,13 +582,14 @@ never carries the other half of a pair. This repository's live config carries on
 when one side is staged without the other. A declaration that needs a file outside the target names
 it in a `sources` block, `sources: { en: { file: 'locales/en.json' } }`, and reads it as
 `{ op: 'source', of: 'en' }`; the path is repo-relative (no leading `/`, no `..` segment) and the
-name may not be one of the seven. The surface reads the file the way it observes the tree — the disk
-in a session, the index for a staged commit, the `<to>` commit for a range — except that a named
-file the change itself touches is read from the change's `post`, so both surfaces judge the same
-text. A second kind, `sources: { spawns: { sidecar: true } }`, names the session's spawn-record
-channel instead of a path — the subagent records the host keeps beside the transcript, supplied as
-one JSON array; where the channel lives is the surface's fact, so the value is the marker `true`,
-and on the change-set surface (which has no session) the channel is always absent. A third kind,
+name may not be one of the seven. Named files are read from the current working tree. A session
+change to a named file supplies its proposed post-state; a diff modification supplies only added
+lines, so the named file is read in full from disk on that surface. Partially staged changes and ref
+comparisons still use current working-tree contents for named files. A second kind,
+`sources: { spawns: { sidecar: true } }`, names the session's spawn-record channel instead of a path
+— the subagent records the host keeps beside the transcript, supplied as one JSON array; where the
+channel lives is the surface's fact, so the value is the marker `true`, and on the change-set
+surface (which has no session) the channel is always absent. A third kind,
 `sources: { session: { transcript: true } }`, names the session's own conversation history — the
 user turns and tool calls the surface reads, handed to the declaration as one snapshot whose entries
 carry their observation ordinal; the history steps (`toolUses`, `userTexts`, `first`, `ageMs`) read
@@ -640,16 +616,15 @@ count beside them). A `skipped` row uses the same field for a reason token inste
 `no-observation` (the surface has no channel for what the entry reads) or `supply-pass` (the
 declaration's own `supply: pass` let an absent source through). A block that cannot compile makes
 the config invalid instead of recording a row. Every declaration also names its `mechanism` — one of
-eighteen catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
+seventeen catalogue names such as `naming`, `companion`, or `pairing` — and the validator refuses a
 name whose shape the declaration does not match: the axes its sources derive (`change` for the fixed
 names other than `actor`, `actor` for `actor`, `world` for a `file` or `sidecar` source, `history`
 for a `transcript` source) and the relations it relates must fall inside what that name admits. A
 block the compiler cannot resolve — a step name outside the registry, an argument outside a step's
-keys — makes the config invalid, and the error names its location. A shell write into the
-declaration's scope whose result the judge can compute (a redirect, a heredoc, an append) is judged
-as the file change it makes; one it cannot compute (`sed -i`, an opaque command) records `skipped`.
-The declaration's own `witness` block joins the human's witness as a second way to open a blocked
-verdict.
+keys — makes the config invalid, and the error names its location. A shell write within a content
+discipline’s scope has no file-content observation, so it records `skipped` with `no-observation`.
+Inspect the finished change using a diff. The declaration's own `witness` block joins the human's
+witness as a second way to open a blocked verdict.
 
-Adding a discipline is a data edit — no code, no plumbing. Custom judge bodies remain the escape
-layer for the few rules data cannot express.
+Adding a discipline is a data edit — no code, no plumbing. Record a draft for a requirement the
+current grammar cannot judge.

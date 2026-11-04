@@ -14,11 +14,11 @@ caller produces the observation, the command judges it and answers with an exit 
 pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
-Without an input-mode flag, stdin is the covenant input IR — the JSON document `@polydeukes/core`
-defines (`toolCalls`, `subagentSpawns`, `userMessages`, and the two optional keys a host adds:
-`tools`, its tool roster, and `session`, the evidence a live agent session carries). With `--diff`,
-stdin is a unified diff and the command translates it into that IR first. `--enforce` is the
-observer's posture for the run and defaults to `advise`: every break lands as a row and exit 0.
+Without an input-mode flag, stdin is the covenant input IR — the JSON document defined by the
+repository input schema (`toolCalls`, `subagentSpawns`, `userMessages`, and the two optional keys a
+host adds: `tools`, its tool roster, and `session`, the evidence a live agent session carries). With
+`--diff`, stdin is a unified diff and the command translates it into that IR first. `--enforce` is
+the observer's posture for the run and defaults to `advise`: every break lands as a row and exit 0.
 `--enforce block` makes a protected path or an entry set to `enforce: block` exit 2.
 `--config-layer` names a [config layer](../configuration/index.md#config-layer) whose discipline
 lists are judged alongside the project's config; a relative path resolves against the working
@@ -109,7 +109,7 @@ disciplines skip on this surface.
 | An IR carrying its own `world` key                                                                                                        | exit `3` — the world axis is the command's to fill                                                                                             |
 | A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays                 | exit `3`, one `blocked` `covenant-check` row — a shape the command cannot judge is refused, never a default                                    |
 | A `session` whose token message is fresh under the config's `witness`                                                                     | the blocked verdict lands `witnessed`, exit `0` — the same valve the session surface opens                                                     |
-| A combined diff (`diff --cc`), an unmatched `---`/`+++`, or an unknown hunk line                                                          | exit `3`, one `blocked` `covenant-check` row                                                                                                   |
+| A combined diff (`diff --cc`), an unmatched `---`/`+++`, an unknown hunk line, or EOF before the declared hunk lines are complete         | exit `3`, one `blocked` `covenant-check` row                                                                                                   |
 | Any other argument                                                                                                                        | exit `2` with the usage line on stderr, stdin unread                                                                                           |
 | Missing, ambiguous, or invalid config                                                                                                     | exit `2`                                                                                                                                       |
 | A `--config-layer` file that is missing, does not parse, carries a key outside the three discipline lists, or repeats an id of the config | exit `2`, one `blocked` `covenant-check` row — the run is never judged without the layer                                                       |
@@ -131,13 +131,13 @@ because the wiring ignored the exit code.
 Each judgment appends one line to the telemetry log. A line has four or five fields separated by
 tabs:
 
-| Field | Value                                                                                                                                                                                                                                                                                                                           |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | ISO 8601 timestamp                                                                                                                                                                                                                                                                                                              |
-| 2     | One of the six verdict words: `passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed`                                                                                                                                                                                                                       |
-| 3     | Label: a meta-covenant (`self-mod`, `shell-mod`, `transcript-mod`), a discipline id, `covenant-check` for the command itself, `baseline` for an `unattributed` row, or `shell-unjudgeable` for a shell call no discipline could read                                                                                            |
-| 4     | Subject: for a meta-covenant, the protected entry the call reached (the first one in config order), not the file under it — and when the call could not be read, the first protected entry of the config or `-`, because an unread call routes fail-closed; for a discipline or `covenant-check`, the judged path; `-` for none |
-| 5     | Optional. On `skipped`, the skip reason (`no-observation` · `config-fault` · `supply-pass`); on any other word, the witness list as a JSON array                                                                                                                                                                                |
+| Field | Value                                                                                                                                                                                                                                                                                                                                                                     |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | ISO 8601 timestamp                                                                                                                                                                                                                                                                                                                                                        |
+| 2     | One of the six verdict words: `passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed`                                                                                                                                                                                                                                                                 |
+| 3     | Label: a meta-covenant (`self-mod`, `shell-mod`, `transcript-mod`), a discipline id, `covenant-check` for the command itself, `baseline` for an `unattributed` row, or `shell-unjudgeable` for a shell call no discipline could read                                                                                                                                      |
+| 4     | Subject: for a meta-covenant, for self-mod, the first matching protected entry in config order; for shell-mod, the entry named by its reason, not the file under it — and when the call could not be read, the first protected entry of the config or `-`, because an unread call routes fail-closed; for a discipline or `covenant-check`, the judged path; `-` for none |
+| 5     | Optional. On `skipped`, the skip reason (`no-observation` · `config-fault` · `supply-pass`); on any other word, the witness list as a JSON array                                                                                                                                                                                                                          |
 
 For a change set, pass `--telemetry-path` with a new file on each call, and that file holds the rows
 of that run alone. A session input is different: its baseline comparison reads the rows the earlier
@@ -212,6 +212,6 @@ diff to that process's stdin; the exit code is the verdict.
 ## See also
 
 - [`pdks explain`](./explain.md)
-- [`@polydeukes/core`](../packages/core.md)
+- [Input IR and schemas](../packages/core.md)
 - [The judge (`covenant` module)](../packages/polydeukes.md#covenant-module)
 - [Configuration reference](../configuration/index.md)

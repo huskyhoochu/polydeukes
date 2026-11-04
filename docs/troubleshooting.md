@@ -11,9 +11,8 @@ judging packages, provided its own installed documentation bundle is intact.
 
 Commands that need configuration exit 2 when none of `polydeukes.config.yaml`,
 `polydeukes.config.yml`, or `polydeukes.config.json` exists directly at the project root. Restore
-the intended file from Git, or use `pdks init` / `pdks adapter claude-code init` /
-`pdks adapter codex init` for a new project. Then run `pdks explain`. No configuration means no
-silent default policy.
+the intended file from Git, or use `pdks init` / `pdks-claude-code init` / `pdks-codex init` for a
+new project. Then run `pdks explain`. No configuration means no silent default policy.
 
 <a id="multiple-config"></a>
 ## More than one config file
@@ -65,20 +64,14 @@ again.
 <a id="judge-cannot-be-loaded"></a>
 ## The judge cannot be started
 
-Check that `pdks` exists and is executable at the registered absolute path. If the executable or
-project moved, run `pdks adapter <host> init` from your own terminal at the new location and check
-host trust again. The single executable contains the judge and both adapters. A source checkout
-using npm packages needs its dependencies and complete workspace build restored.
+Check that both the judge and adapter exist and are executable at their registered absolute paths.
+They are separate installations. After moving either executable or the project, run
+`pdks-claude-code init` or `pdks-codex init` from your own terminal and recheck host trust.
 
-While the registered executable cannot start, both hosts refuse every file-changing or shell tool
-call and the session itself continues: prompts are still submitted, and reading tools still run, so
-you can read the refusal and repair the path. A registration committed from another machine names
-that machine's paths; run init on yours.
-
-A failure before the hook starts may leave no telemetry. A started hook with invalid input sends
-`--input-failure` to the shared judge, producing one diagnostic and one `blocked covenant-check`
-row. Stdin EOF and child communication each have a 10-second internal deadline. Host trust,
-disabling, and timeout handling are separate: check both actual refusal and telemetry.
+If the adapter cannot start, the host can proceed without a message. If the adapter starts but
+cannot start the judge, it prints installation guidance and proceeds. A missing telemetry row is not
+a successful judgment. Repair the paths, then verify new rows for a real ordinary call and a direct
+protected-path probe. [First judgment](./tutorials/first-judgment.md) explains both checks.
 
 <a id="reading-verdict"></a>
 ## Reading a verdict
@@ -112,7 +105,7 @@ configured and no token message is within its window; when it adds
 `the last witness expired at <time>`, the token was sent and its window has passed, so it must be
 sent again. The line never contains the token.
 
-A witness cannot repair missing modules or other failures that prevent judgment assembly.
+A witness cannot repair missing executables or invalid configuration that prevents judgment.
 
 <a id="blocked-commit"></a>
 ## A blocked commit
@@ -149,11 +142,30 @@ lists](./reference/configuration/index.md#three-lists).
 
 Telemetry and `.polydeukes/baseline.json` are local state, not a portable history supplied by Git. A
 clone without them does not reconstruct prior judgments. The memory query log
-`.polydeukes/memory-log.jsonl` is local state too: the memory index can be rebuilt from the
-documents, but the log of what queries returned cannot. The session hook records an absent or
-invalid baseline and establishes one for subsequent comparisons; this is not proof that old changes
-were judged. Preserve needed logs separately when migrating, and check any custom
-`telemetry.logPath` rather than assuming `.polydeukes/` holds all records.
+`.polydeukes/memory-log.jsonl` is local state too: memory search reads the current Markdown
+documents on every invocation, so there is no index file to move. Past query results in the log
+cannot be reconstructed from the documents. The session hook records an absent or invalid baseline
+and establishes one for subsequent comparisons; this is not proof that old changes were judged.
+Preserve needed logs separately when migrating, and check any custom `telemetry.logPath` rather than
+assuming `.polydeukes/` holds all records.
+
+<a id="executable-path"></a>
+## A command or extension cannot be found
+
+For `pdks: command not found` or `no pdks executable on PATH`, install the judge and check that its
+installation directory is on the `PATH` of the terminal or host running the command. For
+`no pdks-<name> executable is on PATH`, install that extension separately too. For example,
+`pdks memory` needs `pdks-memory`.
+
+```sh
+command -v pdks
+command -v pdks-memory
+```
+
+For a local npm installation, check `npx --no-install pdks --version` from the project root. To use
+shell `command -v` or an SDK, add that project's absolute `node_modules/.bin` directory to `PATH`.
+Hosts inherit their environment at startup; restart them after changing it. See the
+[installation routes](./how-to/install.md) and [registration recovery](#judge-cannot-be-loaded).
 
 <a id="next-steps"></a>
 ## Next steps

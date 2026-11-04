@@ -10,22 +10,29 @@
 <a id="quick-start"></a>
 ## 빠른 시작 (Quick start)
 
-프로젝트 루트의 사용자 터미널에서 실행하세요.
-[GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)의 운영체제에 맞는 실행
-파일(`pdks-linux-x64`·`pdks-darwin-arm64`)을 받아 실행 권한을 주고 `pdks`라는 이름으로 `PATH`에
-두세요. Node·npm·`package.json` 없이 두 어댑터와 memory를 포함한 명령을 실행합니다.
-
-### 1. 에이전트 연결하기
+[네 설치 경로](./docs/how-to/install.ko.md) 중 하나를 선택합니다. Homebrew 예제입니다.
 
 ```sh
-pdks adapter claude-code init
-# 또는
-pdks adapter codex init
+brew install huskyhoochu/polydeukes/pdks
+brew install huskyhoochu/polydeukes/pdks-claude-code
 ```
 
-설치기는 설정을 만들고 프로젝트 훅을 병합합니다. Claude Code는 다시 열고, Codex는 `/hooks`에서
-승인하세요. 실제 호출과 `.polydeukes/roi.log`로 연결을 확인하세요. 실행 파일·프로젝트 위치가 바뀌면
-`init`을 다시 실행합니다. Git diff만 사용하려면 `pdks init`을 실행하세요.
+첫 명령은 Rust 판정기, 둘째는 선택 설치 Claude Code 어댑터입니다. Codex는 `pdks-codex`, 프로젝트
+기억(memory)은 `pdks-memory`를 각각 설치합니다.
+
+### 1. 에이전트 연결
+
+소유자 터미널에서 프로젝트 루트로 이동해 실행합니다.
+
+```sh
+pdks-claude-code init
+# Codex 확장을 설치했다면:
+# pdks-codex init
+```
+
+Claude Code를 다시 열거나 Codex `/hooks`에서 승인한 뒤 실제 호출의 `.polydeukes/roi.log`를
+확인합니다. Git diff만 검사한다면 `pdks init`을 실행하세요. 기존 설치에는
+[이행 안내](./docs/how-to/migrate-to-rust.ko.md)를 적용합니다.
 
 ### 2. 첫 규율 설정하기
 
@@ -64,8 +71,11 @@ disciplines:
 선택하세요. diff 판정에서 차단 항목으로 작업을 중단하려면 명령에도 `--enforce block`이 필요합니다.
 
 설정 파일 자체도 에이전트 세션에서 보호됩니다. 직접 편집하거나, 에이전트에게 의도적인 편집을 맡길
-때는 [증인 절차](./docs/how-to/connect-surfaces.ko.md#witness-and-recovery)를 따르세요. Claude
-Code에서는 설치된 `discipline-draft` 스킬에 문제를 설명하면 규율 항목 작성을 도와줍니다.
+때는
+[증인
+절차](./docs/how-to/connect-surfaces.ko.md#witness-and-recovery)를
+따르세요. Claude Code에서는 설치된 `discipline-draft` 스킬에 문제를 설명하면 규율 항목 작성을
+도와줍니다.
 
 ### 3. 결과 확인하기
 
@@ -80,53 +90,30 @@ git diff HEAD | pdks covenant check --diff
 수 있습니다. 추가한 줄을 지우고 다시 실행하면 해당 진단 메시지가 사라져야 합니다.
 
 이어서 [다른 규율 예제](./docs/how-to/write-disciplines.ko.md),
-[pre-commit 연결](./docs/how-to/connect-surfaces.ko.md#change-set-surface)을 읽거나, `pdks docs`로
-설치된 판본의 문서를 확인하세요.
+[pre-commit
+연결](./docs/how-to/connect-surfaces.ko.md#change-set-surface)을
+읽거나, `pdks docs`로 설치된 판본의 문서를 확인하세요.
 
 <a id="status-and-cli"></a>
 ## 현재 상태와 CLI
 
-npm 패키지 여섯 개와 Rust crate 하나가 발행되어 있으며 Python SDK도 제공합니다.
-`@polydeukes/core`(약속(covenant) 프로토콜), 세션 어댑터(`adapter-claude-code`, `adapter-codex`),
-약속 판정과 memory의 세 비동기 동사를 제공하는 TypeScript 클라이언트 `@polydeukes/sdk-ts`, 같은 세
-동사를 Rust 호스트에 제공하는 crate `polydeukes-sdk`, 단일 실행 파일 위의 세 동사를 제공하는
-[Python 패키지 `polydeukes-sdk`](./packages/sdk-python/README.ko.md), `pdks memory`가 쓰는 선택 설치
-마크다운 색인 `@polydeukes/memory`, 그리고 판정기를 포함하며 `pdks` bin(`polydeukes`의 별칭)이 CLI인
-우산(umbrella) 패키지 `polydeukes`입니다. ledger·verify 패키지는 아직 청사진 단계입니다. 오늘의
-CLI는 이렇습니다.
+Rust 본체와 세 선택 확장, TypeScript·Rust·Python SDK를 제공합니다. 판정은 기본적으로 조언을
+기록하며, 작성자가 규율별로 차단을 선택합니다. 설정과 등록 경로의 보호는 별도로 동작합니다.
 
 ```sh
-pdks init                # 프로젝트 초기 파일 생성. 설정 파일과 텔레메트리 제외 항목
-pdks adapter claude-code init  # Claude Code
-pdks adapter codex init        # Codex
-git diff --cached | pdks covenant check --diff      # staged diff 판정 (pre-commit 진입점)
-git diff HEAD | pdks covenant check --diff          # 같은 판정을 작업 트리에
-git diff main...HEAD | pdks covenant check --diff   # ... 또는 ref 범위(PR의 범위)에
-pdks covenant check < input.json                    # 또는 다른 프로그램이 만든 입력 IR에
-pdks explain             # 각 표면이 판정·건너뜀·제외하는 것을 출력 — 판정 없음
-pdks docs [topic]        # 동봉된 문서를 네트워크 없이 열람
-pdks memory ingest       # 프로젝트의 마크다운을 .polydeukes/memory.db에 색인 (단일 실행 파일에 포함)
-pdks memory search <query> | show <id>             # 그 색인을 검색하거나 문서·절을 조회
-pdks memory lint | stats                           # 깨진 링크를 보고하거나 문서·링크·고립 문서 수를 출력
-pdks memory obligations <key>                      # 설정 규칙이 한 키로 추출한 의무를 전부 나열
-pdks memory supersession <id>                      # 문서 하나를 대체했거나 그 문서가 대체한 문서의 사슬을 나열
+pdks init
+pdks explain
+git diff --cached | pdks covenant check --diff
+git diff main...HEAD | pdks covenant check --diff
+pdks docs install
+pdks docs search 'configuration'
 ```
 
-설치기는 `.claude/skills/`에 `discipline-draft` 스킬도 만듭니다. 반복되는 문제를 AI 파트너에게
-설명하면 현재 선언 문법으로 표현할 수 있는지에 따라 설정 항목을 분류합니다. 표현할 수 있으면
-`advise` 판정 항목으로, 없으면 `draft: true` 항목으로 작성합니다.
-
-v0.5.0부터 기본 자세는 진단입니다. 규율을 어겨도 기본적으로 호출을 거부하지 않고 권고를 기록합니다.
-종료 코드는 0이며, 텔레메트리에 `advised` 1행을 남기고 항목의 `why`를 stderr로 출력합니다. 묻지 않고
-차단하는 것은 판정 사슬의 자기 보호뿐이고, 항목의 `enforce: block`은 작성자가 선택하는 승격이며,
-승격 사다리는 `draft` → advise → block입니다.
-
-문서는 패키지 안에 함께 실립니다. 그래서 `pdks docs`는 판정을 수행하는 바로 그 판본의 답을 돌려주고,
-검색 엔진이 색인한 판본과 설치된 판본이 어긋나는 일이 없습니다. 아래 [문서](#문서) 표에는 동봉
-문서와 백서·저널을 시작 안내부터 참조 문서까지 유형별로 묶었습니다. 아직 계획 중인 명령도 있습니다.
-`pdks verify`(적대 검증)와 `pdks ledger start <id>`(작업 추적)는 각자의 패키지와 함께 옵니다.
-
----
+기억 확장을 설치하고 문서 모음을 설정한 뒤에는 `pdks memory search <질의>`와
+`pdks memory show <ID>`로 근거를 찾습니다.
+[사용
+예제](./docs/how-to/use-memory.ko.md)를
+따라 하세요.
 
 <a id="what-it-is"></a>
 ## 무엇인가
@@ -143,48 +130,24 @@ AI에게 똑같이 적용되는 공유된 약속입니다. 이름의 유래와 �
 분리할 수 있는지 분석한 결과가 청사진의 바탕이 되었습니다.
 
 <a id="thin-core-and-packages"></a>
-## 구성. 얇은 코어와 독립 패키지
+## 실행 파일과 SDK
 
-실행 파일이 판정기와 두 호스트 어댑터를 조합합니다. 각 어댑터는 호스트 이벤트를 공통 core 어휘로
-번역하고 판정기는 그 어휘를 소비합니다.
-
-| 패키지                                 | 역할                                                                                                                                                                                                                                                                                                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@polydeukes/core`                     | 약속(covenant) 프로토콜(stdin-JSON / exit-2), 설정 스키마와 그 검증, 대수 선언(algebra declaration) 스키마, 다른 언어의 호스트를 위한 입력 IR JSON Schema, transcript 인터페이스 — 도메인·에이전트에 무지한 최소 코어. 설정을 디스크에서 읽는 일은 core가 아니라 우산의 `loadConfig`가 진다. core가 여는 파일은 자기 텔레메트리 로그뿐이다 |
-| `polydeukes`의 판정기(`src/covenant/`) | 편집·커밋 시점의 결정론적 판정 + 판정 사슬 자체를 보호하는 메타 약속(meta-covenant)                                                                                                                                                                                                                                                        |
-| `@polydeukes/ledger` _(계획)_          | 작업 단위 추적. 완료 권한을 "내가 끝냈다"가 아니라 "검증이 통과했다"는 사실로 이전                                                                                                                                                                                                                                                         |
-| `@polydeukes/memory`                   | 프로젝트의 마크다운 문서를 대상으로 하는 선택 설치 로컬 SQLite + FTS5 색인. `pdks memory ingest`·`search`·`show`·`lint`·`stats`로 쓴다. 기록의 정본은 문서이고, 색인은 문서에서 다시 만든다                                                                                                                                                |
-| `@polydeukes/verify` _(계획)_          | 멀티에이전트 적대적 검증 오케스트레이터                                                                                                                                                                                                                                                                                                    |
-
-지금 제공하는 패키지는 `core`, 우산 `polydeukes`, 세션 어댑터, `sdk-ts`, `sdk-rust`, `sdk-python`,
-`memory`입니다. 나머지가 갖춰진 뒤의 도입 순서는 `covenant` → `memory` → `ledger` → `verify`로
-계획하고 있습니다. `covenant`와 `memory`는 프로젝트 규모와 무관하게 가치를 낼 것으로 보고,
-`ledger`·`verify`는 다중 워크트리·팀 워크플로 규모를 대상으로 합니다.
+| Component                | Role                                                |
+| ------------------------ | --------------------------------------------------- |
+| `pdks`                   | Configuration, judgment, explanation, embedded docs |
+| `pdks-claude-code`       | Claude Code 이벤트 번역과 훅 등록                   |
+| `pdks-codex`             | Codex 이벤트 번역, 도구 이력, 훅 등록               |
+| `pdks-memory`            | 현재 마크다운 조회, 링크와 로컬 사용 이력           |
+| `@polydeukes/sdk-ts`     | TypeScript 프로세스 클라이언트                      |
+| `polydeukes-sdk` (crate) | Rust 프로세스 클라이언트                            |
+| `polydeukes-sdk` (PyPI)  | Python 프로세스 클라이언트                          |
 
 <a id="design-blueprint"></a>
-## 설계 청사진 (요약)
+## 설계 원칙
 
-추출 전략의 핵심은 단방향 층위입니다. **범용 코어가 안쪽, 도메인이 바깥**이고, 모든 의존은 안쪽
-코어를 향하며 되돌아 나오는 의존은 없습니다. 코어는 특정 제품도, 특정 AI 런타임도 모릅니다.
-
-```text
-pdks (CLI · 공통 실행 · 판정기)
-  ├── adapter-claude-code ──┐
-  └── adapter-codex ────────┴── core (공통 어휘 · 스키마)
-
-sdk-ts / sdk-rust / sdk-python ── 실행 파일 호출 ── pdks
-```
-
-분리 원칙은 셋입니다.
-
-- **언어 ⊥ 에이전트.** 테스트 명령·경로 glob 같은 언어(TS/Python/Go) 결합은
-  `polydeukes.config.yaml`로, transcript 스키마 같은 AI 런타임 결합은 `adapter-*`로 갑니다. 둘은
-  직교합니다.
-- **본질 대 우연.** "검증은 exit code로 판정한다"가 본질이고 "그 명령이 vitest다"는 우연이라
-  config로 갑니다. "지식은 로컬 SQLite 파일이다"가 본질이고 "그 파일이 S3에 산다"는 우연이라 동기화
-  어댑터로 갑니다.
-- **측정을 1급 시민으로.** covenant ROI와 기억(memory) 검색 텔레메트리를 수집해 폐루프로 되돌립니다.
-  "더 안전한 코드를 만든다"를 데이터로 입증합니다.
+어댑터가 관측 증거를 공급하고 판정기는 선언된 약속과 비교합니다. 증거가 없으면 그 한계를 결과로
+드러냅니다. [설계 설명](./docs/why-polydeukes.ko.md)은 관측 경계, 증인, 조언과 차단의 이유를
+설명합니다.
 
 <a id="documents"></a>
 ## 문서
@@ -226,3 +189,21 @@ sdk-ts / sdk-rust / sdk-python ── 실행 파일 호출 ── pdks
 ## 라이선스
 
 [MIT](./LICENSE)
+
+<a id="learning-path"></a>
+## 가이드 읽는 순서
+
+처음 사용하는 사람은 **설치 → 첫 판정 → 연결·설정 → 규율 작성** 순서로 시작하세요.
+
+| 하고 싶은 일                | 안내                                                      |
+| --------------------------- | --------------------------------------------------------- |
+| 설치 경로와 확장 선택       | [설치](./docs/how-to/install.ko.md)                       |
+| 정상·차단 결과를 직접 보기  | [첫 판정](./docs/tutorials/first-judgment.ko.md)          |
+| 에이전트·Git·CI에 연결      | [표면 연결](./docs/how-to/connect-surfaces.ko.md)         |
+| 반복되는 실수를 규율로 표현 | [규율 작성](./docs/how-to/write-disciplines.ko.md)        |
+| 결정과 근거를 다시 찾기     | [기억 사용](./docs/how-to/use-memory.ko.md)               |
+| 프로그램에서 판정 호출      | [SDK와 참조 문서](./docs/README.ko.md#reference-packages) |
+| 건너뜀·차단·설치 오류 해결  | [문제 해결](./docs/troubleshooting.ko.md)                 |
+| 이전 설치 업그레이드        | [Rust 이행](./docs/how-to/migrate-to-rust.ko.md)          |
+
+전체 학습 경로와 명령별 참조는 [문서 홈](./docs/README.ko.md)에 있습니다.

@@ -9,9 +9,10 @@
 cargo add polydeukes-sdk
 ```
 
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 Linux x64 또는 macOS
-arm64용 단일 실행 파일 `pdks`를 설치하고 실행 권한을 준 뒤 `executable`이나 `PATH`의 절대 디렉터리로
-선택합니다. crate는 그 파일을 직접 실행하므로 Node와 npm 설치가 필요하지 않습니다.
+[설치 안내](../../docs/how-to/install.ko.md#releases)에 따라 Linux x64, Linux arm64 또는 macOS
+arm64용 `pdks`를 설치합니다. Release에서 내려받았다면 먼저 `.tar.gz` 압축을 풀고, 추출한 실행 파일을
+`executable`이나 `PATH`의 절대 디렉터리로 선택합니다. crate는 그 파일을 직접 실행하므로 Node나 npm
+설치가 필요하지 않습니다.
 
 <a id="overview"></a>
 ## 개요
@@ -33,6 +34,10 @@ arm64용 단일 실행 파일 `pdks`를 설치하고 실행 권한을 준 뒤 `e
 
 <a id="examples"></a>
 ## 예시
+
+예제는 설정이 있는 프로젝트 루트에서 실행합니다. 새 예제 프로젝트라면 먼저 `pdks init`을 실행하세요.
+기억 예제를 실행하려면 [기억 사용 안내](../../docs/how-to/use-memory.ko.md)에 따라 확장과 문서
+모음도 준비합니다. 판정 불가나 검색 불가를 성공으로 처리하지 마세요.
 
 ```rust
 use polydeukes_sdk::{check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput};
@@ -61,8 +66,9 @@ match verdict {
 대신 `diff`를 받고 `a/`, `b/` 뒤의 경로는 `repo_root` 기준입니다. API는 블로킹이며 비동기 호스트는
 블로킹 작업에서 실행합니다.
 
-기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
-`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
+기억 검색은 `pdks memory ...`를 통해 SDK 프로세스의 `PATH`에 있는 `pdks-memory`를 실행합니다.
+[설치 안내](../../docs/how-to/install.ko.md)에 따라 확장을 설치하고, 로컬 npm 설치라면 SDK를
+실행하기 전에 프로젝트의 `node_modules/.bin` 절대 경로를 `PATH`에 추가하세요. 실행 파일이 없으면
 `pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
 
 기억 spec은 `root`를 받고 검색에는 `query`, 선택 `limit: NonZeroU32`를 더합니다. 유효한 빈 검색
@@ -78,3 +84,8 @@ match verdict {
 
 - [전체 API, 증거, 전환](../../docs/reference/packages/sdk-rust.ko.md)
 - [TypeScript SDK](../../docs/reference/packages/sdk-ts.ko.md)
+
+[전체 설치 안내](../../docs/how-to/install.ko.md) · [기억 사용](../../docs/how-to/use-memory.ko.md)
+·
+[이행
+안내](../../docs/how-to/migrate-to-rust.ko.md)

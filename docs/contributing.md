@@ -36,7 +36,7 @@ previous slug or explicit id.
 - `documents` entries carry `id`, `category`, `order`, `bundled`, and `en`/`ko`
   `{path,title,summary}`. Write titles and summaries as plain text. Markdown formatting such as
   backticks is displayed literally in website titles and navigation.
-- `bundled: true` files are copied into the installed `pdks docs` library. `bundled: false` files
+- `bundled: true` files are embedded in the executable for `pdks docs`. `bundled: false` files
   appear in the repository and on the documentation website; `pdks docs` excludes them. This page
   and the design explanation are `bundled: false`.
 
@@ -74,7 +74,7 @@ the hook probe in [the first-judgment tutorial](./tutorials/first-judgment.md) f
 
 TypeScript examples import only symbols a package contract exports. The umbrella publishes no
 TypeScript entry point — it is reached as the `pdks` bin — so those symbols come from
-`@polydeukes/core` or an agent adapter.
+`@polydeukes/sdk-ts`.
 
 Before committing a docs change, run:
 
@@ -88,10 +88,8 @@ existing file and, when they carry a fragment, to an existing heading slug or ex
 <a id="check-commands"></a>
 ## What to run
 
-| Command                                                                                                  | What it checks                                         |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `node scripts/check-docs.mjs`                                                                            | Pairs, catalog, local links and anchors                |
-| `pnpm -F polydeukes exec vitest run __tests__/check-docs.test.ts`                                        | Checker regressions                                    |
-| `pdks docs search <query>` / `pdks docs show <id>`                                                       | Installed bundle after a build that copies `docs/`     |
-| `pnpm -F polydeukes exec vitest run __tests__/declaration-reference.test.ts __tests__/sync-docs.test.ts` | Complete vocabulary tables and website transformations |
-| `pnpm -F @polydeukes/documentation build`                                                                | Generated content, routes, and static website build    |
+| Command                                            | What it checks                                      |
+| -------------------------------------------------- | --------------------------------------------------- |
+| `node scripts/check-docs.mjs`                      | Pairs, catalog, local links and anchors             |
+| `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after rebuilding the executable    |
+| `pnpm -F @polydeukes/documentation build`          | Generated content, routes, and static website build |

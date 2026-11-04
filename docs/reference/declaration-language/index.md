@@ -11,7 +11,8 @@ the [configuration reference](../configuration/index.md).
 ## Declaration structure
 
 A judged entry has `id`, `declare`, and optional `why` and `enforce` fields. Put it in the
-[list that can observe its sources](../configuration/index.md#three-lists).
+[list
+that can observe its sources](../configuration/index.md#three-lists).
 
 | Field inside `declare` | Required | Meaning                                                                             |
 | ---------------------- | -------- | ----------------------------------------------------------------------------------- |
@@ -370,21 +371,23 @@ mechanism does not supply a predicate; write the extraction and comparison yours
 | `naming`                | `change`                              | `empty`, `nonEmpty`    | `scope.source` must be `target.path`.           |
 | `added-only`            | `change`                              | `empty`                | Usually compares the `post`/`pre` difference.   |
 | `one-way-marker`        | `change`                              | `subset`               | Require selected values to remain present.      |
-| `delegated-scope`       | —                                     | —                      | Reserved; rejected at load time.                |
 | `scoped-valve`          | `change`, `actor`, `world`, `history` | All seven              | A declaration `witness` block is required.      |
 | `forbidden-command`     | `change`                              | `empty`                | `scope.source` must be `command`.               |
 
-The 18 names include one reserved name, so 17 can be used. Mechanism constraints and
-[discipline-list placement](../configuration/index.md#placement-rule) are separate checks.
+The Rust judge accepts these 17 mechanism names. Mechanism constraints and
+[discipline-list
+placement](../configuration/index.md#placement-rule)
+are separate checks.
 
 <a id="validation"></a>
 ## Validate a declaration
 
-Run `pnpm exec pdks explain` and confirm the entry is a `declare` registration on the intended
-surface. A declaration that cannot compile, such as an unregistered step, a wrong step argument, or
-a paired/single mismatch, fails configuration loading with its location and reason, as unknown keys
+Run `pdks explain` and confirm the entry is a `declare` registration on the intended surface. A
+declaration that cannot compile, such as an unregistered step, a wrong step argument, or a
+paired/single mismatch, fails configuration loading with its location and reason, as unknown keys
 and invalid source/list combinations do.
 
 Then exercise a violating input and a valid input through the matching surface. See
-[the worked locale example](../../how-to/write-disciplines.md#locale-key-pairing). An exit code of 0
-alone is insufficient: `advised` and `skipped` can both exit 0.
+[the worked
+locale example](../../how-to/write-disciplines.md#locale-key-pairing).
+An exit code of 0 alone is insufficient: `advised` and `skipped` can both exit 0.

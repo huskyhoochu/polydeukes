@@ -5,18 +5,29 @@
 Polydeukes is a development discipline framework for building alongside an AI coding partner. Choose
 a guide for your task below.
 
+
+<a id="여기서-시작하십시오"></a>
+
 <a id="start-here"></a>
 ## Start here
 
-| If you want to                      | Read                                                                                                                 |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Get to a first visible judgment     | [First judgment](./tutorials/first-judgment.md) — install, wire Claude Code, and watch one protected edit get judged |
-| Connect Claude Code, Codex, or git  | [Connect the surfaces](./how-to/connect-surfaces.md) — session and commit setup, including Codex                     |
-| Shape the project config            | [Configure the project](./how-to/configure-project.md) — discovery, IDE support, and advise versus block             |
-| Write a real discipline             | [Write disciplines](./how-to/write-disciplines.md) — worked declarations, especially locale key pairing              |
-| Recover from a block or skip        | [Troubleshooting](./troubleshooting.md) — the fail-closed states, the witness valve, and the log                     |
-| Understand why the framework exists | [Why Polydeukes?](./why-polydeukes.md) — the design whitepaper                                                       |
-| Contribute to these docs            | [Contributing](./contributing.md) — bilingual pairs, stable IDs, catalog, and checks                                 |
+Start with **installation → first judgment → connection and configuration → discipline authoring**.
+
+| Your task                                       | Guide                                                 |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| Choose packages and extensions                  | [Install](./how-to/install.md)                        |
+| See an allowed and a blocked observation        | [First judgment](./tutorials/first-judgment.md)       |
+| Connect an agent, Git, or CI                    | [Connect surfaces](./how-to/connect-surfaces.md)      |
+| Turn recurring mistakes into a discipline       | [Write disciplines](./how-to/write-disciplines.md)    |
+| Retrieve decisions and evidence                 | [Use memory](./how-to/use-memory.md)                  |
+| Invoke judgment from a program                  | [SDKs and references](./README.md#reference-packages) |
+| Diagnose skips, blocks, and installation errors | [Troubleshooting](./troubleshooting.md)               |
+| Upgrade an earlier installation                 | [Migrate to Rust](./how-to/migrate-to-rust.md)        |
+
+The [documentation home](./README.md) connects these learning paths with the command references.
+
+Read [the judgment model and observation limits](./concepts/judgment.md) to understand what your
+disciplines can establish. Use the reference pages when you need exact keys and exit codes.
 
 <a id="reference"></a>
 ## Reference
@@ -24,13 +35,13 @@ a guide for your task below.
 <a id="reference-cli"></a>
 ### CLI commands
 
-| Command                                                    | Purpose                                                                     |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`pdks covenant check`](./reference/cli/covenant-check.md) | Judge an input IR or unified diff; read verdicts and exit codes             |
-| [`pdks init`](./reference/cli/init.md)                     | Create project configuration                                                |
-| [`pdks explain`](./reference/cli/explain.md)               | Inspect registered disciplines and enforcement                              |
-| [`pdks docs`](./reference/cli/docs.md)                     | Search and retrieve installed documentation                                 |
-| [`pdks memory`](./reference/cli/memory.md)                 | Index the project's markdown documents, then search and show their sections |
+| Command                                                    | Purpose                                                         |
+| ---------------------------------------------------------- | --------------------------------------------------------------- |
+| [`pdks covenant check`](./reference/cli/covenant-check.md) | Judge an input IR or unified diff; read verdicts and exit codes |
+| [`pdks init`](./reference/cli/init.md)                     | Create project configuration                                    |
+| [`pdks explain`](./reference/cli/explain.md)               | Inspect registered disciplines and enforcement                  |
+| [`pdks docs`](./reference/cli/docs.md)                     | Search and retrieve installed documentation                     |
+| [`pdks memory`](./reference/cli/memory.md)                 | Search current Markdown documents and open their sections       |
 
 <a id="reference-configuration"></a>
 ### Configuration
@@ -47,14 +58,16 @@ extraction step, combinator, relation, and mechanism with its syntax and constra
 <a id="reference-packages"></a>
 ### Packages
 
-| Package                                                                          | Responsibility                                                                                                                     |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md)              | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
-| [`@polydeukes/core`](./reference/packages/core.md)                               | The protocol, the input IR, the config schema, telemetry                                                                           |
-| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.md) | Claude Code session surface — hook payloads become the input IR                                                                    |
-| [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.md)             | Codex session surface — hook payloads become the input IR, one element per file the patch touches                                  |
-| [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md)                           | Call the judge from TypeScript and handle its result                                                                               |
-| [`@polydeukes/memory`](./reference/packages/memory.md)                           | The optional index behind `pdks memory` — markdown sections in a local SQLite database                                             |
+| Package                                                             | Responsibility                                                                                                                     |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [`polydeukes` (the `pdks` CLI)](./reference/packages/polydeukes.md) | Package contract, and the judge that lives inside it; subcommands live under [`reference/cli/`](./reference/cli/covenant-check.md) |
+| [Input IR / schemas](./reference/packages/core.md)                  | The protocol, the input IR, the config schema, telemetry                                                                           |
+| [`pdks-claude-code`](./reference/packages/adapter-claude-code.md)   | Claude Code session surface — hook payloads become the input IR                                                                    |
+| [`pdks-codex`](./reference/packages/adapter-codex.md)               | Codex session surface — hook payloads become the input IR, one element per file the patch touches                                  |
+| [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md)              | Call the judge from TypeScript and handle its result                                                                               |
+| [`pdks-memory`](./reference/packages/memory.md)                     | Optional Markdown queries over current files                                                                                       |
+
+[Rust SDK](./reference/packages/sdk-rust.md) · [Python SDK](./reference/packages/sdk-python.md)
 
 <a id="the-shape-of-the-thing-in-one-page"></a>
 
@@ -74,7 +87,9 @@ by default.
 
 **Judgments are recorded.** `.polydeukes/roi.log` stores verdicts and their context. Use the log to
 investigate violations, skipped checks, and unexpected results. The
-[design explanation](./why-polydeukes.md) describes how these records informed the project.
+[design
+explanation](./why-polydeukes.md)
+describes how these records informed the project.
 
 <a id="two-surfaces"></a>
 ## Two surfaces

@@ -5,6 +5,11 @@
 Rust 실행 파일 `pdks`는 약속(covenant) 판정기(judge)이며 `covenant check`, `init`, `explain`,
 `docs`를 제공합니다. `PATH`의 `pdks-<name>` 실행 파일도 `pdks <name>`으로 실행합니다.
 
+Homebrew·crates.io·npm·PyPI의 [설치 안내](../../docs/how-to/install.ko.md)에서 경로를 선택하세요.
+[문서
+홈](../../docs/README.ko.md)은
+설치 이후의 학습 순서를 안내합니다.
+
 <a id="install"></a>
 ## 설치
 
@@ -15,7 +20,6 @@ Rust 실행 파일 `pdks`는 약속(covenant) 판정기(judge)이며 `covenant c
 
 ```sh
 cargo install --locked pdks
-cargo binstall pdks
 ```
 
 각 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)는

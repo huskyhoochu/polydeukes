@@ -5,6 +5,11 @@
 Rust 기억(memory) 확장은 `pdks-memory`가 `PATH`에 있으면 `pdks memory ...`로 실행됩니다. 매번
 마크다운 파일에서 답을 계산하며 색인 파일을 유지하지 않습니다.
 
+Homebrew·crates.io·npm·PyPI의 [설치 안내](../../docs/how-to/install.ko.md)에서 경로를 선택하세요.
+[문서
+홈](../../docs/README.ko.md)은
+설치 이후의 학습 순서를 안내합니다.
+
 <a id="install"></a>
 ## 설치
 
@@ -15,7 +20,6 @@ Release 압축 파일을 내려받으며, 다른 대상에서는 소스 빌드�
 
 ```sh
 cargo install --locked pdks-memory
-cargo binstall pdks-memory
 ```
 
 각 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)는
@@ -55,9 +59,7 @@ cargo build --release -p pdks-memory
 pdks memory search configuration --limit 5 --json
 ```
 
-`search`, `show`, `obligations`는 `.polydeukes/memory-log.jsonl`에 기록을 추가합니다. 연결된 참조
-문서는 TypeScript 패키지의 색인 기반 구현도 설명합니다. 이 실행 파일은 명령마다 마크다운을 새로
-읽습니다.
+`search`, `show`, `obligations`는 `.polydeukes/memory-log.jsonl`에 기록을 추가합니다. 읽습니다.
 
 <a id="third-party-data"></a>
 ## 제삼자 데이터

@@ -5,6 +5,9 @@
 The Rust host adapter connects Codex to the `pdks` covenant judge. `init` registers the adapter;
 `hook` judges proposed calls and records the session’s tool-call history.
 
+Choose Homebrew, crates.io, npm, or PyPI in the [installation guide](../../docs/how-to/install.md).
+The [documentation home](../../docs/README.md) connects installation with the next steps.
+
 <a id="install"></a>
 ## Install
 
@@ -16,7 +19,6 @@ other targets.
 
 ```sh
 cargo install --locked pdks-codex
-cargo binstall pdks-codex
 ```
 
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
@@ -48,8 +50,9 @@ pdks-codex init
 
 The same commands are available as `pdks codex init` and `pdks codex hook ...`. For the shared
 scaffold, see [`pdks init`](../../docs/reference/cli/init.md#init-common). The
-[session connection guide](../../docs/how-to/connect-surfaces.md#codex) describes host setup; its
-umbrella adapter commands use a different registration format.
+[session connection
+guide](../../docs/how-to/connect-surfaces.md#codex)
+describes host setup.
 
 <a id="registration"></a>
 ## Registration

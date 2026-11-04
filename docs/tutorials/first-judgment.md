@@ -2,8 +2,8 @@
 
 **English** · [한국어](./first-judgment.ko.md)
 
-Use an empty example project to check protected and ordinary writes. Place the installed single
-`pdks` executable on PATH. No separate Node or npm is required. Claude Code is needed for live
+Follow [installation](../how-to/install.md) to install the judge and Claude Code extension on PATH.
+Use an empty example project to check protected and ordinary writes. Claude Code is needed for live
 session observations, but not for the direct probes below.
 
 <a id="claude-code"></a>
@@ -16,7 +16,20 @@ Run these commands in your own terminal, outside an existing protected project:
 mkdir pdks-example
 cd pdks-example
 git init
-pdks adapter claude-code init
+```
+
+For a local npm installation, install into this new project and add its executables to the current
+terminal's `PATH`. Skip this block if both executables are already on `PATH` through another route.
+
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+export PATH="$PWD/node_modules/.bin:$PATH"
+```
+
+Now register the integration.
+
+```sh
+pdks-claude-code init
 ```
 
 The installer creates starter configuration, `.claude/settings.json` registrations, documentation
@@ -25,7 +38,7 @@ handlers are preserved. Send an observation of a proposed settings write:
 
 ```sh
 printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
-  | pdks adapter claude-code hook --project-root "$PWD"
+  | pdks-claude-code hook --project-root "$PWD" --pdks "$(command -v pdks)"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
@@ -38,7 +51,7 @@ Repeat with a path outside the protection list:
 
 ```sh
 printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
-  | pdks adapter claude-code hook --project-root "$PWD"
+  | pdks-claude-code hook --project-root "$PWD" --pdks "$(command -v pdks)"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
@@ -60,7 +73,8 @@ deliberate configuration edit from your own terminal.
 If the probe fails because the package or configuration cannot load, repair the named file or
 reinstall from your own terminal. A witness cannot repair a failure that occurs before the valve is
 assembled. See [configuration errors](../troubleshooting.md#invalid-config) and
-[missing judge](../troubleshooting.md#judge-cannot-be-loaded).
+[missing
+judge](../troubleshooting.md#judge-cannot-be-loaded).
 
 <a id="next-step"></a>
 

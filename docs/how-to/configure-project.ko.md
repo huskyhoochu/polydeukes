@@ -3,7 +3,10 @@
 [English](./configure-project.md) · **한국어**
 
 프로젝트 루트에 설정 파일 하나를 두고, 위반이 생겼을 때 작업을 계속할지 차단할지 선택합니다. 아직
-설치하지 않았다면 [첫 판정 따라 하기](../tutorials/first-judgment.ko.md)부터 시작하세요.
+설치하지 않았다면
+[첫 판정 따라
+하기](../tutorials/first-judgment.ko.md)부터
+시작하세요.
 
 <a id="find-the-config"></a>
 ## 설정 파일 찾기
@@ -20,35 +23,18 @@ Polydeukes는 프로젝트 루트 바로 아래에서 `polydeukes.config.yaml`, 
 [설정 참조](../reference/configuration/index.ko.md)에서 확인하세요.
 
 <a id="add-ide-support"></a>
-## 편집기에서 스키마로 검사하기
+## 편집기 스키마 연결
 
-YAML 파일에는 다음 줄을 넣어 설치된 스키마를 편집기에서 사용합니다.
-
-```yaml
-# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
-```
-
-이 경로는 설정 파일을 기준으로 한 상대 경로이지 모듈 이름이 아닙니다. 설정 파일이 모노레포 하위
-패키지에 있고 의존성은 워크스페이스 루트에 설치된 경우, 올라가는 층수를 직접 셉니다.
+사용하는 릴리스와 같은 저장소의 [설정 스키마](../../schema/polydeukes.schema.json)를 편집기에
+연결합니다. 스키마 파일을 프로젝트에 복사했다면 그 위치를 설정 파일 기준 상대 경로로 적습니다.
 
 ```yaml
-# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+# yaml-language-server: $schema=./schema/polydeukes.schema.json
 ```
 
-`pdks init`은 생성한 설정 파일을 기준으로 기본 경로의 스키마를 찾을 수 있을 때만 스키마 줄을
-넣습니다. `pdks-claude-code init`이 이 명령을 대신 실행합니다. 이 줄이 없다면 스키마 위치에 맞춰
-상대 경로를 직접 추가하세요. `$schema` 경로를 찾지 못하면 편집기에 오류가 표시되지 않은 채 스키마
-검증이 중단될 수 있습니다.
-
-우산이 아니라 `@polydeukes/core`를 직접 설치했다면 그 사본을 가리킵니다.
-
-```yaml
-# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
-```
-
-편집기가 정적으로 읽는 파일 경로입니다. 런타임에 스키마를 읽는 코드는 exports 서브패스
-`@polydeukes/core/schema.json`을 씁니다. JSON 설정에는 `$schema` 속성을 쓸 수 있습니다. 로더는 이
-속성을 허용하되 실제 사용할 설정에서는 제외합니다.
+이 예제는 `schema/polydeukes.schema.json`을 복사한 경우입니다. `pdks init`은 스키마 파일이나 이
+주석을 설치하지 않습니다. 편집기에서 경로가 해소되는지 확인하고 `pdks explain`으로 실제 판정기의
+설정 검증도 실행하세요. JSON 설정의 `$schema`는 판정에 사용하지 않습니다.
 
 <a id="choose-advise-or-block"></a>
 ## 권고와 차단 중 선택하기
@@ -65,7 +51,9 @@ YAML 파일에는 다음 줄을 넣어 설치된 스키마를 편집기에서 �
 
 `protectedPaths`는 두 표면에 모두 적용하는 최상위 목록 하나입니다. 변경 집합 표면에서 판정기는 종료
 코드만 내므로, 커밋을 멈출지는 훅 배선이 정합니다.
-[표면 연결과 증인](./connect-surfaces.ko.md#witness-and-recovery)에서 자세히 설명합니다.
+[표면
+연결과 증인](./connect-surfaces.ko.md#witness-and-recovery)에서
+자세히 설명합니다.
 
 <a id="confirm-the-project"></a>
 ## 설정 확인하기

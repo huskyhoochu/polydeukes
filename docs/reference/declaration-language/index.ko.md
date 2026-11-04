@@ -5,13 +5,17 @@
 규율(discipline)의 `declare` 블록을 작성할 때 사용하는 참조 문서입니다. 지원하는 소스, 추출 단계,
 조합 연산자, 관계, 기전(mechanism)을 모두 표로 정리했습니다. 설치와 실전 예제는
 [규율 작성하기](../../how-to/write-disciplines.ko.md)를, 프로젝트 설정과 강제 수준은
-[설정 참조](../configuration/index.ko.md)를 보세요.
+[설정
+참조](../configuration/index.ko.md)를
+보세요.
 
 <a id="declaration-shape"></a>
 ## 선언 구조
 
 판정 항목에는 `id`와 `declare`가 필요하며, `why`와 `enforce`는 선택입니다. 항목은
-[소스를 관측할 수 있는 목록](../configuration/index.ko.md#three-lists)에 작성합니다.
+[소스를 관측할 수 있는
+목록](../configuration/index.ko.md#three-lists)에
+작성합니다.
 
 | `declare` 안의 필드 | 필수 여부 | 의미                                                                         |
 | ------------------- | --------- | ---------------------------------------------------------------------------- |
@@ -339,8 +343,10 @@ _안에_ 있는 배열은 순서를 비교합니다. `implies`는 키로 비교�
 선언의 선택 블록 `witness`에는 선택인 `extract`와 필수인 `relate`가 있습니다. 본체의 추출을 참조할
 수 있지만 본체는 증인의 추출을 참조할 수 없고, 증인의 추출 이름으로 본체의 이름을 덮어쓸 수도
 없습니다. 본체가 위반하고 증인의 모든 비교가 성립하면 증언으로 허용됩니다. 증인의 공급 오류는 위반을
-허용하지 않습니다. 최상위의 [인간 증인(witness) 설정](../configuration/index.ko.md#witness)은 별도로
-지정합니다.
+허용하지 않습니다. 최상위의
+[인간
+증인(witness) 설정](../configuration/index.ko.md#witness)은
+별도로 지정합니다.
 
 <a id="mechanisms"></a>
 ## 기전
@@ -368,20 +374,21 @@ _안에_ 있는 배열은 순서를 비교합니다. `implies`는 키로 비교�
 | `naming`                | `change`                              | `empty`, `nonEmpty`  | `scope.source`는 `target.path`여야 합니다.    |
 | `added-only`            | `change`                              | `empty`              | 주로 `post`와 `pre`의 차이를 비교합니다.      |
 | `one-way-marker`        | `change`                              | `subset`             | 선택한 값이 계속 존재하는지 확인합니다.       |
-| `delegated-scope`       | —                                     | —                    | 예약 이름이며 로드 시점에 거부됩니다.         |
 | `scoped-valve`          | `change`, `actor`, `world`, `history` | 관계 7개 모두        | 선언의 `witness` 블록이 필수입니다.           |
 | `forbidden-command`     | `change`                              | `empty`              | `scope.source`는 `command`여야 합니다.        |
 
-이름 18개에는 예약 이름 하나가 포함되므로 사용할 수 있는 것은 17개입니다. 기전 제약과
+Rust 판정기는 이 기전 이름 17개를 받습니다. 기전 제약과
 [규율 목록 배치](../configuration/index.ko.md#placement-rule)는 별도로 검사합니다.
 
 <a id="validation"></a>
 ## 선언 검증하기
 
-`pnpm exec pdks explain`을 실행해 의도한 표면에 항목이 `declare`로 등록됐는지 확인하세요. 등록되지
-않은 단계, 잘못된 단계 인수, 쌍·단일 불일치처럼 컴파일할 수 없는 선언은 지원하지 않는 키나 잘못된
-소스·목록 조합과 마찬가지로 설정 로드 단계에서 위치와 사유를 알리며 실패합니다.
+`pdks explain`을 실행해 의도한 표면에 항목이 `declare`로 등록됐는지 확인하세요. 등록되지 않은 단계,
+잘못된 단계 인수, 쌍·단일 불일치처럼 컴파일할 수 없는 선언은 지원하지 않는 키나 잘못된 소스·목록
+조합과 마찬가지로 설정 로드 단계에서 위치와 사유를 알리며 실패합니다.
 
 이후 해당 표면에서 위반 입력과 정상 입력을 각각 실행하세요.
-[번역 파일 예제](../../how-to/write-disciplines.ko.md#locale-key-pairing)를 참고할 수 있습니다.
-`advised`와 `skipped`도 종료 코드 0일 수 있으므로 종료 코드만으로 판단하지 마세요.
+[번역 파일
+예제](../../how-to/write-disciplines.ko.md#locale-key-pairing)를
+참고할 수 있습니다. `advised`와 `skipped`도 종료 코드 0일 수 있으므로 종료 코드만으로 판단하지
+마세요.

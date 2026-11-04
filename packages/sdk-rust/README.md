@@ -9,10 +9,10 @@ judgment, configuration, telemetry, and memory search.
 cargo add polydeukes-sdk
 ```
 
-Install the standalone `pdks` for Linux x64 or macOS arm64 from
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), give it execute permission,
-and select it via `executable` or an absolute `PATH` directory. The crate runs it directly; Node and
-npm installations are unnecessary.
+Install `pdks` for Linux x64, Linux arm64, or macOS arm64 using the
+[installation guide](../../docs/how-to/install.md#releases). For a Release download, extract the
+`.tar.gz` archive first, then select the extracted executable through `executable` or an absolute
+`PATH` directory. The crate runs that file directly and needs neither Node nor an npm installation.
 
 <a id="overview"></a>
 ## Overview
@@ -35,6 +35,11 @@ detached readers finish when their pipes close.
 
 <a id="examples"></a>
 ## Examples
+
+Run the example from a configured project root. In a new example project, run `pdks init` first. For
+memory queries, also prepare the extension and document collection using the
+[memory walkthrough](../../docs/how-to/use-memory.md). Treat an unjudged operation or unavailable
+search as a failure to establish a result, not as permission or an empty answer.
 
 ```rust
 use polydeukes_sdk::{check_covenant, CheckCovenantSpec, CheckCovenantVerdict, CovenantInput};
@@ -63,9 +68,10 @@ status, signal, or execution failure is `Unjudged`. Enforcement defaults to `Enf
 `check_change_set` takes `diff` in place of `input`, with `a/` and `b/` paths relative to
 `repo_root`. The API blocks; async hosts use a blocking task.
 
-Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
-package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
-missing, search returns `Unavailable` with the reason `pdks` prints.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on the SDK process's `PATH`.
+Follow the [installation guide](../../docs/how-to/install.md) to install the extension. For a local
+npm installation, add the project's absolute `node_modules/.bin` directory to `PATH` before starting
+the SDK host. If it is missing, search returns `Unavailable` with the reason `pdks` prints.
 
 Memory specs use `root`; search adds `query` and optional `limit: NonZeroU32`. Only a valid empty
 search response is `Empty`. Missing memory support, malformed responses, and execution failures are
@@ -80,3 +86,8 @@ decoding, and enforce the supplied timeout with `io::ErrorKind::TimedOut` on exp
 
 - [Complete API, evidence, and migration](../../docs/reference/packages/sdk-rust.md)
 - [TypeScript SDK](../../docs/reference/packages/sdk-ts.md)
+
+[Installation guide](../../docs/how-to/install.md) ·
+[Memory
+walkthrough](../../docs/how-to/use-memory.md)
+· [Migration](../../docs/how-to/migrate-to-rust.md)

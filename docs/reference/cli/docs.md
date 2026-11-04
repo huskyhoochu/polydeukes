@@ -2,8 +2,9 @@
 
 **English** · [한국어](./docs.ko.md)
 
-Read the documentation bundled with the installed package. This command reads local files only; it
-does not load the project's configuration, invoke the judge, or query a network service.
+Read the documentation bundled with the installed package. The Markdown is embedded in the
+executable at build time. It does not load the project's configuration, invoke the judge, or query a
+network service.
 
 <a id="syntax"></a>
 ## Syntax
@@ -77,18 +78,17 @@ one complete object followed by a newline; errors never produce a partial JSON a
 <a id="failures"></a>
 ## Exit codes and bundle boundaries
 
-| Condition                            | Exit | Output                                                  |
-| ------------------------------------ | ---- | ------------------------------------------------------- |
-| A successful query                   | `0`  | Answer on stdout                                        |
-| No search match                      | `0`  | Explicit empty list; JSON has `count: 0`, `results: []` |
-| Invalid arguments or an unknown ID   | `2`  | Diagnostic on stderr, empty stdout                      |
-| Missing or inconsistent bundle files | `2`  | Diagnostic on stderr, empty stdout                      |
+| Condition                          | Exit | Output                                                  |
+| ---------------------------------- | ---- | ------------------------------------------------------- |
+| A successful query                 | `0`  | Answer on stdout                                        |
+| No search match                    | `0`  | Explicit empty list; JSON has `count: 0`, `results: []` |
+| Invalid arguments or an unknown ID | `2`  | Diagnostic on stderr, empty stdout                      |
+
 
 Duplicate flags, missing values, positional extras, unsupported languages, empty queries, and
-path-shaped IDs are errors. `show` reads registered IDs, not arbitrary filesystem paths. Integrity
-hashes detect changed Markdown, and metadata is checked against the bundle contents. Reinstall the
-package if its bundle is incomplete or damaged. Rebuilding from the complete source checkout is
-another option for contributors.
+path-shaped IDs are errors. `show` reads registered IDs, not arbitrary filesystem paths. The catalog
+and Markdown are embedded together when the executable is built. Reinstall the executable if its
+installed documentation is damaged; contributors rebuild from the complete checkout.
 
 Historical posts, the whitepaper, contribution instructions, and compatibility notices are not
 bundled or searched. The installed docs describe that package version, not an online latest version.

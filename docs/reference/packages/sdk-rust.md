@@ -22,13 +22,15 @@ skipped. Failure of the selected file never triggers another candidate.
 cargo add polydeukes-sdk
 ```
 
-Install the standalone `pdks` for Linux x64 or macOS arm64 from
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), give it execute permission,
-and name it in `executable` or put it on `PATH` as `pdks`. The crate runs that file directly and
-needs neither Node nor an npm installation. Memory search runs `pdks memory ...`, which invokes
-`pdks-memory` on `PATH` (installed by the npm package `@polydeukes/memory`, the Release archive, or
-`cargo install pdks-memory`); if it is missing, search returns `Unavailable` with the reason `pdks`
-prints.
+Install `pdks` for Linux x64, Linux arm64, or macOS arm64 using the
+[installation guide](../../how-to/install.md#releases). For a Release download, extract the
+`.tar.gz` archive first, then select the extracted executable through `executable` or an absolute
+`PATH` directory. The crate runs that file directly and needs neither Node nor an npm installation.
+
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on the SDK process's `PATH`.
+Follow the [installation guide](../../how-to/install.md) to install the extension. For a local npm
+installation, add the project's absolute `node_modules/.bin` directory to `PATH` before starting the
+SDK host. If it is missing, search returns `Unavailable` with the reason `pdks` prints.
 
 <a id="verb"></a>
 ## `check_covenant`
@@ -158,12 +160,12 @@ match result {
 `memory_search` sends the query as one literal argument to `pdks memory search <query> --json` and
 adds `--limit <n>` when supplied. Memory search sends empty stdin.
 
-The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`. Search
-success requires strict UTF-8 JSON with a `results` array (`{"results": [...]}`). Every hit needs
-string `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, boolean `stale`, string-array
-`supersededBy`, `trust` (`human-reviewed`, `machine-verified`, `unverified`), and `matchPath`
-(`and`, `or`, `like`). Extra object fields are accepted. Generated Rust fields use snake case:
-`concept_id`, `doc_title`, `section_title`, `match_path`, `superseded_by`. `Found { hits }`
+The search output follows `memory-search-output.schema.json` in the repository’s `schema/`
+directory. Search success requires strict UTF-8 JSON with a `results` array (`{"results": [...]}`).
+Every hit needs string `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, boolean `stale`,
+string-array `supersededBy`, `trust` (`human-reviewed`, `machine-verified`, `unverified`), and
+`matchPath` (`and`, `or`, `like`). Extra object fields are accepted. Generated Rust fields use snake
+case: `concept_id`, `doc_title`, `section_title`, `match_path`, `superseded_by`. `Found { hits }`
 preserves CLI ranking and is nonempty. A valid empty results array alone means `Empty`; invalid
 JSON, UTF-8, fields, enums, and execution failures mean `Unavailable`.
 

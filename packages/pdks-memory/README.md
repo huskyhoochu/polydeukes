@@ -5,6 +5,9 @@
 The Rust memory extension runs as `pdks memory ...` when `pdks-memory` is on `PATH`. It computes
 answers from the markdown files on every run and keeps no index file.
 
+Choose Homebrew, crates.io, npm, or PyPI in the [installation guide](../../docs/how-to/install.md).
+The [documentation home](../../docs/README.md) connects installation with the next steps.
+
 <a id="install"></a>
 ## Install
 
@@ -16,7 +19,6 @@ other targets.
 
 ```sh
 cargo install --locked pdks-memory
-cargo binstall pdks-memory
 ```
 
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
@@ -54,9 +56,8 @@ Prefix each command with `pdks memory`; all accept `--json`. For example:
 pdks memory search configuration --limit 5 --json
 ```
 
-`search`, `show`, and `obligations` append to `.polydeukes/memory-log.jsonl`. The linked reference
-also describes the TypeScript package's index-based implementation; this executable reads the
-markdown anew for each command.
+`search`, `show`, and `obligations` append to `.polydeukes/memory-log.jsonl`. Each command reads the
+current Markdown.
 
 <a id="third-party-data"></a>
 ## Third-party data

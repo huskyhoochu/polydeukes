@@ -9,11 +9,11 @@ The CLI owns judgment, configuration, telemetry, and memory search.
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=24. Install a platform-specific standalone `pdks` from
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
-select it through `executable` or an absolute `PATH` directory. Existing npm installations do not
-select the CLI; the SDK runs the executable directly. Runtime and peer dependencies on
-`@polydeukes/core` and `polydeukes` are unnecessary. Transport types ship in the SDK.
+The SDK host needs Node >=24. Install `pdks` for Linux x64, Linux arm64, or macOS arm64 using the
+[installation guide](../../docs/how-to/install.md#releases). For a Release download, extract the
+`.tar.gz` archive first, then select the extracted executable through `executable` or an absolute
+`PATH` directory. The SDK runs that file directly. Runtime and peer dependencies on
+`@polydeukes/core` and `polydeukes` are unnecessary; transport types ship in the SDK.
 
 <a id="overview"></a>
 ## Overview
@@ -35,6 +35,11 @@ descendants.
 
 <a id="examples"></a>
 ## Examples
+
+Run the example from a configured project root. In a new example project, run `pdks init` first. For
+memory queries, also prepare the extension and document collection using the
+[memory walkthrough](../../docs/how-to/use-memory.md). Treat an unjudged operation or unavailable
+search as a failure to establish a result, not as permission or an empty answer.
 
 ```ts
 import { checkCovenant, type CovenantInput } from '@polydeukes/sdk-ts';
@@ -64,9 +69,10 @@ Only `upheld` authorizes the action. Status `0` is `upheld`, `2` is `blocked`, a
 statuses, signals, and execution failures are `unjudged`. Enforcement defaults to `block`.
 `checkChangeSet` takes `diff` instead of `input`, with `a/` and `b/` paths relative to `repoRoot`.
 
-Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
-package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
-missing, search returns `unavailable` with the reason `pdks` prints.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on the SDK process's `PATH`.
+Follow the [installation guide](../../docs/how-to/install.md) to install the extension. For a local
+npm installation, add the project's absolute `node_modules/.bin` directory to `PATH` before starting
+the SDK host. If it is missing, search returns `unavailable` with the reason `pdks` prints.
 
 Memory specs use `root`; search adds `query` and optional positive safe-integer `limit`. Only a
 valid empty search response means `empty`. Missing memory support, malformed responses, and
@@ -81,3 +87,8 @@ Preserve stdout bytes for strict search decoding.
 
 - [Complete API, memory examples, and migration](../../docs/reference/packages/sdk-ts.md)
 - [Rust SDK](../../docs/reference/packages/sdk-rust.md)
+
+[Installation guide](../../docs/how-to/install.md) ·
+[Memory
+walkthrough](../../docs/how-to/use-memory.md)
+· [Migration](../../docs/how-to/migrate-to-rust.md)

@@ -45,8 +45,9 @@ Polydeukes는 연결된 표면이 공급하는 증거를 바탕으로 선언된 
 `draft: true`인 항목은 아직 선언으로 전환하지 않은 관행을 기록합니다. 판정하지 않고 텔레메트리 행도
 남기지 않습니다. 유효한 선언에 검사가 더 필요하다는 이유만으로 초안으로 남기지는 마세요. 반대로 현재
 문법에 필요한 증거나 비교가 없다면 단계나 메커니즘을 지어내지 마세요.
-[규율 작성하기](../how-to/write-disciplines.ko.md)에서는 실행 가능한 번역 키 비교와 현재 지원하지
-않는 약속을 각각 보여 줍니다.
+[규율
+작성하기](../how-to/write-disciplines.ko.md)에서는
+실행 가능한 번역 키 비교와 현재 지원하지 않는 약속을 각각 보여 줍니다.
 
 <a id="relations"></a>
 ## 일곱 관계
@@ -69,17 +70,16 @@ Polydeukes는 연결된 표면이 공급하는 증거를 바탕으로 선언된 
 구별할 수 있는지는 추출 과정에 달려 있습니다.
 
 <a id="mechanisms"></a>
-## 열여덟 메커니즘 이름
+## 열일곱 메커니즘 이름
 
 메커니즘은 선언의 목적과 허용하는 구성을 나타냅니다. 새로운 비교 연산자가 아닙니다. 컴파일러는
 문법에서 증거의 축과 관계를 도출하고, 선택한 메커니즘에 맞는지 확인합니다.
 
 이름은 `pairing`, `companion`, `monotonic-order`, `fingerprint-sync`, `producer-owned`,
 `self-absolution-ban`, `actor-scope`, `precedent`, `phase-order`, `turn-locality`, `stated-ground`,
-`controlled-vocabulary`, `naming`, `added-only`, `one-way-marker`, `delegated-scope`,
-`scoped-valve`, `forbidden-command`로 한정됩니다.
+`controlled-vocabulary`, `naming`, `added-only`, `one-way-marker`, `scoped-valve`,
+`forbidden-command`로 한정됩니다.
 
-`delegated-scope`는 **예약된 이름**이며 이번 버전에서 사용할 수 있는 선언이 아닙니다.
 `scoped-valve`에는 자체 증인 블록이 필요합니다. `naming`은 `target.path`를, `forbidden-command`는
 `command`를 적용 범위의 소스로 사용합니다. 구문과 추출 단계는
 [설정 참조](../reference/configuration/index.ko.md#disciplines)에 있습니다.
@@ -111,4 +111,6 @@ Polydeukes는 연결된 표면이 공급하는 증거를 바탕으로 선언된 
 증인(witness) 밸브는 차단 판정 뒤에 확인하며, 판정을 대신하지 않습니다. 세션과 커밋의 증인은 전달
 방식과 사용하는 증거가 다릅니다. 커밋 프롬프트로 대기 중인 세션 호출을 허용할 수는 없습니다.
 [증인과 회복](../how-to/connect-surfaces.ko.md#witness-and-recovery)과
-[문제 해결](../troubleshooting.ko.md)을 참고하세요.
+[문제
+해결](../troubleshooting.ko.md)을
+참고하세요.

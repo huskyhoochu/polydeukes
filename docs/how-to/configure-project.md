@@ -18,38 +18,24 @@ Polydeukes reads exactly one of `polydeukes.config.yaml`, `polydeukes.config.yml
   subject to protection.
 
 `pdks docs` does not need project configuration. Consult the
-[configuration reference](../reference/configuration/index.md) for exact field constraints.
+[configuration
+reference](../reference/configuration/index.md)
+for exact field constraints.
 
 <a id="add-ide-support"></a>
-## Add IDE support
+## Connect an editor schema
 
-For YAML, add this line so the editor can use the installed schema:
-
-```yaml
-# yaml-language-server: $schema=node_modules/polydeukes/dist/schema/polydeukes.schema.json
-```
-
-The path is relative to the configuration file, not a module specifier. When the config sits in a
-monorepo sub-package whose dependencies installed at the workspace root, count the levels up:
+Use the repository's [configuration schema](../../schema/polydeukes.schema.json) from the same
+release as your executable. If you copy the schema into your project, name its path relative to the
+configuration file:
 
 ```yaml
-# yaml-language-server: $schema=../../node_modules/polydeukes/dist/schema/polydeukes.schema.json
+# yaml-language-server: $schema=./schema/polydeukes.schema.json
 ```
 
-`pdks init` — which `pdks-claude-code init` runs for you — adds the schema line only when the
-default path resolves relative to the generated config. If the line is absent, add a relative path
-to the installed schema yourself. An unresolvable `$schema` can disable editor validation without
-displaying an error.
-
-If you installed `@polydeukes/core` directly rather than the umbrella, name its copy:
-
-```yaml
-# yaml-language-server: $schema=node_modules/@polydeukes/core/schema/polydeukes.schema.json
-```
-
-That is a file path an editor reads statically. Code that reads the schema at runtime uses the
-exports subpath `@polydeukes/core/schema.json` instead. JSON configurations can use a `$schema`
-property; the loader accepts it but leaves it out of the resolved configuration.
+This example assumes you copied `schema/polydeukes.schema.json`. `pdks init` does not install the
+schema or add this comment. Verify the path in your editor and run `pdks explain` to validate with
+the actual judge. A JSON configuration's `$schema` property is not used for judgment.
 
 <a id="choose-advise-or-block"></a>
 ## Choose advise or block
@@ -66,7 +52,8 @@ lands `advised` unless the command is run with `--enforce block`. Assembly error
 
 `protectedPaths` is a single top-level list that applies to both surfaces. On the change-set surface
 the judge only emits the exit code; whether the commit stops is your hook wiring. See
-[surface connection and witnesses](./connect-surfaces.md#witness-and-recovery).
+[surface
+connection and witnesses](./connect-surfaces.md#witness-and-recovery).
 
 <a id="confirm-the-project"></a>
 ## Confirm the project

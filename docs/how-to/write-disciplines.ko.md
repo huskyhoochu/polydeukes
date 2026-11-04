@@ -9,6 +9,38 @@
 관계와 추출 연산의 전체 문법은 [선언 언어 참조](../reference/declaration-language/index.ko.md)에서
 확인할 수 있습니다.
 
+<a id="design-a-discipline"></a>
+## 확인할 약속부터 정하기
+
+규율을 쓰기 전에 정상 사례 하나와 위반 사례 하나를 적습니다. “좋은 코드를 작성한다” 대신 “영어와
+한국어 번역 파일에 같은 키가 있다”처럼 관측 가능한 비교로 좁힙니다.
+
+| 질문                       | 선택                                                  |
+| -------------------------- | ----------------------------------------------------- |
+| 어떤 변화에서 검사할까?    | scope에 경로 또는 명령 범위를 지정                    |
+| 무엇을 비교할까?           | 변경 전후 내용, 이름 붙인 파일, 명령, 주체, 대화 기록 |
+| 비교할 단위는?             | 줄, JSON 키, 이름, 해시처럼 추출 가능한 값            |
+| 어떤 관계가 성립해야 할까? | empty, equal, subset 등 선언 언어의 관계              |
+| 증거가 없으면?             | supply의 error, pass, empty 중 실제 의미에 맞는 정책  |
+| 언제 막을까?               | advise로 정상·위반을 확인한 뒤 block 선택             |
+
+증거가 없다는 이유로 empty를 쓰면 “관측하지 못함”을 “아무것도 없음”으로 바꿉니다. 빈 내용이 문제의
+실제 의미일 때만 사용하세요. pass는 위반이 없다는 판정이 아니라 건너뛴 관측을 남깁니다.
+[설정 참조](../reference/configuration/index.ko.md#three-lists)에서 증거에 맞는 규율 목록을 선택하고
+`pdks explain`으로 조립을 확인합니다.
+
+<a id="verification-loop"></a>
+## 규율을 검증하는 순서
+
+1. 임시 Git 프로젝트에서 완전한 설정과 필요한 파일을 준비합니다.
+2. `pdks explain`이 설정을 읽고 해당 규율을 조립하는지 확인합니다.
+3. 정상 입력과 위반 입력을 각각 실행하고 규율 ID·사유·텔레메트리를 확인합니다.
+4. 관측 범위 밖 입력도 넣어 의도한 파일만 검사하는지 봅니다.
+5. 실제 연결할 표면에서 같은 검사를 합니다. 세션의 전체 파일 내용과 diff의 변경 줄은 다릅니다.
+6. 일상 작업에서 조언을 관찰한 뒤 필요한 항목의 강제 수준을 올립니다.
+
+다음 번역 키 예제는 이 순서의 정상·위반·수정 과정을 실행합니다.
+
 <a id="locale-key-pairing"></a>
 ## 번역 키 짝 맞춤
 
@@ -63,7 +95,7 @@ printf '{"home":"홈"}\n' > locales/ko.json
 git add locales/en.json locales/ko.json
 git commit -m 'docs: prepare locale example'
 printf '{"home":"Home","settings":"Settings"}\n' > locales/en.json
-git diff HEAD | pnpm exec pdks covenant check --diff
+git diff HEAD | pdks covenant check --diff
 ```
 
 `locale-key-parity`의 `advised` 진단에 영어에만 있는 `settings` 키가 나와야 합니다. 권고이므로
@@ -71,7 +103,7 @@ git diff HEAD | pnpm exec pdks covenant check --diff
 
 ```sh
 printf '{"home":"홈","settings":"설정"}\n' > locales/ko.json
-git diff HEAD | pnpm exec pdks covenant check --diff
+git diff HEAD | pdks covenant check --diff
 ```
 
 이제 키 비교 진단이 없어야 합니다. 번역 값은 서로 다르지만 키는 같습니다. 확인이 끝나면 두 예제

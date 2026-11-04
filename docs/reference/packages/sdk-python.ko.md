@@ -3,7 +3,9 @@
 [English](sdk-python.md) · **한국어**
 
 `pdks covenant check`와 `pdks memory`를 호출하는 Python 3.12+ 동기 클라이언트입니다.
-[설치와 세 동사 예시](../../../packages/sdk-python/README.ko.md)를 참고하세요.
+[설치와 세 동사
+예시](../../../packages/sdk-python/README.ko.md)를
+참고하세요.
 
 <a id="contract"></a>
 ## 계약
@@ -61,11 +63,12 @@ arm64에서 상속한 파이프가 기한 반환을 늦추지 않습니다. 직�
 포함됩니다. 결과 계약은 status를 따르며 실제 판정한 규율(discipline)은 텔레메트리로 식별합니다.
 `Unjudged`는 실행 허가가 아닙니다.
 
-기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
-`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
-`pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
+기억 검색은 `pdks memory ...`를 통해 SDK 프로세스의 `PATH`에 있는 `pdks-memory`를 실행합니다.
+[설치 안내](../../how-to/install.ko.md)에 따라 확장을 설치하고, 로컬 npm 설치라면 SDK를 실행하기
+전에 프로젝트의 `node_modules/.bin` 절대 경로를 `PATH`에 추가하세요. 실행 파일이 없으면 `pdks`가
+출력한 이유와 함께 `Unavailable`을 반환합니다.
 
-검색 출력은 `@polydeukes/core`가 내보내는 `memory-search-output.schema.json`을 따르며 형태는
+검색 출력은 저장소 `schema/`의 `memory-search-output.schema.json`을 따르며 형태는
 `{"results": [...]}`입니다. 기억(memory)의 0 아닌 종료, 시그널, 실행 실패, 기한 초과는
 `Unavailable`입니다. 검색은 `results` 배열이 있는 유효한 UTF-8 JSON을 요구합니다. 각 hit의 필수
 필드·타입과 `trust`/`matchPath` enum을 검사하고 추가 필드는 허용합니다. 유효한 빈 배열만
@@ -95,10 +98,10 @@ uv run --project packages/sdk-python --locked ruff check packages/sdk-python
 uv build --project packages/sdk-python
 ```
 
-타입은 core의 JSON 스키마 두 개와 고정한 개발 생성기로 결정적으로 생성합니다. wheel과 sdist는 런타임
-의존성 없이 설치됩니다. 릴리스 자동화는 저장소와 함께 `project.version`을 올리고 태그·패키지 버전을
-확인하며 Linux 실행 파일 artifact를 검사합니다. 실행 파일 빌드가 통과한 뒤 OIDC로 PyPI에 출판합니다.
-재실행은 이미 출판된 버전을 건너뜁니다.
+타입은 저장소의 JSON 스키마 두 개와 고정한 개발 생성기로 결정적으로 생성합니다. wheel과 sdist는
+런타임 의존성 없이 설치됩니다. 릴리스 자동화는 저장소와 함께 `project.version`을 올리고 태그·패키지
+버전을 확인하며 Linux 실행 파일 artifact를 검사합니다. 실행 파일 빌드가 통과한 뒤 OIDC로 PyPI에
+출판합니다. 재실행은 이미 출판된 버전을 건너뜁니다.
 
 첫 릴리스 전에 소유자가 PyPI pending trusted publisher에 프로젝트 `polydeukes-sdk`, 소유자
 `huskyhoochu`, 저장소 `polydeukes`, 워크플로 `publish.yml`, 환경 `pypi`를 등록하고 일치하는 GitHub
@@ -116,7 +119,7 @@ manifest가 `v<version>`과 같은지 확인하고, 해당 릴리스의 Linux �
 
 TS·Rust·Python SDK는 명시 실행 파일 → 절대 PATH의 pdks, 세 동사와 닫힌 결과, 기한의 같은 의미를
 사용합니다. TS는 Promise와 밀리초, Rust는 동기 함수와 Duration, Python은 동기 함수와 초를
-사용합니다. 두 core schema가 전송 타입의 원본이며 언어별 생성 타입과 검색 응답 검증을 구분합니다.
+사용합니다. 두 저장소 스키마가 전송 타입의 원본이며 언어별 생성 타입과 검색 응답 검증을 구분합니다.
 
 저장소에서 `node scripts/verify-sdk-contract.mjs --executable <absolute-pdks>`를 실행하면 세 SDK가
 같은 fixture를 관측한 결과·실제 판정·telemetry·검색 순서를 비교합니다. [TS 계약](sdk-ts.ko.md)과

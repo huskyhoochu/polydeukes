@@ -11,9 +11,9 @@
 
 프로젝트 루트 바로 아래에 `polydeukes.config.yaml`, `polydeukes.config.yml`,
 `polydeukes.config.json` 중 하나도 없으면 설정이 필요한 명령은 종료 코드 2를 반환합니다. Git에서
-원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks adapter claude-code init`,
-`pdks adapter codex init`로 만들 수 있습니다. 이후 `pdks explain`을 실행합니다. 설정이 없다고 기본
-정책으로 대신 실행하지는 않습니다.
+원래 파일을 복원하세요. 새 프로젝트라면 `pdks init`, `pdks-claude-code init`, `pdks-codex init`로
+만들 수 있습니다. 이후 `pdks explain`을 실행합니다. 설정이 없다고 기본 정책으로 대신 실행하지는
+않습니다.
 
 <a id="multiple-config"></a>
 ## 설정 파일이 여러 개일 때
@@ -63,20 +63,17 @@
 <a id="judge-cannot-be-loaded"></a>
 ## 판정기를 실행할 수 없음
 
-등록된 절대 경로의 `pdks`가 존재하고 실행 가능한지 확인하세요. 실행 파일이나 프로젝트를 옮겼다면
-사용자 터미널에서 새 위치의 `pdks adapter <host> init`을 실행하고 호스트 신뢰를 다시 확인합니다.
-단일 실행 파일에는 판정기와 두 어댑터가 들어 있습니다. 소스 체크아웃의 npm 설치를 사용한다면 의존성
-설치와 전체 workspace build를 복구해야 합니다.
+등록의 판정기·어댑터 절대 경로가 존재하고 실행 가능한지 확인합니다. 두 실행 파일은 별도 설치입니다.
+경로나 프로젝트를 옮겼다면 소유자 터미널에서 `pdks-claude-code init` 또는 `pdks-codex init`을 다시
+실행하고 호스트 신뢰를 확인하세요.
 
-등록된 실행 파일이 시작되지 못하는 동안 두 호스트는 파일을 바꾸거나 셸을 실행하는 도구 호출을 모두
-차단하고, 세션 자체는 계속됩니다. prompt는 그대로 제출되고 읽기 도구도 실행되므로, 거부 사유를 읽고
-경로를 고칠 수 있습니다. 다른 기기에서 커밋한 등록은 그 기기의 경로를 가리키므로, 자신의 기기에서
-init을 실행하세요.
-
-훅이 시작되기 전의 실패는 telemetry를 남기지 못할 수 있습니다. 시작된 훅이 잘못된 입력을 받으면 공통
-판정기에 `--input-failure`를 보내 원인 한 번과 `blocked covenant-check` 행 한 건을 기록합니다. 입력
-EOF와 자식 통신의 내부 기한은 각각 10초입니다. 호스트 자체의 신뢰·비활성화·시간 초과 처리는
-별개이므로 실제 거부와 로그를 함께 확인하세요.
+어댑터가 시작되지 않으면 호스트가 메시지 없이 호출을 진행할 수 있습니다. 어댑터가 시작했지만
+판정기를 찾지 못하면 설치 안내를 출력하고 진행합니다. 이때 새 판정 행이 없다는 사실을 정상 판정으로
+읽으면 안 됩니다. 경로를 고친 뒤 실제 일반 호출과 직접 보호 경로 검사에서 새 텔레메트리를
+확인하세요.
+[첫
+판정](./tutorials/first-judgment.ko.md)이
+두 검사를 설명합니다.
 
 <a id="reading-verdict"></a>
 ## 판정 결과 읽기
@@ -110,7 +107,7 @@ EOF와 자식 통신의 내부 기한은 각각 10초입니다. 호스트 자체
 뜻입니다. 여기에 `the last witness expired at <time>`이 붙으면 토큰을 보낸 적은 있지만 유효 시간이
 지났으므로 다시 보내야 합니다. 이 줄에는 토큰이 들어가지 않습니다.
 
-모듈 누락처럼 판정기를 조립하지 못하게 하는 오류는 증인으로 해결할 수 없습니다.
+실행 파일 누락이나 잘못된 설정처럼 판정을 시작하지 못하게 하는 오류는 증인으로 해결할 수 없습니다.
 
 <a id="blocked-commit"></a>
 ## 커밋이 차단됐을 때
@@ -137,18 +134,39 @@ EOF와 자식 통신의 내부 기한은 각각 10초입니다. 호스트 자체
 `pdks explain`과 로그의 사유를 확인하세요. 미판정은 규율을 지켰다는 증거가 아닙니다.
 
 세션 표면에서는 호스트가 대화 기록을 공급하지 않을 때 `supply: { session: 'pass' }`로 건너뛸 수
-있습니다. [규율 목록 셋](./reference/configuration/index.ko.md#three-lists)을 참고하세요.
+있습니다.
+[규율 목록
+셋](./reference/configuration/index.ko.md#three-lists)을
+참고하세요.
 
 <a id="local-state"></a>
 ## 다른 컴퓨터로 프로젝트를 옮길 때
 
 텔레메트리와 `.polydeukes/baseline.json`은 로컬 상태이며 Git이 옮겨 주는 판정 이력이 아닙니다. 이
 파일 없이 저장소를 복제해도 과거 판정이 복원되지는 않습니다. memory 조회 로그
-`.polydeukes/memory-log.jsonl`도 로컬 상태입니다. memory 색인은 문서에서 다시 만들 수 있지만, 조회가
-무엇을 돌려줬는지 적은 로그는 다시 만들 수 없습니다. 세션 훅은 기준 상태가 없거나 유효하지 않으면
-이를 기록하고 다음 비교에 쓸 기준을 만듭니다. 과거 변경을 판정했다는 증거가 생기는 것은 아닙니다.
-필요한 로그는 따로 보관해 옮기세요. `telemetry.logPath`를 바꿨다면 모든 기록이 `.polydeukes/`에
-있다고 가정해서는 안 됩니다.
+`.polydeukes/memory-log.jsonl`도 로컬 상태입니다. 기억 검색은 현재 Markdown 문서를 매번 읽으므로
+옮길 색인 파일은 없습니다. 과거 조회가 무엇을 돌려줬는지 적은 로그는 문서에서 다시 만들 수 없습니다.
+세션 훅은 기준 상태가 없거나 유효하지 않으면 이를 기록하고 다음 비교에 쓸 기준을 만듭니다. 과거
+변경을 판정했다는 증거가 생기는 것은 아닙니다. 필요한 로그는 따로 보관해 옮기세요.
+`telemetry.logPath`를 바꿨다면 모든 기록이 `.polydeukes/`에 있다고 가정해서는 안 됩니다.
+
+<a id="executable-path"></a>
+## 명령이나 확장을 찾지 못할 때
+
+`pdks: command not found` 또는 `no pdks executable on PATH`라면 판정기를 설치하고, 명령을 실행하는
+터미널이나 호스트의 `PATH`에 설치 디렉터리가 있는지 확인하세요.
+`no pdks-<name> executable is on PATH`라면 해당 확장도 따로 설치해야 합니다. 예를 들어
+`pdks memory`에는 `pdks-memory`가 필요합니다.
+
+```sh
+command -v pdks
+command -v pdks-memory
+```
+
+로컬 npm 설치는 프로젝트 루트에서 `npx --no-install pdks --version`으로 확인하세요. 셸의
+`command -v`나 SDK에서도 사용하려면 그 프로젝트의 `node_modules/.bin` 절대 경로를 `PATH`에
+추가합니다. 호스트는 시작할 때 받은 환경을 쓰므로 환경을 바꾼 뒤 다시 시작하세요.
+[설치 경로별 안내](./how-to/install.ko.md)와 [등록 복구](#judge-cannot-be-loaded)를 참고하세요.
 
 <a id="next-steps"></a>
 ## 다음 단계

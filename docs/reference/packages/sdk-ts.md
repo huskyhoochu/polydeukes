@@ -29,16 +29,16 @@ failure returns a failure value without retrying another candidate.
 pnpm add @polydeukes/sdk-ts
 ```
 
-The SDK host needs Node >=24. Install a standalone `pdks` for your platform from
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases), make it executable, and
-supply its path or put it on `PATH` as `pdks`. The supported executable platforms are Linux x64 and
-macOS arm64. The SDK executes that file directly, without npm installation discovery or a separate
-Node child. The SDK has no runtime or peer dependency on `@polydeukes/core` or `polydeukes`. Its
-generated transport types ship with the package.
+The SDK host needs Node >=24. Install `pdks` for Linux x64, Linux arm64, or macOS arm64 using the
+[installation guide](../../how-to/install.md#releases). For a Release download, extract the
+`.tar.gz` archive first, then select the extracted executable through `executable` or an absolute
+`PATH` directory. The SDK runs that file directly. Runtime and peer dependencies on
+`@polydeukes/core` and `polydeukes` are unnecessary; transport types ship in the SDK.
 
-Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
-package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
-missing, search returns `unavailable` with the reason `pdks` prints.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on the SDK process's `PATH`.
+Follow the [installation guide](../../how-to/install.md) to install the extension. For a local npm
+installation, add the project's absolute `node_modules/.bin` directory to `PATH` before starting the
+SDK host. If it is missing, search returns `unavailable` with the reason `pdks` prints.
 
 <a id="the-verb"></a>
 
@@ -174,14 +174,14 @@ switch (result.outcome) {
 `reason`. Search passes the query as one literal argument and `limit` as `--limit <n>`. Memory stdin
 is empty.
 
-The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`.
-Successful search stdout must be strict UTF-8 JSON with a `results` array (`{"results": [...]}`).
-Each result requires `id`, `conceptId`, `docTitle`, `sectionTitle`, `status` (strings), `stale`
-(boolean), `supersededBy` (string array), `trust` (`human-reviewed`, `machine-verified`, or
-`unverified`), and `matchPath` (`and`, `or`, or `like`). Additional object fields are allowed.
-`MemorySearchResult` is generated from core's memory output schema. Ranking order is preserved. Only
-a valid empty `results` array means `empty`; invalid responses and execution failures mean
-`unavailable`.
+The search output follows `memory-search-output.schema.json` in the repository’s `schema/`
+directory. Successful search stdout must be strict UTF-8 JSON with a `results` array
+(`{"results": [...]}`). Each result requires `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`
+(strings), `stale` (boolean), `supersededBy` (string array), `trust` (`human-reviewed`,
+`machine-verified`, or `unverified`), and `matchPath` (`and`, `or`, or `like`). Additional object
+fields are allowed. `MemorySearchResult` is generated from the repository’s memory output schema.
+Ranking order is preserved. Only a valid empty `results` array means `empty`; invalid responses and
+execution failures mean `unavailable`.
 
 <a id="failure"></a>
 ## Failure and migration
@@ -227,3 +227,5 @@ Memory results describe retrieval, not authorization.
 - [Python SDK](sdk-python.md)
 - [`pdks covenant check`](../cli/covenant-check.md)
 - [`pdks memory`](../cli/memory.md)
+
+<a id="동사"></a>

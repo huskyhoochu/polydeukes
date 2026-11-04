@@ -11,24 +11,29 @@
 <a id="quick-start"></a>
 ## Quick start
 
-Run from the project root in your own terminal. Download the executable for your system
-(`pdks-linux-x64` or `pdks-darwin-arm64`) from a
-[GitHub
-Release](https://github.com/huskyhoochu/polydeukes/releases),
-make it executable, and place it on `PATH` as `pdks`. It includes both adapters and memory commands
-and runs without Node, npm, or a `package.json`.
+Choose one of [four installation routes](./docs/how-to/install.md). For example, with Homebrew:
+
+```sh
+brew install huskyhoochu/polydeukes/pdks
+brew install huskyhoochu/polydeukes/pdks-claude-code
+```
+
+The first command installs the Rust judge; the second adds the optional Claude Code adapter. Codex
+uses `pdks-codex`; project memory uses `pdks-memory`. Each is installed separately.
 
 ### 1. Connect your agent
 
+Run from your project root in your own terminal:
+
 ```sh
-pdks adapter claude-code init
-# or
-pdks adapter codex init
+pdks-claude-code init
+# With the Codex extension installed instead:
+# pdks-codex init
 ```
 
-The installer creates configuration and merges project hooks. Reopen Claude Code, approve Codex
-hooks through `/hooks`. Verify the connection with a real call and `.polydeukes/roi.log`. Rerun init
-after moving the executable or project. For Git diff checks alone, use `pdks init`.
+Reopen Claude Code, or approve Codex hooks through `/hooks`, then verify a real call in
+`.polydeukes/roi.log`. For Git diff checks alone, run `pdks init`. Existing installations should
+follow the [migration guide](./docs/how-to/migrate-to-rust.md).
 
 ### 2. Configure your first discipline
 
@@ -68,9 +73,10 @@ the entry to stop a session call. Diff checks also need `--enforce block` to sto
 entry.
 
 The config file itself is protected during agent sessions. Edit it yourself, or use the
-[witness procedure](./docs/how-to/connect-surfaces.md#witness-and-recovery) for an intentional agent
-edit. In Claude Code, the installed `discipline-draft` skill can help turn a problem you describe
-into an entry.
+[witness
+procedure](./docs/how-to/connect-surfaces.md#witness-and-recovery)
+for an intentional agent edit. In Claude Code, the installed `discipline-draft` skill can help turn
+a problem you describe into an entry.
 
 ### 3. Check the result
 
@@ -85,54 +91,28 @@ Expect a diagnostic naming the discipline, an `advised` row in `.polydeukes/roi.
 Remove the line and rerun; that diagnostic should disappear.
 
 Continue with [more discipline examples](./docs/how-to/write-disciplines.md),
-[pre-commit integration](./docs/how-to/connect-surfaces.md#change-set-surface), or `pdks docs` for
-the installed documentation.
+[pre-commit
+integration](./docs/how-to/connect-surfaces.md#change-set-surface),
+or `pdks docs` for the installed documentation.
 
 <a id="status-and-cli"></a>
 ## Status and CLI
 
-Six npm packages and one Rust crate ship; a Python SDK is also available — `@polydeukes/core` (the
-covenant protocol), the session adapters (`adapter-claude-code`, `adapter-codex`),
-`@polydeukes/sdk-ts` (three asynchronous verbs for covenant checks and memory), the crate
-`polydeukes-sdk` (the same three verbs for a Rust host),
-[the Python package `polydeukes-sdk`](./packages/sdk-python/README.md) (three verbs over the
-standalone executable), `@polydeukes/memory` (the optional markdown index behind `pdks memory`), and
-the `polydeukes` umbrella, which carries the judge and whose `pdks` bin (an alias of `polydeukes`)
-is the CLI. The ledger and verify packages are still blueprint. The CLI today:
+The project ships a Rust judge, three optional extensions, and TypeScript, Rust, and Python SDKs.
+Disciplines advise by default; authors choose which should block. Configuration and registration
+path protection is handled separately.
 
 ```sh
-pdks init                # create the project scaffold: config file and telemetry ignore line
-pdks adapter claude-code init  # Claude Code
-pdks adapter codex init        # Codex
-git diff --cached | pdks covenant check --diff      # judge the staged diff (the pre-commit entry point)
-git diff HEAD | pdks covenant check --diff          # the same judgment over the working tree
-git diff main...HEAD | pdks covenant check --diff   # ... or over a ref range (a PR's scope)
-pdks covenant check < input.json                    # or an input IR another program built
-pdks explain             # print what each surface judges, skips, and excludes — no judgment
-pdks docs [topic]        # read the bundled documentation, offline
-pdks memory ingest       # index the project's markdown into .polydeukes/memory.db (included in the single executable)
-pdks memory search <query> | show <id>             # search that index, or show a document or section
-pdks memory lint | stats                           # report broken links, or count documents, links, and isolated documents
-pdks memory obligations <key>                      # list every obligation the config's rules extracted for one key
-pdks memory supersession <id>                      # list the chain of documents that replace, or were replaced by, one document
+pdks init
+pdks explain
+git diff --cached | pdks covenant check --diff
+git diff main...HEAD | pdks covenant check --diff
+pdks docs install
+pdks docs search 'configuration'
 ```
 
-The installer also drops a `discipline-draft` skill into `.claude/skills/`: describe a recurring
-problem to your AI partner and the skill classifies it into a config entry — judged at advise when
-the current declaration grammar can express it, a `draft: true` entry otherwise.
-
-Since v0.5.0 the default posture is diagnostic. A broken discipline lands as a recorded advisory —
-exit 0, one `advised` telemetry row, the entry's own `why` on stderr — rather than a refused call.
-What blocks unasked is the judging chain's self-protection; `enforce: block` on an entry is a
-promotion its author chooses, and the promotion ladder is `draft` → advise → block.
-
-The documentation ships inside the package, so `pdks docs` answers from the same version that does
-the judging — no network, and no drift between what a search engine indexed and what is installed.
-The [Documents](#documents) table below is the same set plus the narrative layer, grouped from
-getting started to reference. Planned — each arrives with its package: `pdks verify` (adversarial
-verification) and `pdks ledger start <id>` (work tracking).
-
----
+After installing memory and configuring a document collection, use `pdks memory search <query>` and
+`pdks memory show <id>` to retrieve evidence. Follow the [walkthrough](./docs/how-to/use-memory.md).
 
 <a id="what-it-is"></a>
 ## What it is
@@ -149,51 +129,24 @@ The design starts from AI development tooling embedded in a real production mono
 analysis of whether that tooling can be extracted into a general discipline framework.
 
 <a id="thin-core-and-packages"></a>
-## Structure — a thin core plus independent packages
+## Executables and SDKs
 
-The executable composes the judge and two host adapters. Each adapter translates its host’s events
-into the shared core vocabulary; the judge consumes that vocabulary.
-
-| Package                                   | Role                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@polydeukes/core`                        | Covenant protocol (stdin-JSON / exit-2), the config schema and its validation, algebra declaration schema, the input IR as a JSON Schema for hosts in other languages, transcript interface — a minimal core that is agnostic to domain and agent. Reading a config off disk is the umbrella's `loadConfig`, not the core's: the core touches no file but its own telemetry log |
-| `polydeukes` (the judge, `src/covenant/`) | Deterministic judgment at edit and commit time, plus the meta-covenants that protect the judging chain itself                                                                                                                                                                                                                                                                   |
-| `@polydeukes/ledger` _(planned)_          | Work tracking. Completion authority moves from "I'm done" to "the actions passed"                                                                                                                                                                                                                                                                                               |
-| `@polydeukes/memory`                      | An optional local SQLite + FTS5 index over the project's markdown documents, used through `pdks memory ingest`, `search`, `show`, `lint`, and `stats`. The documents stay the record; the index is rebuilt from them                                                                                                                                                            |
-| `@polydeukes/verify` _(planned)_          | A multi-agent adversarial verification orchestrator                                                                                                                                                                                                                                                                                                                             |
-
-`core`, the umbrella `polydeukes`, the session adapters, `sdk-ts`, `sdk-rust`, `sdk-python`, and
-`memory` ship today. The planned adoption order once the rest exists is `covenant` → `memory` →
-`ledger` → `verify`: `covenant` and `memory` are expected to pay off regardless of project size,
-while `ledger` and `verify` target the scale of multiple worktrees and team workflows.
+| Component                | Role                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| `pdks`                   | Configuration, judgment, explanation, embedded docs      |
+| `pdks-claude-code`       | Claude Code event translation and hook registration      |
+| `pdks-codex`             | Codex event translation, tool history, hook registration |
+| `pdks-memory`            | Current Markdown queries, links, and local usage history |
+| `@polydeukes/sdk-ts`     | TypeScript process client                                |
+| `polydeukes-sdk` (crate) | Rust process client                                      |
+| `polydeukes-sdk` (PyPI)  | Python process client                                    |
 
 <a id="design-blueprint"></a>
-## Design blueprint (in brief)
+## Design principles
 
-The core principle of the extraction strategy is a one-way layering:
-**general core inward, domain
-outward**,
-with every dependency pointing inward at the core and none pointing back out. The core knows nothing
-of any specific product or AI runtime.
-
-```text
-pdks (CLI · common runtime · judge)
-  ├── adapter-claude-code ──┐
-  └── adapter-codex ────────┴── core (shared vocabulary · schemas)
-
-sdk-ts / sdk-rust / sdk-python ── process calls ── pdks
-```
-
-Three separations:
-
-- **Language ⊥ agent** — language coupling (test commands, path globs for TS/Python/Go) goes in
-  `polydeukes.config.yaml`; AI-runtime coupling (transcript schema) goes in `adapter-*`. The two are
-  orthogonal.
-- **Essential vs incidental** — "verification is decided by exit code" is essential; "that command
-  happens to be vitest" is incidental (config). "Knowledge is a local SQLite file" is essential;
-  "that file happens to live on S3" is incidental (a sync adapter).
-- **Measurement as a first-class citizen** — collect covenant-ROI and memory-search telemetry, then
-  feed it back in a closed loop. Prove "it produces safer code" with data.
+Adapters supply observed evidence; the judge compares it with declared promises. Missing evidence is
+made visible in the result. The [design explanation](./docs/why-polydeukes.md) describes observation
+boundaries, witnesses, and the choice between advice and blocking.
 
 <a id="documents"></a>
 ## Documents
@@ -236,3 +189,22 @@ layer you need.
 ## License
 
 [MIT](./LICENSE)
+
+<a id="learning-path"></a>
+## Read the guide
+
+Start with **installation → first judgment → connection and configuration → discipline authoring**.
+
+| Your task                                       | Guide                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| Choose packages and extensions                  | [Install](./docs/how-to/install.md)                        |
+| See an allowed and a blocked observation        | [First judgment](./docs/tutorials/first-judgment.md)       |
+| Connect an agent, Git, or CI                    | [Connect surfaces](./docs/how-to/connect-surfaces.md)      |
+| Turn recurring mistakes into a discipline       | [Write disciplines](./docs/how-to/write-disciplines.md)    |
+| Retrieve decisions and evidence                 | [Use memory](./docs/how-to/use-memory.md)                  |
+| Invoke judgment from a program                  | [SDKs and references](./docs/README.md#reference-packages) |
+| Diagnose skips, blocks, and installation errors | [Troubleshooting](./docs/troubleshooting.md)               |
+| Upgrade an earlier installation                 | [Migrate to Rust](./docs/how-to/migrate-to-rust.md)        |
+
+The [documentation home](./docs/README.md) connects these learning paths with the command
+references.

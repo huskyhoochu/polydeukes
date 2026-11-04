@@ -5,6 +5,9 @@
 The Rust host adapter connects Claude Code to the `pdks` covenant judge. `init` registers the
 adapter; `hook` translates a host event and runs `pdks covenant check`.
 
+Choose Homebrew, crates.io, npm, or PyPI in the [installation guide](../../docs/how-to/install.md).
+The [documentation home](../../docs/README.md) connects installation with the next steps.
+
 <a id="install"></a>
 ## Install
 
@@ -16,7 +19,6 @@ to a source build on other targets.
 
 ```sh
 cargo install --locked pdks-claude-code
-cargo binstall pdks-claude-code
 ```
 
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
@@ -51,8 +53,10 @@ pdks-claude-code init
 
 The same commands are available as `pdks claude-code init` and `pdks claude-code hook ...`. For the
 shared scaffold, see [`pdks init`](../../docs/reference/cli/init.md#init-common). The
-[session connection guide](../../docs/how-to/connect-surfaces.md#claude-code) describes host setup;
-its umbrella adapter commands use a different registration format.
+[session
+connection guide](../../docs/how-to/connect-surfaces.md#claude-code)
+describes host setup;
+
 
 <a id="registration"></a>
 ## Registration

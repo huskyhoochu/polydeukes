@@ -14,7 +14,7 @@
 pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
-입력 모드 플래그가 없으면 stdin은 약속(covenant) 입력 IR입니다. `@polydeukes/core`가 정의하는 JSON
+입력 모드 플래그가 없으면 stdin은 약속(covenant) 입력 IR입니다. 저장소 입력 스키마가 정의하는 JSON
 문서(`toolCalls` · `subagentSpawns` · `userMessages`, 그리고 호스트가 더하는 선택 키 둘, 도구 명부
 `tools`와 살아 있는 에이전트 세션의 증거 `session`)입니다. `--diff`를 주면 stdin은 unified diff이고,
 명령이 먼저 그것을 IR로 번역합니다. `--enforce`는 이 실행의 관측자 자세이며 기본값은 `advise`입니다.
@@ -123,13 +123,13 @@ exit `3`은 이 명령이 입력을 읽지 못해 판정이 일어나지 않았�
 
 판정 하나가 telemetry 로그에 한 줄을 덧붙입니다. 한 줄은 탭으로 나뉜 필드 네 개 또는 다섯 개입니다.
 
-| 필드 | 값                                                                                                                                                                                                                                                          |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | ISO 8601 시각                                                                                                                                                                                                                                               |
-| 2    | 판정 결과 단어 여섯 중 하나: `passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed`                                                                                                                                                    |
-| 3    | 라벨: 메타 약속(`self-mod` · `shell-mod` · `transcript-mod`), 규율 id, 명령 자신을 뜻하는 `covenant-check`, `unattributed` 행의 `baseline`, 또는 어느 규율도 읽지 못한 셸 호출의 `shell-unjudgeable`                                                        |
-| 4    | 대상: 메타 약속이면 호출이 닿은 보호 항목(설정 순서상 첫 항목)이고 그 아래의 파일이 아닙니다. 호출을 읽지 못하면 실패 시 차단으로 라우팅되므로 설정의 첫 보호 항목이나 `-`가 됩니다. 규율이나 `covenant-check`이면 판정한 경로이고, 대상이 없으면 `-`입니다 |
-| 5    | 선택. `skipped`에서는 건너뛴 사유(`no-observation` · `config-fault` · `supply-pass`), 그 밖의 단어에서는 JSON 배열로 된 증거 목록(witness list)                                                                                                             |
+| 필드 | 값                                                                                                                                                                                                                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | ISO 8601 시각                                                                                                                                                                                                                                                                                     |
+| 2    | 판정 결과 단어 여섯 중 하나: `passed` · `blocked` · `witnessed` · `advised` · `skipped` · `unattributed`                                                                                                                                                                                          |
+| 3    | 라벨: 메타 약속(`self-mod` · `shell-mod` · `transcript-mod`), 규율 id, 명령 자신을 뜻하는 `covenant-check`, `unattributed` 행의 `baseline`, 또는 어느 규율도 읽지 못한 셸 호출의 `shell-unjudgeable`                                                                                              |
+| 4    | 대상: 메타 약속이면 self-mod는 설정 순서상 첫 일치 보호 항목, shell-mod는 사유가 이름 붙인 보호 항목이고 그 아래의 파일이 아닙니다. 호출을 읽지 못하면 실패 시 차단으로 라우팅되므로 설정의 첫 보호 항목이나 `-`가 됩니다. 규율이나 `covenant-check`이면 판정한 경로이고, 대상이 없으면 `-`입니다 |
+| 5    | 선택. `skipped`에서는 건너뛴 사유(`no-observation` · `config-fault` · `supply-pass`), 그 밖의 단어에서는 JSON 배열로 된 증거 목록(witness list)                                                                                                                                                   |
 
 변경 집합은 호출할 때마다 `--telemetry-path`에 새 파일을 주면, 그 파일에는 그 실행의 행만 남습니다.
 세션 입력은 다릅니다. 세션 입력의 baseline 비교는 같은 세션의 앞선 호출이 같은 파일에 남긴 행을
@@ -203,6 +203,9 @@ IR이나 diff를 씁니다. 종료 코드가 판정 결과입니다.
 ## 같이 보기
 
 - [`pdks explain`](./explain.ko.md)
-- [`@polydeukes/core`](../packages/core.ko.md)
+- [입력 IR과 스키마](../packages/core.ko.md)
 - [판정기(`covenant` 모듈)](../packages/polydeukes.ko.md#covenant-module)
 - [설정 레퍼런스](../configuration/index.ko.md)
+
+선언한 hunk 줄 수를 채우기 전에 입력이 끝나는 diff도 exit `3`과 `blocked covenant-check` 행을
+남깁니다.

@@ -18,12 +18,12 @@ telemetry.
 ## Claude Code session surface
 
 ```sh
-pdks adapter claude-code init
+pdks-claude-code init
 ```
 
-Run the installed single executable from the project root. No separate Node, npm, or adapter
-installation is required. Registration pins the absolute executable and project-root paths while
-preserving other handlers and settings. Rerun after moving either.
+Install the judge and the chosen adapter using the [installation guide](./install.md), then run from
+the project root. Registration pins the absolute judge, adapter, and project-root paths while
+preserving other handlers and settings. Rerun after moving them.
 
 Reopen the project and check telemetry for an actual call. Only messages identified by
 `origin.kind: human` can support the witness valve.
@@ -34,12 +34,12 @@ Reopen the project and check telemetry for an actual call. Only messages identif
 ## Codex session surface
 
 ```sh
-pdks adapter codex init
+pdks-codex init
 ```
 
-Run the installed single executable from the project root. No separate Node, npm, or adapter
-installation is required. Registration pins the absolute executable and project-root paths while
-preserving other handlers and settings. Rerun after moving either.
+Install the judge and the chosen adapter using the [installation guide](./install.md), then run from
+the project root. Registration pins the absolute judge, adapter, and project-root paths while
+preserving other handlers and settings. Rerun after moving them.
 
 Approve the definition through `/hooks`. Code Mode coverage varies by version; verify actual nested
 calls. Transcript files are never read, and current prompts do not establish human provenance.

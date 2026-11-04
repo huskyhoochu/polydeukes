@@ -21,12 +21,13 @@
 cargo add polydeukes-sdk
 ```
 
-[GitHub Releases](https://github.com/huskyhoochu/polydeukes/releases)에서 Linux x64 또는 macOS
-arm64용 단일 실행 파일 `pdks`를 설치하고 실행 권한을 줍니다. `executable`에 경로를 적거나 `PATH`에
-`pdks`라는 이름으로 둡니다. crate는 그 파일을 직접 실행하므로 Node나 npm 설치가 필요하지 않습니다.
-기억 검색은 `pdks memory ...`를 통해 `PATH`의 `pdks-memory`를 실행하며(npm 패키지
-`@polydeukes/memory`, Release 아카이브 또는 `cargo install pdks-memory`로 설치), 실행 파일이 없으면
-`pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
+[설치 안내](../../how-to/install.ko.md#releases)에 따라 Linux x64, Linux arm64 또는 macOS arm64용
+`pdks`를 설치합니다. Release에서 내려받았다면 먼저 `.tar.gz` 압축을 풀고, 추출한 실행 파일을
+`executable`이나 `PATH`의 절대 디렉터리로 선택합니다. crate는 그 파일을 직접 실행하므로 Node나 npm
+설치가 필요하지 않습니다. 기억 검색은 `pdks memory ...`를 통해 SDK 프로세스의 `PATH`에 있는
+`pdks-memory`를 실행합니다. [설치 안내](../../how-to/install.ko.md)에 따라 확장을 설치하고, 로컬 npm
+설치라면 SDK를 실행하기 전에 프로젝트의 `node_modules/.bin` 절대 경로를 `PATH`에 추가하세요. 실행
+파일이 없으면 `pdks`가 출력한 이유와 함께 `Unavailable`을 반환합니다.
 
 <a id="verb"></a>
 ## `check_covenant`
@@ -153,7 +154,7 @@ match result {
 `memory_search`는 query를 인자 하나로 `pdks memory search <query> --json`에 전달하고 limit이 있으면
 `--limit <n>`을 더합니다. 기억 검색의 stdin은 빈 바이트입니다.
 
-검색 출력은 `@polydeukes/core`가 내보내는 `memory-search-output.schema.json`을 따르며 형태는
+검색 출력은 저장소 `schema/`의 `memory-search-output.schema.json`을 따르며 형태는
 `{"results": [...]}`입니다. 검색 성공에는 `results` 배열이 있는 엄격한 UTF-8 JSON이 필요합니다. 각
 hit에는 문자열 `id`, `conceptId`, `docTitle`, `sectionTitle`, `status`, 불리언 `stale`, 문자열 배열
 `supersededBy`, `trust`(`human-reviewed`, `machine-verified`, `unverified`), `matchPath`(`and`,

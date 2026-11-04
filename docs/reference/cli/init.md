@@ -1,85 +1,81 @@
-# `pdks init` and adapter connection
+# `pdks init`
 
 **English** · [한국어](./init.ko.md)
 
-Use the installed single `pdks` executable for project configuration and both host connections. No
-separate Node, npm, or project package installation is required. Every init command installs in the
-current directory.
+Create project configuration, then connect a host with its installed adapter. Each init installs in
+the current directory.
 
 <a id="init-syntax"></a>
 ## Syntax
 
 ```sh
 pdks init
-pdks adapter claude-code init
-pdks adapter codex init
+pdks-claude-code init
+pdks-codex init
 ```
+
+Adapters are optional installations. See [installation](../../how-to/install.md).
 
 <a id="init-common"></a>
-## `pdks init` — the scaffold
+## Project configuration
 
-Creates `polydeukes.config.yaml` and adds `.polydeukes/` to `.gitignore`. Existing configuration is
-preserved. More than one `.yaml`, `.yml`, or `.json` configuration file is refused. The starter
-configuration includes protected paths, a witness block, and discipline examples.
-
-The starter protected paths are `.claude/hooks`, `.claude/settings.json`,
-`.claude/settings.local.json`, `.codex/hooks`, `.codex/hooks.json`, and `.codex/config.toml`. An
-entry matches any path whose segments contain it, so each one covers the file in the project and the
-same file under your home directory.
+Creates `polydeukes.config.yaml` and the `.polydeukes/` entry in `.gitignore`. Existing
+configuration is preserved; multiple config candidates are refused. The starter has witness settings
+and empty discipline lists. Adapter init adds host protection paths; the loader automatically
+protects the configuration file it loaded.
 
 <a id="init-claude-code"></a>
-## Claude Code — `pdks adapter claude-code init`
-
-Creates the shared scaffold and registers the absolute executable and project-root paths in
-`.claude/settings.json`. It merges `PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and
-`SessionEnd`, preserving other handlers and owner keys. Only the `PreToolUse` handler carries
-`onFailure: "block"`: a hook that cannot start refuses the tool call, and a failed prompt, post, or
-session-end event does not stop the session.
-
-Also creates `.claude/rules/polydeukes.md` and the `discipline-draft` skill when absent. Reopen the
-project in Claude Code.
-
-<a id="init-codex"></a>
-## Codex — `pdks adapter codex init`
-
-Creates the shared scaffold and registers the absolute executable and project-root paths in
-`.codex/hooks.json`. It merges `PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and `SessionEnd`,
-preserving other handlers and owner keys. Only the `PreToolUse` command ends with `|| exit 2`.
-
-Approve the definition through Codex `/hooks`. Trust is tied to its definition hash. Current prompts
-do not establish human provenance and cannot open the witness valve; perform protected changes from
-your own terminal.
-
-<a id="init-results"></a>
-## Results and migration
-
-Success exits 0; invalid arguments, invalid settings JSON, ambiguous configuration, and write
-failures exit 2. Output distinguishes `created`, `updated`, `unchanged`, and `preserved` paths and
-reports required protected paths. Check that the existing configuration’s `protectedPaths` covers
-them. Host deadlines are 60 seconds for PreToolUse, 30 for prompt/post events, and 5 for session
-end.
-
-Replace `pdks-claude-code` and `pdks-codex` with the commands above. The installer replaces its own
-legacy handlers and removes generated `.mjs` files only when they match the original. Modified
-delegators are preserved. After moving the executable or project, rerun init and check host trust.
-Global settings are unchanged. When init runs from the project's `node_modules/polydeukes` package,
-the registration names that path rather than the package manager's versioned store path, so
-upgrading the package keeps the registration valid. The Node executable that runs the script is
-registered by its real path too: after upgrading or switching Node, rerun init.
-
-A write failure can leave partial artifacts. Repair the error and rerun.
-
-<a id="init-examples"></a>
-## Probe a hook directly
+## claude-code
 
 ```sh
-pdks adapter claude-code hook --project-root /absolute/project < event.json
+pdks-claude-code init
 ```
 
-This command judges a complete host event without executing the tool itself. Separately verify that
-the real host loaded its registration.
+Runs `pdks init` and registers `PreToolUse`. Protected paths are
+`.claude/settings.json, .claude/settings.local.json`. Registration pins the absolute project root,
+adapter, and judge found on PATH. Other tools’ handlers and owner settings are preserved.
+
+Creates `.claude/rules/polydeukes.md` and the `discipline-draft` skill when absent. Reopen Claude
+Code and verify a new telemetry row for a real call.
+
+<a id="init-codex"></a>
+## codex
+
+```sh
+pdks-codex init
+```
+
+Runs `pdks init` and registers `PreToolUse, PostToolUse, SessionEnd`. Protected paths are
+`.codex/hooks.json, .codex/config.toml`. Registration pins the absolute project root, adapter, and
+judge found on PATH. Other tools’ handlers and owner settings are preserved.
+
+Approve the definition through Codex `/hooks`. PostToolUse records tool history; SessionEnd removes
+it. Human-message evidence is absent, so make protected edits from your own terminal.
+
+<a id="init-results"></a>
+## Results and path changes
+
+Success exits 0; argument, configuration, and write errors exit 2. Rerun init after moving the
+project or executable and recheck host trust. Registrations carry neither `onFailure` nor
+`|| exit 2`. If the adapter cannot start, the host may proceed silently. If the adapter cannot start
+the judge, it prints installation guidance and lets the call proceed. Verify judgment in the log.
+
+Old TypeScript handlers and `.mjs` files are not removed automatically. Follow the
+[migration
+procedure](../../how-to/migrate-to-rust.md#hooks).
+A write failure can leave partial artifacts; repair the error and rerun.
+
+<a id="init-examples"></a>
+## Direct probe
+
+```sh
+pdks-claude-code hook --project-root /absolute/project --pdks /absolute/bin/pdks < event.json
+```
+
+Both paths are absolute and flags stay in this order. This judges the event without executing its
+tool. Run the complete examples in [first judgment](../../tutorials/first-judgment.md).
 
 <a id="init-see-also"></a>
 ## See also
 
-- [Connect the surfaces](../../how-to/connect-surfaces.md)
+[Connection guide](../../how-to/connect-surfaces.md)

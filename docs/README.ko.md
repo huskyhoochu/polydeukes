@@ -7,18 +7,25 @@
 
 <a id="여기서-시작하십시오"></a>
 
-<a id="start-here"></a>
-## 시작하기
+<a id="the-shape-of-the-thing-in-one-page"></a>
 
-| 하려는 것                               | 읽을 문서                                                                                                              |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 첫 판정을 확인하고 싶다                 | [첫 판정](./tutorials/first-judgment.ko.md) — 설치와 Claude Code 연동을 마치고 보호 파일 편집에 대한 판정을 확인합니다 |
-| Claude Code, Codex, git을 연결하고 싶다 | [표면 연결하기](./how-to/connect-surfaces.ko.md) — 세션과 커밋 연동 설정, Codex 포함                                   |
-| 프로젝트 설정을 다듬고 싶다             | [프로젝트 설정하기](./how-to/configure-project.ko.md) — 설정 파일 찾기, IDE 지원, advise와 block 선택                  |
-| 실제 규율을 쓰고 싶다                   | [규율 작성하기](./how-to/write-disciplines.ko.md) — 번역 키 짝 맞춤을 포함한 선언 예제                                 |
-| 차단이나 건너뜀에서 회복하고 싶다       | [문제 해결](./troubleshooting.ko.md) — fail-closed 상태, 증인 밸브, 로그                                               |
-| 이 프레임워크가 왜 있는지 알고 싶다     | [왜 폴리데우케스인가?](./why-polydeukes.ko.md) — 설계 백서                                                             |
-| 이 문서에 기여하고 싶다                 | [문서에 기여하기](./contributing.ko.md) — 영한 쌍, 안정 ID, 카탈로그, 검사                                             |
+<a id="start-here"></a>
+## 가이드 읽는 순서
+
+처음 사용하는 사람은 **설치 → 첫 판정 → 연결·설정 → 규율 작성** 순서로 시작하세요.
+
+| 하고 싶은 일                | 안내                                                 |
+| --------------------------- | ---------------------------------------------------- |
+| 설치 경로와 확장 선택       | [설치](./how-to/install.ko.md)                       |
+| 정상·차단 결과를 직접 보기  | [첫 판정](./tutorials/first-judgment.ko.md)          |
+| 에이전트·Git·CI에 연결      | [표면 연결](./how-to/connect-surfaces.ko.md)         |
+| 반복되는 실수를 규율로 표현 | [규율 작성](./how-to/write-disciplines.ko.md)        |
+| 결정과 근거를 다시 찾기     | [기억 사용](./how-to/use-memory.ko.md)               |
+| 프로그램에서 판정 호출      | [SDK와 참조 문서](./README.ko.md#reference-packages) |
+| 건너뜀·차단·설치 오류 해결  | [문제 해결](./troubleshooting.ko.md)                 |
+| 이전 설치 업그레이드        | [Rust 이행](./how-to/migrate-to-rust.ko.md)          |
+
+전체 학습 경로와 명령별 참조는 [문서 홈](./README.ko.md)에 있습니다.
 
 <a id="reference"></a>
 ## 참조
@@ -32,7 +39,7 @@
 | [`pdks init`](./reference/cli/init.ko.md)                     | 프로젝트 설정 생성                                        |
 | [`pdks explain`](./reference/cli/explain.ko.md)               | 등록된 규율과 강제 수준 확인                              |
 | [`pdks docs`](./reference/cli/docs.ko.md)                     | 설치된 문서 검색과 조회                                   |
-| [`pdks memory`](./reference/cli/memory.ko.md)                 | 프로젝트의 마크다운 문서를 색인하고 그 절을 검색·조회     |
+| [`pdks memory`](./reference/cli/memory.ko.md)                 | 현재 마크다운 문서를 검색하고 원문 조회                   |
 
 <a id="reference-configuration"></a>
 ### 설정
@@ -49,14 +56,18 @@
 <a id="reference-packages"></a>
 ### 패키지
 
-| 패키지                                                                              | 담당 기능                                                                                                |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md)                  | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
-| [`@polydeukes/core`](./reference/packages/core.ko.md)                               | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리                                                               |
-| [`@polydeukes/adapter-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로                                                   |
-| [`@polydeukes/adapter-codex`](./reference/packages/adapter-codex.ko.md)             | Codex 세션 표면입니다. 훅 페이로드에서 입력 IR로, 패치가 건드리는 파일마다 원소 하나                     |
-| [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.ko.md)                           | TypeScript에서 판정기를 호출하고 결과를 처리하는 방법                                                    |
-| [`@polydeukes/memory`](./reference/packages/memory.ko.md)                           | `pdks memory`가 쓰는 선택 설치 색인입니다. 마크다운 절을 로컬 SQLite 데이터베이스에 둡니다               |
+| 패키지                                                               | 담당 기능                                                                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [`polydeukes` (`pdks` CLI)](./reference/packages/polydeukes.ko.md)   | 패키지 계약과 그 안에 있는 판정기. 서브커맨드는 [`reference/cli/`](./reference/cli/covenant-check.ko.md) |
+| [입력 IR / 스키마](./reference/packages/core.ko.md)                  | 프로토콜, 입력 IR, 설정 스키마, 텔레메트리                                                               |
+| [`pdks-claude-code`](./reference/packages/adapter-claude-code.ko.md) | Claude Code 세션 표면입니다. 훅 페이로드에서 입력 IR로                                                   |
+| [`pdks-codex`](./reference/packages/adapter-codex.ko.md)             | Codex 세션 표면입니다. 훅 페이로드에서 입력 IR로, 패치가 건드리는 파일마다 원소 하나                     |
+| [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.ko.md)            | TypeScript에서 판정기를 호출하고 결과를 처리하는 방법                                                    |
+| [`pdks-memory`](./reference/packages/memory.ko.md)                   | 현재 마크다운에서 답을 계산하는 선택 확장입니다                                                          |
+
+[Rust SDK](./reference/packages/sdk-rust.ko.md) ·
+[Python
+SDK](./reference/packages/sdk-python.ko.md)
 
 <a id="shape-of-the-thing"></a>
 ## 한 페이지로 보는 구조

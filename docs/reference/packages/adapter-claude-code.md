@@ -1,63 +1,34 @@
-# `@polydeukes/adapter-claude-code`
+# `pdks-claude-code`
 
-**English** · [한국어](adapter-claude-code.ko.md)
+**English** · [한국어](./adapter-claude-code.ko.md)
 
 <a id="ownership"></a>
-## Ownership
+## Responsibility
 
-This module translates host events and tool names into the common covenant input IR. Both adapters
-expose the same three functions.
-
-| Function             | Input and result                                                                                    |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `prepareHook`        | `PrepareHookSpec` → `PrepareHookOutcome`: `check`, `recorded`, or `unavailable`                     |
-| `registerHook`       | `RegisterHookSpec` → `RegisterHookOutcome`: created, updated, unchanged, preserved, and owned paths |
-| `renderHookResponse` | `RenderHookResponseSpec` → `RenderHookResponseOutcome`: exit code, stdout, stderr                   |
-
-The common `pdks` runtime reads stdin and sends IR to `covenant check --enforce block` through the
-current executable. Stdin EOF and child communication each have a 10-second deadline. Registered
-host deadlines are 60 seconds for PreToolUse, 30 for prompt/post events, and 5 for session end.
-
-Untranslatable, truncated, or invalid UTF-8 input reaches `--input-failure`. The shared judge
-reports the cause once and writes one `blocked covenant-check` row. Child launch failures, signals,
-unexpected statuses, and deadlines also refuse the call; a failure before the judge starts can leave
-no telemetry row.
+A Rust executable translates host events into input IR and sends them to a separate
+`pdks covenant check --enforce block` process. Its consumer contract is the init and hook commands.
 
 <a id="translation"></a>
-## Translation and evidence
+## Observed evidence
 
-`Edit`, `Write`, `MultiEdit`, `NotebookEdit`, and shell `Bash` are registered. File calls pair disk
-pre-state with a computed post-state; shell calls carry the command. Available Claude transcripts
-supply session evidence. A message can support the witness valve only when `origin.kind: human`
-identifies its human origin; `role: user` alone does not establish it.
+File tools supply disk pre-state and computed post-state; shell calls supply the command. Only
+Claude transcript messages marked `origin.kind: human` count as human evidence. SDK-authored user
+messages do not establish human provenance.
 
 <a id="consumer-contract"></a>
-## Connection and migration
+## Connect
 
 ```sh
-pdks adapter claude-code init
+pdks-claude-code init
 ```
 
-Run from the project root. The single executable includes both adapters and requires no separate
-Node or npm installation. Registration pins absolute paths to the current executable and project
-root. Rerun from the new location after moving either.
-
-The installer updates its own registrations while preserving other handlers and owner settings. It
-removes an old generated `.mjs` only when its contents match the original and preserves modified
-files. Existing configuration is retained; compare the reported required protected paths with
-`protectedPaths`.
-
-Claude and Codex use empty stdout and exit 0 or 2. Observe-only lifecycle events exit 0 without a
-tool-decision JSON document.
+Install the judge and adapter first, then run from the project root. Register again after paths
+change. [Installation](../../how-to/install.md) · [Registration contract](../cli/init.md) ·
+[Migration](../../how-to/migrate-to-rust.md)
 
 <a id="limits"></a>
-## Declared limits
+## Limits and recovery
 
-The hook judges tool calls delivered by the host. It does not separately observe each file write
-performed by a child process. Missing evidence follows the declaration’s supply policy; missing
-history is not invented to produce `passed`. If the host has not trusted the hook or has disabled
-it, this judgment path does not start.
-
-Global host settings are unchanged.
-
-[Installation reference](../cli/init.md#init-claude-code)
+Judges calls delivered by the host, not every write made by child processes. Calls can proceed when
+the adapter or judge cannot start, so verify executable paths and actual logs. Make protected edits
+in your terminal when a session has no human evidence.

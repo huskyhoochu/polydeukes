@@ -5,6 +5,11 @@
 Rust 호스트 어댑터는 Claude Code를 `pdks` 약속(covenant) 판정기(judge)에 연결합니다. `init`은
 어댑터를 등록하고 `hook`은 호스트 이벤트를 변환해 `pdks covenant check`를 실행합니다.
 
+Homebrew·crates.io·npm·PyPI의 [설치 안내](../../docs/how-to/install.ko.md)에서 경로를 선택하세요.
+[문서
+홈](../../docs/README.ko.md)은
+설치 이후의 학습 순서를 안내합니다.
+
 <a id="install"></a>
 ## 설치
 
@@ -15,7 +20,6 @@ Release 압축 파일을 내려받으며, 다른 대상에서는 소스 빌드�
 
 ```sh
 cargo install --locked pdks-claude-code
-cargo binstall pdks-claude-code
 ```
 
 각 [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases)는
@@ -48,9 +52,13 @@ pdks-claude-code init
   두 경로는 절대 경로여야 하며 플래그는 이 순서로 써야 합니다.
 
 같은 명령을 `pdks claude-code init`, `pdks claude-code hook ...`으로 실행할 수 있습니다. 공통 초기
-설정은 [`pdks init`](../../docs/reference/cli/init.ko.md#init-common)을 참고하세요.
-[세션 연결 안내](../../docs/how-to/connect-surfaces.ko.md#claude-code)는 호스트 설정을 설명하며, 그
-문서의 통합 CLI 어댑터 명령은 다른 등록 형식을 씁니다.
+설정은
+[`pdks
+init`](../../docs/reference/cli/init.ko.md#init-common)을
+참고하세요.
+[세션 연결
+안내](../../docs/how-to/connect-surfaces.ko.md#claude-code)는
+호스트 설정을 설명합니다.
 
 <a id="registration"></a>
 ## 등록

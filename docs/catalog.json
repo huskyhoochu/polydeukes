@@ -138,13 +138,13 @@
       "bundled": true,
       "en": {
         "path": "reference/cli/init.md",
-        "title": "pdks init",
-        "summary": "Create project configuration and register Claude Code or Codex with pdks adapter <host> init."
+        "title": "pdks init and host registration",
+        "summary": "Create project configuration and register installed host adapters."
       },
       "ko": {
         "path": "reference/cli/init.ko.md",
-        "title": "pdks init",
-        "summary": "프로젝트 설정을 만들고 pdks adapter <host> init으로 Claude Code, Codex를 등록합니다."
+        "title": "pdks init과 호스트 등록",
+        "summary": "프로젝트 설정을 만들고 설치한 호스트 어댑터를 등록합니다."
       }
     },
     {
@@ -187,12 +187,12 @@
       "en": {
         "path": "reference/cli/memory.md",
         "title": "pdks memory",
-        "summary": "Index the project's markdown documents, then search and show their sections."
+        "summary": "Query current Markdown, follow links, and inspect query history."
       },
       "ko": {
         "path": "reference/cli/memory.ko.md",
         "title": "pdks memory",
-        "summary": "프로젝트의 마크다운 문서를 색인하고 그 절을 검색하고 조회합니다."
+        "summary": "현재 마크다운을 조회하고 링크와 질의 이력을 확인합니다."
       }
     },
     {
@@ -234,13 +234,13 @@
       "bundled": true,
       "en": {
         "path": "reference/packages/polydeukes.md",
-        "title": "polydeukes",
-        "summary": "Consult the polydeukes package contract and its limits."
+        "title": "pdks",
+        "summary": "Use the Rust judge and discover optional executables on PATH."
       },
       "ko": {
         "path": "reference/packages/polydeukes.ko.md",
-        "title": "polydeukes",
-        "summary": "polydeukes 패키지의 계약과 한계를 확인합니다."
+        "title": "pdks",
+        "summary": "Rust 판정기를 사용하고 PATH에서 선택 확장을 실행합니다."
       }
     },
     {
@@ -250,13 +250,13 @@
       "bundled": true,
       "en": {
         "path": "reference/packages/core.md",
-        "title": "@polydeukes/core",
-        "summary": "Consult the core package contract and its limits."
+        "title": "Input IR and schemas",
+        "summary": "Find the data contracts used by the Rust judge and three SDKs."
       },
       "ko": {
         "path": "reference/packages/core.ko.md",
-        "title": "@polydeukes/core",
-        "summary": "core 패키지의 계약과 한계를 확인합니다."
+        "title": "입력 IR과 스키마",
+        "summary": "Rust 판정기와 SDK 3종이 사용하는 데이터 계약을 확인합니다."
       }
     },
     {
@@ -266,12 +266,12 @@
       "bundled": true,
       "en": {
         "path": "reference/packages/adapter-claude-code.md",
-        "title": "@polydeukes/adapter-claude-code",
+        "title": "pdks-claude-code",
         "summary": "Connect claude-code through the standalone pdks executable and inspect its translation, registration, and response contract."
       },
       "ko": {
         "path": "reference/packages/adapter-claude-code.ko.md",
-        "title": "@polydeukes/adapter-claude-code",
+        "title": "pdks-claude-code",
         "summary": "단일 pdks 실행 파일로 claude-code를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
@@ -282,12 +282,12 @@
       "bundled": true,
       "en": {
         "path": "reference/packages/adapter-codex.md",
-        "title": "@polydeukes/adapter-codex",
+        "title": "pdks-codex",
         "summary": "Connect codex through the standalone pdks executable and inspect its translation, registration, and response contract."
       },
       "ko": {
         "path": "reference/packages/adapter-codex.ko.md",
-        "title": "@polydeukes/adapter-codex",
+        "title": "pdks-codex",
         "summary": "단일 pdks 실행 파일로 codex를 연결하고 번역·등록·응답 계약을 확인합니다."
       }
     },
@@ -346,13 +346,13 @@
       "bundled": true,
       "en": {
         "path": "reference/packages/memory.md",
-        "title": "@polydeukes/memory",
-        "summary": "Consult the optional memory package, its verbs, and what its index holds."
+        "title": "pdks-memory",
+        "summary": "Read the optional Markdown memory executable contract."
       },
       "ko": {
         "path": "reference/packages/memory.ko.md",
-        "title": "@polydeukes/memory",
-        "summary": "선택 설치 memory 패키지의 동사와 색인이 담는 내용을 확인합니다."
+        "title": "pdks-memory",
+        "summary": "선택 설치 마크다운 기억 실행 파일의 계약을 읽습니다."
       }
     },
     {
@@ -386,11 +386,62 @@
         "title": "문서에 기여하기",
         "summary": "영한 쌍, 안정 ID, 카탈로그 규칙, 문서 변경 전에 실행할 명령을 적습니다."
       }
+    },
+    {
+      "id": "install",
+      "category": "how-to",
+      "order": 1,
+      "bundled": true,
+      "en": {
+        "path": "how-to/install.md",
+        "title": "Install Polydeukes",
+        "summary": "Choose a package manager, install the judge and optional extensions, and verify the installation."
+      },
+      "ko": {
+        "path": "how-to/install.ko.md",
+        "title": "폴리데우케스 설치",
+        "summary": "패키지 관리자를 선택하고 판정기와 선택 확장을 설치한 뒤 확인합니다."
+      }
+    },
+    {
+      "id": "migrate-to-rust",
+      "category": "how-to",
+      "order": 24,
+      "bundled": true,
+      "en": {
+        "path": "how-to/migrate-to-rust.md",
+        "title": "Move an existing installation to Rust",
+        "summary": "Update configuration, hooks, commands, and SDK consumers."
+      },
+      "ko": {
+        "path": "how-to/migrate-to-rust.ko.md",
+        "title": "기존 설치를 Rust 실행 파일로 옮기기",
+        "summary": "설정, 훅, 명령과 SDK 사용 코드를 현재 계약에 맞춥니다."
+      }
+    },
+    {
+      "id": "use-memory",
+      "category": "how-to",
+      "order": 5,
+      "bundled": true,
+      "en": {
+        "path": "how-to/use-memory.md",
+        "title": "Use project memory",
+        "summary": "Create a document collection, find decisions, and maintain links and query history."
+      },
+      "ko": {
+        "path": "how-to/use-memory.ko.md",
+        "title": "프로젝트 기억 사용하기",
+        "summary": "문서 모음을 만들고 결정을 찾으며 링크와 질의 이력을 관리합니다."
+      }
     }
   ],
   "topics": {
     "install": {
       "references": [
+        {
+          "documentId": "install"
+        },
         {
           "documentId": "first-judgment"
         }

@@ -7,7 +7,8 @@ infer that a practice was followed merely because an agent says so. A passing re
 the files, calls, and history actually observed.
 
 For the complete syntax of relations and extraction steps, see the
-[Declaration language reference](../reference/declaration-language/index.md).
+[Declaration language
+reference](../reference/declaration-language/index.md).
 
 <a id="terms"></a>
 ## Covenant, discipline, and surface
@@ -69,7 +70,7 @@ values are compared structurally. A comparison of translation keys does not comp
 Extraction decides which distinction a relation can see.
 
 <a id="mechanisms"></a>
-## Eighteen mechanism names
+## Seventeen mechanism names
 
 A mechanism names the purpose and allowed shape of a declaration, not a new comparison operator. The
 compiler derives the evidence axes and relations from the syntax and checks that they fit the chosen
@@ -77,13 +78,14 @@ mechanism.
 
 `pairing`, `companion`, `monotonic-order`, `fingerprint-sync`, `producer-owned`,
 `self-absolution-ban`, `actor-scope`, `precedent`, `phase-order`, `turn-locality`, `stated-ground`,
-`controlled-vocabulary`, `naming`, `added-only`, `one-way-marker`, `delegated-scope`,
-`scoped-valve`, and `forbidden-command` are the closed catalog.
+`controlled-vocabulary`, `naming`, `added-only`, `one-way-marker`, `scoped-valve`, and
+`forbidden-command` are the closed catalog.
 
-`delegated-scope` is **reserved**, not a usable declaration in this release. `scoped-valve` requires
-its own witness block; `naming` scopes on `target.path`; `forbidden-command` scopes on `command`.
-See the [configuration reference](../reference/configuration/index.md#disciplines) for syntax and
-extraction steps.
+`scoped-valve` requires its own witness block; `naming` scopes on `target.path`; `forbidden-command`
+scopes on `command`. See the
+[configuration
+reference](../reference/configuration/index.md#disciplines)
+for syntax and extraction steps.
 
 <a id="verdicts"></a>
 ## Interpret the result, not just the exit code
@@ -111,7 +113,5 @@ Protection of the judging chain is separate from ordinary discipline entries.
 
 The witness valve is consulted after a blocking judgment, never instead of judgment. Session and
 commit witnesses have different delivery mechanisms and evidence. A commit prompt cannot approve a
-pending session call. See
-[witness and
-recovery](../how-to/connect-surfaces.md#witness-and-recovery)
+pending session call. See [witness and recovery](../how-to/connect-surfaces.md#witness-and-recovery)
 and [troubleshooting](../troubleshooting.md).

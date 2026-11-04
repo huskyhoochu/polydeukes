@@ -7,7 +7,40 @@ write an extraction and relation, then exercise both a violation and a valid cas
 at `advise` until you decide that the observed results justify blocking.
 
 For the complete syntax of relations and extraction steps, see the
-[Declaration language reference](../reference/declaration-language/index.md).
+[Declaration language
+reference](../reference/declaration-language/index.md).
+
+<a id="design-a-discipline"></a>
+## Start with the promise you can check
+
+Write one valid case and one violating case before writing the declaration. Narrow “write good code”
+to an observable comparison such as “English and Korean locale files have the same keys.”
+
+| Question                         | Decision                                                            |
+| -------------------------------- | ------------------------------------------------------------------- |
+| Which changes should trigger it? | Scope the paths or commands                                         |
+| What evidence should it compare? | Before/after content, named files, commands, actor, or history      |
+| What is the comparison unit?     | Extract lines, JSON keys, names, hashes, or another supported value |
+| What relation should hold?       | Choose empty, equal, subset, or another declared relation           |
+| What if evidence is missing?     | Choose error, pass, or empty according to its actual meaning        |
+| When should it stop work?        | Exercise advice on valid and violating cases before choosing block  |
+
+Using empty for absent evidence changes “not observed” into “nothing there.” Use it only when that
+is the intended meaning. Pass records a skipped observation, not an upheld promise. Choose the
+appropriate [discipline list](../reference/configuration/index.md#three-lists) for the evidence,
+then inspect assembly with `pdks explain`.
+
+<a id="verification-loop"></a>
+## Verify a discipline in order
+
+1. Prepare a complete configuration and its source files in a temporary Git project.
+2. Check that `pdks explain` loads and assembles the discipline.
+3. Exercise a valid input and a violation; inspect the discipline ID, reason, and telemetry.
+4. Try an out-of-scope input to confirm which files the discipline observes.
+5. Repeat on the surface you will connect. Whole-file session content and diff hunk lines differ.
+6. Observe advice during ordinary work, then promote selected entries to blocking.
+
+The locale example below runs the valid, violating, and repaired cases.
 
 <a id="locale-key-pairing"></a>
 ## Locale key pairing
@@ -64,7 +97,7 @@ printf '{"home":"홈"}\n' > locales/ko.json
 git add locales/en.json locales/ko.json
 git commit -m 'docs: prepare locale example'
 printf '{"home":"Home","settings":"Settings"}\n' > locales/en.json
-git diff HEAD | pnpm exec pdks covenant check --diff
+git diff HEAD | pdks covenant check --diff
 ```
 
 Expect an `advised` diagnostic for `locale-key-parity` naming `settings` as present only in English.
@@ -72,7 +105,7 @@ The command still exits 0. Fix the mismatch and run the same observation again:
 
 ```sh
 printf '{"home":"홈","settings":"설정"}\n' > locales/ko.json
-git diff HEAD | pnpm exec pdks covenant check --diff
+git diff HEAD | pdks covenant check --diff
 ```
 
 The parity diagnostic should disappear. The values differ intentionally; the keys now match. Restore

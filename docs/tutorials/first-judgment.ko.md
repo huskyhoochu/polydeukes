@@ -2,9 +2,9 @@
 
 [English](./first-judgment.md) · **한국어**
 
-빈 예제 프로젝트에서 보호된 쓰기와 일반 쓰기의 판정 결과를 확인합니다. 설치한 단일 `pdks`를 PATH에
-두세요. 별도 Node·npm은 필요하지 않습니다. 실제 세션 관측에는 Claude Code가 필요하지만 아래 직접
-확인 명령에는 필요하지 않습니다.
+[설치 안내](../how-to/install.ko.md)에서 본체와 Claude Code 확장을 설치하고 PATH에 놓습니다. 새 예제
+프로젝트에서 보호·일반 쓰기를 판정합니다. 직접 검사는 Claude Code 없이도 실행되며, 실제 세션
+관측에는 해당 호스트가 필요합니다.
 
 <a id="claude-code"></a>
 
@@ -16,7 +16,20 @@
 mkdir pdks-example
 cd pdks-example
 git init
-pdks adapter claude-code init
+```
+
+npm 로컬 설치를 쓴다면 이 새 프로젝트에도 설치하고 현재 터미널의 `PATH`에 추가합니다. 다른 경로로 두
+실행 파일을 이미 `PATH`에 설치했다면 이 블록은 건너뜁니다.
+
+```sh
+npm install --save-dev polydeukes @polydeukes/adapter-claude-code
+export PATH="$PWD/node_modules/.bin:$PATH"
+```
+
+이제 통합을 등록합니다.
+
+```sh
+pdks-claude-code init
 ```
 
 설치기는 초기 설정·`.claude/settings.json` 등록·문서 안내·`discipline-draft` 스킬·telemetry ignore
@@ -25,20 +38,22 @@ pdks adapter claude-code init
 
 ```sh
 printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":".claude/settings.json","content":"{}"}}' \
-  | pdks adapter claude-code hook --project-root "$PWD"
+  | pdks-claude-code hook --project-root "$PWD" --pdks "$(command -v pdks)"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
 
 예상 결과는 `exit=2`입니다. stderr에는 보호 경로를 지목한 메시지가 나오고, 로그에는 `blocked` 행이
-남습니다. 이 명령은 판정만 요청하며 **실제로 파일을 쓰지 않습니다**. 설정 파일은 그대로이므로 되돌릴
-변경도 없습니다.
+남습니다. 이 명령은 판정만 요청하며
+**실제로 파일을
+쓰지 않습니다**.
+설정 파일은 그대로이므로 되돌릴 변경도 없습니다.
 
 이번에는 보호 목록 밖의 경로로 같은 검사를 합니다.
 
 ```sh
 printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"example.txt","content":"hello"}}' \
-  | pdks adapter claude-code hook --project-root "$PWD"
+  | pdks-claude-code hook --project-root "$PWD" --pdks "$(command -v pdks)"
 printf 'exit=%s\n' "$?"
 tail -n 5 .polydeukes/roi.log
 ```
@@ -59,7 +74,9 @@ tail -n 5 .polydeukes/roi.log
 패키지나 설정을 읽지 못해 검사가 실패하면 자신의 터미널에서 지목된 파일을 고치거나 패키지를 다시
 설치합니다. 밸브를 조립하는 단계에 이르기 전에 발생한 오류는 증인으로 해결할 수 없습니다.
 [설정 오류](../troubleshooting.ko.md#invalid-config)와
-[판정기 로드 실패](../troubleshooting.ko.md#judge-cannot-be-loaded)를 참고하세요.
+[판정기 로드
+실패](../troubleshooting.ko.md#judge-cannot-be-loaded)를
+참고하세요.
 
 <a id="next-step"></a>
 
@@ -71,5 +88,7 @@ tail -n 5 .polydeukes/roi.log
   결정합니다.
 
 종료 코드만으로 모든 관측 결과를 알 수는 없습니다. `advised`나 `skipped`가 있어도 exit 0일 수
-있습니다. 진단 메시지와 [판정 결과 어휘](../troubleshooting.ko.md#reading-verdict)를 함께
-확인하세요.
+있습니다. 진단 메시지와
+[판정 결과
+어휘](../troubleshooting.ko.md#reading-verdict)를
+함께 확인하세요.

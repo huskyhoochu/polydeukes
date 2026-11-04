@@ -1,79 +1,82 @@
-# `pdks init`와 어댑터 연결
+# `pdks init`
 
 [English](./init.md) · **한국어**
 
-설치한 단일 `pdks`로 프로젝트 설정과 두 호스트 연결을 관리합니다. 별도 Node·npm·프로젝트 패키지
-설치가 필요하지 않습니다. 모든 초기화 명령은 현재 디렉터리에 설치합니다.
+프로젝트 루트에서 설정을 만들고, 설치한 어댑터로 호스트를 연결합니다. 각 init은 현재 디렉터리에
+설치합니다.
 
 <a id="init-syntax"></a>
 ## 문법
 
 ```sh
 pdks init
-pdks adapter claude-code init
-pdks adapter codex init
+pdks-claude-code init
+pdks-codex init
 ```
+
+어댑터는 선택 설치입니다. [설치 안내](../../how-to/install.ko.md)를 참고하세요.
 
 <a id="init-common"></a>
-## `pdks init` — 초기 파일
+## 프로젝트 설정
 
-`polydeukes.config.yaml`을 만들고 `.gitignore`에 `.polydeukes/`를 추가합니다. 기존 설정은
-보존합니다. `.yaml`·`.yml`·`.json` 설정 파일이 둘 이상 있으면 거부합니다. 초기 설정에는 보호
-경로·증인(witness)·규율(discipline) 예제가 있습니다.
-
-초기 보호 경로는 `.claude/hooks`·`.claude/settings.json`·`.claude/settings.local.json`·
-`.codex/hooks`·`.codex/hooks.json`·`.codex/config.toml`입니다. 각 항목은 경로의 분절에 그 항목이
-들어 있으면 일치하므로, 프로젝트 안의 파일과 홈 디렉터리 아래의 같은 파일을 함께 보호합니다.
+생성하는 것은 `polydeukes.config.yaml`과 `.gitignore`의 `.polydeukes/` 항목입니다. 기존 설정은
+유지합니다. 설정 후보가 여러 개면 거부합니다. 생성 설정에는 증인 설정과 빈 규율 목록이 있습니다.
+실제 보호 대상은 어댑터 init이 추가하며, 로더는 읽은 설정 파일을 자동으로 보호합니다.
 
 <a id="init-claude-code"></a>
-## Claude Code — `pdks adapter claude-code init`
-
-공통 초기 파일을 준비하고 `.claude/settings.json`에 현재 실행 파일·프로젝트 루트의 절대 경로를
-등록합니다. `PreToolUse`·`UserPromptSubmit`·`PostToolUse`·`SessionEnd`를 병합하며 다른 handler와
-사용자 키는 보존합니다. `onFailure: "block"`은 `PreToolUse` handler에만 있습니다. 훅이 시작되지
-못하면 도구 호출을 차단하고, prompt·post·종료 이벤트의 실패는 세션을 멈추지 않습니다.
-
-문서 안내 `.claude/rules/polydeukes.md`와 `discipline-draft` 스킬도 없을 때 생성합니다. Claude
-Code에서 프로젝트를 다시 여세요.
-
-<a id="init-codex"></a>
-## Codex — `pdks adapter codex init`
-
-공통 초기 파일을 준비하고 `.codex/hooks.json`에 현재 실행 파일·프로젝트 루트의 절대 경로를
-등록합니다. `PreToolUse`·`UserPromptSubmit`·`PostToolUse`·`SessionEnd`를 병합하며 다른 handler와
-사용자 키는 보존합니다. `PreToolUse` 명령만 `|| exit 2`로 끝납니다.
-
-Codex `/hooks`에서 정의를 승인하세요. 신뢰는 정의의 hash에 연결됩니다. 현재 prompt는 사람 출처를
-증명하지 않아 증인 밸브를 열지 않습니다. 보호 변경은 자신의 터미널에서 수행하세요.
-
-<a id="init-results"></a>
-## 결과와 이전
-
-성공은 exit 0, 잘못된 인자·설정 JSON·모호한 설정·쓰기 실패는 exit 2입니다. 출력은
-`created`·`updated`·`unchanged`·`preserved`와 필수 보호 경로를 구분합니다. 기존 설정의
-`protectedPaths`에 출력 경로가 포함되는지 확인하세요. PreToolUse는 60초, prompt/post는 30초, 종료는
-5초로 등록합니다.
-
-구형 `pdks-claude-code`·`pdks-codex` 대신 위 명령을 사용하세요. 설치기는 자체 구형 handler를
-교체하고 원본과 일치하는 생성 `.mjs`만 제거합니다. 수정한 위임자는 보존합니다. 실행 파일이나
-프로젝트를 옮기면 재설치하고 호스트 신뢰를 확인하세요. 전역 설정은 변경하지 않습니다. 프로젝트의
-`node_modules/polydeukes` 패키지에서 init을 실행하면 패키지 관리자의 버전별 저장소 경로 대신 그
-경로를 등록하므로, 패키지를 올려도 등록이 유효합니다. 스크립트를 실행하는 Node 실행 파일도 실제
-경로로 등록하므로, Node를 업그레이드하거나 바꾼 뒤에는 init을 다시 실행하세요.
-
-쓰기 실패는 일부 산출물을 남길 수 있습니다. 오류를 고치고 재실행하세요.
-
-<a id="init-examples"></a>
-## 훅 직접 확인
+## claude-code
 
 ```sh
-pdks adapter claude-code hook --project-root /absolute/project < event.json
+pdks-claude-code init
 ```
 
-이 명령은 완전한 호스트 이벤트를 판정하며 도구 자체는 실행하지 않습니다. 실제 호스트가 등록을
-불러왔는지는 별도로 확인해야 합니다.
+`pdks init`을 실행하고 `PreToolUse`를 등록합니다. 보호 경로는
+`.claude/settings.json, .claude/settings.local.json`입니다. 등록에는 프로젝트 루트, 어댑터, PATH에서
+찾은 판정기의 절대 경로가 들어갑니다. 다른 도구의 핸들러와 사용자 설정을 유지합니다.
+
+`.claude/rules/polydeukes.md`와 `discipline-draft` 스킬을 없을 때 만듭니다. Claude Code를 다시 열어
+실제 호출의 새 텔레메트리 행을 확인합니다.
+
+<a id="init-codex"></a>
+## codex
+
+```sh
+pdks-codex init
+```
+
+`pdks init`을 실행하고 `PreToolUse, PostToolUse, SessionEnd`를 등록합니다. 보호 경로는
+`.codex/hooks.json, .codex/config.toml`입니다. 등록에는 프로젝트 루트, 어댑터, PATH에서 찾은
+판정기의 절대 경로가 들어갑니다. 다른 도구의 핸들러와 사용자 설정을 유지합니다.
+
+Codex `/hooks`에서 정의를 승인합니다. PostToolUse가 도구 이력을 저장하고 SessionEnd가 정리합니다.
+사람 메시지 증거는 없으므로 보호 편집은 소유자 터미널에서 합니다.
+
+<a id="init-results"></a>
+## 결과와 경로 변경
+
+성공은 exit 0, 인자·설정·쓰기 오류는 exit 2입니다. 프로젝트나 실행 파일을 옮기면 init을 다시
+실행하고 호스트 신뢰를 확인합니다. 등록에는 `onFailure`나 `|| exit 2`가 없습니다. 어댑터가 시작되지
+않으면 호스트가 조용히 호출을 진행할 수 있습니다. 어댑터가 판정기를 시작하지 못하면 설치 안내를
+출력하고 호출을 진행합니다. 실제 판정 여부는 로그로 확인하세요.
+
+옛 TypeScript 핸들러와 `.mjs` 파일은 자동 삭제되지 않습니다.
+[이행 절차](../../how-to/migrate-to-rust.ko.md#hooks)를 따르세요. 쓰기 실패 뒤에는 일부 파일이 남을
+수 있으므로 오류를 고치고 다시 실행합니다.
+
+<a id="init-examples"></a>
+## 직접 검사
+
+```sh
+pdks-claude-code hook --project-root /absolute/project --pdks /absolute/bin/pdks < event.json
+```
+
+두 경로는 절대 경로이며 플래그 순서를 유지합니다. 이 명령은 도구를 실행하지 않고 이벤트를
+판정합니다.
+[첫
+판정](../../tutorials/first-judgment.ko.md)에서
+완전한 예제를 실행하세요.
 
 <a id="init-see-also"></a>
 ## 관련 문서
 
-- [표면 연결](../../how-to/connect-surfaces.ko.md)
+[Connection guide](../../how-to/connect-surfaces.ko.md)

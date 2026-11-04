@@ -5,6 +5,9 @@
 The Rust `pdks` executable is the covenant judge, with `covenant check`, `init`, `explain`, and
 `docs`. It also runs `pdks-<name>` executables on `PATH` as `pdks <name>`.
 
+Choose Homebrew, crates.io, npm, or PyPI in the [installation guide](../../docs/how-to/install.md).
+The [documentation home](../../docs/README.md) connects installation with the next steps.
+
 <a id="install"></a>
 ## Install
 
@@ -15,7 +18,6 @@ archive described below for `aarch64-apple-darwin`, `x86_64-unknown-linux-musl` 
 
 ```sh
 cargo install --locked pdks
-cargo binstall pdks
 ```
 
 Each [GitHub Release](https://github.com/huskyhoochu/polydeukes/releases) carries
@@ -51,7 +53,8 @@ The built executable is `target/release/pdks`.
   digits, `_`, or `-`, and does not start with `-` or name a built-in command.
 
 Run project commands from the project root. For configuration, see the
-[project guide](../../docs/how-to/configure-project.md).
+[project
+guide](../../docs/how-to/configure-project.md).
 
 <a id="license"></a>
 ## License

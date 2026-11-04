@@ -26,9 +26,8 @@ better verification.
 
 ## What exists now
 
-The packages provide a shared input vocabulary, two session adapters, TypeScript, Rust, and Python
-clients for programs, an optional markdown index, and the `polydeukes` umbrella, which carries the
-judge and the `pdks` command. Two observation surfaces serve different purposes:
+The project provides the Rust pdks judge, two separate host adapters, a memory extension, and
+TypeScript, Rust, and Python SDKs. Two observation surfaces serve different purposes:
 
 - The **session surface** judges one call before it runs — an input IR on stdin. Claude Code and
   Codex have installers, and a program reaches the same surface through the TypeScript, Rust, or
@@ -46,27 +45,21 @@ history, the actor. `changeSetDisciplines` holds what only a finished change set
 refuses an entry written in a list whose surface cannot observe its channels, so the config file
 itself says where each discipline stands, and `pdks explain` prints the same placement per surface.
 
-A discipline is configuration data with extraction steps and relations. Seven relations and eighteen
-mechanism names form the current vocabulary; `delegated-scope` is reserved rather than usable. The
-mechanism restricts a declaration's shape, while the surface determines which evidence it can
-supply. An `added-only` declaration can tolerate existing matches; this is not the behavior of every
-discipline. A pairing declaration, for example, compares the selected key sets.
+A discipline is configuration data with extraction steps and relations. Seven relations and
+seventeen mechanisms form the vocabulary. Mechanisms constrain declaration shape; surfaces determine
+available evidence. Added-only tolerates existing matches, while pairing compares selected key sets.
 
 See [how judgment works](./concepts/judgment.md),
 [write
 disciplines](./how-to/write-disciplines.md),
-and the [configuration reference](./reference/configuration/index.md).
+and the
+[configuration
+reference](./reference/configuration/index.md).
 
-`pdks memory` indexes the project's markdown documents into `.polydeukes/memory.db` and searches
-their sections. The documents stay the record and the index is derived from them: nothing is written
-to the index alone, so deleting it and running `pdks memory ingest` restores it, and how the file is
-kept is the project's choice. The single executable includes the index implementation. In npm
-installations it lives in the optional package `@polydeukes/memory`, which the judge never loads — a
-verdict is the same with or without it. Links between documents are stored as rows, and a link whose
-target does not exist is recorded rather than refused: an ingest that refused a document would leave
-the index disagreeing with files that git still holds. `pdks memory lint` reports those links and
-exits `1`, so the check runs wherever the project chooses to run it. See the
-[`pdks memory` reference](./reference/cli/memory.md).
+`pdks memory` invokes the separate pdks-memory executable, computing sections and links from current
+Markdown. Documents are the record and changes appear on the next query. Unresolved links do not
+prevent reading; pdks memory lint reports them with exit 1. Query history is a separate local log.
+See [the memory walkthrough](./how-to/use-memory.md).
 
 ## Principles and their limits
 
@@ -190,6 +183,15 @@ compare file contents, others require observed process evidence. It does not exe
 benchmark during judgment or prove that a natural-language explanation is true.
 
 The name's story is in [STORY.md](../STORY.md). To try the implemented system, follow
-[the first-judgment tutorial](./tutorials/first-judgment.md). For current limits and recovery, see
-[troubleshooting](./troubleshooting.md). The project's claims should be read with those limits, not
-as a promise of complete supervision-free development.
+[the
+first-judgment tutorial](./tutorials/first-judgment.md).
+For current limits and recovery, see [troubleshooting](./troubleshooting.md). The project's claims
+should be read with those limits, not as a promise of complete supervision-free development.
+
+## Observing shell commands and file contents
+
+Protected-path mentions in shell commands are judged conservatively even when the command looks
+read-only: a shell string and a direct file tool provide different evidence. When a shell write
+cannot supply file contents, content disciplines record a skipped observation. Judge the finished
+diff on the change-set surface to inspect its content. Connecting both surfaces lets a project check
+the process and the resulting changes at their respective observation boundaries.

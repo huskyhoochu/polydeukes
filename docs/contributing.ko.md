@@ -34,9 +34,9 @@ H2/H3마다 안정 ID가 필요합니다. H1은 문서 제목이지 절이 아�
 - `documents` 항목은 `id`, `category`, `order`, `bundled`, 그리고 `en`/`ko`의
   `{path,title,summary}`를 가집니다. 제목과 요약은 일반 텍스트로 작성합니다. 백틱 같은 마크다운 서식
   문자는 웹사이트 제목과 탐색 메뉴에 그대로 표시됩니다.
-- `bundled: true` 파일은 설치된 `pdks docs` 라이브러리로 복사됩니다. `bundled: false` 파일은
-  저장소와 문서 웹사이트에 표시되며 `pdks docs` 검색·조회 대상에서는 제외됩니다. 이 페이지와 설계
-  설명이 `bundled: false`입니다.
+- `bundled: true` 파일은 `pdks docs`를 위해 실행 파일에 내장됩니다. `bundled: false` 파일은 저장소와
+  문서 웹사이트에 표시되며 `pdks docs` 검색·조회 대상에서는 제외됩니다. 이 페이지와 설계 설명이
+  `bundled: false`입니다.
 
 `docs/*.md` 파일을 추가할 때는 카탈로그에도 등록하세요.
 
@@ -70,7 +70,7 @@ GitHub으로 연결하며, 안정 절 ID와 버전 파일명의 점은 유지합
 [첫 판정 튜토리얼](./tutorials/first-judgment.ko.md)의 훅 프로브를 씁니다.
 
 TypeScript 예제에서는 패키지 계약이 공개하는 심볼만 가져옵니다. 우산은 TypeScript 진입점을 공개하지
-않고 `pdks` 실행 파일로만 닿으므로, 그 심볼은 `@polydeukes/core`나 에이전트 어댑터에서 옵니다.
+않고 `pdks` 실행 파일로만 닿으므로, 그 심볼은 `@polydeukes/sdk-ts`에서 옵니다.
 
 문서 변경을 커밋하기 전에 다음을 실행합니다.
 
@@ -84,10 +84,8 @@ node scripts/check-docs.mjs
 <a id="check-commands"></a>
 ## 실행할 명령
 
-| 명령                                                                                                     | 확인하는 것                            |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `node scripts/check-docs.mjs`                                                                            | 쌍, 카탈로그, 로컬 링크와 앵커         |
-| `pnpm -F polydeukes exec vitest run __tests__/check-docs.test.ts`                                        | 검사기 회귀                            |
-| `pdks docs search <query>` / `pdks docs show <id>`                                                       | `docs/`를 복사하는 빌드 뒤의 설치 번들 |
-| `pnpm -F polydeukes exec vitest run __tests__/declaration-reference.test.ts __tests__/sync-docs.test.ts` | 전체 어휘 표와 웹사이트 변환           |
-| `pnpm -F @polydeukes/documentation build`                                                                | 생성 문서, 경로, 정적 웹사이트 빌드    |
+| 명령                                               | 확인하는 것                            |
+| -------------------------------------------------- | -------------------------------------- |
+| `node scripts/check-docs.mjs`                      | 쌍, 카탈로그, 로컬 링크와 앵커         |
+| `pdks docs search <query>` / `pdks docs show <id>` | 실행 파일을 다시 빌드한 뒤의 내장 문서 |
+| `pnpm -F @polydeukes/documentation build`          | 생성 문서, 경로, 정적 웹사이트 빌드    |

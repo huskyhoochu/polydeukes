@@ -3,7 +3,8 @@
 **English** · [한국어](sdk-python.ko.md)
 
 Python 3.12+ synchronous client for `pdks covenant check` and `pdks memory`.
-[Installation and three-verb example](../../../packages/sdk-python/README.md).
+[Installation and
+three-verb example](../../../packages/sdk-python/README.md).
 
 <a id="contract"></a>
 ## Contract
@@ -63,17 +64,18 @@ serialization, spawn, and timeout failures give `Unjudged`. The child's stderr i
 result contract. Read telemetry to identify the disciplines actually judged. `Unjudged` is not
 permission to execute.
 
-Memory search runs `pdks memory ...`, which invokes `pdks-memory` on `PATH` (installed by the npm
-package `@polydeukes/memory`, the Release archive, or `cargo install pdks-memory`); if it is
-missing, search returns `Unavailable` with the reason `pdks` prints.
+Memory search runs `pdks memory ...`, which invokes `pdks-memory` on the SDK process's `PATH`.
+Follow the [installation guide](../../how-to/install.md) to install the extension. For a local npm
+installation, add the project's absolute `node_modules/.bin` directory to `PATH` before starting the
+SDK host. If it is missing, search returns `Unavailable` with the reason `pdks` prints.
 
-The search output follows `memory-search-output.schema.json` exported by `@polydeukes/core`. Memory
-nonzero exits, signals, spawn failures, and timeout give `Unavailable`. Search requires valid UTF-8
-JSON with a `results` array (`{"results": [...]}`). Every hit's required fields, types, and
-`trust`/`matchPath` enums are checked; additional fields are accepted. Only a valid empty array
-gives `Empty`. `Found.hits` is a nonempty tuple that preserves CLI order; hit fields retain
-camelCase. Malformed replies are `Unavailable`. Search retrieves sections; obligation lookup is a
-separate CLI command.
+The search output follows `memory-search-output.schema.json` in the repository’s `schema/`
+directory. Memory nonzero exits, signals, spawn failures, and timeout give `Unavailable`. Search
+requires valid UTF-8 JSON with a `results` array (`{"results": [...]}`). Every hit's required
+fields, types, and `trust`/`matchPath` enums are checked; additional fields are accepted. Only a
+valid empty array gives `Empty`. `Found.hits` is a nonempty tuple that preserves CLI order; hit
+fields retain camelCase. Malformed replies are `Unavailable`. Search retrieves sections; obligation
+lookup is a separate CLI command.
 
 <a id="spawn"></a>
 ## Injecting spawn
@@ -126,4 +128,6 @@ schemas supply the generated wire types, separately from search-response validat
 
 From the checkout, `node scripts/verify-sdk-contract.mjs --executable <absolute-pdks>` compares all
 three SDKs’ fixture observations, real judgments, telemetry, and search order. See the
-[TS contract](sdk-ts.md) and [Rust contract](sdk-rust.md).
+[TS
+contract](sdk-ts.md)
+and [Rust contract](sdk-rust.md).
