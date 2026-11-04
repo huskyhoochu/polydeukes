@@ -9,6 +9,13 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.24.0](https://github.com/huskyhoochu/polydeukes/compare/v0.23.0...v0.24.0) (2026-11-03)
+
+
+### Features
+
+* **release:** publish pdks and its three extensions to PyPI as platform binary wheels ([#335](https://github.com/huskyhoochu/polydeukes/issues/335)) ([e36e6fa](https://github.com/huskyhoochu/polydeukes/commit/e36e6fad581c385e45cd17325bcaa33d182a37bd))
+
 ## [0.23.0](https://github.com/huskyhoochu/polydeukes/compare/v0.22.0...v0.23.0) (2026-11-03)
 
 
