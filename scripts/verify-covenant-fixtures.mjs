@@ -2,13 +2,7 @@
 // Runs every conformance/covenant/**/*.json case against a `pdks` executable, so any
 // implementation of the judge is compared on the process boundary alone.
 // Usage: node scripts/verify-covenant-fixtures.mjs --executable <absolute path>
-//          [--cases-dir <directory>] [--cases <file> | <group>/<name> prefix]
-//
-//   --cases-dir  read the cases from this directory instead of conformance/covenant; case
-//                names are relative to it. A relative path resolves against the process cwd.
-//   --cases      run only the cases whose names exactly match a line of this file; blank lines
-//                and lines starting with `#` are ignored. A listed name with no case file is
-//                printed and the run exits 2. It cannot be combined with a prefix.
+//          [<group>/<name> prefix]
 //
 // A case is one `pdks covenant check <args>` run in a fresh root (the cwd) with HOME set to a
 // separate fresh directory. The child environment is PATH, HOME and the case's env only, and
@@ -46,41 +40,15 @@ import { fileURLToPath } from 'node:url';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const usage =
-  'usage: node scripts/verify-covenant-fixtures.mjs --executable <absolute path> [--cases-dir <directory>] [--cases <file> | <group>/<name> prefix]';
-const optionOf = (name) => {
-  const at = argv.indexOf(name);
-  return at === -1 ? { at, value: undefined } : { at, value: argv[at + 1] };
-};
-const exe = optionOf('--executable');
-const dir = optionOf('--cases-dir');
-const list = optionOf('--cases');
-const executable = exe.value;
-if (
-  !executable ||
-  !isAbsolute(executable) ||
-  (dir.at !== -1 && !dir.value) ||
-  (list.at !== -1 && !list.value)
-) {
+  'usage: node scripts/verify-covenant-fixtures.mjs --executable <absolute path> [<group>/<name> prefix]';
+const exeAt = argv.indexOf('--executable');
+const executable = exeAt === -1 ? undefined : argv[exeAt + 1];
+if (!executable || !isAbsolute(executable)) {
   console.error(usage);
   process.exit(2);
 }
-const casesDir = dir.value ? resolve(dir.value) : join(repo, 'conformance/covenant');
-const used = new Set([exe, dir, list].filter((o) => o.at !== -1).flatMap((o) => [o.at, o.at + 1]));
-const positional = argv.filter((_, i) => !used.has(i));
-if (list.at !== -1 && positional.length > 0) {
-  console.error(usage);
-  process.exit(2);
-}
-const prefix = positional[0] ?? '';
-const wanted =
-  list.at === -1
-    ? undefined
-    : new Set(
-        readFileSync(resolve(list.value), 'utf8')
-          .split('\n')
-          .map((line) => line.trim())
-          .filter((line) => line !== '' && !line.startsWith('#')),
-      );
+const casesDir = join(repo, 'conformance/covenant');
+const prefix = argv.filter((_, i) => i !== exeAt && i !== exeAt + 1)[0] ?? '';
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true })
@@ -183,19 +151,11 @@ function runCase(file) {
 
 const files = walk(casesDir);
 const nameOf = (file) => relative(casesDir, file).replace(/\.json$/, '');
-if (wanted) {
-  const known = new Set(files.map(nameOf));
-  const unknown = [...wanted].filter((name) => !known.has(name));
-  if (unknown.length) {
-    for (const name of unknown) console.log(`no case file for listed name ${name}`);
-    process.exit(2);
-  }
-}
 let passed = 0;
 let failed = 0;
 for (const file of files) {
   const name = nameOf(file);
-  if (wanted ? !wanted.has(name) : !name.startsWith(prefix)) continue;
+  if (!name.startsWith(prefix)) continue;
   let diffs;
   try {
     diffs = runCase(file);

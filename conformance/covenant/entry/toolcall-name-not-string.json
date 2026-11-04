@@ -1,5 +1,5 @@
 {
-  "description": "A tool call whose name is not a string is unreadable input and exits 3; the TS judge reads it and fails later at exit 2.",
+  "description": "A tool call whose name is not a string is unreadable input and exits 3.",
   "args": [],
   "tree": {
     "polydeukes.config.yaml": {}

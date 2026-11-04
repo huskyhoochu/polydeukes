@@ -1,5 +1,5 @@
 {
-  "description": "A commandArgs roster holding only an empty name is an input error with exit 3; the TS judge blocks the shell call as unjudgeable at exit 2.",
+  "description": "A shell roster holding only an empty name is an input error with exit 3.",
   "args": ["--enforce", "block"],
   "tree": {
     "polydeukes.config.yaml": {
@@ -10,24 +10,23 @@
     "toolCalls": [
       {
         "name": "Bash",
-        "cwd": "@@ROOT@@",
         "args": {
-          "command": "rm dist/a"
+          "command": "rm -rf dist"
         }
       }
     ],
     "subagentSpawns": [],
     "userMessages": [],
     "tools": {
-      "mutating": [],
-      "shell": ["Bash"],
-      "commandArgs": [""]
+      "mutating": ["Write"],
+      "shell": [""],
+      "commandArgs": ["command"]
     }
   },
   "expect": {
     "exit": 3,
     "stderr": [
-      "covenant check failed closed: input carries a tools.commandArgs roster with only empty names"
+      "covenant check failed closed: input carries a tools.shell roster with only empty names"
     ],
     "rows": [["blocked", "covenant-check", "-"]]
   }

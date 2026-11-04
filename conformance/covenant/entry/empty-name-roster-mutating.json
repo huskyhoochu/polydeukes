@@ -1,5 +1,5 @@
 {
-  "description": "A mutating roster whose only name is the empty string has no valid entry, so the self-mod covenant cannot judge and the write is blocked.",
+  "description": "A mutating roster holding only an empty name is an input error with exit 3.",
   "args": ["--enforce", "block"],
   "tree": {
     "polydeukes.config.yaml": {
@@ -30,8 +30,10 @@
     }
   },
   "expect": {
-    "exit": 2,
-    "stderr": [],
-    "rows": [["blocked", "self-mod", "dist"]]
+    "exit": 3,
+    "stderr": [
+      "covenant check failed closed: input carries a tools.mutating roster with only empty names"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
   }
 }

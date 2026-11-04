@@ -345,9 +345,6 @@ importers:
 
   packages/sdk-ts:
     devDependencies:
-      '@polydeukes/core':
-        specifier: workspace:^
-        version: link:../core
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6

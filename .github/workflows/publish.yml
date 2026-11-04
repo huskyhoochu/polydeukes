@@ -77,6 +77,9 @@ jobs:
       # each sibling's dist/index.d.ts, which a fresh checkout does not have.
       - run: pnpm -r typecheck
 
+      # The end-to-end tests of sdk-ts spawn target/debug/pdks.
+      - run: cargo build -p pdks
+
       # The publish gate: unit suites plus the tarball-contents e2e suite.
       - run: pnpm -r test
 
@@ -100,8 +103,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
           node-version: 26
@@ -112,10 +113,8 @@ jobs:
           TAG="$(git describe --tags --exact-match)"
           test "$TAG" = "v$(node -p 'require("./package.json").version')"
 
-      - run: pnpm install --frozen-lockfile
-
       # The crate's end-to-end test spawns the built `pdks`.
-      - run: pnpm turbo run build
+      - run: cargo build -p pdks
 
       - run: cargo test -p polydeukes-sdk
 
@@ -137,54 +136,6 @@ jobs:
         if: steps.published.outputs.exists == 'false'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-
-  # The umbrella as one executable per platform, built from the same tag: Node and the bundle
-  # in one file, for a host that has no Node. Each runner builds for its own platform, because
-  # the executable is a copy of the runner's node binary with the bundle injected. The suite
-  # runs against the built file before it is kept, and only a tag whose full suite passed and
-  # reached npm gets executables.
-  executables:
-    needs: publish
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            asset: pdks-linux-x64
-          - runner: macos-latest
-            asset: pdks-darwin-arm64
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
-      - name: Verify HEAD is exactly the tagged release
-        run: |
-          set -euo pipefail
-          TAG="$(git describe --tags --exact-match)"
-          test "$TAG" = "v$(node -p 'require("./package.json").version')"
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm turbo run build
-
-      - run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/${{ matrix.asset }}"
-
-      - run: pnpm -F polydeukes exec vitest run __tests__/sea-executable.e2e.test.ts
-        env:
-          PDKS_SEA: ${{ runner.temp }}/${{ matrix.asset }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset }}
-          path: ${{ runner.temp }}/${{ matrix.asset }}
-          if-no-files-found: error
 
   # The Rust executables, one archive each per platform, for the package managers to install
   # from the Release. Linux links musl statically, so the file runs on any Linux of its
@@ -521,8 +472,8 @@ jobs:
           skip-existing: true
 
   publish-python:
-    needs: executables
-    if: ${{ !cancelled() && (needs.executables.result == 'success' || inputs.python_only) }}
+    needs: [publish, rust-executables]
+    if: ${{ !cancelled() && ((needs.publish.result == 'success' && needs.rust-executables.result == 'success') || inputs.python_only) }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -544,8 +495,8 @@ jobs:
       - uses: actions/download-artifact@v4
         if: ${{ !inputs.python_only }}
         with:
-          name: pdks-linux-x64
-          path: executable
+          name: rust-x86_64-unknown-linux-musl
+          path: archive
 
       - name: Verify tag, source and Python package versions
         env:
@@ -572,11 +523,18 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
-          gh release download "v$VERSION" --pattern pdks-linux-x64 --dir executable
-          DIGEST="$(gh api "repos/$GH_REPO/releases/tags/v$VERSION" --jq '.assets[] | select(.name == "pdks-linux-x64") | .digest')"
-          echo "${DIGEST#sha256:}  executable/pdks-linux-x64" | sha256sum --check
+          ARCHIVE="pdks-x86_64-unknown-linux-musl-v$VERSION.tar.gz"
+          gh release download "v$VERSION" --pattern "$ARCHIVE" --dir archive
+          DIGEST="$(gh api "repos/$GH_REPO/releases/tags/v$VERSION" --jq ".assets[] | select(.name == \"$ARCHIVE\") | .digest")"
+          echo "${DIGEST#sha256:}  archive/$ARCHIVE" | sha256sum --check
 
-      - run: chmod +x executable/pdks-linux-x64
+      - name: Unpack the executable
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("packages/sdk-python/pyproject.toml", "rb"))["project"]["version"])')"
+          STEM="pdks-x86_64-unknown-linux-musl-v$VERSION"
+          tar -xzf "archive/$STEM.tar.gz" -C archive
+          echo "PDKS=$PWD/archive/$STEM/pdks" >> "$GITHUB_ENV"
 
       - run: uv sync --project packages/sdk-python --locked --python 3.14
 
@@ -588,7 +546,7 @@ jobs:
         run: >-
           uv run --project packages/sdk-python --locked python
           packages/sdk-python/scripts/verify.py
-          --executable "$PWD/executable/pdks-linux-x64"
+          --executable "$PDKS"
           --python 3.12 --python 3.14 --python 3.15
 
       - run: uv build --project packages/sdk-python --out-dir dist
@@ -609,12 +567,9 @@ jobs:
         if: steps.published.outputs.exists == 'false'
 
   # Release objects do not cross the mirror, so the tag's GitHub Release is made here when it
-  # does not exist yet; the executables replace any earlier upload of the same name. Each set is
-  # attached only when every job that built it succeeded, so a failure in one does not hold back
-  # the other.
+  # does not exist yet; the archives replace any earlier upload of the same name.
   release-assets:
-    needs: [executables, rust-executables]
-    if: ${{ !cancelled() && (needs.executables.result == 'success' || needs.rust-executables.result == 'success') }}
+    needs: rust-executables
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -624,17 +579,12 @@ jobs:
           path: assets
           merge-multiple: true
 
-      - name: Attach the executables to the tag's Release
+      - name: Attach the archives to the tag's Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
-          SEA: ${{ needs.executables.result }}
-          RUST: ${{ needs.rust-executables.result }}
         run: |
           set -euo pipefail
-          files=()
-          if [ "$SEA" = success ]; then files+=(assets/pdks-linux-x64 assets/pdks-darwin-arm64); fi
-          if [ "$RUST" = success ]; then files+=(assets/*.tar.gz); fi
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --notes "Single executables of pdks for this release."
-          gh release upload "$TAG" "${files[@]}" --clobber
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --notes "Archives of the pdks executables for this release, one per executable and platform."
+          gh release upload "$TAG" assets/*.tar.gz --clobber

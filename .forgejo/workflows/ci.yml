@@ -36,43 +36,40 @@ jobs:
 
       - run: node packages/sdk-ts/scripts/generate-types.mjs --check
 
-      - run: pnpm -r test
-
-      - run: node scripts/check-docs.mjs
-
-      # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it. Its
-      # end-to-end test spawns the `pdks` built above. A minimal stable toolchain is
-      # installed when the runner has no rustup, which the clippy and rustfmt steps need.
+      # A minimal stable toolchain is installed when the runner has no rustup, which the
+      # cargo build below and the clippy and rustfmt steps need.
       - name: Install Rust when absent
         run: |
           command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      # Script-fixture creation must not overlap another test's fork on Linux: an inherited
-      # writable descriptor can make exec return ETXTBSY before the deadline is exercised.
+      # Built before the tests: the end-to-end tests of sdk-ts (`pnpm -r test`) and of the
+      # Rust SDK, and the Python and SDK-contract checks below, spawn target/debug/pdks.
+      - run: cargo build -p pdks -p pdks-memory
+
+      - run: pnpm -r test
+
+      - run: node scripts/check-docs.mjs
+
+      # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it. Script-fixture
+      # creation must not overlap another test's fork on Linux: an inherited writable
+      # descriptor can make exec return ETXTBSY before the deadline is exercised.
       - run: cargo test -p polydeukes-sdk -- --test-threads=1
 
       - uses: https://github.com/astral-sh/setup-uv@v10.3.0
         with:
           version: "0.13.1"
 
-      - name: Build the Linux executable for Python consumers
-        run: node packages/polydeukes/scripts/build-sea.mjs "$RUNNER_TEMP/pdks-linux-x64"
-
-      - name: Verify covenant fixtures
-        run: node scripts/verify-covenant-fixtures.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
-
-      # The Rust judge runs the same cases through its own cargo test, which spawns the runner.
       - run: rustup component add rustfmt clippy
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # `cargo test -p pdks` runs every conformance/covenant case through
+      # scripts/verify-covenant-fixtures.mjs.
       - run: cargo test -p pdks
       - run: cargo test -p pdks-claude-code
       - run: cargo test -p pdks-codex
       - run: cargo test -p pdks-memory
-
-      - name: Verify standalone adapter registration and judgments
-        run: node scripts/verify-adapter-executable.mjs --executable "$RUNNER_TEMP/pdks-linux-x64"
 
       - run: uv sync --project packages/sdk-python --locked --python 3.14
 
@@ -84,13 +81,11 @@ jobs:
         run: >-
           uv run --project packages/sdk-python --locked python
           packages/sdk-python/scripts/verify.py
-          --executable "$RUNNER_TEMP/pdks-linux-x64"
+          --executable "$PWD/target/debug/pdks"
           --python 3.12 --python 3.14 --python 3.15
 
       - name: Compare the three SDK process contracts
-        run: |
-          cargo build -p pdks -p pdks-memory
-          node scripts/verify-sdk-contract.mjs --executable "$PWD/target/debug/pdks"
+        run: node scripts/verify-sdk-contract.mjs --executable "$PWD/target/debug/pdks"
 
       - name: Verify isolated SDK distributions and TypeScript consumer types
         run: node scripts/verify-sdk-distributions.mjs --executable "$PWD/target/debug/pdks"

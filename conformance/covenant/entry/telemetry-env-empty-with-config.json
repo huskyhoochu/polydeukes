@@ -1,9 +1,14 @@
 {
-  "description": "A protectedPaths entry that normalizes to nothing is a config error; the TS judge drops it silently.",
+  "description": "An empty POLYDEUKES_TELEMETRY_PATH counts as unset, so the config's logPath wins over the default log.",
   "args": [],
+  "env": {
+    "POLYDEUKES_TELEMETRY_PATH": ""
+  },
   "tree": {
     "polydeukes.config.yaml": {
-      "protectedPaths": ["./"]
+      "telemetry": {
+        "logPath": "config.log"
+      }
     }
   },
   "stdin": {
@@ -30,11 +35,9 @@
     }
   },
   "expect": {
-    "exit": 2,
-    "stderr": [
-      "invalid config in polydeukes.config.yaml",
-      "protectedPaths must not contain an empty string"
-    ],
-    "rows": [["blocked", "covenant-check", "-"]]
+    "exit": 0,
+    "stderr": [],
+    "log": "config.log",
+    "rows": [["passed", "covenant-check", "notes.txt"]]
   }
 }

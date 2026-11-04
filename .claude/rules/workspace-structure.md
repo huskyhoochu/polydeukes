@@ -69,12 +69,11 @@ registrations is `new-package-checklist.md`.
   PATH with the remaining arguments and inherited stdio, and exits with its code; the crate names no
   extension. `build.rs` embeds the bundled documents of `docs/catalog.json`, so `docs` reads no file
   at run time; `packages/pdks/docs` is a git symbolic link to the root `docs/`, and `build.rs` reads
-  through it, so `cargo package` copies the documents into the crate package. It passes the cases of
-  `conformance/covenant/` listed in `tests/fixture-cases.txt`, plus Rust-only cases in
-  `tests/divergent/` (behavior it deliberately changes, which replace the listed cases they
-  contradict). Like `sdk-rust` it has no `package.json`, so pnpm, turbo and the publish e2e suites
-  skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. It and `sdk-rust` are members of
-  the Cargo workspace in the root `Cargo.toml`. Its constraints are in `rust.md`.
+  through it, so `cargo package` copies the documents into the crate package. It passes every case
+  of `conformance/covenant/`. Like `sdk-rust` it has no `package.json`, so pnpm, turbo and the
+  publish e2e suites skip it; Forgejo CI runs its `cargo fmt`, `clippy` and `test`. It and
+  `sdk-rust` are members of the Cargo workspace in the root `Cargo.toml`. Its constraints are in
+  `rust.md`.
 - **`packages/pdks-claude-code`** (crate) is the Claude Code adapter as a `pdks-<name>` extension:
   `init` pins itself and the `pdks` found on PATH by absolute path in one `PreToolUse` registration
   without `onFailure`, and adds the two Claude settings files to `protectedPaths`; `hook` translates
@@ -140,12 +139,7 @@ rather than types: a value tuple like `SOURCE_KINDS` and the `parseInput` valida
 copy for the validator and the engine to agree; two copies would disagree silently instead of
 failing at install time.
 
-## The single executable
-
-The umbrella's single executable contains Node and its bundle (the umbrella plus the three
-adapters), built by `packages/polydeukes/scripts/build-sea.mjs <output path>` and attached to each
-GitHub Release by `publish.yml` (`pdks-linux-x64`, `pdks-darwin-arm64`). Build it after a full
-`pnpm build`: the bundle takes whatever the adapters' `dist` holds.
+## The executables and their distribution channels
 
 `publish.yml`'s `rust-executables` job tests the release build for each shipped target with
 `cargo test --release --locked --target` before building `pdks`, `pdks-claude-code`, `pdks-codex`
@@ -156,8 +150,8 @@ and `pdks-memory` for `aarch64-apple-darwin`, `x86_64-unknown-linux-musl` and
 are owned by root and follow cargo binstall's default name and layout: one directory named
 `<name>-<target>-v<version>` holding the executable and `LICENSE` (`pdks-memory` adds `GARU-LICENSE`
 and `EN-KO-LICENSE`). release-please also bumps the five workspace members' versions in
-`Cargo.lock`. `release-assets` attaches the Node single executables and the Rust archives to the
-same Release independently, each only when the jobs that built it succeeded.
+`Cargo.lock`. `release-assets` attaches the Rust archives to the same Release once
+`rust-executables` succeeds.
 
 `publish.yml`'s `publish-rust-crates` job runs after `rust-executables` succeeds and runs
 `cargo publish --locked` for each of the four crates whose tagged version crates.io does not have

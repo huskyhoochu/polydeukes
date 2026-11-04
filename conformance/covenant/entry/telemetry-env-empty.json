@@ -1,5 +1,5 @@
 {
-  "description": "An empty POLYDEUKES_TELEMETRY_PATH counts as unset and the row lands in the default log; the TS judge tries to write to the empty path and leaves no row.",
+  "description": "An empty POLYDEUKES_TELEMETRY_PATH counts as unset and the row lands in the default log.",
   "args": [],
   "env": {
     "POLYDEUKES_TELEMETRY_PATH": ""

@@ -66,8 +66,6 @@ These stay in a rule without `paths:` because no glob can predict when a session
   Replace `<tmp>` with the absolute temporary-directory path. Keep the previous executables until
   the replacement is proven, then replace all three files in `.polydeukes/bin/` from the owner's
   terminal. Root configuration and hook definitions remain protected owner changes.
-  `scripts/verify-adapter-executable.mjs` checks the TypeScript single executable built for a
-  release.
 - If the installed executable or configuration cannot load, recover from the user's terminal. An
   assembly failure occurs before the witness valve can run. Preserve the witness token and TTL while
   repairing the executable, config, or wiring.

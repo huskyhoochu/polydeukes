@@ -22,8 +22,7 @@ searches. It needs `pdks-memory` beside the `--executable` path; CI runs it with
 Three asynchronous clients — `checkCovenant`, `checkChangeSet`, `memorySearch` — sharing one
 resolver and binary transport. `src/ir.ts` and `src/memory.ts` are committed types generated from
 core's two schemas; the pinned generator's `scripts/generate-types.mjs --check` checks drift. The
-published package has no runtime dependencies or peers; core is a test-only development dependency.
-No bin.
+published package has no runtime dependencies or peers. No bin.
 
 ## `sdk-rust` (crate `polydeukes-sdk`)
 

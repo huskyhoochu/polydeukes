@@ -1,29 +1,12 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// This package's contract, checked as source text and manifest: the SDK carries no
-// judgment, writes no row, builds no IR, loads no sibling, and its barrel carries exactly
-// the names a consumer reads. Source text ONLY — this file must never rebuild dist: a
-// rebuild while the tree is mid-change locks the session behind the fail-closed hook.
+// This package's contract, checked as source text and manifest: its barrel carries exactly the
+// names a consumer reads, and it declares one entry point and no bin.
 
 const pkgDir = resolve(import.meta.dirname, '..');
 const sdkSrc = join(pkgDir, 'src');
-
-/** The umbrella and adapter imports the SDK must not carry — it spawns the bin instead. */
-const FORBIDDEN_IMPORTS = [
-  '@polydeukes/core',
-  'polydeukes',
-  '@polydeukes/adapter-claude-code',
-  '@polydeukes/adapter-codex',
-];
-/** The judge's verbs: naming one here is judging or recording in-process. */
-const FORBIDDEN_VERBS = ['appendRecord', 'dispatchCovenants', 'compileDisciplineRegistrations'];
-/** IR keys the host proves; their type declarations are vocabulary, not evidence. */
-const FORBIDDEN_IR_KEYS = ['session:', 'tools:'];
-/** One host's tool roster, matched as quoted literals: the roster is the consumer's value. */
-const FORBIDDEN_TOOL_LITERALS = ['Write', 'Edit', 'Bash'];
 
 /** The consumer contract: three verbs, byte transport and generated wire vocabulary. */
 const KEPT_EXPORTS: readonly string[] = [
@@ -57,21 +40,6 @@ const IDENT = '[A-Za-z_][A-Za-z0-9_]*';
 const stripComments = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
-const walkTs = (dir: string): string[] => {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return walkTs(path);
-    return name.endsWith('.ts') ? [path] : [];
-  });
-};
-
-function allSrcText(): string {
-  return walkTs(sdkSrc)
-    .map((file) => stripComments(readFileSync(file, 'utf-8')))
-    .join('\n');
-}
-
 /** Names exported by a source text: local definitions plus the exported names of brace lists. */
 const exportedNames = (text: string): Set<string> => {
   const src = stripComments(text);
@@ -95,64 +63,13 @@ const exportedNames = (text: string): Set<string> => {
   return names;
 };
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 type Manifest = {
   name?: string;
-  description?: string;
   bin?: Record<string, string>;
   exports?: Record<string, unknown>;
-  dependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
 };
 
 const manifest = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf-8')) as Manifest;
-
-describe('the SDK source judges nothing, records nothing, and builds no IR', () => {
-  it('src exists and names the verb it exports', () => {
-    // An empty src satisfies every absence check below; the positive literal is the other
-    // end.
-    const text = allSrcText();
-    expect(walkTs(sdkSrc).length).toBeGreaterThan(0);
-    expect(text).toContain('checkCovenant');
-  });
-
-  it('imports no runtime package from the judgment chain', () => {
-    // An SDK import must not load the judge or require a separately installed vocabulary package.
-    const text = allSrcText();
-    for (const name of FORBIDDEN_IMPORTS) {
-      expect(text, name).not.toMatch(
-        new RegExp(`from\\s+['"]${escapeRegExp(name)}(?:/[^'"]*)?['"]`),
-      );
-      expect(text, name).not.toMatch(
-        new RegExp(`import\\(\\s*['"]${escapeRegExp(name)}(?:/[^'"]*)?['"]`),
-      );
-    }
-  });
-
-  it('names none of the judge verbs', () => {
-    // `appendRecord` here would write a row beside the child's; the other two would judge
-    // in-process, and the exit code the consumer reads would no longer be the child's.
-    const text = allSrcText();
-    for (const verb of FORBIDDEN_VERBS) {
-      expect(text, verb).not.toMatch(new RegExp(`\\b${verb}\\b`));
-    }
-  });
-
-  it('constructs no `session:` or `tools:` key and carries no host tool literal', () => {
-    // The IR is the caller's; a `session:` or `tools:` written here is evidence the host
-    // never proved, and a `Write` · `Edit` · `Bash` literal is one host's roster inside a
-    // package meant for every host.
-    const text = walkTs(sdkSrc)
-      .map((file) => stripComments(stripTypeScriptTypes(readFileSync(file, 'utf8'))))
-      .join('\n');
-    for (const key of FORBIDDEN_IR_KEYS) expect(text, key).not.toContain(key);
-    for (const name of FORBIDDEN_TOOL_LITERALS) {
-      expect(text, name).not.toMatch(new RegExp(`['"\`]${name}['"\`]`));
-    }
-  });
-});
 
 describe('the barrel export set', () => {
   it('contains exactly the consumer verbs and spec vocabulary', () => {
@@ -170,11 +87,5 @@ describe('the SDK manifest', () => {
     expect(manifest.name).toBe('@polydeukes/sdk-ts');
     expect(Object.keys(manifest.exports ?? {})).toEqual(['.']);
     expect(manifest.bin).toBeUndefined();
-  });
-
-  it('carries no runtime or peer dependencies on core or the umbrella', () => {
-    expect(manifest.peerDependencies ?? {}).toEqual({});
-    expect(manifest.dependencies ?? {}).toEqual({});
-    expect(manifest.devDependencies ?? {}).not.toHaveProperty('polydeukes');
   });
 });

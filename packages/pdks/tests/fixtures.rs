@@ -1,16 +1,17 @@
 use std::path::Path;
 use std::process::Command;
 
-fn run_runner(selector: &[&str], expected: &str) {
+#[test]
+fn conformance_cases_pass() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let repo = crate_dir
         .parent()
         .and_then(Path::parent)
         .expect("the crate sits two levels below the repository root");
+    let expected = "232 covenant fixture cases passed.";
     let output = Command::new("node")
         .arg(repo.join("scripts/verify-covenant-fixtures.mjs"))
         .args(["--executable", env!("CARGO_BIN_EXE_pdks")])
-        .args(selector)
         .current_dir(repo)
         .output()
         .expect("node starts the fixture runner");
@@ -19,23 +20,5 @@ fn run_runner(selector: &[&str], expected: &str) {
     assert!(
         output.status.success() && stdout.contains(expected),
         "expected `{expected}`\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-}
-
-#[test]
-fn listed_conformance_cases_pass() {
-    let list = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixture-cases.txt");
-    run_runner(
-        &["--cases", &list.to_string_lossy()],
-        "171 covenant fixture cases passed.",
-    );
-}
-
-#[test]
-fn divergent_cases_pass() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/divergent");
-    run_runner(
-        &["--cases-dir", &dir.to_string_lossy()],
-        "61 covenant fixture cases passed.",
     );
 }

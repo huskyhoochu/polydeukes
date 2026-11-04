@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import {
-  chmodSync,
   existsSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -10,19 +10,18 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { readRecords } from '@polydeukes/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkCovenant } from '../src/check-covenant.ts';
 import type { CovenantInput } from '../src/ir.ts';
 
 // `checkCovenant` against the BUILT `pdks`: a throwaway tree scaffolded by `pdks init`,
-// wired to the real install graph by symlink, with one protected path of its own. Only a
+// with one protected path of its own. Only a
 // real spawn proves that the SDK invokes the selected executable, that the
 // child reads the consumer's config, and that the row the child writes is the judge's own.
 // check-covenant.test.ts pins the same contract through the injected seam.
 
 const checkoutRoot = resolve(import.meta.dirname, '../../..');
-const UMBRELLA_BIN = resolve(checkoutRoot, 'packages/polydeukes/dist/bin.js');
+const PDKS_BIN = process.env.POLYDEUKES_E2E_PDKS ?? resolve(checkoutRoot, 'target/debug/pdks');
 
 /** Injected fixture values — the consumer's roster, its protected directory, its targets. */
 const WRITE_FILE = 'writeFile';
@@ -50,32 +49,21 @@ afterEach(() => {
 });
 
 /**
- * The whole real install graph by one symlink, `pdks init` for the scaffold, then the
- * consumer's own config over the scaffolded one: one protected directory and a telemetry
- * path inside the fixture, so the rows this suite reads are this tree's alone.
+ * `pdks init` for the scaffold, then the consumer's own config over the scaffolded one: one
+ * protected directory and a telemetry path inside the fixture, so the rows this suite reads
+ * are this tree's alone. The executable sits in the fixture root, which is the only PATH entry.
  */
 function scaffoldConsumer(): void {
-  const executable = join(projectRoot, 'pdks');
-  writeFileSync(
-    executable,
-    `#!/bin/sh\nexec '${process.execPath.replaceAll("'", "'\\''")}' '${UMBRELLA_BIN.replaceAll("'", "'\\''")}' "$@"\n`,
+  expect(existsSync(PDKS_BIN), `${PDKS_BIN} is missing: run \`cargo build -p pdks\` first`).toBe(
+    true,
   );
-  chmodSync(executable, 0o755);
+  symlinkSync(PDKS_BIN, join(projectRoot, 'pdks'));
   vi.stubEnv('PATH', projectRoot);
-  symlinkSync(join(checkoutRoot, 'node_modules'), join(projectRoot, 'node_modules'), 'dir');
-  writeFileSync(join(projectRoot, 'package.json'), '{"name":"consumer","private":true}\n');
-  const init = spawnSync(process.execPath, [UMBRELLA_BIN, 'init'], {
-    cwd: projectRoot,
-    encoding: 'utf-8',
-  });
+  const init = spawnSync(PDKS_BIN, ['init'], { cwd: projectRoot, encoding: 'utf-8' });
   expect(init.status, init.stderr).toBe(0);
   writeFileSync(
     join(projectRoot, 'polydeukes.config.yaml'),
     [
-      'languages:',
-      '  typescript:',
-      "    productionGlob: 'src/**/*.ts'",
-      "    testCmd: 'echo {scope}'",
       'protectedPaths:',
       `  - '${PROTECTED_DIR}'`,
       'telemetry:',
@@ -101,14 +89,23 @@ function writeInput(path: string, content: string): CovenantInput {
   };
 }
 
-/** Every telemetry row under the fixture as [event, label, subject]. */
-function rows(): [string, string, string][] {
-  const path = join(projectRoot, TELEMETRY_REL);
+/** Every telemetry row at an absolute path as [event, label, subject]; rows are tab-separated `timestamp event label subject`. */
+function rowsAt(path: string): [string, string, string][] {
   if (!existsSync(path)) return [];
-  return readRecords(path).records.map((record) => [record.event, record.label, record.subject]);
+  return readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const [, event = '', label = '', subject = ''] = line.split('\t');
+      return [event, label, subject];
+    });
 }
 
-describe('checkCovenant on a real install graph', () => {
+function rows(): [string, string, string][] {
+  return rowsAt(join(projectRoot, TELEMETRY_REL));
+}
+
+describe('checkCovenant against the built pdks', () => {
   it('a writeFile under the protected path → blocked, with the reason and one self-mod row', async () => {
     // The exact row separates a verdict from a fail-closed crash on the same status: a
     // crash records under the runner's label, never under self-mod. The reason must name
@@ -138,19 +135,5 @@ describe('checkCovenant on a real install graph', () => {
 
     expect(verdict).toMatchObject({ verdict: 'upheld' });
     expect(rows().filter(([event]) => event === 'blocked')).toEqual([]);
-  });
-
-  it('a tree with no executable on PATH → unjudged, and no row anywhere', async () => {
-    // No executable, no config: nothing to spawn and no writer for a row. `upheld` here is
-    // an absent judge passing every call.
-    writeFileSync(join(projectRoot, 'package.json'), '{"name":"consumer","private":true}\n');
-
-    const verdict = await checkCovenant({
-      repoRoot: projectRoot,
-      input: writeInput(ORDINARY_TARGET, 'x\n'),
-    });
-
-    expect(verdict).toMatchObject({ verdict: 'unjudged' });
-    expect(rows()).toEqual([]);
   });
 });

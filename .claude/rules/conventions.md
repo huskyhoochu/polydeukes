@@ -23,16 +23,14 @@ exception: the npm `keywords` array keeps the industry terms — it is a discove
 
 - `pnpm check` is the canonical "fix everything" command (Biome lint + format with `--write`).
 - Root `pnpm test` completes workspace builds using Turbo's cache, then runs every package's test
-  suite in parallel on each invocation.
+  suite in parallel on each invocation. First run `cargo build -p pdks`: `sdk-ts` e2e tests spawn
+  `target/debug/pdks`.
 - For a focused e2e run, first run `pnpm build`, then `pnpm -F <package> exec vitest run <file>`;
-  focused tests consume the existing build artifacts.
+  focused tests consume the existing build artifacts. For `sdk-ts`, run `cargo build -p pdks` first.
 - Typecheck before either build command. The root has no `typecheck` script:
   `pnpm -r --if-present typecheck`.
 - lefthook's pre-commit judges with the Rust release build. After a fresh clone or a change under
   `packages/pdks`, run `cargo build --release -p pdks`.
-- A single executable built for a release or a measurement comes after a full `pnpm build`.
-  `pnpm -F polydeukes build` alone leaves the adapters' `dist` stale, and the executable bundles
-  whatever `dist` holds.
 
 ## Tools that stay out
 

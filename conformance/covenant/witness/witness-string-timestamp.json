@@ -1,5 +1,5 @@
 {
-  "description": "A human message whose timestampMs is a numeric string has no provable freshness, so the witness valve stays closed and the write is blocked; the TS judge coerces the string and opens the valve.",
+  "description": "A human message whose timestampMs is a numeric string has no provable freshness, so the witness valve stays closed and the write is blocked.",
   "args": ["--enforce", "block"],
   "tree": {
     "polydeukes.config.yaml": {

@@ -31,7 +31,7 @@ rule loading (Codex) do this routing by hand. The rules most often reached:
 
 | To learn                                                         | Rule                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| package roles, dependency direction, the single executable       | `workspace-structure.md`                              |
+| package roles, dependency direction, the executables             | `workspace-structure.md`                              |
 | adding a package, release and publishing registrations           | `new-package-checklist.md`                            |
 | a package's public contract and barrel shape                     | `package-contract.md`                                 |
 | the ubiquitous language and the banned words                     | `domain-terms.md` (concepts in the root `CONTEXT.md`) |

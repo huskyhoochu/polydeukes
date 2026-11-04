@@ -1,5 +1,5 @@
 {
-  "description": "A find with no mutating action over a protected path passes.",
+  "description": "A commandArgs roster holding only an empty name is an input error with exit 3.",
   "args": ["--enforce", "block"],
   "tree": {
     "polydeukes.config.yaml": {
@@ -10,8 +10,9 @@
     "toolCalls": [
       {
         "name": "Bash",
+        "cwd": "@@ROOT@@",
         "args": {
-          "command": "find dist -name '*.js'"
+          "command": "rm dist/a"
         }
       }
     ],
@@ -20,12 +21,14 @@
     "tools": {
       "mutating": [],
       "shell": ["Bash"],
-      "commandArgs": ["command"]
+      "commandArgs": [""]
     }
   },
   "expect": {
-    "exit": 0,
-    "stderr": [],
-    "rows": [["passed", "shell-mod", "dist"]]
+    "exit": 3,
+    "stderr": [
+      "covenant check failed closed: input carries a tools.commandArgs roster with only empty names"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
   }
 }

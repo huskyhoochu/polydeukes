@@ -1,5 +1,5 @@
 {
-  "description": "A tool call whose body holds an apostrophe is routed by its evidence path alone, so one passed row names the changed file; the TS judge reads the body as shell syntax and logs passed rows for the protected path instead.",
+  "description": "A tool call whose body holds an apostrophe is routed by its evidence path alone, so one passed row names the changed file.",
   "args": ["--enforce", "block"],
   "tree": {
     "polydeukes.config.yaml": {
