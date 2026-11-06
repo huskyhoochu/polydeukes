@@ -9,13 +9,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks-claude-code",
+            "command": "/home/b95labs/polydeukes/.polydeukes/bin/pdks-claude-code",
             "args": [
               "hook",
               "--project-root",
-              "/Users/funes/Documents/personal/polydeukes",
+              "/home/b95labs/polydeukes",
               "--pdks",
-              "/Users/funes/Documents/personal/polydeukes/.polydeukes/bin/pdks"
+              "/home/b95labs/polydeukes/.polydeukes/bin/pdks"
             ],
             "timeout": 60
           }

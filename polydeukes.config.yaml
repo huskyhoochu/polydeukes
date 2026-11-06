@@ -563,10 +563,10 @@ sessionDisciplines:
           relation: { op: "ordered", of: "sequence" }
           message: "the first implementer spawn #{value} precedes the first test-writer spawn"
   - id: "merge-is-the-users-call"
-    why: "merging is the user's decision: tea pr merge follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen."
+    why: "merging is the user's decision: a call to the pull request merge endpoint follows an instruction the user gave inside the witness window, and an older instruction belongs to a state of the PR the user has not seen."
     declare:
       mechanism: "turn-locality"
-      scope: { source: "command", include: ['\btea\s+pr\s+merge\b'] }
+      scope: { source: "command", include: ['/pulls/[0-9]+/merge\b'] }
       sources: { session: { transcript: true } }
       supply: { session: "pass" }
       extract:
