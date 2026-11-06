@@ -289,16 +289,26 @@ fn a_timed_out_spawn_with_no_deadline_keeps_the_spawn_failure_reason() {
 mod default_spawn {
     use super::*;
     use std::fs;
-    use std::os::unix::fs::PermissionsExt;
     use std::process::Command;
     use std::thread;
     use std::time::Instant;
 
-    /// An executable `sh` script at `dir/name` with `body` after the shebang.
+    /// An executable `sh` script at `dir/name` with `body` after the shebang. A child `sh`
+    /// writes the file, so this process never holds a writable descriptor a concurrent fork
+    /// could inherit (exec of a file open for writing fails with ETXTBSY on Linux).
     fn script(dir: &Path, name: &str, body: &str) -> PathBuf {
         let path = dir.join(name);
-        fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("script");
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("chmod");
+        let status = Command::new("/bin/sh")
+            .args([
+                "-c",
+                "printf '%s\\n' \"$2\" > \"$1\" && chmod 755 \"$1\"",
+                "sh",
+            ])
+            .arg(&path)
+            .arg(format!("#!/bin/sh\n{body}"))
+            .status()
+            .unwrap_or_else(|err| panic!("/bin/sh could not write {}: {err}", path.display()));
+        assert!(status.success(), "writing the script failed: {status}");
         path
     }
 

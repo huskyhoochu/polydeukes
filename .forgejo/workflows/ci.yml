@@ -49,10 +49,8 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
-      # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it. Script-fixture
-      # creation must not overlap another test's fork on Linux: an inherited writable
-      # descriptor can make exec return ETXTBSY before the deadline is exercised.
-      - run: cargo test -p polydeukes-sdk -- --test-threads=1
+      # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it.
+      - run: cargo test -p polydeukes-sdk
 
       - uses: https://github.com/astral-sh/setup-uv@v10.3.0
         with:
