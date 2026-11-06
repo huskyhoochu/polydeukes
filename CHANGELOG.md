@@ -9,6 +9,13 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.26.0](https://github.com/b95labs/polydeukes/compare/v0.25.0...v0.26.0) (2026-11-06)
+
+
+### Features
+
+* **covenant:** judge SDK calls as unattended so caller text opens no witness valve ([#345](https://github.com/b95labs/polydeukes/issues/345)) ([bed15cf](https://github.com/b95labs/polydeukes/commit/bed15cf816cfa229002b6398a5aac1feb0f14da1))
+
 ## [0.25.0](https://github.com/huskyhoochu/polydeukes/compare/v0.24.0...v0.25.0) (2026-11-04)
 
 
