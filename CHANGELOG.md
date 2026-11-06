@@ -9,6 +9,23 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.25.0](https://github.com/huskyhoochu/polydeukes/compare/v0.24.0...v0.25.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* @polydeukes/core gets no new versions. A config whose $schema line points into that package stays on its last published schema.
+* GitHub Releases no longer carry pdks-linux-x64 and pdks-darwin-arm64. Download pdks-<target>-v<version>.tar.gz, or install through Homebrew, crates.io, npm or PyPI.
+
+### Code Refactoring
+
+* remove the TypeScript judge, core, adapters and memory packages ([#341](https://github.com/huskyhoochu/polydeukes/issues/341)) ([ec82476](https://github.com/huskyhoochu/polydeukes/commit/ec8247658ca37d3abd627892c4adf18bf17472af))
+
+
+### Build System
+
+* judge conformance, SDK e2e, CI and publishing with the Rust pdks only ([#339](https://github.com/huskyhoochu/polydeukes/issues/339)) ([3e3b812](https://github.com/huskyhoochu/polydeukes/commit/3e3b812343b9c45d985e01195878400f0cf6589d))
+
 ## [0.24.0](https://github.com/huskyhoochu/polydeukes/compare/v0.23.0...v0.24.0) (2026-11-03)
 
 
