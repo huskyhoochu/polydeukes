@@ -83,6 +83,13 @@ The host supplies each call's evidence. `FileChange::Create` has `path` and `pos
 missing; the SDK adds no actor, session, or tool roster. `CovenantInput` and its parts are generated
 from core's input schema. The CLI supplies `world`, which is absent from this input.
 
+`check_covenant` runs `covenant check --enforce <level> --unattended`, followed by `--config-layer`
+and `--telemetry-path` when given. There is no option to turn off `--unattended`. A token in
+`session.userMessages` does not open the witness valve, and disciplines whose bodies read
+`userTexts` record `skipped` with reason `no-observation` for each call inside their scope. The SDK
+requires `pdks` from the same release or later; an older `pdks` rejects `--unattended` with its
+usage line and exit 2, which the SDK returns as a blocked verdict.
+
 <a id="spec"></a>
 ## The spec
 

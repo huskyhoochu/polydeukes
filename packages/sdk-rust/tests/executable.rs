@@ -186,7 +186,7 @@ fn an_absolute_executable_is_the_command_and_the_verb_its_first_argument_over_an
     }
     assert_eq!(
         calls[0].args,
-        strings(&["covenant", "check", "--enforce", "block"])
+        strings(&["covenant", "check", "--enforce", "block", "--unattended"])
     );
     assert_eq!(
         calls[1].args,

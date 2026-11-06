@@ -5,7 +5,7 @@
 use std::path::Path;
 
 use super::bash_line::{Tokenized, tokenize_command_line};
-use super::run_covenant::{Enforce, Judgment, Verdict, record_skip, run_covenant};
+use super::run_covenant::{Attendance, Enforce, Judgment, Verdict, record_skip, run_covenant};
 use super::transcript_mod::TranscriptMod;
 use super::ttl_witness::Valve;
 use super::{discipline, self_mod, shell_mod, transcript_mod};
@@ -37,6 +37,7 @@ pub struct Registration {
 
 pub struct Context<'a> {
     pub enforce: Enforce,
+    pub attendance: Attendance,
     pub valve: Option<&'a Valve<'a>>,
     pub telemetry_path: &'a Path,
     pub shell_tools: &'a [String],

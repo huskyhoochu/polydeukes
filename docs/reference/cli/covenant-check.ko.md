@@ -11,7 +11,7 @@
 ## 구문
 
 ```sh
-pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
+pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--unattended] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
 입력 모드 플래그가 없으면 stdin은 약속(covenant) 입력 IR입니다. 저장소 입력 스키마가 정의하는 JSON
@@ -31,6 +31,26 @@ stdin은 EOF까지 읽습니다.
 사유를 한 번 출력하고 `blocked covenant-check` 행 하나를 기록하며, 호출을 판정하지 않고 종료 코드
 `3`을 돌려줍니다. 설정과 기록 경로는 기존 방식으로 해석하고 설정 오류가 우선합니다.
 `--input-failure`와 `--diff`는 함께 사용할 수 없습니다.
+
+`--unattended`는 이 호출에 사람이 참여하지 않는다는 뜻입니다. 판정기(judge)는
+`session.userMessages`를 사람의 메시지로 읽지 않습니다. 모든 입력 모드에서 한 번만 사용할 수 있으며,
+두 번째 지정은 사용법 오류입니다. 메타 약속의 증인 밸브(witness valve)
+(`witness: { token, ttlMinutes }`)는 열리지 않고, 증인 상태 줄도 출력하지 않습니다.
+`--enforce block`에서 보호 경로 위반은 `blocked`(exit 2)로 남습니다. `{ transcript: true }` 소스로
+읽는 대화 기록(transcript)은 빈 사용자 메시지 목록을 담으므로, `userTexts`나 대화 기록의
+`select`/`field`를 포함한 어떤 선언 단계도 호출자의 `session.userMessages`를 보지 못하며 `witness`
+블록은 사용자 메시지로 열리지 않습니다.
+
+선언 본체의 추출 단계에 `userTexts`가 있는 규율(discipline)은 범위 안의 호출마다 사유
+`no-observation`과 함께 `skipped`를 기록합니다. 범위 밖의 호출은 행을 남기지 않습니다. `witness`
+블록만 `userTexts`를 읽으면 본체는 판정하지만 그 블록은 열리지 않습니다. 항목과 호출이 모두
+`block`이면 위반은 `blocked`로 남습니다. `toolUses` 같은 다른 대화 기록(transcript) 단계는 그대로
+판정하며, 변경의 `post`처럼 다른 증거를 읽는 증인 블록은 열릴 수 있습니다. `--unattended`가 없으면
+이 판정과 밸브는 평소대로 작동합니다.
+
+SDK의 IR 동사는 항상 `--unattended`를 전달합니다. 호출자는 프로그램이며, 제공한 텍스트는 사람이
+보냈다는 증거가 아니기 때문입니다. 판정기는 어댑터 입력과 SDK 입력을 구별할 수 없으므로 SDK가 이를
+명시합니다. Claude Code 훅 어댑터는 이 플래그를 전달하지 않고 사람의 메시지를 직접 걸러냅니다.
 
 <a id="covenant-check-boundaries"></a>
 ## 관측 경계
@@ -103,7 +123,9 @@ index도 ref도 아닙니다. index와 디스크가 다르면(부분 스테이�
 | JSON 파싱 실패 · 객체가 아님 · `toolCalls`·`subagentSpawns`·`userMessages` 배열 부재 · 잘못된 `actor`           | exit `3`, `covenant-check`의 `blocked` 행 하나, stderr에 사유(`covenant check failed closed: input carries no subagentSpawns array`)  |
 | IR이 자체 `world` 키를 담은 경우                                                                                | exit `3`. 세계 축은 이 명령이 채웁니다                                                                                                |
 | `tools`의 목록이 빠졌거나 문자열 아닌 이름을 담은 경우, `session`에 `userMessages`·`toolCalls` 배열이 없는 경우 | exit `3`, `blocked` `covenant-check` 행 1건. 판정할 수 없는 형상은 기본값으로 바꾸지 않고 거부합니다                                  |
-| `session`의 토큰 메시지가 설정의 `witness` 안에서 신선한 경우                                                   | 차단 판정이 `witnessed`로 기록되고 exit `0`. 세션 표면이 여는 것과 같은 밸브입니다                                                    |
+| `--unattended` 없이 `session`의 토큰 메시지가 설정의 `witness` 안에서 신선한 경우                               | 차단 판정이 `witnessed`로 기록되고 exit `0`. 세션 표면이 여는 것과 같은 밸브입니다                                                    |
+| `--unattended`에서 `--enforce block`인 보호 경로 위반                                                           | exit `2`, `blocked` 행 하나. 증인 상태 줄은 출력하지 않습니다                                                                         |
+| `--unattended`에서 본체가 `userTexts`를 읽는 규율의 범위 안 호출                                                | `skipped` 행, 사유 `no-observation`. 범위 밖에는 행이 없습니다                                                                        |
 | 병합 diff(`diff --cc`) · 짝이 맞지 않는 `---`/`+++` · 미지의 hunk 줄                                            | exit `3`, `covenant-check`의 `blocked` 행 하나                                                                                        |
 | 다른 인자                                                                                                       | exit `2`, stderr에 사용법 줄. stdin은 읽지 않습니다                                                                                   |
 | 설정 부재 · 중복 · 무효                                                                                         | exit `2`                                                                                                                              |

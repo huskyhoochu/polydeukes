@@ -83,6 +83,7 @@ describe('standalone process contract', () => {
         'check',
         '--enforce',
         'advise',
+        '--unattended',
         '--config-layer',
         'host layer.json',
         '--telemetry-path',

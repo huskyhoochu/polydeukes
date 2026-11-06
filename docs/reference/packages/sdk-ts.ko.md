@@ -9,11 +9,11 @@ CLI가 맡습니다.
 <a id="ownership"></a>
 ## 담당하는 기능
 
-| 동사             | 명령                                | 결과                   |
-| ---------------- | ----------------------------------- | ---------------------- |
-| `checkCovenant`  | `pdks covenant check`               | `CheckCovenantVerdict` |
-| `checkChangeSet` | `pdks covenant check --diff`        | `CheckCovenantVerdict` |
-| `memorySearch`   | `pdks memory search <query> --json` | `MemorySearchOutcome`  |
+| 동사             | 명령                                                 | 결과                   |
+| ---------------- | ---------------------------------------------------- | ---------------------- |
+| `checkCovenant`  | `pdks covenant check --enforce <level> --unattended` | `CheckCovenantVerdict` |
+| `checkChangeSet` | `pdks covenant check --diff --enforce <level>`       | `CheckCovenantVerdict` |
+| `memorySearch`   | `pdks memory search <query> --json`                  | `MemorySearchOutcome`  |
 
 세 동사는 실행 파일 선택과 바이트 단위 프로세스 통신을 공유합니다. 루트는 호출자의 현재 디렉터리
 기준으로 절대화되어 자식의 cwd가 됩니다. 명시한 `executable`도 이름만 적었더라도 호출자의 cwd
@@ -78,6 +78,13 @@ if (verdict.verdict !== 'upheld') throw new Error(verdict.reason);
 파일 변경이 없으며 다른 호출의 증거가 대신하지 않습니다. SDK는 입력을 UTF-8 JSON으로 그대로 보내고
 actor, session, 도구 목록을 합성하지 않습니다. `CovenantInput`에는 `world` 필드가 없고, CLI가
 프로젝트에서 그 축을 공급합니다.
+
+`checkCovenant`은 `covenant check --enforce <level> --unattended`를 실행하고, 지정한
+`--config-layer`와 `--telemetry-path`를 뒤에 덧붙입니다. `--unattended`를 끄는 옵션은 없습니다.
+`session.userMessages`의 토큰은 증인 밸브(witness valve)를 열지 않으며, 선언 본체에서 `userTexts`를
+읽는 규율(discipline)은 범위 안의 호출마다 사유 `no-observation`과 함께 `skipped`를 기록합니다.
+SDK는 같은 릴리스 또는 이후 릴리스의 `pdks`가 필요하며, 이전 `pdks`는 사용법 줄과 종료 코드 2로
+`--unattended`를 거부하고 SDK는 이를 차단된 판정 결과(verdict)로 반환합니다.
 
 <a id="spec"></a>
 ## 스펙

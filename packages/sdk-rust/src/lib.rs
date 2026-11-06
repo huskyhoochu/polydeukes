@@ -317,8 +317,9 @@ pub fn check_change_set(spec: CheckChangeSetSpec) -> CheckCovenantVerdict {
     )
 }
 
-/// Resolve the executable, spawn `pdks covenant check` (with `--diff` under `diff_mode`), and map
-/// the child's status. `stdin` runs after resolution, so its error is `Unjudged`, never a panic.
+/// Resolve the executable, spawn `pdks covenant check` (with `--diff` under `diff_mode`, else
+/// `--unattended`), and map the child's status. `stdin` runs after resolution, so its error is
+/// `Unjudged`, never a panic.
 #[allow(clippy::too_many_arguments)]
 fn run_check(
     repo_root: &Path,
@@ -362,6 +363,9 @@ fn run_check(
         }
         .into(),
     );
+    if !diff_mode {
+        args.push("--unattended".into());
+    }
     if let Some(layer) = config_layer {
         args.push("--config-layer".into());
         args.push(layer.to_string_lossy().into_owned());

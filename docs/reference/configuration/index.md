@@ -72,6 +72,14 @@ source absent, and `supply: { session: 'pass' }` records a `skipped` telemetry e
 reason token `supply-pass` and lets the call proceed. Without that policy a missing source is
 unjudgeable (exit 2), not an automatic skip.
 
+Under `--unattended` (the SDK's IR verb), a declaration body reading `userTexts` records `skipped`
+with reason `no-observation` for each call inside its scope; calls outside it leave no row. A
+`witness` block reading `userTexts` does not open there, while its body is still judged if it does
+not read `userTexts`. Other transcript steps such as `toolUses` are judged as usual. The transcript
+read through a `{ transcript: true }` source carries an empty user-message list, so no declaration
+step, including `userTexts` or `select`/`field` over the transcript, sees the caller's
+`session.userMessages`, and a `witness` block cannot open on user messages.
+
 <a id="telemetry"></a>
 ## `telemetry`
 

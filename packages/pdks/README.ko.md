@@ -41,7 +41,7 @@ cargo build --release -p pdks
 - [`pdks covenant check`](../../docs/reference/cli/covenant-check.ko.md)는 stdin의 입력 IR을
   판정하며 `--diff`를 쓰면 unified diff를 판정합니다. `--input-failure`는 입력 생성 실패를 받습니다.
   두 플래그 중 최대 하나만 선택합니다. 선택 플래그는 `--enforce advise|block` (기본값 `advise`),
-  `--config-layer <path>`, `--telemetry-path <path>`입니다.
+  `--unattended`, `--config-layer <path>`, `--telemetry-path <path>`입니다.
 - [`pdks init`](../../docs/reference/cli/init.ko.md#init-common)은 프로젝트 설정을 만들고 텔레메트리
   디렉터리를 `.gitignore`에 추가합니다.
 - [`pdks explain`](../../docs/reference/cli/explain.ko.md)은 조립 단계의 등록 목록을 출력합니다.

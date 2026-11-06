@@ -8,7 +8,7 @@ use super::dispatch::{Context, Judge, Registration, ShellCall};
 use super::extract::World;
 use super::mention::{join_under, rooted_segments};
 use super::relations::{Side, Witness};
-use super::run_covenant::Judgment;
+use super::run_covenant::{Attendance, Judgment};
 use super::shell_evidence::{has_pathless_signal, known_write_paths};
 use super::shell_path::shell_path;
 use crate::core::config::{Entry, Surface};
@@ -229,8 +229,10 @@ pub fn judge(
 ) -> Option<(String, Judgment)> {
     let declaration = &entry.declaration;
     let (path, world) = world_of(declaration, call, shell, context.supply)?;
+    let unattended = context.attendance == Attendance::Unattended;
     let judgment = match declare::judge(declaration, &world) {
         Verdict::OutOfScope => return None,
+        _ if unattended && declaration.body_reads_user_texts() => Judgment::Unobserved,
         Verdict::Pass => Judgment::Upheld,
         Verdict::SupplyPass => Judgment::SupplyPass,
         Verdict::Unjudgeable { source, reason } => Judgment::Unjudgeable(format!(
@@ -245,7 +247,8 @@ pub fn judge(
                     entry.why.as_deref(),
                 ),
                 witnesses: serialize_breaks(&breaks),
-                opens: declare::witness_opens(declaration, &world),
+                opens: !(unattended && declaration.witness_reads_user_texts())
+                    && declare::witness_opens(declaration, &world),
             }
         }
     };

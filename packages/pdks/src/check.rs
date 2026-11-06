@@ -25,7 +25,7 @@ use crate::covenant::discipline::{
 };
 use crate::covenant::dispatch::{Context, Registration, dispatch};
 use crate::covenant::extract::normalize;
-use crate::covenant::run_covenant::{Enforce, Verdict};
+use crate::covenant::run_covenant::{Attendance, Enforce, Verdict};
 use crate::covenant::ttl_witness::{TtlSpec, Valve, witness_expired_at};
 use crate::covenant::{self_mod, shell_mod, transcript_mod};
 use crate::diff::{self, STAGED_DELETE, STAGED_WRITE};
@@ -47,6 +47,7 @@ pub struct CheckSpec<'a> {
     pub mode: Mode,
     pub stdin: &'a str,
     pub enforce: Enforce,
+    pub attendance: Attendance,
     pub config_layer: Option<&'a str>,
     pub telemetry_path: Option<&'a Path>,
 }
@@ -210,7 +211,10 @@ fn string_list(object: &serde_json::Map<String, Value>, key: &str) -> Result<Vec
 
 /// Refuse a roster or session this runner cannot judge. A shape it cannot read is a block,
 /// never a default: folding a missing list into `[]` would judge an input nobody wrote.
-fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Session>), String> {
+fn assert_judgeable_shape(
+    input: &Input,
+    attendance: Attendance,
+) -> Result<(Option<Tools>, Option<Session>), String> {
     if input.has_world {
         return Err("input carries a world key: the world axis is the runner’s".to_string());
     }
@@ -289,12 +293,16 @@ fn assert_judgeable_shape(input: &Input) -> Result<(Option<Tools>, Option<Sessio
             }
             let messages = lists.first().copied().map_or(&[][..], Vec::as_slice);
             let calls = lists.get(1).copied().map_or(&[][..], Vec::as_slice);
+            let snapshot_messages = match attendance {
+                Attendance::Attended => messages,
+                Attendance::Unattended => &[],
+            };
             Some(Session {
                 evidence_path,
                 user_messages: user_messages(messages),
                 user_message_count: messages.len(),
                 sidecar,
-                snapshot: session_snapshot(messages, calls),
+                snapshot: session_snapshot(snapshot_messages, calls),
             })
         }
     };
@@ -482,8 +490,9 @@ fn judge_input(
     } = settled;
 
     // One valve for every registration: a witness is a session-wide permission a human
-    // granted. It exists only where a session does, since the valve reads human messages.
-    let ttl = match (session, &config.witness) {
+    // granted. It needs an attended session, since the valve reads human messages.
+    let attended = session.filter(|_| spec.attendance == Attendance::Attended);
+    let ttl = match (attended, &config.witness) {
         (Some(_), Some(witness)) => {
             match TtlSpec::new(&witness.token, witness.ttl_minutes * 60_000.0) {
                 Ok(ttl) => Some(ttl),
@@ -493,7 +502,7 @@ fn judge_input(
         _ => None,
     };
     let messages: &[UserMessage] = session.map_or(&[], |session| &session.user_messages);
-    let valve = session.map(|_| Valve {
+    let valve = attended.map(|_| Valve {
         ttl: ttl.as_ref(),
         messages,
     });
@@ -531,6 +540,7 @@ fn judge_input(
 
     let context = Context {
         enforce: spec.enforce,
+        attendance: spec.attendance,
         valve: valve.as_ref(),
         telemetry_path,
         shell_tools,
@@ -711,7 +721,7 @@ pub fn run_covenant_check(spec: &CheckSpec) -> Exit {
         Ok(input) => input,
         Err(error) => return fail_closed(telemetry_path, &error, "", Exit::InputUnreadable),
     };
-    let (tools, session) = match assert_judgeable_shape(&input) {
+    let (tools, session) = match assert_judgeable_shape(&input, spec.attendance) {
         Ok(shape) => shape,
         Err(error) => return fail_closed(telemetry_path, &error, "", Exit::InputUnreadable),
     };

@@ -15,26 +15,28 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
 use check::{CheckSpec, Mode, run_covenant_check};
-use covenant::run_covenant::Enforce;
+use covenant::run_covenant::{Attendance, Enforce};
 
 const BUILTINS: [&str; 4] = ["explain", "init", "docs", "covenant"];
 
-const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version | pdks docs [topic | search <query> | show <document-id>] | pdks <extension> [args...]";
+const USAGE: &str = "usage: pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--unattended] [--config-layer <path>] [--telemetry-path <path>] | pdks explain | pdks init | pdks --version | pdks docs [topic | search <query> | show <document-id>] | pdks <extension> [args...]";
 
 struct Flags {
     mode: Mode,
     enforce: Enforce,
+    attendance: Attendance,
     config_layer: Option<String>,
     telemetry_path: Option<String>,
 }
 
 /// The `covenant check` flags, or `None` for any argv outside the finite table: one of
 /// `--diff` or `--input-failure` at most once, `--enforce` at most once with `advise` or
-/// `block`, `--config-layer` and `--telemetry-path` at most once each with a non-empty path
-/// that does not start with `--`, in any order, and nothing else.
+/// `block`, `--unattended` at most once, `--config-layer` and `--telemetry-path` at most once
+/// each with a non-empty path that does not start with `--`, in any order, and nothing else.
 fn parse_check_flags(flags: &[String]) -> Option<Flags> {
     let mut mode = Mode::Ir;
     let mut enforce: Option<Enforce> = None;
+    let mut attendance = Attendance::Attended;
     let mut config_layer: Option<String> = None;
     let mut telemetry_path: Option<String> = None;
     let mut remaining = flags.iter();
@@ -48,6 +50,9 @@ fn parse_check_flags(flags: &[String]) -> Option<Flags> {
                     "block" => Enforce::Block,
                     _ => return None,
                 });
+            }
+            "--unattended" if attendance == Attendance::Attended => {
+                attendance = Attendance::Unattended;
             }
             "--config-layer" | "--telemetry-path" => {
                 let slot = if flag == "--config-layer" {
@@ -67,6 +72,7 @@ fn parse_check_flags(flags: &[String]) -> Option<Flags> {
     Some(Flags {
         mode,
         enforce: enforce.unwrap_or(Enforce::Advise),
+        attendance,
         config_layer,
         telemetry_path,
     })
@@ -198,6 +204,7 @@ fn main() -> ExitCode {
         mode: flags.mode,
         stdin: &String::from_utf8_lossy(&bytes),
         enforce: flags.enforce,
+        attendance: flags.attendance,
         config_layer: flags.config_layer.as_deref(),
         telemetry_path: telemetry_path.as_deref(),
     });

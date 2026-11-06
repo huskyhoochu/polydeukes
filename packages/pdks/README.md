@@ -38,7 +38,7 @@ The built executable is `target/release/pdks`.
 
 - [`pdks covenant check`](../../docs/reference/cli/covenant-check.md) judges input IR on stdin, or a
   unified diff with `--diff`. `--input-failure` accepts a producer failure. Choose at most one of
-  those two flags. Optional flags are `--enforce advise|block` (default `advise`),
+  those two flags. Optional flags are `--enforce advise|block` (default `advise`), `--unattended`,
   `--config-layer <path>`, and `--telemetry-path <path>`.
 - [`pdks init`](../../docs/reference/cli/init.md#init-common) creates project configuration and adds
   the telemetry directory to `.gitignore`.

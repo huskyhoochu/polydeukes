@@ -1,0 +1,134 @@
+{
+  "description": "With --unattended a discipline reading user texts records skipped no-observation for an in-scope call while one reading only tool uses is judged; an out-of-scope call leaves neither entry a row.",
+  "args": ["--enforce", "block", "--unattended"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "reads-user-texts",
+          "declare": {
+            "mechanism": "stated-ground",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "command",
+              "include": ["deploy"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "userTexts",
+                  "re": "deploy"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no user turn asks for the deploy"
+              }
+            ]
+          }
+        },
+        {
+          "id": "reads-tool-uses",
+          "declare": {
+            "mechanism": "stated-ground",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "command",
+              "include": ["deploy"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["Read"]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no Read precedes the deploy"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "deploy --now"
+        }
+      },
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "build --fast"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [
+        {
+          "text": "please deploy"
+        }
+      ],
+      "toolCalls": [
+        {
+          "name": "Read",
+          "args": {
+            "file_path": "x"
+          }
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [
+      ["skipped", "reads-user-texts", "-", "no-observation"],
+      ["passed", "reads-tool-uses", "-"],
+      ["passed", "covenant-check", "-"]
+    ]
+  }
+}

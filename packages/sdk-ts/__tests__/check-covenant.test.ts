@@ -31,8 +31,8 @@ const TARGET = 'src/answer.ts';
 const CONTENT = 'export const answer = 42;\n';
 const STUB_BIN_REL = './dist/bin.js';
 /** What the child must be asked to run, under each posture. */
-const BLOCK_ARGS = ['covenant', 'check', '--enforce', 'block'];
-const ADVISE_ARGS = ['covenant', 'check', '--enforce', 'advise'];
+const BLOCK_ARGS = ['covenant', 'check', '--enforce', 'block', '--unattended'];
+const ADVISE_ARGS = ['covenant', 'check', '--enforce', 'advise', '--unattended'];
 /** The row file the child would write under a default config — this package never does. */
 const TELEMETRY_REL = '.polydeukes/roi.log';
 
@@ -103,7 +103,7 @@ function writeInput(): CovenantInput {
 }
 
 describe('checkCovenant — what the seam is handed', () => {
-  it('spawns the selected executable with `covenant check --enforce block` by default, cwd = repoRoot, stdin = the IR verbatim', async () => {
+  it('spawns the selected executable with `covenant check --enforce block --unattended` by default, cwd = repoRoot, stdin = the IR verbatim', async () => {
     // Four values, each its own defect: another bin is another project's judge; `advise`
     // by default turns every break into exit 0 with no one reading stderr; a cwd off the
     // repoRoot reads another config; a re-serialised IR is an IR this package edited.

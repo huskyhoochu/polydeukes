@@ -6,6 +6,14 @@ use std::path::Path;
 use super::ttl_witness::Valve;
 use crate::core::telemetry::{self, Event};
 
+/// Whether a person takes part in the call; `session.userMessages` is read as human
+/// utterances only when one does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Attendance {
+    Attended,
+    Unattended,
+}
+
 /// The observer's posture. `Advise` records a break without stopping it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Enforce {
@@ -27,6 +35,8 @@ pub enum Judgment {
     Unjudgeable(String),
     /// A declaration whose absent source its own supply policy let pass.
     SupplyPass,
+    /// A declaration that reads human utterances in a call no human is part of.
+    Unobserved,
 }
 
 /// What one wrapped judgment recorded. `valve_refused` is set when the valve was asked to
@@ -67,6 +77,7 @@ pub fn run_covenant(
                 valve_refused: false,
             };
         }
+        Judgment::Unobserved => return record_skip(label, subject, telemetry_path),
         Judgment::Broken(reason) => (reason, None, false, enforce),
         Judgment::Declared {
             reason,

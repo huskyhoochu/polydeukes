@@ -1,0 +1,75 @@
+{
+  "description": "With --unattended and no session in the input, a discipline whose body reads user texts records skipped no-observation rather than its supply policy's supply-pass.",
+  "args": ["--enforce", "block", "--unattended"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "reads-user-texts",
+          "declare": {
+            "mechanism": "stated-ground",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "command",
+              "include": ["deploy"]
+            },
+            "extract": {
+              "found": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "userTexts",
+                  "re": "deploy"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-evidence",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "found"
+                },
+                "message": "no user turn asks for the deploy"
+              }
+            ],
+            "supply": {
+              "session": "pass"
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "shell-tool",
+        "args": {
+          "command": "deploy --now"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": ["shell-tool"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "reads-user-texts", "-", "no-observation"]]
+  }
+}

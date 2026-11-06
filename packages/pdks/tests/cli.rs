@@ -212,6 +212,23 @@ fn init_refuses_a_host_argument_and_writes_nothing() {
 }
 
 #[test]
+fn covenant_check_refuses_unattended_given_twice_with_usage() {
+    // Catches: a repeated `--unattended` accepted silently while every other repeated flag is
+    // refused. The argv ends at the repeated flag so only the duplicate check can reject it.
+    let sandbox = Sandbox::new();
+    sandbox.write(CONFIG_YML, "protectedPaths: []\n");
+
+    let output = sandbox.pdks(&["covenant", "check", "--unattended", "--unattended"]);
+
+    assert_eq!(code(&output), Some(2), "stderr: {}", err(&output));
+    assert!(err(&output).contains(USAGE), "{}", err(&output));
+    assert!(
+        !sandbox.exists(".polydeukes"),
+        "a refused argv judged nothing"
+    );
+}
+
+#[test]
 fn init_refuses_two_config_candidates_before_writing() {
     // Catches: ambiguity detected after the ignore file or a third config was written.
     let sandbox = Sandbox::new();

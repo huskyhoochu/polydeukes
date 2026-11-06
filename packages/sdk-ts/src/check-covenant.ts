@@ -36,6 +36,7 @@ export async function runCheck(
         ...(spec.diffMode ? ['--diff'] : []),
         '--enforce',
         spec.enforce ?? 'block',
+        ...(spec.diffMode ? [] : ['--unattended']),
         ...(spec.configLayer === undefined ? [] : ['--config-layer', spec.configLayer]),
         ...(spec.telemetryPath === undefined ? [] : ['--telemetry-path', spec.telemetryPath]),
       ],

@@ -74,7 +74,11 @@ A human witness can allow a blocking judgment without rewriting the policy. In a
 the token must stand alone on the first line of a human message and remain within its TTL. The
 change-set surface has no prompt: the valve is the session surface's TTL witness, and the change-set
 surface only emits an exit code that the user's hook consumes. The valve is consulted after judgment
-and does not repair a broken assembly.
+and does not repair a broken assembly. An SDK call is judged as a call with no person in it: the
+SDK's IR verb passes `--unattended`, so caller-supplied `session.userMessages` text never reaches a
+declaration as a user message — it opens no witness valve, and a discipline using the `userTexts`
+step records `skipped`. The SDK's caller is a program, the judge cannot distinguish SDK input from
+adapter input, and only an adapter can distinguish a human message from other text.
 
 ### Deterministic judgment, explicit enforcement
 

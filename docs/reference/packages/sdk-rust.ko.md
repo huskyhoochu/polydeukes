@@ -80,6 +80,13 @@ match verdict {
 actor, session, 도구 목록을 더하지 않습니다. `CovenantInput`과 구성 타입은 core의 입력 스키마에서
 생성합니다. 입력에 없는 `world`는 CLI가 공급합니다.
 
+`check_covenant`은 `covenant check --enforce <level> --unattended`를 실행하고, 지정한
+`--config-layer`와 `--telemetry-path`를 뒤에 덧붙입니다. `--unattended`를 끄는 옵션은 없습니다.
+`session.userMessages`의 토큰은 증인 밸브(witness valve)를 열지 않으며, 선언 본체에서 `userTexts`를
+읽는 규율(discipline)은 범위 안의 호출마다 사유 `no-observation`과 함께 `skipped`를 기록합니다.
+SDK는 같은 릴리스 또는 이후 릴리스의 `pdks`가 필요하며, 이전 `pdks`는 사용법 줄과 종료 코드 2로
+`--unattended`를 거부하고 SDK는 이를 차단된 판정 결과(verdict)로 반환합니다.
+
 <a id="spec"></a>
 ## spec
 

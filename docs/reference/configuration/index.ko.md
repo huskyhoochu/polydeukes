@@ -69,6 +69,14 @@ adapters:
 `supply: { session: 'pass' }`가 사유 `supply-pass`와 함께 `skipped`를 기록하며 호출을 지나가게
 합니다. 이 정책이 없으면 없는 소스는 판정 불가(exit 2)이지 자동 건너뛰기가 아닙니다.
 
+`--unattended`(SDK의 IR 동사)에서는 `userTexts`를 읽는 선언 본체가 범위 안의 호출마다 사유
+`no-observation`과 함께 `skipped`를 기록하고, 범위 밖의 호출은 행을 남기지 않습니다. `userTexts`를
+읽는 `witness` 블록은 열리지 않으며, 본체가 `userTexts`를 읽지 않으면 본체는 판정합니다. `toolUses`
+같은 다른 대화 기록 단계는 그대로 판정합니다. `{ transcript: true }` 소스로 읽는 대화
+기록(transcript)은 빈 사용자 메시지 목록을 담으므로, `userTexts`나 대화 기록의 `select`/`field`를
+포함한 어떤 선언 단계도 호출자의 `session.userMessages`를 보지 못하며 `witness` 블록은 사용자
+메시지로 열리지 않습니다.
+
 <a id="telemetry"></a>
 ## `telemetry`
 

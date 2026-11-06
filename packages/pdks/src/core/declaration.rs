@@ -222,7 +222,8 @@ pub struct Relate {
 }
 
 /// A compiled declaration. `pipelines` holds the body's extractions and then the witness
-/// block's own; `witness` is the witness block's relate entries.
+/// block's own, the first `body_pipelines` of them being the body's; `witness` is the witness
+/// block's relate entries.
 #[derive(Clone)]
 pub struct Declaration {
     pub mechanism: String,
@@ -230,6 +231,7 @@ pub struct Declaration {
     pub sources: Vec<(String, Binding)>,
     pub supply: Vec<(String, Supply)>,
     pub pipelines: Vec<Pipeline>,
+    pub body_pipelines: usize,
     pub relate: Vec<Relate>,
     pub witness: Option<Vec<Relate>>,
 }
@@ -298,6 +300,16 @@ impl Declaration {
             .any(|name| name == "changes")
     }
 
+    /// Whether a body extraction has a `userTexts` step.
+    pub fn body_reads_user_texts(&self) -> bool {
+        reads_user_texts(self.pipelines.iter().take(self.body_pipelines))
+    }
+
+    /// Whether an extraction of the witness block has a `userTexts` step.
+    pub fn witness_reads_user_texts(&self) -> bool {
+        reads_user_texts(self.pipelines.iter().skip(self.body_pipelines))
+    }
+
     /// The evidence channels the declaration binds, in a fixed order.
     pub fn channels(&self) -> Vec<&'static str> {
         let mut found = Vec::new();
@@ -324,6 +336,15 @@ impl Declaration {
             .filter(|name| found.contains(name))
             .collect()
     }
+}
+
+fn reads_user_texts<'a>(mut pipelines: impl Iterator<Item = &'a Pipeline>) -> bool {
+    pipelines.any(|pipeline| {
+        pipeline
+            .steps
+            .iter()
+            .any(|step| matches!(step, Step::UserTexts(_)))
+    })
 }
 
 fn quoted(names: &[&str]) -> String {
@@ -393,6 +414,7 @@ pub fn compile_declaration(id: &str, block: &Map<String, Value>) -> Check<Declar
     };
     let mut ids = Vec::new();
     let relate = parse_relate(id, "relate", relate, &pipelines, &mut ids)?;
+    let body_pipelines = pipelines.len();
     let witness = block
         .get("witness")
         .map(|value| parse_witness(id, value, &sources, &mut pipelines, &mut ids))
@@ -403,6 +425,7 @@ pub fn compile_declaration(id: &str, block: &Map<String, Value>) -> Check<Declar
         sources,
         supply,
         pipelines,
+        body_pipelines,
         relate,
         witness,
     };

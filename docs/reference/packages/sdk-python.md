@@ -39,11 +39,18 @@ sends the caller's IR as UTF-8 JSON (`allow_nan=False`) or the diff's unchanged 
 supplies no evidence of its own. Query text stays one argv item. Standard streams are piped,
 descriptors are closed, and no shell evaluates the command.
 
-| Verb               | Arguments after executable                   | stdin        |
-| ------------------ | -------------------------------------------- | ------------ |
-| `check_covenant`   | `covenant check --enforce <level>`           | JSON         |
-| `check_change_set` | `covenant check --diff --enforce <level>`    | Unified diff |
-| `memory_search`    | `memory search <query> --json [--limit <n>]` | Empty bytes  |
+| Verb               | Arguments after executable                      | stdin        |
+| ------------------ | ----------------------------------------------- | ------------ |
+| `check_covenant`   | `covenant check --enforce <level> --unattended` | JSON         |
+| `check_change_set` | `covenant check --diff --enforce <level>`       | Unified diff |
+| `memory_search`    | `memory search <query> --json [--limit <n>]`    | Empty bytes  |
+
+`check_covenant` runs `covenant check --enforce <level> --unattended`, followed by `--config-layer`
+and `--telemetry-path` when given. There is no option to turn off `--unattended`. A token in
+`session.userMessages` does not open the witness valve, and disciplines whose bodies read
+`userTexts` record `skipped` with reason `no-observation` for each call inside their scope. The SDK
+requires `pdks` from the same release or later; an older `pdks` rejects `--unattended` with its
+usage line and exit 2, which the SDK returns as a blocked verdict.
 
 Both covenant verbs append `--config-layer` and `--telemetry-path` when specified. Generate a diff
 with `git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ HEAD`; untracked files

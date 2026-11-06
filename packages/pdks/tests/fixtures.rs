@@ -8,7 +8,7 @@ fn conformance_cases_pass() {
         .parent()
         .and_then(Path::parent)
         .expect("the crate sits two levels below the repository root");
-    let expected = "232 covenant fixture cases passed.";
+    let expected = "239 covenant fixture cases passed.";
     let output = Command::new("node")
         .arg(repo.join("scripts/verify-covenant-fixtures.mjs"))
         .args(["--executable", env!("CARGO_BIN_EXE_pdks")])

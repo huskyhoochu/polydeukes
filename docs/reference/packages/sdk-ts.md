@@ -9,11 +9,11 @@ configuration, and telemetry.
 <a id="ownership"></a>
 ## What this package owns
 
-| Verb             | Command                             | Result                 |
-| ---------------- | ----------------------------------- | ---------------------- |
-| `checkCovenant`  | `pdks covenant check`               | `CheckCovenantVerdict` |
-| `checkChangeSet` | `pdks covenant check --diff`        | `CheckCovenantVerdict` |
-| `memorySearch`   | `pdks memory search <query> --json` | `MemorySearchOutcome`  |
+| Verb             | Command                                              | Result                 |
+| ---------------- | ---------------------------------------------------- | ---------------------- |
+| `checkCovenant`  | `pdks covenant check --enforce <level> --unattended` | `CheckCovenantVerdict` |
+| `checkChangeSet` | `pdks covenant check --diff --enforce <level>`       | `CheckCovenantVerdict` |
+| `memorySearch`   | `pdks memory search <query> --json`                  | `MemorySearchOutcome`  |
 
 All three verbs share executable resolution and byte-oriented process communication. Roots become
 absolute relative to the caller's current directory and become the child's cwd. An explicit
@@ -79,6 +79,13 @@ The host supplies evidence for each tool call. `fileChange` is `create` (`path`,
 call has no proven file mutation; another call's evidence does not fill it in. The SDK sends the
 input unchanged as UTF-8 JSON and synthesizes no actor, session, or tool roster. `CovenantInput` has
 no `world` field: the CLI supplies that axis from the project.
+
+`checkCovenant` runs `covenant check --enforce <level> --unattended`, followed by `--config-layer`
+and `--telemetry-path` when given. There is no option to turn off `--unattended`. A token in
+`session.userMessages` does not open the witness valve, and disciplines whose bodies read
+`userTexts` record `skipped` with reason `no-observation` for each call inside their scope. The SDK
+requires `pdks` from the same release or later; an older `pdks` rejects `--unattended` with its
+usage line and exit 2, which the SDK returns as a blocked verdict.
 
 <a id="spec"></a>
 ## The spec

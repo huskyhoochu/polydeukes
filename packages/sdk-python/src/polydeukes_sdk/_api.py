@@ -36,11 +36,11 @@ def _check(spec: CheckCovenantSpec | CheckChangeSetSpec) -> CheckCovenantVerdict
     try:
         args = ("covenant", "check")
         if isinstance(spec, CheckChangeSetSpec):
-            args += ("--diff",)
+            args += ("--diff", "--enforce", spec.enforce)
             stdin = spec.diff.encode("utf-8")
         else:
+            args += ("--enforce", spec.enforce, "--unattended")
             stdin = json.dumps(spec.input, ensure_ascii=False, allow_nan=False).encode("utf-8")
-        args += ("--enforce", spec.enforce)
         if spec.config_layer is not None:
             args += ("--config-layer", os.fspath(spec.config_layer))
         if spec.telemetry_path is not None:

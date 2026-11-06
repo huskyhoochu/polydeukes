@@ -1,0 +1,96 @@
+{
+  "description": "With --unattended a witness block that reaches user messages through select and field instead of userTexts still does not open: the transcript carries no user messages, so a blocked break stays blocked.",
+  "args": ["--enforce", "block", "--unattended"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "no-todo",
+          "enforce": "block",
+          "declare": {
+            "mechanism": "scoped-valve",
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "post"
+                },
+                {
+                  "op": "matches",
+                  "re": "TODO"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "no-todo-added",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "adds a TODO marker"
+              }
+            ],
+            "witness": {
+              "extract": {
+                "said": [
+                  {
+                    "op": "source",
+                    "of": "session"
+                  },
+                  {
+                    "op": "select",
+                    "path": "userMessages"
+                  },
+                  {
+                    "op": "field",
+                    "name": "text"
+                  },
+                  {
+                    "op": "matches",
+                    "re": "allow-todo"
+                  }
+                ]
+              },
+              "relate": [
+                {
+                  "id": "acknowledged",
+                  "relation": {
+                    "op": "nonEmpty",
+                    "of": "said"
+                  },
+                  "message": "no user turn acknowledges the TODO"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"edit-tool\", \"args\": {\"file_path\": \"lib/a.txt\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"lib/a.txt\", \"post\": \"// TODO\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"session\": {\"userMessages\": [{\"text\": \"please allow-todo here\", \"timestampMs\": @@NOW_MS-60000@@}], \"toolCalls\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["discipline 'no-todo' broken on lib/a.txt: adds a TODO marker"],
+    "rows": [
+      [
+        "blocked",
+        "no-todo",
+        "lib/a.txt",
+        "[{\"id\":\"no-todo-added\",\"witnesses\":[{\"key\":\"0\",\"value\":\"// TODO\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

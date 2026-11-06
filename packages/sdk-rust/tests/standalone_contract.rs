@@ -160,6 +160,7 @@ fn all_verbs_share_a_byte_transport_and_literal_arguments() {
             "check",
             "--enforce",
             "advise",
+            "--unattended",
             "--config-layer",
             "host layer.json",
             "--telemetry-path",

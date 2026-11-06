@@ -34,8 +34,8 @@ const CONTENT: &str = "export const answer = 42;\n";
 /// The umbrella's own manifest spells the bin with a leading `./`, so the stub does too.
 const STUB_BIN_REL: &str = "./dist/bin.js";
 /// What the child must be asked to run, under each posture.
-const BLOCK_ARGS: [&str; 4] = ["covenant", "check", "--enforce", "block"];
-const ADVISE_ARGS: [&str; 4] = ["covenant", "check", "--enforce", "advise"];
+const BLOCK_ARGS: [&str; 5] = ["covenant", "check", "--enforce", "block", "--unattended"];
+const ADVISE_ARGS: [&str; 5] = ["covenant", "check", "--enforce", "advise", "--unattended"];
 /// Injected fixture values — a host layer and a row file, both outside the judged tree.
 const LAYER_PATH: &str = "/host/policy/discipline-layer.json";
 const TELEMETRY_PATH: &str = "/host/logs/roi.log";

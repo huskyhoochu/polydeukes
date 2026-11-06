@@ -67,6 +67,7 @@ class ContractTests(unittest.TestCase):
                 "check",
                 "--enforce",
                 "advise",
+                "--unattended",
                 "--config-layer",
                 "layer name.json",
                 "--telemetry-path",

@@ -111,7 +111,8 @@ both its violating and valid cases. The change-set surface's level and an entry'
 **the lenient side wins**. Setting only the surface to `block` does not promote every entry.
 Protection of the judging chain is separate from ordinary discipline entries.
 
-The witness valve is consulted after a blocking judgment, never instead of judgment. Session and
-commit witnesses have different delivery mechanisms and evidence. A commit prompt cannot approve a
-pending session call. See [witness and recovery](../how-to/connect-surfaces.md#witness-and-recovery)
-and [troubleshooting](../troubleshooting.md).
+The meta-covenant witness valve never opens on an `--unattended` call (the SDK's IR verb). The
+witness valve is consulted after a blocking judgment, never instead of judgment. Session and commit
+witnesses have different delivery mechanisms and evidence. A commit prompt cannot approve a pending
+session call. See [witness and recovery](../how-to/connect-surfaces.md#witness-and-recovery) and
+[troubleshooting](../troubleshooting.md).

@@ -11,7 +11,7 @@ caller produces the observation, the command judges it and answers with an exit 
 ## Syntax
 
 ```sh
-pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--config-layer <path>] [--telemetry-path <path>]
+pdks covenant check [--diff | --input-failure] [--enforce advise|block] [--unattended] [--config-layer <path>] [--telemetry-path <path>]
 ```
 
 Without an input-mode flag, stdin is the covenant input IR — the JSON document defined by the
@@ -32,6 +32,27 @@ object with a non-empty string `reason`, such as `{"reason":"payload must be an 
 command prints that reason once, records one `blocked covenant-check` row, and exits `3` without
 judging a call. Config and telemetry-path resolution apply as usual; a config error takes
 precedence. `--input-failure` and `--diff` are mutually exclusive.
+
+`--unattended` means no person takes part in this call: the judge does not read
+`session.userMessages` as human messages. It is accepted in any input mode, at most once; a second
+occurrence is a usage error. The meta-covenant witness valve (`witness: { token, ttlMinutes }`)
+never opens, and no witness state line is printed. A protected-path break under `--enforce block`
+stays `blocked` (exit 2). The transcript read through a `{ transcript: true }` source carries an
+empty user-message list, so no declaration step, including `userTexts` or `select`/`field` over the
+transcript, sees the caller's `session.userMessages`, and a `witness` block cannot open on user
+messages.
+
+A discipline whose declaration body has a `userTexts` extract step records `skipped` with reason
+`no-observation` for each call inside its scope; calls outside its scope leave no row. If only its
+`witness` block reads `userTexts`, the body is judged, but that block does not open: a break stays
+`blocked` when both the entry and the call use `block`. Other transcript steps such as `toolUses`
+are judged as usual, and a witness block reading other evidence, such as the change's `post`, can
+still open. Without `--unattended`, these judgments and valves operate as usual.
+
+The SDK's IR verb always passes `--unattended`: its caller is a program, and the text it supplies is
+not evidence that a person sent it. The judge cannot distinguish adapter input from SDK input, so
+the SDK declares this explicitly. The Claude Code hook adapter omits the flag and filters human
+messages itself.
 
 <a id="covenant-check-boundaries"></a>
 ## Observation boundaries
@@ -108,7 +129,9 @@ disciplines skip on this surface.
 | Unparseable JSON, a non-object, a missing `toolCalls`, `subagentSpawns`, or `userMessages` array, or a malformed `actor`                  | exit `3`, one `blocked` `covenant-check` row, and the reason on stderr (`covenant check failed closed: input carries no subagentSpawns array`) |
 | An IR carrying its own `world` key                                                                                                        | exit `3` — the world axis is the command's to fill                                                                                             |
 | A `tools` whose lists are missing or hold a non-string name, or a `session` without `userMessages` and `toolCalls` arrays                 | exit `3`, one `blocked` `covenant-check` row — a shape the command cannot judge is refused, never a default                                    |
-| A `session` whose token message is fresh under the config's `witness`                                                                     | the blocked verdict lands `witnessed`, exit `0` — the same valve the session surface opens                                                     |
+| A `session` whose token message is fresh under the config's `witness`, without `--unattended`                                             | the blocked verdict lands `witnessed`, exit `0` — the same valve the session surface opens                                                     |
+| A protected-path break with `--unattended --enforce block`                                                                                | exit `2`, one `blocked` row; no witness state line                                                                                             |
+| An in-scope call for a discipline whose body reads `userTexts`, with `--unattended`                                                       | a `skipped` row with reason `no-observation`; no row outside its scope                                                                         |
 | A combined diff (`diff --cc`), an unmatched `---`/`+++`, an unknown hunk line, or EOF before the declared hunk lines are complete         | exit `3`, one `blocked` `covenant-check` row                                                                                                   |
 | Any other argument                                                                                                                        | exit `2` with the usage line on stderr, stdin unread                                                                                           |
 | Missing, ambiguous, or invalid config                                                                                                     | exit `2`                                                                                                                                       |
