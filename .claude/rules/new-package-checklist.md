@@ -25,13 +25,15 @@ PRD that creates a package lists every item below as an acceptance criterion.
    the config is not enough**:
    release-please compares release notes, not the file list, so it logs `PR #N remained the same`
    and leaves the stale branch while the workflow reports success. Close the PR
-   (`tea pr close <N>`), delete its head branch (`git push origin --delete <branch>`), and rerun the
-   workflow. **The rerun may not recover**: on 2026-09-16 the action's branch creation answered 500
-   on every retry while the same call with an owner token answered 201, and a closed PR's
-   `refs/pull/N/head` cannot be removed over the API (405). Then write the release commit by hand:
-   every manifest and `.release-please-manifest.json` to the new version, the CHANGELOG section the
-   bot had composed on the closed PR, committed as `chore(main): release X.Y.Z`. An empty `chore:`
-   commit is the only rerun — the workflow has no `workflow_dispatch`.
+   (`PATCH /repos/b95labs/polydeukes/pulls/<N>` with `{"state":"closed"}` via `curl`), delete its
+   head branch (`git push origin --delete <branch>`), and rerun the workflow. Read `AGENTS.local.md`
+   for the API base URL and how to obtain the token. **The rerun may not recover**: on 2026-09-16
+   the action's branch creation answered 500 on every retry while the same call with an owner token
+   answered 201, and a closed PR's `refs/pull/N/head` cannot be removed over the API (405). Then
+   write the release commit by hand: every manifest and `.release-please-manifest.json` to the new
+   version, the CHANGELOG section the bot had composed on the closed PR, committed as
+   `chore(main): release X.Y.Z`. An empty `chore:` commit is the only rerun — the workflow has no
+   `workflow_dispatch`.
 2. **`workspace:^` for internal dependencies** — never a version range.
 3. **npm trusted publishing is registered per package, and only after the package exists.** A new
    name has no access page, so the workflow's OIDC token answers `ENEEDAUTH` and stops the whole

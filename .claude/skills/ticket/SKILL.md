@@ -120,7 +120,9 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
   `minor` → `feat`, `breaking` → the accurate type with `!` (and a `BREAKING CHANGE:` body when the
   migration needs explanation), `none` → the accurate non-release type such as `docs`, `test`, `ci`,
   `build`, or `chore`. Use that type in both the branch commit and the PR title; push the branch and
-  open a PR against `main` with `tea pr create`.
+  open a PR against `main` using `curl` to send `POST /repos/b95labs/polydeukes/pulls` with JSON
+  keys `head`, `base`, `title`, and `body`. Set `base` to `main`. Read `AGENTS.local.md` for the API
+  base URL and how to obtain the token.
 - Review with the built-in skill. On Claude Code:
   `Skill({ skill: "code-review", args: "high <PR# or target> — <context>" })`. At `high` it fans out
   finder subagents by angle, verifies each candidate with an independent subagent, and the main
