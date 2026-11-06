@@ -21,7 +21,7 @@ The phase order is strict: **PRE → BRANCH → WORK → POST-TASK → PR → ME
 
 - Confirm the ticket is an **open Forgejo issue** on `b95labs/polydeukes` whose title starts with
   the ID (`LEDGER-01 · …`; an `ISSUE-<n>` ticket, optionally suffixed when one report splits into
-  several, `ISSUE-62a`, sits in the 「이슈 로드맵」 module of Plane's POLY project), and that
+  several, `ISSUE-62a`, sits in the 「이슈」 module of Plane's POLY project), and that
   **every ticket its body names as a dependency is a closed issue**. A ticket with unmet
   dependencies does not start — say so and stop. The issue is the ticket's only record; no wiki
   document lists tickets.
@@ -200,14 +200,20 @@ Archiving happens **when the PR merges**, never merely when acceptance criteria 
 ## Notes
 
 - Tickets are Forgejo issues on `b95labs/polydeukes`, labelled by kind (`ticket` · `candidate` ·
-  `conditional` · `friction` · `chore`) and grouped as three modules of Plane's POLY project (「일반
-  로드맵」 · 「이슈 로드맵」 · 「문서 로드맵」), which keeps their stage too. A milestone's
-  description holds its goal and Exit Criteria. A new or split ticket is a new issue with the same
-  labels; it reaches POLY in Backlog with no module, so put it in the same module there. Title,
-  body, labels, milestone and closing belong to Forgejo; Plane holds only the stage, set by one
-  rule: `Backlog` while a dependency is open, `Todo` once all are closed, `In Progress` from BRANCH,
-  `Done` when the issue closes after merge. The REST path for module and stage changes is in
-  `AGENTS.local.md`.
+  `conditional` · `friction` · `chore`) and each belongs to exactly one of seven modules of Plane's
+  POLY project: 「일반」 for mainline tickets not placed elsewhere, 「이슈」 for GitHub issue
+  reports,
+  「문서」 for documentation, 「후보」 for `candidate`, `conditional`, `friction` and tickets
+  waiting on real demand, an observation or another start condition, and 「ledger」 · 「verify」 ·
+  「정의 시점 계산」 for the optional milestones of those names, including their feature's
+  documentation tickets. Plane keeps their stage too. A milestone's description holds its goal and
+  Exit Criteria. A new or split ticket is a new issue with the same labels; it reaches POLY in
+  Backlog with no module, so put it in the appropriate module there. Title, body, labels, milestone
+  and closing belong to Forgejo; Plane holds only the stage, set by one rule: `Backlog` while a
+  dependency is open, `Todo` once all are closed, `In Progress` from BRANCH, `Done` when the issue
+  closes after merge. Items in the optional-milestone modules stay in `Backlog` until their module
+  starts, whatever their dependencies. A 「후보」 item moves to the module it belongs to when its
+  start condition is met. The REST path for module and stage changes is in `AGENTS.local.md`.
 - `_docs/` sits at a gitignored path but is **its own git repository** — a clone of the project's
   Forgejo wiki, which is where PRDs and knowledge entries actually live. Edits there are ordinary
   git work: commit and push in that directory (see ARCHIVE). This skill is checked into the main
