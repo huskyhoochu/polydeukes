@@ -1,0 +1,29 @@
+{
+  "description": "The output-is-read-whole recipe entry upholds tail -F after a check command and records passed, exit 0.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"output-is-read-whole\"\n    why: \"cutting check or search output can hide failures or matching files; a pipeline can also report the last command status instead of the check status.\"\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '\\b(?:git\\s+(?:push|commit)|cargo\\s+(?:test|clippy)|pnpm\\b[^|;&\\n]*\\b(?:test|check|typecheck|build)|vitest|grep|rg|find)\\b(?:[^|;&\\n]|>&\\d)*\\|\\s*(?:head|tail)\\b(?!\\s+-[fF]\\b)',\n            }\n      relate:\n        - id: \"not-truncated\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line cuts check or search output: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "cargo test | tail -F"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "output-is-read-whole", "-"]]
+  }
+}

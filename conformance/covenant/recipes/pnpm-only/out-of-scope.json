@@ -1,0 +1,35 @@
+{
+  "description": "The pnpm-only recipe entry does not judge a file edit whose content mentions a matched command: the entry is scoped on the command line.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"pnpm-only\"\n    why: \"this project uses pnpm; another package manager can leave dependency files inconsistent.\"\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '\\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\\b|(^|[;&|(]\\s*)yarn\\b',\n            }\n      relate:\n        - id: \"no-npm-mutation\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line uses a package manager outside pnpm: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "notes.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "pre": "",
+          "post": "npm install example"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

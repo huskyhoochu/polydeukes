@@ -100,6 +100,10 @@ YAML 블록은 목록 키(`disciplines:` 또는 `sessionDisciplines:`)로 시작
 자체의 절차를 실행했을 때 나오는 출력이어야 합니다. 두 언어의 YAML은 동일하게 유지하고, 에이전트
 프롬프트에도 그대로 넣습니다.
 
+목록 페이지 `docs/recipes/index.md`와 한국어 페이지는 모든 레시피를 두 언어로 연결합니다. 새
+레시피를 추가할 때는 목록에 행을 넣고 카탈로그 항목도 추가하세요. 목록 페이지에 레시피 링크가 없으면
+`node scripts/verify-recipes.mjs`가 실패합니다.
+
 <a id="check-commands"></a>
 ## 실행할 명령
 

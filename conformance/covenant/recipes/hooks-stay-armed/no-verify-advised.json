@@ -1,0 +1,39 @@
+{
+  "description": "The hooks-stay-armed recipe entry records the same call as advised and exits 0 when the run does not enforce block.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"hooks-stay-armed\"\n    why: \"a repository with a commit hook relies on that hook running; skipping it or changing its location can omit the checks.\"\n    enforce: block\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: 'git\\b[^|;&]*\\bcommit\\b[^|;&]*\\s(--no-verify\\b|-[a-zA-Z]*n)|(?i:core\\.hooksPath)',\n            }\n      relate:\n        - id: \"hook-runs\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line skips or changes a commit hook: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "git commit --no-verify -m example"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'hooks-stay-armed' broken on -: command line skips or changes a commit hook: git commit --no-verify -m example",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "hooks-stay-armed",
+        "-",
+        "[{\"id\":\"hook-runs\",\"witnesses\":[{\"key\":\"1\",\"value\":\"git commit --no-verify -m example\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -420,7 +420,10 @@ surfaces and leaves an absent one unmarked; the session header states the defaul
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
+        - {
+            op: "matches",
+            re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
+          }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
@@ -496,14 +499,12 @@ world of its own, with subject `-`. A `forbidden-command` declaration reads that
 into lines, keeps the lines a pattern matches, and requires the result to be `empty`. It scopes on
 `command` so that only shell calls are admitted: an Edit carries no command line, and a declaration
 reading a source its world lacks is unjudgeable. A multi-line command is judged line by line, so `^`
-means the start of a line; a pattern that would span a line boundary does not match. Heredoc bodies
-and herestring words are not part of the source: bash passes them to the command as stdin data
-rather than executing them, so a banned token quoted inside one is not a match, and whether that
-data becomes a file write is judged by the shell-evidence path instead. Text bash expands first
-stays in the source — a body under an unquoted delimiter that carries `$` or a backtick, and a
-herestring word holding a substitution — as does a line the tokenizer could not finish reading. What
-the receiving command does with its stdin is not judged: a script fed to an interpreter is data to
-bash and a program to the interpreter.
+means the start of a line; a pattern that would span a line boundary does not match. The `command`
+source is the command text as written. A heredoc body is part of it whether or not its delimiter is
+quoted. After `lines`, a `matches` step matches a body line containing the matching token. What the
+receiving command does with its stdin is not judged. Whether that data becomes a file write is
+judged by the shell-evidence path. A script fed to an interpreter is data to bash and a program to
+the interpreter.
 
 ```yaml
 - id: "hooks-stay-armed"
@@ -515,7 +516,10 @@ bash and a program to the interpreter.
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
+        - {
+            op: "matches",
+            re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
+          }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```

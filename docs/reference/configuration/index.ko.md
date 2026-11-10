@@ -411,7 +411,10 @@ disciplines:
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
+        - {
+            op: "matches",
+            re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
+          }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
@@ -486,13 +489,11 @@ disciplines:
 `forbidden-command` 선언은 그 소스를 읽어 줄로 나누고, 패턴에 매치하는 줄만 남긴 뒤, 결과가
 `empty`이기를 요구합니다. 범위를 `command`에 걸어 셸 호출만 받아들이게 합니다. Edit에는 명령줄이
 없고, 세계에 없는 소스를 읽는 선언은 판정 불가이기 때문입니다. 여러 줄 명령은 줄 단위로 판정하므로
-`^`는 줄의 시작을 뜻하고, 줄 경계를 걸치는 패턴은 일치하지 않습니다. heredoc 본문과 herestring
-단어는 소스에 들어가지 않습니다. bash는 그 바이트를 실행하지 않고 명령에 stdin 데이터로 넘기므로, 그
-안에 인용된 금지 토큰은 일치하지 않고, 그 데이터가 파일 쓰기가 되는지는 셸 증거 경로가 따로
-판정합니다. bash가 먼저 확장하는 텍스트는 소스에 남습니다. 인용하지 않은 구분자 아래에서 `$`나
-백틱을 담은 본문, 치환을 담은 herestring 단어가 그것이고, 토크나이저가 끝까지 읽지 못한 줄도 그대로
-남습니다. 받는 명령이 stdin으로 무엇을 하는지는 판정하지 않습니다. 해석기에 넘긴 스크립트는
-bash에게는 데이터이고 해석기에게는 프로그램입니다.
+`^`는 줄의 시작을 뜻하고, 줄 경계를 걸치는 패턴은 일치하지 않습니다. `command` 소스는 작성한
+그대로의 명령 텍스트입니다. heredoc 본문은 구분자를 인용했는지와 관계없이 그 소스에 포함됩니다.
+`lines` 다음의 `matches` 단계는 일치하는 토큰이 들어 있는 본문 줄과 일치합니다. 받는 명령이
+stdin으로 무엇을 하는지는 판정하지 않습니다. 그 데이터가 파일 쓰기가 되는지는 셸 증거 경로가
+판정합니다. 해석기에 넘긴 스크립트는 bash에게는 데이터이고 해석기에게는 프로그램입니다.
 
 ```yaml
 - id: "hooks-stay-armed"
@@ -504,7 +505,10 @@ bash에게는 데이터이고 해석기에게는 프로그램입니다.
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
+        - {
+            op: "matches",
+            re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
+          }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```

@@ -12,7 +12,8 @@ const read = (rel) => readFileSync(join(dist, rel), 'utf8');
 
 // Attribute order and self-closing vary in the built HTML, so each tag is
 // matched whole and its attributes are read individually.
-const tags = (html, name) => html.match(new RegExp(`<${name}\\b[^>]*>`, 'g')) ?? [];
+// A quoted attribute value may hold `>` (a regex inside a copy button's code), so the tag ends outside quotes.
+const tags = (html, name) => html.match(new RegExp(`<${name}\\b(?:[^>"]|"[^"]*")*>`, 'g')) ?? [];
 const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 
 const alternates = (html) =>
@@ -89,9 +90,26 @@ const decodeCode = (value) =>
 
 describe('recipe pages', () => {
   const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
-  const recipes = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.filter(
+  const listed = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.filter(
     (d) => d.category === 'recipes',
   );
+  const recipes = listed.filter((d) => d.id !== 'recipes');
+  const pageOf = (doc, lang) =>
+    `${lang === 'ko' ? 'ko/docs/' : 'docs/'}${doc[lang].path.replace(/(\.ko)?\.md$/, '').replace(/(^|\/)index$/, '')}`;
+
+  for (const lang of ['en', 'ko']) {
+    it(`the list page [${lang}] links every recipe page`, () => {
+      // Catches a recipe that was published without a row on the list page, or a link the build rewrote wrongly.
+      const list = listed.find((d) => d.id === 'recipes');
+      assert.ok(list, 'the catalog has the list page');
+      const html = read(`${pageOf(list, lang)}/index.html`);
+      const hrefs = tags(html, 'a').map((t) => attr(t, 'href') ?? '');
+      for (const recipe of recipes) {
+        const target = `/${pageOf(recipe, lang)}/`;
+        assert.ok(hrefs.includes(target), `no link to ${target}`);
+      }
+    });
+  }
 
   it('the catalog lists at least one recipe', () => {
     // Without this the loop below would define no test and the suite would pass over nothing.
@@ -99,12 +117,9 @@ describe('recipe pages', () => {
   });
 
   for (const recipe of recipes) {
-    for (const [lang, prefix] of [
-      ['en', 'docs/'],
-      ['ko', 'ko/docs/'],
-    ]) {
+    for (const lang of ['en', 'ko']) {
       const source = recipe[lang].path;
-      const page = `${prefix}${source.replace(/(\.ko)?\.md$/, '')}/index.html`;
+      const page = `${pageOf(recipe, lang)}/index.html`;
       it(`${recipe.id} [${lang}] carries copy buttons and copies its YAML verbatim from the first code block`, () => {
         // Catches a page that drops the copy buttons, or a build that alters the YAML a reader pastes into the config.
         const yaml = readFileSync(join(docsRoot, source), 'utf8').match(

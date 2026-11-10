@@ -1,0 +1,39 @@
+{
+  "description": "The deletes-name-their-target recipe entry blocks the same backtick form when a space precedes the closing backtick, with exit 2.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"deletes-name-their-target\"\n    why: \"deleting the root, home, current or parent directory, or every entry in a directory, can remove unrelated work.\"\n    enforce: block\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '(?:^|[;&|(\\x60\\x22\\x27]|\\$\\()\\s*(?:(?:sudo|exec|nohup|env|xargs|command|time)\\s+(?:-\\S+\\s+)*)*rm\\s+(?:[^\\s;&|]+\\s+)*?(?:/|/\\*|~|~/|~/\\*|\\$\\{?HOME\\}?/?\\*?|\\.|\\./|\\./\\*|\\.\\.|\\.\\./|\\*)(?=\\s|$|[;&|)\\x22\\x27])',\n            }\n      relate:\n        - id: \"none-wholesale\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line deletes a broad target: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo `rm -rf * `"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "discipline 'deletes-name-their-target' broken on -: command line deletes a broad target: echo `rm -rf * `"
+    ],
+    "rows": [
+      [
+        "blocked",
+        "deletes-name-their-target",
+        "-",
+        "[{\"id\":\"none-wholesale\",\"witnesses\":[{\"key\":\"1\",\"value\":\"echo `rm -rf * `\"}],\"total\":1}]"
+      ],
+      ["skipped", "shell-unjudgeable", "-", "no-observation"]
+    ]
+  }
+}

@@ -12,6 +12,8 @@
 //   - conformance/covenant/recipes/<entry id>/*.json exist, and in each the config file
 //     tree["polydeukes.config.yaml"] is exactly the YAML block + "\n"
 //   - every expect.stderr string of each case occurs in the section anchored `try-it`
+// The document whose id is `recipes` is the list page: in each language it must link every other
+// recipe document's file of that language.
 // A section starts at `<a id="..."></a>` and ends at the next anchor line or the next heading of
 // the same or a higher level. Every failure is printed on its own line; exit 1 if there is any.
 // RECIPES_ROOT overrides the repository root.
@@ -92,10 +94,30 @@ function section(lines, id) {
 
 const catalogPath = join(root, 'docs', 'catalog.json');
 const catalog = existsSync(catalogPath) ? JSON.parse(readFileSync(catalogPath, 'utf8')) : {};
-const recipes = (catalog.documents ?? []).filter((d) => d.category === 'recipes');
+const listed = (catalog.documents ?? []).filter((d) => d.category === 'recipes');
+const list = listed.find((d) => d.id === 'recipes');
+const recipes = listed.filter((d) => d !== list);
 if (recipes.length === 0) {
   console.error('verify-recipes: docs/catalog.json has no document with category "recipes"');
   process.exit(1);
+}
+
+if (!list) fail('recipes: the catalog has no list page (a recipes document with id "recipes")');
+for (const lang of list ? ['en', 'ko'] : []) {
+  const path = list[lang]?.path;
+  const file = path && join(root, 'docs', ...path.split('/'));
+  if (!file || !existsSync(file)) {
+    fail(`recipes [${lang}]: document file is missing`);
+    continue;
+  }
+  const text = scan(readFileSync(file, 'utf8'))
+    .filter((l) => !l.fenced)
+    .map((l) => l.text)
+    .join('\n');
+  for (const doc of recipes) {
+    const name = doc[lang]?.path?.split('/').pop();
+    if (name && !text.includes(`](./${name})`)) fail(`recipes [${lang}]: no link to ./${name}`);
+  }
 }
 
 for (const doc of recipes) {
@@ -168,5 +190,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(
-  `Recipes check passed: ${recipes.length} document(s), en and ko, with their conformance cases.`,
+  `Recipes check passed: ${recipes.length} document(s), en and ko, with their conformance cases, all linked from the list page.`,
 );

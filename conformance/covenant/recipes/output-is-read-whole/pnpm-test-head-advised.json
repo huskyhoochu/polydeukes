@@ -1,0 +1,39 @@
+{
+  "description": "The output-is-read-whole recipe entry advises pnpm test piped to head, even when the run enforces block, with exit 0.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"output-is-read-whole\"\n    why: \"cutting check or search output can hide failures or matching files; a pipeline can also report the last command status instead of the check status.\"\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '\\b(?:git\\s+(?:push|commit)|cargo\\s+(?:test|clippy)|pnpm\\b[^|;&\\n]*\\b(?:test|check|typecheck|build)|vitest|grep|rg|find)\\b(?:[^|;&\\n]|>&\\d)*\\|\\s*(?:head|tail)\\b(?!\\s+-[fF]\\b)',\n            }\n      relate:\n        - id: \"not-truncated\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line cuts check or search output: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "pnpm test | head"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'output-is-read-whole' broken on -: command line cuts check or search output: pnpm test | head",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "output-is-read-whole",
+        "-",
+        "[{\"id\":\"not-truncated\",\"witnesses\":[{\"key\":\"1\",\"value\":\"pnpm test | head\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

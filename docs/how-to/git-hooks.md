@@ -234,7 +234,7 @@ commit and wrote no row:
 Use this pattern for git's own switches:
 
 ```text
-git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath
+git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)
 ```
 
 ```yaml
@@ -250,7 +250,7 @@ sessionDisciplines:
           - { op: "lines" }
           - {
               op: "matches",
-              re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath',
+              re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
             }
       relate:
         - { id: "hook-runs", relation: { op: "empty", of: "hits" }, message: "{value}" }
@@ -279,7 +279,7 @@ Measured non-matches:
 - `git clean -n`
 
 The pattern reads the command line as text, so a commit message containing one of these spellings
-also matches.
+can also match; the skip-option alternatives stop at `|`, `;`, or `&`, including inside a message.
 
 To cover a tool's own switch as well, join that tool's pattern from its section above to the same
 `re` with `|`.

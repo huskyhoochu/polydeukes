@@ -105,6 +105,10 @@ the block unchanged, so write it in the formatter's form. Every output shown mus
 either a string a case pins or what the document's own steps print when run. Keep the YAML identical
 in both languages and include it verbatim inside the agent prompt.
 
+The list page, `docs/recipes/index.md`, and its Korean counterpart link every recipe in both
+languages. Add a row there and a catalog entry for each new recipe.
+`node scripts/verify-recipes.mjs` fails when a recipe has no link on the list page.
+
 <a id="check-commands"></a>
 ## What to run
 

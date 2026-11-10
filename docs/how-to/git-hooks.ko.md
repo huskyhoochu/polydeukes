@@ -233,7 +233,7 @@ repos:
 git 자체 옵션에는 다음 패턴을 사용합니다.
 
 ```text
-git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath
+git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)
 ```
 
 ```yaml
@@ -249,7 +249,7 @@ sessionDisciplines:
           - { op: "lines" }
           - {
               op: "matches",
-              re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath',
+              re: 'git\b[^|;&]*\bcommit\b[^|;&]*\s(--no-verify\b|-[a-zA-Z]*n)|(?i:core\.hooksPath)',
             }
       relate:
         - { id: "hook-runs", relation: { op: "empty", of: "hits" }, message: "{value}" }
@@ -276,7 +276,8 @@ Codex)에서 판정합니다. `enforce: block`이 없으면 일치를 `advised`�
 - `git commit --dry-run`
 - `git clean -n`
 
-패턴은 명령줄을 텍스트로 읽으므로 커밋 메시지에 이런 표기가 들어 있어도 일치합니다.
+패턴은 명령줄을 텍스트로 읽으므로 커밋 메시지에 이런 표기가 들어 있어도 일치할 수 있지만, 건너뛰기
+옵션 대안은 메시지 안에서도 `|`, `;`, `&`에서 멈춥니다.
 
 도구 자체의 옵션도 판정하려면 위 도구 절의 패턴을 같은 `re`에 `|`로 이어 붙입니다.
 

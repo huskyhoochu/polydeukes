@@ -1,0 +1,35 @@
+{
+  "description": "The deletes-name-their-target recipe entry does not judge a file edit whose content mentions a matched command: the entry is scoped on the command line.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"deletes-name-their-target\"\n    why: \"deleting the root, home, current or parent directory, or every entry in a directory, can remove unrelated work.\"\n    enforce: block\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '(?:^|[;&|(\\x60\\x22\\x27]|\\$\\()\\s*(?:(?:sudo|exec|nohup|env|xargs|command|time)\\s+(?:-\\S+\\s+)*)*rm\\s+(?:[^\\s;&|]+\\s+)*?(?:/|/\\*|~|~/|~/\\*|\\$\\{?HOME\\}?/?\\*?|\\.|\\./|\\./\\*|\\.\\.|\\.\\./|\\*)(?=\\s|$|[;&|)\\x22\\x27])',\n            }\n      relate:\n        - id: \"none-wholesale\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line deletes a broad target: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "notes.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "pre": "",
+          "post": "rm -rf /"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

@@ -2,6 +2,96 @@
   "schemaVersion": 1,
   "documents": [
     {
+      "id": "recipes",
+      "category": "recipes",
+      "order": 0,
+      "bundled": true,
+      "en": {
+        "path": "recipes/index.md",
+        "title": "Copy a discipline for the task you are doing",
+        "summary": "Choose a task, check each recipe’s requirements, and copy a discipline configuration.",
+        "terms": ["recipes", "discipline", "configuration"]
+      },
+      "ko": {
+        "path": "recipes/index.ko.md",
+        "title": "지금 하는 작업에 맞는 규율 복사하기",
+        "summary": "작업에 맞는 레시피의 조건을 확인하고 규율 설정을 복사합니다.",
+        "terms": ["레시피", "discipline", "configuration"]
+      }
+    },
+    {
+      "id": "recipe-deletes-name-their-target",
+      "category": "recipes",
+      "order": 29,
+      "bundled": true,
+      "en": {
+        "path": "recipes/deletes-name-their-target.md",
+        "title": "Stop an agent from deleting a whole directory with rm",
+        "summary": "Copy a session discipline that blocks listed broad rm target spellings.",
+        "terms": ["recipes", "rm", "delete", "shell"]
+      },
+      "ko": {
+        "path": "recipes/deletes-name-their-target.ko.md",
+        "title": "에이전트가 rm으로 디렉터리 전체를 지우지 못하게 하기",
+        "summary": "나열된 광범위한 rm 대상 표기를 차단하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "rm", "delete", "shell"]
+      }
+    },
+    {
+      "id": "recipe-hooks-stay-armed",
+      "category": "recipes",
+      "order": 30,
+      "bundled": true,
+      "en": {
+        "path": "recipes/hooks-stay-armed.md",
+        "title": "Stop an agent from skipping your Git commit hook",
+        "summary": "Copy a session discipline that blocks commit-hook skip options and hook-location settings.",
+        "terms": ["recipes", "git", "commit", "hooks"]
+      },
+      "ko": {
+        "path": "recipes/hooks-stay-armed.ko.md",
+        "title": "에이전트가 Git 커밋 훅을 건너뛰지 못하게 하기",
+        "summary": "커밋 훅 건너뛰기 옵션과 훅 위치 설정을 차단하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "git", "commit", "hooks"]
+      }
+    },
+    {
+      "id": "recipe-output-is-read-whole",
+      "category": "recipes",
+      "order": 31,
+      "bundled": true,
+      "en": {
+        "path": "recipes/output-is-read-whole.md",
+        "title": "Detect test and search output cut off by head or tail",
+        "summary": "Copy a session discipline that advises on listed commands piping output to head or tail.",
+        "terms": ["recipes", "output", "head", "tail", "test", "search"]
+      },
+      "ko": {
+        "path": "recipes/output-is-read-whole.ko.md",
+        "title": "head나 tail로 잘린 테스트·검색 출력 감지하기",
+        "summary": "나열된 명령의 출력을 head나 tail에 넘길 때 권고하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "output", "head", "tail", "test", "search"]
+      }
+    },
+    {
+      "id": "recipe-pnpm-only",
+      "category": "recipes",
+      "order": 32,
+      "bundled": true,
+      "en": {
+        "path": "recipes/pnpm-only.md",
+        "title": "Detect dependency changes made outside pnpm",
+        "summary": "Copy a session discipline that advises on listed npm commands and recognised yarn invocations.",
+        "terms": ["recipes", "pnpm", "npm", "yarn", "dependencies"]
+      },
+      "ko": {
+        "path": "recipes/pnpm-only.ko.md",
+        "title": "pnpm 밖에서 한 의존성 변경 감지하기",
+        "summary": "나열된 npm 명령과 인식하는 yarn 호출에 권고하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "pnpm", "npm", "yarn", "dependencies"]
+      }
+    },
+    {
       "id": "recipe-work-stays-recoverable",
       "category": "recipes",
       "order": 28,

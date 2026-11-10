@@ -1,0 +1,39 @@
+{
+  "description": "The pnpm-only recipe entry advises even a read-only yarn command, because the yarn arm matches the manager name alone, with exit 0.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"pnpm-only\"\n    why: \"this project uses pnpm; another package manager can leave dependency files inconsistent.\"\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: '\\bnpm (install|i|ci|add|uninstall|remove|rm|update|up|link|publish)\\b|(^|[;&|(]\\s*)yarn\\b',\n            }\n      relate:\n        - id: \"no-npm-mutation\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line uses a package manager outside pnpm: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "yarn info example"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'pnpm-only' broken on -: command line uses a package manager outside pnpm: yarn info example",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "pnpm-only",
+        "-",
+        "[{\"id\":\"no-npm-mutation\",\"witnesses\":[{\"key\":\"1\",\"value\":\"yarn info example\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}
