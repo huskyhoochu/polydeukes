@@ -125,7 +125,7 @@ Standard error:
 
 ```text
 discipline 'work-stays-recoverable' broken on -: command line destroys uncommitted or remote state: git reset --hard HEAD~1 — why: a command that destroys uncommitted work, or force-pushes without a lease on the remote state, cannot be undone.
-covenant advisory: 1 verdict(s) recorded as advised, commit allowed
+covenant advisory: 1 verdict(s) recorded as advised, not blocked
 ```
 
 Exit code: 0. Run by hand, the judge advises unless the run says `--enforce block`; the agent

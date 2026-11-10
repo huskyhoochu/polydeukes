@@ -62,7 +62,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'no-hard-reset' broken on -: command line forecloses recovery: git reset --hard HEAD~1",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       [

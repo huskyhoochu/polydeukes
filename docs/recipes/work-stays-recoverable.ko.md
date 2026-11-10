@@ -124,7 +124,7 @@ pdks covenant check < violating.json
 
 ```text
 discipline 'work-stays-recoverable' broken on -: command line destroys uncommitted or remote state: git reset --hard HEAD~1 — why: a command that destroys uncommitted work, or force-pushes without a lease on the remote state, cannot be undone.
-covenant advisory: 1 verdict(s) recorded as advised, commit allowed
+covenant advisory: 1 verdict(s) recorded as advised, not blocked
 ```
 
 종료 코드는 0입니다. 직접 실행할 때는 `--enforce block`을 지정해야 차단하며, 그렇지 않으면 판정기는

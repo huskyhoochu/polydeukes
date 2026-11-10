@@ -42,7 +42,7 @@
   "stdin": "diff --git a/lib/old.txt b/lib/new.txt\nsimilarity index 71%\nrename from lib/old.txt\nrename to lib/new.txt\nindex 4cb29ea..ddc897f 100644\n--- a/lib/old.txt\n+++ b/lib/new.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n",
   "expect": {
     "exit": 0,
-    "stderr": ["TWO", "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"],
+    "stderr": ["TWO", "covenant advisory: 1 verdict(s) recorded as advised, not blocked"],
     "rows": [
       ["passed", "covenant-check", "lib/old.txt"],
       [

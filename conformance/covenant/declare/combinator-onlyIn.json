@@ -92,7 +92,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'combinator-onlyIn' broken on src/broken.txt: 'c' was added",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "combinator-onlyIn", "src/held.txt"],

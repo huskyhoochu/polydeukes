@@ -76,7 +76,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'relation-subset' broken on src/broken.txt: 'z' is not allowed",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "relation-subset", "src/held.txt"],

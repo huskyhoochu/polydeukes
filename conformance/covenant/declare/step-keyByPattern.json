@@ -64,7 +64,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'step-keyByPattern' broken on src/broken.txt: found 'abc'",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "step-keyByPattern", "src/held.txt"],

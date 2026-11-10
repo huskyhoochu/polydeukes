@@ -83,7 +83,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'combinator-union' broken on src/broken.txt: found 'y' (+1)",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "combinator-union", "src/held.txt"],

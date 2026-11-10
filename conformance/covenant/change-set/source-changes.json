@@ -54,7 +54,7 @@
     "stderr": [
       "lib/b.ts",
       "lib/a.ts",
-      "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 2 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       [

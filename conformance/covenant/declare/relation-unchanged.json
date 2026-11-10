@@ -66,7 +66,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'relation-unchanged' broken on src/broken.txt: limit moved from 5 to 9",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "relation-unchanged", "src/held.txt"],

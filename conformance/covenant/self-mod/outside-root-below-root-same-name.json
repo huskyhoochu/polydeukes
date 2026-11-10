@@ -20,7 +20,7 @@
   },
   "expect": {
     "exit": 0,
-    "stderr": ["covenant advisory: 1 verdict(s) recorded as advised, commit allowed"],
+    "stderr": ["covenant advisory: 1 verdict(s) recorded as advised, not blocked"],
     "rows": [["advised", "self-mod", "polydeukes.config.yaml"]]
   }
 }

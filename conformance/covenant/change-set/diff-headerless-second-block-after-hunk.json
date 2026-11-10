@@ -45,7 +45,7 @@
     "exit": 0,
     "stderr": [
       "staged-write would modify protected path gate/y.txt",
-      "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 2 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       [

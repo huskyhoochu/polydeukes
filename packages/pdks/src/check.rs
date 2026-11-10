@@ -581,9 +581,9 @@ fn judge_input(
     }
     if advised_count > 0 {
         let outcome = if blocked {
-            "commit blocked by another verdict"
+            "blocked by another verdict"
         } else {
-            "commit allowed"
+            "not blocked"
         };
         eprintln!("covenant advisory: {advised_count} verdict(s) recorded as advised, {outcome}");
     }

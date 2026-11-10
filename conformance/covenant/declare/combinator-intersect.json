@@ -91,7 +91,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'combinator-intersect' broken on src/broken.txt: 'b' is in both",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "combinator-intersect", "src/held.txt"],

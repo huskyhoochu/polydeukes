@@ -56,7 +56,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'no-todo' broken on ..foo.txt: adds a TODO marker",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       [

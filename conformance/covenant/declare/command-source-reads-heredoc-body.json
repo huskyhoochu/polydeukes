@@ -63,7 +63,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'no-frob' broken on -: forbidden: frobnicate --now",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       [

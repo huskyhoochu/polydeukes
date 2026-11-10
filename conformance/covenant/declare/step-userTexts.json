@@ -119,7 +119,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'step-userTexts-miss' broken on broken/y.txt: no matching evidence on record",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "step-userTexts", "held/x.txt"],

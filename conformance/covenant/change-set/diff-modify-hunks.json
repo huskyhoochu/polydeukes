@@ -74,7 +74,7 @@
   "stdin": "--- a/lib/f.txt\n+++ b/lib/f.txt\n@@ -1,3 +1,3 @@\n keep\n-old\n+new\n tail\n@@ -20,2 +20,2 @@\n more\n-early\n+late\n\\ No newline at end of file\n",
   "expect": {
     "exit": 0,
-    "stderr": ["new", "covenant advisory: 2 verdict(s) recorded as advised, commit allowed"],
+    "stderr": ["new", "covenant advisory: 2 verdict(s) recorded as advised, not blocked"],
     "rows": [
       [
         "advised",

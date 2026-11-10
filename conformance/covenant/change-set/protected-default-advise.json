@@ -11,7 +11,7 @@
     "exit": 0,
     "stderr": [
       "staged-write would modify protected path gate/new.txt",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [["advised", "self-mod", "gate"]]
   }

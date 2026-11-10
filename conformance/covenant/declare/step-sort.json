@@ -66,7 +66,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'step-sort' broken on src/broken.txt: found '2' (+2)",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "step-sort", "src/held.txt"],

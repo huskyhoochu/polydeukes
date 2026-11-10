@@ -1,0 +1,43 @@
+{
+  "description": "A call that breaks self-mod under block enforcement while another discipline stays advised exits 2 and the summary line says another verdict blocked.",
+  "args": ["--enforce", "block", "--config-layer", "@@ROOT@@/layer.json"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["dist"]
+    },
+    "layer.json": {
+      "disciplines": [
+        {
+          "id": "no-db-files",
+          "why": "database files stay out of the tree",
+          "declare": {
+            "mechanism": "naming",
+            "scope": { "source": "target.path", "include": ["\\.db$"] },
+            "extract": { "own": [{ "op": "source", "of": "target.path" }] },
+            "relate": [
+              {
+                "id": "placed",
+                "relation": { "op": "empty", "of": "own" },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": "{\"toolCalls\": [{\"name\": \"session-write\", \"args\": {\"file_path\": \"dist/data.db\", \"content\": \"x\\n\"}, \"fileChange\": {\"kind\": \"create\", \"path\": \"dist/data.db\", \"post\": \"x\\n\"}}], \"subagentSpawns\": [], \"userMessages\": [], \"tools\": {\"mutating\": [\"session-write\"], \"shell\": [], \"commandArgs\": []}}",
+  "expect": {
+    "exit": 2,
+    "stderr": ["covenant advisory: 1 verdict(s) recorded as advised, blocked by another verdict"],
+    "rows": [
+      ["blocked", "self-mod", "dist"],
+      [
+        "advised",
+        "no-db-files",
+        "dist/data.db",
+        "[{\"id\":\"placed\",\"witnesses\":[{\"key\":\"0\",\"value\":\"dist/data.db\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

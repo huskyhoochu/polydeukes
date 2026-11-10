@@ -90,7 +90,7 @@
     "exit": 0,
     "stderr": [
       "discipline 'relation-implies' broken on src/broken.txt: 'c' is not registered",
-      "covenant advisory: 1 verdict(s) recorded as advised, commit allowed"
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
     ],
     "rows": [
       ["passed", "relation-implies", "src/held.txt"],
