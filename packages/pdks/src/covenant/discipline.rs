@@ -90,9 +90,16 @@ fn file_world(call: &ToolCall, root: &Path) -> Option<(String, World)> {
     Some((path, world))
 }
 
+/// True when the surface cannot judge the declaration: one session call carries no change set,
+/// so a declaration that reads `changes` is recorded as skipped there.
+pub fn unobserved_on(surface: Surface, declaration: &Declaration) -> bool {
+    surface == Surface::Session && declaration.reads_changes()
+}
+
 /// The call's world and its subject: the file change when it has one, else a shell call is one
 /// world of its own under `-`. A declaration that reads only the change has nothing to read
 /// there; one that also reads the command meets the missing change through its supply policy.
+/// A session call without a file change is no world for a declaration that reads `changes`.
 fn world_of(
     declaration: &Declaration,
     call: &ToolCall,
@@ -102,7 +109,8 @@ fn world_of(
     let (path, mut world) = match file_world(call, supply.root) {
         Some(found) => found,
         None if shell.command.is_some()
-            && (!declaration.reads_change() || declaration.reads_call()) =>
+            && (!declaration.reads_change() || declaration.reads_call())
+            && !unobserved_on(supply.surface, declaration) =>
         {
             ("-".to_string(), World::new())
         }
@@ -232,6 +240,7 @@ pub fn judge(
     let unattended = context.attendance == Attendance::Unattended;
     let judgment = match declare::judge(declaration, &world) {
         Verdict::OutOfScope => return None,
+        _ if unobserved_on(context.supply.surface, declaration) => Judgment::Unobserved,
         _ if unattended && declaration.body_reads_user_texts() => Judgment::Unobserved,
         Verdict::Pass => Judgment::Upheld,
         Verdict::SupplyPass => Judgment::SupplyPass,

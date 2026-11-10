@@ -3,7 +3,7 @@
   "args": ["--diff"],
   "tree": {
     "polydeukes.config.yaml": {
-      "changeSetDisciplines": [
+      "disciplines": [
         {
           "id": "change-set-is-one-file",
           "declare": {

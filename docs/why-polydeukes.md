@@ -38,12 +38,13 @@ TypeScript, Rust, and Python SDKs. Two observation surfaces serve different purp
   pre-commit hook, or any diff a tool produces. It works without an AI agent. A project may connect
   either or both surfaces according to its needs.
 
-A discipline is written in one of three config lists, and the list follows from what its declaration
-reads. `disciplines` holds what both surfaces can judge — declarations reading only the changed
-file. `sessionDisciplines` holds what only a live call carries — the command line, the conversation
-history, the actor. `changeSetDisciplines` holds what only a finished change set carries. The loader
-refuses an entry written in a list whose surface cannot observe its channels, so the config file
-itself says where each discipline stands, and `pdks explain` prints the same placement per surface.
+A discipline belongs to one of two lists, determined by what its declaration reads. `disciplines`
+verifies results: the change-set surface judges its declarations before work is recorded in the
+repository. The session surface also judges entries computable from one call's changed file and
+`file` sources, at the violating call. A declaration reading `changes` belongs in `disciplines` and
+is skipped on the session surface. `sessionDisciplines` holds process and human evidence from the
+command line, transcript, `sidecar` channel, or actor; only the session surface judges it. The
+loader refuses a misplaced entry, and `pdks explain` shows how each surface handles it.
 
 A discipline is configuration data with extraction steps and relations. Seven relations and
 seventeen mechanisms form the vocabulary. Mechanisms constrain declaration shape; surfaces determine

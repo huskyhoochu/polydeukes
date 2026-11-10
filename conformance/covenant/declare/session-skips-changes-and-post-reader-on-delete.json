@@ -1,0 +1,76 @@
+{
+  "description": "A declaration that reads both changes and post, given an in-scope delete call that has no post, records the one skipped row instead of blocking as unjudgeable.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "post-is-in-the-change-set",
+          "enforce": "block",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "extract": {
+              "written": [
+                {
+                  "op": "source",
+                  "of": "post"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "listed",
+                "relation": {
+                  "op": "subset",
+                  "of": "written",
+                  "in": "changed"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.ts"
+        },
+        "fileChange": {
+          "kind": "delete",
+          "path": "lib/a.ts",
+          "pre": "old\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "post-is-in-the-change-set", "lib/a.ts", "no-observation"]]
+  }
+}

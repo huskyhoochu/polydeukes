@@ -327,6 +327,45 @@ disciplines:
     why: "an executor verb takes one <Verb>Spec object and returns one named result; whether a function is a contract verb is a fact about the barrel, not about the file the function lives in, so no path-scoped declaration can judge it. package-contract.test.ts check ③ does."
     draft: true
 
+  # ---- the change set: what a set of changes must carry together
+  - id: "docs-stay-bilingual"
+    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
+    declare:
+      mechanism: "companion"
+      scope:
+        source: "target.path"
+        include: ['\.md$']
+        exclude:
+          [
+            '^\.claude/',
+            '^AGENTS(?:\.(?:ko|local))?\.md$',
+            '^CLAUDE(?:\.local)?\.md$',
+            '^CHANGELOG\.md$',
+            '^CONTEXT\.md$',
+          ]
+      extract:
+        en:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        ko:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+        enChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        koChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+      relate:
+        - id: "ko-follows"
+          relation: { op: "implies", of: "en", requires: "koChanged" }
+          message: "{value} changed without {key}.ko.md"
+        - id: "en-follows"
+          relation: { op: "implies", of: "ko", requires: "enChanged" }
+          message: "{value} changed without {key}.md"
+
 # Judged on the session surface only — an adapter hook or the SDK, one call observed before
 # it runs. These declarations read the command line, the transcript, or the actor, which no
 # change set carries. Misplacing one under `disciplines` is a config error.
@@ -676,45 +715,3 @@ sessionDisciplines:
         - id: "main-session-only"
           relation: { op: "empty", of: "subagent" }
           message: "subagent {value} ran a commit command"
-
-# Judged on the change-set surface only — `pdks covenant check --diff`, a finished change
-# set from any producer. These declarations read `changes`, which one live call never has.
-changeSetDisciplines:
-  # ---- the change set: what a set of changes must carry together
-  - id: "docs-stay-bilingual"
-    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
-    declare:
-      mechanism: "companion"
-      scope:
-        source: "target.path"
-        include: ['\.md$']
-        exclude:
-          [
-            '^\.claude/',
-            '^AGENTS(?:\.(?:ko|local))?\.md$',
-            '^CLAUDE(?:\.local)?\.md$',
-            '^CHANGELOG\.md$',
-            '^CONTEXT\.md$',
-          ]
-      extract:
-        en:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        ko:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-        enChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        koChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-      relate:
-        - id: "ko-follows"
-          relation: { op: "implies", of: "en", requires: "koChanged" }
-          message: "{value} changed without {key}.ko.md"
-        - id: "en-follows"
-          relation: { op: "implies", of: "ko", requires: "enChanged" }
-          message: "{value} changed without {key}.md"

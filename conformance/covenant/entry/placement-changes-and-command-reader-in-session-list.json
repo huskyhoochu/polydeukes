@@ -1,0 +1,79 @@
+{
+  "description": "A declaration that reads both changes and command is refused in sessionDisciplines because no surface observes both.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "sessionDisciplines": [
+        {
+          "id": "reads-both",
+          "declare": {
+            "mechanism": "forbidden-command",
+            "scope": {
+              "source": "command",
+              "include": ["deploy"]
+            },
+            "extract": {
+              "hit": [
+                {
+                  "op": "source",
+                  "of": "command"
+                },
+                {
+                  "op": "matches",
+                  "re": "--force"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "not-forced",
+                "relation": {
+                  "op": "empty",
+                  "of": "hit"
+                },
+                "message": "forced deploy"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["no surface observes both changes and a session channel"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

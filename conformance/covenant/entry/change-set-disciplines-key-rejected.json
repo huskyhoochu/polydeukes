@@ -1,0 +1,78 @@
+{
+  "description": "The top-level changeSetDisciplines key is an unknown key even when its entry is valid, and the config is refused.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "changeSetDisciplines": [
+        {
+          "id": "needs-the-whole-change-set",
+          "declare": {
+            "mechanism": "companion",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "extract": {
+              "own": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                }
+              ],
+              "changed": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "has-companion",
+                "relation": {
+                  "op": "implies",
+                  "of": "own",
+                  "requires": "changed"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "invalid config in polydeukes.config.yaml: unknown key 'changeSetDisciplines' in config"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

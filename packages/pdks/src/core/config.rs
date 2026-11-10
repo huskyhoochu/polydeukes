@@ -7,13 +7,11 @@ use super::validation::{is_non_empty_string, js_trim, reject_unknown_keys};
 
 pub const DEFAULT_TELEMETRY_LOG_PATH: &str = ".polydeukes/roi.log";
 
-pub const DISCIPLINE_LISTS: [&str; 3] =
-    ["disciplines", "sessionDisciplines", "changeSetDisciplines"];
+pub const DISCIPLINE_LISTS: [&str; 2] = ["disciplines", "sessionDisciplines"];
 
-const LAYER_LISTS: &str =
-    "a config layer carries only disciplines, sessionDisciplines, changeSetDisciplines";
+const LAYER_LISTS: &str = "a config layer carries only disciplines, sessionDisciplines";
 
-const TOP_LEVEL_KEYS: [&str; 9] = [
+const TOP_LEVEL_KEYS: [&str; 8] = [
     "$schema",
     "protectedPaths",
     "adapters",
@@ -21,7 +19,6 @@ const TOP_LEVEL_KEYS: [&str; 9] = [
     "telemetry",
     "disciplines",
     "sessionDisciplines",
-    "changeSetDisciplines",
     "witness",
 ];
 
@@ -54,14 +51,15 @@ pub enum Surface {
 }
 
 /// A validated config. `memory` and `adapters` are checked and not kept: this judge reads
-/// neither. Each surface's entries are the shared `disciplines` first, then its own list.
+/// neither. The session's entries are `disciplines` then `sessionDisciplines`; the change-set
+/// surface's are `disciplines`.
 pub struct Config {
     pub protected_paths: Vec<String>,
     pub log_path: String,
     pub witness: Option<Witness>,
     /// The ids of the `draft: true` entries.
     pub drafts: Vec<String>,
-    /// How many of each surface's entries came from the shared `disciplines` list.
+    /// How many entries the `disciplines` list holds.
     pub shared_count: usize,
     session_entries: Vec<Entry>,
     change_set_entries: Vec<Entry>,
@@ -140,8 +138,7 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
                     session_entries.extend(judged.clone());
                     change_set_entries.extend(judged);
                 }
-                "sessionDisciplines" => session_entries.extend(judged),
-                _ => change_set_entries.extend(judged),
+                _ => session_entries.extend(judged),
             }
         }
     }
@@ -168,7 +165,7 @@ pub fn define_config(config: &Value) -> Result<Config, String> {
     })
 }
 
-/// A second discipline file: its three lists only, as given and only those present.
+/// A second discipline file: its two lists only, as given and only those present.
 pub fn define_config_layer(layer: &Value) -> Result<Map<String, Value>, String> {
     let Some(layer) = layer.as_object() else {
         return Err(format!(
@@ -212,7 +209,7 @@ fn validate_array<'a>(entries: &'a Value, list: &str) -> Result<&'a Vec<Value>, 
 
 /// Validate one discipline list and compile its judged entries. A declaration that does not
 /// compile is a problem collected for the one invalid-config message; a malformed entry head
-/// stops the load. `seen_ids` spans the three lists.
+/// stops the load. `seen_ids` spans both lists.
 fn validate_entries(
     value: &Value,
     list: &str,
@@ -314,8 +311,6 @@ fn check_placement(declaration: &Declaration, list: &str, location: &str) -> Res
     }
     let destination = if reads_session {
         "sessionDisciplines"
-    } else if reads_changes {
-        "changeSetDisciplines"
     } else {
         "disciplines"
     };

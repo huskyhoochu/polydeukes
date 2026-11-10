@@ -12,7 +12,7 @@ the [configuration reference](../configuration/index.md).
 
 A judged entry has `id`, `declare`, and optional `why` and `enforce` fields. Put it in the
 [list
-that can observe its sources](../configuration/index.md#three-lists).
+that can observe its sources](../configuration/index.md#discipline-lists).
 
 | Field inside `declare` | Required | Meaning                                                                             |
 | ---------------------- | -------- | ----------------------------------------------------------------------------------- |
@@ -66,15 +66,15 @@ patterns are regular expressions, not path globs. `include` is always case-sensi
 Each observation supplies the sources it can prove. File changes are evaluated separately, so
 `target.path`, `pre`, and `post` refer to the current change.
 
-| Source        | Value                                     | Availability                                                                                               |
-| ------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `target.path` | Repository-relative path string           | An observation with a file target.                                                                         |
-| `pre`         | File text before the change               | Modifications; deletions when the prior text is available. Absent on creation.                             |
-| `post`        | Proposed file text after the change       | Creations and modifications. Absent on deletion.                                                           |
-| `state`       | Before/after pair `{ pre, post }`         | Modifications. Its pipeline runs separately on each side.                                                  |
-| `changes`     | Array of paths in the observed change set | Read in `changeSetDisciplines`; use `items` to extract individual paths.                                   |
-| `command`     | Shell command text                        | Session shell calls, including calls with no file target. Literal stdin data is excluded from this source. |
-| `actor`       | Object with optional `agentType`          | A session host that proves the actor: `{}` for its main session. Absent when the host supplies no actor.   |
+| Source        | Value                                     | Availability                                                                                                              |
+| ------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `target.path` | Repository-relative path string           | An observation with a file target.                                                                                        |
+| `pre`         | File text before the change               | Modifications; deletions when the prior text is available. Absent on creation.                                            |
+| `post`        | Proposed file text after the change       | Creations and modifications. Absent on deletion.                                                                          |
+| `state`       | Before/after pair `{ pre, post }`         | Modifications. Its pipeline runs separately on each side.                                                                 |
+| `changes`     | Array of paths in the observed change set | Read in `disciplines` on the change-set surface; skipped on the session surface. Use `items` to extract individual paths. |
+| `command`     | Shell command text                        | Session shell calls, including calls with no file target. Literal stdin data is excluded from this source.                |
+| `actor`       | Object with optional `agentType`          | A session host that proves the actor: `{}` for its main session. Absent when the host supplies no actor.                  |
 
 An absent source differs from a present empty string or empty array. Use `supply` to handle absence.
 `state` does not store workflow progress between calls. Only `unchanged` accepts its paired result.

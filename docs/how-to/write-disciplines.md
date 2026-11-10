@@ -27,8 +27,8 @@ to an observable comparison such as “English and Korean locale files have the 
 
 Using empty for absent evidence changes “not observed” into “nothing there.” Use it only when that
 is the intended meaning. Pass records a skipped observation, not an upheld promise. Choose the
-appropriate [discipline list](../reference/configuration/index.md#three-lists) for the evidence,
-then inspect assembly with `pdks explain`.
+appropriate [discipline list](../reference/configuration/index.md#discipline-lists) for the
+evidence, then inspect assembly with `pdks explain`.
 
 <a id="verification-loop"></a>
 ## Verify a discipline in order
@@ -179,18 +179,22 @@ No file is the reference: a key only in `ko` breaks `en-full` and `fr-full`, and
 <a id="which-list"></a>
 ## Which list does it go in
 
-Choose a discipline list by the sources the declaration reads. For example, a `companion`
-declaration reading only `file` sources belongs in `disciplines`; one reading `changes` belongs in
-`changeSetDisciplines`.
+The two lists describe two purposes. `disciplines` verifies results: the change-set surface judges
+its declarations before work is recorded in the repository. The session surface also judges entries
+that read the changed file's own `pre`/`post`/`state`, `target.path`, and `file` sources at the
+violating call. A `companion` declaration reading `file` sources and one reading `changes` both
+belong in `disciplines`; the session surface skips the `changes` reader because one call carries no
+change set. `sessionDisciplines` holds process and human evidence and is judged only on the session
+surface. What the declaration reads determines its list.
 
-| The declaration reads                    | List                   | Examples                                                                                                                                                                    |
-| ---------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the changed file and `file` sources only | `disciplines`          | the file-shaped types — added-only, one-way markers, self-absolution bans, controlled vocabulary, naming, companion over a `file` source, fingerprint sync, monotonic order |
-| the transcript                           | `sessionDisciplines`   | the four history types — precedent, phase order, turn locality, stated ground                                                                                               |
-| the actor                                | `sessionDisciplines`   | producer-owned, actor scope                                                                                                                                                 |
-| the command line                         | `sessionDisciplines`   | forbidden command                                                                                                                                                           |
-| the spawn-record channel (`sidecar`)     | `sessionDisciplines`   | any declaration binding `{ sidecar: true }`                                                                                                                                 |
-| `changes`                                | `changeSetDisciplines` | pairing over a change set — `implies` between two paths that must move together                                                                                             |
+| The declaration reads                    | List                 | Examples                                                                                                                                                                    |
+| ---------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the changed file and `file` sources only | `disciplines`        | the file-shaped types — added-only, one-way markers, self-absolution bans, controlled vocabulary, naming, companion over a `file` source, fingerprint sync, monotonic order |
+| the transcript                           | `sessionDisciplines` | the four history types — precedent, phase order, turn locality, stated ground                                                                                               |
+| the actor                                | `sessionDisciplines` | producer-owned, actor scope                                                                                                                                                 |
+| the command line                         | `sessionDisciplines` | forbidden command                                                                                                                                                           |
+| the spawn-record channel (`sidecar`)     | `sessionDisciplines` | any declaration binding `{ sidecar: true }`                                                                                                                                 |
+| `changes`                                | `disciplines`        | pairing over a change set — `implies` between two paths that must move together                                                                                             |
 
 Write the entry in the list its sources point at. A misplaced entry is a load-time error that names
 the entry, the channels it reads, and the list it belongs in, so the fix is to move the body

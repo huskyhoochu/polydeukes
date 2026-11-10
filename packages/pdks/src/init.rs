@@ -46,11 +46,11 @@ witness:
 # The disciplines you judge by, and the two rungs one climbs — shown as two entries so each
 # rung is a line you can copy. Uncomment to start; ids must stay distinct.
 #
-# Three lists, chosen by what a declaration reads. `disciplines:` is judged on both
-# surfaces (the changed file's own pre/post and file sources). `sessionDisciplines:` is
-# judged only where a live call is observed before it runs (command line, transcript,
-# actor). `changeSetDisciplines:` is judged only over a finished change set
-# (`--diff`). The loader refuses an entry written in a list its channels do not fit.
+# Two lists, determined by what a declaration reads. `disciplines:` verifies results
+# on the change-set surface (`--diff`). The session surface also judges entries one
+# call can compute; it skips `changes` readers. `sessionDisciplines:` holds process
+# and human evidence (command line, transcript, sidecar, actor), judged only on the
+# session surface. The loader refuses an entry whose sources do not fit its list.
 #
 # disciplines:
 #   # A draft: prose only, no predicate. Registered and read, never judged.

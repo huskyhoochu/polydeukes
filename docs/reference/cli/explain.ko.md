@@ -50,8 +50,8 @@ pdks explain
 ```
 
 출력은 설정 파일 경로로 시작하고, 그다음 세션 표면 블록 하나와 변경 집합 표면 블록 하나가 나옵니다.
-추가 규율이 없는 시작 설정은 이런 모양입니다(`N`은 조립이 센 보호 경로 개수이고, `skip` 행 하나는
-정상입니다. 쓰기 대상을 판정할 수 없는 셸 명령이 착지하는 자리입니다).
+추가 규율이 없는 `pdks init` 시작 설정은 다음과 같습니다. `N`은 조립 단계에서 세는 보호 경로
+개수입니다. `skip` 행은 쓰기 대상을 판정할 수 없는 셸 명령을 설명합니다.
 
 ```text
 pdks explain — polydeukes.config.yaml
@@ -62,20 +62,30 @@ input: call IR (one call, stdin) · disciplines 0 · sessionDisciplines 0 · dis
   meta     transcript-mod    content predicate · conditional: session.evidencePath
   skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 
-input: --diff (change set, stdin) · disciplines 0 · changeSetDisciplines 0 · disciplines: advise unless enforce: block
+input: --diff (change set, stdin) · disciplines 0 · disciplines: advise unless enforce: block
   registrations 2 · declare 0 · skip 1 · meta 1 · draft 0
   meta     self-mod          paths N (common; includes the config file itself)
   skip     shell-unjudgeable a shell command whose write target this layer cannot determine
 ```
 
-**표면 머리줄은 그 표면이 컴파일하는 목록의 이름과 각 목록의 항목 수를 적습니다.** 세션 머리줄은
-`disciplines <n> · sessionDisciplines <n>`을, 변경 집합 머리줄은
-`disciplines <n> · changeSetDisciplines <n>`을 출력하며, 두 수 모두 조립 전에 설정에 적힌 그대로
-셉니다. 판정을 돌리지 않고 모든 항목의 배치를 확인하는 방법이 이 머리줄 둘을 읽는 것입니다. 목록을
-옮긴 항목은 두 머리줄에서 각각 수 하나를 움직입니다.
+**표면 머리줄은 목록 이름과 조립 전 항목 수를 적습니다.** 세션 머리줄은 다음과 같습니다.
+`input: call IR (one call, stdin) · disciplines <n> · sessionDisciplines <m> · disciplines: advise unless enforce: block · meta: block`.
+변경 집합 머리줄은 다음과 같습니다.
+`input: --diff (change set, stdin) · disciplines <n> · disciplines: advise unless enforce: block`.
+변경 집합 표면은 `disciplines`만 컴파일하며 `sessionDisciplines`는 세션 표면만 판정합니다.
 
-`N`은 조립된 경로 개수입니다. `declare` 행의 라벨은 항목 `id`이고 설명은 카탈로그 좌표입니다. `skip`
-행은 건너뛴 이유를 적습니다. `draft` 행은 `unpromoted — no judgment`입니다.
+`declare` 행의 라벨은 항목 `id`이고 설명은 카탈로그 좌표입니다. 세션 절에서 `changes`를 읽는 항목은
+설정에 적힌 위치에 `skip` 행으로 나타나며 설명은
+`reads changes — judged on the change-set surface`입니다. 집계에서는 `skip`으로 셉니다. 실행 중인
+호출의 대상이 범위 안에 있으면 `skipped <id> <path> no-observation`을 기록합니다. `draft` 행은
+`unpromoted — no judgment`입니다.
+
+세션 절에서 그 밖의 선언 규율 행은 ` · unattended: judge` 또는 ` · unattended: skip`으로 끝납니다.
+선언 본체에 `userTexts` 단계가 있으면 `skip`입니다. `--unattended`를 지정한 호출, 곧 사람이 없는 SDK
+호출에서는 그 본체를 판정하지 않습니다. 그 밖의 본체는 `judge`입니다. `select`/`field`로 대화 기록의
+`userMessages`를 읽으면 `judge`로 표시하고, 무인 호출에서는 빈 메시지 목록으로 판정합니다. 증인
+블록에 `userTexts` 단계가 있으면 행 끝에 ` · unattended: valve closed`도 붙습니다. 무인 호출에서는
+그 규율의 증인 밸브가 열리지 않습니다.
 
 <a id="explain-see-also"></a>
 ## 함께 보기

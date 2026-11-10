@@ -77,10 +77,9 @@ adapters:
 없음·무효, 빌드되지 않은 판정기, 파싱할 수 없는 페이로드, 답하지 못한 라우팅), 그리고
 `enforce: block`으로 승격한 항목입니다. 그 밖의 모든 규율 항목은 위반 시 `advised`로 기록합니다.
 
-**선언은 자기 통로를 관측하는 표면에만 닿습니다.** 대화 기록(transcript)을 읽는 선언은
-`sessionDisciplines`에 적히고 변경 집합에 대해서는 컴파일되지 않으며, `changes`를 읽는 선언은
-`changeSetDisciplines`에 적히고 호출 하나에 대해서는 컴파일되지 않습니다. 세 목록과 항목을 그중
-하나에 놓는 조건은 [규율 목록 셋](#three-lists)에 있습니다.
+**선언이 읽는 소스가 목록을 정합니다.** 대화 기록을 읽는 선언은 `sessionDisciplines`에 적히고 변경
+집합에 대해서는 컴파일되지 않습니다. `changes`를 읽는 선언은 `disciplines`에 적히고 세션 표면에서는
+건너뜁니다. 두 목록과 배치 조건은 [규율 목록](#discipline-lists)에 있습니다.
 
 표면이 등록은 하되 호스트가 증명하지 못하는 통로는 여전히 선언의 `supply` 정책이 처리합니다. 세션을
 싣지 않는 호스트에서는 `sources: { session: { transcript: true } }` 항목의 소스가 없는 상태가 되고,
@@ -200,17 +199,23 @@ memory:
 
 설정 변경은 다음 기억 질의에서 현재 마크다운과 함께 다시 계산됩니다.
 
-<a id="three-lists"></a>
-## 규율 목록 셋
+<a id="discipline-lists"></a>
+## 규율 목록
 
-선언이 읽는 증거 통로(channel)에 따라 목록을 선택합니다. 표면마다 공급하는 통로가 다르므로, 해당
-통로를 공급할 수 없는 표면의 목록에 항목을 적으면 로더가 거부합니다.
+두 목록의 이름은 목적을 나타냅니다. 작성자가 목록을 선택하는 것이 아니라 선언이 읽는 소스가 목록을
+정합니다. 세션 채널을 읽으면 `sessionDisciplines`에, 그 밖의 선언은 `changes`를 읽는 선언까지 모두
+`disciplines`에 적습니다.
 
-| 목록                   | 판정하는 표면                        | 그 목록의 선언이 읽는 것                                                                                        |
-| ---------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `disciplines`          | 두 표면 모두                         | 변경된 파일 자신(`target.path` · `pre` · `post` · `state`)과 `file` 소스뿐입니다. 초안(draft)도 여기에 적습니다 |
-| `sessionDisciplines`   | 세션 표면(session surface)만         | `command` · `transcript` · `sidecar` 통로 · `actor` 가운데 하나 이상을 읽고 `changes`는 읽지 않습니다           |
-| `changeSetDisciplines` | 변경 집합 표면(change-set surface)만 | `changes`를 읽고 세션 통로는 읽지 않습니다                                                                      |
+| 목록                 | 목적               | 선언이 읽는 것                                                                                   |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------ |
+| `disciplines`        | 결과 검증          | `target.path`, `pre`, `post`, `state`, `file` 소스 또는 `changes`입니다. 초안도 여기에 적습니다. |
+| `sessionDisciplines` | 과정과 사람의 증거 | `command`, 대화 기록, `sidecar` 채널, `actor` 중 하나 이상이며 `changes`는 읽지 않습니다.        |
+
+변경 집합 표면은 작업이 저장소에 기록되기 전에 `disciplines`의 선언 항목을 모두 판정합니다. 세션
+표면도 호출 하나로 계산할 수 있는 항목을 위반이 발생하는 호출에서 판정합니다. 변경된 파일 자신의
+`pre`/`post`/`state`, `target.path`, `file` 소스를 읽는 선언이 해당합니다. 실행 중인 호출 하나에는
+변경 집합이 없으므로 세션 표면은 `changes`를 읽는 항목을 건너뛰고, 대상이 범위 안에 있는 호출에
+`skipped <id> <path> no-observation`을 기록합니다. `sessionDisciplines`는 세션 표면만 판정합니다.
 
 세션 표면은 호스트가 실행 전에 관측한 호출 하나입니다. 어댑터 훅이거나, 입력 IR로 SDK를 부르는
 프로그램입니다. 이 표면은 명령줄과 대화 기록(transcript), 스폰 기록 통로, 주체(actor)를 싣고 끝난
@@ -223,14 +228,14 @@ memory:
 
 통로마다 선언에 나타나는 구문 자리가 정해져 있고, 로더는 그 자리를 읽어 목록을 유도합니다.
 
-| 통로             | 선언에 나타나는 모양                                                                     | 목록                   |
-| ---------------- | ---------------------------------------------------------------------------------------- | ---------------------- |
-| `transcript`     | `sources: { session: { transcript: true } }`                                             | `sessionDisciplines`   |
-| `channel`        | `sources: { spawns: { sidecar: true } }`                                                 | `sessionDisciplines`   |
-| `command`        | `scope: { source: 'command' }`, 또는 어느 파이프라인의 `{ op: 'source', of: 'command' }` | `sessionDisciplines`   |
-| `actor`          | 어느 파이프라인의 `{ op: 'source', of: 'actor' }`                                        | `sessionDisciplines`   |
-| `changes`        | 어느 파이프라인의 `{ op: 'source', of: 'changes' }`                                      | `changeSetDisciplines` |
-| 다섯 가운데 없음 | 선언이 변경된 파일과 `file` 소스만 읽습니다                                              | `disciplines`          |
+| 통로             | 선언에 나타나는 모양                                                                     | 목록                 |
+| ---------------- | ---------------------------------------------------------------------------------------- | -------------------- |
+| `transcript`     | `sources: { session: { transcript: true } }`                                             | `sessionDisciplines` |
+| `channel`        | `sources: { spawns: { sidecar: true } }`                                                 | `sessionDisciplines` |
+| `command`        | `scope: { source: 'command' }`, 또는 어느 파이프라인의 `{ op: 'source', of: 'command' }` | `sessionDisciplines` |
+| `actor`          | 어느 파이프라인의 `{ op: 'source', of: 'actor' }`                                        | `sessionDisciplines` |
+| `changes`        | 어느 파이프라인의 `{ op: 'source', of: 'changes' }`                                      | `disciplines`        |
+| 다섯 가운데 없음 | 선언이 변경된 파일과 `file` 소스만 읽습니다                                              | `disciplines`        |
 
 `witness` 블록 자신의 `extract`도 본체와 함께 훑으므로, 대화 기록을 읽는 밸브가 달린 항목은 다른
 대화 기록 독자와 마찬가지로 `sessionDisciplines`에 들어갑니다.
@@ -238,11 +243,10 @@ memory:
 <a id="placement-rule"></a>
 ### 배치 조건
 
-`disciplines`에는 다섯 통로를 하나도 묶지 않는 항목과 초안 전부가 들어갑니다.
-`sessionDisciplines`에는 세션 통로를 하나 이상 묶고 `changes`는 묶지 않는 항목이 들어갑니다.
-`changeSetDisciplines`에는 `changes`를 묶고 세션 통로는 묶지 않는 항목이 들어갑니다. 그 밖은 로드
-시점에 두 표면 모두에서 `ConfigValidationError`이고, 메시지가 항목과 그 항목이 읽는 통로와 가야 할
-목록을 함께 댑니다.
+`disciplines`에는 세션 채널을 읽지 않는 항목과 모든 초안이 들어가며, `changes`를 읽는 항목도
+포함합니다. `sessionDisciplines`에는 세션 채널을 하나 이상 읽고 `changes`는 읽지 않는 항목이
+들어갑니다. 잘못 놓인 항목은 두 표면 모두 로드 시점에 `ConfigValidationError`가 되며, 메시지는
+항목과 읽는 채널과 항목이 속하는 목록을 밝힙니다.
 
 ```text
 disciplines[7] ('merge-is-the-users-call') reads transcript, command: it belongs in sessionDisciplines
@@ -255,25 +259,25 @@ disciplines[7] ('merge-is-the-users-call') reads transcript, command: it belongs
 sessionDisciplines[2] ('pairs-across-a-session') reads transcript, changes: no surface observes both changes and a session channel
 ```
 
-초안은 선언을 갖지 않아 아무 통로도 묶지 않으므로 `disciplines`에 속하고, 표면 목록 어느 쪽에 적은
-초안이든 `a draft belongs in disciplines`로 거부됩니다.
+초안은 선언을 갖지 않아 아무 통로도 묶지 않으므로 `disciplines`에 속하고, `sessionDisciplines`에
+적은 초안은 `a draft belongs in disciplines`로 거부됩니다.
 
-항목 id는 세 목록과 메타 약속 라벨 셋(`self-mod` · `shell-mod` · `transcript-mod`)에 걸쳐
+항목 id는 두 목록과 메타 약속 라벨 셋(`self-mod` · `shell-mod` · `transcript-mod`)에 걸쳐
 유일합니다. 텔레메트리 라벨 공간이 하나이고, `pdks explain`을 비롯한 라벨 기준 판독기는 라벨만으로
 항목을 찾기 때문입니다.
 
 <a id="lists-in-practice"></a>
 ### 표면마다 무엇을 컴파일하는가
 
-표준 입력으로 입력 IR을 읽는 `pdks covenant check`는 `disciplines` 다음에 `sessionDisciplines`를
-컴파일하고, 같은 명령에 `--diff`를 주면 `disciplines` 다음에 `changeSetDisciplines`를 컴파일합니다.
-`pdks explain`은 두 표면을 모두 출력하며 표면 머리줄에 각 목록의 이름과 개수를 적으므로, 판정을
-돌리지 않고도 모든 항목의 배치를 읽을 수 있습니다. 이 저장소의 실제 설정은 `disciplines`에 판정 항목
-11개와 초안 1개, `sessionDisciplines`에 13개, `changeSetDisciplines`에 1개(`docs-stay-bilingual`)를
-두므로, 세션 표면에 등록 24개, 변경 집합 표면에 12개가 섭니다.
+표준 입력으로 입력 IR을 읽는 `pdks covenant check`는 `disciplines`의 모든 항목을 컴파일한 다음
+`sessionDisciplines`를 컴파일합니다. 그중 `changes`를 읽는 항목은 범위 안의 파일 변경에 대해
+판정하는 대신 `skipped`로 기록합니다. 그 항목의 컴파일 오류는 두 표면 모두에서 로드 오류입니다.
+`--diff`에서는 `disciplines`만 컴파일합니다. `pdks explain`의 세션 머리줄은
+`disciplines <n> · sessionDisciplines <m>`을, 변경 집합 머리줄은 `disciplines <n>`을 표시합니다.
+수는 설정에 적힌 목록을 나타내고, 세션 집계는 `changes`를 읽는 항목을 `skip`으로 셉니다.
 
 ```yaml
-disciplines: # 두 표면 모두
+disciplines: # 결과 검증
   - id: "covenant-vocabulary"
     declare:
       mechanism: "added-only"
@@ -286,20 +290,6 @@ disciplines: # 두 표면 모두
       relate:
         - { id: "nothing-added", relation: { op: "empty", of: "added" }, message: "adds {value}" }
 
-sessionDisciplines: # 세션 표면만. command를 읽습니다
-  - id: "pnpm-only"
-    declare:
-      mechanism: "forbidden-command"
-      scope: { source: "command" }
-      extract:
-        hits:
-          - { op: "source", of: "command" }
-          - { op: "lines" }
-          - { op: "matches", re: '\bnpm install\b' }
-      relate:
-        - { id: "no-npm", relation: { op: "empty", of: "hits" }, message: "{value}" }
-
-changeSetDisciplines: # 변경 집합 표면만. changes를 읽습니다
   - id: "docs-stay-bilingual"
     declare:
       mechanism: "companion"
@@ -316,6 +306,19 @@ changeSetDisciplines: # 변경 집합 표면만. changes를 읽습니다
         - id: "ko-follows"
           relation: { op: "implies", of: "en", requires: "koChanged" }
           message: "{value} changed without {key}.ko.md"
+
+sessionDisciplines: # 세션 표면만. command를 읽습니다
+  - id: "pnpm-only"
+    declare:
+      mechanism: "forbidden-command"
+      scope: { source: "command" }
+      extract:
+        hits:
+          - { op: "source", of: "command" }
+          - { op: "lines" }
+          - { op: "matches", re: '\bnpm install\b' }
+      relate:
+        - { id: "no-npm", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
 
 항목을 다른 목록으로 옮기는 것이 편집의 전부입니다. 옮겨도 항목 본문은 그대로이고, 새 자리가
@@ -325,9 +328,9 @@ changeSetDisciplines: # 변경 집합 표면만. changes를 읽습니다
 ### 설정 층
 
 여러 저장소를 판정하는 프로그램은 자기 규율을 판정받는 모든 트리 밖의 파일에 두고
-`pdks covenant check --config-layer <path>`(SDK의 `configLayer` 필드)로 넘길 수 있습니다. 층은 세
-규율 목록과 `$schema`만 담는 yaml 또는 json 파일이며, 그 밖의 키가 있으면 그 키를 대며 층을
-거부합니다.
+`pdks covenant check --config-layer <path>`(SDK의 `configLayer` 필드)로 넘길 수 있습니다. 층은
+`disciplines`, `sessionDisciplines`, `$schema`만 담는 yaml 또는 json 파일이며, 그 밖의 키가 있으면
+그 키를 대며 층을 거부합니다.
 
 ```yaml
 sessionDisciplines:
@@ -354,15 +357,15 @@ sessionDisciplines:
 <a id="disciplines"></a>
 ## `disciplines`
 
-선택 항목입니다. 팀이 함께 지킬 규율을 항목마다 하나씩 데이터로 선언합니다. 이 절의 내용은 세 목록
+선택 항목입니다. 팀이 함께 지킬 규율을 항목마다 하나씩 데이터로 선언합니다. 이 절의 내용은 두 목록
 어디에 적힌 항목에도 그대로 적용되며, 항목을 어느 목록에 적는지는
 [배치
 조건](#placement-rule)이
-정합니다. `sessionDisciplines`와 `changeSetDisciplines`는 초안 형태를 뺀 나머지에서 `disciplines`와
-같은 항목 모양을 받습니다. 판정 항목은 `declare` 블록(유일한 판정 형태로, 범위(`scope`)를 블록 안에
-지니는 선언)과 `id`(텔레메트리 라벨)를 가지며, 선택적으로 `why`(에이전트가 읽는 차단 메시지에 함께
-실리는 이유)와 `enforce` 강제 수준을 가집니다. 닫힌 키 집합은 `id` · `why` · `enforce` ·
-`declare`이고 그 밖의 키는 거부됩니다.
+정합니다. `sessionDisciplines`는 초안 형태를 뺀 나머지에서 `disciplines`와 같은 항목 모양을
+받습니다. 판정 항목은 `declare` 블록(유일한 판정 형태로, 범위(`scope`)를 블록 안에 지니는 선언)과
+`id`(텔레메트리 라벨)를 가지며, 선택적으로 `why`(에이전트가 읽는 차단 메시지에 함께 실리는 이유)와
+`enforce` 강제 수준을 가집니다. 닫힌 키 집합은 `id` · `why` · `enforce` · `declare`이고 그 밖의 키는
+거부됩니다.
 
 **`draft`는 아직 판정 대상으로 전환하지 않은 항목입니다.** 술어를 갖지 않는 유일한 형태입니다.
 `{ id, why, draft: true }` 세 키뿐입니다. 초안(draft)은 아직 판정하지 않는 관행을 문장으로
@@ -588,14 +591,13 @@ bash에게는 데이터이고 해석기에게는 프로그램입니다.
 
 관측 하나가 **세계(world)** 하나로 판정되며 소스 이름은 일곱입니다. `target.path`(저장소 상대 경로),
 `pre`와 `post`(변경이 지닌 쪽의 파일 본문. 생성에는 `pre`가, 삭제에는 `post`가 없습니다),
-`state`(`{ pre, post }`, 수정에만 있습니다), `changes`(이 관측이 바꾸는 경로 전부. 세션 표면에서는
-호출 하나, 변경 집합 표면에서는 staged 집합 전체), 그리고 `command`(셸 호출의 명령줄. 셸 호출에만
-있고, 파일을 바꾸지 않는 셸 호출은 자기 세계 하나가 되므로 `command`에 범위를 건 선언은 그 호출을
-보고 `target.path`에 범위를 건 선언은 보지 않습니다). `changes`를 읽는 선언은
-`changeSetDisciplines`에 적히고 변경 집합 전체를 관측하는 표면에서만 컴파일됩니다. 호출 하나는 쌍의
-나머지 반쪽을 실을 수 없기 때문입니다. 이 저장소의 라이브 설정은 그런 선언 하나를 싣습니다.
-`docs-stay-bilingual`은 `.md`/`.ko.md` 쌍 위의 `implies`이고, 한쪽만 staged된 변경 집합 표면에서
-advised로 남습니다. 대상 밖 파일이 필요한 선언은 `sources` 블록에 이름을
+`state`(`{ pre, post }`, 수정에만 있습니다), `changes`(변경 집합이 바꾸는 모든 경로), 그리고
+`command`(셸 호출의 명령줄. 셸 호출에만 있고, 파일을 바꾸지 않는 셸 호출은 자기 세계 하나가 되므로
+`command`에 범위를 건 선언은 그 호출을 보고 `target.path`에 범위를 건 선언은 보지 않습니다).
+`changes`를 읽는 선언은 `disciplines`에 적히고 변경 집합 표면에서 판정됩니다. 호출 하나는 완성된
+변경 집합이 아니므로 세션 표면에서는 `skipped`로 기록합니다. 이 저장소의 라이브 설정은 그런 선언
+하나를 싣습니다. `docs-stay-bilingual`은 `.md`/`.ko.md` 쌍 위의 `implies`이고, 한쪽만 staged된 변경
+집합 표면에서 advised로 남습니다. 대상 밖 파일이 필요한 선언은 `sources` 블록에 이름을
 붙이고(`sources: { en: { file: 'locales/en.json' } }`) `{ op: 'source', of: 'en' }`로 읽습니다.
 경로는 저장소 상대(선두 `/` 없음, `..` 세그먼트 없음)이고 이름은 일곱 고정 이름과 겹칠 수 없습니다.
 이름 붙인 파일은 현재 작업 트리에서 읽습니다. 세션에서 변경 대상 자체를 이름 붙인 경우에는 제안된

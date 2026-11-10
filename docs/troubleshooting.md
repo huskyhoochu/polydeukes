@@ -124,9 +124,13 @@ the hook command rather than editing the config — the row is still written.
 <a id="skipped-rows-on-the-change-set-surface"></a>
 ## `skipped` rows on the change-set surface
 
-The change-set surface compiles `disciplines` and `changeSetDisciplines`. Transcript- and
-command-reading entries belong in `sessionDisciplines` and are not compiled for a diff. Putting
-either kind in a shared or change-set list causes a configuration error.
+The change-set surface compiles `disciplines`. Transcript- and command-reading entries belong in
+`sessionDisciplines` and are not compiled for a diff. Putting them in `disciplines` causes a
+configuration error. A `changes` reader belongs in `disciplines`; the session surface skips it and
+records `skipped <id> <path> no-observation` when the call's target is in its scope.
+
+If the loader reports `unknown key 'changeSetDisciplines' in config`, write those entries under
+`disciplines`, keeping each entry unchanged. Both surfaces reject this unknown key at load time.
 
 A change-set entry can record `supply-pass` when a source it reads is absent and its `supply` policy
 is `pass`. Check `pdks explain` and the log's reason field. A skip does not establish that the
@@ -134,8 +138,8 @@ discipline was upheld.
 
 On the session surface, a transcript-reading entry can use `supply: { session: 'pass' }` when a host
 supplies no session history. See the
-[three discipline
-lists](./reference/configuration/index.md#three-lists).
+[discipline
+lists](./reference/configuration/index.md#discipline-lists).
 
 <a id="local-state"></a>
 ## Moving a project between machines

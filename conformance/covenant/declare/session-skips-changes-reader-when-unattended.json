@@ -1,0 +1,91 @@
+{
+  "description": "With --unattended an in-scope call that would break a changes reader still records the one skipped no-observation row and exits 0.",
+  "args": ["--enforce", "block", "--unattended"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "lib-needs-its-test",
+          "enforce": "block",
+          "declare": {
+            "mechanism": "companion",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/.*\\.ts$"]
+            },
+            "extract": {
+              "lib": [
+                {
+                  "op": "source",
+                  "of": "target.path"
+                },
+                {
+                  "op": "keyByPattern",
+                  "re": "^lib/(.+)\\.ts$"
+                }
+              ],
+              "testChanged": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                },
+                {
+                  "op": "keyByPattern",
+                  "re": "^tests/(.+)\\.test\\.ts$"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "test-follows",
+                "relation": {
+                  "op": "implies",
+                  "of": "lib",
+                  "requires": "testChanged"
+                },
+                "message": "{value} changed without tests/{key}.test.ts"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "edit-tool",
+        "args": {
+          "file_path": "lib/a.ts"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "lib/a.ts",
+          "post": "export const a = 1;\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["edit-tool"],
+      "shell": [],
+      "commandArgs": []
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "lib-needs-its-test", "lib/a.ts", "no-observation"]]
+  }
+}

@@ -9,6 +9,7 @@ use std::path::Path;
 use crate::check::{assemble, staged_roster};
 use crate::core::config::{Entry, Level, Surface};
 use crate::core::declaration::{ALL_AXES, ALL_RELATIONS, Binding};
+use crate::covenant::discipline::unobserved_on;
 use crate::covenant::dispatch::{Judge, Registration};
 use crate::load_config::{discover_config_path, parse_config_source};
 
@@ -84,7 +85,28 @@ fn row(kind: &str, label: &str, width: usize, description: &str) -> String {
     format!("  {kind:<8} {label:<width$} {description}")
 }
 
-fn render_surface(header: &str, registrations: &[Registration], drafts: &[String]) -> String {
+/// How a session call without a human treats the entry: its body needs user text, or it is judged.
+fn unattended_suffix(entry: &Entry) -> String {
+    let declaration = &entry.declaration;
+    let mode = if declaration.body_reads_user_texts() {
+        "skip"
+    } else {
+        "judge"
+    };
+    let valve = if declaration.witness.is_some() && declaration.witness_reads_user_texts() {
+        " · unattended: valve closed"
+    } else {
+        ""
+    };
+    format!(" · unattended: {mode}{valve}")
+}
+
+fn render_surface(
+    header: &str,
+    surface: Surface,
+    registrations: &[Registration],
+    drafts: &[String],
+) -> String {
     let width = registrations
         .iter()
         .map(|registration| &registration.label)
@@ -119,8 +141,18 @@ fn render_surface(header: &str, registrations: &[Registration], drafts: &[String
                 lines.push(row("skip", label, width, description));
             }
             Judge::Discipline(entry) => {
+                if unobserved_on(surface, &entry.declaration) {
+                    skip += 1;
+                    let description = "reads changes — judged on the change-set surface";
+                    lines.push(row("skip", label, width, description));
+                    continue;
+                }
                 declare += 1;
-                lines.push(row("declare", label, width, &declare_description(entry)));
+                let mut description = declare_description(entry);
+                if surface == Surface::Session {
+                    description.push_str(&unattended_suffix(entry));
+                }
+                lines.push(row("declare", label, width, &description));
             }
         }
     }
@@ -161,18 +193,22 @@ pub fn explain(root: &Path) -> Result<String, String> {
 
     let shared = config.shared_count;
     let session_only = config.entries(Surface::Session).len() - shared;
-    let change_set_only = config.entries(Surface::ChangeSet).len() - shared;
     let session_header = format!(
         "input: call IR (one call, stdin) · disciplines {shared} · sessionDisciplines \
          {session_only} · disciplines: advise unless enforce: block · meta: block"
     );
     let change_set_header = format!(
-        "input: --diff (change set, stdin) · disciplines {shared} · changeSetDisciplines \
-         {change_set_only} · disciplines: advise unless enforce: block"
+        "input: --diff (change set, stdin) · disciplines {shared} · disciplines: advise unless \
+         enforce: block"
     );
     Ok(format!(
         "pdks explain — {config_path}\n\n{}\n\n{}\n",
-        render_surface(&session_header, &session, &config.drafts),
-        render_surface(&change_set_header, &change_set, &config.drafts)
+        render_surface(&session_header, Surface::Session, &session, &config.drafts),
+        render_surface(
+            &change_set_header,
+            Surface::ChangeSet,
+            &change_set,
+            &config.drafts
+        )
     ))
 }

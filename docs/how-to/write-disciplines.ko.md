@@ -26,8 +26,8 @@
 
 증거가 없다는 이유로 empty를 쓰면 “관측하지 못함”을 “아무것도 없음”으로 바꿉니다. 빈 내용이 문제의
 실제 의미일 때만 사용하세요. pass는 위반이 없다는 판정이 아니라 건너뛴 관측을 남깁니다.
-[설정 참조](../reference/configuration/index.ko.md#three-lists)에서 증거에 맞는 규율 목록을 선택하고
-`pdks explain`으로 조립을 확인합니다.
+[설정 참조](../reference/configuration/index.ko.md#discipline-lists)에서 증거에 맞는 규율 목록을
+선택하고 `pdks explain`으로 조립을 확인합니다.
 
 <a id="verification-loop"></a>
 ## 규율을 검증하는 순서
@@ -176,17 +176,21 @@ git restore -- locales/en.json locales/ko.json
 <a id="which-list"></a>
 ## 어느 목록에 적는가
 
-선언이 읽는 소스에 따라 규율 목록을 선택합니다. 예를 들어 `companion` 선언이 `file` 소스만 읽으면
-`disciplines`에, `changes`를 읽으면 `changeSetDisciplines`에 적습니다.
+두 목록은 두 목적을 나타냅니다. `disciplines`는 결과를 검증합니다. 변경 집합 표면은 작업이 저장소에
+기록되기 전에 그 선언들을 판정합니다. 세션 표면도 변경된 파일 자신의 `pre`/`post`/`state`,
+`target.path`, `file` 소스를 읽는 항목을 위반이 발생하는 호출에서 판정합니다. `file` 소스를 읽는
+`companion` 선언과 `changes`를 읽는 선언은 모두 `disciplines`에 속합니다. 호출 하나에는 변경 집합이
+없으므로 세션 표면은 `changes`를 읽는 항목을 건너뜁니다. `sessionDisciplines`는 과정과 사람의 증거를
+담으며 세션 표면만 판정합니다. 선언이 무엇을 읽는지가 목록을 정합니다.
 
-| 선언이 읽는 것              | 목록                   | 예                                                                                                                                |
-| --------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 변경된 파일과 `file` 소스만 | `disciplines`          | 파일 형상 유형들. 신규분 한정, 비가역 표식, 자기사면 금지, 통제 어휘, 이름 규약, `file` 소스 위의 동반 의무, 지문 동기, 순서 불변 |
-| 대화 기록(transcript)       | `sessionDisciplines`   | 이력 4종. 선행 요구, 단계 순서, 턴 근접, 사전 언명                                                                                |
-| 주체(actor)                 | `sessionDisciplines`   | 생산자 전속, 주체 한정                                                                                                            |
-| 명령줄                      | `sessionDisciplines`   | 명령줄 금지                                                                                                                       |
-| 스폰 기록 통로(`sidecar`)   | `sessionDisciplines`   | `{ sidecar: true }`를 묶는 모든 선언                                                                                              |
-| `changes`                   | `changeSetDisciplines` | 변경 집합 위의 짝 맞춤. 함께 움직여야 하는 경로 둘 사이의 `implies`                                                               |
+| 선언이 읽는 것              | 목록                 | 예                                                                                                                                |
+| --------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 변경된 파일과 `file` 소스만 | `disciplines`        | 파일 형상 유형들. 신규분 한정, 비가역 표식, 자기사면 금지, 통제 어휘, 이름 규약, `file` 소스 위의 동반 의무, 지문 동기, 순서 불변 |
+| 대화 기록(transcript)       | `sessionDisciplines` | 이력 4종. 선행 요구, 단계 순서, 턴 근접, 사전 언명                                                                                |
+| 주체(actor)                 | `sessionDisciplines` | 생산자 전속, 주체 한정                                                                                                            |
+| 명령줄                      | `sessionDisciplines` | 명령줄 금지                                                                                                                       |
+| 스폰 기록 통로(`sidecar`)   | `sessionDisciplines` | `{ sidecar: true }`를 묶는 모든 선언                                                                                              |
+| `changes`                   | `disciplines`        | 변경 집합 위의 짝 맞춤. 함께 움직여야 하는 경로 둘 사이의 `implies`                                                               |
 
 항목은 그 소스가 가리키는 목록에 적습니다. 자리를 잘못 잡은 항목은 로드 시점 오류이고, 메시지가
 항목과 그 항목이 읽는 통로와 가야 할 목록을 함께 대므로, 본문을 그대로 옮기면 됩니다. 규칙 자체와

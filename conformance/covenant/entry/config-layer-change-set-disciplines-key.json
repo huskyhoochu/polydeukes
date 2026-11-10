@@ -1,0 +1,23 @@
+{
+  "description": "A config layer carrying a changeSetDisciplines key is refused, and the allowed keys read disciplines and sessionDisciplines.",
+  "args": ["--config-layer", "@@ROOT@@/layer.json"],
+  "tree": {
+    "polydeukes.config.yaml": {},
+    "layer.json": {
+      "changeSetDisciplines": []
+    }
+  },
+  "stdin": {
+    "toolCalls": [],
+    "subagentSpawns": [],
+    "userMessages": []
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "unknown key 'changeSetDisciplines' in config layer: a config layer carries only disciplines, sessionDisciplines"
+    ],
+    "stderrExcludes": [", changeSetDisciplines"],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}

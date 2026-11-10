@@ -26,10 +26,13 @@ See the [command references](../../README.md#reference-cli) for arguments and ex
 <a id="surface-from-input-mode"></a>
 ## Input and surface
 
-IR input selects the session surface and assembles disciplines plus sessionDisciplines. Diff input
-selects the change-set surface and assembles disciplines plus changeSetDisciplines. The IR session
-field carries observed history; it does not select a surface. File tools and diffs supply different
-content boundaries. Read [the judgment model](../../concepts/judgment.md).
+IR input selects the session surface: it compiles every entry in `disciplines` followed by
+`sessionDisciplines`. A `changes` reader is recorded as `skipped` rather than judged for an in-scope
+file change. A compile fault in it is a load error on both surfaces. Diff input selects the
+change-set surface and compiles only `disciplines` for result verification. `sessionDisciplines`
+supplies process and human evidence only to the session surface. The IR session field carries
+observed history; it does not select a surface. File tools and diffs supply different content
+boundaries. Read [the judgment model](../../concepts/judgment.md).
 
 <a id="extensions"></a>
 ## Extension dispatch

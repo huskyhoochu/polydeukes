@@ -35,7 +35,8 @@ pub enum Judgment {
     Unjudgeable(String),
     /// A declaration whose absent source its own supply policy let pass.
     SupplyPass,
-    /// A declaration that reads human utterances in a call no human is part of.
+    /// A declaration that reads what this call does not carry: human utterances in a call no
+    /// human is part of, or the change set in one session call.
     Unobserved,
 }
 

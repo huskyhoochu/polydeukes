@@ -60,7 +60,7 @@ body:
     id: declaration
     attributes:
       label: The config entry involved
-      description: The smallest excerpt of `polydeukes.config.yaml` that still reproduces it — usually one `disciplines` / `sessionDisciplines` / `changeSetDisciplines` entry, or the `protectedPaths` list. Leave empty if no entry is involved.
+      description: The smallest excerpt of `polydeukes.config.yaml` that still reproduces it — usually one `disciplines` / `sessionDisciplines` entry, or the `protectedPaths` list. Leave empty if no entry is involved.
       render: yaml
   - type: textarea
     id: explain

@@ -60,13 +60,15 @@ call that touches anything else, and every change-set run stay closed.
 - **Disciplines** in the config judge beyond path mention — every entry is one declaration. A break
   lands `advised` on both surfaces — exit 0, the `why` on stderr — unless the entry says
   `enforce: block` (POSTURE-01); the three meta-covenants above are what blocks unasked. The config
-  places each declaration in the list of the surface that observes its channels — `disciplines` for
-  one reading only the changed file and `file` sources, `sessionDisciplines` for one reading
-  `command` · `transcript` · the `sidecar` channel · `actor`, `changeSetDisciplines` for one reading
-  `changes` — and the loader refuses a misplaced entry rather than compiling it somewhere it cannot
-  be judged. Each surface compiles the shared list plus its own, so neither surface carries the
-  other's entries at all. A session-only declaration on a host that proves no session still lands
-  `skipped` by its own `supply` policy.
+  derives placement from what a declaration reads: `disciplines` verifies results, including entries
+  reading `changes`; `sessionDisciplines` holds process and human evidence from `command`, the
+  transcript, the `sidecar` channel, or `actor`. The loader refuses a misplaced entry and a
+  declaration reading both `changes` and a session channel. The change-set surface compiles only
+  `disciplines`. The session surface compiles every entry in `disciplines` followed by
+  `sessionDisciplines`; a `changes` reader is recorded as `skipped <id> <path> no-observation`
+  rather than judged for an in-scope file change. A compile fault in it is a load error on both
+  surfaces. A session-only declaration on a host that proves no session still lands `skipped` by its
+  own `supply` policy.
 
 ## What a host proves, and what follows from it
 

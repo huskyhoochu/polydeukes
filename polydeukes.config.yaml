@@ -56,8 +56,9 @@ witness:
   token: "pdks witness"
   ttlMinutes: 30
 
-# Judged on every surface: these declarations read only the changed file itself (pre · post)
-# and file sources, which a live call and a finished change set both carry.
+# Result verification: the change-set surface judges declarations before work is recorded.
+# The session surface also judges entries computable from one call's changed file and file sources.
+# A changes reader belongs here and is skipped on the session surface, which observes no change set.
 disciplines:
   # ---- the change axis: what an edit adds, keeps, or moves
   - id: "covenant-vocabulary"
@@ -256,9 +257,48 @@ disciplines:
           relation: { op: "empty", of: "added" }
           message: "adds {key} under src/; write the test in packages/pdks/tests/"
 
-# Judged on the session surface only — an adapter hook or the SDK, one call observed before
-# it runs. These declarations read the command line, the transcript, or the actor, which no
-# change set carries. Misplacing one under `disciplines` is a config error.
+  # ---- the change set: what a set of changes must carry together
+  - id: "docs-stay-bilingual"
+    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
+    declare:
+      mechanism: "companion"
+      scope:
+        source: "target.path"
+        include: ['\.md$']
+        exclude:
+          [
+            '^\.claude/',
+            '^AGENTS(?:\.(?:ko|local))?\.md$',
+            '^CLAUDE(?:\.local)?\.md$',
+            '^CHANGELOG\.md$',
+            '^CONTEXT\.md$',
+          ]
+      extract:
+        en:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        ko:
+          - { op: "source", of: "target.path" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+        enChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
+        koChanged:
+          - { op: "source", of: "changes" }
+          - { op: "items" }
+          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
+      relate:
+        - id: "ko-follows"
+          relation: { op: "implies", of: "en", requires: "koChanged" }
+          message: "{value} changed without {key}.ko.md"
+        - id: "en-follows"
+          relation: { op: "implies", of: "ko", requires: "enChanged" }
+          message: "{value} changed without {key}.md"
+
+# Process and human evidence: declarations reading command, transcript, sidecar, or actor.
+# Only the session surface judges these entries. Placement follows what a declaration reads;
+# an entry in the wrong list is a config error.
 sessionDisciplines:
   # ---- the command line: what a shell call runs
   - id: "hooks-stay-armed"
@@ -627,45 +667,3 @@ sessionDisciplines:
         - id: "main-session-only"
           relation: { op: "empty", of: "subagent" }
           message: "subagent {value} ran a commit command"
-
-# Judged on the change-set surface only — `pdks covenant check --diff`, a finished change
-# set from any producer. These declarations read `changes`, which one live call never has.
-changeSetDisciplines:
-  # ---- the change set: what a set of changes must carry together
-  - id: "docs-stay-bilingual"
-    why: "English is the default and Korean mirrors live in *.ko.md; a commit that changes one side of a pair and not the other ships two documents that disagree. only presence in the change set is judged."
-    declare:
-      mechanism: "companion"
-      scope:
-        source: "target.path"
-        include: ['\.md$']
-        exclude:
-          [
-            '^\.claude/',
-            '^AGENTS(?:\.(?:ko|local))?\.md$',
-            '^CLAUDE(?:\.local)?\.md$',
-            '^CHANGELOG\.md$',
-            '^CONTEXT\.md$',
-          ]
-      extract:
-        en:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        ko:
-          - { op: "source", of: "target.path" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-        enChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+?)(?<!\.ko)\.md$' }
-        koChanged:
-          - { op: "source", of: "changes" }
-          - { op: "items" }
-          - { op: "keyByPattern", re: '^(.+)\.ko\.md$' }
-      relate:
-        - id: "ko-follows"
-          relation: { op: "implies", of: "en", requires: "koChanged" }
-          message: "{value} changed without {key}.ko.md"
-        - id: "en-follows"
-          relation: { op: "implies", of: "ko", requires: "enChanged" }
-          message: "{value} changed without {key}.md"

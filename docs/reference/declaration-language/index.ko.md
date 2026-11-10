@@ -14,7 +14,7 @@
 
 판정 항목에는 `id`와 `declare`가 필요하며, `why`와 `enforce`는 선택입니다. 항목은
 [소스를 관측할 수 있는
-목록](../configuration/index.ko.md#three-lists)에
+목록](../configuration/index.ko.md#discipline-lists)에
 작성합니다.
 
 | `declare` 안의 필드 | 필수 여부 | 의미                                                                         |
@@ -75,7 +75,7 @@ disciplines:
 | `pre`         | 변경 전 파일 텍스트               | 수정, 그리고 이전 텍스트를 읽을 수 있는 삭제입니다. 생성에는 없습니다.                                                    |
 | `post`        | 제안된 변경 후 파일 텍스트        | 생성과 수정입니다. 삭제에는 없습니다.                                                                                     |
 | `state`       | 변경 전후의 쌍 `{ pre, post }`    | 수정입니다. 파이프라인을 양쪽에 각각 적용합니다.                                                                          |
-| `changes`     | 관측한 변경 집합의 경로 배열      | `changeSetDisciplines`에서 읽습니다. `items`로 개별 경로를 추출합니다.                                                    |
+| `changes`     | 관측한 변경 집합의 경로 배열      | `disciplines`에서 변경 집합 표면이 읽고 세션 표면은 건너뜁니다. `items`로 개별 경로를 추출합니다.                         |
 | `command`     | 셸 명령 텍스트                    | 파일 대상이 없는 호출을 포함한 세션 셸 호출입니다. 실행되지 않는 stdin 리터럴 데이터는 제외합니다.                        |
 | `actor`       | 선택 필드 `agentType`을 가진 객체 | 주체를 확인할 수 있는 세션 호스트가 공급합니다. 주 세션은 `{}`이며, 호스트가 주체를 공급하지 않으면 소스 자체가 없습니다. |
 

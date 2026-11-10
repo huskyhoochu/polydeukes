@@ -46,20 +46,6 @@ disciplines:
   - id: still-thinking
     why: "not yet written"
     draft: true
-sessionDisciplines:
-  - id: writer-is-known
-    why: "every writer is a known agent"
-    declare:
-      mechanism: controlled-vocabulary
-      scope: { source: target.path, include: ['\.ts$'] }
-      sources: { spawns: { sidecar: true } }
-      supply: { spawns: pass }
-      extract:
-        own: [{ op: source, of: target.path }]
-        known: [{ op: source, of: spawns }, { op: json }, { op: flattenKeys }]
-      relate:
-        - { id: listed, relation: { op: subset, of: own, in: known }, message: "{value}" }
-changeSetDisciplines:
   - id: docs-stay-bilingual
     why: "English is the default and Korean mirrors live in *.ko.md."
     declare:
@@ -91,3 +77,100 @@ changeSetDisciplines:
             relation: { op: implies, of: ko, requires: enChanged },
             message: "{value} changed without {key}.md",
           }
+sessionDisciplines:
+  - id: asks-before-deploy
+    declare:
+      mechanism: stated-ground
+      scope: { source: command, include: ['\bdeploy\b'] }
+      sources: { session: { transcript: true } }
+      extract:
+        asked:
+          - { op: source, of: session }
+          - { op: userTexts, re: "deploy" }
+      relate:
+        - {
+            id: has-ask,
+            relation: { op: nonEmpty, of: asked },
+            message: "no user turn asks for the deploy",
+          }
+  - id: read-before-deploy
+    declare:
+      mechanism: scoped-valve
+      scope: { source: command, include: ['\bdeploy\b'] }
+      sources: { session: { transcript: true } }
+      extract:
+        reads:
+          - { op: source, of: session }
+          - { op: toolUses, names: [Read] }
+      relate:
+        - {
+            id: read-first,
+            relation: { op: nonEmpty, of: reads },
+            message: "no Read precedes the deploy",
+          }
+      witness:
+        extract:
+          said:
+            - { op: source, of: session }
+            - { op: userTexts, re: "deploy anyway" }
+        relate:
+          - {
+              id: said-so,
+              relation: { op: nonEmpty, of: said },
+              message: "no user turn says deploy anyway",
+            }
+  - id: ask-then-valve
+    declare:
+      mechanism: scoped-valve
+      scope: { source: command, include: ['\bdeploy\b'] }
+      sources: { session: { transcript: true } }
+      extract:
+        asked:
+          - { op: source, of: session }
+          - { op: userTexts, re: "deploy" }
+      relate:
+        - {
+            id: has-ask,
+            relation: { op: nonEmpty, of: asked },
+            message: "no user turn asks for the deploy",
+          }
+      witness:
+        extract:
+          said:
+            - { op: source, of: session }
+            - { op: userTexts, re: "deploy anyway" }
+        relate:
+          - {
+              id: said-so,
+              relation: { op: nonEmpty, of: said },
+              message: "no user turn says deploy anyway",
+            }
+  - id: said-by-select
+    declare:
+      mechanism: stated-ground
+      scope: { source: command, include: ['\bdeploy\b'] }
+      sources: { session: { transcript: true } }
+      extract:
+        said:
+          - { op: source, of: session }
+          - { op: select, path: userMessages }
+          - { op: field, name: text }
+          - { op: matches, re: "deploy" }
+      relate:
+        - {
+            id: has-said,
+            relation: { op: nonEmpty, of: said },
+            message: "no user message mentions the deploy",
+          }
+  - id: writer-is-known
+    why: "every writer is a known agent"
+    declare:
+      mechanism: controlled-vocabulary
+      scope: { source: target.path, include: ['\.ts$'] }
+      sources: { spawns: { sidecar: true } }
+      supply: { spawns: pass }
+      extract:
+        own: [{ op: source, of: target.path }]
+        known: [{ op: source, of: spawns }, { op: json }, { op: flattenKeys }]
+      relate:
+        - { id: listed, relation: { op: subset, of: own, in: known }, message: "{value}" }

@@ -126,17 +126,21 @@
 <a id="skipped-rows-on-the-change-set-surface"></a>
 ## 변경 집합 표면의 미판정 기록
 
-변경 집합 표면은 `disciplines`와 `changeSetDisciplines`를 컴파일합니다. 대화 기록이나 명령줄을 읽는
-항목은 `sessionDisciplines`에 속하며 diff 판정에는 포함되지 않습니다. 이런 항목을 공용 목록이나 변경
-집합 목록에 넣으면 설정 오류가 발생합니다.
+변경 집합 표면은 `disciplines`를 컴파일합니다. 대화 기록이나 명령줄을 읽는 항목은
+`sessionDisciplines`에 속하며 diff 판정에는 포함되지 않습니다. 이런 항목을 `disciplines`에 넣으면
+설정 오류가 발생합니다. `changes`를 읽는 항목은 `disciplines`에 속합니다. 세션 표면은 호출의 대상이
+범위 안에 있으면 그 항목을 건너뛰고 `skipped <id> <path> no-observation`을 기록합니다.
+
+로더가 `unknown key 'changeSetDisciplines' in config`를 보고하면 각 항목을 그대로 `disciplines`
+아래에 적습니다. 두 표면 모두 로드 시점에 이 알 수 없는 키를 거부합니다.
 
 변경 집합 항목이 읽는 소스가 없고 `supply` 정책이 `pass`이면 `supply-pass`를 기록합니다.
 `pdks explain`과 로그의 사유를 확인하세요. 미판정은 규율을 지켰다는 증거가 아닙니다.
 
 세션 표면에서는 호스트가 대화 기록을 공급하지 않을 때 `supply: { session: 'pass' }`로 건너뛸 수
 있습니다.
-[규율 목록
-셋](./reference/configuration/index.ko.md#three-lists)을
+[규율
+목록](./reference/configuration/index.ko.md#discipline-lists)을
 참고하세요.
 
 <a id="local-state"></a>

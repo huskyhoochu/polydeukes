@@ -26,10 +26,12 @@ Rust `pdks`는 약속(covenant) 판정기입니다. Homebrew·crates.io·npm·Py
 <a id="surface-from-input-mode"></a>
 ## 입력과 표면
 
-IR 입력은 세션 표면이며 `disciplines`와 `sessionDisciplines`를 조립합니다. `--diff` 입력은 변경 집합
-표면이며 `disciplines`와 `changeSetDisciplines`를 조립합니다. IR의 session 필드는 표면을 선택하지
-않고 관측한 이력을 전달합니다. 파일 도구와 diff가 제공하는 내용 범위는 다릅니다.
-[판정 모델](../../concepts/judgment.ko.md)을 읽으세요.
+IR 입력은 세션 표면이며 `disciplines`의 모든 항목을 컴파일한 다음 `sessionDisciplines`를
+컴파일합니다. `changes`를 읽는 항목은 범위 안의 파일 변경에 대해 판정하는 대신 `skipped`로
+기록합니다. 그 항목의 컴파일 오류는 두 표면 모두에서 로드 오류입니다. `--diff` 입력은 변경 집합
+표면이며 결과 검증을 위해 `disciplines`만 컴파일합니다. `sessionDisciplines`는 세션 표면에만 과정과
+사람의 증거를 제공합니다. IR의 session 필드는 표면을 선택하지 않고 관측한 이력을 전달합니다. 파일
+도구와 diff가 제공하는 내용 범위는 다릅니다. [판정 모델](../../concepts/judgment.ko.md)을 읽으세요.
 
 <a id="extensions"></a>
 ## 확장 실행

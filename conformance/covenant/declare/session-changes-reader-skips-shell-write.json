@@ -1,0 +1,72 @@
+{
+  "description": "A scope-less changes reader and a shell call that writes lib/a.txt leave exactly one row for the entry: skipped naming the written path.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "changes-listed-twice",
+          "declare": {
+            "mechanism": "controlled-vocabulary",
+            "extract": {
+              "seen": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ],
+              "all": [
+                {
+                  "op": "source",
+                  "of": "changes"
+                },
+                {
+                  "op": "items"
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "listed",
+                "relation": {
+                  "op": "subset",
+                  "of": "seen",
+                  "in": "all"
+                },
+                "message": "{value}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    ".polydeukes/baseline.json": {
+      "entries": {}
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo x > lib/a.txt"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "changes-listed-twice", "lib/a.txt", "no-observation"]]
+  }
+}

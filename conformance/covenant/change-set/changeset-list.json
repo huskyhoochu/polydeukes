@@ -1,9 +1,9 @@
 {
-  "description": "The change-set surface judges changeSetDisciplines entries and leaves sessionDisciplines entries unjudged.",
+  "description": "The change-set surface judges a disciplines entry that reads changes and leaves sessionDisciplines entries unjudged.",
   "args": ["--diff"],
   "tree": {
     "polydeukes.config.yaml": {
-      "changeSetDisciplines": [
+      "disciplines": [
         {
           "id": "needs-the-whole-change-set",
           "declare": {

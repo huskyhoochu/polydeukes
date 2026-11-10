@@ -1,0 +1,77 @@
+{
+  "description": "A declaration that reads the transcript in disciplines is refused with the list it belongs in.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "disciplines": [
+        {
+          "id": "needs-a-probe",
+          "declare": {
+            "mechanism": "precedent",
+            "scope": {
+              "source": "target.path",
+              "include": ["^lib/"]
+            },
+            "sources": {
+              "session": {
+                "transcript": true
+              }
+            },
+            "extract": {
+              "probes": [
+                {
+                  "op": "source",
+                  "of": "session"
+                },
+                {
+                  "op": "toolUses",
+                  "names": ["probe-tool"]
+                }
+              ]
+            },
+            "relate": [
+              {
+                "id": "probed",
+                "relation": {
+                  "op": "nonEmpty",
+                  "of": "probes"
+                },
+                "message": "no probe precedes this edit"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Write",
+        "args": {
+          "file_path": "notes.txt",
+          "content": "x"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "x"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Write"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "disciplines[0] ('needs-a-probe') reads transcript: it belongs in sessionDisciplines"
+    ],
+    "rows": [["blocked", "covenant-check", "-"]]
+  }
+}
