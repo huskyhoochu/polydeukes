@@ -135,3 +135,112 @@ describe('documentation page', () => {
     assert.equal(byLang['x-default'], self);
   });
 });
+
+describe('install page tabs', () => {
+  const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
+  const install = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.find(
+    (d) => d.id === 'install',
+  );
+  const english = readFileSync(join(docsRoot, install.en.path), 'utf8');
+
+  // The text of the section that starts at `<a id="name"></a>`, up to the next anchor.
+  const section = (markdown, name) => {
+    const start = markdown.indexOf(`<a id="${name}"></a>`);
+    assert.notEqual(start, -1, `source has an anchor named ${name}`);
+    const rest = markdown.slice(start + 1);
+    const next = rest.indexOf('<a id="');
+    return next === -1 ? rest : rest.slice(0, next);
+  };
+  const heading = (markdown, name) =>
+    section(markdown, name)
+      .match(/^### (.+)$/m)?.[1]
+      .trim();
+  const firstFence = (markdown) => markdown.match(/^```[^\n]*\n([\s\S]*?)\n```$/m)?.[1];
+
+  // Each panel is a div with role="tabpanel"; its HTML runs to the next panel or the end of the group.
+  const panels = (html) => {
+    const group = html.slice(html.indexOf('<starlight-tabs'), html.indexOf('</starlight-tabs>'));
+    const starts = [...group.matchAll(/<div\b[^>]*role="tabpanel"[^>]*>/g)].map((m) => m.index);
+    return starts.map((s, i) => group.slice(s, starts[i + 1] ?? group.length));
+  };
+  const tabLabels = (html) =>
+    (html.match(/<a\b[^>]*role="tab"[^>]*>[\s\S]*?<\/a>/g) ?? []).map((t) =>
+      t
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
+
+  it('the catalog lists the four install tabs in order', () => {
+    // Every check below derives its expectation from this list, so a route dropped from it would go unnoticed.
+    assert.deepEqual(install.tabs, ['homebrew', 'cargo', 'npm', 'pypi']);
+  });
+
+  for (const [lang, prefix] of [
+    ['en', 'docs/'],
+    ['ko', 'ko/docs/'],
+  ]) {
+    const source = readFileSync(join(docsRoot, install[lang].path), 'utf8');
+    const page = `${prefix}how-to/install/index.html`;
+
+    it(`[${lang}] renders one tab group whose labels are the section headings in catalog order`, () => {
+      // Catches a page with no tab group, a reordered or dropped tab, or a label that is not the source heading.
+      const html = read(page);
+      assert.equal(html.match(/<starlight-tabs\b(?!-)/g)?.length, 1, 'exactly one tab group');
+      assert.equal(html.match(/data-sync-key="install"/g)?.length, 1, 'group syncs on "install"');
+      const expected = install.tabs.map((name) => heading(source, name));
+      assert.ok(expected.every(Boolean), 'every tab section has a heading in the source');
+      assert.deepEqual(tabLabels(html), expected);
+    });
+
+    it(`[${lang}] keeps headings out of the panels and the following section out of the group`, () => {
+      // Catches a tab that repeats its label as a heading, or a group that swallows the rest of the page.
+      const html = read(page);
+      const found = panels(html);
+      assert.equal(found.length, install.tabs.length, 'one panel per tab');
+      for (const panel of found) assert.ok(!/<h3\b/.test(panel), 'no section heading in a panel');
+      const end = html.indexOf('</starlight-tabs>');
+      assert.ok(html.indexOf('id="verify"') > end, 'the verify section follows the group');
+    });
+
+    it(`[${lang}] keeps each tab section's anchor ahead of the group`, () => {
+      // Catches a link to a route's fragment landing at the top of the page because its id went with the heading.
+      const html = read(page);
+      const group = html.indexOf('<starlight-tabs');
+      for (const name of install.tabs) {
+        const at = html.indexOf(`id="${name}"`);
+        assert.ok(at !== -1 && at < group, `id="${name}" precedes the tab group`);
+      }
+    });
+
+    it(`[${lang}] copies the first code block of each section verbatim from the English source`, () => {
+      // Catches a tab whose panel holds another section's code, or code altered by the conversion.
+      const found = panels(read(page));
+      assert.equal(found.length, install.tabs.length, 'one panel per tab');
+      install.tabs.forEach((name, i) => {
+        const expected = firstFence(section(english, name));
+        assert.ok(expected, `${name} has a code block in the English source`);
+        const button = tags(found[i], 'button').find((t) => attr(t, 'data-copied') !== undefined);
+        assert.ok(button, `panel ${name} has a copy button`);
+        assert.equal(decodeCode(attr(button, 'data-code') ?? ''), expected);
+      });
+    });
+  }
+});
+
+describe('Korean pages', () => {
+  const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
+  const translated = JSON.parse(
+    readFileSync(join(docsRoot, 'catalog.json'), 'utf8'),
+  ).documents.filter((d) => d.ko);
+
+  it('render without a language-switch line', () => {
+    // Catches a switch line in a form the converter does not strip, which leaves an English link beside the site's own picker.
+    assert.ok(translated.length > 0);
+    const kept = translated
+      .map((d) => d.ko.path.replace(/\.ko\.md$/, '').replace(/(^|\/)(README|index)$/, ''))
+      .map((slug) => (slug ? `ko/docs/${slug}/index.html` : 'ko/docs/index.html'))
+      .filter((page) => read(page).includes('>English</a>'));
+    assert.deepEqual(kept, []);
+  });
+});

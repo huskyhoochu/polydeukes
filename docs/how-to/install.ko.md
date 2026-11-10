@@ -1,26 +1,39 @@
 # 폴리데우케스 설치
 
-**[English](./install.md)** · 한국어
+[English](./install.md) · **한국어**
 
-먼저 판정기 `pdks`를 설치하고 필요한 확장을 선택합니다. 에이전트 연결 없이도 Git diff를 판정할 수
-있습니다. Claude Code, Codex, 프로젝트 기억(memory)은 각각 별도 실행 파일입니다.
+판정기 `pdks`를 설치합니다. 선택 확장인 Claude Code용 `pdks-claude-code`, Codex용 `pdks-codex`,
+프로젝트 기억(memory)용 `pdks-memory`는 각각 별도 실행 파일입니다. 판정기만으로도 에이전트 연결 없이
+Git diff를 판정할 수 있습니다.
 
-<a id="choose"></a>
-## 설치 경로 선택
+<a id="platforms"></a>
+## 플랫폼과 실행 환경
 
-| 경로       | 선택할 때                                   | 실행되는 것                                                              |
-| ---------- | ------------------------------------------- | ------------------------------------------------------------------------ |
-| Homebrew   | brew로 명령줄 도구를 관리할 때              | 미리 빌드한 Rust 실행 파일                                               |
-| crates.io  | Rust 도구 모음이 있을 때                    | 로컬에서 빌드한 실행 파일; cargo-binstall은 릴리스 압축본을 받을 수 있음 |
-| npm / pnpm | 프로젝트별 개발 의존성으로 버전을 관리할 때 | Node 실행기가 패키지의 Rust 실행 파일을 선택                             |
-| PyPI       | uv 또는 Python 환경으로 도구를 관리할 때    | 플랫폼 wheel이 Rust 실행 파일을 설치                                     |
+미리 빌드한 릴리스는 macOS arm64, Linux x64, Linux arm64를 지원합니다. Windows용으로 미리 빌드한
+릴리스는 없으며 Windows는 테스트하지 않았습니다. 네이티브 실행 파일은 Node 없이 동작합니다. npm
+실행기는 Node가 필요하고 TypeScript SDK는 Node 24 이상, 소스 설치는 Rust 1.89 이상이 필요합니다.
 
-미리 빌드한 릴리스는 macOS arm64, Linux x64, Linux arm64를 지원합니다. 네 경로 중 익숙한 하나를
-선택하세요. 네이티브 실행 파일은 Node 없이 동작합니다. npm 실행기는 Node가 필요하고 TypeScript SDK는
-Node 24 이상, 소스 설치는 Rust 1.89 이상이 필요합니다.
+<a id="recommended"></a>
+## 권장 설치 방법
+
+macOS arm64와 Linux에서는 Homebrew로 설치하는 것을 권장합니다.
+
+```sh
+brew install huskyhoochu/polydeukes/pdks
+pdks --version
+```
+
+확장 설치와 다른 패키지 관리자를 사용하는 방법은 아래 설치 경로를 참고하세요.
+
+<a id="routes"></a>
+## 설치 경로
+
+이미 사용하는 패키지 관리자를 선택하세요. 하나만 사용하면 됩니다.
 
 <a id="homebrew"></a>
-## Homebrew
+### Homebrew
+
+brew로 명령줄 도구를 관리한다면 이 경로로 미리 빌드한 Rust 실행 파일을 설치합니다.
 
 ```sh
 brew install huskyhoochu/polydeukes/pdks
@@ -37,26 +50,39 @@ brew install huskyhoochu/polydeukes/pdks-memory
 확장 formula는 판정기에 의존합니다. 설치만으로 프로젝트 훅이 등록되지는 않습니다.
 
 <a id="cargo"></a>
-## crates.io
+### crates.io
+
+Rust 도구 모음이 있다면 이 경로로 Rust 실행 파일을 로컬에서 빌드합니다.
 
 ```sh
 cargo install --locked pdks
+```
+
+필요한 확장을 추가합니다.
+
+```sh
 cargo install --locked pdks-claude-code
 cargo install --locked pdks-codex
 cargo install --locked pdks-memory
 ```
 
-각 줄은 실행 파일 하나를 설치하며 뒤의 세 줄은 선택 사항입니다. Cargo의 bin 디렉터리를 PATH에
-넣습니다. cargo-binstall을 사용한다면 `cargo binstall pdks`로 대상 릴리스 압축본을 받을 수 있습니다.
-확장 이름도 같은 명령으로 설치합니다. 다른 대상에서는 소스 빌드로 대체할 수 있습니다.
+Cargo의 bin 디렉터리를 PATH에 넣습니다. cargo-binstall을 사용한다면 `cargo binstall pdks`로 대상
+릴리스 압축본을 받을 수 있습니다. 확장 이름도 같은 명령으로 설치합니다. 다른 대상에서는 소스 빌드로
+대체할 수 있습니다.
 
 <a id="npm"></a>
-## npm 또는 pnpm
+### npm 또는 pnpm
 
-프로젝트 루트에서 실행합니다.
+프로젝트별 개발 의존성으로 버전을 관리할 때 사용하며, Node 실행기가 패키지의 Rust 실행 파일을
+선택합니다. 설치 명령은 프로젝트 루트에서 실행합니다.
 
 ```sh
 npm install --save-dev polydeukes
+```
+
+필요한 확장을 추가합니다.
+
+```sh
 npm install --save-dev @polydeukes/adapter-claude-code
 npm install --save-dev @polydeukes/adapter-codex
 npm install --save-dev @polydeukes/memory
@@ -71,10 +97,17 @@ npm install --save-dev @polydeukes/memory
 init을 다시 실행합니다. 훅을 실행하는 환경에는 해당 개발 의존성을 유지하세요.
 
 <a id="pypi"></a>
-## PyPI
+### PyPI
+
+uv 또는 Python 환경으로 도구를 관리한다면 플랫폼 wheel로 Rust 실행 파일을 설치합니다.
 
 ```sh
 uv tool install polydeukes
+```
+
+필요한 확장을 추가합니다.
+
+```sh
 uv tool install polydeukes-claude-code
 uv tool install polydeukes-codex
 uv tool install polydeukes-memory
@@ -92,13 +125,16 @@ pdks --version
 pdks docs
 ```
 
-두 명령은 프로젝트 설정 없이 실행됩니다. 셸이 `pdks`를 찾지 못하면 설치 경로의 bin 디렉터리나 위의
-npm/pnpm 실행 명령을 확인합니다. 확장을 찾지 못하면 해당 확장을 설치하고 그 디렉터리도 PATH에 있는지
-확인하세요.
+두 명령은 프로젝트 설정 없이 실행됩니다. 셸이 `pdks`를 찾지 못하면 설치 경로의 bin 디렉터리를
+확인하거나 `npx --no-install pdks` 또는 `pnpm exec pdks`를 사용합니다. 확장을 찾지 못하면 해당
+확장을 설치하고 그 디렉터리도 PATH에 있는지 확인하세요.
 
-[첫 판정](../tutorials/first-judgment.ko.md)을 실행한 뒤
-[호스트 또는 Git을 연결](./connect-surfaces.ko.md)하세요. 기존 설치를 사용 중이라면
-[이행 안내](./migrate-to-rust.ko.md)에 따라 훅 등록을 교체합니다.
+<a id="next"></a>
+## 다음 단계
+
+- [첫 판정](../tutorials/first-judgment.ko.md)
+- [호스트 또는 Git 연결](./connect-surfaces.ko.md)
+- 기존 설치를 사용 중이라면 훅 등록을 교체하기 전에 [이행 안내](./migrate-to-rust.ko.md)를 따르세요.
 
 <a id="releases"></a>
 ## 릴리스 압축본과 업그레이드

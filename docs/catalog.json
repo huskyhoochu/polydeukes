@@ -410,6 +410,7 @@
       "category": "how-to",
       "order": 1,
       "bundled": true,
+      "tabs": ["homebrew", "cargo", "npm", "pypi"],
       "en": {
         "path": "how-to/install.md",
         "title": "Install Polydeukes",

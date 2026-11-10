@@ -125,11 +125,65 @@ function transform(markdown, docPath) {
   return body.trimStart();
 }
 
+/**
+ * Wraps the sections named in `doc.tabs` in one Starlight tab group. A section runs from its
+ * `<a id="NAME"></a>` line to the next anchor line, the listed sections must be adjacent and in
+ * the listed order, and each tab is labelled with the heading that opens its section, which is
+ * removed from the tab content. The anchor lines are kept, ahead of the group, so each fragment
+ * still lands at the tab group.
+ */
+function wrapTabs(body, doc, docPath) {
+  const anchors = [...body.matchAll(/^<a id="[^"]*"><\/a>[ \t]*\r?$/gm)].map((m) => m.index);
+  const sections = doc.tabs.map((name) => {
+    const start = body.search(new RegExp(`^<a id="${name}"></a>`, 'm'));
+    if (start === -1) throw new Error(`${docPath}: no anchor "${name}" for the tab group`);
+    const end = anchors.find((position) => position > start) ?? body.length;
+    return { name, start, end };
+  });
+  sections.forEach((section, i) => {
+    if (i > 0 && sections[i - 1].end !== section.start) {
+      throw new Error(
+        `${docPath}: anchor "${section.name}" does not follow "${sections[i - 1].name}"`,
+      );
+    }
+  });
+
+  const items = sections.map(({ name, start, end }) => {
+    const text = body.slice(start, end).replace(/^[^\n]*\n/, '');
+    const heading = text.match(/^\s*#{1,6}[ \t]+(.+?)[ \t]*(?:\r?\n|$)/);
+    if (!heading) throw new Error(`${docPath}: section "${name}" has no heading for its tab`);
+    const content = text
+      .slice(heading[0].length)
+      .replace(/^\s*\n/, '')
+      .trimEnd();
+    return `<TabItem label={${JSON.stringify(heading[1])}}>\n\n${content}\n\n</TabItem>\n`;
+  });
+  const anchorLines = sections.map(({ start }) =>
+    body.slice(start, body.indexOf('\n', start)).trim(),
+  );
+  const first = sections[0].start;
+  const last = sections[sections.length - 1].end;
+  return [
+    "import { Tabs, TabItem } from '@astrojs/starlight/components';\n\n",
+    body.slice(0, first),
+    `${anchorLines.join('\n')}\n\n`,
+    `<Tabs syncKey="${doc.id}">\n`,
+    items.join('\n'),
+    '</Tabs>\n\n',
+    body.slice(last),
+  ].join('');
+}
+
 /** Writes one translated document with catalog-sourced frontmatter. */
 async function emit(doc, locale, translation) {
   const source = await readFile(join(DOCS_ROOT, translation.path), 'utf8');
-  const body = transform(source, translation.path);
-  const slug = translation.path.replace(/\.ko\.md$/, '.md').replace(/^README\.md$/, 'index.md');
+  const transformed = transform(source, translation.path);
+  const body = doc.tabs ? wrapTabs(transformed, doc, translation.path) : transformed;
+  const extension = doc.tabs ? '.mdx' : '.md';
+  const slug = translation.path
+    .replace(/\.ko\.md$/, '.md')
+    .replace(/^README\.md$/, 'index.md')
+    .replace(/\.md$/, extension);
   const outPath =
     locale === 'en' ? join(OUT_ROOT, 'docs', slug) : join(OUT_ROOT, locale, 'docs', slug);
   const updated = await lastCommitDate(translation.path);

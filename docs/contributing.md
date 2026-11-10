@@ -50,6 +50,12 @@ Its `sync-docs.mjs` script creates the ignored `src/content/docs/` tree and
 `src/generated/sidebar.json`. Edit the originals under `docs/`; the next build replaces generated
 files.
 
+A catalog entry may carry `tabs`, a list of anchor names of adjacent sections in that document. The
+website shows those sections as one group of tabs labelled by their headings, while `pdks docs` and
+the Markdown source show them as sections. A document with `tabs` is built as MDX as a whole, so its
+text outside code must also be valid MDX (for example, no HTML comments, `<https://…>` autolinks, or
+bare `{`).
+
 In the Reference sidebar, `reference/cli/` and `reference/packages/` form separate groups. Other
 reference pages, including configuration and declaration language, remain direct links.
 

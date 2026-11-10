@@ -2,25 +2,38 @@
 
 **English** · [한국어](./install.ko.md)
 
-Install the `pdks` judge, then choose the extensions you need. You can judge Git diffs without an
-agent integration. Claude Code, Codex, and project memory each have their own executable.
+Install the `pdks` judge. Three optional extensions, `pdks-claude-code` for Claude Code,
+`pdks-codex` for Codex, and `pdks-memory` for project memory, each have a separate executable. The
+judge alone can judge a Git diff without an agent integration.
 
-<a id="choose"></a>
-## Choose an installation route
+<a id="platforms"></a>
+## Platforms and runtimes
 
-| Route      | Use it when                                                | What runs                                                                 |
-| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Homebrew   | You manage command-line tools with brew                    | Prebuilt Rust executables                                                 |
-| crates.io  | You have a Rust toolchain                                  | Rust executables built locally; cargo-binstall can fetch release archives |
-| npm / pnpm | You want project-local, versioned development dependencies | A Node launcher selects the packaged Rust executable                      |
-| PyPI       | You manage tools with uv or Python environments            | Platform wheels install Rust executables                                  |
+Prebuilt releases support macOS arm64, Linux x64, and Linux arm64. There is no prebuilt release for
+Windows, and Windows is not tested. Native executables need no Node runtime. npm launchers require
+Node; the TypeScript SDK requires Node 24 or newer. Source installation requires Rust 1.89 or newer.
 
-Prebuilt releases support macOS arm64, Linux x64, and Linux arm64. Choose a route you already use;
-you do not need all four. Native executables need no Node runtime. npm launchers require Node; the
-TypeScript SDK requires Node 24 or newer. Source installation requires Rust 1.89 or newer.
+<a id="recommended"></a>
+## Recommended installation
+
+Homebrew is the recommended route on macOS arm64 and Linux.
+
+```sh
+brew install huskyhoochu/polydeukes/pdks
+pdks --version
+```
+
+For extensions and other package managers, see the route sections below.
+
+<a id="routes"></a>
+## Installation routes
+
+Choose the package manager you already use; you do not need more than one.
 
 <a id="homebrew"></a>
-## Homebrew
+### Homebrew
+
+If you manage command-line tools with brew, this route installs prebuilt Rust executables.
 
 ```sh
 brew install huskyhoochu/polydeukes/pdks
@@ -37,32 +50,45 @@ brew install huskyhoochu/polydeukes/pdks-memory
 The extension formulae depend on the judge. Installing a formula does not register project hooks.
 
 <a id="cargo"></a>
-## crates.io
+### crates.io
+
+If you have a Rust toolchain, this route builds Rust executables locally.
 
 ```sh
 cargo install --locked pdks
+```
+
+Add only the extensions you want:
+
+```sh
 cargo install --locked pdks-claude-code
 cargo install --locked pdks-codex
 cargo install --locked pdks-memory
 ```
 
-Each line installs one executable; the last three are optional. Put Cargo's bin directory on PATH.
-If you already use cargo-binstall, `cargo binstall pdks` fetches the matching release archive; the
-same command accepts each extension name. On other targets it can fall back to compiling source.
+Put Cargo's bin directory on PATH. If you already use cargo-binstall, `cargo binstall pdks` fetches
+the matching release archive; the same command accepts each extension name. On other targets it can
+fall back to compiling source.
 
 <a id="npm"></a>
-## npm or pnpm
+### npm or pnpm
 
-From your project root:
+Use this route for project-local, versioned development dependencies; a Node launcher selects the
+packaged Rust executable. Run the install commands from your project root.
 
 ```sh
 npm install --save-dev polydeukes
+```
+
+Add only the extensions you want:
+
+```sh
 npm install --save-dev @polydeukes/adapter-claude-code
 npm install --save-dev @polydeukes/adapter-codex
 npm install --save-dev @polydeukes/memory
 ```
 
-Or use `pnpm add -D` with the same package names. Keep the extensions you use and commit your
+You can use `pnpm add -D` with the same package names. Keep the extensions you use and commit your
 lockfile. Use `npx --no-install pdks` or `pnpm exec pdks` wherever this guide says `pdks`; use
 `npx --no-install pdks-claude-code init` or `pnpm exec pdks-claude-code init` for host registration.
 A local installation is available through these package-manager commands, not necessarily your
@@ -73,10 +99,17 @@ project or switch installation routes. Keep the development dependencies install
 registered hooks run.
 
 <a id="pypi"></a>
-## PyPI
+### PyPI
+
+If you manage tools with uv or Python environments, platform wheels install Rust executables.
 
 ```sh
 uv tool install polydeukes
+```
+
+Add only the extensions you want:
+
+```sh
 uv tool install polydeukes-claude-code
 uv tool install polydeukes-codex
 uv tool install polydeukes-memory
@@ -96,16 +129,16 @@ pdks docs
 ```
 
 Both commands work without project configuration. If your shell cannot find `pdks`, check the
-installation route's bin directory or use the npm/pnpm command above. If an extension cannot be
-found, install that extension and check its directory is on PATH as well.
+installation route's bin directory or use `npx --no-install pdks` or `pnpm exec pdks`. If an
+extension cannot be found, install that extension and check its directory is on PATH as well.
 
-Continue with [your first judgment](../tutorials/first-judgment.md), then
-[connect your host or
-Git](./connect-surfaces.md).
-Existing installations should follow
-[the migration
-guide](./migrate-to-rust.md)
-before replacing hook registrations.
+<a id="next"></a>
+## Next steps
+
+- [Your first judgment](../tutorials/first-judgment.md)
+- [Connect your host or Git](./connect-surfaces.md)
+- For existing installations, follow [the migration guide](./migrate-to-rust.md) before replacing
+  hook registrations.
 
 <a id="releases"></a>
 ## Direct release archives and upgrades
