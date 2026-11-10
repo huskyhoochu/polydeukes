@@ -1,0 +1,38 @@
+{
+  "description": "Deleting one of the two schemas leaves a source the entry cannot read, and exits 2.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"schema-enums-agree\"\n    why: \"two schemas describing the same property must accept the same enum values.\"\n    declare:\n      mechanism: \"pairing\"\n      scope: { source: \"target.path\", include: ['^schemas/(request|response)\\.json$'] }\n      sources:\n        left: { file: \"schemas/request.json\" }\n        right: { file: \"schemas/response.json\" }\n      extract:\n        leftValues:\n          - { op: \"source\", of: \"left\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n        rightValues:\n          - { op: \"source\", of: \"right\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n      relate:\n        - id: \"same-names\"\n          relation: { op: \"equal\", of: [\"leftValues\", \"rightValues\"] }\n          message: \"schema enum differs: {value}\"\n",
+    "schemas/request.json": "{\"properties\": {\"status\": {\"enum\": [\"open\"]}}}\n",
+    "schemas/response.json": "{\"properties\": {\"status\": {\"enum\": [\"open\"]}}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "schemas/response.json"
+        },
+        "fileChange": {
+          "kind": "delete",
+          "path": "schemas/response.json",
+          "pre": "{\"properties\": {\"status\": {\"enum\": [\"open\"]}}}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "discipline 'schema-enums-agree' cannot judge schemas/response.json: right — the world carries no source named 'right'"
+    ],
+    "rows": [["blocked", "schema-enums-agree", "schemas/response.json"]]
+  }
+}

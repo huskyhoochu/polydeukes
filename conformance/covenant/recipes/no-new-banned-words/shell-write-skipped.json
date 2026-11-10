@@ -1,0 +1,29 @@
+{
+  "description": "A shell write to a scoped path is skipped with no-observation.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"no-new-banned-words\"\n    why: \"new uses of the selected words make project terminology inconsistent; existing matching lines may remain.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: [\"^(src|tests)/\"]\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"nothing-added\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds {key}: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo blacklist > src/example.ts"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "no-new-banned-words", "src/example.ts", "no-observation"]]
+  }
+}

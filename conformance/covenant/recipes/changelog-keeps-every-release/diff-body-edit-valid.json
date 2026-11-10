@@ -1,0 +1,13 @@
+{
+  "description": "A diff that changes only a release body passes on the change-set surface.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"changelog-keeps-every-release\"\n    why: \"published release headings must remain available when a changelog is edited.\"\n    declare:\n      mechanism: \"one-way-marker\"\n      scope: { source: \"target.path\", include: ['^CHANGELOG\\.md$'] }\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n      relate:\n        - id: \"release-kept\"\n          relation: { op: \"subset\", of: \"before\", in: \"after\" }\n          message: \"release heading removed: {value}\"\n"
+  },
+  "stdin": "--- a/CHANGELOG.md\n+++ b/CHANGELOG.md\n@@ -1,2 +1,2 @@\n ## 1.2.3\n-old\n+new\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "changelog-keeps-every-release", "CHANGELOG.md"]]
+  }
+}

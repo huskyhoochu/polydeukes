@@ -1,0 +1,35 @@
+{
+  "description": "A release heading removed from another file is not judged by this entry.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"changelog-keeps-every-release\"\n    why: \"published release headings must remain available when a changelog is edited.\"\n    declare:\n      mechanism: \"one-way-marker\"\n      scope: { source: \"target.path\", include: ['^CHANGELOG\\.md$'] }\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n      relate:\n        - id: \"release-kept\"\n          relation: { op: \"subset\", of: \"before\", in: \"after\" }\n          message: \"release heading removed: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "notes.md"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "notes.md",
+          "pre": "## 1.2.3\n",
+          "post": ""
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "notes.md"]]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "description": "On the change-set surface a diff to one schema advises when the two files in the tree differ.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"schema-enums-agree\"\n    why: \"two schemas describing the same property must accept the same enum values.\"\n    declare:\n      mechanism: \"pairing\"\n      scope: { source: \"target.path\", include: ['^schemas/(request|response)\\.json$'] }\n      sources:\n        left: { file: \"schemas/request.json\" }\n        right: { file: \"schemas/response.json\" }\n      extract:\n        leftValues:\n          - { op: \"source\", of: \"left\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n        rightValues:\n          - { op: \"source\", of: \"right\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n      relate:\n        - id: \"same-names\"\n          relation: { op: \"equal\", of: [\"leftValues\", \"rightValues\"] }\n          message: \"schema enum differs: {value}\"\n",
+    "schemas/request.json": "{\"properties\": {\"status\": {\"enum\": [\"closed\"]}}}\n",
+    "schemas/response.json": "{\"properties\": {\"status\": {\"enum\": [\"open\"]}}}\n"
+  },
+  "stdin": "--- a/schemas/request.json\n+++ b/schemas/request.json\n@@ -1 +1 @@\n-{\"properties\": {\"status\": {\"enum\": [\"open\"]}}}\n+{\"properties\": {\"status\": {\"enum\": [\"closed\"]}}}\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'schema-enums-agree' broken on schemas/request.json: schema enum differs: closed (+1)",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "schema-enums-agree",
+        "schemas/request.json",
+        "[{\"id\":\"same-names\",\"witnesses\":[{\"key\":\"0\",\"value\":\"closed\",\"side\":\"left\"},{\"key\":\"0\",\"value\":\"open\",\"side\":\"right\"}],\"total\":2}]"
+      ]
+    ]
+  }
+}

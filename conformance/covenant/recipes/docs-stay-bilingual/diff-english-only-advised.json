@@ -1,0 +1,23 @@
+{
+  "description": "A change set with only the English document advises.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"docs-stay-bilingual\"\n    why: \"paired documents should be updated together; this checks only that both paths occur in the change set.\"\n    declare:\n      mechanism: \"companion\"\n      scope: { source: \"target.path\", include: ['^manual/.*\\.md$'] }\n      extract:\n        en:\n          - { op: \"source\", of: \"target.path\" }\n          - { op: \"keyByPattern\", re: '^(.+?)(?<!\\.ko)\\.md$' }\n        ko:\n          - { op: \"source\", of: \"target.path\" }\n          - { op: \"keyByPattern\", re: '^(.+)\\.ko\\.md$' }\n        enChanged:\n          - { op: \"source\", of: \"changes\" }\n          - { op: \"items\" }\n          - { op: \"keyByPattern\", re: '^(.+?)(?<!\\.ko)\\.md$' }\n        koChanged:\n          - { op: \"source\", of: \"changes\" }\n          - { op: \"items\" }\n          - { op: \"keyByPattern\", re: '^(.+)\\.ko\\.md$' }\n      relate:\n        - id: \"ko-follows\"\n          relation: { op: \"implies\", of: \"en\", requires: \"koChanged\" }\n          message: \"{value} changed without {key}.ko.md\"\n        - id: \"en-follows\"\n          relation: { op: \"implies\", of: \"ko\", requires: \"enChanged\" }\n          message: \"{value} changed without {key}.md\"\n"
+  },
+  "stdin": "--- a/manual/start.md\n+++ b/manual/start.md\n@@ -1 +1 @@\n-old\n+new\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'docs-stay-bilingual' broken on manual/start.md: manual/start.md changed without manual/start.ko.md",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "docs-stay-bilingual",
+        "manual/start.md",
+        "[{\"id\":\"ko-follows\",\"witnesses\":[{\"key\":\"manual/start\",\"value\":\"manual/start.md\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

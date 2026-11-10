@@ -1,0 +1,45 @@
+{
+  "description": "A pre-release heading is selected too, and removing it advises.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"changelog-keeps-every-release\"\n    why: \"published release headings must remain available when a changelog is edited.\"\n    declare:\n      mechanism: \"one-way-marker\"\n      scope: { source: \"target.path\", include: ['^CHANGELOG\\.md$'] }\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '^(## \\[?\\d+\\.\\d+\\.\\d+)' }\n      relate:\n        - id: \"release-kept\"\n          relation: { op: \"subset\", of: \"before\", in: \"after\" }\n          message: \"release heading removed: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "CHANGELOG.md"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "CHANGELOG.md",
+          "pre": "## 1.2.3-rc.1\n",
+          "post": ""
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'changelog-keeps-every-release' broken on CHANGELOG.md: release heading removed: ## 1.2.3-rc.1",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "changelog-keeps-every-release",
+        "CHANGELOG.md",
+        "[{\"id\":\"release-kept\",\"witnesses\":[{\"key\":\"## 1.2.3\",\"value\":\"## 1.2.3-rc.1\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "A diff that adds a line with a listed word advises on the change-set surface.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"no-new-banned-words\"\n    why: \"new uses of the selected words make project terminology inconsistent; existing matching lines may remain.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: [\"^(src|tests)/\"]\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"nothing-added\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds {key}: {value}\"\n"
+  },
+  "stdin": "--- a/src/example.ts\n+++ b/src/example.ts\n@@ -1 +1 @@\n-old\n+blacklist\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'no-new-banned-words' broken on src/example.ts: adds blacklist: blacklist",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "no-new-banned-words",
+        "src/example.ts",
+        "[{\"id\":\"nothing-added\",\"witnesses\":[{\"key\":\"blacklist\",\"value\":\"blacklist\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

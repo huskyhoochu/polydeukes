@@ -1,0 +1,47 @@
+{
+  "description": "The number 1 and the string \"1\" are different values.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"schema-enums-agree\"\n    why: \"two schemas describing the same property must accept the same enum values.\"\n    declare:\n      mechanism: \"pairing\"\n      scope: { source: \"target.path\", include: ['^schemas/(request|response)\\.json$'] }\n      sources:\n        left: { file: \"schemas/request.json\" }\n        right: { file: \"schemas/response.json\" }\n      extract:\n        leftValues:\n          - { op: \"source\", of: \"left\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n        rightValues:\n          - { op: \"source\", of: \"right\" }\n          - { op: \"json\" }\n          - { op: \"select\", path: \"properties.status.enum\" }\n      relate:\n        - id: \"same-names\"\n          relation: { op: \"equal\", of: [\"leftValues\", \"rightValues\"] }\n          message: \"schema enum differs: {value}\"\n",
+    "schemas/request.json": "{\"properties\": {\"status\": {\"enum\": [\"1\"]}}}\n",
+    "schemas/response.json": "{\"properties\": {\"status\": {\"enum\": [\"1\"]}}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "schemas/request.json"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "schemas/request.json",
+          "pre": "{\"properties\": {\"status\": {\"enum\": [\"1\"]}}}\n",
+          "post": "{\"properties\": {\"status\": {\"enum\": [1]}}}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'schema-enums-agree' broken on schemas/request.json: schema enum differs: 1 (+1)",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "schema-enums-agree",
+        "schemas/request.json",
+        "[{\"id\":\"same-names\",\"witnesses\":[{\"key\":\"0\",\"value\":1,\"side\":\"left\"},{\"key\":\"0\",\"value\":\"1\",\"side\":\"right\"}],\"total\":2}]"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "description": "A capitalised spelling is not one of the listed words and passes.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"no-new-banned-words\"\n    why: \"new uses of the selected words make project terminology inconsistent; existing matching lines may remain.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: [\"^(src|tests)/\"]\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '\\b(blacklist|whitelist)\\b' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"nothing-added\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds {key}: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/example.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/example.ts",
+          "pre": "ok\n",
+          "post": "Blacklist\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "no-new-banned-words", "src/example.ts"]]
+  }
+}
