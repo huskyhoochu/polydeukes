@@ -9,6 +9,23 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
+## [0.26.0](https://github.com/huskyhoochu/polydeukes/compare/v0.25.0...v0.26.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** the `changeSetDisciplines` key is refused at load as an unknown key, in the config and in a config layer. Move its entries under `disciplines` unchanged.
+
+### Features
+
+* **config:** place every result-verifying discipline in disciplines ([#348](https://github.com/huskyhoochu/polydeukes/issues/348)) ([fa95ca0](https://github.com/huskyhoochu/polydeukes/commit/fa95ca0bbf37c078fb2dcd3710870cb743c6fdb8))
+* **covenant:** judge SDK calls as unattended so caller text opens no witness valve ([#345](https://github.com/huskyhoochu/polydeukes/issues/345)) ([bed15cf](https://github.com/huskyhoochu/polydeukes/commit/bed15cf816cfa229002b6398a5aac1feb0f14da1))
+
+
+### Bug Fixes
+
+* **covenant:** match no protected entry for a proven tool target outside the repository root ([#347](https://github.com/huskyhoochu/polydeukes/issues/347)) ([3f68797](https://github.com/huskyhoochu/polydeukes/commit/3f6879712e1f635c1c77ea5e7e8cd115c3fff213))
+
 ## [0.25.0](https://github.com/huskyhoochu/polydeukes/compare/v0.24.0...v0.25.0) (2026-11-04)
 
 
