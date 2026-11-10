@@ -272,6 +272,7 @@ disciplines:
             '^CLAUDE(?:\.local)?\.md$',
             '^CHANGELOG\.md$',
             '^CONTEXT\.md$',
+            '^packages/documentation/PRODUCT\.md$',
           ]
       extract:
         en:
