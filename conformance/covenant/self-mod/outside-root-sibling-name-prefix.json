@@ -1,0 +1,37 @@
+{
+  "description": "An absolute path in a sibling directory whose name only extends the root's name is outside the root.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["biome.json"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": {
+          "file_path": "@@ROOT@@x/biome.json",
+          "content": "x\n"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "@@ROOT@@x/biome.json",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["write-tool"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@ROOT@@x/biome.json"]]
+  }
+}

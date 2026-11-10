@@ -1,0 +1,30 @@
+{
+  "description": "A protected entry containing a slash does not match a proven path outside the root.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": [".polydeukes/bin"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": { "file_path": "@@HOME@@/x/.polydeukes/bin/pdks", "content": "x\n" },
+        "fileChange": {
+          "kind": "create",
+          "path": "@@HOME@@/x/.polydeukes/bin/pdks",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "@@HOME@@/x/.polydeukes/bin/pdks"]]
+  }
+}

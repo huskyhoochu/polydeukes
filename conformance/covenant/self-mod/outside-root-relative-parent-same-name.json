@@ -1,0 +1,30 @@
+{
+  "description": "A proven path that leaves the root through a leading parent step matches no protected entry and passes.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["polydeukes.config.yaml"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": { "file_path": "../elsewhere/polydeukes.config.yaml", "content": "x\n" },
+        "fileChange": {
+          "kind": "create",
+          "path": "../elsewhere/polydeukes.config.yaml",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "../elsewhere/polydeukes.config.yaml"]]
+  }
+}

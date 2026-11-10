@@ -1,0 +1,26 @@
+{
+  "description": "A proven path below the root that repeats a protected name is advised as a self-mod verdict.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["polydeukes.config.yaml"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": { "file_path": "sub/polydeukes.config.yaml", "content": "x\n" },
+        "fileChange": { "kind": "create", "path": "sub/polydeukes.config.yaml", "post": "x\n" }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": ["covenant advisory: 1 verdict(s) recorded as advised, commit allowed"],
+    "rows": [["advised", "self-mod", "polydeukes.config.yaml"]]
+  }
+}

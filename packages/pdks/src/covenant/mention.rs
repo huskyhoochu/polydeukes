@@ -105,6 +105,51 @@ pub fn join_under(root: &str, relative: &str) -> String {
     format!("/{}", parts.join("/"))
 }
 
+/// Where a path lies relative to the repository root, decided on text alone.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Location {
+    Inside,
+    Outside,
+    /// A `..` cancels a name the path wrote itself; the name may be a link, so the text
+    /// cannot place the path.
+    Unknown,
+}
+
+/// Whether `path` lies at or below `root`. A relative path is read against the root, so a
+/// leading `..` removes only the root's own segments.
+pub fn locate(path: &str, root: &str) -> Location {
+    let mut named = false;
+    for part in path.split('/') {
+        match part {
+            ".." if named => return Location::Unknown,
+            "" | "." | ".." => {}
+            _ => named = true,
+        }
+    }
+    let root_segments = rooted_segments(root.split('/'));
+    let segments = if path.starts_with('/') {
+        rooted_segments(path.split('/'))
+    } else {
+        rooted_segments(root.split('/').chain(path.split('/')))
+    };
+    let inside = segments.len() >= root_segments.len()
+        && segments
+            .iter()
+            .zip(&root_segments)
+            .all(|(segment, root_segment)| segment == root_segment);
+    if inside {
+        Location::Inside
+    } else {
+        Location::Outside
+    }
+}
+
+/// True when the protected entry starts with `/` or `..`: it points outside the root itself,
+/// so it is compared as written with no location test.
+pub fn entry_points_outside(entry: &str) -> bool {
+    entry.starts_with('/') || path_segments(entry).first() == Some(&"..")
+}
+
 /// True when `candidate` names the protected path, a descendant of it, or a relative
 /// ancestor of it, compared on segments rather than substrings.
 pub fn path_matches_protected(candidate: &str, protected: &str) -> bool {

@@ -1,0 +1,30 @@
+{
+  "description": "A proven path with a parent step after a named segment keeps today's comparison and is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["biome.json"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": { "file_path": "a/../../elsewhere/biome.json", "content": "x\n" },
+        "fileChange": {
+          "kind": "create",
+          "path": "a/../../elsewhere/biome.json",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["write-tool would modify protected path a/../../elsewhere/biome.json"],
+    "rows": [["blocked", "self-mod", "biome.json"]]
+  }
+}

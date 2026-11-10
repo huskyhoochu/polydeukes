@@ -30,7 +30,17 @@ call that touches anything else, and every change-set run stay closed.
 
 - **Tool axis** (Edit/Write/…): only the call's proven mutation target is compared — a protected
   path inside an edit's _content_ is a mention and passes. An evidence-free call falls back to the
-  conservative args-mention judgment.
+  conservative args-mention judgment. For a repository-relative entry, the adapter's proven target
+  is placed against the repository root before comparison; a proven target outside the root matches
+  no such entry. With `biome.json` protected, a Write to `/tmp/x/biome.json` is judged and upheld,
+  while a Write to `<root>/sub/biome.json` breaks. The adapter also supplies the real path of a
+  target reached through a link, so a link outside the repository pointing inside is judged under
+  its real name. A proven path such as `a/../x`, where `..` cancels a name the path itself writes,
+  is compared by name without placement. Without file-change evidence, args mentions compare by name
+  wherever the path lies. An entry starting with `/` or `..` is compared as written, without
+  placement; use such an entry to protect a file outside the repository, such as a user-level host
+  settings file under the home directory. Repository-relative entries `.claude/settings.json` and
+  `.codex/config.toml` do not match tool targets with those names under the home directory.
 - **Bash axis** (`shell-mod`): a command mentioning a protected path blocks, including readers such
   as `cat`, `grep`, `ls`, `git ls-files`, `find`, and `sed -n …p`. Read protected files with the
   Read/Grep tools, which the tool axis judges by the proven target. A mention compares the path
@@ -41,7 +51,9 @@ call that touches anything else, and every change-set run stay closed.
   gives the same verdict. A shell call that writes where its text does not reveal lands one
   `skipped shell-unjudgeable -` row. **That row is the contract**: a new spelling landing in
   `skipped` is a declared limit; a pass with no row (or `passed` without judgment) is the defect
-  class. Never read a scan that stopped early as the safe direction.
+  class. Never read a scan that stopped early as the safe direction. Comparison is by name whatever
+  the `cwd` and whatever location the path spells, so a same-named file outside the repository is
+  blocked on this axis and is created with the Write tool instead.
 - **The transcript** is judged by whole-path equality, never as an ancestor. A shell command
   mentioning the transcript path breaks in every spelling, whatever its first word, readers
   included. Read the transcript with the Read tool.

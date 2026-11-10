@@ -1,5 +1,5 @@
 {
-  "description": "An absolute patch path outside the root keeps its absolute name so a protected segment still matches it.",
+  "description": "An absolute patch path outside the root keeps its absolute name, and a path outside the root matches no protected entry.",
   "tree": {
     ".polydeukes/baseline.json": {
       "entries": {}
@@ -23,8 +23,8 @@
     }
   },
   "expect": {
-    "exit": 2,
-    "stderr": ["protected path"],
-    "rows": [["blocked", "self-mod", ".codex/config.toml"]]
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
   }
 }

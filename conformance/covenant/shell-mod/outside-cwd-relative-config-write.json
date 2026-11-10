@@ -1,0 +1,32 @@
+{
+  "description": "The shell axis compares by name whatever the cwd, so a relative redirect to a protected name from a cwd outside the root is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["polydeukes.config.yaml"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "cwd": "../elsewhere",
+        "args": {
+          "command": "echo x > polydeukes.config.yaml"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["redirect-write targets protected path polydeukes.config.yaml"],
+    "rows": [["blocked", "shell-mod", "polydeukes.config.yaml"]]
+  }
+}

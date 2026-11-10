@@ -1,0 +1,26 @@
+{
+  "description": "A protected entry that starts with a slash is compared as written and blocks a path beneath it.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["/etc/gate"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": { "file_path": "/etc/gate/x", "content": "x\n" },
+        "fileChange": { "kind": "create", "path": "/etc/gate/x", "post": "x\n" }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["write-tool would modify protected path /etc/gate/x"],
+    "rows": [["blocked", "self-mod", "/etc/gate"]]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "description": "The shell axis compares by name whatever the location, so a redirect to an absolute path outside the root that ends in a protected name is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["biome.json"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "cwd": ".",
+        "args": {
+          "command": "echo x > @@HOME@@/biome.json"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": [],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["redirect-write targets protected path biome.json"],
+    "rows": [["blocked", "shell-mod", "biome.json"]]
+  }
+}

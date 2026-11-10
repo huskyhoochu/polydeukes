@@ -27,6 +27,25 @@ protectedPaths:
   - ".claude/hooks"
 ```
 
+Entries name paths inside the repository root, matching the same name at any depth, including
+ancestors and descendants. On the tool axis (Edit/Write/apply_patch and other mutating tools), the
+adapter's proven target is placed against that root before comparison; a target outside it matches
+no repository-relative entry. With `biome.json` protected, a Write to `/tmp/x/biome.json` is judged
+and upheld, while a Write to `<root>/sub/biome.json` breaks. The adapter also supplies the real path
+of a target reached through a link, so a link outside the repository pointing inside is judged under
+its real name. A proven path such as `a/../x`, where `..` cancels a name the path itself writes, is
+compared by name without placement.
+
+A call without file-change evidence compares mentions in its arguments by name wherever the path
+lies. The shell axis also compares by name: a command mentioning a protected name breaks whatever
+its working directory or the location the path spells, because command text does not settle where it
+runs or what a path resolves to. Use Write/Edit to create a same-named file outside the repository.
+
+An entry starting with `/` or `..` is compared as written, without placement. Use such an entry to
+protect a file outside the repository on the tool axis, such as a user-level host settings file
+under the home directory. Repository-relative entries `.claude/settings.json` and
+`.codex/config.toml` do not match tool targets with those names under the home directory.
+
 **The config file protects itself.** The discovered config file is automatically appended to
 `protectedPaths` — an edit that would lower your own gates goes through the same judge as everything
 else. If the file that declares the disciplines were not itself under the disciplines, the whole

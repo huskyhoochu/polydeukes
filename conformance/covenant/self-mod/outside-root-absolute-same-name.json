@@ -1,0 +1,33 @@
+{
+  "description": "A proven absolute path outside the root that repeats a protected name matches no entry and passes.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["polydeukes.config.yaml"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": {
+          "file_path": "/private/tmp/elsewhere/polydeukes.config.yaml",
+          "content": "x\n"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "/private/tmp/elsewhere/polydeukes.config.yaml",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": { "mutating": ["write-tool"], "shell": [], "commandArgs": [] }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "/private/tmp/elsewhere/polydeukes.config.yaml"]]
+  }
+}

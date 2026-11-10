@@ -4,7 +4,10 @@
 //! path is upheld, because run-all co-existence with the other meta-covenants depends on it.
 
 use super::dispatch::{Judge, Registration};
-use super::mention::{mentions_path, path_matches_protected, proven_change_path};
+use super::mention::{
+    Location, entry_points_outside, locate, mentions_path, path_matches_protected,
+    proven_change_path,
+};
 use super::run_covenant::Judgment;
 use crate::core::protocol::ToolCall;
 
@@ -14,12 +17,18 @@ use crate::core::protocol::ToolCall;
 /// mutating tools.
 ///
 /// The proven path is compared whole: an adapter already resolved it, and splitting it would
-/// break a path that contains a space into words that name nothing.
-pub fn judge(call: &ToolCall, protected_paths: &[String]) -> Option<(String, Judgment)> {
+/// break a path that contains a space into words that name nothing. A proven path that lies
+/// outside `root` matches only an entry that itself points outside the root.
+pub fn judge(
+    call: &ToolCall,
+    protected_paths: &[String],
+    root: &str,
+) -> Option<(String, Judgment)> {
     let (entry, target) = if let Some(change_path) = proven_change_path(call) {
-        let entry = protected_paths
-            .iter()
-            .find(|path| path_matches_protected(change_path, path))?;
+        let outside = locate(change_path, root) == Location::Outside;
+        let entry = protected_paths.iter().find(|path| {
+            (!outside || entry_points_outside(path)) && path_matches_protected(change_path, path)
+        })?;
         (entry, change_path)
     } else {
         let args = call.args.as_ref()?;

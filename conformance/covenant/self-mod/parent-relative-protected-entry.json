@@ -1,0 +1,37 @@
+{
+  "description": "An entry that itself starts with a parent segment is compared as written, so the same spelling is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["../shared/biome.json"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": {
+          "file_path": "../shared/biome.json",
+          "content": "x\n"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "../shared/biome.json",
+          "post": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["write-tool"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["would modify protected path"],
+    "rows": [["blocked", "self-mod", "../shared/biome.json"]]
+  }
+}

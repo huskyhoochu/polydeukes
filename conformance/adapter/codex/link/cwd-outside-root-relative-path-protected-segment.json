@@ -1,5 +1,5 @@
 {
-  "description": "A relative patch path under a cwd outside the root resolves against that cwd and still matches a protected segment.",
+  "description": "A relative patch path under a cwd outside the root resolves against that cwd, and a path outside the root matches no protected entry.",
   "tree": {
     ".polydeukes/baseline.json": {
       "entries": {}
@@ -23,8 +23,8 @@
     }
   },
   "expect": {
-    "exit": 2,
-    "stderr": ["protected path"],
-    "rows": [["blocked", "self-mod", ".codex/config.toml"]]
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "-"]]
   }
 }

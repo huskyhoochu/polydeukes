@@ -90,6 +90,7 @@ pub fn dispatch(
     context: &Context,
 ) -> Vec<Verdict> {
     let shell = ShellCall::new(call, context);
+    let root = context.supply.root.to_string_lossy();
     let mut verdicts = Vec::new();
     for registration in registrations {
         // `None` as the judgment records a skip instead of judging.
@@ -105,7 +106,8 @@ pub fn dispatch(
                 {
                     continue;
                 }
-                let Some((subject, judgment)) = self_mod::judge(call, protected_paths) else {
+                let Some((subject, judgment)) = self_mod::judge(call, protected_paths, &root)
+                else {
                     continue;
                 };
                 (subject, Some(judgment))

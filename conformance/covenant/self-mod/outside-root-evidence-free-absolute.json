@@ -1,0 +1,32 @@
+{
+  "description": "A call without file-change evidence keeps the mention comparison, so an absolute argument outside the root that ends in a protected name is blocked.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": {
+      "protectedPaths": ["biome.json"]
+    }
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "write-tool",
+        "args": {
+          "file_path": "@@HOME@@/elsewhere/biome.json",
+          "content": "x\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["write-tool"],
+      "shell": [],
+      "commandArgs": []
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": ["write-tool would modify protected path biome.json"],
+    "rows": [["blocked", "self-mod", "biome.json"]]
+  }
+}
