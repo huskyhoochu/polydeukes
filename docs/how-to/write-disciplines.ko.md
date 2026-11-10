@@ -6,6 +6,9 @@
 고르고, 추출 과정과 관계를 적은 다음 위반과 정상 사례를 각각 실행합니다. 관측 결과를 보고 차단이
 필요하다고 판단하기 전까지는 기본 강제 수준인 `advise`를 유지합니다.
 
+문법을 배우기 전에 [에이전트의 작업 삭제를 막는 레시피](../recipes/work-stays-recoverable.ko.md)를
+복사해 보세요.
+
 관계와 추출 연산의 전체 문법은 [선언 언어 참조](../reference/declaration-language/index.ko.md)에서
 확인할 수 있습니다.
 

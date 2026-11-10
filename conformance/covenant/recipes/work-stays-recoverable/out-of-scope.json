@@ -1,0 +1,34 @@
+{
+  "description": "The work-stays-recoverable recipe entry does not judge a file edit whose content mentions a matched command: the entry is scoped on the command line.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"work-stays-recoverable\"\n    why: \"a command that destroys uncommitted work, or force-pushes without a lease on the remote state, cannot be undone.\"\n    enforce: block\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: 'git reset\\b.*--hard|git clean\\b.*-f|git checkout -- \\.(?:\\s|$)|git push\\b.*--force(?![\\w-])',\n            }\n      relate:\n        - id: \"recoverable\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line destroys uncommitted or remote state: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "notes.txt"
+        },
+        "fileChange": {
+          "kind": "create",
+          "path": "notes.txt",
+          "post": "git reset --hard HEAD~1\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "notes.txt"]]
+  }
+}

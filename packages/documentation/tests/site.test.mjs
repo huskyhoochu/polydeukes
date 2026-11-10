@@ -75,6 +75,53 @@ describe('404 page', () => {
   });
 });
 
+// Expressive Code stores a block's copy text in `data-code`, with HTML entities for markup
+// characters and U+007F in place of each newline.
+const decodeCode = (value) =>
+  value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replaceAll('\u007f', '\n');
+
+describe('recipe pages', () => {
+  const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
+  const recipes = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.filter(
+    (d) => d.category === 'recipes',
+  );
+
+  it('the catalog lists at least one recipe', () => {
+    // Without this the loop below would define no test and the suite would pass over nothing.
+    assert.ok(recipes.length > 0);
+  });
+
+  for (const recipe of recipes) {
+    for (const [lang, prefix] of [
+      ['en', 'docs/'],
+      ['ko', 'ko/docs/'],
+    ]) {
+      const source = recipe[lang].path;
+      const page = `${prefix}${source.replace(/(\.ko)?\.md$/, '')}/index.html`;
+      it(`${recipe.id} [${lang}] carries copy buttons and copies its YAML verbatim from the first code block`, () => {
+        // Catches a page that drops the copy buttons, or a build that alters the YAML a reader pastes into the config.
+        const yaml = readFileSync(join(docsRoot, source), 'utf8').match(
+          /^```yaml[^\n]*\n([\s\S]*?)\n```$/m,
+        )?.[1];
+        assert.ok(yaml, 'the source document has a yaml block');
+        assert.ok(existsSync(join(dist, page)), `${page} exists`);
+        const buttons = tags(read(page), 'button').filter(
+          (t) => attr(t, 'data-copied') !== undefined,
+        );
+        assert.ok(buttons.length >= 2, `${buttons.length} copy buttons, expected at least 2`);
+        assert.equal(decodeCode(attr(buttons[0], 'data-code') ?? ''), yaml);
+      });
+    }
+  }
+});
+
 describe('documentation page', () => {
   it('keeps a self canonical and the en, ko and x-default alternates', () => {
     // Catches a site configuration change that drops a documentation page's own canonical or alternates.

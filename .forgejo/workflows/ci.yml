@@ -49,6 +49,8 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
+      - run: node scripts/verify-recipes.mjs
+
       # The Rust SDK is not a pnpm package, so `pnpm -r test` does not reach it.
       - run: cargo test -p polydeukes-sdk
 

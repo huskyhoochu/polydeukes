@@ -81,12 +81,27 @@ node scripts/check-docs.mjs
 검사기는 영어와 한국어 파일이 쌍을 이루고 카탈로그에 등록돼 있는지 확인합니다. 로컬 마크다운 링크는
 실제 파일을 가리켜야 하며, 절을 지정한 링크라면 해당 제목의 슬러그나 명시적 ID도 존재해야 합니다.
 
+<a id="recipes"></a>
+## 레시피
+
+레시피의 순서는 고정입니다. 제목과 언어 전환, 약속, 실행 조건, 붙여 넣을 위치와 YAML, 에이전트에게
+설정 맡기기, 직접 확인하기, 수정하기, 한계 순으로 작성합니다. 두 언어에서 절 ID는 `agent-prompt`,
+`try-it`, `change-it`, `limits`를 사용합니다.
+
+YAML 블록은 목록 키(`disciplines:` 또는 `sessionDisciplines:`)로 시작하는 완전한 설정 파일이며, 블록
+끝에 줄바꿈 하나를 더한 텍스트는 `conformance/covenant/recipes/<entry id>/*.json`의 모든 사례에 담긴
+설정 텍스트와 한 글자도 다르지 않아야 합니다. `pnpm check`가 블록을 바꾸지 않아야 하므로 포매터의
+형식에 맞춰 작성하세요. 보여 주는 모든 출력은 실제 값이어야 하며, 사례가 고정한 문자열이거나 문서
+자체의 절차를 실행했을 때 나오는 출력이어야 합니다. 두 언어의 YAML은 동일하게 유지하고, 에이전트
+프롬프트에도 그대로 넣습니다.
+
 <a id="check-commands"></a>
 ## 실행할 명령
 
 | 명령                                               | 확인하는 것                                            |
 | -------------------------------------------------- | ------------------------------------------------------ |
 | `node scripts/check-docs.mjs`                      | 쌍, 카탈로그, 로컬 링크와 앵커                         |
+| `node scripts/verify-recipes.mjs`                  | 레시피 YAML, 언어 쌍, 프롬프트, 고정된 출력            |
 | `pdks docs search <query>` / `pdks docs show <id>` | 실행 파일을 다시 빌드한 뒤의 내장 문서                 |
 | `pnpm -F @polydeukes/documentation build`          | 생성 문서, 경로, 정적 웹사이트 빌드                    |
 | `pnpm -F @polydeukes/documentation test`           | 기존 빌드를 읽어 메타데이터, robots.txt, 404 링크 확인 |

@@ -13,6 +13,9 @@ a guide for your task below.
 
 Start with **installation → first judgment → connection and configuration → discipline authoring**.
 
+To stop an agent from discarding work you cannot recover, copy the
+[work recovery recipe](./recipes/work-stays-recoverable.md).
+
 | Your task                                       | Guide                                                 |
 | ----------------------------------------------- | ----------------------------------------------------- |
 | Choose packages and extensions                  | [Install](./how-to/install.md)                        |

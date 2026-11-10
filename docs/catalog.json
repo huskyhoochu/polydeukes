@@ -2,6 +2,24 @@
   "schemaVersion": 1,
   "documents": [
     {
+      "id": "recipe-work-stays-recoverable",
+      "category": "recipes",
+      "order": 28,
+      "bundled": true,
+      "en": {
+        "path": "recipes/work-stays-recoverable.md",
+        "title": "Stop an agent from destroying work you cannot recover",
+        "summary": "Copy a session discipline that blocks command lines that discard work or overwrite a remote branch without a lease.",
+        "terms": ["recipes", "git", "reset", "clean", "force-push", "claude-code", "codex"]
+      },
+      "ko": {
+        "path": "recipes/work-stays-recoverable.ko.md",
+        "title": "에이전트가 복구할 수 없는 작업을 지우지 못하게 하기",
+        "summary": "작업을 버리거나 lease 없이 원격 브랜치를 덮어쓰는 명령줄을 차단하는 세션 규율을 복사해 사용합니다.",
+        "terms": ["레시피", "git", "복구", "삭제", "강제 푸시", "클로드", "codex"]
+      }
+    },
+    {
       "id": "home",
       "category": "navigation",
       "order": 0,

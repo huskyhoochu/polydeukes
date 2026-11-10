@@ -85,12 +85,27 @@ node scripts/check-docs.mjs
 The checker requires bilingual pairs, catalog coverage, and that local Markdown links resolve to an
 existing file and, when they carry a fragment, to an existing heading slug or explicit id.
 
+<a id="recipes"></a>
+## Recipes
+
+A recipe follows this fixed order: title and language switch; promise; facts; placement and YAML;
+Set it up with your agent; Try it; Change it; Limits. Use the section IDs `agent-prompt`, `try-it`,
+`change-it`, and `limits` in both languages.
+
+The YAML block starts with its list key (`disciplines:` or `sessionDisciplines:`), is a complete
+configuration file; the block plus a final newline must equal the configuration text of every case
+in `conformance/covenant/recipes/<entry id>/*.json` character for character. `pnpm check` must leave
+the block unchanged, so write it in the formatter's form. Every output shown must be a real value,
+either a string a case pins or what the document's own steps print when run. Keep the YAML identical
+in both languages and include it verbatim inside the agent prompt.
+
 <a id="check-commands"></a>
 ## What to run
 
-| Command                                            | What it checks                                        |
-| -------------------------------------------------- | ----------------------------------------------------- |
-| `node scripts/check-docs.mjs`                      | Pairs, catalog, local links and anchors               |
-| `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after rebuilding the executable      |
-| `pnpm -F @polydeukes/documentation build`          | Generated content, routes, and static website build   |
-| `pnpm -F @polydeukes/documentation test`           | Reads existing build: metadata, robots.txt, 404 links |
+| Command                                            | What it checks                                           |
+| -------------------------------------------------- | -------------------------------------------------------- |
+| `node scripts/check-docs.mjs`                      | Pairs, catalog, local links and anchors                  |
+| `node scripts/verify-recipes.mjs`                  | Recipe YAML, language pairs, prompts, and pinned outputs |
+| `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after rebuilding the executable         |
+| `pnpm -F @polydeukes/documentation build`          | Generated content, routes, and static website build      |
+| `pnpm -F @polydeukes/documentation test`           | Reads existing build: metadata, robots.txt, 404 links    |

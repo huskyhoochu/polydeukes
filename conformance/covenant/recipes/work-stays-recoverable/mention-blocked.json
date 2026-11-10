@@ -1,0 +1,38 @@
+{
+  "description": "The work-stays-recoverable recipe entry matches command-line text, so a shell call that only mentions a matched command is blocked too.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"work-stays-recoverable\"\n    why: \"a command that destroys uncommitted work, or force-pushes without a lease on the remote state, cannot be undone.\"\n    enforce: block\n    declare:\n      mechanism: \"forbidden-command\"\n      scope: { source: \"command\" }\n      extract:\n        hits:\n          - { op: \"source\", of: \"command\" }\n          - { op: \"lines\" }\n          - {\n              op: \"matches\",\n              re: 'git reset\\b.*--hard|git clean\\b.*-f|git checkout -- \\.(?:\\s|$)|git push\\b.*--force(?![\\w-])',\n            }\n      relate:\n        - id: \"recoverable\"\n          relation: { op: \"empty\", of: \"hits\" }\n          message: \"command line destroys uncommitted or remote state: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "echo 'never run git reset --hard'"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "discipline 'work-stays-recoverable' broken on -: command line destroys uncommitted or remote state: echo 'never run git reset --hard'"
+    ],
+    "rows": [
+      [
+        "blocked",
+        "work-stays-recoverable",
+        "-",
+        "[{\"id\":\"recoverable\",\"witnesses\":[{\"key\":\"1\",\"value\":\"echo 'never run git reset --hard'\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

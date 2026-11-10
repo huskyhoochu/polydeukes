@@ -6,6 +6,9 @@ A discipline describes a practice you want checked. Choose the observed files or
 write an extraction and relation, then exercise both a violation and a valid case. Leave enforcement
 at `advise` until you decide that the observed results justify blocking.
 
+Before learning the grammar, copy the
+[recipe that stops an agent from discarding work](../recipes/work-stays-recoverable.md).
+
 For the complete syntax of relations and extraction steps, see the
 [Declaration language
 reference](../reference/declaration-language/index.md).

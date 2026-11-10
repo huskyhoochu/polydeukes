@@ -28,6 +28,7 @@ const EDIT_BASE = 'https://github.com/huskyhoochu/polydeukes/edit/main/docs';
 /** Catalog categories in sidebar order, with the label shown per locale. */
 const CATEGORY_LABELS = {
   tutorial: { en: 'Tutorial', ko: '튜토리얼' },
+  recipes: { en: 'Recipes', ko: '레시피' },
   'how-to': { en: 'How-to guides', ko: '실행 안내' },
   concepts: { en: 'Concepts', ko: '개념' },
   reference: { en: 'Reference', ko: '참조' },

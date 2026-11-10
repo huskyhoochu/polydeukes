@@ -80,6 +80,8 @@ jobs:
 
       - run: node scripts/check-docs.mjs
 
+      - run: node scripts/verify-recipes.mjs
+
       - run: pnpm -r publish --provenance --access public --no-git-checks
 
   # The Rust SDK goes to crates.io from the same tag, and only after the npm upload above
