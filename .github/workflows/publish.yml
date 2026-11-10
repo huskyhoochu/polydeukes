@@ -76,7 +76,8 @@ jobs:
       # The end-to-end tests of sdk-ts spawn target/debug/pdks.
       - run: cargo build -p pdks
 
-      - run: pnpm -r test
+      # The documentation site is not published from here; CI runs its tests.
+      - run: pnpm -r --filter '!@polydeukes/documentation' test
 
       - run: node scripts/check-docs.mjs
 
