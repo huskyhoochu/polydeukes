@@ -52,48 +52,19 @@ Perform protected changes from your own terminal.
 
 Use this when you want git to judge staged changes before they become history.
 
-1. Create `polydeukes.config.yaml` at the project root.
-2. Add the pre-commit hook.
-3. Run `git diff HEAD | pdks covenant check --diff` when you want the same judgment on demand.
-
-A minimal lefthook entry looks like this. The `git diff` flags pin what the judge receives: no color
-codes, no external diff driver, no textconv rewrite, and the `a/`/`b/` prefixes the translator
-strips — a user's git config cannot change the observation (see the CLI reference).
-
-```yaml
-pre-commit:
-  commands:
-    covenant:
-      priority: 1
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
-```
-
-A husky hook looks like this:
-
 ```sh
-# .husky/pre-commit
 git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
-A plain git hook works too:
-
-```sh
-#!/bin/sh
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
-```
-
-If you use the plain hook, save it as `.git/hooks/pre-commit` and make it executable with
-`chmod +x .git/hooks/pre-commit`. Integrate with an existing hook instead of overwriting it. For
-lefthook, install it with your package manager and run its hook installer after saving the YAML. For
-husky, save `.husky/pre-commit` through husky's own installer so git can find it.
+Run it by hand, in CI, or from a commit hook. See
+[Run the change-set check from git](./git-hooks.md) for hook tool setup and running without a hook.
 
 The judge emits exit 0, 2, or 3 (an input it could not read) and never prompts. By default every
 break on this surface — a `protectedPaths` violation included — lands as a row with a diagnostic on
 stderr and exit 0: a staged gate-file change has already passed the session surface or was made by a
 human, and this surface has no valve a human could answer. Add `--enforce block` to the command when
 you want a `protectedPaths` violation or an entry set to `enforce: block` to exit 2. Whether a
-commit stops is your hook wiring: the entries above honour the exit code. Assembly errors always
-exit 2.
+commit stops is your hook wiring: configure it to honour the exit code. Assembly errors always exit 2.
 
 <a id="witness-and-recovery"></a>
 ## Witness and recovery

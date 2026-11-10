@@ -207,16 +207,15 @@ pdks covenant check < input.json                                   # 다른 프�
 생산자가 도중에 죽으면 stdin은 0바이트가 되고, 그것은 빈 관측이라 exit 0입니다. 셸이 지원하면 파이프
 앞에 `set -o pipefail;`을 두어 git의 실패를 훅의 실패로 만듭니다.
 
-모든 판정을 기록하고 판정 불가일 때만 커밋을 멈추는 lefthook 명령입니다.
+모든 판정 결과를 기록하고 판정 불가일 때만 커밋을 멈추는 훅의 명령줄입니다.
 
-```yaml
-pre-commit:
-  commands:
-    covenant:
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+```sh
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 보호 경로 위반에도 커밋을 멈추려면 그 줄에 `--enforce block`을 덧붙입니다.
+
+훅 도구 설정은 [git에서 변경 집합 판정 실행하기](../../how-to/git-hooks.ko.md)를 참고하세요.
 
 다른 프로그램에서 판정을 쓰려면 `pdks covenant check`를 실행하고 그 프로세스의 표준 입력에 입력
 IR이나 diff를 씁니다. 종료 코드가 판정 결과입니다.

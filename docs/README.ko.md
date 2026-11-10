@@ -17,16 +17,17 @@
 에이전트가 복구할 수 없는 작업을 지우지 못하게 하려면
 [작업 보존 레시피](./recipes/work-stays-recoverable.ko.md)를 복사하세요.
 
-| 하고 싶은 일                | 안내                                                 |
-| --------------------------- | ---------------------------------------------------- |
-| 설치 경로와 확장 선택       | [설치](./how-to/install.ko.md)                       |
-| 정상·차단 결과를 직접 보기  | [첫 판정](./tutorials/first-judgment.ko.md)          |
-| 에이전트·Git·CI에 연결      | [표면 연결](./how-to/connect-surfaces.ko.md)         |
-| 반복되는 실수를 규율로 표현 | [규율 작성](./how-to/write-disciplines.ko.md)        |
-| 결정과 근거를 다시 찾기     | [기억 사용](./how-to/use-memory.ko.md)               |
-| 프로그램에서 판정 호출      | [SDK와 참조 문서](./README.ko.md#reference-packages) |
-| 건너뜀·차단·설치 오류 해결  | [문제 해결](./troubleshooting.ko.md)                 |
-| 이전 설치 업그레이드        | [Rust 이행](./how-to/migrate-to-rust.ko.md)          |
+| 하고 싶은 일                         | 안내                                                 |
+| ------------------------------------ | ---------------------------------------------------- |
+| 설치 경로와 확장 선택                | [설치](./how-to/install.ko.md)                       |
+| 정상·차단 결과를 직접 보기           | [첫 판정](./tutorials/first-judgment.ko.md)          |
+| 에이전트·Git·CI에 연결               | [표면 연결](./how-to/connect-surfaces.ko.md)         |
+| 직접, CI, 훅에서 변경 집합 판정 실행 | [git 훅](./how-to/git-hooks.ko.md)                   |
+| 반복되는 실수를 규율로 표현          | [규율 작성](./how-to/write-disciplines.ko.md)        |
+| 결정과 근거를 다시 찾기              | [기억 사용](./how-to/use-memory.ko.md)               |
+| 프로그램에서 판정 호출               | [SDK와 참조 문서](./README.ko.md#reference-packages) |
+| 건너뜀·차단·설치 오류 해결           | [문제 해결](./troubleshooting.ko.md)                 |
+| 이전 설치 업그레이드                 | [Rust 이행](./how-to/migrate-to-rust.ko.md)          |
 
 전체 학습 경로와 명령별 참조는 [문서 홈](./README.ko.md)에 있습니다.
 

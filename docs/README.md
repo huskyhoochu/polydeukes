@@ -16,16 +16,17 @@ Start with **installation → first judgment → connection and configuration �
 To stop an agent from discarding work you cannot recover, copy the
 [work recovery recipe](./recipes/work-stays-recoverable.md).
 
-| Your task                                       | Guide                                                 |
-| ----------------------------------------------- | ----------------------------------------------------- |
-| Choose packages and extensions                  | [Install](./how-to/install.md)                        |
-| See an allowed and a blocked observation        | [First judgment](./tutorials/first-judgment.md)       |
-| Connect an agent, Git, or CI                    | [Connect surfaces](./how-to/connect-surfaces.md)      |
-| Turn recurring mistakes into a discipline       | [Write disciplines](./how-to/write-disciplines.md)    |
-| Retrieve decisions and evidence                 | [Use memory](./how-to/use-memory.md)                  |
-| Invoke judgment from a program                  | [SDKs and references](./README.md#reference-packages) |
-| Diagnose skips, blocks, and installation errors | [Troubleshooting](./troubleshooting.md)               |
-| Upgrade an earlier installation                 | [Migrate to Rust](./how-to/migrate-to-rust.md)        |
+| Your task                                               | Guide                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------- |
+| Choose packages and extensions                          | [Install](./how-to/install.md)                        |
+| See an allowed and a blocked observation                | [First judgment](./tutorials/first-judgment.md)       |
+| Connect an agent, Git, or CI                            | [Connect surfaces](./how-to/connect-surfaces.md)      |
+| Run the change-set check by hand, in CI, or from a hook | [Git hooks](./how-to/git-hooks.md)                    |
+| Turn recurring mistakes into a discipline               | [Write disciplines](./how-to/write-disciplines.md)    |
+| Retrieve decisions and evidence                         | [Use memory](./how-to/use-memory.md)                  |
+| Invoke judgment from a program                          | [SDKs and references](./README.md#reference-packages) |
+| Diagnose skips, blocks, and installation errors         | [Troubleshooting](./troubleshooting.md)               |
+| Upgrade an earlier installation                         | [Migrate to Rust](./how-to/migrate-to-rust.md)        |
 
 The [documentation home](./README.md) connects these learning paths with the command references.
 

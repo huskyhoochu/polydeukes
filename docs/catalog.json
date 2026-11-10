@@ -70,9 +70,26 @@
       }
     },
     {
-      "id": "configure-project",
+      "id": "git-hooks",
       "category": "how-to",
       "order": 3,
+      "bundled": true,
+      "tabs": ["plain-hook", "lefthook", "husky", "pre-commit"],
+      "en": {
+        "path": "how-to/git-hooks.md",
+        "title": "Run the change-set check from git",
+        "summary": "Run the change-set check by hand, in CI, or from a git commit hook."
+      },
+      "ko": {
+        "path": "how-to/git-hooks.ko.md",
+        "title": "git에서 변경 집합 판정 실행하기",
+        "summary": "변경 집합 판정을 직접 실행하거나 CI 또는 git 커밋 훅에서 실행합니다."
+      }
+    },
+    {
+      "id": "configure-project",
+      "category": "how-to",
+      "order": 4,
       "bundled": true,
       "en": {
         "path": "how-to/configure-project.md",
@@ -88,7 +105,7 @@
     {
       "id": "write-disciplines",
       "category": "how-to",
-      "order": 4,
+      "order": 5,
       "bundled": true,
       "en": {
         "path": "how-to/write-disciplines.md",
@@ -104,7 +121,7 @@
     {
       "id": "troubleshooting",
       "category": "how-to",
-      "order": 5,
+      "order": 6,
       "bundled": true,
       "en": {
         "path": "troubleshooting.md",
@@ -392,7 +409,7 @@
     {
       "id": "contributing-docs",
       "category": "how-to",
-      "order": 25,
+      "order": 26,
       "bundled": false,
       "en": {
         "path": "contributing.md",
@@ -425,7 +442,7 @@
     {
       "id": "migrate-to-rust",
       "category": "how-to",
-      "order": 24,
+      "order": 25,
       "bundled": true,
       "en": {
         "path": "how-to/migrate-to-rust.md",
@@ -441,7 +458,7 @@
     {
       "id": "use-memory",
       "category": "how-to",
-      "order": 5,
+      "order": 7,
       "bundled": true,
       "en": {
         "path": "how-to/use-memory.md",

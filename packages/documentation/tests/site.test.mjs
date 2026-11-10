@@ -136,12 +136,11 @@ describe('documentation page', () => {
   });
 });
 
-describe('install page tabs', () => {
+describe('tabbed pages', () => {
   const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
-  const install = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.find(
-    (d) => d.id === 'install',
+  const tabbed = JSON.parse(readFileSync(join(docsRoot, 'catalog.json'), 'utf8')).documents.filter(
+    (d) => d.tabs,
   );
-  const english = readFileSync(join(docsRoot, install.en.path), 'utf8');
 
   // The text of the section that starts at `<a id="name"></a>`, up to the next anchor.
   const section = (markdown, name) => {
@@ -171,53 +170,70 @@ describe('install page tabs', () => {
         .trim(),
     );
 
-  it('the catalog lists the four install tabs in order', () => {
-    // Every check below derives its expectation from this list, so a route dropped from it would go unnoticed.
-    assert.deepEqual(install.tabs, ['homebrew', 'cargo', 'npm', 'pypi']);
+  it('the catalog lists the tabs of each tabbed document in order', () => {
+    // Every check below derives its expectation from these lists, so a tab dropped from one would go unnoticed.
+    assert.deepEqual(Object.fromEntries(tabbed.map((d) => [d.id, d.tabs])), {
+      'git-hooks': ['plain-hook', 'lefthook', 'husky', 'pre-commit'],
+      install: ['homebrew', 'cargo', 'npm', 'pypi'],
+    });
   });
 
-  for (const [lang, prefix] of [
-    ['en', 'docs/'],
-    ['ko', 'ko/docs/'],
-  ]) {
-    const source = readFileSync(join(docsRoot, install[lang].path), 'utf8');
-    const page = `${prefix}how-to/install/index.html`;
+  for (const [doc, lang, prefix] of tabbed.flatMap((d) => [
+    [d, 'en', 'docs/'],
+    [d, 'ko', 'ko/docs/'],
+  ])) {
+    const english = readFileSync(join(docsRoot, doc.en.path), 'utf8');
+    const source = readFileSync(join(docsRoot, doc[lang].path), 'utf8');
+    const page = `${prefix}${doc[lang].path.replace(/(\.ko)?\.md$/, '')}/index.html`;
+    // The first anchor after the last tab section names the section that must stay outside the group.
+    const following = english
+      .slice(english.indexOf(`<a id="${doc.tabs.at(-1)}"></a>`) + 1)
+      .match(/<a id="([^"]+)"><\/a>/)?.[1];
+    const name = `${doc.id} [${lang}]`;
 
-    it(`[${lang}] renders one tab group whose labels are the section headings in catalog order`, () => {
+    it(`${name} renders one tab group whose labels are the section headings in catalog order`, () => {
       // Catches a page with no tab group, a reordered or dropped tab, or a label that is not the source heading.
       const html = read(page);
       assert.equal(html.match(/<starlight-tabs\b(?!-)/g)?.length, 1, 'exactly one tab group');
-      assert.equal(html.match(/data-sync-key="install"/g)?.length, 1, 'group syncs on "install"');
-      const expected = install.tabs.map((name) => heading(source, name));
+      assert.equal(
+        html.match(/data-sync-key="([^"]*)"/)?.[1],
+        doc.id,
+        'group syncs on the document id',
+      );
+      const expected = doc.tabs.map((name) => heading(source, name));
       assert.ok(expected.every(Boolean), 'every tab section has a heading in the source');
       assert.deepEqual(tabLabels(html), expected);
     });
 
-    it(`[${lang}] keeps headings out of the panels and the following section out of the group`, () => {
+    it(`${name} keeps headings out of the panels and the following section out of the group`, () => {
       // Catches a tab that repeats its label as a heading, or a group that swallows the rest of the page.
       const html = read(page);
       const found = panels(html);
-      assert.equal(found.length, install.tabs.length, 'one panel per tab');
+      assert.equal(found.length, doc.tabs.length, 'one panel per tab');
       for (const panel of found) assert.ok(!/<h3\b/.test(panel), 'no section heading in a panel');
       const end = html.indexOf('</starlight-tabs>');
-      assert.ok(html.indexOf('id="verify"') > end, 'the verify section follows the group');
+      assert.ok(following, 'the source has a section after the tab sections');
+      assert.ok(
+        html.indexOf(`id="${following}"`) > end,
+        `the ${following} section follows the group`,
+      );
     });
 
-    it(`[${lang}] keeps each tab section's anchor ahead of the group`, () => {
+    it(`${name} keeps each tab section's anchor ahead of the group`, () => {
       // Catches a link to a route's fragment landing at the top of the page because its id went with the heading.
       const html = read(page);
       const group = html.indexOf('<starlight-tabs');
-      for (const name of install.tabs) {
+      for (const name of doc.tabs) {
         const at = html.indexOf(`id="${name}"`);
         assert.ok(at !== -1 && at < group, `id="${name}" precedes the tab group`);
       }
     });
 
-    it(`[${lang}] copies the first code block of each section verbatim from the English source`, () => {
+    it(`${name} copies the first code block of each section verbatim from the English source`, () => {
       // Catches a tab whose panel holds another section's code, or code altered by the conversion.
       const found = panels(read(page));
-      assert.equal(found.length, install.tabs.length, 'one panel per tab');
-      install.tabs.forEach((name, i) => {
+      assert.equal(found.length, doc.tabs.length, 'one panel per tab');
+      doc.tabs.forEach((name, i) => {
         const expected = firstFence(section(english, name));
         assert.ok(expected, `${name} has a code block in the English source`);
         const button = tags(found[i], 'button').find((t) => attr(t, 'data-copied') !== undefined);

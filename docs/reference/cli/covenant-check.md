@@ -217,16 +217,15 @@ A producer that dies mid-stream leaves 0 bytes on stdin, which is the empty obse
 Where the shell supports it, `set -o pipefail;` in front of the pipeline makes git's failure the
 hook's failure.
 
-A lefthook command that records every verdict and stops the commit only on a fail-closed run:
+A hook that records every verdict and stops the commit only on a fail-closed run uses this line:
 
-```yaml
-pre-commit:
-  commands:
-    covenant:
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | ./node_modules/.bin/pdks covenant check --diff
+```sh
+git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
 Append `--enforce block` to that line to stop the commit on a protected-path break too.
+
+See [Run the change-set check from git](../../how-to/git-hooks.md) for hook tool setup.
 
 Another program embeds the judgment by spawning `pdks covenant check` and writing its input IR or
 diff to that process's stdin; the exit code is the verdict.

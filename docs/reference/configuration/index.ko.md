@@ -411,7 +411,7 @@ disciplines:
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
@@ -504,7 +504,7 @@ bash에게는 데이터이고 해석기에게는 프로그램입니다.
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```

@@ -11,7 +11,7 @@ body:
     id: surface
     attributes:
       label: Which surface judged it?
-      description: The session surface is the PreToolUse hook. The change-set surface is `pdks covenant check --diff` (lefthook, pre-commit). `pdks explain` renders both without judging.
+      description: The session surface is the PreToolUse hook. The change-set surface is `pdks covenant check --diff` (a git hook, CI, or a direct run). `pdks explain` renders both without judging.
       options:
         - session surface (PreToolUse hook)
         - change-set surface (`--diff`, pre-commit)

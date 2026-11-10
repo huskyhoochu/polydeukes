@@ -50,47 +50,19 @@ pdks-codex init
 
 스테이징한 변경을 이력으로 기록하기 전에 Git에서 판정하려면 이 표면을 사용합니다.
 
-1. 프로젝트 루트에 `polydeukes.config.yaml`을 만듭니다.
-2. pre-commit 훅을 추가합니다.
-3. 필요할 때는 `git diff HEAD | pdks covenant check --diff`를 직접 돌려 같은 판정을 봅니다.
-
-lefthook 예시는 다음과 같습니다. `git diff`의 플래그는 판정기가 받는 것을 고정합니다. 색 코드 없음,
-외부 diff 드라이버 없음, textconv 변환 없음, 번역기가 벗기는 `a/`·`b/` 접두입니다. 사용자의 git
-설정이 관측을 바꾸지 못합니다(CLI 레퍼런스 참고).
-
-```yaml
-pre-commit:
-  commands:
-    covenant:
-      priority: 1
-      run: git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
-```
-
-husky 예시는 다음과 같습니다.
-
 ```sh
-# .husky/pre-commit
 git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
 ```
 
-일반 git 훅으로 연결해도 됩니다.
-
-```sh
-#!/bin/sh
-git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ | pdks covenant check --diff
-```
-
-일반 훅은 `.git/hooks/pre-commit`으로 저장한 뒤 `chmod +x .git/hooks/pre-commit`으로 실행 권한을
-줍니다. 기존 훅이 있다면 덮어쓰지 말고 호출을 추가하세요. lefthook은 패키지 관리자로 설치하고 YAML을
-저장한 뒤 훅 설치 명령을 실행합니다. husky는 git이 찾을 수 있도록 husky 설치기로
-`.husky/pre-commit`을 저장하세요.
+직접 실행하거나 CI 또는 커밋 훅에서 실행할 수 있습니다. 훅 도구 설정과 훅 없이 실행하는 방법은
+[git에서 변경 집합 판정 실행하기](./git-hooks.ko.md)를 참고하세요.
 
 판정기는 종료 코드 0, 2, 3(입력을 읽지 못함) 중 하나만 내고 사람에게 묻지 않습니다. 기본값에서는
 `protectedPaths` 위반을 포함한 이 표면의 모든 위반이 stderr에 진단 한 줄을 남기고 행으로 기록되며
 종료 코드 0입니다. 스테이징된 관문 파일 변경은 이미 세션 표면에서 판정을 받았거나 사람이 직접 한
 것이고, 이 표면에는 사람이 답할 밸브가 없기 때문입니다. `protectedPaths` 위반이나 `enforce: block`
 항목의 위반을 종료 코드 2로 받으려면 명령에 `--enforce block`을 붙입니다. 커밋을 멈출지는 훅 배선이
-정합니다. 위 예시는 종료 코드를 그대로 따릅니다. 조립 실패는 언제나 종료 코드 2입니다.
+정합니다. 훅이 종료 코드를 따르도록 설정하세요. 조립 실패는 언제나 종료 코드 2입니다.
 
 <a id="witness-and-recovery"></a>
 ## 증인과 복구

@@ -420,7 +420,7 @@ surfaces and leaves an absent one unmarked; the session header states the defaul
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
@@ -515,7 +515,7 @@ bash and a program to the interpreter.
       hits:
         - { op: "source", of: "command" }
         - { op: "lines" }
-        - { op: "matches", re: 'LEFTHOOK=(0|false|no|off)\b|core\.hooksPath' }
+        - { op: "matches", re: 'git\b.*\bcommit\b.*\s(--no-verify\b|-[a-zA-Z]*n)|core\.hooksPath' }
     relate:
       - { id: "gates-armed", relation: { op: "empty", of: "hits" }, message: "{value}" }
 ```
