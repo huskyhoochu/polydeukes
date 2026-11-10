@@ -5,8 +5,9 @@
 This applies when your project uses pnpm. This discipline judges an agent's shell command before it
 runs and advises on the listed npm commands and recognised yarn invocations.
 
-Session surface (Claude Code, Codex) · advises on matching calls · requires a project that uses pnpm
-· nothing to customise for that project.
+Session surface · reads the command text · advises on matching calls · requires a project that uses
+pnpm · nothing to customise for that project. Host support:
+[shell commands](../reference/host-support.md#shell-commands).
 
 The block below is a complete `polydeukes.config.yaml`; if you have no configuration yet, save it as
 that file in the project root. If the file already has a `sessionDisciplines:` key, paste only the

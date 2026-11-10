@@ -6,7 +6,8 @@ This applies when your project has selected words to avoid in its source and tes
 advises when a file's matching-line count increases for a first-match word. Existing matching lines
 may remain in that file; only the first listed word matched on each line is its key.
 
-Session and change-set surfaces · advises by default · replace the source paths and word list.
+Session and change-set surfaces · advises by default · replace the source paths and word list. Host
+support: [file edits](../reference/host-support.md#file-edits).
 
 The block below is a complete `polydeukes.config.yaml`. Save it in the project root if you have no
 configuration. If `disciplines:` already exists, add only the entry below it, preserving existing

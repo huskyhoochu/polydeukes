@@ -68,6 +68,8 @@
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.ko.md)            | TypeScript에서 판정기를 호출하고 결과를 처리하는 방법                                                    |
 | [`pdks-memory`](./reference/packages/memory.ko.md)                   | 현재 마크다운에서 답을 계산하는 선택 확장입니다                                                          |
 
+[호스트 지원](./reference/host-support.ko.md)
+
 [Rust SDK](./reference/packages/sdk-rust.ko.md) ·
 [Python
 SDK](./reference/packages/sdk-python.ko.md)

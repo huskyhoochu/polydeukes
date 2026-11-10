@@ -1,0 +1,48 @@
+{
+  "description": "A test edit by the implementer subagent advises that it wrote a test file.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"tests-are-the-writers\"\n    why: \"the implementer should satisfy the existing tests without changing those tests.\"\n    declare:\n      mechanism: \"producer-owned\"\n      scope: { source: \"target.path\", include: [\"^tests/\"] }\n      supply: { actor: \"pass\" }\n      extract:\n        implementer:\n          - { op: \"source\", of: \"actor\" }\n          - { op: \"select\", path: \"agentType\" }\n          - { op: \"matches\", re: \"^implementer$\" }\n      relate:\n        - id: \"not-the-implementer\"\n          relation: { op: \"empty\", of: \"implementer\" }\n          message: \"the implementer subagent wrote a test file\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "tests/example.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "tests/example.ts",
+          "pre": "old\n",
+          "post": "new\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "actor": {
+      "agentType": "implementer"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'tests-are-the-writers' broken on tests/example.ts: the implementer subagent wrote a test file",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "tests-are-the-writers",
+        "tests/example.ts",
+        "[{\"id\":\"not-the-implementer\",\"witnesses\":[{\"key\":\"0\",\"value\":\"implementer\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

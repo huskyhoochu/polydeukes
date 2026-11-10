@@ -5,7 +5,8 @@
 이 규율(discipline)은 에이전트의 셸 명령을 실행 전에 판정하며, 커밋하지 않은 작업을 버리거나 lease
 없이 원격 브랜치를 덮어쓰는 명령줄에서 위반을 판정합니다.
 
-세션 표면(Claude Code, Codex) · 일치하는 호출 차단 · 사용 전 수정할 부분 없음.
+세션 표면 · 명령 텍스트를 읽음 · 일치하는 호출 차단 · 사용 전 수정할 부분 없음. 호스트 지원:
+[셸 명령](../reference/host-support.ko.md#shell-commands).
 
 아래 블록은 완전한 `polydeukes.config.yaml`입니다. 아직 설정 파일이 없다면 프로젝트 루트에 이
 이름으로 저장하세요. 파일에 이미 `sessionDisciplines:` 키가 있다면 첫 줄 아래의 항목만 기존 키 밑에
@@ -220,9 +221,10 @@ lease를 포함한 강제 푸시인 `git push --force-with-lease origin main`과
 변경 집합 표면(`pdks covenant check --diff`)은 이 항목을 판정하지 않습니다. diff에는 명령줄이 없기
 때문입니다.
 
-Codex에서는 증인 토큰으로 차단된 호출을 열 수 없습니다. 의도한 명령이라면 자신의 터미널에서
-실행하세요. Claude Code에서는 설정에 `witness:` 블록이 있다면 사람이 메시지 첫 줄에 설정된 증인
-토큰만 입력하여 차단을 열 수 있습니다. 이 레시피의 블록에는 `witness:`가 없습니다. 추가하는 방법은
+호스트가 사람 증거를 제공할 때만 증인 토큰으로 차단된 호출을 열 수 있습니다.
+[사람 증거](../reference/host-support.ko.md#human-evidence)를 참고하세요. 그렇지 않으면 자신의
+터미널에서 명령을 실행하세요. 설정에 `witness:` 블록이 있으면 사람이 메시지 첫 줄에 설정된 증인
+토큰만 입력하여 차단을 열 수 있습니다. 이 레시피의 블록에는 `witness:` 가 없습니다. 추가하는 방법은
 [차단된 호출 열기](../troubleshooting.ko.md#opening-a-blocked-call)를 참고하세요.
 
 어댑터나 판정기가 시작되지 못하면 호출은 판정 없이 진행됩니다. 연결한 뒤 `.polydeukes/roi.log`에

@@ -1,0 +1,58 @@
+{
+  "description": "A successful Bash cat of design/other.md advises, because the document name must match.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"document-read-before-edit\"\n    why: \"reading the design document before editing the selected paths makes the recorded constraints available during the change.\"\n    declare:\n      mechanism: \"precedent\"\n      scope: { source: \"target.path\", include: [\"^src/\"] }\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        shellReads:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Bash\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.command\" }\n          - {\n              op: \"matches\",\n              re: '(?:^|[;&|\\n]\\s*)cat\\s+(?:\\S*/)?design/architecture\\.md(?:[\\s;&|]|$)',\n            }\n        fileReads:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Read\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.file_path\" }\n          - { op: \"matches\", re: '(?:^|/)design/architecture\\.md$' }\n        reads:\n          - { op: \"union\", of: [\"shellReads\", \"fileReads\"] }\n      relate:\n        - id: \"read-first\"\n          relation: { op: \"nonEmpty\", of: \"reads\" }\n          message: \"no successful read of the selected design document precedes this edit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/example.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/example.ts",
+          "pre": "old\n",
+          "post": "new\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [
+        {
+          "name": "Bash",
+          "args": {
+            "command": "cat design/other.md"
+          },
+          "succeeded": true
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'document-read-before-edit' broken on src/example.ts: no successful read of the selected design document precedes this edit",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "document-read-before-edit",
+        "src/example.ts",
+        "[{\"id\":\"read-first\",\"witnesses\":[{\"key\":\"reads\",\"value\":null}],\"total\":1}]"
+      ]
+    ]
+  }
+}

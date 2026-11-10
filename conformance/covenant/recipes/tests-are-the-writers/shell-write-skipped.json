@@ -1,0 +1,32 @@
+{
+  "description": "A shell command by the implementer that writes tests/example.ts carries no observed file change and is skipped.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"tests-are-the-writers\"\n    why: \"the implementer should satisfy the existing tests without changing those tests.\"\n    declare:\n      mechanism: \"producer-owned\"\n      scope: { source: \"target.path\", include: [\"^tests/\"] }\n      supply: { actor: \"pass\" }\n      extract:\n        implementer:\n          - { op: \"source\", of: \"actor\" }\n          - { op: \"select\", path: \"agentType\" }\n          - { op: \"matches\", re: \"^implementer$\" }\n      relate:\n        - id: \"not-the-implementer\"\n          relation: { op: \"empty\", of: \"implementer\" }\n          message: \"the implementer subagent wrote a test file\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "sed -i 's/old/new/' tests/example.ts"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "actor": {
+      "agentType": "implementer"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "tests-are-the-writers", "tests/example.ts", "no-observation"]]
+  }
+}

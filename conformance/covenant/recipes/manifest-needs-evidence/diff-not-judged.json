@@ -1,0 +1,14 @@
+{
+  "description": "On the change-set surface a diff of package.json is not judged by the entry and lands only the generic passed covenant-check row.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"manifest-needs-evidence\"\n    why: \"a dependency edit should follow a registry lookup rather than rely on remembered versions.\"\n    declare:\n      mechanism: \"precedent\"\n      scope: { source: \"target.path\", include: ['^package\\.json$'] }\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        npmView:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Bash\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.command\" }\n          - { op: \"matches\", re: '\\bnpm view ' }\n      relate:\n        - id: \"npm-view\"\n          relation: { op: \"nonEmpty\", of: \"npmView\" }\n          message: \"no successful npm view precedes this manifest edit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": "--- a/package.json\n+++ b/package.json\n@@ -1 +1 @@\n-{}\n+{\"name\":\"example\"}\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "package.json"]]
+  }
+}

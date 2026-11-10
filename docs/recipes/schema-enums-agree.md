@@ -6,7 +6,8 @@ This applies when your project has two valid JSON schemas whose selected enum ar
 the same values. This discipline compares those values when either file changes.
 
 Session and change-set surfaces · advises by default; inputs it cannot judge are blocked · change
-both file paths, the scope pattern, and both selectors.
+both file paths, the scope pattern, and both selectors. Host support:
+[file edits](../reference/host-support.md#file-edits).
 
 The block below is a complete `polydeukes.config.yaml`. Save it at the project root if no
 configuration exists. If `disciplines:` already exists, add only the entry below that key and

@@ -1,0 +1,13 @@
+{
+  "description": "On the change-set surface a diff of tests/example.ts is not judged by the entry and lands only the generic passed covenant-check row.",
+  "args": ["--diff"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"tests-are-the-writers\"\n    why: \"the implementer should satisfy the existing tests without changing those tests.\"\n    declare:\n      mechanism: \"producer-owned\"\n      scope: { source: \"target.path\", include: [\"^tests/\"] }\n      supply: { actor: \"pass\" }\n      extract:\n        implementer:\n          - { op: \"source\", of: \"actor\" }\n          - { op: \"select\", path: \"agentType\" }\n          - { op: \"matches\", re: \"^implementer$\" }\n      relate:\n        - id: \"not-the-implementer\"\n          relation: { op: \"empty\", of: \"implementer\" }\n          message: \"the implementer subagent wrote a test file\"\n"
+  },
+  "stdin": "--- a/tests/example.ts\n+++ b/tests/example.ts\n@@ -1 +1 @@\n-old\n+new\n",
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "tests/example.ts"]]
+  }
+}

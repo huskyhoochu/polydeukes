@@ -6,7 +6,8 @@ This applies when your project keeps English and Korean Markdown documents in pa
 `manual/start.md` and `manual/start.ko.md`. This discipline checks that both paths occur in the same
 change set.
 
-Change-set surface only · advises by default · change the folder and language suffix.
+Change-set surface only · advises by default · change the folder and language suffix. Host support:
+[file edits](../reference/host-support.md#file-edits).
 
 The block below is a complete `polydeukes.config.yaml`. Save it at the project root if no
 configuration exists. If `disciplines:` already exists, add only the entry below that key and

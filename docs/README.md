@@ -70,6 +70,8 @@ extraction step, combinator, relation, and mechanism with its syntax and constra
 | [`@polydeukes/sdk-ts`](./reference/packages/sdk-ts.md)              | Call the judge from TypeScript and handle its result                                                                               |
 | [`pdks-memory`](./reference/packages/memory.md)                     | Optional Markdown queries over current files                                                                                       |
 
+[Host support](./reference/host-support.md)
+
 [Rust SDK](./reference/packages/sdk-rust.md) · [Python SDK](./reference/packages/sdk-python.md)
 
 <a id="the-shape-of-the-thing-in-one-page"></a>

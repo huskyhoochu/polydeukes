@@ -1,0 +1,50 @@
+{
+  "description": "An edit of package.json that changes only a script advises with an empty history, because the entry does not read what the edit changes.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"manifest-needs-evidence\"\n    why: \"a dependency edit should follow a registry lookup rather than rely on remembered versions.\"\n    declare:\n      mechanism: \"precedent\"\n      scope: { source: \"target.path\", include: ['^package\\.json$'] }\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        npmView:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Bash\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.command\" }\n          - { op: \"matches\", re: '\\bnpm view ' }\n      relate:\n        - id: \"npm-view\"\n          relation: { op: \"nonEmpty\", of: \"npmView\" }\n          message: \"no successful npm view precedes this manifest edit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "package.json"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "package.json",
+          "pre": "{\"scripts\":{\"test\":\"node a.js\"}}\n",
+          "post": "{\"scripts\":{\"test\":\"node b.js\"}}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'manifest-needs-evidence' broken on package.json: no successful npm view precedes this manifest edit",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "manifest-needs-evidence",
+        "package.json",
+        "[{\"id\":\"npm-view\",\"witnesses\":[{\"key\":\"npmView\",\"value\":null}],\"total\":1}]"
+      ]
+    ]
+  }
+}

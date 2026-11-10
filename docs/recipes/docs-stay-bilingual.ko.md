@@ -5,7 +5,8 @@
 이 규율(discipline)은 여러분의 프로젝트가 `manual/start.md`와 `manual/start.ko.md`처럼 영어와 한국어
 Markdown 문서를 쌍으로 관리할 때 적용합니다. 같은 변경 집합에 두 경로가 있는지 확인합니다.
 
-변경 집합 표면 전용 · 기본 강제 수준은 권고 · 폴더와 언어 접미사를 바꾸세요.
+변경 집합 표면 전용 · 기본 강제 수준은 권고 · 폴더와 언어 접미사를 바꾸세요. 호스트 지원:
+[파일 편집](../reference/host-support.ko.md#file-edits).
 
 아래 블록은 완전한 `polydeukes.config.yaml`입니다. 설정이 없다면 프로젝트 루트에 저장하세요. 이미
 `disciplines:`가 있다면 그 키 아래에 항목만 추가하고 기존 항목은 유지하세요. 파일은 있지만 그 키가

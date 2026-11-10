@@ -1,0 +1,38 @@
+{
+  "description": "An edit of packages/a/tests/x.ts by the implementer passes outside the entry scope, because the scope starts at the root tests directory.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"tests-are-the-writers\"\n    why: \"the implementer should satisfy the existing tests without changing those tests.\"\n    declare:\n      mechanism: \"producer-owned\"\n      scope: { source: \"target.path\", include: [\"^tests/\"] }\n      supply: { actor: \"pass\" }\n      extract:\n        implementer:\n          - { op: \"source\", of: \"actor\" }\n          - { op: \"select\", path: \"agentType\" }\n          - { op: \"matches\", re: \"^implementer$\" }\n      relate:\n        - id: \"not-the-implementer\"\n          relation: { op: \"empty\", of: \"implementer\" }\n          message: \"the implementer subagent wrote a test file\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "packages/a/tests/x.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "packages/a/tests/x.ts",
+          "pre": "old\n",
+          "post": "new\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "actor": {
+      "agentType": "implementer"
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "packages/a/tests/x.ts"]]
+  }
+}

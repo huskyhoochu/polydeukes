@@ -2,6 +2,60 @@
   "schemaVersion": 1,
   "documents": [
     {
+      "id": "recipe-document-read-before-edit",
+      "category": "recipes",
+      "order": 38,
+      "bundled": true,
+      "en": {
+        "path": "recipes/document-read-before-edit.md",
+        "title": "Check that the design document was read before source files are edited",
+        "summary": "Copy a session discipline that checks earlier tool calls for a design document read before source edits.",
+        "terms": ["recipes", "document", "read", "session"]
+      },
+      "ko": {
+        "path": "recipes/document-read-before-edit.ko.md",
+        "title": "소스 파일을 수정하기 전에 설계 문서를 읽었는지 확인하기",
+        "summary": "소스 편집 전에 설계 문서를 읽은 이전 도구 호출이 있는지 확인하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "document", "read", "session"]
+      }
+    },
+    {
+      "id": "recipe-manifest-needs-evidence",
+      "category": "recipes",
+      "order": 33,
+      "bundled": true,
+      "en": {
+        "path": "recipes/manifest-needs-evidence.md",
+        "title": "Check for a registry lookup before package.json is edited",
+        "summary": "Copy a session discipline that checks earlier tool calls for an npm registry lookup before manifest edits.",
+        "terms": ["recipes", "npm", "registry", "dependencies"]
+      },
+      "ko": {
+        "path": "recipes/manifest-needs-evidence.ko.md",
+        "title": "package.json을 수정하기 전에 레지스트리를 조회했는지 확인하기",
+        "summary": "매니페스트 편집 전에 npm 레지스트리를 조회한 이전 도구 호출이 있는지 확인하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "npm", "registry", "dependencies"]
+      }
+    },
+    {
+      "id": "recipe-tests-are-the-writers",
+      "category": "recipes",
+      "order": 39,
+      "bundled": true,
+      "en": {
+        "path": "recipes/tests-are-the-writers.md",
+        "title": "Detect when an implementer subagent edits tests",
+        "summary": "Copy a session discipline that advises when the named implementer subagent edits tests.",
+        "terms": ["recipes", "tests", "actor", "subagent", "claude-code"]
+      },
+      "ko": {
+        "path": "recipes/tests-are-the-writers.ko.md",
+        "title": "구현 담당 서브에이전트의 테스트 수정 감지하기",
+        "summary": "지정한 구현 담당 서브에이전트가 테스트를 수정하면 권고하는 세션 규율을 복사합니다.",
+        "terms": ["레시피", "tests", "actor", "subagent", "claude-code"]
+      }
+    },
+    {
       "id": "recipes",
       "category": "recipes",
       "order": 0,
@@ -112,7 +166,7 @@
     {
       "id": "recipe-no-new-banned-words",
       "category": "recipes",
-      "order": 33,
+      "order": 34,
       "bundled": true,
       "en": {
         "path": "recipes/no-new-banned-words.md",
@@ -130,7 +184,7 @@
     {
       "id": "recipe-changelog-keeps-every-release",
       "category": "recipes",
-      "order": 34,
+      "order": 35,
       "bundled": true,
       "en": {
         "path": "recipes/changelog-keeps-every-release.md",
@@ -148,7 +202,7 @@
     {
       "id": "recipe-schema-enums-agree",
       "category": "recipes",
-      "order": 35,
+      "order": 36,
       "bundled": true,
       "en": {
         "path": "recipes/schema-enums-agree.md",
@@ -166,7 +220,7 @@
     {
       "id": "recipe-docs-stay-bilingual",
       "category": "recipes",
-      "order": 36,
+      "order": 37,
       "bundled": true,
       "en": {
         "path": "recipes/docs-stay-bilingual.md",
@@ -486,6 +540,22 @@
         "path": "reference/packages/adapter-codex.ko.md",
         "title": "pdks-codex",
         "summary": "단일 pdks 실행 파일로 codex를 연결하고 번역·등록·응답 계약을 확인합니다."
+      }
+    },
+    {
+      "id": "host-support",
+      "category": "reference",
+      "order": 19,
+      "bundled": true,
+      "en": {
+        "path": "reference/host-support.md",
+        "title": "Host support",
+        "summary": "Check which evidence each host supplies and how each capability was confirmed."
+      },
+      "ko": {
+        "path": "reference/host-support.ko.md",
+        "title": "호스트 지원",
+        "summary": "각 호스트가 제공하는 증거와 기능별 확인 근거를 확인합니다."
       }
     },
     {

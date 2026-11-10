@@ -1,0 +1,40 @@
+{
+  "description": "An edit of packages/a/package.json with an empty session history passes outside the root-only scope.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"manifest-needs-evidence\"\n    why: \"a dependency edit should follow a registry lookup rather than rely on remembered versions.\"\n    declare:\n      mechanism: \"precedent\"\n      scope: { source: \"target.path\", include: ['^package\\.json$'] }\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        npmView:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Bash\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.command\" }\n          - { op: \"matches\", re: '\\bnpm view ' }\n      relate:\n        - id: \"npm-view\"\n          relation: { op: \"nonEmpty\", of: \"npmView\" }\n          message: \"no successful npm view precedes this manifest edit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "packages/a/package.json"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "packages/a/package.json",
+          "pre": "old\n",
+          "post": "new\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": []
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "packages/a/package.json"]]
+  }
+}

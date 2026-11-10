@@ -6,7 +6,8 @@ This applies when your project uses CHANGELOG.md with `## 1.2.3` or `## [1.2.3]`
 This discipline advises when a matching heading line disappears or changes.
 
 Session and change-set surfaces · advises by default · change the changelog path and both heading
-patterns if your layout differs.
+patterns if your layout differs. Host support:
+[file edits](../reference/host-support.md#file-edits).
 
 The block below is a complete `polydeukes.config.yaml`. Save it in the project root if you have no
 configuration. If `disciplines:` already exists, add only the entry below it, preserving existing

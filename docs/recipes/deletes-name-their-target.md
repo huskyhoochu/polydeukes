@@ -5,8 +5,8 @@
 This discipline judges an agent's Unix shell command before it runs and breaks on the listed broad
 target spellings for rm: the root, home, current or parent directory, or every entry in a directory.
 
-Session surface (Claude Code, Codex) · blocks matching calls · Unix shell command text · no values
-to change.
+Session surface · reads the command text · blocks matching calls · Unix shell command text · no
+values to change. Host support: [shell commands](../reference/host-support.md#shell-commands).
 
 The block below is a complete `polydeukes.config.yaml`; if you have no configuration yet, save it as
 that file in the project root. If the file already has a `sessionDisciplines:` key, paste only the
@@ -270,11 +270,11 @@ The skipped row does not cancel the block.
 The change-set surface (`pdks covenant check --diff`) does not judge this entry because a diff
 carries no command line.
 
-On Codex, a blocked call cannot be opened with the witness token. Run the command from your own
-terminal when you mean it. On Claude Code, if the configuration has a `witness:` block, a human can
-open a block by typing the configured witness token alone on the first line of a message. The block
-in this recipe does not include one; to add it, see
-[opening a blocked call](../troubleshooting.md#opening-a-blocked-call).
+A blocked call can be opened with the witness token only where the host supplies human evidence; see
+[human evidence](../reference/host-support.md#human-evidence). Otherwise run the command from your
+own terminal. If the configuration has a `witness:` block, a human can open a block by typing the
+configured witness token alone on the first line of a message. The block in this recipe does not
+include one; to add it, see [opening a blocked call](../troubleshooting.md#opening-a-blocked-call).
 
 The adapter must observe the call through a configured shell tool. Other host tools are not
 automatically covered. The JSON examples exercise the judge, not host delivery. Without the `tools`
