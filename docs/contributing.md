@@ -60,7 +60,7 @@ frontmatter, and converts Markdown links into site routes. English pages use `/d
 
 `pnpm -F @polydeukes/documentation build` runs sync and Astro. Vercel uses that command and
 publishes `packages/documentation/dist`. Check rendered pages in both languages after changing the
-transform.
+transform. Run `pnpm -F @polydeukes/documentation test` after the build.
 
 <a id="examples-and-checks"></a>
 ## Examples and check commands
@@ -88,8 +88,9 @@ existing file and, when they carry a fragment, to an existing heading slug or ex
 <a id="check-commands"></a>
 ## What to run
 
-| Command                                            | What it checks                                      |
-| -------------------------------------------------- | --------------------------------------------------- |
-| `node scripts/check-docs.mjs`                      | Pairs, catalog, local links and anchors             |
-| `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after rebuilding the executable    |
-| `pnpm -F @polydeukes/documentation build`          | Generated content, routes, and static website build |
+| Command                                            | What it checks                                        |
+| -------------------------------------------------- | ----------------------------------------------------- |
+| `node scripts/check-docs.mjs`                      | Pairs, catalog, local links and anchors               |
+| `pdks docs search <query>` / `pdks docs show <id>` | Installed bundle after rebuilding the executable      |
+| `pnpm -F @polydeukes/documentation build`          | Generated content, routes, and static website build   |
+| `pnpm -F @polydeukes/documentation test`           | Reads existing build: metadata, robots.txt, 404 links |

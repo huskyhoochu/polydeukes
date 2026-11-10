@@ -30,10 +30,9 @@ const structuredData = {
       name: 'Polydeukes',
       description,
       codeRepository: repository,
-      programmingLanguage: 'TypeScript',
+      programmingLanguage: 'Rust',
       license: 'https://opensource.org/licenses/MIT',
       url: canonical,
-      runtimePlatform: 'Node.js',
       author: { '@type': 'Person', name: 'huskyhoochu', url: 'https://github.com/huskyhoochu' },
     },
     {
@@ -109,9 +108,6 @@ const capabilities = [
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={new URL('/og.png', Astro.site)} />
-
-    <link rel="alternate" hreflang="en" href={new URL('/docs/', Astro.site)} />
-    <link rel="alternate" hreflang="ko" href={new URL('/ko/docs/', Astro.site)} />
 
     <script type="application/ld+json" set:html={JSON.stringify(structuredData)} is:inline />
   </head>

@@ -71,6 +71,9 @@ export default defineConfig({
         { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
         { tag: 'meta', attrs: { name: 'twitter:image', content: `${SITE}/og.png` } },
       ],
+      // `src/pages/404.astro` renders `/404.html`; Starlight's injected 404 route would claim
+      // the same path.
+      disable404Route: true,
       lastUpdated: true,
       editLink: { baseUrl: 'https://github.com/huskyhoochu/polydeukes/edit/main/docs/' },
       components: { Head: './src/components/Head.astro' },

@@ -57,7 +57,7 @@ GitHub으로 연결하며, 안정 절 ID와 버전 파일명의 점은 유지합
 
 `pnpm -F @polydeukes/documentation build`는 동기화와 Astro 빌드를 실행합니다. Vercel도 이 명령으로
 빌드한 `packages/documentation/dist`를 배포합니다. 변환 코드를 바꾼 뒤에는 두 언어의 렌더된 페이지를
-확인하세요.
+확인하세요. 빌드한 뒤 `pnpm -F @polydeukes/documentation test`를 실행하세요.
 
 <a id="examples-and-checks"></a>
 ## 예제와 검사 명령
@@ -84,8 +84,9 @@ node scripts/check-docs.mjs
 <a id="check-commands"></a>
 ## 실행할 명령
 
-| 명령                                               | 확인하는 것                            |
-| -------------------------------------------------- | -------------------------------------- |
-| `node scripts/check-docs.mjs`                      | 쌍, 카탈로그, 로컬 링크와 앵커         |
-| `pdks docs search <query>` / `pdks docs show <id>` | 실행 파일을 다시 빌드한 뒤의 내장 문서 |
-| `pnpm -F @polydeukes/documentation build`          | 생성 문서, 경로, 정적 웹사이트 빌드    |
+| 명령                                               | 확인하는 것                                            |
+| -------------------------------------------------- | ------------------------------------------------------ |
+| `node scripts/check-docs.mjs`                      | 쌍, 카탈로그, 로컬 링크와 앵커                         |
+| `pdks docs search <query>` / `pdks docs show <id>` | 실행 파일을 다시 빌드한 뒤의 내장 문서                 |
+| `pnpm -F @polydeukes/documentation build`          | 생성 문서, 경로, 정적 웹사이트 빌드                    |
+| `pnpm -F @polydeukes/documentation test`           | 기존 빌드를 읽어 메타데이터, robots.txt, 404 링크 확인 |
