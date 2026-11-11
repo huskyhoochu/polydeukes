@@ -105,10 +105,9 @@ translation, registration, and responses; the common runtime invokes the judge t
 executable. Execution and failure handling are shared while each host supplies only what it can
 prove. An unknown prompt origin is not promoted to a human message to make capabilities match.
 
-When the judge cannot start, every host refuses the file-changing or shell call about to run, and
-nothing else stops. A missed judgment would let a protected write through with no row to show it, so
-that call is refused; a refused prompt or session end would lock a session that cannot be repaired
-from inside, so those events go on.
+When the judge cannot start, the Claude Code and Codex adapters let the call proceed unjudged and
+print installation guidance. If the judge starts but does not answer before its deadline, the
+adapter stops it and the file-changing or shell call is refused. Prompts and session end proceed.
 
 ### Evidence with a stated boundary
 
@@ -175,17 +174,15 @@ design is hard to explain without them.
   passed. Routing now reads the proven change as well. Passing on two hosts said they spell a path
   twice, not that the layer beneath them was right.
 
+<a id="what-remains-a-plan"></a>
 ## What remains a plan
 
 A verifiable **ledger** and adversarial **verification** are roadmap components, not shipped
 services. Of local **memory**, search and show over the project's documents, the links between them,
-the obligations carried over to a key, and the chain of replaced records ship. Telemetry is not the
-future ledger, documentation search is not a memory system, and running a test suite is not an
-implemented adversarial review service.
+the obligations carried over to a key, and the chain of replaced records ship.
 
-Polydeukes is not an agent runtime or a sandbox. It complements linters and tests: some declarations
-compare file contents, others require observed process evidence. It does not execute a fresh
-benchmark during judgment or prove that a natural-language explanation is true.
+What Polydeukes is not, and which tool or role does each of those jobs, is listed in
+[When Polydeukes fits and when another tool does](./when-to-use-polydeukes.md#what-it-is-not).
 
 The name's story is in [STORY.md](../STORY.md). To try the implemented system, follow
 [the

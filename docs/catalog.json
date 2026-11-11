@@ -623,6 +623,24 @@
       }
     },
     {
+      "id": "when-to-use",
+      "category": "explanation",
+      "order": 17,
+      "bundled": true,
+      "en": {
+        "path": "when-to-use-polydeukes.md",
+        "title": "When Polydeukes fits and when another tool does",
+        "summary": "Choose Polydeukes or another tool by the evidence a check needs and when it must run.",
+        "terms": ["comparison", "linters", "hooks", "evidence"]
+      },
+      "ko": {
+        "path": "when-to-use-polydeukes.ko.md",
+        "title": "Polydeukes가 맞는 경우와 다른 도구가 맞는 경우",
+        "summary": "검사에 필요한 증거와 실행 시점에 따라 Polydeukes나 다른 도구를 고릅니다.",
+        "terms": ["비교", "린터", "훅", "증거"]
+      }
+    },
+    {
       "id": "why-polydeukes",
       "category": "explanation",
       "order": 18,

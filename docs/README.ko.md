@@ -90,6 +90,8 @@ SDK](./reference/packages/sdk-python.ko.md)
 **판정 결과를 기록합니다.** `.polydeukes/roi.log`에 판정 결과와 관련 정보가 쌓입니다. 이 로그로
 위반, 건너뛴 검사, 예상과 다른 결과를 조사할 수 있습니다. [설계 설명](./why-polydeukes.ko.md)에서는
 기록을 바탕으로 프로젝트를 개선한 과정을 다룹니다.
+[Polydeukes가 맞는 경우와 다른 도구가 맞는 경우](./when-to-use-polydeukes.ko.md)에서 검사에 맞는
+도구를 고를 수 있습니다.
 
 <a id="two-surfaces"></a>
 ## 두 표면

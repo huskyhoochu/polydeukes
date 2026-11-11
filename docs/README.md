@@ -95,6 +95,8 @@ investigate violations, skipped checks, and unexpected results. The
 [design
 explanation](./why-polydeukes.md)
 describes how these records informed the project.
+[When Polydeukes fits and when another tool does](./when-to-use-polydeukes.md) helps you choose a
+tool for your check.
 
 <a id="two-surfaces"></a>
 ## Two surfaces
