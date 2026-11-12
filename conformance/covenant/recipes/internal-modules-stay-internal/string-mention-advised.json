@@ -1,0 +1,45 @@
+{
+  "description": "string mention advised.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"internal-modules-stay-internal\"\n    why: \"imports from other modules should use the billing public entry point.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: [\"^src/\"]\n        exclude: [\"^src/billing/\"]\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '[\"'']((?:[^\"'']*/)?billing/internal(?:/[^\"'']*)?)[\"'']' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"keyByPattern\", re: '[\"'']((?:[^\"'']*/)?billing/internal(?:/[^\"'']*)?)[\"'']' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"nothing-added\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds {key}: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/checkout.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/checkout.ts",
+          "pre": "",
+          "post": "const example = `import { charge } from \"src/billing/internal/charge\";`;\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "MultiEdit", "Write", "NotebookEdit"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'internal-modules-stay-internal' broken on src/checkout.ts: adds src/billing/internal/charge: const example = `import { charge } from \"src/billing/internal/charge\";`; — why: imports from other modules should use the billing public entry point.",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "internal-modules-stay-internal",
+        "src/checkout.ts",
+        "[{\"id\":\"nothing-added\",\"witnesses\":[{\"key\":\"src/billing/internal/charge\",\"value\":\"const example = `import { charge } from \\\"src/billing/internal/charge\\\";`;\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

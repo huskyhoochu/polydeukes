@@ -25,6 +25,13 @@ Which host supplies the evidence a recipe reads is on the
   connected session. Surface: Session (command text). Default: advises. Values to change: check and
   search command list for your tools.
 
+- [Detect added test skips, snapshots, and timeout settings](./tests-are-not-weakened.md) Needs:
+  JavaScript or TypeScript test files. Surface: Session and change-set. Default: advises. Values to
+  change: test paths and both spelling patterns.
+- [Detect repeated test runs without an edit between them](./few-test-runs-per-edit.md) Needs:
+  session history including the current call and edit success. Surface: Session (history). Default:
+  advises. Values to change: both command patterns and the count.
+
 <a id="change-dependencies"></a>
 ## Change dependencies
 
@@ -52,6 +59,17 @@ Which host supplies the evidence a recipe reads is on the
 - [Check that English and Korean documents change together](./docs-stay-bilingual.md) Needs: paired
   English and Korean Markdown documents. Surface: Change-set only. Default: advises. Values to
   change: folder and language suffix.
+
+<a id="keep-code-structure-and-names"></a>
+## Keep code structure and names
+
+- [Detect added references to a module's internal paths](./internal-modules-stay-internal.md) Needs:
+  a module with a public entry point and internal paths. Surface: Session and change-set. Default:
+  advises. Values to change: module paths and both import patterns.
+- [Detect source file names with uppercase letters or
+  underscores](./file-names-follow-the-convention.md)
+  Needs: a file-name convention under your source folders. Surface: Session and change-set. Default:
+  advises. Values to change: paths and the file-name pattern.
 
 <a id="prepare-and-assign-edits"></a>
 ## Prepare and assign edits

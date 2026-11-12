@@ -1,0 +1,35 @@
+{
+  "description": "out of scope.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"file-names-follow-the-convention\"\n    why: \"consistent file names make source paths easier to read and find.\"\n    declare:\n      mechanism: \"naming\"\n      scope: { source: \"target.path\", include: [\"^src/\"] }\n      extract:\n        invalidNames:\n          - { op: \"source\", of: \"target.path\" }\n          - { op: \"matches\", re: \"[^/]*[A-Z_][^/]*$\" }\n      relate:\n        - id: \"file-name\"\n          relation: { op: \"empty\", of: \"invalidNames\" }\n          message: \"use a file name without uppercase letters or underscores: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "tests/Cart.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "tests/Cart.ts",
+          "pre": "old\n",
+          "post": "new\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "MultiEdit", "Write", "NotebookEdit"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "covenant-check", "tests/Cart.ts"]]
+  }
+}

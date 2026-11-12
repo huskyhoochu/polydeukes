@@ -94,7 +94,7 @@ function yamlString(value) {
 }
 
 /**
- * Strips the H1 and the language-switch line, then rewrites every relative link.
+ * Strips the H1 and the language-switch line, then rewrites relative links outside fenced code.
  * Starlight renders the title from frontmatter and supplies its own locale picker,
  * so both would otherwise appear twice.
  */
@@ -108,9 +108,12 @@ function transform(markdown, docPath) {
   ]) {
     body = body.replace(switchLine, '');
   }
-  body = body.replace(/\]\(([^)\s]+)\)/g, (_match, target) => {
-    return `](${rewriteLink(target, docPath)})`;
-  });
+  body = body.replace(
+    /(^ {0,3}(([`~])\3{2,})[^\n]*\n[\s\S]*?^ {0,3}\2\3*[ \t]*\r?$)|\]\(([^)\s]+)\)/gm,
+    (match, fenced, _fence, _char, target) => {
+      return fenced ? match : `](${rewriteLink(target, docPath)})`;
+    },
+  );
   return body.trimStart();
 }
 

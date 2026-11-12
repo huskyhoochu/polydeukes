@@ -1,0 +1,45 @@
+{
+  "description": "vi timeout advised.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"tests-are-not-weakened\"\n    why: \"new skipped tests, snapshot assertions, and timeout settings need review.\"\n    declare:\n      mechanism: \"added-only\"\n      scope: { source: \"target.path\", include: ['\\.(test|spec)\\.[jt]sx?$'] }\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - {\n              op: \"keyByPattern\",\n              re: '(\\.skip\\s*\\(|\\b(?:xit|xdescribe|toMatchSnapshot|toMatchInlineSnapshot)\\s*\\(|\\b(?:jest|vi)\\.setTimeout\\s*\\(|\\bthis\\.timeout\\s*\\(|\\b(?:testTimeout|hookTimeout|timeout)\\s*:)',\n            }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - {\n              op: \"keyByPattern\",\n              re: '(\\.skip\\s*\\(|\\b(?:xit|xdescribe|toMatchSnapshot|toMatchInlineSnapshot)\\s*\\(|\\b(?:jest|vi)\\.setTimeout\\s*\\(|\\bthis\\.timeout\\s*\\(|\\b(?:testTimeout|hookTimeout|timeout)\\s*:)',\n            }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"nothing-added\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds {key}: {value}\"\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/cart.test.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/cart.test.ts",
+          "pre": "",
+          "post": "vi.setTimeout(5000);\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "MultiEdit", "Write", "NotebookEdit"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'tests-are-not-weakened' broken on src/cart.test.ts: adds vi.setTimeout(: vi.setTimeout(5000); — why: new skipped tests, snapshot assertions, and timeout settings need review.",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "tests-are-not-weakened",
+        "src/cart.test.ts",
+        "[{\"id\":\"nothing-added\",\"witnesses\":[{\"key\":\"vi.setTimeout(\",\"value\":\"vi.setTimeout(5000);\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

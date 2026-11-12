@@ -71,19 +71,19 @@ Polydeukes는 설정 파일을 기준으로 변경을 검사하는 명령줄 프
 <a id="fits-needs"></a>
 ### 무엇을 막거나 기록해야 하나요?
 
-| 필요                                                | 무엇을 읽는가                    | 예                                                                                                                                              |
-| --------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 작업을 잃을 수 있는 명령을 막는다                   | 명령 문자열                      | [강제 push와 `git reset --hard`](./recipes/work-stays-recoverable.ko.md), [디렉터리 통째 삭제](./recipes/deletes-name-their-target.ko.md)       |
-| 검사 절차를 끄거나 건너뛰지 못하게 한다             | 명령 문자열                      | [커밋 훅 건너뛰기](./recipes/hooks-stay-armed.ko.md)                                                                                            |
-| 한 가지 진입점을 거쳐 호출하게 한다                 | 편집으로 추가된 줄               | [래퍼를 거치지 않은 직접 호출](./how-to/write-disciplines.ko.md#added-line-check), 모듈 경계를 넘는 import                                      |
-| 정해 둔 낱말과 문구를 지키게 한다                   | 편집으로 추가된 줄               | [금지한 낱말의 새 사용](./recipes/no-new-banned-words.ko.md)                                                                                    |
-| 테스트를 약하게 만드는 변경을 잡는다                | 편집으로 추가된 줄               | 건너뛴 테스트, 스냅샷 단언, 늘린 타임아웃                                                                                                       |
-| 검사 결과를 온전히 읽게 하고 불필요한 반복을 줄인다 | 명령 문자열, 세션의 이전 호출    | [검사 출력을 `head`나 `tail`로 자르기](./recipes/output-is-read-whole.ko.md), 편집 없이 같은 테스트 반복                                        |
-| 근거를 읽은 뒤에 편집하게 한다                      | 세션의 이전 호출                 | [버전 조회 뒤 의존성 수정](./recipes/manifest-needs-evidence.ko.md), [설계 문서를 읽은 뒤 소스 편집](./recipes/document-read-before-edit.ko.md) |
-| 역할 분담을 지키게 한다                             | 호출한 서브에이전트              | [구현 담당 서브에이전트의 테스트 수정](./recipes/tests-are-the-writers.ko.md)                                                                   |
-| 이름과 위치 규약을 지키게 한다                      | 편집 대상의 경로                 | 파일명 규약                                                                                                                                     |
-| 기록을 지우지 못하게 한다                           | 파일의 변경 전후 내용            | [변경 이력의 릴리스 제목](./recipes/changelog-keeps-every-release.ko.md)                                                                        |
-| 여러 파일의 내용을 맞춘다                           | 여러 파일, 변경 집합의 경로 목록 | [두 스키마의 enum 값](./recipes/schema-enums-agree.ko.md), [함께 바뀌는 영·한 문서](./recipes/docs-stay-bilingual.ko.md)                        |
+| 필요                                                | 무엇을 읽는가                    | 예                                                                                                                                                           |
+| --------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 작업을 잃을 수 있는 명령을 막는다                   | 명령 문자열                      | [강제 push와 `git reset --hard`](./recipes/work-stays-recoverable.ko.md), [디렉터리 통째 삭제](./recipes/deletes-name-their-target.ko.md)                    |
+| 검사 절차를 끄거나 건너뛰지 못하게 한다             | 명령 문자열                      | [커밋 훅 건너뛰기](./recipes/hooks-stay-armed.ko.md)                                                                                                         |
+| 한 가지 진입점을 거쳐 호출하게 한다                 | 편집으로 추가된 줄               | [래퍼를 거치지 않은 직접 호출](./how-to/write-disciplines.ko.md#added-line-check), [모듈 경계를 넘는 import](./recipes/internal-modules-stay-internal.ko.md) |
+| 정해 둔 낱말과 문구를 지키게 한다                   | 편집으로 추가된 줄               | [금지한 낱말의 새 사용](./recipes/no-new-banned-words.ko.md)                                                                                                 |
+| 테스트를 약하게 만드는 변경을 잡는다                | 편집으로 추가된 줄               | [건너뛴 테스트, 스냅샷 단언, 타임아웃 설정 추가](./recipes/tests-are-not-weakened.ko.md)                                                                     |
+| 검사 결과를 온전히 읽게 하고 불필요한 반복을 줄인다 | 명령 문자열, 세션의 이전 호출    | [검사 출력을 `head`나 `tail`로 자르기](./recipes/output-is-read-whole.ko.md), [편집 없이 같은 테스트 반복](./recipes/few-test-runs-per-edit.ko.md)           |
+| 근거를 읽은 뒤에 편집하게 한다                      | 세션의 이전 호출                 | [버전 조회 뒤 의존성 수정](./recipes/manifest-needs-evidence.ko.md), [설계 문서를 읽은 뒤 소스 편집](./recipes/document-read-before-edit.ko.md)              |
+| 역할 분담을 지키게 한다                             | 호출한 서브에이전트              | [구현 담당 서브에이전트의 테스트 수정](./recipes/tests-are-the-writers.ko.md)                                                                                |
+| 이름과 위치 규약을 지키게 한다                      | 편집 대상의 경로                 | [파일명 규약](./recipes/file-names-follow-the-convention.ko.md)                                                                                              |
+| 기록을 지우지 못하게 한다                           | 파일의 변경 전후 내용            | [변경 이력의 릴리스 제목](./recipes/changelog-keeps-every-release.ko.md)                                                                                     |
+| 여러 파일의 내용을 맞춘다                           | 여러 파일, 변경 집합의 경로 목록 | [두 스키마의 enum 값](./recipes/schema-enums-agree.ko.md), [함께 바뀌는 영·한 문서](./recipes/docs-stay-bilingual.ko.md)                                     |
 
 편집으로 추가된 줄, 파일의 변경 전후 내용, 선언에서 지정한 다른 파일, 편집 대상의 경로를 읽는 검사는
 에이전트의 파일 편집 도구 호출과 diff 입력에서 실행합니다. 세션에서 셸 명령으로 바꾼 파일은 그

@@ -1,0 +1,73 @@
+{
+  "description": "enforce block still advises.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"few-test-runs-per-edit\"\n    why: \"several test runs without an edit between them repeat the same check; read the first failure.\"\n    declare:\n      mechanism: \"scoped-valve\"\n      scope:\n        source: \"command\"\n        include: ['\\b(?:(?:pnpm|npm)\\s+(?:run\\s+)?test|vitest)\\b']\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        excessRuns:\n          - { op: \"source\", of: \"session\" }\n          - {\n              op: \"toolUses\",\n              names: [\"Bash\", \"Edit\", \"MultiEdit\", \"Write\", \"NotebookEdit\", \"apply_patch\"],\n            }\n          - {\n              op: \"afterLast\",\n              when: [{ field: \"name\", ne: \"Bash\" }, { field: \"succeeded\", eq: true }],\n            }\n          - { op: \"select\", path: \"args.command\" }\n          - { op: \"matches\", re: '\\b(?:(?:pnpm|npm)\\s+(?:run\\s+)?test|vitest)\\b' }\n          - { op: \"drop\", n: 3 }\n      relate:\n        - {\n            id: \"few-runs\",\n            relation: { op: \"empty\", of: \"excessRuns\" },\n            message: \"more than three test runs since the last edit\",\n          }\n      witness:\n        relate:\n          - {\n              id: \"few-runs-valve\",\n              relation: { op: \"empty\", of: \"excessRuns\" },\n              message: \"more than three test runs since the last edit\",\n            }\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "pnpm test"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "MultiEdit", "Write", "NotebookEdit"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "session": {
+      "userMessages": [],
+      "toolCalls": [
+        {
+          "name": "Bash",
+          "args": {
+            "command": "pnpm test"
+          },
+          "succeeded": true
+        },
+        {
+          "name": "Bash",
+          "args": {
+            "command": "pnpm test"
+          },
+          "succeeded": true
+        },
+        {
+          "name": "Bash",
+          "args": {
+            "command": "pnpm test"
+          },
+          "succeeded": true
+        },
+        {
+          "name": "Bash",
+          "args": {
+            "command": "pnpm test"
+          },
+          "succeeded": true
+        }
+      ]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'few-test-runs-per-edit' broken on -: more than three test runs since the last edit — why: several test runs without an edit between them repeat the same check; read the first failure.",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "few-test-runs-per-edit",
+        "-",
+        "[{\"id\":\"few-runs\",\"witnesses\":[{\"key\":\"3\",\"value\":\"pnpm test\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}
