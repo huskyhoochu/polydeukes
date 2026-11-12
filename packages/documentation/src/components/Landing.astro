@@ -1,0 +1,1403 @@
+---
+import { Font } from 'astro:assets';
+// The Korean sans ships as unicode-range slices, so a page fetches only the glyphs it shows.
+import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
+import '../styles/tokens.css';
+import { copy } from '../data/landing-copy';
+import { cases, entry, install } from '../data/landing';
+import { PAIRS } from '../data/gemini';
+import Logo from './Logo.astro';
+import StarChart from './StarChart.astro';
+import TwinsFigure from './TwinsFigure.astro';
+
+interface Props {
+  lang: 'en' | 'ko';
+}
+
+const { lang } = Astro.props;
+const t = copy[lang];
+const other = lang === 'en' ? 'ko' : 'en';
+const prefix = lang === 'ko' ? '/ko' : '';
+const site = Astro.site as URL;
+const canonical = new URL(lang === 'ko' ? '/ko/' : '/', site).href;
+const repository = 'https://github.com/huskyhoochu/polydeukes';
+const ogImage = new URL(`${prefix}/og.png`, site).href;
+const doc = (path: string) => `${prefix}/docs/${path}`;
+
+const installLabels = {
+  homebrew: t.installHomebrew,
+  cargo: t.installCargo,
+  npm: t.installNpm,
+  pypi: t.installPypi,
+};
+// The wide chart is the hero's ground; the narrow one is the same figure for small screens.
+// The wide window is wider and taller than most screens: the chart is centred and cropped, so
+// a wide screen shows more sky around a figure of the same size instead of enlarging it. Its
+// declination span fixes the scale; the declination labels sit right of the figure.
+const wideSky = { width: 2560, height: 1124, raLeft: 12, raRight: 3.65, decTop: 41, decBottom: -9, faintest: 6, bulge: 1.1, tickX: 1860 };
+// The closing sky is a window as wide as the hero's, shorter, with the figure on its right so the
+// closing text has the left side.
+const closeSky = { width: 2560, height: 600, raLeft: 11, raRight: 6, decTop: 40, decBottom: 11, faintest: 5.5 };
+const narrowSky = { width: 400, height: 380, raLeft: 8.05, raRight: 5.95, decTop: 37, decBottom: 9.5, faintest: 5.2, bulge: 0.7 };
+// A coordinate grid for the sheet behind the page: parallels bow as they do on the chart, and the
+// meridians lean the same way. Stretching it with the page keeps it free of extra images.
+const sheetHeight = 3600;
+const sheetLines = [
+  ...Array.from({ length: 13 }, (_, k) => 120 + 300 * k).map((y) => `M-40 ${y}Q720 ${y - 36} 1480 ${y + 28}`),
+  ...[160, 500, 840, 1180, 1520].map((x) => `M${x} -20L${x - 90} ${sheetHeight + 20}`),
+];
+// Star labels name the edited file; a long name keeps its start and its extension so it stays
+// inside the part of the chart narrower screens show. The full path is in the case pane.
+const shorten = (name: string) => (name.length > 18 ? `${name.slice(0, 4)}…${name.slice(-10)}` : name);
+const marks = cases.map((c) => ({
+  verdict: c.verdict,
+  label: shorten(c.path.split('/').pop() ?? c.path),
+}));
+// Three recipes of other kinds than the four cases above: what was read earlier in the session,
+// how often a command ran since the last edit, and which subagent is acting.
+const featured = ['document-read-before-edit', 'few-test-runs-per-edit', 'tests-are-the-writers'].map(
+  (slug, i) => ({ slug, ...t.recipeCards[i] }),
+);
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareSourceCode',
+      name: 'Polydeukes',
+      description: t.metaDescription,
+      codeRepository: repository,
+      programmingLanguage: 'Rust',
+      license: 'https://opensource.org/licenses/MIT',
+      url: canonical,
+      author: { '@type': 'Person', name: 'huskyhoochu', url: 'https://github.com/huskyhoochu' },
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Polydeukes',
+      url: new URL('/', site).href,
+      inLanguage: ['en', 'ko'],
+      description: t.metaDescription,
+    },
+  ],
+};
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <Font cssVariable="--font-display" preload />
+    <Font cssVariable="--font-text" preload />
+    <Font cssVariable="--font-mono" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{t.metaTitle}</title>
+    <meta name="description" content={t.metaDescription} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="en" href={new URL('/', site).href} />
+    <link rel="alternate" hreflang="ko" href={new URL('/ko/', site).href} />
+    <link rel="alternate" hreflang="x-default" href={new URL('/', site).href} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Polydeukes" />
+    <meta property="og:title" content={t.metaTitle} />
+    <meta property="og:description" content={t.metaDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={t.ogAlt} />
+    <meta property="og:locale" content={lang} />
+    <meta property="og:locale:alternate" content={other} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={t.metaTitle} />
+    <meta name="twitter:description" content={t.metaDescription} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} is:inline />
+    <script is:inline>
+      const stored = (() => {
+        try {
+          return localStorage.getItem('pdks-theme');
+        } catch {
+          return null;
+        }
+      })();
+      if (stored === 'light' || stored === 'dark') {
+        document.documentElement.dataset.theme = stored;
+      }
+    </script>
+  </head>
+  <body>
+    <div class="sky">
+      <StarChart class="wide" window={wideSky} marks={marks} />
+      <header class="bar">
+        <a class="brand" href={lang === 'ko' ? '/ko/' : '/'}>
+          <Logo size={26} decorative />
+          <span translate="no">Polydeukes</span>
+        </a>
+        <nav>
+          <a href={doc('')}>{t.navDocs}</a>
+          <a href={doc('recipes/')}>{t.navRecipes}</a>
+          <a href={other === 'ko' ? '/ko/' : '/'} hreflang={other} lang={other}>{t.navLanguage}</a>
+          <a href={repository} rel="noopener" aria-label={t.navGithub}>GitHub</a>
+          <button type="button" class="icon" id="theme" aria-label={t.navTheme}>
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="10" cy="10" r="3.6" />
+              <path d="M10 2.4v1.8M10 15.8v1.8M17.6 10h-1.8M4.2 10H2.4M15.4 4.6l-1.3 1.3M5.9 14.1l-1.3 1.3M15.4 15.4l-1.3-1.3M5.9 5.9L4.6 4.6" />
+            </svg>
+          </button>
+        </nav>
+      </header>
+
+      <p id="copy-status" class="sr" aria-live="polite"></p>
+      <main>
+        <section id="hero" class="wrap">
+          <div class="pitch">
+            <h1>{t.heroTitle}</h1>
+            <p class="lede">{t.heroLede}</p>
+            <p class="actions">
+              <button type="button" class="copy" data-copy={install[0].command} data-done={t.copiedLabel}>
+                <code>{install[0].command}</code>
+                <span class="copy-state" aria-hidden="true"></span>
+                <span class="sr">{t.copyLabel}</span>
+              </button>
+              <a class="primary" href={doc('')}>{t.heroDocsLink}</a>
+            </p>
+            <div class="legend">
+              <p>{t.chartMyth}</p>
+              <p><a href="#name">{t.chartMore}</a></p>
+            </div>
+          </div>
+          <StarChart class="narrow" window={narrowSky} marks={marks} compact />
+        </section>
+
+        <div class="rest">
+          <div class="sheet" aria-hidden="true">
+            <svg viewBox={`0 0 1440 ${sheetHeight}`} preserveAspectRatio="xMidYMin slice" focusable="false">
+              {sheetLines.map((d) => <path d={d} />)}
+            </svg>
+          </div>
+
+          <section id="cases" class="wrap">
+            <div class="lead">
+              <h2>{t.casesHeading}</h2>
+              <p>{t.casesLegend}</p>
+            </div>
+            <div class="heads" aria-hidden="true"><span>CASTOR</span><span>POLLUX</span></div>
+            {
+              cases.map((c, i) => (
+                <article class="case" data-verdict={c.verdict}>
+                  <div class="side">
+                    <header>
+                      <svg class="mark" viewBox="0 0 22 22" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="3.5" fill="var(--ink)" /></svg>
+                      <span class="greek">{PAIRS[i]?.code}</span>
+                      <span class="tool">{c.tool}</span>
+                      <span class="path">{c.path}</span>
+                    </header>
+                    <div class="term">
+                      <pre class="in"><code>{c.removed.map((line) => <span class="del">{`- ${line}\n`}</span>)}{c.added.map((line) => <span class="add">{`+ ${line}\n`}</span>)}</code></pre>
+                    </div>
+                  </div>
+                  <div class="link" aria-hidden="true">
+                    <svg viewBox="0 0 128 22" height="22" preserveAspectRatio="none" focusable="false"><line x1="6" y1="11" x2="122" y2="11" /></svg>
+                  </div>
+                  <div class="side">
+                    <header>
+                      <svg class="mark" viewBox="0 0 22 22" width="24" height="24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="9" fill="none" stroke="var(--v)" stroke-width="1.3" />
+                        <circle cx="11" cy="11" r="3.5" fill="var(--v)" />
+                      </svg>
+                      <span class="greek">{PAIRS[i]?.record}</span>
+                      <h3 class="word">{c.verdict}</h3>
+                      <span class="ex">{t.caseExitLabel} {c.exit}</span>
+                    </header>
+                    <div class="term">
+                      <span class="sr">pdks stderr</span>
+                      <pre class="out"><code>{c.stderr.join('\n')}</code></pre>
+                    </div>
+                  </div>
+                  <div class="note">
+                    <p>{t.caseCaptions[i]}</p>
+                    <a class="more" href={doc(`recipes/${c.recipe}/`)}>{t.caseRecipeLink}</a>
+                  </div>
+                </article>
+              ))
+            }
+          </section>
+
+          <section id="name" class="wrap">
+            <h2>{t.nameHeading}</h2>
+            <TwinsFigure />
+            <div class="notes">
+              <p>{t.nameTwins}</p>
+              <p>{t.nameDiscipline}</p>
+              <p>{t.nameRecord}</p>
+            </div>
+          </section>
+
+          <section id="recipes" class="wrap">
+            <h2>{t.recipesHeading}</h2>
+            <div class="catalogue-col">
+              <ol class="catalogue">
+                {
+                  featured.map((r) => (
+                    <li>
+                      <a href={doc(`recipes/${r.slug}/`)}>{r.title}</a>
+                      <p>{r.text}</p>
+                      <code>{r.slug}</code>
+                    </li>
+                  ))
+                }
+              </ol>
+              <a class="more" href={doc('recipes/')}>{t.recipesListLink}</a>
+            </div>
+            <figure class="entry" data-verdict={cases[1].verdict}>
+              <div class="term">
+                <div class="titlebar">
+                  <code>polydeukes.config.yaml</code>
+                  <button type="button" class="copy mini" data-copy={entry} data-done={t.copiedLabel}>
+                    <span class="copy-state" aria-hidden="true"></span>
+                    <span class="sr">{t.copyLabel}: polydeukes.config.yaml</span>
+                  </button>
+                </div>
+                <pre><code>{entry}</code></pre>
+              </div>
+              <figcaption>
+                <svg viewBox="0 0 22 22" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="3.5" fill="var(--ink)" /></svg>
+                <span class="greek">{PAIRS[1].code}</span>
+                <svg viewBox="0 0 44 22" width="44" height="22" aria-hidden="true"><line x1="3" y1="11" x2="41" y2="11" stroke="var(--v)" stroke-width="1.3" stroke-dasharray="2 5" stroke-linecap="round" /></svg>
+                <svg viewBox="0 0 22 22" width="18" height="18" aria-hidden="true">
+                  <circle cx="11" cy="11" r="9" fill="none" stroke="var(--v)" stroke-width="1.3" />
+                  <circle cx="11" cy="11" r="3.5" fill="var(--v)" />
+                </svg>
+                <span class="greek">{PAIRS[1].record}</span>
+                <span>{t.recipeEntryLabel}</span>
+              </figcaption>
+            </figure>
+          </section>
+
+          <div class="duo wrap">
+            <section id="install">
+              <h2>{t.installHeading}</h2>
+              <dl class="routes">
+                {
+                  install.map((route, i) => (
+                    <div>
+                      <dt>
+                        {installLabels[route.id]}
+                        {i === 0 && <small>{t.installRecommended}</small>}
+                      </dt>
+                      <dd>
+                        <code>{route.command}</code>
+                        <button type="button" class="copy mini" data-copy={route.command} data-done={t.copiedLabel}>
+                          <span class="copy-state" aria-hidden="true"></span>
+                          <span class="sr">{t.copyLabel}: {installLabels[route.id]}</span>
+                        </button>
+                      </dd>
+                    </div>
+                  ))
+                }
+              </dl>
+              <a class="more" href={doc('how-to/install/')}>{t.installGuideLink}</a>
+            </section>
+
+            <section id="choose">
+              <h2>{t.chooseHeading}</h2>
+              <p>{t.chooseText}</p>
+              <p>{t.chooseAuto}</p>
+              <a class="more" href={doc('when-to-use-polydeukes/')}>{t.chooseLink}</a>
+            </section>
+          </div>
+        </div>
+
+        <section id="further">
+          <StarChart class="wide" window={closeSky} marks={[]} compact twins />
+          <StarChart class="narrow" window={narrowSky} marks={[]} compact twins />
+          <div class="wrap">
+            <div class="closing">
+              <h2>{t.furtherHeading}</h2>
+              <p>{t.furtherNaming}</p>
+              <ul class="links">
+                <li><a href={doc('why-polydeukes/')}>{t.furtherWhy}</a></li>
+                <li><a href={doc('')}>{t.furtherDocs}</a></li>
+              </ul>
+              <p class="actions">
+                <button type="button" class="copy" data-copy={install[0].command} data-done={t.copiedLabel}>
+                  <code>{install[0].command}</code>
+                  <span class="copy-state" aria-hidden="true"></span>
+                  <span class="sr">{t.copyLabel}</span>
+                </button>
+                <a class="primary" href={doc('')}>{t.heroDocsLink}</a>
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="wrap">
+      <Logo size={20} />
+      <p>{t.footer}</p>
+      <a href={repository} rel="noopener">GitHub</a>
+    </footer>
+  </body>
+</html>
+
+<script>
+  const toggle = document.getElementById('theme');
+
+  if (toggle) {
+    const systemLight = window.matchMedia('(prefers-color-scheme: light)');
+
+    toggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const current = root.dataset.theme ?? (systemLight.matches ? 'light' : 'dark');
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem('pdks-theme', next);
+      } catch {
+        // A blocked store still leaves the theme applied for this page view.
+      }
+    });
+  }
+</script>
+
+<script>
+  // One live region rendered with the page, so screen readers already watch it when a copy succeeds.
+  const status = document.getElementById('copy-status');
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.copy')) {
+    let revert: ReturnType<typeof setTimeout> | undefined;
+
+    button.addEventListener('click', async () => {
+      let copied = false;
+
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? '');
+        copied = true;
+      } catch {
+        // Clipboard access is refused in some contexts; selecting the text lets the
+        // reader copy it themselves rather than leaving the click with no result.
+        const code =
+          button.querySelector('code') ?? button.closest('.term, dd')?.querySelector('pre code, dd > code');
+        if (code) {
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      }
+
+      button.dataset.copied = copied ? 'yes' : 'select';
+      if (copied && status) status.textContent = button.dataset.done ?? '';
+      clearTimeout(revert);
+      revert = setTimeout(() => delete button.dataset.copied, 2000);
+    });
+  }
+</script>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--sky);
+    caret-color: var(--advised);
+    scrollbar-color: var(--rule) var(--sky);
+  }
+
+  body {
+    margin: 0;
+    background: var(--sky);
+    color: var(--ink);
+    font-family: var(--font-text), var(--font-text-ko), ui-sans-serif, system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--advised) 38%, transparent);
+  }
+
+  a {
+    color: inherit;
+    text-decoration-color: var(--rule);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    transition: text-decoration-color 0.2s;
+  }
+
+  a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--advised);
+    outline-offset: 3px;
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono), ui-monospace, monospace;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), var(--font-text-ko), sans-serif;
+    font-weight: 800;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .sky {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sky :global(.chart.wide) {
+    position: absolute;
+    inset: 0 0 auto;
+    height: calc(min(100svh, 62rem) + 14rem);
+    min-height: 44rem;
+  }
+
+  /* The sky runs on behind the cases and dissolves there instead of ending on a line. A
+     gradient laid over its foot does this without masking the moving layers. */
+  .sky :global(.chart.wide)::after {
+    content: '';
+    position: absolute;
+    inset: 68% 0 0;
+    background: linear-gradient(to bottom, transparent, var(--sky));
+  }
+
+  .sky :global(.chart.narrow) {
+    display: none;
+  }
+
+  .bar,
+  .wrap {
+    position: relative;
+    width: min(100% - 3rem, 81rem);
+    margin-inline: auto;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-block: 1.25rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-decoration: none;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2.4vw, 2.1rem);
+    font-size: 1rem;
+  }
+
+  nav a {
+    padding-block: 0.6rem;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    text-decoration: underline;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    transition: border-color 0.2s;
+  }
+
+  .icon:hover {
+    border-color: var(--ink);
+  }
+
+  #hero {
+    min-height: calc(min(100svh, 62rem) - 5rem - 11.5rem);
+    padding-block: clamp(1.5rem, 5vh, 3.5rem) 3rem;
+  }
+
+  .pitch {
+    position: relative;
+    isolation: isolate;
+    max-width: 37rem;
+  }
+
+  /* On narrower windows the figure slides under the text column. A thin veil of the ground colour
+     under the text, fading out on every side, keeps the copy readable while the figure shows through. */
+  .pitch::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -1.25rem -3.5rem -1.25rem -100vw;
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--sky) 68%, transparent) calc(100% - 6rem),
+      transparent
+    );
+    mask-image: linear-gradient(to bottom, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+    pointer-events: none;
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 3.8vw, 3.5rem);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+  }
+
+  h2 {
+    width: fit-content;
+    max-width: 100%;
+    background: var(--sky);
+    font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
+  /* Hangul headings fall through to the Korean sans, which reads heavy at 700. */
+  :lang(ko) h1,
+  :lang(ko) h2 {
+    font-weight: 700;
+  }
+
+  :lang(ko) h1 {
+    font-size: clamp(2.1rem, 3.3vw, 3rem);
+    line-height: 1.22;
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+  }
+
+  :lang(ko) h2 {
+    font-size: clamp(1.7rem, 2.5vw, 2.3rem);
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+
+  .lede {
+    margin: 1.5rem 0 0;
+    color: var(--ink-2);
+    max-width: 34rem;
+  }
+
+  :lang(ko) .lede,
+  :lang(ko) p {
+    word-break: keep-all;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin: 2rem 0 0;
+  }
+
+  .copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1.1rem;
+    background: var(--sky);
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    /* The mono face runs wide; this size keeps the command and the docs button on one row. */
+    font-size: 0.8125rem;
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .copy:hover,
+  .copy[data-copied] {
+    background: var(--ink);
+    color: var(--sky);
+  }
+
+  .copy-state {
+    width: 0.95rem;
+    height: 0.95rem;
+    border: 1.5px solid currentColor;
+    box-shadow: 3px -3px 0 -1.5px var(--sky), 3px -3px 0 0 currentColor;
+    transition: box-shadow 0.2s;
+  }
+
+  .copy:hover .copy-state,
+  .copy[data-copied] .copy-state {
+    box-shadow: 3px -3px 0 -1.5px var(--ink), 3px -3px 0 0 currentColor;
+  }
+
+  .copy[data-copied='yes']::after {
+    content: attr(data-done);
+    font-family: var(--font-text), sans-serif;
+    font-size: 0.875rem;
+  }
+
+  .primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 1.3rem;
+    background: var(--ink);
+    color: var(--sky);
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--ink);
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .primary:hover {
+    background: var(--sky);
+    color: var(--ink);
+  }
+
+  .legend {
+    margin: 2rem 0 0;
+    max-width: 32rem;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+  }
+
+  .legend p + p {
+    margin-top: 0.7rem;
+  }
+
+  .more {
+    display: inline-block;
+    padding-block: 0.65rem;
+    background: var(--sky);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  /* The coordinate grid carries on behind everything below the first screen. Its lines keep the
+     grid token's strength, and every block of text or terminal below sits on the ground colour,
+     so the lines show between blocks and never behind letters. */
+  .rest {
+    position: relative;
+  }
+
+  .sheet {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, transparent, #000 14rem);
+  }
+
+  .sheet svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sheet path {
+    fill: none;
+    stroke: var(--grid);
+    vector-effect: non-scaling-stroke;
+  }
+
+  [data-verdict='advised'] {
+    --v: var(--advised);
+  }
+
+  [data-verdict='blocked'] {
+    --v: var(--blocked);
+  }
+
+  /* The two marked stars, each shown as the call an agent made and what the judge printed.
+     The panes keep a terminal's dark ground in both themes so input and output read as such. */
+  .term {
+    min-width: 0;
+    background: var(--term);
+    color: var(--term-ink);
+    border: 1px solid var(--term-rule);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.55);
+  }
+
+  pre {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .in {
+    padding: 0.6rem 0;
+  }
+
+  /* The edit is shown as a diff: lines it removed, then lines it added. */
+  .in span {
+    display: block;
+    padding-inline: 1rem;
+  }
+
+  .in .add {
+    background: var(--term-add);
+    color: var(--term-add-ink);
+  }
+
+  .in .del {
+    background: var(--term-del);
+    color: var(--term-del-ink);
+  }
+
+  .out {
+    padding: 0.8rem 1rem 1rem;
+  }
+
+  #cases {
+    margin-top: 0.5rem;
+  }
+
+  .lead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem;
+    align-items: end;
+    margin-bottom: 2.25rem;
+  }
+
+  .lead p {
+    max-width: 58ch;
+    background: var(--sky);
+    color: var(--ink-2);
+    font-size: 0.97rem;
+  }
+
+  .heads,
+  .case {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr);
+  }
+
+  .heads {
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--ink);
+    font: 500 0.78rem var(--font-text), sans-serif;
+    letter-spacing: 0.3em;
+  }
+
+  .heads span {
+    width: fit-content;
+    background: var(--sky);
+  }
+
+  .heads span:last-child {
+    grid-column: 3;
+  }
+
+  .case {
+    align-items: start;
+    padding: 2rem 0 2.25rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .side {
+    min-width: 0;
+  }
+
+  .side > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.6rem;
+    min-height: 2.25rem;
+    margin-bottom: 0.7rem;
+    background: var(--sky);
+  }
+
+  .mark {
+    flex: none;
+  }
+
+  .greek {
+    color: var(--ink-2);
+    font: italic 400 1.15rem var(--font-display), sans-serif;
+  }
+
+  .tool {
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font: 400 0.8125rem var(--font-mono), monospace;
+  }
+
+  .path {
+    font: 500 0.9375rem var(--font-mono), monospace;
+    overflow-wrap: anywhere;
+  }
+
+  .word {
+    margin-left: 0.2rem;
+    color: var(--v);
+    font: 600 1.35rem/1 var(--font-display), sans-serif;
+  }
+
+  .ex {
+    margin-left: auto;
+    color: var(--ink-2);
+    font: 400 0.8125rem var(--font-mono), monospace;
+  }
+
+  .link {
+    display: flex;
+    align-items: center;
+    height: 2.25rem;
+  }
+
+  .link svg {
+    width: 100%;
+  }
+
+  .link line {
+    stroke: var(--v);
+    stroke-width: 1.3;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .note {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2rem;
+    align-items: baseline;
+    margin-top: 1.1rem;
+  }
+
+  .note p {
+    max-width: 76ch;
+    background: var(--sky);
+    color: var(--ink-2);
+    font-size: 0.97rem;
+  }
+
+  /* Lighting a star from its case is the page's one interaction. */
+  .sky:has(.case[data-verdict='advised']:is(:hover, :focus-within)) :global(.pair:not([data-verdict='advised'])),
+  .sky:has(.case[data-verdict='blocked']:is(:hover, :focus-within)) :global(.pair:not([data-verdict='blocked'])) {
+    opacity: 0.3;
+  }
+
+  .sky :global(.pair) {
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  #name,
+  #recipes,
+  .duo {
+    margin-top: clamp(4.5rem, 10vw, 8rem);
+  }
+
+  #name h2 {
+    margin-bottom: 1rem;
+  }
+
+  .notes {
+    display: grid;
+    grid-template-columns: 4fr 5fr 4fr;
+    gap: 3.5rem;
+  }
+
+  .notes p {
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    background: var(--sky);
+  }
+
+  .notes p + p,
+  #choose p + p {
+    color: var(--ink-2);
+  }
+
+  #recipes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem 3.5rem;
+    align-items: start;
+  }
+
+  #recipes h2 {
+    grid-column: 1 / -1;
+  }
+
+  .catalogue,
+  .links {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .catalogue {
+    border-top: 1px solid var(--ink);
+    background: var(--sky);
+  }
+
+  .catalogue li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.25rem 1.5rem;
+    align-items: baseline;
+    padding-block: 1.15rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .catalogue a {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .catalogue a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+
+  .catalogue p {
+    grid-column: 1;
+    color: var(--ink-2);
+  }
+
+  .catalogue code {
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--ink-2);
+    font-size: 0.8125rem;
+  }
+
+  .catalogue-col .more,
+  #install .more {
+    margin-top: 1.4rem;
+  }
+
+  /* One complete discipline entry, copyable, so the page shows what a reader pastes. */
+  .entry {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.4rem 0.5rem 0.4rem 1rem;
+    border-bottom: 1px solid var(--term-rule);
+    color: var(--term-dim);
+    font-size: 0.8125rem;
+  }
+
+  .entry pre {
+    padding: 0.9rem 1rem 1rem;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .entry .copy.mini {
+    background: var(--term);
+    color: var(--term-ink);
+    border-color: var(--term-rule);
+  }
+
+  .entry .copy-state {
+    box-shadow: 3px -3px 0 -1.5px var(--term), 3px -3px 0 0 currentColor;
+  }
+
+  .entry .copy.mini:hover,
+  .entry .copy.mini[data-copied] {
+    background: var(--term-ink);
+    color: var(--term);
+  }
+
+  .entry .copy.mini:hover .copy-state,
+  .entry .copy.mini[data-copied] .copy-state {
+    box-shadow: 3px -3px 0 -1.5px var(--term-ink), 3px -3px 0 0 currentColor;
+  }
+
+  .entry figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    width: fit-content;
+    background: var(--sky);
+    color: var(--ink-2);
+    font-size: 0.875rem;
+  }
+
+  .duo {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 3.5rem;
+    align-items: start;
+    padding-top: 2rem;
+    border-top: 1px solid var(--ink);
+  }
+
+  .duo h2 {
+    margin-bottom: 1.4rem;
+  }
+
+  .duo section {
+    min-width: 0;
+  }
+
+  .routes {
+    margin: 0;
+    background: var(--sky);
+  }
+
+  .routes > div {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+    padding-block: 0.85rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .routes > div:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .routes dt {
+    font-weight: 600;
+  }
+
+  .routes dt small {
+    display: block;
+    color: var(--advised);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .routes dd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .routes code {
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+  }
+
+  .copy.mini {
+    flex: none;
+    padding: 0.85rem;
+    border-color: var(--rule);
+  }
+
+  .copy.mini[data-copied='yes']::after {
+    content: none;
+  }
+
+  #choose p {
+    max-width: 52ch;
+    background: var(--sky);
+  }
+
+  #choose p + p {
+    margin-top: 1rem;
+  }
+
+  /* The page ends on a sky of its own, drawn from the same catalogue as the first screen, with
+     the closing text laid over the part of it the figure leaves free. */
+  #further {
+    position: relative;
+    height: 37.5rem;
+    margin-top: 7rem;
+  }
+
+  #further::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 1;
+    height: 12.5rem;
+    background: linear-gradient(var(--sky), transparent);
+  }
+
+  #further :global(.chart.wide) {
+    inset: 0;
+    height: auto;
+    min-height: 0;
+  }
+
+  #further :global(.chart.wide)::after {
+    content: none;
+  }
+
+  #further .wrap {
+    z-index: 2;
+    height: 100%;
+  }
+
+  /* A feathered patch of the ground colour keeps stars from running through the letters. */
+  .closing {
+    position: absolute;
+    top: 9.5rem;
+    left: 0;
+    width: min(100%, 40rem);
+    background: color-mix(in srgb, var(--sky) 78%, transparent);
+    box-shadow: 0 0 2rem 2rem color-mix(in srgb, var(--sky) 78%, transparent);
+  }
+
+  .closing p:not(.actions) {
+    margin-top: 1.2rem;
+    color: var(--ink-2);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2rem;
+    margin: 0.6rem 0 1.4rem;
+  }
+
+  .links a {
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .links a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+
+  .closing .actions {
+    margin-top: 0;
+  }
+
+  footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 1.75rem 2.5rem;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+  }
+
+  footer p {
+    margin-right: auto;
+  }
+
+  @media (max-width: 62rem) {
+    .sky :global(.chart.wide) {
+      display: none;
+    }
+
+    .sky :global(.chart.narrow) {
+      display: block;
+      height: auto;
+      aspect-ratio: 400 / 380;
+      margin: 0.5rem -1.5rem 0;
+      width: calc(100% + 3rem);
+    }
+
+    #hero {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding-bottom: 2rem;
+    }
+
+    /* The headline, then the figure, then the rest: the chart stays in the first screen. */
+    .pitch {
+      display: contents;
+    }
+
+    .pitch::before {
+      content: none;
+    }
+
+    .pitch h1 {
+      order: 1;
+    }
+
+    .sky :global(.chart.narrow) {
+      order: 2;
+    }
+
+    .pitch > :not(h1) {
+      order: 3;
+    }
+
+    .lede {
+      max-width: none;
+    }
+
+    .lead,
+    .notes,
+    #recipes,
+    .duo {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lead {
+      gap: 1rem;
+    }
+
+    .notes,
+    .duo {
+      gap: 1.5rem;
+    }
+
+    .heads {
+      display: none;
+    }
+
+    /* The two columns stack; the dotted link becomes a short vertical line from the call to its
+       verdict, so the verdict's heading sits directly under the call it belongs to. */
+    .case {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .link {
+      height: 1.6rem;
+      padding-left: 0.65rem;
+    }
+
+    .link svg {
+      display: none;
+    }
+
+    .link::before {
+      content: '';
+      height: 100%;
+      border-left: 1.3px dotted var(--v);
+    }
+
+    .side > header {
+      margin-bottom: 0.5rem;
+    }
+
+    #further {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      margin-top: 4rem;
+    }
+
+    #further::before {
+      content: none;
+    }
+
+    #further .wrap {
+      height: auto;
+      order: 1;
+    }
+
+    .closing {
+      position: static;
+      width: auto;
+    }
+
+    #further :global(.chart.narrow) {
+      order: 2;
+      width: 100%;
+      margin: 2rem 0 0;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .bar {
+      flex-wrap: wrap;
+      row-gap: 0.75rem;
+    }
+
+    nav {
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      column-gap: 1rem;
+    }
+
+    .routes > div {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.4rem;
+    }
+
+    .catalogue li {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .catalogue code {
+      grid-column: 1;
+      grid-row: auto;
+    }
+
+    .copy:not(.mini) {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .copy code {
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+    }
+  }
+</style>

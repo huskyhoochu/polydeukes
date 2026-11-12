@@ -1,0 +1,116 @@
+---
+/**
+ * Castor (α) and Pollux (β) with the stars and figure lines around them, projected by `chart()`,
+ * and one leader line from the figure down to each of the three paragraphs under it.
+ *
+ * The leaders end at the centres of the three columns the paragraphs sit in, so the figure is
+ * drawn at the width of that grid and scales with it.
+ */
+import { type ChartWindow, chart } from '../data/gemini';
+
+const w: ChartWindow = {
+  width: 1296,
+  height: 380,
+  raLeft: 8.67,
+  raRight: 6.66,
+  decTop: 33.25,
+  decBottom: 22.75,
+  faintest: 6,
+};
+const c = chart(w);
+const star = (name: string) => c.stars.find((s) => s.name === name);
+const alpha = star('α');
+const beta = star('β');
+const columns = [0.14, 0.5, 0.86].map((f) => Math.round(w.width * f));
+// Each leader leaves a star or the dotted line, runs down to a level of its own, moves to its
+// column's centre, and ends on the paragraph's top rule.
+const leaders =
+  alpha && beta
+    ? [
+        { x: beta.x, y: beta.y + beta.r + 10, level: w.height - 64, end: columns[0] },
+        { x: (alpha.x + beta.x) / 2, y: (alpha.y + beta.y) / 2 + 8, level: w.height - 32, end: columns[1] },
+        { x: alpha.x, y: alpha.y + alpha.r + 10, level: w.height - 64, end: columns[2] },
+      ].map((l) => `M${l.x} ${l.y}V${l.level}H${l.end}V${w.height}`)
+    : [];
+---
+
+<svg viewBox={`0 0 ${w.width} ${w.height}`} preserveAspectRatio="xMidYMid slice" focusable="false" aria-hidden="true">
+  {c.grid.map((d) => <path class="grid" d={d} />)}
+  {c.field.map((f) => <circle class="field" cx={f.x} cy={f.y} r={f.r} opacity={f.opacity} />)}
+  {c.lines.map((d) => <path class="figure" d={d} />)}
+  {c.stars.map((s) => <circle class="dot" cx={s.x} cy={s.y} r={s.r} />)}
+  {alpha && beta && <line class="link" x1={alpha.x} y1={alpha.y} x2={beta.x} y2={beta.y} />}
+  {beta && <circle class="ring" cx={beta.x} cy={beta.y} r={beta.r + 8} />}
+  {leaders.map((d) => <path class="leader" d={d} />)}
+  {alpha && <text class="name" x={alpha.x - 12} y={alpha.y - 24} text-anchor="middle">CASTOR</text>}
+  {beta && <text class="name" x={beta.x - 26} y={beta.y + 5} text-anchor="end">POLLUX</text>}
+  {alpha && <text class="greek" x={alpha.x + alpha.r + 6} y={alpha.y - alpha.r - 4}>α</text>}
+  {beta && <text class="greek" x={beta.x + beta.r + 12} y={beta.y - beta.r - 8}>β</text>}
+</svg>
+
+<style>
+  svg {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1296 / 380;
+  }
+
+  .grid,
+  .figure,
+  .ring,
+  .leader {
+    fill: none;
+  }
+
+  .grid {
+    stroke: var(--grid);
+  }
+
+  .field,
+  .dot {
+    fill: var(--ink);
+  }
+
+  .figure {
+    stroke: var(--ink);
+    stroke-width: 1.2;
+    opacity: 0.85;
+  }
+
+  .link,
+  .ring {
+    stroke: var(--advised);
+    stroke-width: 1.3;
+  }
+
+  .link {
+    stroke-dasharray: 2 6;
+    stroke-linecap: round;
+  }
+
+  .leader {
+    stroke: var(--rule);
+  }
+
+  .name {
+    fill: var(--ink);
+    font: 500 12.5px var(--font-text), sans-serif;
+    letter-spacing: 0.3em;
+  }
+
+  .greek {
+    fill: var(--ink-2);
+    font: italic 400 16px var(--font-display), sans-serif;
+  }
+
+  @media (max-width: 62rem) {
+    svg {
+      height: 15rem;
+      aspect-ratio: auto;
+    }
+
+    .leader {
+      display: none;
+    }
+  }
+</style>

@@ -81,4 +81,7 @@ Naming only; how each one judges is in `dogfooding-axes.md`.
   config key, or doc.
 - Surfaces owned by other tools (an agent's own rules directory) and the npm `keywords` array keep
   their native vocabulary.
+- A second exception uses `harness` (Korean 「하네스」) in the landing pages (`/`, `/ko/`): the
+  first-screen title and its supporting paragraph, and one paragraph explaining why this project
+  calls each check a discipline.
 - **Reference docs describe current behavior and use the current vocabulary.**

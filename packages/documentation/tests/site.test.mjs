@@ -386,3 +386,178 @@ describe('Korean pages', () => {
     assert.deepEqual(kept, []);
   });
 });
+
+describe('rebuilt landing pages', () => {
+  const root = fileURLToPath(new URL('../../../', import.meta.url));
+  const landings = [
+    {
+      lang: 'en',
+      file: 'index.html',
+      url: `${origin}/`,
+      other: '/ko/',
+      otherLang: 'ko',
+      prefix: '',
+    },
+    {
+      lang: 'ko',
+      file: 'ko/index.html',
+      url: `${origin}/ko/`,
+      other: '/',
+      otherLang: 'en',
+      prefix: '/ko',
+    },
+  ];
+  const sectionIds = ['hero', 'cases', 'name', 'recipes', 'install', 'choose', 'further'];
+
+  // Reads a built page, failing with a message instead of a thrown ENOENT when it is missing.
+  const page = (rel) => {
+    assert.ok(existsSync(join(dist, rel)), `dist/${rel} exists`);
+    return read(rel);
+  };
+  const text = (html) =>
+    decodeCode(html.replace(/<(script|style)\b[\s\S]*?<\/\1>/g, '').replace(/<[^>]*>/g, ''))
+      .replace(/\s+/g, ' ')
+      .trim();
+  const mainOf = (html) => {
+    const main = html.match(/<main\b[\s\S]*?<\/main>/)?.[0];
+    assert.ok(main, 'page has a <main> element');
+    return main;
+  };
+  // Each section runs from its own tag to the next section's tag (or the end of <main>).
+  const sections = (html) => {
+    const main = mainOf(html);
+    const starts = [...main.matchAll(/<section\b(?:[^>"]|"[^"]*")*>/g)].map((m) => ({
+      id: attr(m[0], 'id'),
+      at: m.index,
+    }));
+    return starts.map((s, i) => ({ id: s.id, html: main.slice(s.at, starts[i + 1]?.at) }));
+  };
+  const sectionHtml = (html, id) => {
+    const found = sections(html).find((s) => s.id === id);
+    assert.ok(found, `page has a <section id="${id}">`);
+    return found.html;
+  };
+  const headerOf = (html) => {
+    const header = html.match(/<header\b[\s\S]*?<\/header>/)?.[0];
+    assert.ok(header, 'page has a <header> element');
+    return header;
+  };
+
+  for (const { lang, file, url, other, otherLang, prefix } of landings) {
+    it(`[${lang}] sets its own html lang, canonical and the shared hreflang alternates`, () => {
+      // Catches a Korean landing that reuses the English canonical or lang, or alternates that differ between the pair.
+      const html = page(file);
+      assert.equal(
+        html.match(/<html\b[^>]*>/)?.[0] && attr(html.match(/<html\b[^>]*>/)[0], 'lang'),
+        lang,
+      );
+      const canonical = tags(html, 'link').find((t) => attr(t, 'rel') === 'canonical');
+      assert.ok(canonical, 'has a canonical link');
+      assert.equal(attr(canonical, 'href'), url);
+      const byLang = Object.fromEntries(alternates(html).map((a) => [a.hreflang, a.href]));
+      assert.deepEqual(byLang, {
+        en: `${origin}/`,
+        ko: `${origin}/ko/`,
+        'x-default': `${origin}/`,
+      });
+      assert.equal(alternates(html).length, 3);
+    });
+
+    it(`[${lang}] has the seven sections in order inside main`, () => {
+      // Catches a missing, renamed or reordered section, which breaks in-page navigation.
+      assert.deepEqual(
+        sections(page(file)).map((s) => s.id),
+        sectionIds,
+      );
+    });
+
+    it(`[${lang}] links to the other language with its hreflang`, () => {
+      // Catches a language switch without hreflang or pointing at the wrong page.
+      const link = tags(page(file), 'a').find(
+        (t) => attr(t, 'href') === other && attr(t, 'hreflang') === otherLang,
+      );
+      assert.ok(link, `an <a href="${other}" hreflang="${otherLang}"> exists`);
+    });
+
+    for (const caseFile of [
+      'conformance/covenant/recipes/dependency-edits-follow-lookups/hono-upgrade-without-lookups-advised.json',
+      'conformance/covenant/recipes/comments-stay-short/narrating-comment-run-advised.json',
+      'conformance/covenant/recipes/migrations-are-generated/edited-migration-blocked.json',
+      'conformance/covenant/recipes/packages-meet-at-the-entry-point/deep-import-into-other-package-blocked.json',
+    ]) {
+      it(`[${lang}] shows the real stderr of ${caseFile.split('/').at(-1)} in the cases section`, () => {
+        // Catches case output that was retyped and drifted from what the judge prints.
+        const { stderr } = JSON.parse(readFileSync(join(root, caseFile), 'utf8')).expect;
+        assert.ok(stderr.length > 0, 'the case has stderr lines');
+        const shown = text(sectionHtml(page(file), 'cases'));
+        for (const line of stderr) {
+          assert.ok(
+            shown.includes(line.replace(/\s+/g, ' ').trim()),
+            `cases section lacks: ${line}`,
+          );
+        }
+      });
+    }
+
+    it(`[${lang}] links the three featured recipes`, () => {
+      // Catches a recipe card linking to the English page from the Korean landing, or to a moved page.
+      const hrefs = tags(sectionHtml(page(file), 'recipes'), 'a').map((t) => attr(t, 'href'));
+      for (const slug of [
+        'document-read-before-edit',
+        'few-test-runs-per-edit',
+        'tests-are-the-writers',
+      ]) {
+        const target = `${prefix}/docs/recipes/${slug}/`;
+        assert.ok(hrefs.includes(target), `no link to ${target}`);
+      }
+    });
+
+    it(`[${lang}] shows the first brew install line of the install guide as code`, () => {
+      // Catches an install command that drifted from the install guide.
+      const command = readFileSync(join(root, 'docs/how-to/install.md'), 'utf8')
+        .split('\n')
+        .find((l) => l.startsWith('brew install '));
+      assert.ok(command, 'the install guide has a brew install line');
+      const codes = (
+        sectionHtml(page(file), 'install').match(/<code\b[^>]*>[\s\S]*?<\/code>/g) ?? []
+      ).map(text);
+      assert.ok(codes.includes(command.trim()), `no <code> reads exactly: ${command}`);
+    });
+
+    it(`[${lang}] resolves every internal link to a built file`, () => {
+      // Catches a landing link to a page the build does not emit.
+      const missing = tags(page(file), 'a')
+        .map((t) => attr(t, 'href'))
+        .filter((h) => h?.startsWith('/') && !h.startsWith('//'))
+        .map((h) => h.replace(/[#?].*$/, ''))
+        .map((p) => (p.endsWith('/') ? `${p.slice(1)}index.html` : p.slice(1)))
+        .filter((p) => !existsSync(join(dist, p)));
+      assert.deepEqual(missing, []);
+    });
+  }
+
+  describe('logo', () => {
+    const paths = (svg) => [...svg.matchAll(/<path\b[^>]*\sd="([^"]*)"/g)].map((m) => m[1]);
+    const logo = paths(
+      readFileSync(join(root, 'packages/documentation/src/assets/logo.svg'), 'utf8'),
+    );
+
+    for (const file of ['index.html', 'ko/index.html', 'docs/how-to/install/index.html']) {
+      it(`draws the logo paths in the first header of ${file}`, () => {
+        // Catches a header still showing an old mark.
+        const header = headerOf(page(file));
+        assert.ok(logo.length > 0, 'the logo source has paths');
+        for (const d of logo) assert.ok(header.includes(d), 'header lacks a logo path');
+      });
+    }
+
+    it('the favicon consists of exactly the logo paths', () => {
+      // Catches a favicon that still draws the old mark or only half of the new one.
+      const favicon = paths(
+        readFileSync(join(root, 'packages/documentation/public/favicon.svg'), 'utf8'),
+      );
+      assert.ok(logo.length > 0, 'the logo source has paths');
+      assert.deepEqual([...favicon].sort(), [...logo].sort());
+    });
+  });
+});

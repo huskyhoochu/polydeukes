@@ -211,9 +211,15 @@ importers:
       astro:
         specifier: ^7.3.2
         version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.6.6)(jiti@2.6.1)(yaml@2.9.1)
+      fontkitten:
+        specifier: 1.0.3
+        version: 1.0.3
       sharp:
         specifier: ^0.34.0
         version: 0.34.5
+      wanted-sans:
+        specifier: 1.0.3
+        version: 1.0.3
 
   packages/sdk-ts:
     devDependencies:
@@ -2734,6 +2740,9 @@ packages:
       jsdom:
         optional: true
 
+  wanted-sans@1.0.3:
+    resolution: {integrity: sha512-YU+mQRJMc97zMGFmxFjOvjdrF5Hi2zagc69bNP9n//i77Dlf9AWGfziZWYKdhQzPK5tw+e0iHcjLrZXDatxRTQ==}
+
   why-is-node-running@3.2.1:
     resolution: {integrity: sha512-Tb2FUhB4vUsGQlfSquQLYkApkuPAFQXGFzxWKHHumVz2dK+X1RUm/HnID4+TfIGYJ1kTcwOaCk/buYCEJr6YjQ==}
     engines: {node: '>=20.11'}
@@ -5177,6 +5186,8 @@ snapshots:
       '@types/node': 26.6.6
     transitivePeerDependencies:
       - msw
+
+  wanted-sans@1.0.3: {}
 
   why-is-node-running@3.2.1: {}
 

@@ -13,30 +13,32 @@ export default defineConfig({
   fonts: [
     {
       provider: fontProviders.fontsource(),
-      name: 'Space Grotesk',
+      name: 'Libre Franklin',
       cssVariable: '--font-display',
-      weights: [400, 550],
-      styles: ['normal'],
+      weights: [400, 600, 800],
+      styles: ['normal', 'italic'],
       subsets: ['latin'],
-      fallbacks: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+      // Hangul has no glyphs in the Latin faces; naming the Korean sans before the system
+      // fallbacks keeps the system's own Korean font from taking those characters.
+      fallbacks: ['Wanted Sans Variable', 'Arial', 'sans-serif'],
     },
     {
       provider: fontProviders.fontsource(),
-      name: 'IBM Plex Sans',
+      name: 'Atkinson Hyperlegible Next',
       cssVariable: '--font-text',
       weights: [400, 500, 600],
       styles: ['normal'],
       subsets: ['latin'],
-      fallbacks: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+      fallbacks: ['Wanted Sans Variable', 'ui-sans-serif', 'system-ui', 'sans-serif'],
     },
     {
       provider: fontProviders.fontsource(),
-      name: 'IBM Plex Mono',
+      name: 'Atkinson Hyperlegible Mono',
       cssVariable: '--font-mono',
       weights: [400, 500],
       styles: ['normal'],
       subsets: ['latin'],
-      fallbacks: ['ui-monospace', 'monospace'],
+      fallbacks: ['ui-monospace', 'Wanted Sans Variable', 'monospace'],
     },
   ],
   integrations: [
@@ -65,7 +67,7 @@ export default defineConfig({
           attrs: {
             property: 'og:image:alt',
             content:
-              'The Polydeukes headline above four real verdict rows from its own telemetry log.',
+              'A dark card with the Polydeukes logo, an English headline, and the Gemini constellation figure',
           },
         },
         { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
@@ -76,9 +78,16 @@ export default defineConfig({
       disable404Route: true,
       lastUpdated: true,
       editLink: { baseUrl: 'https://github.com/huskyhoochu/polydeukes/edit/main/docs/' },
-      components: { Head: './src/components/Head.astro' },
+      components: {
+        Head: './src/components/Head.astro',
+        SiteTitle: './src/components/SiteTitle.astro',
+      },
       sidebar,
-      customCss: ['./src/styles/custom.css'],
+      customCss: [
+        'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css',
+        './src/styles/tokens.css',
+        './src/styles/custom.css',
+      ],
     }),
   ],
 });

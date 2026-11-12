@@ -1,38 +1,59 @@
-/* Starlight inherits the landing page's two voices: Plex Sans reads, Plex Mono codes.
-   Space Grotesk stays on display roles so long documentation prose is never set in it.
-   The faces themselves are loaded by Astro's Fonts API, configured in astro.config.mjs. */
+/* Documentation pages set every heading, the site name, navigation and body in the sans.
+   Mono: commands, code, judge output, paths, discipline ids and exit codes.
+   No accent hue: links and the current item take the ink colour, because ochre and clay mean
+   the advised and blocked verdicts on the landing page. Faces load through astro.config.mjs. */
 :root {
-  --sl-font: var(--font-text);
+  --sl-font: var(--font-text), var(--font-text-ko);
   --sl-font-mono: var(--font-mono);
 }
 
+/* Starlight's colours are the shared tokens, so both themes follow tokens.css. The header and
+   sidebar sit on the page ground and are separated by hairlines, as on the landing page. */
+:root,
+:root[data-theme="light"],
 :root[data-theme="dark"] {
-  --sl-color-accent-low: #131e2e;
-  --sl-color-accent: #3b6ea8;
-  --sl-color-accent-high: #b3cce8;
+  --sl-color-black: var(--sky);
+  --sl-color-gray-7: var(--sky);
+  --sl-color-gray-6: var(--grid);
+  --sl-color-gray-5: var(--rule);
+  --sl-color-gray-4: var(--ink-2);
+  --sl-color-gray-3: var(--ink-2);
+  --sl-color-gray-2: var(--ink);
+  --sl-color-gray-1: var(--ink);
+  --sl-color-white: var(--ink);
+  --sl-color-accent-low: var(--grid);
+  --sl-color-accent: var(--ink-2);
+  --sl-color-accent-high: var(--ink);
+  --sl-color-bg: var(--sky);
+  --sl-color-bg-nav: var(--sky);
+  --sl-color-bg-sidebar: var(--sky);
+  --sl-color-bg-inline-code: var(--grid);
+  --sl-color-bg-accent: var(--ink);
+  --sl-color-text: var(--ink);
+  --sl-color-text-accent: var(--ink);
+  --sl-color-text-invert: var(--sky);
+  --sl-color-hairline: var(--grid);
+  --sl-color-hairline-light: var(--rule);
+  --sl-color-hairline-shade: var(--grid);
 }
 
-:root[data-theme="light"] {
-  --sl-color-accent-low: #d9e5f2;
-  --sl-color-accent: #2a5c92;
-  --sl-color-accent-high: #16304d;
+/* Links share the ink colour, so the underline is what marks them. */
+.sl-markdown-content a:not(:where(.not-content *)) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
 }
 
-/* Page and section titles carry the display voice; body copy does not. */
-.content-panel h1,
-.content-panel h2,
-.site-title {
-  font-family: var(--font-display);
-  letter-spacing: -0.018em;
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+  text-decoration-thickness: 2px;
 }
 
 /* Browser surfaces the theme would otherwise leave at their defaults. */
 ::selection {
-  background: color-mix(in srgb, var(--sl-color-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--advised) 38%, transparent);
 }
 
 html {
-  caret-color: var(--sl-color-accent);
+  caret-color: var(--advised);
 }
 
 table {

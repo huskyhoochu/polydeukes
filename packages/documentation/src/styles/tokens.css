@@ -1,0 +1,50 @@
+/* One palette for the landing page and the documentation pages.
+   A pale-night sky (after the Material Palenight editor theme, one step darker) is the default;
+   a light system or the theme toggle turns it into its ink on pale paper. Ochre and clay mean the advised and blocked verdicts and nothing else. */
+:root {
+  --font-text-ko: "Wanted Sans Variable";
+  --sky: #1f2232;
+  --ink: #eef0fa;
+  --ink-2: #b4bad6;
+  --grid: #2c3045;
+  --rule: #424862;
+  --advised: #f5c35f;
+  --blocked: #f4847f;
+  --term: #181a27;
+  --term-ink: #e6e8f4;
+  --term-dim: #8e94b0;
+  --term-rule: #30344a;
+  --term-advised: #f5c35f;
+  --term-blocked: #f4847f;
+  --term-add: #1b2b26;
+  --term-add-ink: #bfe0c5;
+  --term-del: #33202a;
+  --term-del-ink: #f0b9b6;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --sky: #f4f5f9;
+    --ink: #1f2232;
+    --ink-2: #565c78;
+    --grid: #e1e3ec;
+    --rule: #c4c8d6;
+    --advised: #8a5f12;
+    --blocked: #b0433d;
+    --term: #1f2232;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --sky: #f4f5f9;
+  --ink: #1f2232;
+  --ink-2: #565c78;
+  --grid: #e1e3ec;
+  --rule: #c4c8d6;
+  --advised: #8a5f12;
+  --blocked: #b0433d;
+  --term: #1f2232;
+  color-scheme: light;
+}

@@ -1,0 +1,27 @@
+---
+import logoSource from '../assets/logo.svg?raw';
+
+interface Props {
+  /** Rendered height in CSS pixels; width follows the mark's aspect ratio. */
+  size?: number;
+  /** Set when a visible name sits next to the mark, so the link is not read as the name twice. */
+  decorative?: boolean;
+}
+
+const { size = 24, decorative = false } = Astro.props;
+// The path data is read from the asset so the inline mark cannot drift from it.
+const paths = [...logoSource.matchAll(/<path\b[^>]*\sd="([^"]*)"/g)].map((m) => m[1]);
+const width = (size * 871.511) / 1024;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 871.511 1024"
+  width={width}
+  height={size}
+  fill="currentColor"
+  fill-rule="evenodd"
+  {...decorative ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': 'Polydeukes' }}
+>
+  {paths.map((d) => <path d={d} />)}
+</svg>

@@ -1,0 +1,317 @@
+---
+/**
+ * The Gemini figure on a coordinate grid, drawn as stacked static SVG layers.
+ *
+ * Castor's chain is the code a session writes and Pollux's chain the record it leaves. Each
+ * mark puts one written call on a star of Castor's chain and its row on the paired star of
+ * Pollux's chain, joined by a dotted line. Unmarked stars carry no designation.
+ *
+ * The layers (background stars, grid, figure) are separate elements so the page can move
+ * them by different amounts and fade whole groups of stars: both are then compositor work,
+ * where animating single shapes inside one SVG repaints all of it on every frame.
+ *
+ * It is decoration for sighted readers: the marked calls are stated as text in the cases
+ * section, so the chart is hidden from assistive technology.
+ */
+import { type ChartWindow, chart, PAIRS } from '../data/gemini';
+
+interface Props {
+  window: ChartWindow;
+  /** One judged call per pair, in order: the verdict word and a short name of what was written. */
+  marks: { verdict: string; label: string }[];
+  /** Small screens: no tick labels, no call labels and no depth movement. */
+  compact?: boolean;
+  /** Joins Castor and Pollux with a dotted line and rings Pollux, for a chart with no marked calls. */
+  twins?: boolean;
+  class?: string;
+}
+
+const { window: w, marks, compact = false, twins = false, class: className } = Astro.props;
+const c = chart(w);
+const star = (name: string) => c.stars.find((s) => s.name === name);
+const pairs = marks.flatMap((mark, i) => {
+  const code = star(PAIRS[i]?.code ?? '');
+  const record = star(PAIRS[i]?.record ?? '');
+  return code && record ? [{ ...mark, code, record }] : [];
+});
+const marked = new Set(pairs.flatMap((p) => [p.code.name, p.record.name]));
+const alpha = star('α');
+const beta = star('β');
+const box = { viewBox: `0 0 ${w.width} ${w.height}`, preserveAspectRatio: compact ? 'xMidYMid slice' : 'xMidYMin slice' };
+// One faint background star in five brightens now and then; they are split into groups that fade on
+// different periods, so the sky flickers here and there instead of pulsing together.
+const GROUPS = 5;
+// Neighbour names are drawn only on the half of the window the page keeps free of copy, and
+// not in the bottom band, where the next section starts.
+// Only faint stars flicker; the bright ones hold steady, as a chart draws them.
+const flicker = c.field.filter((f, i) => f.r < 2 && i % 5 === 0);
+// Tick labels in the top band would sit under the page header, so they are left out.
+const ticks = compact ? [] : c.ticks.filter((t) => t.y > 96);
+---
+
+<div class:list={['chart', className, { compact }]} aria-hidden="true" data-depth={compact ? undefined : ''}>
+  <svg class="layer far" {...box} focusable="false">
+    {c.field.map((f) => <circle cx={f.x} cy={f.y} r={f.r} opacity={f.opacity} />)}
+    {!compact && c.named.filter((n) => n.x > w.width * 0.5 && n.y < w.height * 0.7).map((n) => <text class="neighbour" x={n.x + 9} y={n.y + 4}>{n.label}</text>)}
+  </svg>
+  {
+    Array.from({ length: GROUPS }, (_, g) => (
+      <svg class="layer far flicker" {...box} focusable="false" style={`--i:${g}`}>
+        {flicker.filter((_, i) => i % GROUPS === g).map((f) => <circle cx={f.x} cy={f.y} r={f.r + 0.5} />)}
+      </svg>
+    ))
+  }
+  <svg class="layer mid" {...box} focusable="false">
+    {c.grid.map((d) => <path class="grid" d={d} />)}
+    <path class="ecliptic" d={c.ecliptic} />
+    {ticks.map((t) => <text class="tick" x={t.x} y={t.y} text-anchor="end">{t.label}</text>)}
+  </svg>
+  <svg class="layer near" {...box} focusable="false">
+    {c.lines.map((d) => <path class="figure" d={d} />)}
+    {c.stars.filter((s) => !marked.has(s.name)).map((s) => <circle class="dot" cx={s.x} cy={s.y} r={s.r} />)}
+    {
+      pairs.map((p) => (
+        <g class="pair" data-verdict={p.verdict}>
+          <line class="link" x1={p.code.x} y1={p.code.y} x2={p.record.x} y2={p.record.y} />
+          <circle class="dot" cx={p.code.x} cy={p.code.y} r={p.code.r} />
+          <text class="greek" x={p.code.x + p.code.r + 6} y={p.code.y - p.code.r - 4}>{p.code.name}</text>
+          {!compact && (
+            <text class="call" x={p.code.x + p.code.r + 24} y={p.code.y - p.code.r - 5}>{p.label}</text>
+          )}
+          <circle class="ring" cx={p.record.x} cy={p.record.y} r={p.record.r + 7} />
+          <circle class="dot mark" cx={p.record.x} cy={p.record.y} r={p.record.r} />
+          <text class="greek" x={p.record.x + p.record.r + 9} y={p.record.y - p.record.r - 6}>{p.record.name}</text>
+          <text class="word" x={p.record.x - p.record.r - 12} y={p.record.y + 30} text-anchor="end">{p.verdict}</text>
+        </g>
+      ))
+    }
+    {
+      twins && alpha && beta && (
+        <g class="twin">
+          <line class="link" x1={alpha.x} y1={alpha.y} x2={beta.x} y2={beta.y} />
+          <circle class="ring" cx={beta.x} cy={beta.y} r={beta.r + 7} />
+        </g>
+      )
+    }
+    {alpha && <text class="name" x={alpha.x - 12} y={alpha.y - 24} text-anchor="middle">CASTOR</text>}
+    {beta && <text class="name" x={beta.x - 8} y={beta.y + 34} text-anchor="middle">POLLUX</text>}
+  </svg>
+</div>
+
+<script>
+  // Depth: the three layers shift by different amounts with the pointer and with scrolling.
+  // Only the custom properties change here; the transforms themselves are in the styles.
+  const charts = document.querySelectorAll<HTMLElement>('.chart[data-depth]');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+  if (charts.length && !still.matches) {
+    let x = 0;
+    let y = 0;
+    let queued = false;
+    const apply = () => {
+      queued = false;
+      for (const el of charts) {
+        el.style.setProperty('--px', x.toFixed(3));
+        el.style.setProperty('--py', y.toFixed(3));
+        el.style.setProperty('--sy', String(Math.min(window.scrollY, 1200)));
+      }
+    };
+    const queue = () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(apply);
+      }
+    };
+    window.addEventListener('scroll', queue, { passive: true });
+    if (fine.matches) {
+      window.addEventListener(
+        'pointermove',
+        (event) => {
+          x = event.clientX / window.innerWidth - 0.5;
+          y = event.clientY / window.innerHeight - 0.5;
+          queue();
+        },
+        { passive: true },
+      );
+    }
+  }
+</script>
+
+<style>
+  .chart {
+    position: relative;
+    overflow: hidden;
+    --px: 0;
+    --py: 0;
+    --sy: 0;
+  }
+
+  /* Each layer overhangs the frame so its edge never shows when it shifts. */
+  .layer {
+    position: absolute;
+    inset: -3rem;
+    width: calc(100% + 6rem);
+    height: calc(100% + 6rem);
+  }
+
+  [data-depth] .layer {
+    transform: translate3d(
+      calc(var(--px) * var(--reach) * -1px),
+      calc(var(--py) * var(--reach) * -1px + var(--sy) * var(--drift) * 1px),
+      0
+    );
+    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  .far {
+    --reach: 10;
+    --drift: 0.1;
+    fill: var(--ink);
+  }
+
+  .mid {
+    --reach: 22;
+    --drift: 0.05;
+  }
+
+  .near {
+    --reach: 40;
+    --drift: 0;
+  }
+
+  .compact .layer {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .flicker {
+    opacity: 0;
+    animation: flicker calc(6.1s + var(--i) * 1.7s) calc(var(--i) * -2.3s) infinite ease-in-out;
+  }
+
+  @keyframes flicker {
+    0%,
+    62%,
+    100% {
+      opacity: 0;
+    }
+
+    81% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flicker {
+      animation: none;
+    }
+
+    [data-depth] .layer {
+      transform: none;
+      transition: none;
+    }
+  }
+
+  .grid,
+  .figure,
+  .ring {
+    fill: none;
+  }
+
+  .grid {
+    stroke: var(--grid);
+    stroke-width: 1;
+  }
+
+  .ecliptic {
+    fill: none;
+    stroke: var(--rule);
+    stroke-width: 1;
+    stroke-dasharray: 9 7;
+  }
+
+  .neighbour {
+    fill: var(--ink-2);
+    font: 400 11.5px var(--font-text), sans-serif;
+    letter-spacing: 0.08em;
+  }
+
+  .figure {
+    stroke: var(--ink);
+    stroke-width: 1.2;
+    opacity: 0.85;
+  }
+
+  .link {
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+  }
+
+  .dot {
+    fill: var(--ink);
+  }
+
+  .ring {
+    stroke: currentColor;
+    stroke-width: 1.3;
+  }
+
+  .twin {
+    color: var(--advised);
+  }
+
+  .pair[data-verdict='advised'] {
+    color: var(--advised);
+  }
+
+  .pair[data-verdict='blocked'] {
+    color: var(--blocked);
+  }
+
+  .mark,
+  .word {
+    fill: currentColor;
+  }
+
+  .tick {
+    fill: var(--ink-2);
+    font: 400 11.5px var(--font-mono), ui-monospace, monospace;
+  }
+
+  .greek {
+    fill: var(--ink-2);
+    font: italic 400 16px var(--font-display), sans-serif;
+  }
+
+  .call {
+    fill: var(--ink);
+    font: 400 12.5px var(--font-mono), ui-monospace, monospace;
+  }
+
+  .word {
+    font: 600 20px var(--font-display), sans-serif;
+  }
+
+  .name {
+    fill: var(--ink);
+    font: 500 12.5px var(--font-text), sans-serif;
+    letter-spacing: 0.3em;
+  }
+
+  .compact .greek {
+    font-size: 15px;
+  }
+
+  .compact .word {
+    font-size: 19px;
+  }
+
+  .compact .name {
+    font-size: 11px;
+  }
+</style>

@@ -52,7 +52,8 @@ Linux arm64. There is no prebuilt Windows release.
 The documentation body comes from Markdown under `docs/` and `docs/catalog.json`, through
 `packages/documentation/scripts/sync-docs.mjs`. The same Markdown is compiled into the executable
 for `pdks docs`. Installed documentation describes that executable's build; the site may describe a
-newer release. The landing page is a separate, manually authored Astro page.
+newer release. The landing routes `/` and `/ko/` render one shared Astro component,
+`src/components/Landing.astro`, with English and Korean copy respectively.
 
 ## Capabilities and Constraints
 
@@ -94,7 +95,12 @@ their source, date, scope, and conditions.
 English and Korean are equal. Every screen must have the same structure and content in both
 languages, and Korean typography receives the same care as English typography.
 
-The current visual identity is not a binding commitment. The owner has left it undecided.
+The landing page uses a real-star Gemini chart: Castor shows agent edits, Pollux their verdicts.
+Darker Palenight blue-gray and light ink swap in light mode; advised is yellow, blocked red. Shared
+tokens live in `src/styles/tokens.css`; docs have no accents. Headings use Libre Franklin, body text
+Atkinson Hyperlegible Next, code Atkinson Hyperlegible Mono, and Korean Wanted Sans. Dotted lines
+link Castor to Pollux in the chart and example columns; the grid continues down to the closing
+chart. Twin profiles appear only in headers and the favicon.
 
 ## Evidence on Hand
 
@@ -104,12 +110,11 @@ with a stated reason. The project uses its own disciplines in daily development.
 The local `.polydeukes/roi.log` contains real verdict rows. `conformance/` contains fixtures
 exercised against the real judge by the repository's fixture runners and tests.
 
-`packages/documentation/src/data/telemetry.json` supplies the landing page with a telemetry snapshot
-dated 2026-09-15. Its figures describe that snapshot, not current totals.
+The landing page reads judgment cases from `conformance/covenant/recipes/` at build time, including
+their expected output and exit codes.
 
-`packages/documentation/src/data/evidence.json` supplies cited third-party research measurements
-about AI agents, with sources and conditions. These are not third-party benchmarks of Polydeukes.
-The repository provides no testimonials, customer logos, or third-party Polydeukes benchmarks.
+The landing page reads installation commands from `docs/how-to/install.md` at build time. The
+repository provides no testimonials, customer logos, or third-party Polydeukes benchmarks.
 
 ## Product Principles
 

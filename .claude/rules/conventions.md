@@ -8,7 +8,9 @@ This project deliberately renames control-framing terms. **Never use `guard`, `h
 in code, packages, CLI, or docs — use `covenant`, `discipline framework`, and `memory`. The full
 glossary is in `.claude/rules/domain-terms.md`; read it before naming anything. One deliberate
 exception: the npm `keywords` array keeps the industry terms — it is a discoverability index; the
-`description` field is NOT exempt.
+`description` field is NOT exempt. A second exception uses `harness` (Korean 「하네스」) in the
+landing pages (`/`, `/ko/`): the first-screen title and its supporting paragraph, and one paragraph
+explaining why this project calls each check a discipline.
 
 ## Languages
 
