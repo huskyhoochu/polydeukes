@@ -9,17 +9,17 @@ This project is **alpha**. Releases are tagged by release-please, and the first 
 publication lands with v0.3.0; the design docs remain the source of truth for
 everything not yet implemented.
 
-## [0.27.0](https://github.com/b95labs/polydeukes/compare/v0.26.0...v0.27.0) (2026-11-12)
+## [0.27.0](https://github.com/huskyhoochu/polydeukes/compare/v0.26.0...v0.27.0) (2026-11-12)
 
 
 ### Features
 
-* **pdks:** add a recipes topic to pdks docs and group the docs by task ([#373](https://github.com/b95labs/polydeukes/issues/373)) ([c2fad6f](https://github.com/b95labs/polydeukes/commit/c2fad6f4e960a82581d45c29b4ea9e5e99e9b27b))
+* **pdks:** add a recipes topic to pdks docs and group the docs by task ([#373](https://github.com/huskyhoochu/polydeukes/issues/373)) ([c2fad6f](https://github.com/huskyhoochu/polydeukes/commit/c2fad6f4e960a82581d45c29b4ea9e5e99e9b27b))
 
 
 ### Bug Fixes
 
-* **pdks:** drop the commit wording from the advisory summary line ([#362](https://github.com/b95labs/polydeukes/issues/362)) ([9ed7363](https://github.com/b95labs/polydeukes/commit/9ed73638b4fd8f67f3de92f2e2a21124cc3f9646))
+* **pdks:** drop the commit wording from the advisory summary line ([#362](https://github.com/huskyhoochu/polydeukes/issues/362)) ([9ed7363](https://github.com/huskyhoochu/polydeukes/commit/9ed73638b4fd8f67f3de92f2e2a21124cc3f9646))
 
 ## [0.26.0](https://github.com/huskyhoochu/polydeukes/compare/v0.25.0...v0.26.0) (2026-11-10)
 
