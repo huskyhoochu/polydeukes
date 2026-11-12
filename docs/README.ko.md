@@ -7,31 +7,44 @@
 
 <a id="여기서-시작하십시오"></a>
 
-<a id="the-shape-of-the-thing-in-one-page"></a>
-
 <a id="start-here"></a>
-## 가이드 읽는 순서
+## 시작
 
-처음 사용하는 사람은 **설치 → 첫 판정 → 연결·설정 → 규율 작성** 순서로 시작하세요.
+| 하고 싶은 일               | 안내                                              |
+| -------------------------- | ------------------------------------------------- |
+| 설치 경로와 확장 선택      | [설치](./how-to/install.ko.md)                    |
+| 정상·차단 결과를 직접 보기 | [첫 판정](./tutorials/first-judgment.ko.md)       |
+| 에이전트·Git·CI에 연결     | [표면 연결](./how-to/connect-surfaces.ko.md)      |
+| 프로젝트 설정 작성         | [프로젝트 설정](./how-to/configure-project.ko.md) |
+
+<a id="recipes"></a>
+## 레시피
 
 [레시피 목록](./recipes/index.ko.md)에서 지금 하는 작업에 맞는 규율을 고르세요.
 
+<a id="choose-a-tool"></a>
+## 도구 고르기
+
+[Polydeukes가 맞는 경우와 다른 도구가 맞는 경우](./when-to-use-polydeukes.ko.md)에서 검사에 맞는
+도구를 고르세요.
+
+<a id="help"></a>
+## 도움말
+
 | 하고 싶은 일                         | 안내                                                 |
 | ------------------------------------ | ---------------------------------------------------- |
-| 설치 경로와 확장 선택                | [설치](./how-to/install.ko.md)                       |
-| 정상·차단 결과를 직접 보기           | [첫 판정](./tutorials/first-judgment.ko.md)          |
-| 에이전트·Git·CI에 연결               | [표면 연결](./how-to/connect-surfaces.ko.md)         |
-| 직접, CI, 훅에서 변경 집합 판정 실행 | [git 훅](./how-to/git-hooks.ko.md)                   |
-| 반복되는 실수를 규율로 표현          | [규율 작성](./how-to/write-disciplines.ko.md)        |
-| 결정과 근거를 다시 찾기              | [기억 사용](./how-to/use-memory.ko.md)               |
-| 프로그램에서 판정 호출               | [SDK와 참조 문서](./README.ko.md#reference-packages) |
 | 건너뜀·차단·설치 오류 해결           | [문제 해결](./troubleshooting.ko.md)                 |
+| 반복되는 실수를 규율로 표현          | [규율 작성](./how-to/write-disciplines.ko.md)        |
+| 직접, CI, 훅에서 변경 집합 판정 실행 | [git 훅](./how-to/git-hooks.ko.md)                   |
+| 결정과 근거를 다시 찾기              | [기억 사용](./how-to/use-memory.ko.md)               |
 | 이전 설치 업그레이드                 | [Rust 이행](./how-to/migrate-to-rust.ko.md)          |
-
-전체 학습 경로와 명령별 참조는 [문서 홈](./README.ko.md)에 있습니다.
+| 문서 작성과 유지                     | [문서 기여](./contributing.ko.md)                    |
+| 프로그램에서 판정 호출               | [SDK와 참조 문서](./README.ko.md#reference-packages) |
 
 <a id="reference"></a>
 ## 참조
+
+정확한 키와 종료 코드가 필요하면 참조 문서를 사용하세요.
 
 <a id="reference-cli"></a>
 ### CLI 명령어
@@ -74,8 +87,16 @@
 [Python
 SDK](./reference/packages/sdk-python.ko.md)
 
+<a id="further-reading"></a>
+## 더 읽을거리
+
+[판정 모델과 관측 한계](./concepts/judgment.ko.md)에서 규율이 확인할 수 있는 범위를 읽고,
+[설계 설명](./why-polydeukes.ko.md)에서 프로젝트의 설계 근거를 읽으세요.
+
+<a id="the-shape-of-the-thing-in-one-page"></a>
+
 <a id="shape-of-the-thing"></a>
-## 한 페이지로 보는 구조
+### 한 페이지로 보는 구조
 
 폴리데우케스는 개발자나 AI 에이전트가 하려는 일을 판정하고 결과를 기록합니다. 기본값으로는 작업을
 차단하지 않습니다. 설계의 바탕은 다음 세 가지입니다.
@@ -94,7 +115,7 @@ SDK](./reference/packages/sdk-python.ko.md)
 도구를 고를 수 있습니다.
 
 <a id="two-surfaces"></a>
-## 두 표면
+### 두 표면
 
 | 표면     | 판정 대상                                                 | 배선 방법                                                                     | 대상                               |
 | -------- | --------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------- |

@@ -17,8 +17,9 @@ pdks docs show <document-id> [--lang en|ko] [--section <section-id>] [--json]
 ```
 
 Use `pdks docs --help`, `pdks docs search --help`, or `pdks docs show --help` for syntax. The
-default language is English. The five legacy topics remain `install`, `config`, `discipline`,
-`covenant`, and `witness`; each is mapped by the same catalog that drives search and retrieval.
+default language is English. The six topics are `install`, `recipes`, `config`, `discipline`,
+`witness`, and `covenant`, in documentation category order. `recipes` prints the recipe list. Each
+topic is mapped by the same catalog that drives search and retrieval.
 
 <a id="search"></a>
 ## Search

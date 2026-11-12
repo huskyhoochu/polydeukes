@@ -2,7 +2,6 @@
 
 **English** · [한국어](./first-judgment.ko.md)
 
-Follow [installation](../how-to/install.md) to install the judge and Claude Code extension on PATH.
 Use an empty example project to check protected and ordinary writes. Claude Code is needed for live
 session observations, but not for the direct probes below.
 
@@ -18,12 +17,12 @@ cd pdks-example
 git init
 ```
 
-For a local npm installation, install into this new project and add its executables to the current
-terminal's `PATH`. Skip this block if both executables are already on `PATH` through another route.
+Skip this block if both `pdks` and `pdks-claude-code` are already on `PATH`. For other installation
+routes (crates.io, npm, PyPI), see the [installation routes](../how-to/install.md#routes).
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
-export PATH="$PWD/node_modules/.bin:$PATH"
+brew install huskyhoochu/polydeukes/pdks
+brew install huskyhoochu/polydeukes/pdks-claude-code
 ```
 
 Now register the integration.

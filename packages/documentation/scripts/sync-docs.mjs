@@ -25,17 +25,6 @@ const REPO_BLOB = 'https://github.com/huskyhoochu/polydeukes/blob/main';
 /** Where a reader edits the source of a page, which is the original under `docs/`. */
 const EDIT_BASE = 'https://github.com/huskyhoochu/polydeukes/edit/main/docs';
 
-/** Catalog categories in sidebar order, with the label shown per locale. */
-const CATEGORY_LABELS = {
-  tutorial: { en: 'Tutorial', ko: '튜토리얼' },
-  recipes: { en: 'Recipes', ko: '레시피' },
-  'how-to': { en: 'How-to guides', ko: '실행 안내' },
-  concepts: { en: 'Concepts', ko: '개념' },
-  reference: { en: 'Reference', ko: '참조' },
-  explanation: { en: 'Explanation', ko: '설명' },
-};
-const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
-
 const REFERENCE_LABELS = {
   'reference/cli/': { en: 'CLI commands', ko: 'CLI 명령어' },
   'reference/packages/': { en: 'Packages', ko: '패키지' },
@@ -207,14 +196,18 @@ async function emit(doc, locale, translation) {
 }
 
 /**
- * Builds one sidebar from documents in catalog order. Reference subgroups occupy their
- * first member's position, and Starlight resolves Korean labels through `translations`.
+ * Builds one sidebar from documents, one group per catalog category in the catalog's
+ * category order. Reference subgroups occupy their first member's position, and Starlight
+ * resolves Korean labels through `translations`.
  */
-function buildSidebar(documents) {
+function buildSidebar(documents, categories) {
   const groups = new Map();
   const referenceGroups = new Map();
   for (const doc of documents) {
     if (doc.id === HOME_ID) continue;
+    if (!categories.some(({ id }) => id === doc.category)) {
+      throw new Error(`${doc.id}: category "${doc.category}" is not in catalog categories`);
+    }
     if (!doc.en) continue;
     if (!groups.has(doc.category)) groups.set(doc.category, []);
     const item = {
@@ -245,11 +238,9 @@ function buildSidebar(documents) {
     }
   }
 
-  return CATEGORY_ORDER.filter((category) => groups.has(category)).map((category) => ({
-    label: CATEGORY_LABELS[category].en,
-    translations: { ko: CATEGORY_LABELS[category].ko },
-    items: groups.get(category),
-  }));
+  return categories
+    .filter(({ id }) => groups.has(id))
+    .map(({ id, en, ko }) => ({ label: en, translations: { ko }, items: groups.get(id) }));
 }
 
 const catalog = JSON.parse(await readFile(join(DOCS_ROOT, 'catalog.json'), 'utf8'));
@@ -262,7 +253,7 @@ for (const doc of documents) {
   }
 }
 
-const sidebar = buildSidebar(documents);
+const sidebar = buildSidebar(documents, catalog.categories);
 await mkdir(join(PACKAGE_ROOT, 'src/generated'), { recursive: true });
 await writeFile(
   join(PACKAGE_ROOT, 'src/generated/sidebar.json'),

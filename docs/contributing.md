@@ -33,6 +33,9 @@ previous slug or explicit id.
 
 `docs/catalog.json` is the single list. Every Markdown file under `docs/` is a `documents` entry.
 
+- `categories` lists documentation category IDs and their English and Korean names in navigation
+  order. Each document's `category` must be one of those IDs; only the documentation home uses
+  `navigation`. The website sidebar and documentation home sections follow this array's order.
 - `documents` entries carry `id`, `category`, `order`, `bundled`, and `en`/`ko`
   `{path,title,summary}`. Write titles and summaries as plain text. Markdown formatting such as
   backticks is displayed literally in website titles and navigation.

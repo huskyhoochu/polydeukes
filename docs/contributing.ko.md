@@ -31,6 +31,9 @@ H2/H3마다 안정 ID가 필요합니다. H1은 문서 제목이지 절이 아�
 
 `docs/catalog.json`이 유일한 목록입니다. `docs/` 아래 마크다운은 `documents` 항목입니다.
 
+- `categories`는 문서 분류의 ID와 영·한 이름을 내비게이션 순서로 담습니다. 각 문서의 `category`는 그
+  ID 가운데 하나여야 하며, 문서 홈만 `navigation`을 씁니다. 사이트 사이드바와 문서 홈의 절 순서는 이
+  배열을 따릅니다.
 - `documents` 항목은 `id`, `category`, `order`, `bundled`, 그리고 `en`/`ko`의
   `{path,title,summary}`를 가집니다. 제목과 요약은 일반 텍스트로 작성합니다. 백틱 같은 마크다운 서식
   문자는 웹사이트 제목과 탐색 메뉴에 그대로 표시됩니다.

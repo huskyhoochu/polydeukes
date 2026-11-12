@@ -10,7 +10,14 @@ use serde_json::{Map, Value};
 
 const CONFIG: &str = "polydeukes.config.yaml";
 const BROKEN_CONFIG: &str = "intentionally: [invalid";
-const TOPICS: [&str; 5] = ["install", "config", "discipline", "covenant", "witness"];
+const TOPICS: [&str; 6] = [
+    "install",
+    "recipes",
+    "config",
+    "discipline",
+    "witness",
+    "covenant",
+];
 const FAIL_PREFIX: &str = "pdks docs: ";
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -284,9 +291,9 @@ mod argument_errors {
         assert_eq!(code(&root), Some(0));
         let text = out(&root);
         assert!(text.starts_with("pdks docs\nUsage: pdks docs [topic]\n"));
-        assert!(
-            text.contains("\nTopics:\n  install\n  config\n  discipline\n  covenant\n  witness\n")
-        );
+        assert!(text.contains(
+            "\nTopics:\n  install\n  recipes\n  config\n  discipline\n  witness\n  covenant\n"
+        ));
         for args in [&["--help"][..], &["search", "--help"], &["show", "--help"]] {
             let output = sandbox.docs(args);
             assert_eq!(code(&output), Some(0), "{args:?}");
@@ -537,6 +544,85 @@ mod retrieval {
         assert!(troubleshooting.is_some(), "troubleshooting section present");
         assert!(configuration < troubleshooting);
         assert!(text.ends_with("See also: pdks docs show troubleshooting --lang en\n"));
+    }
+}
+
+mod topic_list {
+    use super::*;
+
+    #[test]
+    fn the_recipes_topic_prints_the_recipe_list_and_ends_with_the_host_support_line() {
+        // Catches: a recipes topic wired to another document, or one whose closing see-also line
+        // names a different document or is followed by more text.
+        let sandbox = Sandbox::new();
+        let output = sandbox.docs(&["recipes"]);
+        assert_eq!(code(&output), Some(0), "{}", err(&output));
+        let text = out(&output);
+        assert!(
+            text.contains("# Copy a discipline for the task you are doing"),
+            "the recipe list heading is printed"
+        );
+        assert_eq!(
+            text.lines().rfind(|line| !line.trim().is_empty()),
+            Some("See also: pdks docs show host-support --lang en")
+        );
+    }
+
+    #[test]
+    fn topics_follow_the_navigation_order_of_their_first_reference_category() {
+        // Catches: a topic listed out of navigation order, so `pdks docs` and the site sidebar
+        // disagree; and a catalog that carries no category list to compare against.
+        let sandbox = Sandbox::new();
+        let help = out(&sandbox.docs(&[]));
+        let listed: Vec<&str> = help
+            .split_once("\nTopics:\n")
+            .expect("the help has a Topics block")
+            .1
+            .lines()
+            .map_while(|line| line.strip_prefix("  "))
+            .collect();
+        assert_ne!(listed.len(), 0, "the Topics block lists topics");
+
+        let catalog: Value =
+            serde_json::from_str(&doc_file("catalog.json")).expect("the catalog is JSON");
+        let order: Vec<&str> = catalog
+            .get("categories")
+            .and_then(Value::as_array)
+            .expect("the catalog has a categories array")
+            .iter()
+            .map(|category| category.get("id").and_then(Value::as_str).expect("id"))
+            .collect();
+        let documents = catalog
+            .get("documents")
+            .and_then(Value::as_array)
+            .expect("documents is an array");
+
+        let mut previous: Option<(&str, usize)> = None;
+        for topic in listed {
+            let document_id = catalog
+                .pointer(&format!("/topics/{topic}/references/0/documentId"))
+                .and_then(Value::as_str)
+                .ok_or_else(|| format!("topic {topic} has no first reference"))
+                .expect("every listed topic has a first reference");
+            let category = documents
+                .iter()
+                .find(|document| document.get("id").and_then(Value::as_str) == Some(document_id))
+                .and_then(|document| document.get("category").and_then(Value::as_str))
+                .ok_or_else(|| format!("topic {topic}: document {document_id} has no category"))
+                .expect("the referenced document carries a category");
+            let position = order
+                .iter()
+                .position(|id| *id == category)
+                .ok_or_else(|| format!("topic {topic}: category {category} is not listed"))
+                .expect("the category is one of the catalog categories");
+            if let Some((before, at)) = previous {
+                assert!(
+                    position >= at,
+                    "topic {topic} ({category}) is listed after {before} but its category comes earlier"
+                );
+            }
+            previous = Some((topic, position));
+        }
     }
 }
 

@@ -16,8 +16,9 @@ pdks docs show <document-id> [--lang en|ko] [--section <section-id>] [--json]
 ```
 
 `pdks docs --help`, `pdks docs search --help`, `pdks docs show --help`로 구문을 확인합니다. 기본
-언어는 영어입니다. 기존 주제인 `install`, `config`, `discipline`, `covenant`, `witness`도
-유지합니다. 주제별 조회와 검색은 같은 문서 목록을 사용합니다.
+언어는 영어입니다. 주제는 `install`, `recipes`, `config`, `discipline`, `witness`, `covenant` 순서로
+여섯이며, 문서 분류의 순서를 따릅니다. `recipes`는 레시피 목록 문서를 출력합니다. 주제별 조회와
+검색은 같은 카탈로그를 사용합니다.
 
 <a id="search"></a>
 ## 검색

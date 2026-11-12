@@ -1,5 +1,13 @@
 {
   "schemaVersion": 1,
+  "categories": [
+    { "id": "start", "en": "Get started", "ko": "시작" },
+    { "id": "recipes", "en": "Recipes", "ko": "레시피" },
+    { "id": "choose", "en": "Choose a tool", "ko": "도구 고르기" },
+    { "id": "help", "en": "Help", "ko": "도움말" },
+    { "id": "reference", "en": "Reference", "ko": "참조" },
+    { "id": "reading", "en": "Further reading", "ko": "더 읽을거리" }
+  ],
   "documents": [
     {
       "id": "recipe-document-read-before-edit",
@@ -253,7 +261,7 @@
     },
     {
       "id": "first-judgment",
-      "category": "tutorial",
+      "category": "start",
       "order": 1,
       "bundled": true,
       "en": {
@@ -271,7 +279,7 @@
     },
     {
       "id": "connect-surfaces",
-      "category": "how-to",
+      "category": "start",
       "order": 2,
       "bundled": true,
       "en": {
@@ -287,8 +295,8 @@
     },
     {
       "id": "git-hooks",
-      "category": "how-to",
-      "order": 3,
+      "category": "help",
+      "order": 6,
       "bundled": true,
       "tabs": ["plain-hook", "lefthook", "husky", "pre-commit"],
       "en": {
@@ -304,7 +312,7 @@
     },
     {
       "id": "configure-project",
-      "category": "how-to",
+      "category": "start",
       "order": 4,
       "bundled": true,
       "en": {
@@ -320,7 +328,7 @@
     },
     {
       "id": "write-disciplines",
-      "category": "how-to",
+      "category": "help",
       "order": 5,
       "bundled": true,
       "en": {
@@ -336,8 +344,8 @@
     },
     {
       "id": "troubleshooting",
-      "category": "how-to",
-      "order": 6,
+      "category": "help",
+      "order": 3,
       "bundled": true,
       "en": {
         "path": "troubleshooting.md",
@@ -352,7 +360,7 @@
     },
     {
       "id": "concepts",
-      "category": "concepts",
+      "category": "reading",
       "order": 6,
       "bundled": true,
       "en": {
@@ -624,7 +632,7 @@
     },
     {
       "id": "when-to-use",
-      "category": "explanation",
+      "category": "choose",
       "order": 17,
       "bundled": true,
       "en": {
@@ -642,7 +650,7 @@
     },
     {
       "id": "why-polydeukes",
-      "category": "explanation",
+      "category": "reading",
       "order": 18,
       "bundled": false,
       "en": {
@@ -658,7 +666,7 @@
     },
     {
       "id": "contributing-docs",
-      "category": "how-to",
+      "category": "help",
       "order": 26,
       "bundled": false,
       "en": {
@@ -674,8 +682,8 @@
     },
     {
       "id": "install",
-      "category": "how-to",
-      "order": 1,
+      "category": "start",
+      "order": 0,
       "bundled": true,
       "tabs": ["homebrew", "cargo", "npm", "pypi"],
       "en": {
@@ -691,7 +699,7 @@
     },
     {
       "id": "migrate-to-rust",
-      "category": "how-to",
+      "category": "help",
       "order": 25,
       "bundled": true,
       "en": {
@@ -707,7 +715,7 @@
     },
     {
       "id": "use-memory",
-      "category": "how-to",
+      "category": "help",
       "order": 7,
       "bundled": true,
       "en": {
@@ -723,6 +731,10 @@
     }
   ],
   "topics": {
+    "recipes": {
+      "references": [{ "documentId": "recipes" }],
+      "seeAlso": "host-support"
+    },
     "install": {
       "references": [
         {

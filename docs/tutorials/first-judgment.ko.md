@@ -2,8 +2,7 @@
 
 [English](./first-judgment.md) · **한국어**
 
-[설치 안내](../how-to/install.ko.md)에서 본체와 Claude Code 확장을 설치하고 PATH에 놓습니다. 새 예제
-프로젝트에서 보호·일반 쓰기를 판정합니다. 직접 검사는 Claude Code 없이도 실행되며, 실제 세션
+새 예제 프로젝트에서 보호·일반 쓰기를 판정합니다. 직접 검사는 Claude Code 없이도 실행되며, 실제 세션
 관측에는 해당 호스트가 필요합니다.
 
 <a id="claude-code"></a>
@@ -18,12 +17,12 @@ cd pdks-example
 git init
 ```
 
-npm 로컬 설치를 쓴다면 이 새 프로젝트에도 설치하고 현재 터미널의 `PATH`에 추가합니다. 다른 경로로 두
-실행 파일을 이미 `PATH`에 설치했다면 이 블록은 건너뜁니다.
+두 실행 파일 `pdks`와 `pdks-claude-code`가 이미 `PATH`에 있으면 이 블록은 건너뜁니다. 다른 설치
+경로(crates.io, npm, PyPI)는 [설치 안내의 경로 절](../how-to/install.ko.md#routes)을 보세요.
 
 ```sh
-npm install --save-dev polydeukes @polydeukes/adapter-claude-code
-export PATH="$PWD/node_modules/.bin:$PATH"
+brew install huskyhoochu/polydeukes/pdks
+brew install huskyhoochu/polydeukes/pdks-claude-code
 ```
 
 이제 통합을 등록합니다.

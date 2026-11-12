@@ -259,6 +259,117 @@ describe('tabbed pages', () => {
   }
 });
 
+describe('sidebar', () => {
+  const root = fileURLToPath(new URL('../../../', import.meta.url));
+  const catalog = JSON.parse(readFileSync(join(root, 'docs/catalog.json'), 'utf8'));
+  const sidebar = JSON.parse(
+    readFileSync(join(root, 'packages/documentation/src/generated/sidebar.json'), 'utf8'),
+  );
+  const categories = catalog.categories ?? [];
+
+  // Mirrors the English route of a source path.
+  const linkOf = (path) => {
+    const slug = path.replace(/\.md$/, '').replace(/(^|\/)index$/, '');
+    return slug === 'README' ? '/docs/' : `/docs/${slug}/`;
+  };
+  const links = (items) => items.flatMap((i) => (i.items ? links(i.items) : [i.link]));
+  const idsIn = (category) =>
+    catalog.documents
+      .filter((d) => d.category === category)
+      .sort((a, b) => a.order - b.order)
+      .map((d) => d.id);
+
+  it('has one top-level group per catalog category, in order, with the Korean label', () => {
+    // Catches a sidebar that keeps hardcoded labels or order instead of reading the catalog.
+    assert.ok(categories.length > 0, 'the catalog has categories');
+    assert.deepEqual(
+      sidebar.map((g) => g.label),
+      categories.map((c) => c.en),
+    );
+    assert.deepEqual(
+      sidebar.map((g) => g.translations?.ko),
+      categories.map((c) => c.ko),
+    );
+  });
+
+  it('lists the catalog documents of each category sorted by order', () => {
+    // Catches a document placed in the wrong group, or a group ordered other than by `order`.
+    assert.ok(categories.length > 0, 'the catalog has categories');
+    for (const [i, category] of categories.entries()) {
+      const expected = catalog.documents
+        .filter((d) => d.category === category.id)
+        .sort((a, b) => a.order - b.order)
+        .map((d) => linkOf(d.en.path));
+      const listed = links(sidebar[i]?.items ?? []);
+      // A reference subgroup sits at its first member's position, so its members leave catalog order.
+      if (category.id === 'reference') assert.deepEqual(listed.toSorted(), expected.toSorted());
+      else assert.deepEqual(listed, expected, category.id);
+    }
+  });
+
+  it('places the task-oriented documents in the named categories', () => {
+    // Catches a catalog edited wrongly, which would make the comparison above agree with itself.
+    assert.deepEqual(
+      categories.map((c) => c.id),
+      ['start', 'recipes', 'choose', 'help', 'reference', 'reading'],
+    );
+    assert.deepEqual(
+      categories.map((c) => c.en),
+      ['Get started', 'Recipes', 'Choose a tool', 'Help', 'Reference', 'Further reading'],
+    );
+    assert.deepEqual(idsIn('start'), [
+      'install',
+      'first-judgment',
+      'connect-surfaces',
+      'configure-project',
+    ]);
+    assert.deepEqual(idsIn('choose'), ['when-to-use']);
+    assert.deepEqual(idsIn('help'), [
+      'troubleshooting',
+      'write-disciplines',
+      'git-hooks',
+      'use-memory',
+      'migrate-to-rust',
+      'contributing-docs',
+    ]);
+    assert.deepEqual(idsIn('reading'), ['concepts', 'why-polydeukes']);
+  });
+
+  it('the documentation home sections are the catalog categories, in order, in both languages', () => {
+    // Catches a category renamed or reordered in the catalog while the home page keeps its old sections.
+    for (const [file, lang] of [
+      ['docs/README.md', 'en'],
+      ['docs/README.ko.md', 'ko'],
+    ]) {
+      const sections = readFileSync(join(root, file), 'utf8')
+        .split('\n')
+        .filter((line) => line.startsWith('## '))
+        .map((line) => line.slice(3).trim());
+      assert.deepEqual(
+        sections,
+        categories.map((c) => c[lang]),
+        file,
+      );
+    }
+  });
+
+  it('renders the six Korean category names as sidebar group labels, in order', () => {
+    // Catches a rendered sidebar that kept old labels even though sidebar.json is correct.
+    const html = read('ko/docs/how-to/install/index.html');
+    const labels = [
+      ...html.matchAll(
+        /<summary\b[^>]*><span class="group-label[^"]*"><span class="large[^"]*">([^<]*)<\/span>/g,
+      ),
+    ].map((m) => m[1]);
+    const expected = categories.map((c) => c.ko);
+    assert.equal(expected.length, 6);
+    assert.deepEqual(
+      labels.filter((l) => expected.includes(l)),
+      expected,
+    );
+  });
+});
+
 describe('Korean pages', () => {
   const docsRoot = fileURLToPath(new URL('../../../docs/', import.meta.url));
   const translated = JSON.parse(

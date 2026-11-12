@@ -22,7 +22,8 @@ above run from the project root.
 | Before you                                                    | Run                    |
 | ------------------------------------------------------------- | ---------------------- |
 | install Polydeukes, or wire another surface into this project | `pdks docs install`    |
+| choose a discipline to copy for your current task             | `pdks docs recipes`    |
 | edit `polydeukes.config.*` — every key and what reads it      | `pdks docs config`     |
 | add or change a `disciplines` entry                           | `pdks docs discipline` |
-| explain a verdict, or why a surface failed closed             | `pdks docs covenant`   |
 | open a blocked call in person                                 | `pdks docs witness`    |
+| explain a verdict, or why a surface failed closed             | `pdks docs covenant`   |

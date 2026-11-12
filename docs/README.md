@@ -9,31 +9,43 @@ a guide for your task below.
 <a id="여기서-시작하십시오"></a>
 
 <a id="start-here"></a>
-## Start here
+## Get started
 
-Start with **installation → first judgment → connection and configuration → discipline authoring**.
+| Your task                                | Guide                                                |
+| ---------------------------------------- | ---------------------------------------------------- |
+| Choose packages and extensions           | [Install](./how-to/install.md)                       |
+| See an allowed and a blocked observation | [First judgment](./tutorials/first-judgment.md)      |
+| Connect an agent, Git, or CI             | [Connect surfaces](./how-to/connect-surfaces.md)     |
+| Write project configuration              | [Configure a project](./how-to/configure-project.md) |
+
+<a id="recipes"></a>
+## Recipes
 
 Choose a discipline for your task from the [recipe list](./recipes/index.md).
 
+<a id="choose-a-tool"></a>
+## Choose a tool
+
+Read [when Polydeukes fits and when another tool does](./when-to-use-polydeukes.md) to choose a tool
+for your check.
+
+<a id="help"></a>
+## Help
+
 | Your task                                               | Guide                                                 |
 | ------------------------------------------------------- | ----------------------------------------------------- |
-| Choose packages and extensions                          | [Install](./how-to/install.md)                        |
-| See an allowed and a blocked observation                | [First judgment](./tutorials/first-judgment.md)       |
-| Connect an agent, Git, or CI                            | [Connect surfaces](./how-to/connect-surfaces.md)      |
-| Run the change-set check by hand, in CI, or from a hook | [Git hooks](./how-to/git-hooks.md)                    |
-| Turn recurring mistakes into a discipline               | [Write disciplines](./how-to/write-disciplines.md)    |
-| Retrieve decisions and evidence                         | [Use memory](./how-to/use-memory.md)                  |
-| Invoke judgment from a program                          | [SDKs and references](./README.md#reference-packages) |
 | Diagnose skips, blocks, and installation errors         | [Troubleshooting](./troubleshooting.md)               |
+| Turn recurring mistakes into a discipline               | [Write disciplines](./how-to/write-disciplines.md)    |
+| Run the change-set check by hand, in CI, or from a hook | [Git hooks](./how-to/git-hooks.md)                    |
+| Retrieve decisions and evidence                         | [Use memory](./how-to/use-memory.md)                  |
 | Upgrade an earlier installation                         | [Migrate to Rust](./how-to/migrate-to-rust.md)        |
-
-The [documentation home](./README.md) connects these learning paths with the command references.
-
-Read [the judgment model and observation limits](./concepts/judgment.md) to understand what your
-disciplines can establish. Use the reference pages when you need exact keys and exit codes.
+| Write and maintain documentation                        | [Contributing](./contributing.md)                     |
+| Invoke judgment from a program                          | [SDKs and references](./README.md#reference-packages) |
 
 <a id="reference"></a>
 ## Reference
+
+Use the reference pages when you need exact keys and exit codes.
 
 <a id="reference-cli"></a>
 ### CLI commands
@@ -74,10 +86,17 @@ extraction step, combinator, relation, and mechanism with its syntax and constra
 
 [Rust SDK](./reference/packages/sdk-rust.md) · [Python SDK](./reference/packages/sdk-python.md)
 
+<a id="further-reading"></a>
+## Further reading
+
+Read [the judgment model and observation limits](./concepts/judgment.md) to understand what your
+disciplines can establish, and the [design explanation](./why-polydeukes.md) for the project's
+design rationale.
+
 <a id="the-shape-of-the-thing-in-one-page"></a>
 
 <a id="shape-of-the-thing"></a>
-## How it works
+### How it works
 
 Polydeukes judges what a developer or an AI agent is about to do, records the verdict, and by
 default lets the work proceed. Three ideas carry the rest.
@@ -99,7 +118,7 @@ describes how these records informed the project.
 tool for your check.
 
 <a id="two-surfaces"></a>
-## Two surfaces
+### Two surfaces
 
 | Surface     | Judges                                                             | Wired by                                                       | For                                    |
 | ----------- | ------------------------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------- |

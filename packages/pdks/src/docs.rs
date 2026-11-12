@@ -5,7 +5,14 @@ mod bundle {
     include!(concat!(env!("OUT_DIR"), "/docs_bundle.rs"));
 }
 
-const TOPICS: [&str; 5] = ["install", "config", "discipline", "covenant", "witness"];
+const TOPICS: [&str; 6] = [
+    "install",
+    "recipes",
+    "config",
+    "discipline",
+    "witness",
+    "covenant",
+];
 const LANGUAGES: [&str; 2] = ["en", "ko"];
 const DEFAULT_LIMIT: usize = 5;
 const MAX_LIMIT: usize = 50;
