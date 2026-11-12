@@ -163,7 +163,7 @@ AI에게 똑같이 적용되는 공유된 약속입니다. 이름의 유래와 �
 | [`docs/tutorials/first-judgment.ko.md`](./docs/tutorials/first-judgment.ko.md) | 첫 눈에 보이는 판정 — 설치하고 Claude Code를 배선한 뒤 보호된 편집이 판정되는 모습 |
 | [`docs/how-to/connect-surfaces.ko.md`](./docs/how-to/connect-surfaces.ko.md)   | 세션과 변경 집합 표면 연결, Codex 포함                                             |
 | [`docs/how-to/configure-project.ko.md`](./docs/how-to/configure-project.ko.md) | 프로젝트 파일, IDE 지원, advise와 block                                            |
-| [`docs/how-to/write-disciplines.ko.md`](./docs/how-to/write-disciplines.ko.md) | 실전 선언 예제, 특히 locale key pairing                                            |
+| [`docs/how-to/write-disciplines.ko.md`](./docs/how-to/write-disciplines.ko.md) | 추가된 줄 검사로 시작하는 실전 선언 예제                                           |
 | [`docs/troubleshooting.ko.md`](./docs/troubleshooting.ko.md)                   | fail-closed 상태, 증인 밸브, 텔레메트리 로그                                       |
 
 <a id="reference-layer"></a>

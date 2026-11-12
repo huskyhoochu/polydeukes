@@ -25,7 +25,7 @@ topic is mapped by the same catalog that drives search and retrieval.
 ## Search
 
 ```sh
-pdks docs search 'locale key pairing'
+pdks docs search 'request wrapper'
 pdks docs search '번역 키 짝 맞춤' --lang ko --limit 3
 pdks docs search --diff --json
 ```
@@ -45,7 +45,7 @@ document ID and section ID order. Scores are ranking values, not confidence meas
 
 ```sh
 pdks docs show first-judgment
-pdks docs show write-disciplines --lang ko --section locale-key-pairing
+pdks docs show write-disciplines --lang ko --section added-line-check
 ```
 
 `show` returns the original Markdown, not a generated answer. A section starts at its explicit

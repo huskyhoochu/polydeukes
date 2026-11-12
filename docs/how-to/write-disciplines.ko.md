@@ -15,8 +15,8 @@
 <a id="design-a-discipline"></a>
 ## 확인할 약속부터 정하기
 
-규율을 쓰기 전에 정상 사례 하나와 위반 사례 하나를 적습니다. “좋은 코드를 작성한다” 대신 “영어와
-한국어 번역 파일에 같은 키가 있다”처럼 관측 가능한 비교로 좁힙니다.
+규율을 쓰기 전에 정상 사례 하나와 위반 사례 하나를 적습니다. “좋은 코드를 작성한다” 대신 “편집으로
+요청 래퍼 밖에 직접 요청을 추가해서는 안 된다”처럼 관측 가능한 비교로 좁힙니다.
 
 | 질문                       | 선택                                                  |
 | -------------------------- | ----------------------------------------------------- |
@@ -28,7 +28,9 @@
 | 언제 막을까?               | advise로 정상·위반을 확인한 뒤 block 선택             |
 
 증거가 없다는 이유로 empty를 쓰면 “관측하지 못함”을 “아무것도 없음”으로 바꿉니다. 빈 내용이 문제의
-실제 의미일 때만 사용하세요. pass는 위반이 없다는 판정이 아니라 건너뛴 관측을 남깁니다.
+실제 의미일 때만 사용하세요. pass는 약속이 지켜졌다는 기록이 아니라 건너뛴 관측을 남깁니다. 기본값인
+`error`는 소스가 없어 판정할 수 없는 관측을 `advise`에서도 차단합니다
+([공급 정책](../reference/declaration-language/index.ko.md#supply-policies) 참고).
 [설정 참조](../reference/configuration/index.ko.md#discipline-lists)에서 증거에 맞는 규율 목록을
 선택하고 `pdks explain`으로 조립을 확인합니다.
 
@@ -39,19 +41,190 @@
 2. `pdks explain`이 설정을 읽고 해당 규율을 조립하는지 확인합니다.
 3. 정상 입력과 위반 입력을 각각 실행하고 규율 ID·사유·텔레메트리를 확인합니다.
 4. 관측 범위 밖 입력도 넣어 의도한 파일만 검사하는지 봅니다.
-5. 실제 연결할 표면에서 같은 검사를 합니다. 세션의 전체 파일 내용과 diff의 변경 줄은 다릅니다.
+5. 실제 연결할 [표면](../concepts/judgment.ko.md#terms)에서 같은 검사를 합니다. 세션 편집은 파일
+   전체의 변경 전후 내용을 `pre`와 `post`로 공급합니다. diff 입력의 수정은 변경 구간의 `-`와 `+`
+   줄만 공급합니다([diff 변환](../reference/cli/covenant-check.ko.md#diff-translation) 참고).
 6. 일상 작업에서 조언을 관찰한 뒤 필요한 항목의 강제 수준을 올립니다.
 
-다음 번역 키 예제는 이 순서의 정상·위반·수정 과정을 실행합니다.
+[아래 요청 래퍼 예제](#added-line-check)는 위반, 수정한 변경, 관측 범위 밖 변경을 실행합니다.
+
+<a id="added-line-check"></a>
+## 요청은 요청 래퍼를 거치게 하기
+
+이 선언은 관측 범위 안의 파일에서 `fetch(`를 포함한 줄이 변경 전보다 늘면 보고합니다.
+`src/http/client.ts`를 제외한 `src/` 아래 TypeScript 파일을 검사합니다. 해당 래퍼를 거치는 요청에는
+래퍼의 타임아웃이 적용됩니다.
+
+[`pdks` 실행 파일](./install.ko.md)을 설치한 뒤, 예제용 빈 Git 프로젝트를 만듭니다:
+
+```sh
+mkdir pdks-request-example
+cd pdks-request-example
+git init
+```
+
+아래 전체 YAML을 이 예제 프로젝트의 `polydeukes.config.yaml`로 저장합니다. 기존 프로젝트의 설정을
+덮어쓰지 마세요. 이 YAML에는 `protectedPaths`와 `witness` 블록이 없으므로, 생성된 설정을 이 내용으로
+교체하면 증인 밸브가 사라집니다.
+
+기존 프로젝트에서는 규율 항목만 기존 `disciplines:` 키 아래에 넣고 `telemetry:` 블록은 복사하지
+않습니다. 프로젝트의 래퍼 파일에 맞게 `include`와 `exclude` 경로를 조정하고, `before`와 `after`의 두
+`re` 값을 해당 프로젝트의 직접 호출 문법에 맞는 동일한 패턴으로 바꿉니다. `id`와 `why`도 프로젝트의
+용어로 다시 씁니다. 설정은 에이전트 세션에서 보호되므로,
+[첫 판정 튜토리얼](../tutorials/first-judgment.ko.md)의 설명대로 사용자가 터미널에서 직접
+편집합니다.
+
+```yaml
+telemetry:
+  logPath: ".polydeukes/roi.log"
+disciplines:
+  - id: "requests-go-through-the-client"
+    why: "a request made outside src/http/client.ts skips the timeout that file applies"
+    declare:
+      mechanism: "added-only"
+      scope:
+        source: "target.path"
+        include: ['^src/.+\.ts$']
+        exclude: ['^src/http/client\.ts$']
+      supply: { pre: "empty", post: "empty" }
+      extract:
+        before:
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\bfetch\()' }
+        after:
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\bfetch\()' }
+        added:
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
+      relate:
+        - id: "no-direct-request"
+          relation: { op: "empty", of: "added" }
+          message: "adds a direct request: {value}"
+```
+
+`mechanism: "added-only"`는 이 선언이 수행하는 검사의 종류를 지정합니다. 로더는 해당 종류에서
+허용하는 소스와 관계만 받아들입니다
+([메커니즘](../reference/declaration-language/index.ko.md#mechanisms) 참고). 이 항목은 `enforce`를
+생략하므로 위반이 권고로 기록됩니다.
+
+`include`는 `src/` 아래 TypeScript 경로를 선택하고, `exclude`는 래퍼 자체를 관측 범위에서
+제외합니다. `pre`와 `post`는 변경 전후 내용을 공급하고, `lines`는 각각을 줄로 나눕니다.
+`keyByPattern`은 패턴에 맞는 줄을 남기고, 첫 번째 일치의 캡처 그룹 1을 키(`fetch(`)로 사용하며, 그
+줄을 값으로 유지합니다. 한 줄에서는 첫 번째 일치만 남깁니다.
+
+`onlyIn`은 `after` 항목의 키를 `before`와 비교해 항목을 선택합니다. `count: true`이면 같은 키의 항목
+중 초과한 수만큼 남깁니다. `before`에 일치하는 줄이 하나, `after`에 둘이면 `added`에 하나가
+남습니다. `empty` 관계는 `added`에 항목이 없어야 한다고 요구합니다. 없는 `pre`나 `post`는 `supply`에
+따라 빈 내용이 되므로, 파일을 만들면 일치하는 항목이 추가될 수 있고 파일을 삭제하면 추가되지
+않습니다. 메시지의 `{value}`는 값으로 유지한 일치하는 줄입니다. 이 연산들은
+[선언 언어 레퍼런스](../reference/declaration-language/index.ko.md)를 참고하세요.
+
+이 실습은 diff 입력을 사용합니다. 아래 `pdks explain` 출력의 두 블록에서 볼 수 있듯이 같은 항목이
+에이전트 세션의 편집 호출에도 적용됩니다. 변경 전후에 일치하는 줄의 수를 비교하므로, 파일을 수정한
+diff에서는 변경 구간의 줄로 비교해도 전체 파일로 비교할 때와 결과가 같습니다
+([diff 변환](../reference/cli/covenant-check.ko.md#diff-translation) 참고).
+
+`pdks explain`을 실행해 항목이 로드되는지 확인합니다:
+
+```text
+pdks explain — polydeukes.config.yaml
+
+input: call IR (one call, stdin) · disciplines 1 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
+  registrations 4 · declare 1 · skip 1 · meta 2 · draft 0
+  meta     self-mod                       paths 1 (includes the config file itself)
+  meta     transcript-mod                 content predicate · conditional: session.evidencePath
+  declare  requests-go-through-the-client added-only · change · empty no-direct-request · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓ · unattended: judge
+  skip     shell-unjudgeable              a shell command whose write target this layer cannot determine
+
+input: --diff (change set, stdin) · disciplines 1 · disciplines: advise unless enforce: block
+  registrations 3 · declare 1 · skip 1 · meta 1 · draft 0
+  meta     self-mod                       paths 1 (includes the config file itself)
+  declare  requests-go-through-the-client added-only · change · empty no-direct-request · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
+  skip     shell-unjudgeable              a shell command whose write target this layer cannot determine
+```
+
+첫 번째 블록은 에이전트 세션의 호출 입력에 대해 조립이 만드는 표이고, 두 번째는 diff 입력에 대해
+조립이 만드는 표입니다. 이 항목은 양쪽 모두에서 `declare`로 나타납니다. 각 필드는
+[`pdks explain` 참조](../reference/cli/explain.ko.md)를 참고하세요.
+
+예제 프로젝트 루트에서 추적할 파일을 준비합니다. 아래 커밋에는 평소 사용하는 로컬 git 작성자 설정이
+필요하며, 이 커밋이 비교의 기준이 됩니다:
+
+```sh
+mkdir -p src/http
+printf 'export const request = (url: string) => fetch(url, { signal: AbortSignal.timeout(5000) });\n' > src/http/client.ts
+printf "import { request } from './http/client';\n\nexport const loadOrders = () => request('/orders');\n" > src/orders.ts
+git add src
+git commit -m 'docs: prepare request example'
+```
+
+직접 요청을 추가하고 diff를 검사합니다:
+
+```sh
+printf "\nexport const loadUsers = () => fetch('/users');\n" >> src/orders.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+명령은 종료 코드 0으로 끝나고 표준 오류에 다음 줄을 출력합니다:
+
+```text
+discipline 'requests-go-through-the-client' broken on src/orders.ts: adds a direct request: export const loadUsers = () => fetch('/users'); — why: a request made outside src/http/client.ts skips the timeout that file applies
+covenant advisory: 1 verdict(s) recorded as advised, not blocked
+```
+
+래퍼를 사용하도록 변경을 수정하고 다시 검사합니다:
+
+```sh
+git restore -- src/orders.ts
+printf "\nexport const loadUsers = () => request('/users');\n" >> src/orders.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+명령은 아무것도 출력하지 않고 종료 코드 0으로 끝납니다. 이제 래퍼 자체에 관측 범위 밖 변경을 만들어
+봅니다:
+
+```sh
+git restore -- src/orders.ts
+printf "export const ping = () => fetch('/ping');\n" >> src/http/client.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+명령은 아무것도 출력하지 않고 종료 코드 0으로 끝납니다. 이 경로에서는 이 규율을 판정하지 않습니다.
+확인이 끝나면 래퍼를 되돌립니다:
+
+```sh
+git restore -- src/http/client.ts
+```
+
+세 번의 검사는 `.polydeukes/roi.log`에 다음 행을 남깁니다. 여기서는 타임스탬프 필드를 생략했으며,
+필드 사이는 탭으로 구분합니다:
+
+```text
+advised	requests-go-through-the-client	src/orders.ts	[{"id":"no-direct-request","witnesses":[{"key":"fetch(","value":"export const loadUsers = () => fetch('/users');"}],"total":1}]
+passed	requests-go-through-the-client	src/orders.ts
+passed	covenant-check	src/http/client.ts
+```
+
+수정한 변경에는 이 규율의 `passed` 행이 있습니다. 관측 범위 밖 변경에는 일반 `covenant-check` 행만
+있으며, 이 규율의 판정을 받고 지나갔다는 증거가 되지 않습니다.
 
 <a id="locale-key-pairing"></a>
 ## 번역 키 짝 맞춤
 
-두 JSON 번역 파일의 키 집합을 비교합니다. 중첩된 키도 비교 대상입니다. 아래 전체 YAML을
-**예제 프로젝트**의 `polydeukes.config.yaml`로 저장합니다. 기존 프로젝트의 설정을 덮어쓰지 마세요.
-기존 설정에 추가할 때는 규율 항목만 복사합니다. 아래 YAML에는 `protectedPaths`와 `witness` 블록이
-없으므로, 생성된 설정 위에 그대로 저장하면 증인 밸브가 사라집니다. 설치 절차는
-[첫 판정 튜토리얼](../tutorials/first-judgment.ko.md)에 있습니다.
+이 예제는 두 JSON 번역 파일의 키를 비교해 파일 간 내용의 일관성을 유지합니다. 중첩된 키도
+비교합니다.
+
+아래 YAML은 완전한 설정 파일입니다. 새 디렉터리에서 `git init`으로 만든 빈 예제 프로젝트에
+`polydeukes.config.yaml`로 저장합니다. 예제 프로젝트를 만드는 명령은
+[요청 래퍼 예제](#added-line-check)에 있습니다.
+
+기존 프로젝트의 설정을 덮어쓰지 마세요. 기존 프로젝트에서는 규율 항목만 기존 `disciplines:` 아래에
+넣습니다. 이 YAML에는 `protectedPaths`와 `witness` 블록이 없으므로, 생성된 설정 위에 그대로 저장하면
+증인 밸브가 사라집니다.
+
+앞 절의 예제 프로젝트를 이어서 쓴다면 앞 절의 항목 아래에 이 항목을 추가해도 됩니다.
 
 ```yaml
 telemetry:
@@ -123,6 +296,8 @@ git restore -- locales/en.json locales/ko.json
 
 <a id="locale-key-pairing-many"></a>
 ### 번역 파일이 셋 이상일 때
+
+이 예제는 세 개 이상 파일 사이에서 내용의 일관성을 유지합니다.
 
 `equal`은 추출 결과 두 개를 비교합니다. 파일이 셋 이상이면 모든 파일의 키를 모은 합집합을 만들고,
 파일마다 `subset` 하나로 그 합집합을 모두 가지고 있는지 확인합니다. `onlyIn`은 합집합에 아직 없는
@@ -242,16 +417,20 @@ disciplines:
 <a id="proof-runs"></a>
 ## 한 번은 실제로 판정해 보기
 
-설정을 저장한 뒤에는 필요한 증거를 공급할 수 있는 판정 경로로 위반과 정상 사례를 모두 검사합니다.
-`git diff HEAD | pdks covenant check --diff`는 현재 작업 트리의 변경을 판정하고, `pdks explain`은
-선언과 초안의 등록 상태를 보여 줍니다. 위 번역 예제처럼 한쪽 파일만 바꾼 경우와 양쪽 키를 맞춘
-경우를 비교하세요.
+설정을 저장한 뒤에는 실제로 해당 설정을 관측할 수 있는 판정 경로를 실행합니다.
+
+- 요청 래퍼 예제에서는 직접 요청을 추가하면 권고를 기록하고, 래퍼를 사용하면 판정을 받고 지나갑니다.
+- `git diff HEAD | pdks covenant check --diff`는 현재 작업 트리에 대해 번역 키 짝 맞춤 예제의 항목을
+  검사합니다.
+- `pdks explain`은 등록 상태와 해당 항목이 선언인지 초안인지를 보여 줍니다.
+- 짝 맞춤 예제는 `locales/en.json`이나 `locales/ko.json` 중 한쪽만 편집해 간단히 확인할 수 있습니다.
 
 판정 결과가 나타나지 않으면 먼저 관측 조건을 확인합니다. 무시 대상이 아닌 관측 파일인지, 선택한
 비교에서 실제로 바뀌었는지, 적용 범위가 맞는지, 해당 표면이 증거를 공급할 수 있는지 차례로
 살펴봅니다. `pdks explain`과 로그에서 `no-observation`, `supply-pass`도 확인합니다. 진단이 없다는
 사실만으로 선언이 작동한다고 판단하지 마세요.
 
-위 초안은 키 비교와 다른 요구입니다. 현재 엔진은 판정 도중 새 벤치마크를 실행하지 않습니다. 이미
-공급된 증거를 비교하는 것과 판정 도중 새 벤치마크를 실행하는 것은 다른 요구입니다.
-[선언과 관측 한계](../concepts/judgment.ko.md#declarations)를 참고하세요.
+위 초안은 판정 도중 새 벤치마크를 실행할 것을 요구합니다. 요청 예제와 번역 예제는 검사에 공급된
+증거를 비교합니다. 현재 엔진은 판정 도중 새 벤치마크를 실행하지 않습니다. 공급된 증거는 비교할 수
+있지만, 그것은 같은 약속이 아닙니다. [선언과 관측 한계](../concepts/judgment.ko.md#declarations)를
+참고하세요.

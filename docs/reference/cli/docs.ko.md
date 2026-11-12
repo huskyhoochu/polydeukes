@@ -24,7 +24,7 @@ pdks docs show <document-id> [--lang en|ko] [--section <section-id>] [--json]
 ## 검색
 
 ```sh
-pdks docs search 'locale key pairing'
+pdks docs search 'request wrapper'
 pdks docs search '번역 키 짝 맞춤' --lang ko --limit 3
 pdks docs search --diff --json
 ```
@@ -44,7 +44,7 @@ pdks docs search --diff --json
 
 ```sh
 pdks docs show first-judgment
-pdks docs show write-disciplines --lang ko --section locale-key-pairing
+pdks docs show write-disciplines --lang ko --section added-line-check
 ```
 
 `show`는 생성한 답변이 아니라 Markdown 원문을 반환합니다. 절은 명시한 앵커에서 시작해 다음 같은 수준

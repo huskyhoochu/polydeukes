@@ -13,7 +13,7 @@ package. `pdks docs` answers offline, from the same version that does the judgin
 answers from whichever release it indexed.
 
 Run `pdks docs` for the topic list, `pdks docs <topic>` for topic content,
-`pdks docs search "locale key pairing"` to find a section, or `pdks docs show write-disciplines` to
+`pdks docs search "request wrapper"` to find a section, or `pdks docs show write-disciplines` to
 retrieve the guide. Add `--lang ko` for Korean.
 
 If `pdks` is not found, install the `pdks` executable and put its directory on PATH; the commands

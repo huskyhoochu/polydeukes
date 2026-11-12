@@ -163,7 +163,7 @@ layer you need.
 | [`docs/tutorials/first-judgment.md`](./docs/tutorials/first-judgment.md) | First visible judgment — install, wire Claude Code, and watch a protected edit get judged |
 | [`docs/how-to/connect-surfaces.md`](./docs/how-to/connect-surfaces.md)   | Connect the session and change-set surfaces, including Codex                              |
 | [`docs/how-to/configure-project.md`](./docs/how-to/configure-project.md) | Configure the project file, IDE support, and advise versus block                          |
-| [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, especially locale key pairing                                        |
+| [`docs/how-to/write-disciplines.md`](./docs/how-to/write-disciplines.md) | Worked declarations, starting with an added-line check                                    |
 | [`docs/troubleshooting.md`](./docs/troubleshooting.md)                   | Fail-closed states, the witness valve, and the telemetry log                              |
 
 <a id="reference-layer"></a>

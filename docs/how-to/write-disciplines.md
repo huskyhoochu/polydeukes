@@ -17,7 +17,8 @@ reference](../reference/declaration-language/index.md).
 ## Start with the promise you can check
 
 Write one valid case and one violating case before writing the declaration. Narrow “write good code”
-to an observable comparison such as “English and Korean locale files have the same keys.”
+to an observable comparison such as “An edit must not add direct requests outside the request
+wrapper.”
 
 | Question                         | Decision                                                            |
 | -------------------------------- | ------------------------------------------------------------------- |
@@ -29,7 +30,9 @@ to an observable comparison such as “English and Korean locale files have the 
 | When should it stop work?        | Exercise advice on valid and violating cases before choosing block  |
 
 Using empty for absent evidence changes “not observed” into “nothing there.” Use it only when that
-is the intended meaning. Pass records a skipped observation, not an upheld promise. Choose the
+is the intended meaning. Pass records a skipped observation, not an upheld promise. The default,
+`error`, blocks an observation that cannot be judged because a source is absent, even at `advise`
+(see [supply policies](../reference/declaration-language/index.md#supply-policies)). Choose the
 appropriate [discipline list](../reference/configuration/index.md#discipline-lists) for the
 evidence, then inspect assembly with `pdks explain`.
 
@@ -40,20 +43,192 @@ evidence, then inspect assembly with `pdks explain`.
 2. Check that `pdks explain` loads and assembles the discipline.
 3. Exercise a valid input and a violation; inspect the discipline ID, reason, and telemetry.
 4. Try an out-of-scope input to confirm which files the discipline observes.
-5. Repeat on the surface you will connect. Whole-file session content and diff hunk lines differ.
+5. Repeat on the [surface](../concepts/judgment.md#terms) you will connect. Session edits supply
+   whole-file before/after content as `pre` and `post`; modifications in diff input supply only the
+   hunk’s `-` and `+` lines (see
+   [diff translation](../reference/cli/covenant-check.md#diff-translation)).
 6. Observe advice during ordinary work, then promote selected entries to blocking.
 
-The locale example below runs the valid, violating, and repaired cases.
+The [request wrapper example below](#added-line-check) runs a violation, a repaired change, and an
+out-of-scope change.
+
+<a id="added-line-check"></a>
+## Keep requests in the request wrapper
+
+This declaration reports when a file in scope has more lines containing `fetch(` after a change than
+before it. It covers TypeScript files under `src/` except `src/http/client.ts`. Requests through
+that wrapper use its timeout.
+
+Install the [`pdks` executable](./install.md), then create an empty Git project for this example:
+
+```sh
+mkdir pdks-request-example
+cd pdks-request-example
+git init
+```
+
+Save the complete YAML below as `polydeukes.config.yaml` in this example project. Do not save it
+over an existing project's configuration: this YAML carries no `protectedPaths` and no `witness`
+block, so replacing a generated config removes the witness valve.
+
+In an existing project, put only the discipline entry under the existing `disciplines:` key and do
+not copy the `telemetry:` block. Adjust the `include` and `exclude` paths to that project's wrapper
+file, and change both `re` values in `before` and `after` to the same pattern for its direct-call
+syntax. Rewrite `id` and `why` in that project's terms too. The configuration is protected in agent
+sessions, so make this edit yourself from your terminal, as described in the
+[first-judgment tutorial](../tutorials/first-judgment.md).
+
+```yaml
+telemetry:
+  logPath: ".polydeukes/roi.log"
+disciplines:
+  - id: "requests-go-through-the-client"
+    why: "a request made outside src/http/client.ts skips the timeout that file applies"
+    declare:
+      mechanism: "added-only"
+      scope:
+        source: "target.path"
+        include: ['^src/.+\.ts$']
+        exclude: ['^src/http/client\.ts$']
+      supply: { pre: "empty", post: "empty" }
+      extract:
+        before:
+          - { op: "source", of: "pre" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\bfetch\()' }
+        after:
+          - { op: "source", of: "post" }
+          - { op: "lines" }
+          - { op: "keyByPattern", re: '(\bfetch\()' }
+        added:
+          - { op: "onlyIn", of: "after", notIn: "before", count: true }
+      relate:
+        - id: "no-direct-request"
+          relation: { op: "empty", of: "added" }
+          message: "adds a direct request: {value}"
+```
+
+`mechanism: "added-only"` names the kind of check this declaration performs. The loader accepts only
+sources and relations allowed for that kind (see
+[mechanisms](../reference/declaration-language/index.md#mechanisms)). This entry omits `enforce`, so
+violations are recorded as advice.
+
+`include` selects TypeScript paths under `src/`; `exclude` leaves the wrapper itself out of scope.
+`pre` and `post` supply the content before and after the change, and `lines` splits each into lines.
+`keyByPattern` keeps matching lines, uses capture group 1 of the first match as the key (`fetch(`),
+and retains the line as the value. It keeps only the first match on a line.
+
+`onlyIn` selects items from `after` by comparing their keys with `before`. With `count: true`, it
+keeps the excess number of items for a key: if `before` has one matching line and `after` has two,
+one remains in `added`. The `empty` relation requires `added` to contain no items. Missing `pre` or
+`post` becomes empty through `supply`, so creating a file can add matches and deleting one adds
+none. In the message, `{value}` is the matching line retained as the value. See the
+[declaration language reference](../reference/declaration-language/index.md) for these operations.
+
+This walkthrough uses diff input; the same entry also applies to edit calls in agent sessions, as
+the two blocks of `pdks explain` output below show. It compares the counts of matching lines before
+and after the change, so for a diff that modifies a file, the hunk lines give the same result as the
+whole file (see [diff translation](../reference/cli/covenant-check.md#diff-translation)).
+
+Run `pdks explain` to check that the entry loads:
+
+```text
+pdks explain — polydeukes.config.yaml
+
+input: call IR (one call, stdin) · disciplines 1 · sessionDisciplines 0 · disciplines: advise unless enforce: block · meta: block
+  registrations 4 · declare 1 · skip 1 · meta 2 · draft 0
+  meta     self-mod                       paths 1 (includes the config file itself)
+  meta     transcript-mod                 content predicate · conditional: session.evidencePath
+  declare  requests-go-through-the-client added-only · change · empty no-direct-request · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓ · unattended: judge
+  skip     shell-unjudgeable              a shell command whose write target this layer cannot determine
+
+input: --diff (change set, stdin) · disciplines 1 · disciplines: advise unless enforce: block
+  registrations 3 · declare 1 · skip 1 · meta 1 · draft 0
+  meta     self-mod                       paths 1 (includes the config file itself)
+  declare  requests-go-through-the-client added-only · change · empty no-direct-request · scope target.path · include 1 · exclude 1 · sources 0 · valve — · why ✓
+  skip     shell-unjudgeable              a shell command whose write target this layer cannot determine
+```
+
+The first block shows assembly for an agent session's call input; the second shows assembly for diff
+input. This entry appears as `declare` in both. See the
+[`pdks explain` reference](../reference/cli/explain.md) for the fields.
+
+From the example project's root, prepare the tracked files. The commit requires your usual local git
+identity and establishes the baseline for the comparison:
+
+```sh
+mkdir -p src/http
+printf 'export const request = (url: string) => fetch(url, { signal: AbortSignal.timeout(5000) });\n' > src/http/client.ts
+printf "import { request } from './http/client';\n\nexport const loadOrders = () => request('/orders');\n" > src/orders.ts
+git add src
+git commit -m 'docs: prepare request example'
+```
+
+Add a direct request and check the diff:
+
+```sh
+printf "\nexport const loadUsers = () => fetch('/users');\n" >> src/orders.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+The command exits 0 and writes these lines to standard error:
+
+```text
+discipline 'requests-go-through-the-client' broken on src/orders.ts: adds a direct request: export const loadUsers = () => fetch('/users'); — why: a request made outside src/http/client.ts skips the timeout that file applies
+covenant advisory: 1 verdict(s) recorded as advised, not blocked
+```
+
+Repair the change by using the wrapper and check again:
+
+```sh
+git restore -- src/orders.ts
+printf "\nexport const loadUsers = () => request('/users');\n" >> src/orders.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+The command prints nothing and exits 0. Now try an out-of-scope change in the wrapper itself:
+
+```sh
+git restore -- src/orders.ts
+printf "export const ping = () => fetch('/ping');\n" >> src/http/client.ts
+git diff HEAD | pdks covenant check --diff
+```
+
+The command prints nothing and exits 0. This discipline is not judged for that path. Restore the
+wrapper when finished:
+
+```sh
+git restore -- src/http/client.ts
+```
+
+The three checks leave these rows in `.polydeukes/roi.log`, with the timestamp field omitted here
+and tabs between fields:
+
+```text
+advised	requests-go-through-the-client	src/orders.ts	[{"id":"no-direct-request","witnesses":[{"key":"fetch(","value":"export const loadUsers = () => fetch('/users');"}],"total":1}]
+passed	requests-go-through-the-client	src/orders.ts
+passed	covenant-check	src/http/client.ts
+```
+
+The repaired change has a `passed` row for this discipline. The out-of-scope change has only a
+general `covenant-check` row; it does not demonstrate that this discipline passed.
 
 <a id="locale-key-pairing"></a>
 ## Locale key pairing
 
-This declaration compares the key sets of two JSON translation files, including nested keys. Save
-the complete YAML below as `polydeukes.config.yaml` in an **example project**, not over an existing
-project's configuration. In an existing project, copy only the discipline entry — the YAML below
-carries no `protectedPaths` and no `witness` block, so saving it over a generated config removes the
-witness valve. The [first-judgment tutorial](../tutorials/first-judgment.md) supplies installation
-steps.
+This example keeps content consistent across files by comparing the keys of two JSON translation
+files, including nested keys.
+
+The YAML below is a complete configuration file. Save it as `polydeukes.config.yaml` in an empty
+example project, created by running `git init` in a new directory. The
+[request wrapper example](#added-line-check) provides the project creation commands.
+
+Do not save this YAML over an existing project's configuration. In an existing project, copy only
+the discipline entry under the existing `disciplines:` key. This YAML carries no `protectedPaths`
+and no `witness` block, so replacing a generated config removes the witness valve.
+
+If you continue in the preceding section's example project, you can add this entry below that
+section's entry.
 
 ```yaml
 telemetry:
@@ -125,6 +300,8 @@ observed change must match its scope.
 
 <a id="locale-key-pairing-many"></a>
 ### Three or more locale files
+
+This example keeps content consistent across three or more files.
 
 `equal` compares two extractions. For three or more files, build the union of every file's keys and
 require each file to contain it: one `subset` per file. `onlyIn` adds only the keys the union does
@@ -250,7 +427,9 @@ verdict or telemetry. It is still part of the config, so the file remains loadab
 
 After you save the config, run the judgment path that can actually see it.
 
-- `git diff HEAD | pdks covenant check --diff` shows the same entry against the current tree.
+- In the request wrapper example, adding a direct request records advice; using the wrapper passes.
+- `git diff HEAD | pdks covenant check --diff` checks the locale key pairing entry against the
+  current tree.
 - `pdks explain` shows the registration and whether it is a declare or a draft.
 - A one-sided edit to `locales/en.json` or `locales/ko.json` is a good smoke test for the pairing
   example.
@@ -260,6 +439,7 @@ it change in the selected comparison, does the scope match, and can the surface 
 Inspect `pdks explain` and the telemetry log for `no-observation` or `supply-pass`. Do not treat a
 missing diagnostic as proof that the declaration works.
 
-The draft above is deliberately different from key pairing. The current engine does not run a new
-benchmark during judgment. It can compare supplied evidence, but that is not the same promise. See
+The draft above requires a fresh benchmark during judgment; the request and locale examples compare
+evidence supplied to the check. The current engine does not run a new benchmark during judgment. It
+can compare supplied evidence, but that is not the same promise. See
 [declarations and their limits](../concepts/judgment.md#declarations).

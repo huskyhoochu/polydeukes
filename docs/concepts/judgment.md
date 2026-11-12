@@ -46,8 +46,8 @@ fabricated empty file.
 A `draft: true` entry records a practice that has not been promoted into a declaration. It does not
 judge or emit a telemetry row. Do not use a draft merely because a valid declaration needs more
 testing. Conversely, do not invent a step or mechanism when the grammar lacks the evidence or
-comparison you need. [Write disciplines](../how-to/write-disciplines.md) demonstrates a working
-locale key comparison and a genuinely unsupported promise.
+comparison you need. [Write disciplines](../how-to/write-disciplines.md) starts with a check for
+added direct requests and also covers locale key comparison and a promise the engine cannot judge.
 
 <a id="relations"></a>
 ## Seven relations

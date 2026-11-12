@@ -334,12 +334,12 @@
       "en": {
         "path": "how-to/write-disciplines.md",
         "title": "Write disciplines",
-        "summary": "Write and exercise a locale key pairing declaration."
+        "summary": "Write and exercise a declaration, starting with an added-line check."
       },
       "ko": {
         "path": "how-to/write-disciplines.ko.md",
         "title": "규율 작성하기",
-        "summary": "번역 키 짝 맞춤 선언을 작성하고 위반과 정상 사례를 검사합니다."
+        "summary": "추가된 줄 검사부터 선언을 작성하고 위반과 정상 사례를 검사합니다."
       }
     },
     {

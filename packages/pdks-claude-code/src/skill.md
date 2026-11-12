@@ -55,9 +55,9 @@ These four requests illustrate the classification boundary:
 | A successful package lookup must precede a manifest edit.                    | `precedent`, with observed session history.           | Failed or absent lookups break; an unavailable transcript is a supply case. |
 | A fresh benchmark must execute during judgment to prove a performance claim. | `draft`: the engine does not execute benchmarks.      | Comparing an existing report would be a different promise.                  |
 
-Run `pdks docs show write-disciplines` for the key-pairing walkthrough and
-`pdks docs show configuration --section disciplines` for the declaration grammar. Use `--lang ko`
-for Korean; these commands read the installed version offline.
+Run `pdks docs show write-disciplines` for worked declarations starting with an added-line check,
+and `pdks docs show configuration --section disciplines` for the declaration grammar. Use
+`--lang ko` for Korean; these commands read the installed version offline.
 
 An `added-only` declaration forgives existing occurrences — only what the edit adds breaks the
 promise. That is usually what you want: a discipline adopted today should not indict yesterday's

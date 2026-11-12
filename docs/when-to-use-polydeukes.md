@@ -44,26 +44,64 @@ it.
 <a id="fits"></a>
 ## When Polydeukes fits
 
-- **Two files compared:** check that enum values in two JSON schemas
-  [agree](./recipes/schema-enums-agree.md) (agent sessions or piped diff).
-- **Two paths changed together:** check that every changed English doc has its Korean twin
-  [changed too](./recipes/docs-stay-bilingual.md) (piped diff).
-- **A command line:** detect a command that [turns off a commit hook](./recipes/hooks-stay-armed.md)
-  (agent sessions).
-- **Earlier calls in the session:** check the session's earlier calls for one that matches a pattern
-  (a command or a file read). The two example recipes,
-  [registry lookup](./recipes/manifest-needs-evidence.md) and
-  [reading before an edit](./recipes/document-read-before-edit.md), count only calls the host
-  recorded as successful; [Codex does not record success](./reference/host-support.md#call-success),
-  so on Codex those recipes report a break on every edit to the paths they check (agent sessions).
-- **Which subagent acted:** record advice when the implementing subagent
-  [edits a test file](./recipes/tests-are-the-writers.md) (agent sessions, Claude Code). The
-  subagent is identified by its [type name](./reference/host-support.md#actor).
+<a id="fits-approach"></a>
+### How do you want to manage your checks?
 
-File-content checks run on file edits made through the agent's edit tools and on piped diffs;
-changed-path checks run only on piped diffs. Checks on command lines, earlier calls in the session,
-or the subagent run only in agent sessions; what each host supplies is in
-[host capabilities](./reference/host-support.md#capabilities). See
+1. **You want to configure checks without writing and maintaining check code.** A discipline is one
+   entry in a configuration file with a schema; command bans, added-line checks, naming conventions,
+   required earlier calls, and call order use the same typed vocabulary of sources, extraction
+   steps, and relations. The loader validates that structure and rejects configurations that do not
+   fit it. See the [declaration language](./reference/declaration-language/index.md).
+
+2. **You want a written instruction to become a check with a recorded result.** Claude Code
+   describes
+   [CLAUDE.md as context, not enforced configuration](https://code.claude.com/docs/en/memory).
+   Polydeukes runs checks through the host's hooks without a model: the same configuration and input
+   produce the same result, with a log row for each judgment. A blocked call returns its reason to
+   the agent; advice records the break and lets the call proceed. See
+   [how a judgment works](./concepts/judgment.md).
+
+3. **You want to share checks with teammates and reuse them across repositories and agents.** A
+   discipline is a configuration entry you can copy into another repository's configuration,
+   adjusting its paths, patterns, and enforcement setting for that project. A declaration applies
+   wherever its required evidence is supplied: a declaration that reads file content applies to
+   edits made through the host's file-editing tools in Claude Code and Codex sessions and to diff
+   checks; one that reads command text applies only in sessions. See
+   [host support](./reference/host-support.md).
+
+4. **You want to see what a check reports before letting it stop work.** A discipline without an
+   enforcement setting records violations and lets the call proceed. Entries with `enforce: block`
+   stop calls that violate the discipline. Diff checks also need `--enforce block` to exit 2 on a
+   blocking entry; without it, they record advice (see [check outcomes](#check-outcomes)).
+
+<a id="fits-needs"></a>
+### What do you need to stop or record?
+
+| Need                                                          | What it reads                                 | Example                                                                                                                                                                              |
+| ------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Stop commands that can discard work                           | Command text                                  | [Force pushes and `git reset --hard`](./recipes/work-stays-recoverable.md), [deleting a whole directory](./recipes/deletes-name-their-target.md)                                     |
+| Keep checks from being disabled or skipped                    | Command text                                  | [Skipping commit hooks](./recipes/hooks-stay-armed.md)                                                                                                                               |
+| Require calls to go through one entry point                   | Lines added by an edit                        | [Direct calls that bypass a wrapper](./how-to/write-disciplines.md#added-line-check), imports that cross a module boundary                                                           |
+| Keep wording within an agreed vocabulary                      | Lines added by an edit                        | [New uses of banned words](./recipes/no-new-banned-words.md)                                                                                                                         |
+| Catch changes that weaken tests                               | Lines added by an edit                        | Skipped tests, snapshot assertions, increased timeouts                                                                                                                               |
+| Read complete check results and reduce unnecessary repetition | Command text and earlier calls in the session | [Truncating check output with `head` or `tail`](./recipes/output-is-read-whole.md), repeating a test without an edit                                                                 |
+| Require evidence to be read before an edit                    | Earlier calls in the session                  | [Looking up a version before changing a dependency](./recipes/manifest-needs-evidence.md), [reading a design document before editing source](./recipes/document-read-before-edit.md) |
+| Keep work within assigned roles                               | The subagent making the call                  | [An implementing subagent editing tests](./recipes/tests-are-the-writers.md)                                                                                                         |
+| Follow naming and location conventions                        | The path being edited                         | File naming conventions                                                                                                                                                              |
+| Keep records from being erased                                | File content before and after a change        | [Release headings in a changelog](./recipes/changelog-keeps-every-release.md)                                                                                                        |
+| Keep content consistent across files                          | Multiple files and the paths in a change set  | [Enum values in two schemas](./recipes/schema-enums-agree.md), [English and Korean docs changed together](./recipes/docs-stay-bilingual.md)                                          |
+
+Checks that read lines added by an edit, file content before and after a change, other files named
+in the declaration, or the path being edited run on the agent's file-editing tool calls and on diff
+input. In a session, files changed by shell commands do not receive content checks at that point;
+diff input checks judge those changes. Checks that read the list of paths in a change set run only
+on diff input. Checks that read command text, earlier calls in the session, or the subagent making
+the call run only in agent sessions. Codex supplies neither
+[call success](./reference/host-support.md#call-success) nor
+[the subagent making the call](./reference/host-support.md#actor). The version-lookup and
+read-before-edit recipes above require successful earlier calls, so they report a break on in-scope
+edits in Codex; other differences, including file deletions, are in the
+[host support table](./reference/host-support.md#capabilities). See
 [all config examples](./recipes/index.md).
 
 <a id="fits-elsewhere"></a>
