@@ -1,0 +1,30 @@
+{
+  "description": "A shell command that appends comment lines carries no observed file change.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"comments-stay-short\"\n    why: \"A comment is one line placed between code, never a paragraph. A run of four or more // lines is narration, a restated diff or a design note that belongs in the pull request or a design document. TSDoc blocks on exported symbols are not // lines.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: ['^src/.+\\.(ts|tsx|js|mjs)$']\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"no-comment-paragraph\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds a run of four or more comment lines: {value}\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Bash",
+        "args": {
+          "command": "printf '// a\\n// b\\n// c\\n// d\\n' >> src/service.ts"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "comments-stay-short", "src/service.ts", "no-observation"]]
+  }
+}

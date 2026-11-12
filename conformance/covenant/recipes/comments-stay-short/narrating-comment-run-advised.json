@@ -1,0 +1,50 @@
+{
+  "description": "An edit that adds four lines of narration above code advises.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"comments-stay-short\"\n    why: \"A comment is one line placed between code, never a paragraph. A run of four or more // lines is narration, a restated diff or a design note that belongs in the pull request or a design document. TSDoc blocks on exported symbols are not // lines.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: ['^src/.+\\.(ts|tsx|js|mjs)$']\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"no-comment-paragraph\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds a run of four or more comment lines: {value}\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/cart/applyDiscount.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/cart/applyDiscount.ts",
+          "pre": "export function applyDiscount(cart: Cart, code: string): Cart {\n  const rate = rateFor(code);\n  return { ...cart, total: cart.total * (1 - rate) };\n}\n",
+          "post": "export function applyDiscount(cart: Cart, code: string): Cart {\n  // First we look up the rate for the code.\n  // Then we apply it to the cart total.\n  // Note: this used to round per line item,\n  // but the rounding moved to checkout.\n  const rate = rateFor(code);\n  return { ...cart, total: cart.total * (1 - rate) };\n}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [
+      "discipline 'comments-stay-short' broken on src/cart/applyDiscount.ts: adds a run of four or more comment lines: ",
+      "  // First we look up the rate for the code.",
+      "  // Then we apply it to the cart total.",
+      "  // Note: this used to round per line item,",
+      "  // but the rounding moved to checkout.",
+      "covenant advisory: 1 verdict(s) recorded as advised, not blocked"
+    ],
+    "rows": [
+      [
+        "advised",
+        "comments-stay-short",
+        "src/cart/applyDiscount.ts",
+        "[{\"id\":\"no-comment-paragraph\",\"witnesses\":[{\"key\":\"\\n  // First we look up the rate for the code.\\n  // Then we apply it to the cart total.\\n  // Note: this used to round per line item,\\n  // but the rounding moved to checkout.\",\"value\":\"\\n  // First we look up the rate for the code.\\n  // Then we apply it to the cart total.\\n  // Note: this used to round per line item,\\n  // but the rounding moved to checkout.\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

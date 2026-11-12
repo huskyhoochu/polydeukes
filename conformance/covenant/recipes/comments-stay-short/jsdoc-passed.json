@@ -1,0 +1,36 @@
+{
+  "description": "A JSDoc block on an exported symbol is not a // run.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"comments-stay-short\"\n    why: \"A comment is one line placed between code, never a paragraph. A run of four or more // lines is narration, a restated diff or a design note that belongs in the pull request or a design document. TSDoc blocks on exported symbols are not // lines.\"\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: ['^src/.+\\.(ts|tsx|js|mjs)$']\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"allMatches\", re: '(?:\\n[ \\t]*//[^\\n]*){4,}' }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"no-comment-paragraph\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"adds a run of four or more comment lines: {value}\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "src/service.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "src/service.ts",
+          "pre": "export function total(a: number, b: number): number {\n  return a + b;\n}\n",
+          "post": "/**\n * Adds two numbers.\n * @param a first\n * @param b second\n * @returns the sum\n */\nexport function total(a: number, b: number): number {\n  return a + b;\n}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "comments-stay-short", "src/service.ts"]]
+  }
+}

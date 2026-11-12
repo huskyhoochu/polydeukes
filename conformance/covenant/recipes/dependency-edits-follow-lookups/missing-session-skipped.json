@@ -1,0 +1,36 @@
+{
+  "description": "An edit with no session key is skipped with supply-pass.",
+  "args": [],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  - id: \"dependency-edits-follow-lookups\"\n    why: \"A dependency version is measured before it is written (training knowledge is not evidence of what npm resolves today), and the API a dependency exposes is read from its docs, not recalled.\"\n    declare:\n      mechanism: \"precedent\"\n      scope:\n        source: \"target.path\"\n        include: ['^((apps|packages)/[^/]+/)?package\\.json$']\n      sources: { session: { transcript: true } }\n      supply: { session: \"pass\" }\n      extract:\n        npmView:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\", names: [\"Bash\"] }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"select\", path: \"args.command\" }\n          - { op: \"matches\", re: '\\bnpm view ' }\n        context7:\n          - { op: \"source\", of: \"session\" }\n          - { op: \"toolUses\" }\n          - { op: \"filter\", when: [{ field: \"succeeded\", eq: true }] }\n          - { op: \"field\", name: \"name\" }\n          - { op: \"matches\", re: \"context7\" }\n      relate:\n        - id: \"npm-view\"\n          relation: { op: \"nonEmpty\", of: \"npmView\" }\n          message: \"no successful npm view precedes this manifest edit\"\n        - id: \"context7\"\n          relation: { op: \"nonEmpty\", of: \"context7\" }\n          message: \"no successful context7 call precedes this manifest edit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "package.json"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "package.json",
+          "pre": "{\n  \"dependencies\": {\n    \"left-pad\": \"1.2.0\"\n  }\n}\n",
+          "post": "{\n  \"dependencies\": {\n    \"left-pad\": \"1.3.0\"\n  }\n}\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["skipped", "dependency-edits-follow-lookups", "package.json", "supply-pass"]]
+  }
+}

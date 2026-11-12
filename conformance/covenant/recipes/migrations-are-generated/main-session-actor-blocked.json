@@ -1,0 +1,46 @@
+{
+  "description": "An empty actor object, the host main session, blocks.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "sessionDisciplines:\n  # drizzle-kit generate owns these three shapes. Editing the SQL, a snapshot or _journal.json by\n  # hand corrupts migration ordering silently.\n  # The entry is session-only: a direct edit call names its target path, while a finished change\n  # set cannot show whether a person or the generator wrote it.\n  - id: \"migrations-are-generated\"\n    why: \"Migration files, snapshots and the journal are written by `drizzle-kit generate`; a hand edit makes the recorded migration order disagree with the database without any error.\"\n    enforce: block\n    declare:\n      mechanism: \"scoped-valve\"\n      scope:\n        source: \"target.path\"\n        include:\n          - '^drizzle/\\d{4}_[^/]+\\.sql$'\n          - '^drizzle/meta/_journal\\.json$'\n          - '^drizzle/meta/\\d{4}_snapshot\\.json$'\n      supply: { actor: \"empty\" }\n      extract:\n        handEdited:\n          - { op: \"source\", of: \"target.path\" }\n          - { op: \"matches\", re: \"^drizzle/\" }\n      relate:\n        - id: \"generated\"\n          relation: { op: \"empty\", of: \"handEdited\" }\n          message: \"{value} is owned by drizzle-kit\"\n      # No adapter emits a drizzle-kit actor, so this witness does not open in a session.\n      witness:\n        extract:\n          generator:\n            - { op: \"source\", of: \"actor\" }\n            - { op: \"select\", path: \"agentType\" }\n            - { op: \"matches\", re: \"^drizzle-kit$\" }\n        relate:\n          - id: \"generator-actor\"\n            relation: { op: \"nonEmpty\", of: \"generator\" }\n            message: \"the actor is not drizzle-kit\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "drizzle/0003_add_orders.sql"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "drizzle/0003_add_orders.sql",
+          "pre": "a\n",
+          "post": "b\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    },
+    "actor": {}
+  },
+  "expect": {
+    "exit": 2,
+    "stderr": [
+      "discipline 'migrations-are-generated' broken on drizzle/0003_add_orders.sql: drizzle/0003_add_orders.sql is owned by drizzle-kit — why: Migration files, snapshots and the journal are written by `drizzle-kit generate`; a hand edit makes the recorded migration order disagree with the database without any error."
+    ],
+    "rows": [
+      [
+        "blocked",
+        "migrations-are-generated",
+        "drizzle/0003_add_orders.sql",
+        "[{\"id\":\"generated\",\"witnesses\":[{\"key\":\"0\",\"value\":\"drizzle/0003_add_orders.sql\"}],\"total\":1}]"
+      ]
+    ]
+  }
+}

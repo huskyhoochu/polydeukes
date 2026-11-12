@@ -42,6 +42,10 @@ Which host supplies the evidence a recipe reads is on the
   dependencies from the npm registry and a root `package.json`. Surface: Session (earlier tool
   calls). Default: advises. Values to change: manifest path if it is not at the root.
 
+- [Check for registry and documentation lookups before editing dependencies](./dependency-edits-follow-lookups.md)
+  Needs: npm dependencies and earlier calls with success status. Surface: Session (earlier calls).
+  Default: advises. Values to change: manifest paths and documentation-tool pattern.
+
 <a id="keep-files-consistent"></a>
 ## Keep files consistent
 
@@ -70,6 +74,16 @@ Which host supplies the evidence a recipe reads is on the
   underscores](./file-names-follow-the-convention.md)
   Needs: a file-name convention under your source folders. Surface: Session and change-set. Default:
   advises. Values to change: paths and the file-name pattern.
+
+- [Detect added runs of four or more comment lines](./comments-stay-short.md) Needs: source files
+  under src/. Surface: Session and change-set. Default: advises. Values to change: source paths and
+  both run-length patterns.
+- [Stop direct edits to generated migrations](./migrations-are-generated.md) Needs: generated
+  migration files. Surface: Session (edited path). Default: blocks. Values to change: three output
+  path patterns and their prefix.
+- [Stop imports that go past a package entry point](./packages-meet-at-the-entry-point.md) Needs:
+  packages with public entry points. Surface: Session and change-set. Default: blocks. Values to
+  change: source scope and both import patterns.
 
 <a id="prepare-and-assign-edits"></a>
 ## Prepare and assign edits

@@ -1,0 +1,36 @@
+{
+  "description": "A deep import of a third-party package passes.",
+  "args": ["--enforce", "block"],
+  "tree": {
+    "polydeukes.config.yaml": "disciplines:\n  - id: \"packages-meet-at-the-entry-point\"\n    why: \"A package reaches another package only through its entry point, so each package can move its own files without breaking the others. The pattern reads an import, export or dynamic import whose specifier goes past another package's entry point (@acme/<package>/<anything>) or climbs out of the package with ../../.\"\n    enforce: block\n    declare:\n      mechanism: \"added-only\"\n      scope:\n        source: \"target.path\"\n        include: ['^packages/[^/]+/src/.+\\.tsx?$']\n      supply: { pre: \"empty\", post: \"empty\" }\n      extract:\n        before:\n          - { op: \"source\", of: \"pre\" }\n          - { op: \"lines\" }\n          - { op: \"matches\", re: '^(?!\\s*(?://|/\\*|\\*))' }\n          - {\n              op: \"allMatches\",\n              re: '((?:\\bfrom|\\bimport|\\bimport\\s*\\()\\s*[''\"](?:@acme/[^/''\"]+/[^''\"]+|\\.\\./\\.\\./[^''\"]*)[''\"])',\n            }\n        after:\n          - { op: \"source\", of: \"post\" }\n          - { op: \"lines\" }\n          - { op: \"matches\", re: '^(?!\\s*(?://|/\\*|\\*))' }\n          - {\n              op: \"allMatches\",\n              re: '((?:\\bfrom|\\bimport|\\bimport\\s*\\()\\s*[''\"](?:@acme/[^/''\"]+/[^''\"]+|\\.\\./\\.\\./[^''\"]*)[''\"])',\n            }\n        added:\n          - { op: \"onlyIn\", of: \"after\", notIn: \"before\", count: true }\n      relate:\n        - id: \"no-deep-import\"\n          relation: { op: \"empty\", of: \"added\" }\n          message: \"imports past a package entry point: {key}\"\n",
+    ".polydeukes/baseline.json": "{\"entries\":{}}\n"
+  },
+  "stdin": {
+    "toolCalls": [
+      {
+        "name": "Edit",
+        "args": {
+          "file_path": "packages/web/src/page.ts"
+        },
+        "fileChange": {
+          "kind": "modify",
+          "path": "packages/web/src/page.ts",
+          "pre": "",
+          "post": "import x from \"lodash/fp/get\";\n"
+        }
+      }
+    ],
+    "subagentSpawns": [],
+    "userMessages": [],
+    "tools": {
+      "mutating": ["Edit", "Write"],
+      "shell": ["Bash"],
+      "commandArgs": ["command"]
+    }
+  },
+  "expect": {
+    "exit": 0,
+    "stderr": [],
+    "rows": [["passed", "packages-meet-at-the-entry-point", "packages/web/src/page.ts"]]
+  }
+}
