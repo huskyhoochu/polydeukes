@@ -11,9 +11,8 @@ A Rust executable translates host events into input IR and sends them to a separ
 <a id="translation"></a>
 ## Observed evidence
 
-File tools supply disk pre-state and computed post-state; shell calls supply the command. Only
-Claude transcript messages marked `origin.kind: human` count as human evidence. SDK-authored user
-messages do not establish human provenance.
+File tools supply disk pre-state and computed post-state; shell calls supply the command. See the
+[human evidence row](../host-support.md#human-evidence) for witness valve support.
 
 <a id="consumer-contract"></a>
 ## Connect

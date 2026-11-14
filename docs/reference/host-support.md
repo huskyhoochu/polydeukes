@@ -4,8 +4,6 @@
 
 This is the only page that says which host supplies which evidence. Other pages link here.
 
-Versions measured: Claude Code 2.1.321, Codex 0.167.0.
-
 <a id="capabilities"></a>
 ## Capabilities
 
@@ -101,10 +99,14 @@ An entry that counts only successful earlier calls finds none and breaks on ever
 Whose earlier calls an edit is judged against
 </td>
 <td>
-The main session sees the main session's calls and each subagent sees only its own
+The main session sees the main session's calls and each subagent sees only its own.
+Measured: a subagent's <code>cat</code> was absent from the main session's history; a subagent
+that ran <code>cat</code> and then edited was judged with that <code>cat</code> in its history.
 </td>
 <td>
-One history per session
+The main session sees the main session's calls and each subagent sees only its own.
+Measured: the main session's edit did not see the subagent's <code>cat</code>; a subagent's own
+<code>cat</code> was in the history of its own edit.
 </td>
 <td>
 —
@@ -131,10 +133,13 @@ The entry is recorded <code>skipped</code> with <code>supply-pass</code>.
 Human messages that can open a blocked call with the witness token
 </td>
 <td>
-Supported
+Supported: a message the person typed was recorded with <code>origin.kind: human</code> and the
+retried protected edit was <code>witnessed</code>; a <code>claude -p</code> message was recorded
+without an origin, and the token on its first line did not open the valve
 </td>
 <td>
-Not supplied; prompts are not human evidence
+Not supplied: the token typed as the first line of a message in an interactive session did not
+open the valve; the protected edit stayed <code>blocked</code>
 </td>
 <td>
 A blocked call stays blocked; run the command from your own terminal.
@@ -147,19 +152,20 @@ A blocked call stays blocked; run the command from your own terminal.
 ## How each cell was confirmed
 
 Live session: a real session of that host was run and the adapter's output or the judge's records
-were read. Adapter source: read from the adapter's source and its test cases, not run in a live
-session.
+were read.
 
-| Capability                        | Claude Code    | Codex          |
-| --------------------------------- | -------------- | -------------- |
-| [file edits](#file-edits)         | live session   | live session   |
-| [file deletions](#file-deletions) | adapter source | live session   |
-| [shell commands](#shell-commands) | live session   | live session   |
-| [earlier calls](#earlier-calls)   | live session   | live session   |
-| [call success](#call-success)     | live session   | live session   |
-| [history scope](#history-scope)   | adapter source | adapter source |
-| [actor](#actor)                   | live session   | adapter source |
-| [human evidence](#human-evidence) | adapter source | adapter source |
+The number after the basis is the host version that session ran.
+
+| Capability                        | Claude Code            | Codex                  |
+| --------------------------------- | ---------------------- | ---------------------- |
+| [file edits](#file-edits)         | live session · 2.1.321 | live session · 0.167.0 |
+| [file deletions](#file-deletions) | live session · 2.1.325 | live session · 0.167.0 |
+| [shell commands](#shell-commands) | live session · 2.1.321 | live session · 0.167.0 |
+| [earlier calls](#earlier-calls)   | live session · 2.1.321 | live session · 0.167.0 |
+| [call success](#call-success)     | live session · 2.1.321 | live session · 0.167.0 |
+| [history scope](#history-scope)   | live session · 2.1.325 | live session · 0.167.2 |
+| [actor](#actor)                   | live session · 2.1.325 | live session · 0.167.2 |
+| [human evidence](#human-evidence) | live session · 2.1.325 | live session · 0.167.2 |
 
 A cell changes only after a live session of that host is measured again.
 

@@ -47,10 +47,9 @@ init이 담당합니다. 생성 설정에는 YAML language-server 스키마 주�
 ## 규율이 읽는 관측 재확인
 
 셸 보호는 보호 경로의 언급을 보수적으로 판정합니다. 셸 쓰기는 내용 규율에 필요한 파일 내용을
-제공하지 못해 `no-observation` 사유의 `skipped`가 될 수 있으므로 완성된 diff도 검사합니다. Codex는
-도구 이력을 기록하지만 사람 메시지를 증명하지 못합니다. 프롬프트에 증인 토큰을 넣어도 보호 편집이
-열리지 않습니다. Claude Code는 대화 기록의 사람 출처를 요구하며 SDK로 시작한 세션에는 이 증거가 없을
-수 있습니다. 사람 채널이 없는 호스트에서는 터미널로 보호 파일을 편집합니다.
+제공하지 못해 `no-observation` 사유의 `skipped`가 될 수 있으므로 완성된 diff도 검사합니다. 사람
+채널이 없는 호스트에서는 터미널로 보호 파일을 편집합니다.
+[사람 증거 행](../reference/host-support.ko.md#human-evidence)을 참고하세요.
 
 기억은 색인 파일이나 ingest 단계 없이 동작합니다. 검색 JSON에는 `results`가 있고 `ingestedAt`은
 없습니다. 옛 SDK ingest 동사를 사용하던 코드는 search를 바로 호출하도록 바꿉니다. TypeScript SDK는

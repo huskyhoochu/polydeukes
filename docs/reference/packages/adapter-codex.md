@@ -11,9 +11,11 @@ A Rust executable translates host events into input IR and sends them to a separ
 <a id="apply-patch"></a>
 ## Observed evidence
 
-Splits apply_patch into one IR element per file and translates shell calls. PostToolUse records
-per-session tool history in `.polydeukes/codex-sessions/`; SessionEnd removes it. Prompts are not
-human evidence and cannot open the witness valve.
+Splits apply_patch into one IR element per file and translates shell calls. Measured with Codex
+0.167.2: PostToolUse records tool history in `.polydeukes/codex-sessions/`, with a separate evidence
+file for the main agent and each subagent; SessionEnd removes the main agent's file, while subagent
+files remain. See the [human evidence row](../host-support.md#human-evidence) for witness valve
+support.
 
 <a id="consumer"></a>
 ## Connect

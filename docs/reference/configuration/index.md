@@ -156,9 +156,10 @@ shape. Only its placement is constrained.
 
 The adapter must identify the token's message as human input before it can open the valve. Knowing
 the token alone is insufficient. Every judgment allowed through the valve is recorded as
-`witnessed`. Claude Code and Codex accept prompt text for this purpose only when its origin
-explicitly identifies a human. An ordinary prompt event without that provenance does not open the
-valve. Recover a protected change from your own terminal when the host cannot prove that origin.
+`witnessed`. Prompt text is accepted for this purpose only when its origin explicitly identifies a
+human; see the [human evidence row](../host-support.md#human-evidence). An ordinary prompt event
+without that provenance does not open the valve. Recover a protected change from your own terminal
+when the host cannot prove that origin.
 
 <a id="memory"></a>
 ## `memory`

@@ -49,8 +49,11 @@ Runs `pdks init` and registers `PreToolUse, PostToolUse, SessionEnd`. Protected 
 `.codex/hooks.json, .codex/config.toml`. Registration pins the absolute project root, adapter, and
 judge found on PATH. Other tools’ handlers and owner settings are preserved.
 
-Approve the definition through Codex `/hooks`. PostToolUse records tool history; SessionEnd removes
-it. Human-message evidence is absent, so make protected edits from your own terminal.
+Approve the definition through Codex `/hooks`. Measured with Codex 0.167.2: PostToolUse records tool
+history in `.polydeukes/codex-sessions/`, with a separate evidence file for the main agent and each
+subagent; SessionEnd removes the main agent's file, while subagent files remain. Check the
+[human evidence row](../host-support.md#human-evidence) and make protected edits from your own
+terminal when the host has no human channel.
 
 <a id="init-results"></a>
 ## Results and path changes

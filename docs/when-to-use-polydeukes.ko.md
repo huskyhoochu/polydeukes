@@ -89,12 +89,11 @@ Polydeukes는 설정 파일을 기준으로 변경을 검사하는 명령줄 프
 에이전트의 파일 편집 도구 호출과 diff 입력에서 실행합니다. 세션에서 셸 명령으로 바꾼 파일은 그
 자리에서 내용 검사를 받지 않고, diff 입력 검사가 그 변경을 판정합니다. 변경 집합의 경로 목록을 읽는
 검사는 diff 입력에서만 실행합니다. 명령 문자열, 세션의 이전 호출, 호출한 서브에이전트를 읽는 검사는
-에이전트 세션에서만 실행합니다. Codex는
-[호출 성공 여부](./reference/host-support.ko.md#call-success)와
-[호출한 서브에이전트](./reference/host-support.ko.md#actor)를 공급하지 않습니다. 앞서 나온 버전
-조회와 편집 전 읽기 레시피는 성공한 이전 호출을 요구하므로 Codex에서 관측 범위에 해당하는 편집을
-위반으로 판정합니다. 파일 삭제를 비롯한 다른 차이는
-[호스트 지원 표](./reference/host-support.ko.md#capabilities)에 있습니다.
+에이전트 세션에서만 실행합니다. 호스트가
+[호출 성공 여부](./reference/host-support.ko.md#call-success)를 공급하지 않으면 앞서 나온 버전
+조회와 편집 전 읽기 레시피는 성공한 이전 호출을 요구하므로 관측 범위에 해당하는 모든 편집을 위반으로
+판정합니다. [호출한 서브에이전트](./reference/host-support.ko.md#actor) 증거와 파일 삭제를 비롯한
+다른 기능은 [호스트 지원 표](./reference/host-support.ko.md#capabilities)를 참고하세요.
 [전체 설정 예제](./recipes/index.ko.md)도 참고하세요.
 
 <a id="fits-elsewhere"></a>
@@ -135,10 +134,10 @@ Polydeukes는 설정 파일을 기준으로 변경을 검사하는 명령줄 프
 
 검사 시점과 강제 수준에 따라 결과가 달라집니다.
 
-| 검사 시점                                | `enforce`가 없는 규율            | [`enforce: block`](./how-to/configure-project.ko.md#choose-advise-or-block)인 규율 또는 [`protectedPaths`](./reference/configuration/index.ko.md#protectedpaths) 경로의 변경                                        |
-| ---------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 파일을 바꾸는 도구나 셸 호출 직전        | 권고를 기록하고 호출을 계속함    | 호스트가 호출을 차단함(Claude Code에서는 설정된 증인(witness)으로 차단을 열 수 있음; [차단된 호출 열기](./troubleshooting.ko.md#opening-a-blocked-call)) (`protectedPaths` 경로라면 이를 언급하는 셸 명령도 차단함) |
-| diff 입력 (`pdks covenant check --diff`) | 권고로 기록하고 종료 코드 0 반환 | 명령에 `--enforce block`이 있으면 종료 코드 2 반환, 없으면 권고로 기록                                                                                                                                              |
+| 검사 시점                                | `enforce`가 없는 규율            | [`enforce: block`](./how-to/configure-project.ko.md#choose-advise-or-block)인 규율 또는 [`protectedPaths`](./reference/configuration/index.ko.md#protectedpaths) 경로의 변경                                                                                                       |
+| ---------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 파일을 바꾸는 도구나 셸 호출 직전        | 권고를 기록하고 호출을 계속함    | 호스트가 호출을 차단함(호스트가 [사람 증거](./reference/host-support.ko.md#human-evidence)를 제공하는 세션에서만 설정된 증인으로 차단을 열 수 있음; [차단된 호출 열기](./troubleshooting.ko.md#opening-a-blocked-call)) (`protectedPaths` 경로라면 이를 언급하는 셸 명령도 차단함) |
+| diff 입력 (`pdks covenant check --diff`) | 권고로 기록하고 종료 코드 0 반환 | 명령에 `--enforce block`이 있으면 종료 코드 2 반환, 없으면 권고로 기록                                                                                                                                                                                                             |
 
 Polydeukes는 저장소 전체가 아닌 관측한 변경을 판정하며, 규율을 파일의 변경 전후를 비교해 일치하는 줄
 수가 늘어날 때만 보고하도록 작성하면 파일에 이미 일치하는 줄이 있다는 이유만으로는 보고하지 않습니다
@@ -231,7 +230,8 @@ CODEOWNERS는 에이전트의 파일 변경을 막지 않습니다. 풀 리퀘�
 [실행을 시작할 때 읽습니다](https://learn.chatgpt.com/docs/agent-configuration/agents-md#how-codex-discovers-guidance).
 [편집 전 읽기 규율](./recipes/document-read-before-edit.ko.md)은 정해 둔 문서를 읽기 전에 편집하면
 기본적으로 권고를 기록하고 `enforce: block`이면 편집을 차단합니다.
-[앞서 설명한 Codex의 제약](#fits)이 적용됩니다.
+[호출 성공 여부](./reference/host-support.ko.md#call-success)를 공급하지 않는 호스트에서는 성공한
+이전 호출을 요구하므로 관측 범위에 해당하는 모든 편집을 위반으로 판정합니다.
 
 <a id="choosing-order"></a>
 ## 어떤 순서로 고르면 되나요?

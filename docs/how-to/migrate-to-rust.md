@@ -50,10 +50,8 @@ loading.
 
 Shell protection conservatively considers protected-path mentions. A shell write can lack the file
 contents needed by a content discipline and produce `skipped` with `no-observation`; check the
-finished diff as well. Codex records tool history but does not establish human messages, so a
-witness token in its prompt cannot open a protected edit. Claude Code requires human provenance in
-the transcript; an SDK-originated session may not supply it. Use your terminal for protected edits
-when the host has no human channel.
+finished diff as well. Use your terminal for protected edits when the host has no human channel; see
+the [human evidence row](../reference/host-support.md#human-evidence).
 
 Memory keeps no index file and needs no ingest step. Search JSON has `results` and no `ingestedAt`.
 Update consumers of the earlier SDK ingest verb to call search directly; the TypeScript SDK needs

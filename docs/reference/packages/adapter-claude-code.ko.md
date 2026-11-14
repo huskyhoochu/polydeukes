@@ -11,9 +11,8 @@
 <a id="translation"></a>
 ## 관측 증거
 
-파일 도구는 디스크의 변경 전 내용과 계산한 변경 후 내용을 제공합니다. 셸은 명령줄을 제공합니다.
-Claude 대화 기록의 `origin.kind: human`인 메시지만 사람 증거입니다. SDK가 만든 user 메시지는 사람의
-발화와 같지 않습니다.
+파일 도구는 디스크의 변경 전 내용과 계산한 변경 후 내용을 제공합니다. 셸은 명령줄을 제공합니다. 증인
+밸브 지원은 [사람 증거 행](../host-support.ko.md#human-evidence)을 참고하세요.
 
 <a id="consumer-contract"></a>
 ## 연결

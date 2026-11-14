@@ -46,10 +46,10 @@ commit, made from a terminal that can see the error.
 ## Codex witness
 
 Approve the registration through `/hooks`, then verify an actual call and its telemetry. Trust is
-tied to the definition hash, so moving paths may require approval again. Current `UserPromptSubmit`
-events do not establish human provenance: sending a token cannot open the witness valve.
-`PostToolUse` evidence is isolated by session and subagent and removed at `SessionEnd`. The unstable
-transcript file is never read. Perform necessary protected changes from your own terminal.
+tied to the definition hash, so moving paths may require approval again. See the
+[human evidence](./reference/host-support.md#human-evidence) and
+[history scope](./reference/host-support.md#history-scope) rows for the host's evidence. The
+unstable transcript file is never read. Perform necessary protected changes from your own terminal.
 
 <a id="config-fault"></a>
 ## Config-fault
@@ -92,11 +92,12 @@ continue, not that every discipline passed.
 <a id="opening-a-blocked-call"></a>
 ## Opening a blocked call
 
-In a supported Claude Code session, type the configured witness token alone on the first line of a
-human message, then retry within its configured TTL. The message may also precede an intentional
-protected edit; no previous failed attempt is required. The token is not a secret. The valve checks
-human provenance and applies only to a blocking judgment. A successful retry appends a `witnessed`
-row; it does not rewrite the earlier blocked row.
+In a session whose host supplies [human evidence](./reference/host-support.md#human-evidence), type
+the configured witness token alone on the first line of a human message, then retry within its
+configured TTL. The message may also precede an intentional protected edit; no previous failed
+attempt is required. The token is not a secret. The valve checks human provenance and applies only
+to a blocking judgment. A successful retry appends a `witnessed` row; it does not rewrite the
+earlier blocked row.
 
 When the valve could have opened a blocked call and did not, the block's last line says why.
 `no witness is configured` names the config file to add `witness: { token, ttlMinutes }` to; until

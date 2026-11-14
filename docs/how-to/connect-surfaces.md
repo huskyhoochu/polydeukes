@@ -25,8 +25,8 @@ Install the judge and the chosen adapter using the [installation guide](./instal
 the project root. Registration pins the absolute judge, adapter, and project-root paths while
 preserving other handlers and settings. Rerun after moving them.
 
-Reopen the project and check telemetry for an actual call. Only messages identified by
-`origin.kind: human` can support the witness valve.
+Reopen the project and check telemetry for an actual call. See the
+[human evidence row](../reference/host-support.md#human-evidence) for witness valve support.
 
 [Registration details](../reference/cli/init.md#init-claude-code)
 
@@ -41,8 +41,9 @@ Install the judge and the chosen adapter using the [installation guide](./instal
 the project root. Registration pins the absolute judge, adapter, and project-root paths while
 preserving other handlers and settings. Rerun after moving them.
 
-Approve the definition through `/hooks`. Code Mode coverage varies by version; verify actual nested
-calls. Transcript files are never read, and current prompts do not establish human provenance.
+Approve the definition through `/hooks`. Which nested Code Mode calls reach the hook depends on the
+Codex version, so verify that an actual nested call is judged. Transcript files are never read. See
+the [human evidence row](../reference/host-support.md#human-evidence) for witness valve support.
 Perform protected changes from your own terminal.
 
 [Registration details](../reference/cli/init.md#init-codex)
@@ -69,10 +70,11 @@ commit stops is your hook wiring: configure it to honour the exit code. Assembly
 <a id="witness-and-recovery"></a>
 ## Witness and recovery
 
-In a Claude session that proves human provenance, send the configured token alone on the first line,
-then retry the intentional change within its TTL. The witness valve is consulted after a blocking
-result. Current Codex prompts do not establish that provenance; perform protected changes from your
-own terminal. The change-set surface has no witness prompt; your hook acts on the exit code.
+In a session whose host supplies [human evidence](../reference/host-support.md#human-evidence), send
+the configured token alone on the first line, then retry the intentional change within its TTL. The
+witness valve is consulted after a blocking result. Perform protected changes from your own terminal
+when the host supplies no human evidence. The change-set surface has no witness prompt; your hook
+acts on the exit code.
 
 A witness cannot repair a missing executable, unapproved trust, or a disabled hook. Repair the path
 or host approval and verify another real call and its telemetry.

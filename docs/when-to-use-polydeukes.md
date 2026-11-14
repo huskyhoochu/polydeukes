@@ -96,11 +96,11 @@ in the declaration, or the path being edited run on the agent's file-editing too
 input. In a session, files changed by shell commands do not receive content checks at that point;
 diff input checks judge those changes. Checks that read the list of paths in a change set run only
 on diff input. Checks that read command text, earlier calls in the session, or the subagent making
-the call run only in agent sessions. Codex supplies neither
-[call success](./reference/host-support.md#call-success) nor
-[the subagent making the call](./reference/host-support.md#actor). The version-lookup and
-read-before-edit recipes above require successful earlier calls, so they report a break on in-scope
-edits in Codex; other differences, including file deletions, are in the
+the call run only in agent sessions. If a host does not supply
+[call success](./reference/host-support.md#call-success), the version-lookup and read-before-edit
+recipes above report a break on every in-scope edit because they require successful earlier calls.
+For evidence about [the subagent making the call](./reference/host-support.md#actor) and other
+capabilities, including file deletions, see the
 [host support table](./reference/host-support.md#capabilities). See
 [all config examples](./recipes/index.md).
 
@@ -139,10 +139,10 @@ edits in Codex; other differences, including file deletions, are in the
 
 The outcome depends on where the check runs and its enforcement setting.
 
-| Where                                     | A discipline without `enforce`     | A discipline with [`enforce: block`](./how-to/configure-project.md#choose-advise-or-block), or a change to a [`protectedPaths`](./reference/configuration/index.md#protectedpaths) path                                             |
-| ----------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Before a file-changing or shell tool call | Records advice, the call continues | The host refuses the call (in Claude Code, a configured witness can open it; [opening a blocked call](./troubleshooting.md#opening-a-blocked-call)) (for a `protectedPaths` path, a shell command that mentions it is also refused) |
-| Piped diff (`pdks covenant check --diff`) | Recorded as advice, exit 0         | Exit 2 when the command carries `--enforce block`; otherwise recorded as advice                                                                                                                                                     |
+| Where                                     | A discipline without `enforce`     | A discipline with [`enforce: block`](./how-to/configure-project.md#choose-advise-or-block), or a change to a [`protectedPaths`](./reference/configuration/index.md#protectedpaths) path                                                                                                                                |
+| ----------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Before a file-changing or shell tool call | Records advice, the call continues | The host refuses the call (a configured witness can open it only in a session whose host supplies [human evidence](./reference/host-support.md#human-evidence); [opening a blocked call](./troubleshooting.md#opening-a-blocked-call)) (for a `protectedPaths` path, a shell command that mentions it is also refused) |
+| Piped diff (`pdks covenant check --diff`) | Recorded as advice, exit 0         | Exit 2 when the command carries `--enforce block`; otherwise recorded as advice                                                                                                                                                                                                                                        |
 
 Polydeukes judges the change it observes, not the whole repository; a discipline can compare a file
 before and after the change and report only when the count of matching lines grows, so matches
@@ -238,8 +238,9 @@ documentation describes
 [AGENTS.md is Markdown](https://agents.md/); Codex reads it when
 [a run starts](https://learn.chatgpt.com/docs/agent-configuration/agents-md#how-codex-discovers-guidance).
 The [read-before-edit discipline](./recipes/document-read-before-edit.md) records advice by default
-when an edit precedes the required document read; `enforce: block` refuses it. The
-[Codex limitation above](#fits) applies.
+when an edit precedes the required document read; `enforce: block` refuses it. On a host that does
+not supply [call success](./reference/host-support.md#call-success), it reports a break on every
+in-scope edit because it requires a successful earlier call.
 
 <a id="choosing-order"></a>
 ## How to choose

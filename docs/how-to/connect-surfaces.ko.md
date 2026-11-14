@@ -23,8 +23,8 @@ pdks-claude-code init
 판정기·어댑터·루트의 절대 경로를 등록하며 다른 핸들러와 설정을 유지합니다. 위치가 바뀌면 다시
 실행하세요.
 
-프로젝트를 다시 열고 실제 호출의 telemetry를 확인하세요. `origin.kind: human`으로 확인한 사람
-메시지만 증인(witness) 밸브에 쓰입니다.
+프로젝트를 다시 열고 실제 호출의 telemetry를 확인하세요. 증인 밸브 지원은
+[사람 증거 행](../reference/host-support.ko.md#human-evidence)을 참고하세요.
 
 [등록 상세](../reference/cli/init.ko.md#init-claude-code)
 
@@ -39,8 +39,9 @@ pdks-codex init
 판정기·어댑터·루트의 절대 경로를 등록하며 다른 핸들러와 설정을 유지합니다. 위치가 바뀌면 다시
 실행하세요.
 
-`/hooks`에서 정의를 승인하세요. Code Mode 관측은 버전에 따라 달라지므로 실제 중첩 호출로 확인합니다.
-대화 기록 파일은 읽지 않으며 현재 prompt는 사람 출처를 증명하지 않습니다. 보호 변경은 사용자
+`/hooks`에서 정의를 승인하세요. Code Mode의 중첩 호출이 훅에 닿는지는 Codex 버전에 따라 다르므로,
+실제 중첩 호출이 판정되는지 확인하세요. 대화 기록 파일은 읽지 않습니다. 증인 밸브 지원은
+[사람 증거 행](../reference/host-support.ko.md#human-evidence)을 참고하세요. 보호 변경은 사용자
 터미널에서 수행하세요.
 
 [등록 상세](../reference/cli/init.ko.md#init-codex)
@@ -67,10 +68,11 @@ git diff --cached --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-p
 <a id="witness-and-recovery"></a>
 ## 증인과 복구
 
-사람 출처를 증명하는 Claude 세션에서는 설정된 토큰을 메시지 첫 줄에 단독으로 보낸 뒤 의도한 변경을
-재시도할 수 있습니다. 증인 밸브는 차단 결과 뒤에 확인하며 TTL 안에서만 적용됩니다. 현재 Codex
-prompt는 이 출처를 증명하지 못하므로 사용자 터미널에서 보호 변경을 수행하세요. 변경 집합 표면에는
-증인 프롬프트가 없으며 훅이 exit code에 따라 커밋을 처리합니다.
+호스트가 [사람 증거](../reference/host-support.ko.md#human-evidence)를 제공하는 세션에서는 설정된
+토큰을 메시지 첫 줄에 단독으로 보낸 뒤 의도한 변경을 재시도할 수 있습니다. 증인 밸브는 차단 결과
+뒤에 확인하며 TTL 안에서만 적용됩니다. 호스트가 사람 증거를 제공하지 않으면 사용자 터미널에서 보호
+변경을 수행하세요. 변경 집합 표면에는 증인 프롬프트가 없으며 훅이 exit code에 따라 커밋을
+처리합니다.
 
 실행 파일 부재·신뢰 미승인·비활성 훅은 증인으로 복구하지 못합니다. 경로와 호스트 승인을 고친 뒤 실제
 호출·telemetry를 다시 확인하세요.

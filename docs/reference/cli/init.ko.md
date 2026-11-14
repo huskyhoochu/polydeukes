@@ -48,8 +48,11 @@ pdks-codex init
 `.codex/hooks.json, .codex/config.toml`입니다. 등록에는 프로젝트 루트, 어댑터, PATH에서 찾은
 판정기의 절대 경로가 들어갑니다. 다른 도구의 핸들러와 사용자 설정을 유지합니다.
 
-Codex `/hooks`에서 정의를 승인합니다. PostToolUse가 도구 이력을 저장하고 SessionEnd가 정리합니다.
-사람 메시지 증거는 없으므로 보호 편집은 소유자 터미널에서 합니다.
+Codex `/hooks`에서 정의를 승인합니다. Codex 0.167.2에서 실제 측정한 결과, PostToolUse는
+`.polydeukes/codex-sessions/`에 주 에이전트와 각 서브에이전트의 도구 이력을 각자의 증거 파일로
+저장하며, SessionEnd는 주 에이전트의 파일만 지우고 서브에이전트 파일은 남깁니다.
+[사람 증거 행](../host-support.ko.md#human-evidence)을 확인하고, 호스트에 사람 채널이 없으면 보호
+편집은 소유자 터미널에서 합니다.
 
 <a id="init-results"></a>
 ## 결과와 경로 변경

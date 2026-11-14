@@ -11,9 +11,10 @@
 <a id="apply-patch"></a>
 ## 관측 증거
 
-`apply_patch`를 파일별 IR로 나누고 셸 호출을 번역합니다. PostToolUse의 도구 이력은 세션별로
-`.polydeukes/codex-sessions/`에 저장하고 SessionEnd에서 지웁니다. 프롬프트는 사람 증거가 아니며 증인
-밸브를 열 수 없습니다.
+`apply_patch`를 파일별 IR로 나누고 셸 호출을 번역합니다. Codex 0.167.2에서 실제 측정한 결과,
+PostToolUse는 `.polydeukes/codex-sessions/`에 주 에이전트와 각 서브에이전트의 도구 이력을 각자의
+증거 파일로 저장하며, SessionEnd는 주 에이전트의 파일만 지우고 서브에이전트 파일은 남깁니다. 증인
+밸브 지원은 [사람 증거 행](../host-support.ko.md#human-evidence)을 참고하세요.
 
 <a id="consumer"></a>
 ## 연결

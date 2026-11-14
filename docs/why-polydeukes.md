@@ -31,9 +31,10 @@ TypeScript, Rust, and Python SDKs. Two observation surfaces serve different purp
 
 - The **session surface** judges one call before it runs — an input IR on stdin. Claude Code and
   Codex have installers, and a program reaches the same surface through the TypeScript, Rust, or
-  Python SDK; what history and witness each host can prove differs. An adapter uses stable host
-  events to assemble that evidence rather than treating an undocumented transcript format as a
-  contract.
+  Python SDK;
+  [what history and witness each host can prove differs](./reference/host-support.md#capabilities).
+  An adapter uses stable host events to assemble that evidence rather than treating an undocumented
+  transcript format as a contract.
 - The **change-set surface** judges a unified diff read from stdin — a staged diff piped by a
   pre-commit hook, or any diff a tool produces. It works without an AI agent. A project may connect
   either or both surfaces according to its needs.
